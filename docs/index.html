@@ -32,7 +32,7 @@ input,textarea,select{font:inherit;color:inherit}
 .scroll::-webkit-scrollbar{width:0}
 
 /* ---------------------------------------------------------------- header */
-.top{padding:46px 18px 0;background:var(--paper);border-bottom:1px solid var(--line);flex:none}
+.top{padding:18px 18px 0;background:var(--paper);border-bottom:1px solid var(--line);flex:none}
 .top.navy{background:var(--navy);border-bottom-color:#22406B}
 .tbar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px}
 .brand{display:flex;align-items:center;gap:9px}
@@ -155,7 +155,7 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
   box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .16s}
 .sw.on{background:var(--navy)}.sw.on i{left:21px}
 
-.hero{background:var(--navy);color:#fff;padding:46px 16px 20px}
+.hero{background:var(--navy);color:#fff;padding:18px 16px 20px}
 .hero .nm,.hero .h1{color:#fff}
 .hero .meta{color:#B9CADF}
 .hero .chip{background:#22406B;color:#DDE7F3}
@@ -204,7 +204,7 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
   font-weight:800;font-size:104px;color:#fff;opacity:.13}
 .phero .scrim-b{position:absolute;left:0;right:0;bottom:0;height:190px;
   background:linear-gradient(#0A1D3600,#0A1D36CC 60%,#102A4C)}
-.pback{position:absolute;top:46px;left:16px;z-index:2;color:#fff;font-size:14px;font-weight:700;
+.pback{position:absolute;top:18px;left:16px;z-index:2;color:#fff;font-size:14px;font-weight:700;
   background:#0A1D3699;padding:7px 13px;border-radius:999px;backdrop-filter:blur(4px)}
 .phero-txt{position:absolute;left:0;right:0;bottom:0;padding:0 18px 14px}
 
@@ -314,37 +314,23 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
   margin:17px 0 0;line-height:1.4}
 .hero3{font-size:14.4px;color:var(--ink2);line-height:1.62;margin:14px 0 0}
 .fine{font-size:12.4px;color:var(--grey);line-height:1.5;margin:14px 0 0}
-.prog{padding:44px 16px 0;flex:none}
+.prog{padding:18px 16px 0;flex:none}
 .track{height:4px;background:var(--tint);border-radius:3px;overflow:hidden;margin-top:7px}
 .track i{display:block;height:100%;background:var(--gold);border-radius:3px;transition:width .22s}
 .back{font-size:14px;font-weight:600;color:var(--ink2);padding:12px 0 2px}
 .cta{padding:10px 16px 16px;background:var(--canvas);flex:none}
 h2.q{font-family:var(--head);font-size:23px;font-weight:800;letter-spacing:-.02em;margin:12px 0 0;line-height:1.25}
 p.sub{font-size:14.4px;color:var(--ink2);line-height:1.55;margin:9px 0 4px}
-/* on an actual phone the app is the app — no simulated handset, and the
-   header scrolls away with the content instead of eating the viewport */
+/* on an actual phone the app is the app — no simulated handset around it */
 @media (max-width:520px), (max-height:900px) and (max-width:760px){
   body{padding:0;display:block;background:var(--canvas)}
   .phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}
-  .notch{display:none}
-
-  .screen{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;
-    overscroll-behavior-y:contain;padding-bottom:calc(74px + env(safe-area-inset-bottom))}
-  .scroll{overflow:visible;height:auto;flex:none}
   .top{padding-top:max(14px,env(safe-area-inset-top))}
   .prog{padding-top:max(14px,env(safe-area-inset-top))}
   .pback{top:max(14px,env(safe-area-inset-top))}
   .hero{padding-top:max(14px,env(safe-area-inset-top))}
-
-  .nav{position:fixed;left:0;right:0;bottom:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
-  .composer{position:fixed;left:0;right:0;
-    bottom:calc(66px + max(10px,env(safe-area-inset-bottom)));z-index:35}
-  .screen:has(.composer){padding-bottom:calc(148px + env(safe-area-inset-bottom))}
-  .screen:not(:has(.nav)){padding-bottom:0}
-  .screen:not(:has(.nav)) .cta{position:sticky;bottom:0;
-    padding-bottom:max(14px,env(safe-area-inset-bottom))}
-  .screen:not(:has(.nav)) .composer{position:sticky;bottom:0}
-  .fab{bottom:calc(90px + env(safe-area-inset-bottom))}
+  .nav{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .sheet footer{padding-bottom:max(16px,env(safe-area-inset-bottom))}
 }
 </style></head><body>
 
@@ -366,7 +352,7 @@ p.sub{font-size:14.4px;color:var(--ink2);line-height:1.55;margin:9px 0 4px}
 </linearGradient>
 </defs></svg>
 
-<div class="phone"><div class="notch"></div><div id="app"></div></div>
+<div class="phone"><div id="app"></div></div>
 
 <script>
 /* ============================================================ DATA
@@ -2476,17 +2462,19 @@ function render(){
     if (a1 && wasScreen) a1.scrollTop = wasScreen;
     if (a2 && wasScroll) a2.scrollTop = wasScroll;
   };
-  if (S.setup){ a.innerHTML = setupView(); restore(); return; }
-  if (S.view && S.view.k==="prof"){ a.innerHTML = profView(); restore(); return; }
-  if (S.view && S.view.k==="room"){ a.innerHTML = roomPage(S.view.id); restore(); return; }
+  if (S.setup){ a.innerHTML = setupView(); hoistHeader(); restore(); return; }
+  if (S.view && S.view.k==="prof"){ a.innerHTML = profView(); hoistHeader(); restore(); return; }
+  if (S.view && S.view.k==="room"){ a.innerHTML = roomPage(S.view.id); hoistHeader(); restore(); return; }
   if (S.view && S.view.k==="topic"){
     a.innerHTML = topicPage(S.view.rid, S.view.tid);
+    hoistHeader();
     const t = $("#thread"); if (t) t.scrollTop = t.scrollHeight;
     if (S.focusMsg){ const f=$("#msg"); if (f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); } }
     return;
   }
   if (S.view && (S.view.k==="grp"||S.view.k==="dm")){
     a.innerHTML = threadPage(S.view.k, S.view.id);
+    hoistHeader();
     const t = $("#thread"); if (t) t.scrollTop = t.scrollHeight;
     if (S.focusMsg){ const f=$("#msg"); if (f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); } }
     return;
@@ -2507,7 +2495,18 @@ function render(){
     ${nav()}
     ${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}
     ${sheet()}</div>`;
+  hoistHeader();
   restore();
+}
+/* pages are authored as `head() + <div class="scroll">…`; the header is moved
+   inside the scroller here so it scrolls away with the content instead of
+   holding ~130px of the screen for ever. */
+function hoistHeader(){
+  document.querySelectorAll(".screen").forEach(sc=>{
+    const top = sc.querySelector(":scope > .top");
+    const scroll = sc.querySelector(":scope > .scroll");
+    if (top && scroll) scroll.insertBefore(top, scroll.firstChild);
+  });
 }
 let tt;
 function toast(m){ S.toast=m; render(); clearTimeout(tt); tt=setTimeout(()=>{S.toast=null;render();},3400); }
