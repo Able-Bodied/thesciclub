@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>The SCI Club — demo</title>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -121,6 +121,9 @@ input,textarea,select{font:inherit;color:inherit}
 .nav .pip{position:absolute;top:-9px;right:calc(50% - 22px);width:9px;height:9px;border-radius:50%;
   background:var(--gold);border:2px solid var(--paper)}
 
+html[data-kb="1"] .nav{display:none}
+html[data-kb="1"] .fab{display:none}
+
 /* ---------------------------------------------------------------- misc */
 .fab{position:absolute;right:16px;bottom:96px;height:50px;padding:0 19px;border-radius:999px;
   background:var(--navy);color:#fff;display:flex;align-items:center;gap:8px;
@@ -128,11 +131,11 @@ input,textarea,select{font:inherit;color:inherit}
 .fab svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
 
 .veil{position:absolute;inset:0;background:rgba(10,20,35,.5);z-index:70}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:24px 24px 0 0;
+.sheet{position:absolute;left:0;right:0;bottom:var(--kb,0px);background:var(--paper);border-radius:24px 24px 0 0;
   z-index:71;max-height:88%;display:flex;flex-direction:column;box-shadow:0 -14px 40px rgba(10,20,35,.3)}
 .grab{width:38px;height:4.5px;border-radius:3px;background:var(--line);margin:10px auto 4px;flex:none}
 .sheet .scroll{padding:6px 18px 0}
-.sheet footer{padding:12px 18px 24px;border-top:1px solid var(--line);background:var(--paper);flex:none}
+.sheet footer{padding:12px 18px 22px;border-top:1px solid var(--line);background:var(--paper);flex:none}
 
 .toast{position:absolute;left:16px;right:16px;bottom:100px;background:var(--navy-dp);color:#fff;
   padding:13px 15px;border-radius:14px;font-size:13.6px;line-height:1.45;z-index:90;
@@ -286,8 +289,9 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
 .bub{background:var(--paper);border:1px solid var(--line);border-radius:4px 15px 15px 15px;
   padding:10px 13px;font-size:14px;line-height:1.5;max-width:250px}
 .msg.me .bub{background:var(--navy);color:#fff;border-color:var(--navy);border-radius:15px 15px 4px 15px}
-.composer{flex:none;display:flex;gap:9px;align-items:center;padding:10px 14px 14px;
-  background:var(--paper);border-top:1px solid var(--line)}
+.composer{flex:none;display:flex;gap:9px;align-items:center;
+  padding:10px 14px calc(14px + var(--kb,0px));
+  background:var(--paper);border-top:1px solid var(--line);transition:padding-bottom .18s}
 .cin{flex:1;min-width:0;border:1.6px solid var(--line);border-radius:999px;padding:11px 15px;
   font-size:15px;outline:none;background:var(--canvas)}
 .cin:focus{border-color:var(--navy);background:#fff}
@@ -318,7 +322,8 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
 .track{height:4px;background:var(--tint);border-radius:3px;overflow:hidden;margin-top:7px}
 .track i{display:block;height:100%;background:var(--gold);border-radius:3px;transition:width .22s}
 .back{font-size:14px;font-weight:600;color:var(--ink2);padding:12px 0 2px}
-.cta{padding:10px 16px 16px;background:var(--canvas);flex:none}
+.cta{padding:10px 16px calc(22px + var(--kb,0px));background:var(--canvas);flex:none;
+  transition:padding-bottom .18s}
 h2.q{font-family:var(--head);font-size:23px;font-weight:800;letter-spacing:-.02em;margin:12px 0 0;line-height:1.25}
 p.sub{font-size:14.4px;color:var(--ink2);line-height:1.55;margin:9px 0 4px}
 /* on an actual phone the app is the app — no simulated handset around it */
@@ -330,6 +335,7 @@ p.sub{font-size:14.4px;color:var(--ink2);line-height:1.55;margin:9px 0 4px}
   .pback{top:max(14px,env(safe-area-inset-top))}
   .hero{padding-top:max(14px,env(safe-area-inset-top))}
   .nav{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .cta{padding-bottom:calc(max(20px,env(safe-area-inset-bottom)) + var(--kb,0px))}
   .sheet footer{padding-bottom:max(16px,env(safe-area-inset-bottom))}
 }
 </style></head><body>
@@ -2278,19 +2284,11 @@ function setupBody(){
   const m = S.new;
   switch (STEP[S.step]){
     case "phone": return `<h2 class="q">What's your number?</h2>
-      <p class="sub">Your phone number is your account here, and the club checks it against
-      the list of people a member organization or a mentor has vouched for.</p>
+      <p class="sub">Your number is your account, and the club checks it against the list of
+      people a member organization or a mentor has vouched for. It is never shown to anyone.</p>
       <input class="fld" id="ph" data-new="phone" type="tel" inputmode="tel"
         value="${esc(m.phone||"")}" placeholder="(408) 555-0112">
-      <div class="card" style="margin-top:16px">
-        ${[["It is never shown to another member","Not on your profile, not in a room, not in a message."],
-           ["One number, one membership","If you lose your place, that number cannot come back under a new name."],
-           ["It is the only thing stopping automated signups","Which is why the club can be as open as it is inside."]]
-          .map(r=>`<div class="lstrow"><span style="color:var(--gold-dp);display:flex;flex:none">${I.shield}</span>
-            <span><span class="nm" style="font-size:14px">${esc(r[0])}</span>
-            <span class="s" style="display:block;margin-top:2px">${esc(r[1])}</span></span></div>`).join("")}
-      </div>
-      <button class="btn link" style="width:100%;margin-top:8px" data-setup="notlisted">
+      <button class="btn link" style="width:100%;margin-top:10px" data-setup="notlisted">
         Demo: try a number that isn't on the list</button>`;
 
     case "code": return `<h2 class="q">Enter your code</h2>
@@ -2514,7 +2512,9 @@ function toast(m){ S.toast=m; render(); clearTimeout(tt); tt=setTimeout(()=>{S.t
 function openDM(name){
   let d = S.dms.find(d=>d.with===name);
   if (!d){ d = {id:"dm-"+name.toLowerCase(), with:name, msgs:[]}; S.dms.unshift(d); }
-  S.view = {k:"dm", id:d.id}; S.tab="chat"; S.draft=""; render();
+  S.view = {k:"dm", id:d.id}; S.tab="chat"; S.draft=""; 
+
+render();
 }
 function openTopic(t){
   const id = roomFor(t);
@@ -2736,6 +2736,23 @@ function syncNext(){
 document.addEventListener("keydown", e=>{
   if (e.key==="Enter" && e.target.id==="msg"){ const b=$("[data-send]"); if (b && !b.disabled) b.click(); }
 });
+
+/* the software keyboard shrinks the visual viewport but not the layout one,
+   so measure it and let the CSS lift anything anchored to the bottom */
+(function keyboardWatch(){
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const upd = () => {
+    const kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+    document.documentElement.style.setProperty("--kb", kb + "px");
+    document.documentElement.dataset.kb = kb > 90 ? "1" : "0";
+  };
+  vv.addEventListener("resize", upd);
+  vv.addEventListener("scroll", upd);
+  addEventListener("focusin", () => setTimeout(upd, 120));
+  addEventListener("focusout", () => setTimeout(upd, 120));
+  upd();
+})();
 
 render();
 
