@@ -27,17 +27,6 @@ input,textarea,select{font:inherit;color:inherit}
 .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:29px;
   background:#10151C;border-radius:0 0 18px 18px;z-index:60}
 
-/* on an actual phone the app is the app — no simulated handset around it */
-@media (max-width:520px), (max-height:900px) and (max-width:760px){
-  body{padding:0;display:block;background:var(--canvas)}
-  .phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}
-  .notch{display:none}
-  .top{padding-top:max(18px,env(safe-area-inset-top))}
-  .prog{padding-top:max(18px,env(safe-area-inset-top))}
-  .pback{top:max(18px,env(safe-area-inset-top))}
-  .hero{padding-top:max(18px,env(safe-area-inset-top))}
-  .nav{padding-bottom:max(12px,env(safe-area-inset-bottom))}
-}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--canvas)}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .scroll::-webkit-scrollbar{width:0}
@@ -226,6 +215,21 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
 .ph.mine{display:grid;place-items:center;color:var(--grey);font-size:13px;font-weight:600;
   background:repeating-linear-gradient(45deg,#EAEFF5,#EAEFF5 10px,#E1E8F1 10px,#E1E8F1 20px)}
 
+.reactbar{display:flex;align-items:center;gap:6px;padding:11px 0 9px;font-size:12.8px;color:var(--ink2);
+  border-bottom:1px solid var(--line)}
+.reactbar > span:nth-child(2){margin-right:auto;font-weight:600}
+.thumbmini{width:19px;height:19px;border-radius:50%;background:var(--navy);color:#fff;display:grid;
+  place-items:center;flex:none}
+.thumbmini svg{width:11px;height:11px}
+.cmcount{font-size:12.8px;color:var(--ink2);font-weight:600}
+.fbbar{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px 0 8px}
+.fbbtn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;border-radius:10px;
+  font-size:14px;font-weight:700;color:var(--ink2)}
+.fbbtn svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linejoin:round}
+.fbbtn.on{color:var(--navy)}
+.fbbtn.on svg{fill:#DCE6F4;stroke:var(--navy);stroke-width:2}
+.cmbub{background:var(--tint);border-radius:4px 15px 15px 15px;padding:9px 13px}
+
 /* ------------------------------------------------- event card (PeerConnect) */
 .card.ecard{position:relative;padding:14px}
 .ecard .x{position:absolute;top:9px;right:10px;width:28px;height:28px;border-radius:50%;
@@ -317,6 +321,31 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
 .cta{padding:10px 16px 16px;background:var(--canvas);flex:none}
 h2.q{font-family:var(--head);font-size:23px;font-weight:800;letter-spacing:-.02em;margin:12px 0 0;line-height:1.25}
 p.sub{font-size:14.4px;color:var(--ink2);line-height:1.55;margin:9px 0 4px}
+/* on an actual phone the app is the app — no simulated handset, and the
+   header scrolls away with the content instead of eating the viewport */
+@media (max-width:520px), (max-height:900px) and (max-width:760px){
+  body{padding:0;display:block;background:var(--canvas)}
+  .phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}
+  .notch{display:none}
+
+  .screen{display:block;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    overscroll-behavior-y:contain;padding-bottom:calc(74px + env(safe-area-inset-bottom))}
+  .scroll{overflow:visible;height:auto;flex:none}
+  .top{padding-top:max(14px,env(safe-area-inset-top))}
+  .prog{padding-top:max(14px,env(safe-area-inset-top))}
+  .pback{top:max(14px,env(safe-area-inset-top))}
+  .hero{padding-top:max(14px,env(safe-area-inset-top))}
+
+  .nav{position:fixed;left:0;right:0;bottom:0;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+  .composer{position:fixed;left:0;right:0;
+    bottom:calc(66px + max(10px,env(safe-area-inset-bottom)));z-index:35}
+  .screen:has(.composer){padding-bottom:calc(148px + env(safe-area-inset-bottom))}
+  .screen:not(:has(.nav)){padding-bottom:0}
+  .screen:not(:has(.nav)) .cta{position:sticky;bottom:0;
+    padding-bottom:max(14px,env(safe-area-inset-bottom))}
+  .screen:not(:has(.nav)) .composer{position:sticky;bottom:0}
+  .fab{bottom:calc(90px + env(safe-area-inset-bottom))}
+}
 </style></head><body>
 
 <svg width="0" height="0" style="position:absolute"><defs>
@@ -644,25 +673,32 @@ const Q = [
    Photo posts are the default shape: one or more pictures, a short caption.
    Scene illustrations stand in for member photographs — see SCENE below. */
 const POSTS = [
-{id:0,by:"Bob",when:"3 hours ago",scene:"car",cat:"Equipment",
+{id:0,by:"Bob",when:"3 hours ago",scene:"car",cat:"Equipment",likes:24,
+ com:[{by:"Kerry",t:"That linkage is exactly where mine went wrong too. Wish I had seen this first."},{by:"Sean",t:"Coming to look on Saturday if the offer stands."}],
  t:"Hand controls finally in. Third attempt at the throttle linkage. Come look before you buy parts — I made every mistake already."},
-{id:1,by:"Debra",when:"Yesterday",scene:"ice",cat:"Travel",
+{id:1,by:"Debra",when:"Yesterday",scene:"ice",cat:"Travel",likes:61,
+ com:[{by:"Gretchen",t:"Seven. I am going to keep quoting this at my own travel anxiety."},{by:"Matt",t:"Which operator did you go with? Been quoted three wildly different answers."},{by:"Jan",t:"Congratulations Debra. Thirty years and you are still setting the pace."}],
  t:"Antarctica. That's seven continents. The scooter was never the problem — two steps at the front of somewhere always was."},
-{id:2,by:"Nicole",when:"Yesterday",scene:"print",cat:"Equipment",
+{id:2,by:"Nicole",when:"Yesterday",scene:"print",cat:"Equipment",likes:38,
+ com:[{by:"Kevin",t:"Post the file and I will print a spare for the ReCARES shelf."}],
  t:"Printed a new joystick mount at 3am because the old one snapped. Forty cents of filament against a $400 part."},
-{id:3,by:"Sean",portrait:true,when:"2 days ago",cat:"Independence",
+{id:3,by:"Sean",portrait:true,when:"2 days ago",cat:"Independence",likes:87,
+ com:[{by:"Victor",t:"Four years and two failed attempts is the part nobody posts. Thank you for putting it in."},{by:"Tiffany",t:"Living with my mother as my caregiver and reading this on a hard day. Noted."}],
  t:"One year today in my own apartment. Four years and two failed attempts to get here. Ask me anything about it."},
-{id:4,by:"Lindsay",when:"3 days ago",scene:"park",cat:"Adaptive sport",
+{id:4,by:"Lindsay",when:"3 days ago",scene:"park",cat:"Adaptive sport",likes:42,
+ com:[{by:"Lake",t:"My daughter is grown but I remember exactly this feeling. Good."}],
  t:"The Striker turned the park from a place I watched them from into a place I go with them."},
-{id:5,by:"Todd",when:"4 days ago",scene:"ski",cat:"Adaptive sport",
+{id:5,by:"Todd",when:"4 days ago",scene:"ski",cat:"Adaptive sport",likes:19,
+ com:[{by:"Kerry",t:"Signed up. Never skied before the injury either, so this should be interesting."}],
  t:"First snow of the season is on the board. Monoski day sign-ups are open and they fill fast."},
-{id:6,by:"Kevin",when:"5 days ago",cat:"Equipment",
+{id:6,by:"Kevin",when:"5 days ago",cat:"Equipment",likes:33,
+ com:[{by:"Yazmin",t:"Is the standing frame still there? My clinic quoted a number that made me laugh."}],
  t:"ReCARES has three barely-used shower chairs and a standing frame on the shelf. Free. Check with us before you pay a supplier's number."},
 ];
 
 /* ---------------------------------------------------------- home feed */
 const FEED = [
- {k:"post",id:0},{k:"q",id:0},{k:"peer",n:"Nicole"},{k:"ev",id:0},
+ {k:"q",id:0},{k:"ev",id:0},{k:"post",id:0},{k:"peer",n:"Nicole"},
  {k:"post",id:1},{k:"q",id:1},{k:"ev",id:1},
  {k:"post",id:2},{k:"q",id:2},{k:"peer",n:"Kevin"},
  {k:"post",id:3},{k:"q",id:3},{k:"ev",id:3},
@@ -1035,7 +1071,7 @@ const S = {
   view:null, sheet:null, toast:null,
   search:"", compose:"", composeAnon:false, composeCat:"Bladder & bowel", composeKind:"q",
   new:{name:"",phone:"",code:"",dob:"",years:"",lvl:"",city:"",photo:false}, blocked:false,
-  q:Q.map(x=>({...x})), feed:FEED.slice(), thanks:{},
+  q:Q.map(x=>({...x})), feed:FEED.slice(), thanks:{}, liked:{}, mycom:{}, cmDraft:"",
   rooms:ROOMS.map(r=>({...r, threads:r.threads.map(t=>({...t, posts:t.posts.slice()}))})),
   groups:GROUPS.map(g=>({...g, msgs:g.msgs.slice()})),
   dms:DMS.map(d=>({...d, msgs:d.msgs.slice()})),
@@ -1081,6 +1117,9 @@ const I = {
   send:`<svg viewBox="0 0 24 24"><path d="M4.5 12 20 4.5 15.5 20l-4-6.2Z"/><path d="m11.5 13.8 8.5-9.3"/></svg>`,
   pin:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a6.5 6.5 0 0 0-6.5 6.5C5.5 14 12 22 12 22s6.5-8 6.5-13.5A6.5 6.5 0 0 0 12 2Zm0 9a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2Z"/></svg>`,
   shield:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2 4 5.2v6.3c0 4.9 3.4 9.4 8 10.5 4.6-1.1 8-5.6 8-10.5V5.2L12 2Zm-1 14-4-4 1.5-1.5L11 13l4.5-4.5L17 10l-6 6Z"/></svg>`,
+  thumb:`<svg viewBox="0 0 24 24"><path d="M7 21V10.2l4.6-7.2a2 2 0 0 1 3.4 2.1L13.4 9h5.1a2 2 0 0 1 2 2.4l-1.5 7.3a2.6 2.6 0 0 1-2.6 2.3Z"/><path d="M7 10.2H4.4A1.4 1.4 0 0 0 3 11.6v8a1.4 1.4 0 0 0 1.4 1.4H7"/></svg>`,
+  thumbsm:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7.5 21V9.9l4.4-6.8a1.8 1.8 0 0 1 3.1 1.9L13.6 8h4.9a1.8 1.8 0 0 1 1.8 2.2l-1.4 7a2.4 2.4 0 0 1-2.4 2.1H7.5ZM3 10.6h3.2V21H3Z"/></svg>`,
+  comment:`<svg viewBox="0 0 24 24"><path d="M20.4 11.8a7.6 7.6 0 0 1-10.7 6.9L4.6 20.1l1.4-4.5A7.6 7.6 0 1 1 20.4 11.8Z"/></svg>`,
   spark:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="m12 2 2.1 5.6L20 9.7l-5.1 3 .8 6.1-3.7-3-3.7 3 .8-6.1-5.1-3 5.9-2.1L12 2Z"/></svg>`,
 };
 
@@ -1198,6 +1237,9 @@ function photoBox(p){
 function postCard(p){
   const mine = !p.by, k = "p"+p.id;
   const m = mine ? null : mem(p.by);
+  const liked = !!S.liked[k];
+  const likes = (p.likes||0) + (liked?1:0);
+  const com = (p.com||[]).length + (S.mycom[k]||[]).length;
   return `<div class="card post">
     ${mine
       ? `<div class="row" style="align-items:center;padding:13px 14px 0">${meAv("sm")}
@@ -1208,13 +1250,16 @@ function postCard(p){
           <span style="flex:1;min-width:0"><span class="nm" style="font-size:14.5px">${esc(m.n)}</span>
           <span class="s">${esc([m.lvl,m.city,p.when].filter(Boolean).join(" · "))}</span></span></button>`}
     ${photoBox(p)}
-    <div style="padding:0 14px 13px">
+    <div style="padding:0 14px 4px">
       <div class="body" style="margin-top:11px">${esc(p.t)}</div>
-      ${mine?"":`<div class="hr"></div>
-      <div style="display:flex;gap:9px">
-        <button class="chip ${S.thanks[k]?"on":"out"}" data-thank="${k}">${S.thanks[k]?"Thanked":"This helped"}</button>
-        <button class="chip out" data-dm="${esc(m.n)}">Message ${esc(m.n)}</button>
-      </div>`}
+      ${(likes||com)?`<div class="reactbar">
+        ${likes?`<span class="thumbmini">${I.thumbsm}</span><span>${likes}</span>`:`<span></span>`}
+        ${com?`<button class="cmcount" data-comments="${p.id}">${com} comment${com===1?"":"s"}</button>`:""}
+      </div>`:`<div style="height:8px"></div>`}
+      <div class="fbbar">
+        <button class="fbbtn ${liked?"on":""}" data-like="${k}">${I.thumb}<span>Like</span></button>
+        <button class="fbbtn" data-comments="${p.id}">${I.comment}<span>Comment</span></button>
+      </div>
     </div>
   </div>`;
 }
@@ -2074,6 +2119,30 @@ function sheet(){
     <footer><button class="btn gold" style="width:100%" data-act="sendinvite">Add to the list</button></footer>`;
   }
 
+  if (k==="comments"){
+    const p = POSTS.find(v=>v.id===S.cmPost);
+    const own = S.mycom["p"+p.id] || [];
+    const all = (p.com||[]).map(c=>({...c})).concat(own.map(x=>({by:null,t:x})));
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">${all.length} comment${all.length===1?"":"s"}</div>
+      <div class="s">${p.by?esc(p.by)+"'s post":"Your post"} · ${esc(p.when)}</div>
+      <div style="height:10px"></div>
+      ${all.map(c=>`<div class="row" style="margin-bottom:13px">
+        ${c.by?av(c.by,"sm"):meAv("sm")}
+        <div style="min-width:0;flex:1">
+          <div class="cmbub">
+            <span class="nm" style="font-size:13px">${c.by?esc(c.by):esc(S.new.name||"You")}</span>
+            <span style="font-size:13.8px;line-height:1.5;display:block;margin-top:3px">${esc(c.t)}</span>
+          </div>
+          <div class="mt" style="margin-left:12px">Like · Reply</div>
+        </div></div>`).join("")}
+      <div style="height:8px"></div></div>
+    <footer><div class="composer" style="padding:0;border:0;background:none">
+      <input class="cin" id="cm" data-bind="cmDraft" value="${esc(S.cmDraft)}" placeholder="Write a comment…">
+      <button class="sendbtn" data-postcm="${p.id}" ${S.cmDraft.trim()?"":"disabled"}>${I.send}</button>
+    </div></footer>`;
+  }
+
   if (k==="qr"){
     inner = `<div class="scroll">
       <div class="h1" style="font-size:21px;margin:4px 0 2px">Share the club</div>
@@ -2339,7 +2408,8 @@ function welcomeView(){
     </div>
     <footer class="cta">
       <button class="btn solid" style="width:100%" data-setup="next">Join the club</button>
-      <p class="fine" style="text-align:center;margin:11px 0 2px">Members only. Nothing inside the club is public.</p>
+      <button class="btn link" style="width:100%;margin-top:4px" data-setup="skipall">Skip onboarding →</button>
+      <p class="fine" style="text-align:center;margin:7px 0 2px">Members only. Nothing inside the club is public.</p>
     </footer>
   </div>`;
 }
@@ -2393,9 +2463,22 @@ function setupView(){
 /* ============================================================ render */
 function render(){
   const a = $("#app");
-  if (S.setup){ a.innerHTML = setupView(); return; }
-  if (S.view && S.view.k==="prof"){ a.innerHTML = profView(); return; }
-  if (S.view && S.view.k==="room"){ a.innerHTML = roomPage(S.view.id); return; }
+  /* keep the reader where they were: a like, a filter or a sheet should not
+     throw the feed back to the top */
+  const sig = [S.setup, S.tab, JSON.stringify(S.view||null)].join("|");
+  const same = S._sig === sig;
+  const wasScreen = same && $(".screen") ? $(".screen").scrollTop : 0;
+  const wasScroll = same && $(".scroll") ? $(".scroll").scrollTop : 0;
+  S._sig = sig;
+  const restore = () => {
+    if (!same) return;
+    const a1 = $(".screen"), a2 = $(".scroll");
+    if (a1 && wasScreen) a1.scrollTop = wasScreen;
+    if (a2 && wasScroll) a2.scrollTop = wasScroll;
+  };
+  if (S.setup){ a.innerHTML = setupView(); restore(); return; }
+  if (S.view && S.view.k==="prof"){ a.innerHTML = profView(); restore(); return; }
+  if (S.view && S.view.k==="room"){ a.innerHTML = roomPage(S.view.id); restore(); return; }
   if (S.view && S.view.k==="topic"){
     a.innerHTML = topicPage(S.view.rid, S.view.tid);
     const t = $("#thread"); if (t) t.scrollTop = t.scrollHeight;
@@ -2424,6 +2507,7 @@ function render(){
     ${nav()}
     ${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}
     ${sheet()}</div>`;
+  restore();
 }
 let tt;
 function toast(m){ S.toast=m; render(); clearTimeout(tt); tt=setTimeout(()=>{S.toast=null;render();},3400); }
@@ -2447,7 +2531,7 @@ function openTopic(t){
 
 /* ============================================================ events */
 document.addEventListener("click", e=>{
-  const t = e.target.closest("[data-act],[data-tab],[data-q],[data-m],[data-ev],[data-org],[data-homeseg],[data-chatseg],[data-kind],[data-peerseg],[data-evseg],[data-f],[data-h],[data-cat],[data-search],[data-dm],[data-dmid],[data-room],[data-topicid],[data-sort],[data-newtopic],[data-group],[data-topic],[data-thank],[data-pic],[data-dismiss],[data-go],[data-int],[data-setup],[data-newpick],[data-askthem],[data-follow],[data-send],[data-join],[data-prof],[data-prof-pick]");
+  const t = e.target.closest("[data-act],[data-tab],[data-q],[data-m],[data-ev],[data-org],[data-homeseg],[data-chatseg],[data-kind],[data-peerseg],[data-evseg],[data-f],[data-h],[data-cat],[data-search],[data-dm],[data-dmid],[data-room],[data-topicid],[data-sort],[data-newtopic],[data-group],[data-topic],[data-thank],[data-like],[data-comments],[data-postcm],[data-pic],[data-dismiss],[data-go],[data-int],[data-setup],[data-newpick],[data-askthem],[data-follow],[data-send],[data-join],[data-prof],[data-prof-pick]");
   if (!t) return;
   const d = t.dataset;
 
@@ -2505,6 +2589,11 @@ document.addEventListener("click", e=>{
     if (d.setup==="back"){ stash(); S.step=Math.max(0,S.step-1); render(); return; }
     if (d.setup==="skip"){ S.setup=false; render();
       toast("You're in. Add a photo any time from Me."); return; }
+    if (d.setup==="skipall"){                      // demo shortcut: straight in, profile pre-filled
+      Object.assign(S.new, {name:"Alex", phone:"(408) 555-0112", code:"204815",
+        dob:"1984-06-21", years:"9", lvl:"T7–T12", city:"San Jose"});
+      S.setup=false; render();
+      toast("Straight in — onboarding skipped, profile pre-filled for the demo."); return; }
     if (d.setup==="notlisted"){ S.new.phone="(408) 555-0000"; S.blocked=true; render(); return; }
     if (d.setup==="unblock"){ S.blocked=false; S.new.phone=""; S.step=1; render(); return; }
   }
@@ -2562,6 +2651,13 @@ document.addEventListener("click", e=>{
     S.sheet="compose"; S.composeKind="q"; S.composeCat="Something else"; render();
     toast(`Asking the club — ${d.askthem} gets it first.`); return; }
   if (d.thank){ S.thanks[d.thank]=!S.thanks[d.thank]; render(); return; }
+  if (d.like){ S.liked[d.like]=!S.liked[d.like]; render(); return; }
+  if (d.comments!==undefined && t.hasAttribute("data-comments")){
+    S.cmPost=+d.comments; S.cmDraft=""; S.sheet="comments"; render(); return; }
+  if (d.postcm!==undefined && t.hasAttribute("data-postcm")){
+    const f=$("#cm"), txt=(f?f.value:S.cmDraft).trim(); if(!txt) return;
+    const k="p"+d.postcm; (S.mycom[k]=S.mycom[k]||[]).push(txt);
+    S.cmDraft=""; render(); return; }
   if (d.go!==undefined && t.hasAttribute("data-go")){
     const id=+d.go, g=S.new.going;
     if (g.includes(id)){ g.splice(g.indexOf(id),1); render(); }
@@ -2579,7 +2675,7 @@ document.addEventListener("click", e=>{
       if (S.view && S.view.k==="topic"){ S.view={k:"room",id:S.view.rid}; render(); return; }
       S.view=null; render(); return;
     case "profile": S.view={k:"prof"}; render(); return;
-    case "filters": case "hfilters": case "compose": case "invite": case "qr":
+    case "filters": case "hfilters": case "compose": case "invite": case "qr": case "comments":
     case "conduct": case "search": case "bell":
       S.sheet=d.act; render(); return;
     case "closesheet": S.sheet=null; render(); return;
@@ -2630,6 +2726,8 @@ document.addEventListener("input", e=>{
       if (b){ b.disabled=!S.compose.trim(); b.style.opacity=S.compose.trim()?"":".42"; } }
     if (k==="draft"){ const b=$('[data-send]');
       if (b){ b.disabled=!S.draft.trim(); } }
+    if (k==="cmDraft"){ const b=$('[data-postcm]');
+      if (b){ b.disabled=!S.cmDraft.trim(); } }
   }
 });
 function syncNext(){
