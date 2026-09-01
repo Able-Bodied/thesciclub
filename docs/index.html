@@ -1,0 +1,2426 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The SCI Club — demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#102A4C; --navy-hi:#1A3E70; --navy-dp:#0A1D36;
+  --gold:#C9A227; --gold-dp:#8A6712; --gold-lt:#F6EDD5;
+  --canvas:#F4F6F9; --paper:#fff; --ink:#0F1620; --ink2:#455163; --grey:#7C8899;
+  --line:#CBD3DE; --tint:#E4E9F1;
+  --head:Archivo,"TeX Gyre Heros","Liberation Sans",sans-serif;
+  --body:"Public Sans","Liberation Sans",sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{background:#AEB7C2;font-family:var(--body);color:var(--ink);
+  display:grid;place-items:center;padding:22px}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;text-align:left}
+input,textarea,select{font:inherit;color:inherit}
+
+/* ---------------------------------------------------------------- phone */
+.phone{width:390px;height:844px;background:var(--canvas);border-radius:44px;
+  box-shadow:0 30px 70px rgba(10,20,35,.34),0 0 0 11px #10151C,0 0 0 13px #2B333E;
+  position:relative;overflow:hidden;display:flex;flex-direction:column}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:29px;
+  background:#10151C;border-radius:0 0 18px 18px;z-index:60}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--canvas)}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.scroll::-webkit-scrollbar{width:0}
+
+/* ---------------------------------------------------------------- header */
+.top{padding:46px 18px 0;background:var(--paper);border-bottom:1px solid var(--line);flex:none}
+.top.navy{background:var(--navy);border-bottom-color:#22406B}
+.tbar{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:38px}
+.brand{display:flex;align-items:center;gap:9px}
+.brand svg{width:26px;height:39px;display:block}
+.brand .wm{font-family:var(--head);font-weight:800;font-size:16.5px;letter-spacing:-.01em;line-height:1}
+.brand .wm .t{font-size:11px;color:var(--ink2);letter-spacing:.06em}
+.brand .wm .c{color:var(--gold-dp)}
+.navy .brand .wm,.hero .brand .wm{color:#fff}
+.navy .brand .wm .t,.hero .brand .wm .t{color:#9FB3CD}
+.navy .brand .wm .c,.hero .brand .wm .c{color:#E7C868}
+.h1{font-family:var(--head);font-weight:800;font-size:25px;letter-spacing:-.02em;margin:2px 0 0}
+.iconbtn{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--tint);flex:none}
+.iconbtn svg{width:17px;height:17px;stroke:var(--navy);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--gold);border:1.6px solid var(--paper)}
+
+/* segmented pills */
+.segs{display:flex;gap:7px;padding:11px 0 12px;overflow-x:auto}
+.segs::-webkit-scrollbar{height:0}
+.seg{padding:7px 14px;border-radius:999px;background:var(--tint);color:var(--ink2);
+  font-size:13.5px;font-weight:600;white-space:nowrap;flex:none}
+.seg.on{background:var(--navy);color:#fff}
+.navy .seg{background:#1E3A63;color:#B9CADF}
+.navy .seg.on{background:var(--gold);color:#2A1E06}
+
+/* ---------------------------------------------------------------- cards */
+.pad{padding:14px 16px 18px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:17px;padding:14px;margin-bottom:11px;
+  display:block;width:100%}
+.card.flat{border-radius:14px}
+.row{display:flex;gap:12px;align-items:flex-start}
+.av{width:52px;height:52px;border-radius:16px;flex:none;display:grid;place-items:center;
+  font-family:var(--head);font-weight:800;font-size:19px;color:#fff;letter-spacing:.01em;position:relative;overflow:hidden}
+.av.lg{width:88px;height:88px;border-radius:26px;font-size:31px}
+.av.sm{width:34px;height:34px;border-radius:11px;font-size:13px}
+.av i{position:absolute;right:-8px;bottom:-10px;width:38px;height:48px;opacity:.17}
+.av.lg i{width:62px;height:78px;right:-14px;bottom:-16px}
+.av.sm i{width:24px;height:30px;right:-5px;bottom:-6px}
+.av i svg{width:100%;height:100%;display:block;fill:#fff}
+.av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 32%}
+.nm{display:block;font-family:var(--head);font-weight:800;font-size:16.5px;letter-spacing:-.01em;line-height:1.2}
+.nm.lg{font-size:24px}
+.meta{display:block;font-size:13px;color:var(--ink2);margin-top:3px;line-height:1.42}
+.s{font-size:12.5px;color:var(--grey);line-height:1.42}
+.body{font-size:14.2px;line-height:1.52;color:var(--ink);margin:9px 0 0}
+.body.m{color:var(--ink2)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{padding:5px 10px;border-radius:999px;background:var(--tint);color:var(--navy);
+  font-size:11.8px;font-weight:600;line-height:1.25}
+.chip.gold{background:var(--gold-lt);color:var(--gold-dp)}
+.chip.on{background:var(--navy);color:#fff}
+.chip.out{background:none;border:1px solid var(--line);color:var(--ink2)}
+
+.tagrow{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--gold-dp)}
+.tagrow.blue{color:var(--navy-hi)}
+.tagrow svg{width:13px;height:13px;fill:currentColor}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;border-radius:13px;
+  font-family:var(--head);font-weight:700;font-size:15px;padding:0 16px}
+.btn.solid{background:var(--navy);color:#fff}
+.btn.gold{background:var(--gold);color:#2A1E06}
+.btn.out{border:1.6px solid var(--navy);color:var(--navy)}
+.btn.ghost{background:var(--tint);color:var(--navy)}
+.btn.link{color:var(--navy);font-weight:700;justify-content:center;min-height:38px}
+.btn[disabled]{opacity:.42}
+.btn2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.sec{font-family:var(--head);font-weight:800;font-size:12px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--grey);margin:20px 0 9px}
+.sec:first-child{margin-top:4px}
+.hr{height:1px;background:var(--line);margin:13px 0}
+
+/* ---------------------------------------------------------------- nav */
+.nav{flex:none;padding:7px 8px 22px;background:var(--paper);border-top:1px solid var(--line);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:2px;z-index:40}
+.nav b{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 3px;
+  font-size:10.2px;font-weight:700;color:var(--grey);border-radius:12px;position:relative}
+.nav b.on{color:var(--navy)}
+.nav svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.nav b.on svg{stroke-width:2.3}
+.nav b.mid .ni{width:42px;height:42px;border-radius:15px;background:var(--tint);display:grid;
+  place-items:center;margin-top:-13px;box-shadow:0 3px 10px rgba(16,42,76,.14)}
+.nav b.mid.on .ni{background:var(--navy)}
+.nav b.mid.on svg{stroke:#fff}
+.nav .pip{position:absolute;top:-9px;right:calc(50% - 22px);width:9px;height:9px;border-radius:50%;
+  background:var(--gold);border:2px solid var(--paper)}
+
+/* ---------------------------------------------------------------- misc */
+.fab{position:absolute;right:16px;bottom:96px;height:50px;padding:0 19px;border-radius:999px;
+  background:var(--navy);color:#fff;display:flex;align-items:center;gap:8px;
+  font-family:var(--head);font-weight:700;font-size:15px;box-shadow:0 10px 26px rgba(16,42,76,.4);z-index:30}
+.fab svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:2.4;stroke-linecap:round}
+
+.veil{position:absolute;inset:0;background:rgba(10,20,35,.5);z-index:70}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:24px 24px 0 0;
+  z-index:71;max-height:88%;display:flex;flex-direction:column;box-shadow:0 -14px 40px rgba(10,20,35,.3)}
+.grab{width:38px;height:4.5px;border-radius:3px;background:var(--line);margin:10px auto 4px;flex:none}
+.sheet .scroll{padding:6px 18px 0}
+.sheet footer{padding:12px 18px 24px;border-top:1px solid var(--line);background:var(--paper);flex:none}
+
+.toast{position:absolute;left:16px;right:16px;bottom:100px;background:var(--navy-dp);color:#fff;
+  padding:13px 15px;border-radius:14px;font-size:13.6px;line-height:1.45;z-index:90;
+  box-shadow:0 14px 34px rgba(10,20,35,.45)}
+
+.fld{width:100%;border:1.6px solid var(--line);border-radius:13px;padding:13px 14px;font-size:16px;
+  background:var(--paper);outline:none;margin-top:9px}
+.fld:focus{border-color:var(--navy)}
+textarea.fld{min-height:110px;resize:none;line-height:1.5}
+
+.note{margin-top:15px;background:var(--gold-lt);border-left:3px solid var(--gold);border-radius:0 11px 11px 0;
+  padding:11px 13px;font-size:12.6px;line-height:1.5;color:#5C4409}
+.note b{font-weight:700}
+
+.lstrow{display:flex;align-items:center;gap:12px;width:100%;padding:13px 0;border-bottom:1px solid var(--line)}
+.lstrow:last-child{border-bottom:0}
+.lstrow .gt{margin-left:auto;color:var(--grey);font-size:19px;line-height:1}
+.sw{width:44px;height:26px;border-radius:999px;background:var(--line);position:relative;flex:none}
+.sw i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .16s}
+.sw.on{background:var(--navy)}.sw.on i{left:21px}
+
+.hero{background:var(--navy);color:#fff;padding:46px 16px 20px}
+.hero .nm,.hero .h1{color:#fff}
+.hero .meta{color:#B9CADF}
+.hero .chip{background:#22406B;color:#DDE7F3}
+.hero .chip.gold{background:#3A2F12;color:#EBD277}
+
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:13px}
+.stat div{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:10px;text-align:center}
+.stat b{display:block;font-family:var(--head);font-size:20px;font-weight:800;color:var(--navy)}
+.stat span{font-size:10.7px;color:var(--grey);font-weight:600;letter-spacing:.03em}
+
+.qmark{width:30px;height:30px;border-radius:10px;background:var(--gold-lt);color:var(--gold-dp);
+  display:grid;place-items:center;font-family:var(--head);font-weight:800;font-size:16px;flex:none}
+.ans{border-left:2.5px solid var(--tint);padding:2px 0 2px 12px;margin-top:11px}
+
+.empty{text-align:center;padding:40px 24px;color:var(--grey);font-size:14px;line-height:1.55}
+
+/* ------------------------------------------------- peer card (BumbleBFF) */
+.pcard{position:relative;display:block;width:100%;height:424px;border-radius:26px;overflow:hidden;
+  margin-bottom:14px;padding:0;border:0;box-shadow:0 10px 26px rgba(10,20,35,.18)}
+.pcard img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 28%}
+.pcard .mono{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--head);
+  font-weight:800;font-size:118px;color:#fff;opacity:.13;letter-spacing:-.04em}
+.pcard .scrim-t{position:absolute;top:0;left:0;right:0;height:180px;
+  background:linear-gradient(#0A1D36E0,#0A1D3600)}
+.pcard .scrim-b{position:absolute;bottom:0;left:0;right:0;height:250px;
+  background:linear-gradient(#0A1D3600,#0A1D36D9 55%,#0A1D36F2)}
+.pcard .pc-top{position:absolute;top:0;left:0;right:0;padding:18px 18px 0;display:block}
+.pcard .pc-meta,.phero .pc-meta{display:block;margin-top:7px;font-size:13.5px;color:#D3DFEE;line-height:1.45}
+.pcard .pc-bot{position:absolute;left:0;right:0;bottom:0;padding:0 18px 18px;display:block}
+.pcard .pc-bio{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  font-size:13.6px;line-height:1.5;color:#E7EEF7}
+.mentorbadge{display:inline-flex;align-items:center;gap:7px;padding:5px 12px 5px 5px;border-radius:999px;
+  background:#FFFFFFF0;color:var(--navy);font-size:12px;font-weight:800;line-height:1}
+.orgmark{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(140deg,#8A6712,#C9A227);color:#fff;font-family:var(--head);
+  font-weight:800;font-size:8.5px;letter-spacing:.02em}
+.wchip{display:inline-block;padding:6px 12px;border-radius:999px;background:#FFFFFFEB;color:var(--navy);
+  font-size:12px;font-weight:700;line-height:1.2}
+.pcard .pc-fab{position:absolute;right:16px;bottom:118px;width:52px;height:52px;border-radius:50%;
+  background:var(--gold);display:grid;place-items:center;box-shadow:0 6px 18px rgba(10,20,35,.4)}
+.pcard .pc-fab svg{width:22px;height:22px;stroke:#2A1E06;fill:none;stroke-width:2;stroke-linejoin:round}
+
+.phero{position:relative;height:300px;overflow:hidden}
+.phero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 26%}
+.phero .mono{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--head);
+  font-weight:800;font-size:104px;color:#fff;opacity:.13}
+.phero .scrim-b{position:absolute;left:0;right:0;bottom:0;height:190px;
+  background:linear-gradient(#0A1D3600,#0A1D36CC 60%,#102A4C)}
+.pback{position:absolute;top:46px;left:16px;z-index:2;color:#fff;font-size:14px;font-weight:700;
+  background:#0A1D3699;padding:7px 13px;border-radius:999px;backdrop-filter:blur(4px)}
+.phero-txt{position:absolute;left:0;right:0;bottom:0;padding:0 18px 14px}
+
+/* ------------------------------------------------- photo post */
+.card.post{padding:0;overflow:hidden}
+.ph{margin-top:12px;background:var(--tint);aspect-ratio:400/260;position:relative;overflow:hidden}
+.ph svg,.ph img{width:100%;height:100%;display:block;object-fit:cover}
+.ph.mine{display:grid;place-items:center;color:var(--grey);font-size:13px;font-weight:600;
+  background:repeating-linear-gradient(45deg,#EAEFF5,#EAEFF5 10px,#E1E8F1 10px,#E1E8F1 20px)}
+
+/* ------------------------------------------------- event card (PeerConnect) */
+.card.ecard{position:relative;padding:14px}
+.ecard .x{position:absolute;top:9px;right:10px;width:28px;height:28px;border-radius:50%;
+  display:grid;place-items:center;color:var(--grey);font-size:14px;background:var(--canvas);z-index:2}
+.datetile{flex:none;width:58px;border-radius:14px;background:var(--tint);padding:8px 0 9px;
+  text-align:center;display:block}
+.datetile i{display:block;font-style:normal;font-size:10.5px;font-weight:800;letter-spacing:.09em;color:var(--ink2)}
+.datetile b{display:block;font-family:var(--head);font-size:23px;font-weight:800;color:var(--navy);line-height:1.15}
+.datetile u{display:block;text-decoration:none;font-size:10.5px;font-weight:800;letter-spacing:.09em;color:var(--ink2)}
+.cnt{display:block;margin-top:8px;font-size:13px;font-weight:700;color:var(--navy)}
+.prf{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:12.6px;font-weight:600;color:var(--ink2)}
+
+/* ------------------------------------------------- photo picker */
+.picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.slot{aspect-ratio:1;border-radius:14px;border:2px dashed var(--line);display:grid;place-items:center;
+  color:var(--grey);background:var(--canvas)}
+.slot svg{width:22px;height:22px}
+.slot.on{border-style:solid;border-color:var(--navy);background:var(--navy);color:#fff}
+.qlab{display:flex;align-items:baseline;gap:8px;font-family:var(--head);font-weight:800;font-size:15px;
+  letter-spacing:-.01em;margin-bottom:9px}
+.qlab span{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--gold-dp);
+  background:var(--gold-lt);padding:2px 7px;border-radius:6px;flex:none}
+
+/* ---------------------------------------------------------------- chat */
+.roomico{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
+  background:var(--tint);color:var(--c,var(--navy));font-size:18px;line-height:1}
+.lastmsg{display:block;margin-top:5px;font-size:12.6px;color:var(--ink2);line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.catlabel{font-family:var(--head);font-weight:800;font-size:11.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--c);margin:16px 0 8px;display:flex;align-items:center;gap:7px}
+.catlabel::before{content:"";width:11px;height:11px;border-radius:3px;background:var(--c)}
+.card.cat{border-left:4px solid var(--c);border-radius:6px 17px 17px 6px}
+.card.topic{padding:13px 14px}
+.tstats{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap;font-size:12.4px;color:var(--grey)}
+.tstats b{font-family:var(--head);font-weight:800;color:var(--navy);font-size:13.4px}
+.tstats i{font-style:normal;margin-right:9px}
+.sortbar{display:flex;align-items:center;gap:5px;padding:11px 0 9px;border-top:1px solid var(--line);
+  margin-top:13px}
+.sortb{padding:5px 10px;border-radius:8px;font-size:12.3px;font-weight:700;color:var(--ink2);background:var(--tint)}
+.sortb.on{background:var(--navy);color:#fff}
+.fp{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:13px 14px;margin-bottom:10px}
+.pnum{font-size:11.5px;color:var(--grey);font-weight:700;flex:none}
+.daysep{text-align:center;font-size:11.5px;color:var(--grey);font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;margin:2px 0 14px;position:relative}
+.msg{display:flex;gap:9px;margin-bottom:14px;align-items:flex-start}
+.msg.me{flex-direction:column;align-items:flex-end}
+.mt{font-size:11.4px;color:var(--grey);font-weight:600;margin-top:4px}
+.bub{background:var(--paper);border:1px solid var(--line);border-radius:4px 15px 15px 15px;
+  padding:10px 13px;font-size:14px;line-height:1.5;max-width:250px}
+.msg.me .bub{background:var(--navy);color:#fff;border-color:var(--navy);border-radius:15px 15px 4px 15px}
+.composer{flex:none;display:flex;gap:9px;align-items:center;padding:10px 14px 14px;
+  background:var(--paper);border-top:1px solid var(--line)}
+.cin{flex:1;min-width:0;border:1.6px solid var(--line);border-radius:999px;padding:11px 15px;
+  font-size:15px;outline:none;background:var(--canvas)}
+.cin:focus{border-color:var(--navy);background:#fff}
+.sendbtn{width:44px;height:44px;border-radius:50%;background:var(--navy);display:grid;place-items:center;flex:none}
+.sendbtn svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:2;stroke-linejoin:round}
+.sendbtn[disabled]{opacity:.35}
+
+/* progress ring on Me */
+.ring{width:52px;height:52px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:conic-gradient(var(--gold) calc(var(--p)*1%), var(--tint) 0)}
+.ring b{width:40px;height:40px;border-radius:50%;background:var(--paper);display:grid;place-items:center;
+  font-family:var(--head);font-weight:800;font-size:14px;color:var(--navy)}
+.ring b i{font-style:normal;font-size:9px}
+.chip.dim{opacity:.4}
+
+/* onboarding */
+.lock{text-align:center;padding:34px 0 4px}
+.welcome .scroll{display:flex;flex-direction:column;justify-content:center}
+.lock .sign{width:126px;margin:0 auto}
+.hero1{font-family:var(--head);font-size:31px;font-weight:800;letter-spacing:-.03em;
+  margin:30px 0 0;line-height:1.14;color:var(--ink)}
+.hero1 em{font-style:normal;color:var(--gold-dp)}
+.hero2{font-family:var(--head);font-size:15.5px;font-weight:700;color:var(--navy);
+  margin:17px 0 0;line-height:1.4}
+.hero3{font-size:14.4px;color:var(--ink2);line-height:1.62;margin:14px 0 0}
+.fine{font-size:12.4px;color:var(--grey);line-height:1.5;margin:14px 0 0}
+.prog{padding:44px 16px 0;flex:none}
+.track{height:4px;background:var(--tint);border-radius:3px;overflow:hidden;margin-top:7px}
+.track i{display:block;height:100%;background:var(--gold);border-radius:3px;transition:width .22s}
+.back{font-size:14px;font-weight:600;color:var(--ink2);padding:12px 0 2px}
+.cta{padding:10px 16px 16px;background:var(--canvas);flex:none}
+h2.q{font-family:var(--head);font-size:23px;font-weight:800;letter-spacing:-.02em;margin:12px 0 0;line-height:1.25}
+p.sub{font-size:14.4px;color:var(--ink2);line-height:1.55;margin:9px 0 4px}
+</style></head><body>
+
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="chair" viewBox="0 0 79.45 100"><path fill-rule="evenodd" d="M8.46 51.61C7.95 51.74 7.64 52.69 7.24 53.25C6.84 53.81 6.41 54.38 6.07 54.97C5.72 55.56 5.41 56.16 5.15 56.79C4.89 57.41 4.74 58.08 4.53 58.73C4.32 59.38 4.08 60.01 3.91 60.67C3.73 61.33 3.65 62.04 3.47 62.7C3.3 63.36 2.94 63.94 2.84 64.63C2.73 65.32 2.84 66.1 2.84 66.83C2.84 67.57 2.84 68.3 2.84 69.03C2.84 69.77 2.79 70.52 2.84 71.24C2.88 71.95 2.99 72.64 3.12 73.32C3.24 74 3.39 74.68 3.57 75.33C3.75 75.99 3.99 76.63 4.21 77.27C4.43 77.91 4.66 78.55 4.89 79.19C5.13 79.82 5.35 80.47 5.63 81.09C5.91 81.7 6.22 82.31 6.57 82.89C6.92 83.48 7.34 84.04 7.73 84.62C8.12 85.19 8.5 85.76 8.92 86.32C9.35 86.88 9.79 87.43 10.27 87.96C10.76 88.5 11.28 89.07 11.83 89.52C12.38 89.97 13 90.23 13.56 90.66C14.11 91.09 14.59 91.72 15.16 92.11C15.73 92.51 16.36 92.74 16.97 93.05C17.58 93.35 18.19 93.64 18.8 93.95C19.41 94.25 19.99 94.6 20.62 94.86C21.25 95.12 21.91 95.29 22.56 95.5C23.2 95.71 23.84 95.94 24.5 96.12C25.16 96.31 25.81 96.51 26.49 96.62C27.18 96.74 27.93 96.7 28.62 96.82C29.3 96.93 29.92 97.25 30.61 97.31C31.3 97.37 32.07 97.28 32.75 97.16C33.44 97.05 34.03 96.71 34.73 96.62C35.43 96.53 36.24 96.74 36.93 96.62C37.62 96.51 38.21 96.16 38.85 95.94C39.49 95.72 40.14 95.52 40.79 95.3C41.43 95.09 42.1 94.92 42.72 94.67C43.35 94.41 43.94 94.06 44.55 93.76C45.16 93.46 45.78 93.18 46.38 92.86C46.98 92.53 47.85 92.27 48.15 91.82C48.45 91.38 48.43 90.71 48.17 90.19C47.91 89.67 47.1 89.21 46.58 88.71C46.07 88.21 45.58 87.69 45.07 87.19C44.56 86.69 44.05 86.15 43.52 85.69C42.98 85.22 42.45 84.5 41.85 84.39C41.25 84.28 40.56 84.81 39.92 85.03C39.28 85.26 38.66 85.53 38.02 85.76C37.38 85.99 36.73 86.2 36.09 86.42C35.45 86.64 34.85 86.97 34.16 87.08C33.48 87.2 32.7 87.08 31.96 87.08C31.23 87.08 30.47 87.13 29.76 87.08C29.05 87.04 28.35 86.95 27.68 86.79C27.01 86.64 26.39 86.37 25.74 86.15C25.1 85.94 24.42 85.82 23.81 85.52C23.2 85.22 22.66 84.74 22.09 84.34C21.52 83.95 20.95 83.56 20.38 83.17C19.81 82.78 19.18 82.47 18.66 82.01C18.13 81.55 17.66 80.96 17.22 80.41C16.78 79.85 16.43 79.27 16.03 78.7C15.63 78.13 15.18 77.59 14.82 77C14.47 76.41 14.13 75.82 13.92 75.17C13.71 74.52 13.72 73.79 13.57 73.11C13.43 72.44 13.15 71.82 13.06 71.12C12.98 70.43 13.06 69.66 13.06 68.92C13.06 68.19 13.04 67.45 13.06 66.72C13.09 66 13.1 65.27 13.21 64.58C13.32 63.9 13.54 63.25 13.75 62.6C13.95 61.96 14.18 61.32 14.45 60.7C14.72 60.07 15.29 59.48 15.36 58.87C15.44 58.27 15.23 57.63 14.89 57.07C14.56 56.5 13.88 56 13.37 55.5C12.86 54.99 12.35 54.52 11.84 54.01C11.33 53.51 10.87 52.88 10.31 52.48C9.74 52.08 8.97 51.49 8.46 51.61Z M31.85 7C31.19 7.04 30.53 7.35 29.92 7.65C29.32 7.95 28.78 8.42 28.21 8.82C27.65 9.23 27.08 9.63 26.54 10.1C26.01 10.57 25.53 11.12 25.01 11.63C24.49 12.14 23.99 12.72 23.44 13.15C22.89 13.59 22.25 13.82 21.7 14.26C21.15 14.69 20.65 15.27 20.13 15.78C19.62 16.28 19.12 16.78 18.62 17.29C18.12 17.79 17.63 18.3 17.12 18.81C16.62 19.32 16.07 19.81 15.61 20.35C15.14 20.88 14.63 21.41 14.33 22.02C14.04 22.63 13.82 23.36 13.85 24.01C13.87 24.67 14.17 25.34 14.48 25.95C14.79 26.55 15.22 27.15 15.7 27.64C16.19 28.13 16.79 28.55 17.39 28.86C17.99 29.18 18.67 29.48 19.32 29.5C19.98 29.53 20.7 29.28 21.32 29.01C21.94 28.75 22.48 28.28 23.06 27.92C23.64 27.55 24.25 27.25 24.8 26.81C25.35 26.38 25.86 25.8 26.37 25.29C26.88 24.79 27.38 24.29 27.88 23.78C28.39 23.27 28.88 22.7 29.42 22.25C29.96 21.79 30.54 21.42 31.11 21.04C31.69 20.66 32.24 20.06 32.86 19.96C33.49 19.87 34.24 20.18 34.85 20.47C35.47 20.75 35.96 21.32 36.55 21.67C37.14 22.02 37.78 22.25 38.37 22.57C38.97 22.89 39.89 23.13 40.14 23.61C40.4 24.09 40.21 24.88 39.92 25.45C39.62 26.01 38.87 26.48 38.36 27C37.85 27.52 37.28 28.02 36.84 28.57C36.41 29.12 36.18 29.76 35.74 30.31C35.3 30.86 34.73 31.36 34.22 31.88C33.71 32.39 33.15 32.88 32.69 33.41C32.22 33.94 31.85 34.53 31.41 35.08C30.97 35.63 30.51 36.17 30.03 36.7C29.55 37.23 29.04 37.74 28.53 38.25C28.02 38.76 27.54 39.39 26.96 39.77C26.39 40.15 25.71 40.29 25.07 40.51C24.43 40.73 23.76 40.87 23.11 41.08C22.46 41.28 21.82 41.51 21.18 41.73C20.54 41.95 19.89 42.15 19.27 42.42C18.65 42.68 18.03 42.97 17.45 43.32C16.86 43.67 16.31 44.11 15.75 44.52C15.19 44.93 14.6 45.36 14.08 45.8C13.56 46.25 12.69 46.67 12.62 47.2C12.56 47.72 13.27 48.4 13.7 48.95C14.13 49.49 14.69 49.96 15.19 50.47C15.69 50.97 16.19 51.47 16.71 51.98C17.22 52.49 17.71 53.23 18.27 53.5C18.84 53.76 19.52 53.75 20.12 53.57C20.71 53.39 21.25 52.78 21.84 52.43C22.43 52.08 23.03 51.76 23.64 51.47C24.25 51.18 24.88 50.92 25.51 50.68C26.15 50.45 26.76 50.15 27.45 50.05C28.14 49.94 28.91 50.05 29.64 50.05C30.38 50.05 31.11 50.05 31.84 50.05C32.57 50.05 33.34 49.98 34.04 50.05C34.74 50.12 35.38 50.35 36.05 50.49C36.73 50.63 37.45 50.65 38.1 50.86C38.74 51.08 39.31 51.46 39.92 51.76C40.53 52.07 41.16 52.32 41.73 52.69C42.31 53.06 42.86 53.53 43.39 54C43.92 54.48 44.42 55.02 44.92 55.54C45.42 56.06 45.94 56.58 46.38 57.13C46.82 57.68 47.19 58.26 47.54 58.84C47.89 59.43 48.18 60.05 48.48 60.65C48.79 61.26 49.11 61.86 49.36 62.48C49.62 63.11 49.88 63.74 50 64.42C50.12 65.1 50.08 65.85 50.1 66.57C50.11 67.3 50.1 68.04 50.1 68.77C50.1 69.5 50.2 70.28 50.1 70.97C50 71.66 49.67 72.26 49.51 72.92C49.35 73.59 49.36 74.33 49.15 74.97C48.94 75.62 48.57 76.2 48.24 76.79C47.91 77.38 47.49 77.95 47.15 78.54C46.81 79.13 46.22 79.73 46.18 80.33C46.15 80.94 46.57 81.61 46.95 82.17C47.33 82.74 47.97 83.2 48.48 83.71C48.99 84.21 49.49 84.72 50 85.22C50.5 85.72 50.97 86.42 51.51 86.73C52.05 87.05 52.75 87.33 53.25 87.11C53.75 86.9 54.12 86.01 54.53 85.45C54.93 84.88 55.31 84.3 55.7 83.73C56.09 83.16 56.52 82.61 56.87 82.02C57.22 81.43 57.52 80.83 57.78 80.2C58.04 79.58 58.2 78.91 58.41 78.27C58.63 77.62 58.85 76.98 59.05 76.33C59.25 75.69 59.44 75.03 59.64 74.38C59.83 73.73 60.11 73.11 60.23 72.43C60.34 71.74 60.31 71 60.32 70.27C60.34 69.54 60.32 68.8 60.32 68.07C60.32 67.34 60.38 66.58 60.32 65.88C60.26 65.17 60.09 64.51 59.96 63.83C59.83 63.15 59.72 62.46 59.55 61.8C59.38 61.14 59.15 60.5 58.95 59.85C58.76 59.2 58.56 58.55 58.37 57.9C58.17 57.25 57.55 56.34 57.78 55.94C58.01 55.55 59.04 55.6 59.73 55.53C60.43 55.46 61.2 55.53 61.93 55.53C62.66 55.53 63.59 55.27 64.13 55.53C64.67 55.79 64.99 56.46 65.17 57.09C65.34 57.71 65.26 58.59 65.17 59.29C65.07 59.98 64.7 60.56 64.59 61.24C64.47 61.93 64.5 62.67 64.48 63.4C64.46 64.12 64.48 64.86 64.48 65.59C64.48 66.33 64.55 67.09 64.48 67.79C64.41 68.49 64.16 69.12 64.05 69.81C63.93 70.49 63.84 71.19 63.8 71.9C63.75 72.62 63.8 73.37 63.8 74.1C63.79 74.83 63.84 75.58 63.75 76.28C63.66 76.97 63.24 77.61 63.26 78.27C63.27 78.93 63.61 79.59 63.85 80.22C64.09 80.86 64.27 81.58 64.7 82.07C65.13 82.56 65.81 82.91 66.44 83.17C67.06 83.43 67.77 83.57 68.45 83.61C69.14 83.65 69.91 83.59 70.57 83.41C71.23 83.24 71.86 82.94 72.4 82.54C72.94 82.13 73.52 81.58 73.81 80.98C74.11 80.38 74.02 79.6 74.17 78.93C74.32 78.26 74.62 77.65 74.71 76.96C74.8 76.26 74.7 75.49 74.71 74.76C74.71 74.03 74.64 73.27 74.76 72.58C74.87 71.9 75.29 71.34 75.39 70.65C75.5 69.96 75.39 69.18 75.39 68.45C75.39 67.72 75.39 66.99 75.39 66.25C75.39 65.52 75.37 64.78 75.39 64.06C75.41 63.33 75.4 62.6 75.52 61.91C75.63 61.23 75.98 60.64 76.08 59.95C76.17 59.25 76.08 58.48 76.08 57.75C76.08 57.02 75.99 56.25 76.08 55.55C76.16 54.85 76.46 54.25 76.58 53.56C76.69 52.88 76.73 52.16 76.76 51.44C76.79 50.72 76.83 49.95 76.76 49.24C76.69 48.54 76.58 47.86 76.32 47.23C76.07 46.6 75.7 45.97 75.23 45.48C74.76 45 74.14 44.57 73.52 44.31C72.89 44.05 72.18 44 71.48 43.93C70.77 43.87 70.01 43.93 69.28 43.93C68.55 43.93 67.82 43.93 67.08 43.93C66.35 43.93 65.62 43.93 64.89 43.93C64.16 43.94 63.39 43.87 62.71 43.98C62.02 44.1 61.46 44.51 60.78 44.62C60.09 44.72 59.31 44.62 58.58 44.62C57.85 44.62 57.11 44.62 56.38 44.62C55.65 44.62 54.91 44.62 54.18 44.62C53.46 44.62 52.29 44.91 52.02 44.63C51.75 44.36 52.2 43.5 52.54 42.95C52.88 42.41 53.59 41.92 54.06 41.39C54.54 40.85 54.97 40.3 55.41 39.75C55.85 39.2 56.25 38.63 56.72 38.09C57.19 37.56 57.71 37.06 58.22 36.55C58.73 36.03 59.33 35.54 59.77 34.99C60.22 34.44 60.44 33.8 60.88 33.25C61.31 32.7 62.02 32.26 62.4 31.68C62.78 31.11 62.94 30.44 63.16 29.8C63.38 29.17 63.74 28.5 63.72 27.86C63.7 27.22 63.33 26.56 63.06 25.94C62.79 25.32 62.52 24.7 62.1 24.14C61.68 23.58 61.1 23.02 60.55 22.58C60 22.15 59.39 21.85 58.79 21.53C58.19 21.2 57.56 20.96 56.97 20.62C56.38 20.27 55.84 19.79 55.26 19.44C54.67 19.09 54.05 18.82 53.44 18.51C52.84 18.21 52.21 17.96 51.62 17.61C51.03 17.26 50.51 16.76 49.92 16.41C49.33 16.06 48.7 15.83 48.1 15.51C47.5 15.19 46.91 14.83 46.33 14.48C45.74 14.13 45.17 13.74 44.57 13.41C43.98 13.07 43.35 12.82 42.76 12.48C42.17 12.13 41.62 11.69 41.04 11.34C40.45 10.99 39.84 10.68 39.24 10.37C38.64 10.06 38 9.83 37.41 9.48C36.83 9.13 36.3 8.62 35.72 8.27C35.13 7.92 34.53 7.59 33.89 7.37C33.25 7.16 32.51 6.95 31.85 7Z M62.23 2.84C61.56 2.98 61 3.37 60.4 3.69C59.81 4 59.19 4.28 58.65 4.71C58.11 5.14 57.55 5.7 57.15 6.26C56.74 6.82 56.49 7.44 56.23 8.06C55.97 8.68 55.69 9.28 55.58 9.97C55.47 10.65 55.54 11.43 55.58 12.14C55.61 12.86 55.63 13.57 55.77 14.24C55.91 14.91 56.07 15.57 56.41 16.15C56.75 16.74 57.32 17.23 57.82 17.75C58.31 18.26 58.82 18.83 59.37 19.25C59.92 19.67 60.52 19.98 61.13 20.25C61.75 20.53 62.4 20.71 63.05 20.88C63.7 21.05 64.4 21.3 65.05 21.25C65.7 21.21 66.32 20.81 66.96 20.6C67.59 20.38 68.27 20.27 68.87 19.96C69.47 19.65 70.01 19.2 70.54 18.74C71.08 18.28 71.63 17.74 72.08 17.2C72.54 16.67 72.97 16.12 73.28 15.52C73.58 14.92 73.8 14.29 73.92 13.61C74.05 12.94 74.04 12.18 74.02 11.48C74.01 10.77 74.01 10.03 73.83 9.38C73.64 8.73 73.26 8.16 72.93 7.57C72.61 6.98 72.31 6.38 71.88 5.83C71.45 5.28 70.88 4.74 70.34 4.29C69.8 3.85 69.25 3.41 68.63 3.17C68 2.92 67.29 2.89 66.59 2.84C65.88 2.78 65.13 2.84 64.41 2.84C63.68 2.84 62.9 2.7 62.23 2.84Z"/></symbol>
+<linearGradient id="silver" x1="0" y1="0" x2="0.85" y2="1">
+  <stop offset="0" stop-color="#FBFCFD"/><stop offset="0.28" stop-color="#D6DCE3"/>
+  <stop offset="0.5" stop-color="#F4F7F9"/><stop offset="0.74" stop-color="#B9C1CA"/>
+  <stop offset="1" stop-color="#E9EDF1"/>
+</linearGradient>
+<linearGradient id="goldline" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#E7C868"/><stop offset="0.5" stop-color="#B08A20"/>
+  <stop offset="1" stop-color="#E7C868"/>
+</linearGradient>
+<linearGradient id="goldpill" x1="0" y1="0" x2="0.12" y2="1">
+  <stop offset="0" stop-color="#FDF6D8"/><stop offset="0.16" stop-color="#EBD277"/>
+  <stop offset="0.32" stop-color="#C69F28"/><stop offset="0.46" stop-color="#8A6712"/>
+  <stop offset="0.80" stop-color="#6E5210"/><stop offset="1" stop-color="#B48B1C"/>
+</linearGradient>
+</defs></svg>
+
+<div class="phone"><div class="notch"></div><div id="app"></div></div>
+
+<script>
+/* ============================================================ DATA
+   Members are the 23 NorCal SCI peer mentors published at
+   norcalsci.org/peer-mentors, as cleaned in the source sheet —
+   first names and the public headshot only. Everyone here has an
+   SCI; the family-member and non-SCI entries are out of scope.
+   Events, posts, questions and answers are illustrative sample
+   content written for the demo, not real postings. */
+
+const CDN = "https://images.squarespace-cdn.com/content/v1/639f51bcb6f2d126acbc35ab/";
+const P = u => CDN + u + "?format=500w";
+
+const M = [
+{n:"Ajay",city:"San Jose",age:30,lvl:"C7",grp:"Cervical",comp:"Incomplete",
+ ph:P("76946e11-5bef-4527-999b-9691cf49e418/Ajay.jpg"),
+ ind:"Completely independent",job:"Student",field:"Nutrition (in grad school)",edu:"In progress — grad school for nutrition",
+ int:["Water sports","Fitness & exercise","Cooking","Music"],
+ top:["Adaptive sports","Back to school","Suprapubic catheter","UTIs","Getting into dating"],
+ dev:["Suprapubic catheter","Wheelchair assist devices"],
+ fn:"Manual chair. Strong upper body, weaker left tricep/lat/chest, impaired hand function (stronger grip right hand). Global spasticity used for hand function, transfers, and walking short distances with spotters. Lives alone.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Bob",city:"Aptos",age:71,lvl:"C6/7",grp:"Cervical",comp:"Incomplete",
+ ph:P("c472dc43-a8b2-48e6-a819-99a7046c8901/Bob+Spisak.jpg"),
+ ind:"Completely independent",job:"Retired",field:"Mechanic, truck driver, firefighter",edu:"Associate's degree",
+ int:["Cycling","Volunteering","Car restoration"],
+ top:["Adaptive equipment","Adaptive sports","Vehicles"],
+ dev:["Vehicle modifications","Wheelchair assist devices"],
+ fn:"Manual chair. Lives alone independently. Volunteers for VMC, CASA, Ride-A-Wave, Day of Discovery and the Christopher Reeve Foundation.",
+ aff:["NorCal SCI","Christopher Reeve Foundation"],lang:["English"],kids:true},
+
+{n:"Dante",city:"Aptos",age:29,lvl:"C4",grp:"Cervical",comp:"Incomplete",
+ ph:P("c1874d1d-6393-4625-9f20-eeb7ad0ee156/reevefoundationphoto.jpg"),
+ ind:"Completely independent",job:"Full time",field:"Freelance photographer (previously accounting)",edu:"BS Business Administration",
+ int:["Cycling","Photography","Mountain biking"],
+ top:["Back to school","Being injured as a teen","Navigating walking again","Adaptive cycling"],
+ dev:[],
+ fn:"No assistive devices; sometimes an AFO on the left leg. Good return of function in all four limbs. Lives at home with parents but is physically independent.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Debra",city:"San Jose",age:70,lvl:"C4",grp:"Cervical",comp:"Incomplete",
+ ph:P("e23dac50-c3c1-4f5f-965d-ab5acd9f7593/unnamed+%282%29.jpg"),
+ ind:"Completely independent",job:"Retired",field:"Nurse educator (Santa Clara County 911)",edu:"Master's in Nursing Leadership",
+ int:["Travel","Water sports","Camping & outdoors","Photography"],
+ top:["Emergency preparedness","Neural implant","Ileostomy"],
+ dev:["Ileostomy","Neural implant","Wheelchair assist devices"],
+ fn:"Mobility scooter. Brown-Séquard syndrome. Walks short distances with a walker. Volunteers with Medical Volunteers for Disaster Relief and presents on emergency preparedness for people with disabilities. Lives independently.",
+ aff:["NorCal SCI"],lang:["English"],w:true},
+
+{n:"Gretchen",city:"Clovis",age:35,lvl:"C5/6",grp:"Cervical",comp:"Incomplete",
+ ph:P("fd970ac9-4ba3-478e-8879-b32440c372ea/Gretchen.JPG"),
+ ind:"Mostly independent",job:"Seeking work (with voc rehab)",field:"Medicine",edu:"Medical school graduate",
+ int:["Travel","Reading","Gardening","Advocacy"],
+ top:["Advocacy","Travel","Neurogenic bladder and Botox","Mental health","Adaptive home improvements"],
+ dev:["Botox","Wheelchair assist devices"],
+ fn:"Manual chair with SmartDrive power assist. Can stand and use a walker short distances around the house. Lives with parents. Working with vocational rehab to find a full-time job.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Jan",city:"Santa Cruz",age:64,lvl:"T12",grp:"Thoracic",comp:"Complete",
+ ph:P("e62b8066-8eb5-4a2b-b1d5-6baa220f7d10/Jan+Edwards.jpeg"),
+ ind:"Completely independent",job:"Retired",field:"Accounting (CPA)",edu:"BA Accounting, CPA",
+ int:["Water sports","Camping & outdoors","Individual sports","Cooking","Reading"],
+ top:["Athletics and adaptive sports equipment","Other adaptive equipment","Self and suprapubic cath","Pain management","Pregnancy with paraplegia","Medical write-offs"],
+ dev:["Suprapubic catheter","Intermittent catheterization","Wheelchair assist devices","Service animals"],
+ fn:"Mostly manual with SmartDrive. Shoulder surgeries and arthritis have led to some upper body weakness. Paralympian and marathon participant post-injury. Sits on the board of a camp for kids and adults with disabilities and holds a leadership role in Canine Companions. Retired, lives with her husband.",
+ aff:["NorCal SCI","Canine Companions"],lang:["English"],w:true,married:true},
+
+{n:"Jake",city:"Carlsbad",age:29,lvl:"C6",grp:"Cervical",comp:"Complete",
+ ph:P("5742046e-62a9-4ad6-ad79-f534cf0ad4ba/IMG_3076.JPG"),
+ ind:"Mostly independent",job:"Full time",field:"Quality engineer",edu:"Master's in Biomedical Engineering",
+ int:["Team sports","Camping & outdoors","Fitness & exercise"],
+ top:["Adaptive equipment","Adaptive sports","Caregivers","Back to school and work","Advocacy","Intimacy","Bladder surgery"],
+ dev:["Hiring & managing caregivers","Wheelchair assist devices"],
+ fn:"Power-assist manual chair; a weak tricep is his lowest level of function.",
+ aff:["NorCal SCI"],lang:["English"],married:true},
+
+{n:"Joe",city:"Campbell",age:55,lvl:"C6",grp:"Cervical",comp:"Complete",
+ ph:P("80db4a89-7bfa-4038-8f33-4c62116f9152/image0.jpg"),
+ ind:"Completely independent",job:"Full time",field:"Independent living center",edu:"M.A. degree",
+ int:["Travel","Assistive tech","Film","Dining out"],
+ top:["Assistive technology","Living independently"],
+ dev:["Wheelchair assist devices","Dictation software"],
+ fn:"Manual chair with push assist. No triceps, but with a functioning tenodesis grip.",
+ aff:["NorCal SCI"],lang:["English","Spanish"],married:true},
+
+{n:"Joseph",city:"Oakland",age:40,lvl:"L (unspecified)",grp:"Lumbar",comp:"Do not know",
+ ph:P("81206dc1-abd7-4cb4-aa41-2a76565d7535/Screenshot_20240408_152935_Instagram.jpg"),
+ ind:"Completely independent",job:"Full time",field:"Federal government",edu:"Chico State graduate",
+ int:[],
+ top:["Mobility"],
+ dev:["Wheelchair assist devices"],
+ fn:"Motor scooter; weak leg strength. Lives independently.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Kerry",city:"San Jose",age:35,lvl:"T5",grp:"Thoracic",comp:"Complete",
+ ph:P("f088fb4d-8a29-4ac4-8933-77ef67c90057/image0.jpeg"),
+ ind:"Completely independent",job:"Full time",field:"Orthopedic surgery practice",edu:"BS Athletic Training, Master's Exercise Science",
+ int:["Team sports","Fitness & exercise","Travel"],
+ top:["Adaptive sports","Living independently","Driving","Working full time"],
+ dev:["Vehicle modifications"],
+ fn:"Manual chair; no sensation or function from the chest down, full arm and hand function. Lives with a roommate in a two-bedroom apartment.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Kevin",city:"Fremont",age:64,lvl:"C1",grp:"Cervical",comp:"Incomplete",
+ ph:P("e5e7b48d-3c55-4e07-8643-221d0a883b8a/KevinLee2023.png"),
+ ind:"Mostly independent",job:"Not working",field:"Computer networking and software test (pre-injury)",edu:"BS Computer Science",
+ int:["Arts & crafts","Woodturning","3D printing","Drones & robotics"],
+ top:["Most SCI topics, after 20 years attending and co-leading peer support groups"],
+ dev:["Wheelchair assist devices"],
+ fn:"Mobility scooter, or forearm crutches for short distances. Moves slowly with limited strength and significant tone. Board treasurer at ReCARES and a weekly volunteer at SCVMC SCI Peer Support. Lives with his long-term partner.",
+ aff:["NorCal SCI","ReCARES","SCVMC SCI Peer Support"],lang:["English"]},
+
+{n:"Yazmin",city:"Stockton",age:28,lvl:"T11",grp:"Thoracic",comp:"Incomplete",
+ ph:P("8f3e3166-7d97-408c-b1b0-a00f666e1f39/Yazmin+Duran+.JPG"),
+ ind:"Mostly independent",job:"Student",field:"Business (in training)",edu:"In college for a business degree",
+ int:["Reading","Writing & storytelling"],
+ top:["Pain management","Going back to school"],
+ dev:["Wheelchair assist devices"],
+ fn:"Has used manual wheelchairs, walkers and leg braces; uses a cane. Full hand and arm function. Thighs most affected, especially quadriceps; almost full function of lower legs and feet. Lives with family.",
+ aff:["NorCal SCI"],lang:["English","Spanish"]},
+
+{n:"Lake",city:"Santa Rosa",age:53,lvl:"T11",grp:"Thoracic",comp:"Complete",
+ ph:P("23df5b44-8ae0-49e2-b029-da80e79b07f1/Untitled+-+2024-05-16T113047.516.png"),
+ ind:"Completely independent",job:"Full time",field:"Construction company owner (previously disability resource center)",edu:"Some college",
+ int:["Painting","Gardening","Reading","Museums","Volunteering"],
+ top:["Basketball","Advocacy","Pregnancy and motherhood","Business ownership","Travelling by air and vehicle"],
+ dev:["Vehicle modifications","Wheelchair assist devices"],
+ fn:"Manual chair; full function above the belly button. Volunteer art teacher at a women's treatment center and hosts an SCI online support group. Lives alone; daughter in college.",
+ aff:["NorCal SCI"],lang:["English"],w:true,kids:true},
+
+{n:"Lindsay",city:"Livermore",age:42,lvl:"T4",grp:"Thoracic",comp:"Complete",
+ ph:P("8514761c-5be4-41f4-9413-4c3ff8769fa8/LIndsay+Ulrey.jpeg"),
+ ind:"Completely independent",job:"Full time",field:"Clinical psychology (private practice)",edu:"Doctorate in clinical psychology",
+ int:["Cycling","Camping & outdoors","Team sports","Cooking","Birding","Music","Reading"],
+ top:["Adaptive biking gear","Being a mom in a wheelchair","Driving","Home adaptations","Cooking"],
+ dev:["Vehicle modifications","Wheelchair assist devices"],
+ fn:"Manual chair with SmartDrive and a Striker attachment; occasionally a power chair. Full function above the level of injury, limited below. Board member of the Wheel with Me Foundation and runs a support group for 'wheelie mamas'. Married, two kids, dog.",
+ aff:["NorCal SCI","Wheel with Me Foundation"],lang:["English"],w:true,kids:true,married:true},
+
+{n:"Matt",city:"San Francisco",age:39,lvl:"T4",grp:"Thoracic",comp:"Complete",
+ ph:P("dc49f388-4545-43f2-a287-88e130637678/Leonard_headshot.jpg"),
+ ind:"Completely independent",job:"Full time",field:"Freelance",edu:"BA Film; Master's in wine studies",
+ int:["Water sports","Fishing","Ski & snowboard","Individual sports","Film","Food & wine","Astronomy"],
+ top:["Adaptive equipment","Most adaptive sports","Pain management"],
+ dev:["Vehicle modifications"],
+ fn:"Manual chair. No motor or sensation below mid-chest; full strength and feeling above. Very independent; drives with hand controls. Lives alone, dog owner.",
+ aff:["NorCal SCI","Christopher Reeve Foundation","High Fives Foundation"],lang:["English"]},
+
+{n:"Nicole",city:"Santa Clara",age:28,lvl:"C6",grp:"Cervical",comp:"Incomplete",
+ ph:P("d1173043-7784-4c0f-8764-fd15165a7d3d/Nicole+Rosario.JPG"),
+ ind:"Completely independent",job:"Full time",field:"Software engineering",edu:"Bachelor's in Engineering",
+ int:["Team sports","Video games","Drones & robotics","Cooking","Reading","Wheelchair rugby"],
+ top:["Adaptive equipment","SmartDrive","Path to returning to driving","Wheelchair rugby","Back to work","Suprapubic tube","Independence"],
+ dev:["Suprapubic catheter","Vehicle modifications","Wheelchair assist devices"],
+ fn:"Mostly manual chair; power chair to travel locally. Some hand and tricep function on the left, some tricep on the right. Lives alone with her dog.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Robert",city:"Idaho",age:66,lvl:"C3",grp:"Cervical",comp:"Incomplete",
+ ph:P("b3524000-a6e3-44e8-898e-b0bd735c2c27/20240524_075738.jpg"),
+ ind:"Mostly independent",job:"Not working",field:"Underground construction",edu:"High school graduate",
+ int:["Fitness & exercise","Drums","Cooking"],
+ top:["Self-rehabilitation"],
+ dev:[],
+ fn:"High functioning; can walk but has issues, same with arms and hands. Spasticity, bowel and bladder issues. Very self-motivated to improve and to help others; made a strong recovery through his own work ethic. Lives with his wife.",
+ aff:["NorCal SCI"],lang:["English"],married:true},
+
+{n:"Scott",city:"Kerman",age:55,lvl:"T8",grp:"Thoracic",comp:"Incomplete",
+ ph:P("ebc79199-e414-4570-8a14-3feccf1c3977/Scott+Zulewski.jpeg"),
+ ind:"Completely independent",job:"Full time",field:"Accounting (CPA)",edu:"College graduate, CPA",
+ int:["Team sports","Piano"],
+ top:["Working while dealing with SCI","Pain management"],
+ dev:["Wheelchair assist devices"],
+ fn:"Manual chair. Very little leg movement; can wiggle toes and flex the right quad. Hands and arms are normal. Lives with his wife, daughter and granddaughter.",
+ aff:["NorCal SCI"],lang:["English"],kids:true,married:true},
+
+{n:"Sean",city:"Fremont",age:42,lvl:"C6/7",grp:"Cervical",comp:"Complete",
+ ph:P("d4a7315d-d3c1-42fc-8bb6-0b8d52ac3fbf/NorCalSCI+Photo+%281%29.jpg"),
+ ind:"Completely independent",job:"Student",field:"Culinary (pre-injury chef)",edu:"Culinary school; working on a BA in Psychology",
+ int:["Team sports","Cycling","Travel","Cooking","Wheelchair rugby"],
+ top:["Moving back in with family after injury","Moving out to live independently again","Romantic relationships","Adaptive sports and equipment","Driving adaptations","Applying for grants and government programs","Travel","Botox"],
+ dev:["Botox","Vehicle modifications","Wheelchair assist devices"],
+ fn:"Manual chair, sometimes with power assist. Most tricep function, impaired hand function, no sensation or movement in torso or legs. Lives alone in an apartment.",
+ aff:["NorCal SCI"],lang:["English"]},
+
+{n:"Tiffany",city:"Sacramento",age:53,lvl:"C5/6",grp:"Cervical",comp:"Complete",
+ ph:P("7b8f8576-f344-4c67-a9de-3d1650d90039/Poland_Headshot+%281%29.JPG"),
+ ind:"Partially dependent",job:"Student",field:"Human services",edu:"AA Human Services; working toward a BA in Disability Studies",
+ int:["Performing arts","Concerts","Comedy","Theatre","Dining out"],
+ top:["Going back to school","Returning to college","Canine Companions"],
+ dev:["Dictation software","Service animals","Wheelchair assist devices"],
+ fn:"Power chair. Has a hospital bed and an alternating pressure relief mattress. Has biceps but no triceps; uses typing aids and Dragon at times to write with her voice. Runs and attends several peer support groups including a monthly women's group on Zoom. Lives with her mother, who is her full-time caregiver.",
+ aff:["NorCal SCI","Canine Companions"],lang:["English"],w:true},
+
+{n:"Todd",city:"Roseville",age:56,lvl:"T12",grp:"Thoracic",comp:"Complete",
+ ph:P("acede200-8379-426d-9c5a-f4d99c787bde/Facetune_20-05-2024-17-21-09.png"),
+ ind:"Completely independent",job:"Full time",field:"Urology and rehab (30 years)",edu:"College educated",
+ int:["Ski & snowboard","Winter sports","Photography","Cooking"],
+ top:["Adaptive sports","Sex","Infertility","Urology and urology products","Nutrition","Driving"],
+ dev:["Intermittent catheterization","Vehicle modifications"],
+ fn:"Manual chair; almost full upper body function. Lives with his wife and child.",
+ aff:["NorCal SCI"],lang:["English"],kids:true,married:true},
+
+{n:"Vicki",city:"Eureka / Redding",age:73,lvl:"C5/6",grp:"Cervical",comp:"Incomplete",
+ ph:P("d2cf5730-9e60-484d-8fc7-3030b0ded91e/Vicki+Butler.jpeg"),
+ ind:"Partially dependent",job:"Retired",field:"State road maintenance; safety officer",edu:"High school graduate, some college",
+ int:["Gardening","Quilting","Weaving","Arts & crafts"],
+ top:["Adaptive equipment","Suprapubic tube","Colostomy","Osteoporosis"],
+ dev:["Suprapubic catheter","Colostomy"],
+ fn:"Power chair; hand and arm function, no grip, no leg function. Retired; lives with her husband, married 40 years.",
+ aff:["NorCal SCI"],lang:["English"],w:true,married:true},
+
+{n:"Victor",city:"Sunnyvale",age:35,lvl:"T4",grp:"Thoracic",comp:"Complete",
+ ph:P("387c5cb2-c4a4-4fb4-b15a-97e0ae0cf498/Victor+Esparanza.jpg"),
+ ind:"Mostly independent",job:"Not working",field:"Construction and flooring (pre-injury)",edu:"High school graduate",
+ int:["Fitness & exercise","Climbing","Team sports","Wheelchair basketball"],
+ top:["Pressure sores","Working out","Pain management","Exercises","Self-catheterization","Depression","Transfers","Dressing","Paratransit"],
+ dev:["Intermittent catheterization"],
+ fn:"Manual chair. Good arm and hand movement; no feeling below the injury. Single, lives with his auntie; very close family.",
+ aff:["NorCal SCI"],lang:["English"]},
+];
+
+M.forEach((m,i)=>{ m.id=i; m.mentor=true; });   // the seed is the NorCal SCI mentor directory
+const MI = {}; M.forEach(m => MI[m.n] = m.id);
+const mi = n => MI[n];                       // members are referenced by name, not index
+
+/* ---------------------------------------------------------- orgs */
+const ORGS = [
+{id:0,k:"NCS",n:"NorCal SCI",city:"Northern California",
+ d:"The Northern California Spinal Cord Network runs the peer mentor programme every member of this club came in through. Volunteer mentors, support groups and a regional events calendar.",
+ tags:["Peer mentoring","Support groups","Events"],inv:true},
+{id:1,k:"SC",n:"SCVMC SCI Peer Support",city:"San Jose",
+ d:"Weekly peer support at Santa Clara Valley Medical Center's rehabilitation unit — including bedside visits for people who were injured in the last few weeks.",
+ tags:["Newly injured","Hospital","Weekly"],inv:true},
+{id:2,k:"WWM",n:"Wheel with Me Foundation",city:"East Bay",
+ d:"Grants and programming that get people with mobility disabilities into adaptive sport and recreation.",
+ tags:["Adaptive sport","Grants"],inv:true},
+{id:3,k:"CC",n:"Canine Companions",city:"Santa Rosa",
+ d:"Service dogs, placed free of charge, for people with disabilities. Two members here are long-time volunteers.",
+ tags:["Service animals"]},
+{id:4,k:"HF",n:"High Fives Foundation",city:"Truckee",
+ d:"Support and adaptive winter sport for athletes who have sustained life-altering injuries.",
+ tags:["Winter sports","Adaptive sport"]},
+{id:5,k:"RC",n:"ReCARES",city:"Palo Alto",
+ d:"Collects and redistributes gently used durable medical equipment at no cost.",
+ tags:["Equipment","Reuse"]},
+];
+ORGS.forEach(o => o.members = M.filter(m => (m.aff||[]).includes(o.n)).length);
+
+/* ---------------------------------------------------------- events (sample) */
+const EV = [
+{id:0,t:"Wheelchair rugby — open practice",org:0,when:"Sat 5 Sep · 10:00am",city:"San Jose",
+ place:"Independence Sports Complex",cat:["Adaptive sport","Beginner welcome"],
+ d:"Bring nothing. Chairs, helmets and a chair fitting are provided, and half the people on the court have never played. Two members of the club are on the roster and will spot for anyone who wants to try a hit. Wrap up around noon; most people stay for lunch nearby.",
+ going:["Nicole","Jake"],interested:["Ajay","Sean","Kerry"]},
+{id:1,t:"Newly injured coffee — first 12 months",org:1,when:"Wed 9 Sep · 4:00pm",city:"San Jose",
+ place:"Café at SCVMC, main lobby",cat:["Newly injured","Small group"],
+ d:"An informal hour for anyone in their first year. No programme, no speaker. Kevin has co-led peer support here for twenty years and will be at the table; two or three other members usually come.",
+ going:["Kevin","Gretchen"],interested:["Yazmin"]},
+{id:2,t:"Handcycle ride — West Cliff Drive",org:0,when:"Sun 13 Sep · 9:00am",city:"Santa Cruz",
+ place:"Lighthouse Point parking lot",cat:["Adaptive sport","Outdoors"],
+ d:"Flat eight-mile out-and-back along the water. Loaner handcycles available if you ask by Friday. Bob has been riding and racing this route for years and sets the pace at the back, not the front.",
+ going:["Bob","Jan"],interested:["Lindsay","Dante"]},
+{id:3,t:"Driving and hand controls — Q&A",org:0,when:"Thu 17 Sep · 6:30pm",city:"Online",
+ place:"Zoom",cat:["Independence","Online"],
+ d:"Evaluation, funding through the Department of Rehabilitation, what the controls actually cost, and what the DMV process looks like. Kerry, Sean and Todd have all been through it from different levels of injury.",
+ going:["Kerry","Sean","Todd"],interested:["Nicole","Gretchen"]},
+{id:4,t:"Wheelie mamas — monthly meet",org:2,when:"Sat 19 Sep · 11:00am",city:"Livermore",
+ place:"Robertson Park, accessible picnic area",cat:["Parenting","Family"],
+ d:"Parents who use chairs, and their kids. Lindsay runs it. Bring whatever your family eats; there is shade and a paved path to the tables.",
+ going:["Lindsay"],interested:["Lake"]},
+{id:5,t:"Adaptive ski day — early season sign-up",org:4,when:"Sat 5 Dec · 8:00am",city:"Truckee",
+ place:"Alpine Meadows adaptive centre",cat:["Winter sports","Adaptive sport"],
+ d:"Monoski and bi-ski instruction with the High Fives crew. Sign-ups open now and fill fast. Todd has been monoskiing for years and is happy to talk through what the first day is actually like.",
+ going:["Todd"],interested:["Matt","Kerry"]},
+];
+
+/* ---------------------------------------------------------- questions (sample) */
+const Q = [
+{id:0,by:"Victor",when:"2 hours ago",cat:"Bladder & bowel",anon:false,
+ q:"How long did it take before you stopped planning your entire day around a bathroom?",
+ a:[{by:"Jan",t:"Honestly, about two years — and it was less that my body settled down than that I stopped treating every outing as a test. Once I had a routine I trusted, the planning went from the whole day to about ten minutes in the morning."},
+    {by:"Vicki",t:"The suprapubic tube was the turning point for me. I resisted it for a long time because it felt like giving up on something. It wasn't. It gave me back afternoons."}]},
+{id:1,by:"Yazmin",when:"Yesterday",cat:"Work & school",anon:false,
+ q:"Going back to school at 28 with a T11. Did anyone tell their professors, or just deal with it quietly?",
+ a:[{by:"Sean",t:"I told mine, but not on day one — I waited until I knew which classes would actually be a problem. Disability services handled the formal part and I only had one awkward conversation all year."},
+    {by:"Tiffany",t:"I went the other way and told everyone up front. It meant I never had to explain a late arrival twice. Depends whether you'd rather spend the energy at the start or spread out over the term."},
+    {by:"Dante",t:"Went back after being injured as a teenager. The thing nobody warned me about was fatigue, not access. Build a lighter first semester than you think you need."}]},
+{id:2,by:null,when:"2 days ago",cat:"Intimacy",anon:true,
+ q:"Is it normal that I haven't wanted to date at all since my injury? It's been three years and everyone keeps telling me I should be 'putting myself out there'.",
+ a:[{by:"Ajay",t:"Completely normal, and three years is not a deadline. I only started thinking about dating once I stopped feeling like I had to explain my body to somebody before they'd met me."},
+    {by:"Todd",t:"There's no schedule. I'd only push back on one thing — if it's avoidance rather than not wanting it, that's worth talking to someone about. Not because you owe anyone a relationship, but because it's a different problem with a different fix."}]},
+{id:3,by:"Scott",when:"3 days ago",cat:"Equipment",anon:false,
+ q:"Is a SmartDrive worth it if I can already push everywhere I need to go?",
+ a:[{by:"Nicole",t:"'Everywhere I need to go' quietly shrinks over the years without you noticing. Mine grew back after I got one. That's the real argument for it, not the hills."},
+    {by:"Gretchen",t:"Same experience. Also worth checking whether your shoulders are already telling you something — mine were, and I ignored them for two years too long."}]},
+{id:4,by:"Kevin",when:"4 days ago",cat:"Aging with SCI",anon:false,
+ q:"Twenty years in and my shoulders are done. What did you actually change, and did it help?",
+ a:[{by:"Jan",t:"Power assist, a lighter chair, and I stopped doing floor-to-chair transfers to prove I still could. Two shoulder surgeries later, I wish I'd done all three a decade earlier."},
+    {by:"Vicki",t:"Switched to a power chair for anything longer than a room. I fought it for years because of what I thought it meant. It meant I got to keep using my arms for things I care about."}]},
+];
+
+/* ---------------------------------------------------------- posts (sample)
+   Photo posts are the default shape: one or more pictures, a short caption.
+   Scene illustrations stand in for member photographs — see SCENE below. */
+const POSTS = [
+{id:0,by:"Bob",when:"3 hours ago",scene:"car",cat:"Equipment",
+ t:"Hand controls finally in. Third attempt at the throttle linkage. Come look before you buy parts — I made every mistake already."},
+{id:1,by:"Debra",when:"Yesterday",scene:"ice",cat:"Travel",
+ t:"Antarctica. That's seven continents. The scooter was never the problem — two steps at the front of somewhere always was."},
+{id:2,by:"Nicole",when:"Yesterday",scene:"print",cat:"Equipment",
+ t:"Printed a new joystick mount at 3am because the old one snapped. Forty cents of filament against a $400 part."},
+{id:3,by:"Sean",portrait:true,when:"2 days ago",cat:"Independence",
+ t:"One year today in my own apartment. Four years and two failed attempts to get here. Ask me anything about it."},
+{id:4,by:"Lindsay",when:"3 days ago",scene:"park",cat:"Adaptive sport",
+ t:"The Striker turned the park from a place I watched them from into a place I go with them."},
+{id:5,by:"Todd",when:"4 days ago",scene:"ski",cat:"Adaptive sport",
+ t:"First snow of the season is on the board. Monoski day sign-ups are open and they fill fast."},
+{id:6,by:"Kevin",when:"5 days ago",cat:"Equipment",
+ t:"ReCARES has three barely-used shower chairs and a standing frame on the shelf. Free. Check with us before you pay a supplier's number."},
+];
+
+/* ---------------------------------------------------------- home feed */
+const FEED = [
+ {k:"post",id:0},{k:"q",id:0},{k:"peer",n:"Nicole"},{k:"ev",id:0},
+ {k:"post",id:1},{k:"q",id:1},{k:"ev",id:1},
+ {k:"post",id:2},{k:"q",id:2},{k:"peer",n:"Kevin"},
+ {k:"post",id:3},{k:"q",id:3},{k:"ev",id:3},
+ {k:"post",id:4},{k:"q",id:4},{k:"post",id:5},{k:"ev",id:2},
+];
+
+/* ============================================================ PROFILE
+   The remaining Craig peer-mentor survey questions, grouped so related
+   ones share a screen. A screen made only of single-choice questions
+   advances itself once they are all answered. */
+const PQ = {
+ gender:{q:"3", t:"How do you describe yourself?", kind:"one",
+   opts:["Male","Female","Prefer to self-describe","Prefer not to say"]},
+ lang:{q:"4", t:"What languages do you speak?", kind:"many",
+   opts:["English","Spanish","German","Japanese","French","Norwegian","Other"]},
+ how:{q:"7", t:"How were you injured?", kind:"text",
+   ph:"Car accident on the 880, 2013…"},
+ level:{q:"8", t:"Highest level of injury", kind:"one",
+   opts:["C1","C2","C3","C4","C5","C6","C7","C8","T1","T2","T3","T4","T5","T6",
+         "T7","T8","T9","T10","T11","T12","L1–L5","S1–S5","Do not know"]},
+ comp:{q:"9", t:"Complete or incomplete?", kind:"one",
+   opts:["Complete","Incomplete","Do not know"]},
+ areas:{q:"10", t:"Topics you are happy to talk about", kind:"many",
+   opts:["Spasticity & tone management","ADLs & independence","Aphasia (communication differences)",
+         "Hemiplegia","Changes in cognition or memory","Aging with SCI","Something else"]},
+ marital:{q:"14", t:"Marital status", kind:"one",
+   opts:["Single","Married or partnered","Divorced or separated","Widowed"]},
+ kids:{q:"15", t:"Do you have children?", kind:"one", opts:["Yes","No"]},
+ kidsw:{q:"16", t:"Before or after your injury?", kind:"one",
+   opts:["Before","After","Both"], onlyIf:s => s.kids==="Yes"},
+ ind:{q:"17", t:"Level of independence", kind:"one",
+   opts:["Completely independent","Partially independent","Partially dependent","Completely dependent"]},
+ edu:{q:"18", t:"Highest education completed", kind:"one",
+   opts:["High school / GED","Some college","Bachelor's degree","Master's degree",
+         "PhD, MD, JD or similar","In progress"]},
+ eduw:{q:"19", t:"Before or after your injury?", kind:"one", opts:["Before","After","Both"]},
+ emp:{q:"20", t:"Employment status", kind:"one",
+   opts:["Full time","Part time","Student","Retired","Not currently working"]},
+ fow:{q:"21", t:"Field of work", kind:"text", ph:"Software engineering"},
+ rec:{q:"22", t:"Pick your top three interests", kind:"many", max:3,
+   opts:["Arts & crafts","Camping","Climbing","Cycling","Drones & robotics","Fitness & exercise",
+         "Hunting","Fishing","Individual sports","Performing arts","Ski & snowboard","Team sports",
+         "Travel","Video games","Volunteering","Water sports","Winter sports","Other"]},
+ care:{q:"23", t:"Self-care devices and procedures", kind:"many",
+   opts:["Colostomy","Mitrofanoff catheter","Suprapubic catheter","Foley catheter",
+         "Intermittent catheter","Electric bag drainers","Tendon transfer","Baclofen pump","Botox",
+         "Hiring & managing caregivers","FES bikes","Standing frame","Service animals",
+         "Aging with SCI (shoulder preservation)","Dictation software","Vehicle modifications",
+         "Wheelchair assist devices","Something else"]},
+ detail:{q:"24", t:"Anything worth spelling out?", kind:"text",
+   ph:"SmartDrive; Dragon; 2019 Odyssey with a power sliding door…"},
+ mentor:{q:"25", t:"Do you want to be a peer mentor?", kind:"one", opts:["Yes","Not yet"]},
+};
+Object.keys(PQ).forEach(k => PQ[k].key = k);
+
+const PSCREENS = [
+ {t:"About you", keys:["gender","lang"]},
+ {t:"Your injury", keys:["level","comp"]},
+ {t:"How it happened", keys:["how"],
+  hint:"In your own words. Members read this to find someone whose story rhymes with theirs."},
+ {t:"Topics you are happy to talk about", keys:["areas"],
+  hint:"This is what other members search on. Pick anything you would not mind a stranger asking about."},
+ {t:"Family", keys:["marital","kids","kidsw"]},
+ {t:"Day to day", keys:["ind","emp"]},
+ {t:"Education", keys:["edu","eduw"]},
+ {t:"Work", keys:["fow"], hint:"What you do now, or did before. Either is useful to somebody."},
+ {t:"Interests", keys:["rec"], hint:"Three, so the ones you pick actually mean something."},
+ {t:"Self-care devices", keys:["care"],
+  hint:"Only what you are comfortable discussing. The single most searched field in the club."},
+ {t:"The specifics", keys:["detail"],
+  hint:"Which dictation program, which vehicle modifications, which assist devices — the details are what people message you about."},
+ {t:"Mentoring", keys:["mentor"],
+  hint:"Mentors appear first to newly injured members, and mentors are one of the two ways someone gets an invite."},
+];
+
+/* ---------------------------------------------------------- scenes
+   Flat illustrations standing in for member photographs. Deliberately
+   drawn rather than photographic — the real thing comes from members. */
+const SCENE = {
+ car:`<rect width="400" height="260" fill="#E7EDF4"/><circle cx="322" cy="70" r="34" fill="#F0DFA8"/>
+   <path d="M0 190h400v70H0z" fill="#D4DCE6"/><path d="M0 186h400v6H0z" fill="#B9C4D2"/>
+   <path d="M62 186v-30c0-9 7-16 16-16h32l26-30h84l16 30h44c11 0 20 9 20 20v26z" fill="#1A3E70"/>
+   <path d="M128 140l20-24h58l12 24z" fill="#BFD3EA"/>
+   <circle cx="112" cy="188" r="24" fill="#0F1620"/><circle cx="112" cy="188" r="10" fill="#9AA6B4"/>
+   <circle cx="286" cy="188" r="24" fill="#0F1620"/><circle cx="286" cy="188" r="10" fill="#9AA6B4"/>
+   <rect x="180" y="152" width="34" height="7" rx="3.5" fill="#C9A227"/>`,
+ ice:`<rect width="400" height="260" fill="#CBDCEA"/><rect y="150" width="400" height="110" fill="#7FA3C4"/>
+   <path d="M40 150l58-74 40 50 30-32 52 56z" fill="#F2F7FB"/>
+   <path d="M98 76l40 50-40 24z" fill="#DDE9F3"/>
+   <path d="M228 150l46-58 34 40 28-24 26 42z" fill="#EAF2F8"/>
+   <path d="M0 176c40 10 80-8 120 2s80 12 120 0 100-6 160 6v76H0z" fill="#5C86AC"/>
+   <circle cx="330" cy="52" r="22" fill="#FDF6D8"/>`,
+ print:`<rect width="400" height="260" fill="#0F1620"/><rect x="60" y="40" width="280" height="180" rx="10" fill="#1B2530"/>
+   <rect x="76" y="56" width="248" height="132" rx="6" fill="#101822"/>
+   <rect x="76" y="176" width="248" height="12" fill="#2A3644"/>
+   <rect x="150" y="76" width="100" height="10" rx="3" fill="#3C4B5C"/>
+   <rect x="192" y="86" width="16" height="60" fill="#8FA6C4"/>
+   <path d="M150 146h100l-8 30h-84z" fill="#C9A227"/><path d="M158 146h84l-4 14h-76z" fill="#EBD277"/>
+   <circle cx="200" cy="86" r="6" fill="#E7C868"/>`,
+ park:`<rect width="400" height="260" fill="#D9E7DE"/><rect y="168" width="400" height="92" fill="#9FC0A8"/>
+   <path d="M0 190c60-16 120 10 190-2s150-18 210-2v74H0z" fill="#7FA98C"/>
+   <circle cx="76" cy="120" r="46" fill="#4E7C5E"/><rect x="70" y="150" width="12" height="40" fill="#6B5033"/>
+   <circle cx="330" cy="106" r="38" fill="#5E8E6C"/><rect x="324" y="132" width="11" height="46" fill="#6B5033"/>
+   <path d="M120 210h180v6H120z" fill="#E4E9F1"/>
+   <circle cx="196" cy="192" r="20" fill="none" stroke="#102A4C" stroke-width="6"/>
+   <circle cx="240" cy="200" r="10" fill="none" stroke="#102A4C" stroke-width="5"/>
+   <path d="M196 172l14-22 20 6" stroke="#102A4C" stroke-width="7" fill="none" stroke-linecap="round"/>
+   <circle cx="215" cy="142" r="9" fill="#102A4C"/>`,
+ ski:`<rect width="400" height="260" fill="#DCE9F4"/><circle cx="70" cy="56" r="26" fill="#FDF6D8"/>
+   <path d="M0 150l90-78 62 50 46-34 90 62 112-30v140H0z" fill="#F4F9FD"/>
+   <path d="M0 178l104-52 78 40 74-30 144 44v80H0z" fill="#FFF"/>
+   <path d="M0 230l120-34 130 22 150-24v66H0z" fill="#E4EEF6"/>
+   <path d="M186 196l52-14" stroke="#C9A227" stroke-width="7" stroke-linecap="round"/>
+   <path d="M206 190l10-26 18 4" stroke="#102A4C" stroke-width="8" fill="none" stroke-linecap="round"/>
+   <circle cx="222" cy="150" r="11" fill="#102A4C"/>`,
+};
+
+/* ============================================================ CHAT
+   Three kinds of thread: direct, group, and open discussion rooms.
+   Rooms are open to every member with the full history visible from
+   the day you join — the shape borrows from the CareCure forums,
+   which organise SCI life by the problem rather than by the person.
+   All messages below are written for the demo. */
+
+const ROOMS = [
+{id:"bowel", n:"Bowel management", icon:"◍", cat:"Body", members:198,
+ d:"The one nobody talks about anywhere else. Programmes, timing, travel, and what to do when it goes wrong.",
+ threads:[
+  {id:"b1", t:"Three years in and I still cannot get my programme under 90 minutes", by:"Victor", started:"Mon", views:412, ago:6, last:"6h ago",
+   posts:[
+    {by:"Victor",when:"Mon 08:14",t:"Three years in and I still cannot get my programme under 90 minutes. Is that just my level or am I doing something wrong? Every time I ask a professional I get told 45 minutes like it is a fact."},
+    {by:"Jan",when:"Mon 09:02",t:"Mine was 2 hours for the first four years. What changed it was moving it to the evening and being ruthless about doing it at the same time every day, including weekends. Consistency did more than any product I bought."},
+    {by:"Todd",when:"Mon 09:20",t:"Thirty years in urology and rehab, so with that caveat: the two things I see help most are timing consistency and warm fluid before, in that order. Neither costs anything. Everything else is trial and error and you are not doing it wrong."},
+    {by:"Vicki",when:"Mon 11:47",t:"The colostomy was the answer for me but I want to be careful how I say that, because it is a one-way door and it took me eleven years to decide. Happy to talk to anyone thinking about it."},
+    {by:"Victor",when:"Mon 12:05",t:"That is the first time anyone has given me a number that was not 45 minutes. Genuinely helpful, thank you."}]},
+  {id:"b2", t:"Travelling for a week — how do you handle the programme away from home?", by:"Gretchen", started:"Last week", views:288, ago:52, last:"2d ago",
+   posts:[
+    {by:"Gretchen",when:"Last week",t:"First trip longer than a weekend since my injury. The hotel bathroom is the thing I am most worried about, not the flight."},
+    {by:"Debra",when:"5 days ago",t:"Seven continents here. Call the hotel and ask for the room dimensions rather than 'is it accessible' — the answer to the second question is always yes and means nothing."},
+    {by:"Matt",when:"2 days ago",t:"Pack for two extra days beyond the trip. Supplies are the one thing you cannot improvise abroad."}]},
+  {id:"b3", t:"Does anyone use a transanal irrigation system? Worth it?", by:"Ajay", started:"3 weeks ago", views:531, ago:120, last:"5d ago",
+   posts:[
+    {by:"Ajay",when:"3 weeks ago",t:"My clinic offered it and made it sound like a silver bullet, which usually means it is not."},
+    {by:"Jan",when:"3 weeks ago",t:"Not a silver bullet, but it halved my time. The learning curve is about six weeks and most people quit in week two."},
+    {by:"Kevin",when:"5 days ago",t:"ReCARES sees a lot of these come back barely used, which tells you something about the week-two problem."}]},
+ ]},
+
+{id:"bladder", n:"Bladder & catheters", icon:"◌", cat:"Body", members:211,
+ d:"Intermittent, suprapubic, Mitrofanoff, Foley. UTIs, supplies, and getting through a work day.",
+ threads:[
+  {id:"l1", t:"Fourth UTI this year — my urologist says that is 'normal for you'", by:"Ajay", started:"Sunday", views:389, ago:14, last:"14h ago",
+   posts:[
+    {by:"Ajay",when:"Sun 19:31",t:"Fourth UTI this year. My urologist keeps saying 'that is normal for you'. Is it?"},
+    {by:"Nicole",when:"Sun 20:02",t:"Four a year is on the high side but not alarming on its own. What changed things for me was switching catheter type and being much stricter about not rushing. 'Normal for you' is a real thing but it should not be the end of the conversation."},
+    {by:"Jan",when:"Sun 20:40",t:"Ask for a culture every single time rather than an empiric script. Two of mine turned out to be the same organism and that changed the whole plan."},
+    {by:"Vicki",when:"Mon 07:12",t:"Suprapubic here since 1998. Fewer infections than the years I was cathing, though I know that is not everyone's experience."}]},
+  {id:"l2", t:"Suprapubic tube: what nobody told me before I got one", by:"Nicole", started:"2 months ago", views:1204, ago:30, last:"1d ago",
+   posts:[
+    {by:"Nicole",when:"2 months ago",t:"Writing this because I could not find it anywhere when I was deciding. The good, the annoying, and the two things I would ask about first."},
+    {by:"Ajay",when:"6 weeks ago",t:"This thread is the reason I went ahead with mine. Thank you for writing it out."},
+    {by:"Vicki",when:"1 day ago",t:"Adding twenty-eight years of it to the record — the maintenance genuinely does become background noise."}]},
+  {id:"l3", t:"Cathing at work without a proper accessible bathroom", by:"Kerry", started:"Last month", views:466, ago:72, last:"3d ago",
+   posts:[
+    {by:"Kerry",when:"Last month",t:"New office, one accessible stall on a different floor. How have people handled this without making it a whole HR event?"},
+    {by:"Jake",when:"3 days ago",t:"I made it a whole HR event and it was fine. Framed as a scheduling issue rather than a medical one."}]},
+ ]},
+
+{id:"skin", n:"Skin & pressure sores", icon:"▣", cat:"Body", members:174,
+ d:"Prevention, cushions, what a stage two actually looks like, and how long people were really down for.",
+ threads:[
+  {id:"s1", t:"Told to stay off it for six weeks. I have a job.", by:"Victor", started:"Friday", views:355, ago:20, last:"20h ago",
+   posts:[
+    {by:"Victor",when:"Fri 15:22",t:"Told to stay off it for six weeks. I have a job. What did people actually do?"},
+    {by:"Kerry",when:"Fri 16:03",t:"I took the six weeks. I hated every day of it and I would do it again — the person I know who did not is now two years into a wound that will not close."},
+    {by:"Tiffany",when:"Fri 18:40",t:"Alternating pressure mattress made the lying-down part survivable. Ask whether your insurance covers a rental rather than a purchase; mine did and nobody mentioned it."}]},
+  {id:"s2", t:"Cushion thread — what are you actually sitting on?", by:"Kevin", started:"4 months ago", views:1876, ago:96, last:"4d ago",
+   posts:[
+    {by:"Kevin",when:"4 months ago",t:"Rolling thread. Post your cushion, your level, how long you sit, and whether it has held up."},
+    {by:"Matt",when:"3 months ago",t:"T4, twelve hours a day, ROHO Quadtro. Fourth year on it."},
+    {by:"Tiffany",when:"4 days ago",t:"Power chair, C5/6, Ride Java. Third one — I replace them before they fail now rather than after."}]},
+ ]},
+
+{id:"pain", n:"Pain management", icon:"◈", cat:"Body", members:186,
+ d:"Neuropathic pain, shoulders, spasticity. What worked, what did not, what people wish they had tried sooner.",
+ threads:[
+  {id:"p1", t:"Burning in my legs is worse at night and I am running out of things to try", by:"Yazmin", started:"Thursday", views:302, ago:26, last:"1d ago",
+   posts:[
+    {by:"Yazmin",when:"Thu 21:10",t:"The burning in my legs is worse at night and I am running out of things to try."},
+    {by:"Matt",when:"Thu 21:44",t:"Mine responded to nothing for two years and then partially to gabapentin plus a genuinely boring sleep routine. The sleep part felt like a fob-off when it was suggested to me. It was not."},
+    {by:"Scott",when:"Fri 07:30",t:"Worth separating neuropathic pain from overuse pain — I spent a year treating the wrong one. My shoulders were the problem, not my spinal cord."}]},
+  {id:"p2", t:"Botox for spasticity — how long did yours last?", by:"Sean", started:"6 weeks ago", views:724, ago:60, last:"2d ago",
+   posts:[
+    {by:"Sean",when:"6 weeks ago",t:"Second round coming up. First one gave me about ten good weeks and then a cliff."},
+    {by:"Gretchen",when:"5 weeks ago",t:"Twelve to fourteen weeks for me, consistently. The cliff is normal — ask to book the next one before you leave."}]},
+ ]},
+
+{id:"newsci", n:"Newly injured", icon:"✦", cat:"Life", members:143,
+ d:"First weeks, first year. Rehab, going home, and the questions that feel too basic to ask out loud.",
+ threads:[
+  {id:"n1", t:"If you are reading this from a hospital bed", by:"Kevin", started:"2 years ago", views:5312, ago:10, last:"10h ago",
+   posts:[
+    {by:"Kevin",when:"2 years ago",t:"The first six months are not a preview of your life. Almost nobody believes that at the time. It is still true, and this thread is where people come back and say so."},
+    {by:"Dante",when:"1 year ago",t:"Injured at 19. The plateau everyone warns you about is not a wall — things kept changing for me at year three and year five."},
+    {by:"Gretchen",when:"10 hours ago",t:"Ask rehab for the name of one person discharged a year ago who would talk to you. Every unit has someone. Mine changed everything and I had to ask three times."}]},
+  {id:"n2", t:"Coming home for the first time — what did you wish was already done?", by:"Yazmin", started:"1 month ago", views:812, ago:48, last:"2d ago",
+   posts:[
+    {by:"Yazmin",when:"1 month ago",t:"Discharge in three weeks and my family is asking what to change in the house. I do not know what to tell them."},
+    {by:"Lake",when:"3 weeks ago",t:"Bathroom first, everything else second. And do not let anyone build a ramp before you have seen the slope they are planning."},
+    {by:"Joe",when:"2 days ago",t:"Do the doorways. It is cheap, it is fast, and it is the thing that quietly decides which rooms you live in."}]},
+ ]},
+
+{id:"equip", n:"Equipment & assistive tech", icon:"⚙", cat:"Kit", members:224,
+ d:"Chairs, cushions, power assist, mounts, dictation. The stuff you only find out about from someone who owns one.",
+ threads:[
+  {id:"e1", t:"Is a SmartDrive worth it if I can already push everywhere I need to go?", by:"Scott", started:"Tuesday", views:648, ago:4, last:"4h ago",
+   posts:[
+    {by:"Scott",when:"Tue 08:44",t:"Is a SmartDrive worth it if I can already push everywhere I need to go?"},
+    {by:"Nicole",when:"Tue 09:01",t:"'Everywhere I need to go' quietly shrinks over the years without you noticing. Mine grew back after I got one. That is the real argument, not the hills."},
+    {by:"Gretchen",when:"Tue 09:12",t:"Also worth checking whether your shoulders are already telling you something. Mine were and I ignored them for two years too long."},
+    {by:"Kevin",when:"Tue 09:30",t:"ReCARES has three barely-used shower chairs and a standing frame right now, free. Check with us before you pay a supplier's number."}]},
+  {id:"e2", t:"3D printing your own mounts and adaptations", by:"Nicole", started:"5 months ago", views:2140, ago:18, last:"18h ago",
+   posts:[
+    {by:"Nicole",when:"5 months ago",t:"Printed a new joystick mount at 3am because the old one snapped and I had a 9am standup. Files in this thread, ask for anything."},
+    {by:"Kevin",when:"4 months ago",t:"Adding my cup holder and a phone mount that survives a kerb drop."},
+    {by:"Joe",when:"18 hours ago",t:"Printed the phone mount. Two hours and about forty cents of filament, against $90 for the commercial one."}]},
+  {id:"e3", t:"Dictation setups for limited hand function", by:"Joe", started:"2 months ago", views:903, ago:80, last:"3d ago",
+   posts:[
+    {by:"Joe",when:"2 months ago",t:"For anyone with limited hand function — the dictation setup matters more than the chair for getting work done."},
+    {by:"Tiffany",when:"3 days ago",t:"Dragon plus a typing aid for the bits dictation gets wrong. Neither alone was enough."}]},
+ ]},
+
+{id:"driving", n:"Driving & vehicles", icon:"⛭", cat:"Kit", members:167,
+ d:"Hand controls, evaluations, funding, transfers, and loading the chair without taking it apart.",
+ threads:[
+  {id:"d1", t:"DOR process for hand controls — how long did yours take end to end?", by:"Sean", started:"Tuesday", views:377, ago:22, last:"22h ago",
+   posts:[
+    {by:"Sean",when:"Tue 17:20",t:"Started the DOR process for hand controls. How long did yours take end to end?"},
+    {by:"Kerry",when:"Tue 17:55",t:"Nine months, most of it waiting rather than doing. Start the evaluation before you think you are ready — that is the long pole."},
+    {by:"Todd",when:"Tue 18:30",t:"Minivan with a power sliding door here. I can load the chair without taking it apart and I am in and out in under thirty seconds. Happy to film it if that helps anyone."}]},
+  {id:"d2", t:"Loading the chair solo — post your method", by:"Todd", started:"7 months ago", views:1655, ago:36, last:"1d ago",
+   posts:[
+    {by:"Todd",when:"7 months ago",t:"Everyone does this differently and everyone thinks their way is obvious. Post yours."},
+    {by:"Matt",when:"6 months ago",t:"T4, two-door coupe, wheels off, frame over the shoulder. Twenty seconds and I would not recommend it to my future self."},
+    {by:"Kerry",when:"1 day ago",t:"T5 here. Sedan, chair behind the seat intact. The trick was the seat angle, not the technique."}]},
+ ]},
+
+{id:"intimacy", n:"Sex, dating & fertility", icon:"♡", cat:"Life", members:159,
+ d:"Dating after injury, what to say and when, function, fertility. Plain language, no euphemisms.",
+ threads:[
+  {id:"i1", t:"Telling someone before a first date, or letting it come up?", by:"Ajay", started:"Saturday", views:594, ago:30, last:"1d ago",
+   posts:[
+    {by:"Ajay",when:"Sat 22:04",t:"How do people handle telling someone before a first date versus letting it come up?"},
+    {by:"Sean",when:"Sat 22:31",t:"I stopped pre-explaining. It set the whole evening up as something to be managed. Now it comes up when it comes up and that has gone much better."},
+    {by:"Jake",when:"Sun 09:15",t:"Opposite for me — I put it in the profile. Filters out the conversation I did not want to have on a Tuesday."}]},
+  {id:"i2", t:"Fertility after SCI — what the workup actually involves", by:"Todd", started:"3 months ago", views:1387, ago:44, last:"2d ago",
+   posts:[
+    {by:"Todd",when:"3 months ago",t:"Two kids here, both after. Do not let anyone tell you it is impossible without an actual workup. Here is what mine looked like, step by step."},
+    {by:"Lindsay",when:"2 days ago",t:"From the other side of it — pregnancy with a T4, and what the obstetric team did and did not know."}]},
+ ]},
+
+{id:"work", n:"Work & school", icon:"▤", cat:"Life", members:181,
+ d:"Going back, starting over, accommodations, disclosure, and what employers actually do.",
+ threads:[
+  {id:"w1", t:"Did anyone tell their professors, or just deal with it quietly?", by:"Yazmin", started:"Yesterday", views:241, ago:3, last:"3h ago",
+   posts:[
+    {by:"Yazmin",when:"Yesterday",t:"Going back to school at 28 with a T11. Did anyone tell their professors, or just deal with it quietly?"},
+    {by:"Sean",when:"Yesterday",t:"Told mine, but not on day one — I waited until I knew which classes would actually be a problem."},
+    {by:"Tiffany",when:"Yesterday",t:"Told everyone up front so I never had to explain a late arrival twice."},
+    {by:"Jake",when:"3 hours ago",t:"Full-time engineer with a C6. The accommodation that mattered was not the desk, it was a flexible start time. Ask for that one first."}]},
+  {id:"w2", t:"Went back to a completely different career. AMA.", by:"Lake", started:"2 months ago", views:1120, ago:64, last:"2d ago",
+   posts:[
+    {by:"Lake",when:"2 months ago",t:"Disability resource centre to owning a construction company. Ask me anything, including the parts that went badly."},
+    {by:"Gretchen",when:"2 days ago",t:"How long between deciding and having any income? That is the gap that scares me."}]},
+ ]},
+
+{id:"sport", n:"Adaptive sport", icon:"◎", cat:"Life", members:203,
+ d:"Rugby, handcycling, monoski, basketball. Where to try things, and what the first session is really like.",
+ threads:[
+  {id:"a1", t:"Rugby practice Saturday — three loaner chairs going spare", by:"Nicole", started:"Monday", views:198, ago:8, last:"8h ago",
+   posts:[
+    {by:"Nicole",when:"Mon 18:02",t:"Three loaner chairs going spare Saturday. First timers genuinely welcome — half the court has never played."},
+    {by:"Victor",when:"Mon 18:44",t:"Started basketball this year at 35 after telling myself for four years I was not a sports person. I was wrong and it took someone dragging me."},
+    {by:"Bob",when:"Tue 06:50",t:"Handcycle ride Sunday, West Cliff. Flat, eight miles, and I set the pace from the back."}]},
+  {id:"a2", t:"First monoski day — what should I expect?", by:"Kerry", started:"3 weeks ago", views:687, ago:40, last:"2d ago",
+   posts:[
+    {by:"Kerry",when:"3 weeks ago",t:"Signed up for the High Fives day in December. Never skied before the injury either."},
+    {by:"Todd",when:"2 days ago",t:"You will fall a lot on day one and that is the whole day working correctly. Day two is when it turns into skiing."}]},
+ ]},
+
+{id:"aging", n:"Aging with SCI", icon:"◐", cat:"Body", members:132,
+ d:"Shoulders, transitions to power, bone density, and what changes at year twenty and year thirty.",
+ threads:[
+  {id:"g1", t:"Twenty years in and my shoulders are done. What did you actually change?", by:"Kevin", started:"4 days ago", views:733, ago:16, last:"16h ago",
+   posts:[
+    {by:"Kevin",when:"4 days ago",t:"Twenty years in and my shoulders are done. What did you actually change, and did it help?"},
+    {by:"Jan",when:"4 days ago",t:"Power assist, a lighter chair, and I stopped doing floor-to-chair transfers to prove I still could. Two shoulder surgeries later, I wish I had done all three a decade earlier."},
+    {by:"Vicki",when:"3 days ago",t:"Switched to power for anything longer than a room. I fought it for years because of what I thought it meant. It meant I got to keep using my arms for things I care about."}]},
+  {id:"g2", t:"Bone density scans — is anyone actually being offered these?", by:"Vicki", started:"5 weeks ago", views:428, ago:90, last:"4d ago",
+   posts:[
+    {by:"Vicki",when:"5 weeks ago",t:"Osteoporosis diagnosis came out of nowhere at 68 and in hindsight should not have."},
+    {by:"Jan",when:"4 days ago",t:"Never offered one in thirty years. Asked for one after reading this thread and it was approved without argument."}]},
+ ]},
+
+{id:"funding", n:"Funding & benefits", icon:"◇", cat:"Life", members:154,
+ d:"SSI and SSDI, Medi-Cal, the Department of Rehab, grants, and the paperwork nobody explains.",
+ threads:[
+  {id:"f1", t:"Voc rehab has been 'reviewing' my case for five months", by:"Gretchen", started:"Wednesday", views:266, ago:28, last:"1d ago",
+   posts:[
+    {by:"Gretchen",when:"Wed 09:15",t:"Five months of 'reviewing'. Is there a lever I am not pulling?"},
+    {by:"Lake",when:"Wed 10:40",t:"Put everything in writing and ask for your counsellor's supervisor by name, politely. Mine moved in a fortnight after eight months of nothing."}]},
+  {id:"f2", t:"Grants people have actually received, with amounts", by:"Lindsay", started:"6 months ago", views:2455, ago:56, last:"2d ago",
+   posts:[
+    {by:"Lindsay",when:"6 months ago",t:"Rolling list. Post the grant, the amount, how long it took, and whether you would apply again."},
+    {by:"Sean",when:"2 days ago",t:"Swim with Mike for tuition. Six weeks, and the application was far shorter than I expected."}]},
+ ]},
+];
+ROOMS.forEach(r => {
+  r.threads.forEach(t => t.replies = t.posts.length - 1);
+  r.posts = r.threads.reduce((n,t)=>n+t.posts.length, 0);
+});
+
+const GROUPS = [
+{id:"rugby", n:"Rugby crew", icon:"◎", members:["Nicole","Jake","Sean","Ajay"],
+ sub:"Saturday practice",
+ msgs:[
+  {by:"Nicole",when:"Today 07:40",t:"Three loaner chairs confirmed for Saturday. Anyone bringing someone new?"},
+  {by:"Jake",when:"Today 08:02",t:"Bringing one. He is four months post and has not been out of the house much."},
+  {by:"Sean",when:"Today 08:15",t:"Good. I will spot him for the first half hour so nobody hits him before he has stopped."},
+ ]},
+{id:"southbay", n:"South Bay meet-ups", icon:"⌂", members:["Ajay","Kerry","Nicole","Joe","Debra","Victor"],
+ sub:"6 members near San Jose",
+ msgs:[
+  {by:"Joe",when:"Yesterday",t:"The new place on Santana Row is genuinely step-free including the bathroom, which I did not expect."},
+  {by:"Debra",when:"Yesterday",t:"Noted. Adding it to the list of places we can actually all go."},
+  {by:"Kerry",when:"Today 09:12",t:"Thursday evening work for anyone?"},
+ ]},
+];
+
+const DMS = [
+{id:"dm-kevin", with:"Kevin",
+ msgs:[
+  {by:"Kevin",when:"Today 09:30",t:"Welcome in. I co-lead the Wednesday group at SCVMC and I try to say hello to everyone NorCal SCI brings across."},
+  {by:"Kevin",when:"Today 09:31",t:"No agenda — if there is something you want to ask and you would rather not put it in a room, put it here."},
+ ]},
+];
+
+/* topic chip → the room that covers it */
+const ROOM_MAP = [
+ [/bowel|colostomy|ileostomy|colosto/i,"bowel"],
+ [/bladder|cath|urolog|uti|suprapubic|mitrofanoff|foley|neurogenic/i,"bladder"],
+ [/skin|pressure sore|wound|cushion/i,"skin"],
+ [/pain|spasticity|tone|botox|baclofen|depression|mental health/i,"pain"],
+ [/newly injured|freshly injured|first year|injured as a teen|walking again|self-rehab|emergency prepared/i,"newsci"],
+ [/equipment|smartdrive|assist device|assist|3d print|standing frame|dictation|assistive|tech|chair|home adapt|home improvement|neural implant|service animal|mobility/i,"equip"],
+ [/driv|vehicle|hand control|transfer|paratransit|travel by|travelling by/i,"driving"],
+ [/sex|intimacy|dating|fertility|infertility|romantic|relationship|pregnan|motherhood|mom in a wheelchair|parenting|kids/i,"intimacy"],
+ [/work|school|college|employ|job|advocacy|business|independen|living independ/i,"work"],
+ [/sport|rugby|basketball|cycl|bik|ski|climb|fitness|exercise|athletic|swim|outdoor|camping|water|recreation/i,"sport"],
+ [/aging|shoulder|osteoporosis|nutrition|diet/i,"aging"],
+ [/fund|grant|ssi|ssdi|medi|benefit|dor|department of rehab|write-off|caregiver|hiring/i,"funding"],
+ [/travel|trip|flight|air/i,"driving"],
+];
+/* ============================================================ STATE */
+const S = {
+  dismissed:[], pics:0,
+  setup:true, step:0, tab:"home",
+  homeSeg:"all", peerSeg:"all", evSeg:"upcoming", chatSeg:"all",
+  filter:{grp:[],topic:[],city:[]},          // peers
+  hfilter:{cat:[],city:[]},                  // home feed
+  view:null, sheet:null, toast:null,
+  search:"", compose:"", composeAnon:false, composeCat:"Bladder & bowel", composeKind:"q",
+  new:{name:"",dob:"",years:"",lvl:"",city:"",photo:false},
+  q:Q.map(x=>({...x})), feed:FEED.slice(), thanks:{},
+  rooms:ROOMS.map(r=>({...r, threads:r.threads.map(t=>({...t, posts:t.posts.slice()}))})),
+  groups:GROUPS.map(g=>({...g, msgs:g.msgs.slice()})),
+  dms:DMS.map(d=>({...d, msgs:d.msgs.slice()})),
+  joined:["bowel","equip"], draft:"", roomSort:"last",
+  prof:{}, profStep:0, mentor:false,
+};
+
+const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const $ = s => document.querySelector(s);
+const mem = n => M[MI[n]];
+
+/* ------------------------------------------------------------ avatar */
+const PAL = [["#102A4C","#1A3E70"],["#1A3E70","#2C5590"],["#8A6712","#C9A227"],
+             ["#274B7A","#3C6299"],["#5C4409","#8A6712"],["#16355C","#26507F"]];
+function av(m, cls){
+  if (typeof m === "string") m = mem(m);
+  if (!m) return meAv(cls);
+  const p = PAL[(m.id*5+3) % PAL.length];
+  const ini = m.n.slice(0,2).toUpperCase();
+  /* the published headshot sits on top of the monogram tile; if it will not
+     load (offline, or the CDN is blocked) the tile underneath is the design */
+  return `<span class="av ${cls||""}" style="background:linear-gradient(140deg,${p[0]},${p[1]})">
+    <i><svg viewBox="0 0 79.45 100"><use href="#chair"/></svg></i>${esc(ini)}
+    ${m.ph?`<img src="${esc(m.ph)}" alt="" loading="lazy" onerror="this.remove()">`:""}</span>`;
+}
+function meAv(cls){
+  return `<span class="av ${cls||""}" style="background:linear-gradient(140deg,#0A1D36,#1A3E70)">
+    <i><svg viewBox="0 0 79.45 100"><use href="#chair"/></svg></i>${esc((S.new.name||"You").slice(0,2).toUpperCase())}</span>`;
+}
+
+/* ------------------------------------------------------------ icons */
+const I = {
+  home:`<svg viewBox="0 0 24 24"><path d="M3.6 10.4 12 3.5l8.4 6.9V20a1.4 1.4 0 0 1-1.4 1.4H5a1.4 1.4 0 0 1-1.4-1.4Z"/><path d="M9.4 21.4v-6.6h5.2v6.6"/></svg>`,
+  ask:`<svg viewBox="0 0 24 24"><path d="M21 12a8.5 8.5 0 0 1-11.9 7.8L3 21l1.3-5A8.5 8.5 0 1 1 21 12Z"/><path d="M9.4 9.2a2.7 2.7 0 0 1 5.2.9c0 1.8-2.6 2.2-2.6 3.9"/><path d="M12 17.1h.01"/></svg>`,
+  chat:`<svg viewBox="0 0 24 24"><path d="M20.5 11.6a7.6 7.6 0 0 1-10.8 6.9l-4.9 1.4 1.4-4.4A7.6 7.6 0 1 1 20.5 11.6Z"/><path d="M8.6 11.5h.01M12 11.5h.01M15.4 11.5h.01"/></svg>`,
+  peers:`<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M2.6 19.4a6.4 6.4 0 0 1 12.8 0"/><path d="M16.5 5.2a3.4 3.4 0 0 1 0 6.6"/><path d="M18 14.4a6.4 6.4 0 0 1 3.4 5"/></svg>`,
+  ev:`<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>`,
+  me:`<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9.5" cy="10.5" r="2.4"/><path d="M5.8 17a4.2 4.2 0 0 1 7.4 0M15 9.5h4M15 13h3"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`,
+  bell:`<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 6-2 7-2 7h16s-2-1-2-7Z"/><path d="M10.3 20a2 2 0 0 0 3.4 0"/></svg>`,
+  slide:`<svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M10 18h4"/></svg>`,
+  srch:`<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>`,
+  send:`<svg viewBox="0 0 24 24"><path d="M4.5 12 20 4.5 15.5 20l-4-6.2Z"/><path d="m11.5 13.8 8.5-9.3"/></svg>`,
+  pin:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2a6.5 6.5 0 0 0-6.5 6.5C5.5 14 12 22 12 22s6.5-8 6.5-13.5A6.5 6.5 0 0 0 12 2Zm0 9a2.6 2.6 0 1 1 0-5.2 2.6 2.6 0 0 1 0 5.2Z"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2 4 5.2v6.3c0 4.9 3.4 9.4 8 10.5 4.6-1.1 8-5.6 8-10.5V5.2L12 2Zm-1 14-4-4 1.5-1.5L11 13l4.5-4.5L17 10l-6 6Z"/></svg>`,
+  spark:`<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="m12 2 2.1 5.6L20 9.7l-5.1 3 .8 6.1-3.7-3-3.7 3 .8-6.1-5.1-3 5.9-2.1L12 2Z"/></svg>`,
+};
+
+/* ------------------------------------------------------------ logo */
+function sign(w){
+  return `<svg width="${w}" height="${w*1.5}" viewBox="0 0 144 216" aria-label="The SCI Club">
+  <rect x="2" y="2" width="140" height="212" rx="16" fill="#fff"/>
+  <rect x="8" y="8" width="128" height="200" rx="11" fill="#102A4C"/>
+  <rect x="14.5" y="14.5" width="115" height="187" rx="7" fill="none" stroke="url(#goldline)" stroke-width="2.6"/>
+  <use href="#chair" x="38" y="24" width="70" height="88" fill="url(#silver)"/>
+  <text x="72" y="130" text-anchor="middle" fill="#fff" style="font-family:Archivo,sans-serif;font-weight:800;font-size:14px;letter-spacing:.10em">THE SCI</text>
+  <text x="72" y="156" text-anchor="middle" fill="#fff" style="font-family:Archivo,sans-serif;font-weight:800;font-size:26px;letter-spacing:.02em">CLUB</text>
+  <rect x="22" y="167" width="100" height="23" rx="11.5" fill="url(#goldpill)"/>
+  <rect x="22" y="167.8" width="100" height="7" rx="11.5" fill="#fff" opacity=".34"/>
+  <text x="72" y="183" text-anchor="middle" fill="#fff" textLength="84" lengthAdjust="spacingAndGlyphs"
+    style="font-family:Archivo,sans-serif;font-weight:800;font-size:10px;letter-spacing:.15em">MEMBERS ONLY</text></svg>`;
+}
+const BRAND = `<span class="brand">${sign(26)}<span class="wm"><span class="t">THE</span> SCI <span class="c">CLUB</span></span></span>`;
+
+function head(title, opts){
+  opts = opts || {};
+  return `<div class="top">
+    <div class="tbar">${BRAND}
+      <div style="display:flex;gap:8px">
+        ${opts.search?`<button class="iconbtn" data-act="search">${I.srch}</button>`:""}
+        ${opts.filter?`<button class="iconbtn" style="position:relative" data-act="${opts.filter}">${I.slide}${
+          opts.fcount?'<span class="dot"></span>':""}</button>`:""}
+        <button class="iconbtn" style="position:relative" data-act="bell">${I.bell}<span class="dot"></span></button>
+      </div>
+    </div>
+    <div class="h1">${esc(title)}</div>
+    ${opts.segs||""}
+  </div>`;
+}
+function segs(list, cur, act){
+  return `<div class="segs">${list.map(s=>
+    `<button class="seg ${s[0]===cur?"on":""}" data-${act}="${esc(s[0])}">${esc(s[1])}</button>`).join("")}</div>`;
+}
+
+/* ============================================================ HOME */
+const QCATS = ["Bladder & bowel","Work & school","Intimacy","Equipment","Aging with SCI",
+               "Adaptive sport","Mental health","Travel","Caregivers","Newly injured","Something else"];
+const FCATS = ["Equipment","Adaptive sport","Travel","Independence","Bladder & bowel",
+               "Work & school","Intimacy","Aging with SCI","Newly injured"];
+
+function hcount(){ return S.hfilter.cat.length + S.hfilter.city.length; }
+function feedOwner(f){
+  if (f.k==="q"){ const x=S.q.find(v=>v.id===f.id); return x&&x.by?mem(x.by):null; }
+  if (f.k==="post"){ const p=POSTS.find(v=>v.id===f.id); return p&&p.by?mem(p.by):null; }
+  if (f.k==="peer") return mem(f.n);
+  return null;
+}
+function feedCat(f){
+  if (f.k==="q"){ const x=S.q.find(v=>v.id===f.id); return x?x.cat:""; }
+  if (f.k==="post"){ const p=POSTS.find(v=>v.id===f.id); return p?p.cat||"":""; }
+  if (f.k==="ev") return (EV[f.id].cat||[]).join(" ");
+  return "";
+}
+function hmatch(f){
+  const h = S.hfilter;
+  if (h.cat.length && !h.cat.some(c => feedCat(f).toLowerCase().includes(c.toLowerCase()))) return false;
+  if (h.city.length){ const o = feedOwner(f);
+    const city = f.k==="ev" ? EV[f.id].city : (o?o.city:"");
+    if (!h.city.includes(city)) return false; }
+  return true;
+}
+function homePage(){
+  const sg = [["all","Everything"],["q","Questions"],["post","Posts"],["ev","Events"],["peer","People"]];
+  const list = S.feed.filter(f => (S.homeSeg==="all" || f.k===S.homeSeg) && hmatch(f));
+  return head("Home", {search:true, filter:"hfilters", fcount:hcount(), segs: segs(sg, S.homeSeg, "homeseg")})
+  + `<div class="scroll"><div class="pad">
+    <button class="card" data-act="compose" style="border-style:dashed;border-color:#B7C2D2;background:#FBFCFD">
+      <div class="row" style="align-items:center">${meAv("sm")}
+        <span style="flex:1"><span class="nm" style="font-size:14.5px">Ask something, or share something</span>
+        <span class="s" style="margin-top:2px">No question is too basic, too personal or too weird.</span></span>
+      </div></button>
+    ${hcount()?`<div class="chips" style="margin:0 0 11px">${
+      S.hfilter.cat.concat(S.hfilter.city).map(c=>`<span class="chip on">${esc(c)}</span>`).join("")}
+      <button class="chip out" data-act="clearh">Clear</button></div>`:""}
+    ${list.map(feedItem).join("")}
+    ${list.length?"":`<div class="empty">Nothing matches that yet.<br>Try widening the filter.</div>`}
+    <div style="height:6px"></div>
+  </div></div>`;
+}
+function feedItem(f){
+  if (f.k==="q"){ const x = S.q.find(v=>v.id===f.id); return x?qCard(x):""; }
+  if (f.k==="post") return postCard(POSTS.find(p=>p.id===f.id));
+  if (f.k==="ev")   return evCard(EV[f.id]);
+  if (f.k==="peer") return peerSuggest(mem(f.n));
+  return "";
+}
+function qCard(x){
+  const asker = x.anon ? null : (x.by ? mem(x.by) : null);
+  const top = x.a[0];
+  return `<button class="card" data-q="${x.id}">
+    <div class="tagrow blue"><span style="display:flex">${I.ask}</span><span>Question · ${esc(x.cat)}</span></div>
+    <div class="nm" style="margin-top:8px;font-size:16px;line-height:1.32">${esc(x.q)}</div>
+    <div class="meta" style="margin-top:7px">${x.anon ? `Asked anonymously · ${esc(x.when)}`
+      : asker ? `${esc(asker.n)} · ${esc(asker.lvl)} · ${esc(x.when)}`
+              : `${esc(S.new.name||"You")} · ${esc(x.when)}`}</div>
+    ${top?`<div class="ans"><div class="row" style="gap:9px;align-items:center">
+        ${av(top.by,"sm")}<span class="s" style="font-weight:600;color:var(--ink2)">${esc(top.by)} · ${esc(mem(top.by).lvl)}</span></div>
+      <div class="body m" style="margin-top:6px">${esc(top.t)}</div></div>`:""}
+    <div class="s" style="margin-top:10px;font-weight:600;color:var(--navy)">
+      ${x.a.length} ${x.a.length===1?"answer":"answers"} →</div>
+  </button>`;
+}
+function photoBox(p){
+  if (p.scene) return `<div class="ph"><svg viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice">${SCENE[p.scene]}</svg></div>`;
+  if (p.portrait && p.by){ const m = mem(p.by);
+    return `<div class="ph"><img src="${esc(m.ph)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></div>`; }
+  if (p.mine && p.photo) return `<div class="ph mine"><span>Your photo</span></div>`;
+  return "";
+}
+function postCard(p){
+  const mine = !p.by, k = "p"+p.id;
+  const m = mine ? null : mem(p.by);
+  return `<div class="card post">
+    ${mine
+      ? `<div class="row" style="align-items:center;padding:13px 14px 0">${meAv("sm")}
+          <span style="flex:1;min-width:0"><span class="nm" style="font-size:14.5px">${esc(S.new.name||"You")}</span>
+          <span class="s">${esc([S.new.lvl, S.new.city||"San Jose", p.when].filter(Boolean).join(" · "))}</span></span>
+          <span class="chip gold">You</span></div>`
+      : `<button class="row" data-m="${m.id}" style="width:100%;align-items:center;padding:13px 14px 0">${av(m,"sm")}
+          <span style="flex:1;min-width:0"><span class="nm" style="font-size:14.5px">${esc(m.n)}</span>
+          <span class="s">${esc([m.lvl,m.city,p.when].filter(Boolean).join(" · "))}</span></span></button>`}
+    ${photoBox(p)}
+    <div style="padding:0 14px 13px">
+      <div class="body" style="margin-top:11px">${esc(p.t)}</div>
+      ${mine?"":`<div class="hr"></div>
+      <div style="display:flex;gap:9px">
+        <button class="chip ${S.thanks[k]?"on":"out"}" data-thank="${k}">${S.thanks[k]?"Thanked":"This helped"}</button>
+        <button class="chip out" data-dm="${esc(m.n)}">Message ${esc(m.n)}</button>
+      </div>`}
+    </div>
+  </div>`;
+}
+function peerSuggest(m){
+  return `<button class="card" data-m="${m.id}" style="border-color:#B8C6DA;background:#FAFCFF">
+    <div class="tagrow blue">${I.spark}<span>Worth meeting</span></div>
+    <div class="row" style="margin-top:10px">${av(m)}
+      <div style="flex:1;min-width:0">
+        <div class="nm">${esc(m.n)}</div>
+        <div class="meta">${esc([`${m.lvl} ${m.comp.toLowerCase()}`, m.age, m.city].join(" · "))}</div>
+        <div class="s" style="margin-top:3px">${esc(m.field||"—")}</div>
+      </div></div>
+    <div class="chips">${m.top.slice(0,3).map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div>
+  </button>`;
+}
+
+function qPage(id){
+  const x = S.q.find(v=>v.id===id);
+  const asker = x.anon ? null : (x.by ? mem(x.by) : null);
+  return `<div class="top"><div class="tbar"><button class="back" data-act="back">← Home</button></div>
+    <div style="height:8px"></div></div>
+  <div class="scroll"><div class="pad">
+    <div class="tagrow blue"><span style="display:flex">${I.ask}</span><span>Question · ${esc(x.cat)}</span></div>
+    <div class="h1" style="font-size:22px;line-height:1.3;margin-top:9px">${esc(x.q)}</div>
+    <div class="meta">${x.anon?`Asked anonymously · ${esc(x.when)}`
+      : asker?`${esc(asker.n)} · ${esc(asker.lvl)} · ${esc(asker.city)} · ${esc(x.when)}`
+             :`${esc(S.new.name||"You")} · ${esc(x.when)}`}</div>
+    ${roomFor(x.cat)?`<button class="card flat" data-room="${roomFor(x.cat)}" style="margin-top:14px">
+      <div class="row" style="align-items:center;gap:11px"><span class="roomico">${esc(room(roomFor(x.cat)).icon)}</span>
+      <span style="flex:1"><span class="nm" style="font-size:14.5px">Continue in ${esc(room(roomFor(x.cat)).n)}</span>
+      <span class="s">${room(roomFor(x.cat)).members} members · full history</span></span>
+      <span class="gt">›</span></div></button>`:""}
+    <div class="sec">${x.a.length} ${x.a.length===1?"answer":"answers"}</div>
+    ${x.a.map((a,i)=>{ const m = mem(a.by), k = id+"-"+i;
+      return `<div class="card">
+        <button class="row" data-m="${m.id}" style="width:100%;align-items:center">${av(m,"sm")}
+          <span><span class="nm" style="font-size:14.5px">${esc(m.n)}</span>
+          <span class="s">${esc([`${m.lvl} ${m.comp.toLowerCase()}`, m.city].join(" · "))}</span></span></button>
+        <div class="body">${esc(a.t)}</div>
+        <div class="hr"></div>
+        <div style="display:flex;gap:9px">
+          <button class="chip ${S.thanks[k]?"on":"out"}" data-thank="${k}">${S.thanks[k]?"Thanked":"This helped"}</button>
+          <button class="chip out" data-dm="${esc(m.n)}">Message ${esc(m.n)}</button>
+        </div></div>`}).join("")}
+    <button class="btn out" style="width:100%;margin-top:6px" data-act="answer">Add your answer</button>
+    <div style="height:14px"></div>
+  </div></div>`;
+}
+
+/* ============================================================ PEERS */
+const GRPS = ["Cervical","Thoracic","Lumbar"];
+function matches(m){
+  const f = S.filter;
+  if (f.grp.length && !f.grp.includes(m.grp)) return false;
+  if (f.city.length && !f.city.includes(m.city)) return false;
+  if (f.topic.length && !f.topic.some(t => m.top.concat(m.int).some(v=>v.toLowerCase().includes(t.toLowerCase())))) return false;
+  if (S.search){
+    const hay = [m.n,m.city,m.lvl,m.field,m.edu,...m.top,...m.int,...m.dev,m.fn].join(" ").toLowerCase();
+    if (!hay.includes(S.search.toLowerCase())) return false;
+  }
+  if (S.peerSeg==="near") return ["San Jose","Santa Clara","Sunnyvale","Campbell","Fremont"].includes(m.city);
+  if (S.peerSeg==="mentors") return !!m.mentor;
+  return true;
+}
+function peersPage(){
+  const list = M.filter(matches);
+  const sg = [["all","Everyone"],["near","Near me"],["mentors","Mentors only"]];
+  const n = S.filter.grp.length+S.filter.topic.length+S.filter.city.length;
+  return head("Peers", {filter:"filters", fcount:n, search:true, segs: segs(sg, S.peerSeg, "peerseg")})
+  + `<div class="scroll"><div class="pad">
+    ${S.search?`<div class="chips" style="margin:0 0 11px"><button class="chip on" data-act="clearf">“${esc(S.search)}” ✕</button></div>`:""}
+    <div class="s" style="margin-bottom:12px">${list.length} of ${M.length} members${
+      S.peerSeg==="mentors"?" · every member seeded here came from the NorCal SCI mentor directory"
+      : S.peerSeg==="all"&&!S.search?" · everyone here came in through NorCal SCI":""}</div>
+    ${list.map(peerCard).join("")}
+    ${list.length?"":`<div class="empty">Nobody matches that yet.<br>Try widening the filters.</div>`}
+    <div style="height:6px"></div>
+  </div></div>`;
+}
+function peerCard(m){
+  const p = PAL[(m.id*5+3) % PAL.length];
+  return `<button class="pcard" data-m="${m.id}" style="background:linear-gradient(150deg,${p[0]},${p[1]})">
+    <span class="mono">${esc(m.n.slice(0,2).toUpperCase())}</span>
+    <img src="${esc(m.ph)}" alt="" loading="lazy" onerror="this.remove()">
+    <span class="scrim-t"></span><span class="scrim-b"></span>
+    <span class="pc-top">
+      <span class="nm lg" style="color:#fff;font-size:28px">${esc(m.n)}</span>
+      <span class="pc-meta">${esc(`${m.lvl} ${m.comp.toLowerCase()} · ${m.age} · ${m.city}`)}</span>
+    </span>
+    <span class="pc-bot">
+      ${m.mentor?`<span class="mentorbadge"><span class="orgmark">${esc(orgOf(m).k)}</span>Peer mentor</span>`:""}
+      <span class="chips" style="margin-top:10px">${m.top.slice(0,3).map(t=>
+        `<span class="wchip">${esc(t)}</span>`).join("")}</span>
+    </span>
+    <span class="pc-fab" data-dm="${esc(m.n)}">${I.send}</span>
+  </button>`;
+}
+function orgOf(m){ return ORGS.find(o=>o.n===(m.aff||[])[0]) || ORGS[0]; }
+function peerPage(id){
+  const m = M[id], p = PAL[(m.id*5+3) % PAL.length];
+  return `<div class="scroll">
+    <div class="phero" style="background:linear-gradient(150deg,${p[0]},${p[1]})">
+      <span class="mono">${esc(m.n.slice(0,2).toUpperCase())}</span>
+      <img src="${esc(m.ph)}" alt="" onerror="this.remove()">
+      <span class="scrim-b"></span>
+      <button class="pback" data-act="back">← Peers</button>
+      <div class="phero-txt">
+        ${m.mentor?`<span class="mentorbadge" style="margin-bottom:9px"><span class="orgmark">${esc(orgOf(m).k)}</span>Peer mentor</span>`:""}
+        <div class="nm lg" style="color:#fff;font-size:30px">${esc(m.n)}</div>
+        <div class="pc-meta">${esc(`${m.lvl} ${m.comp.toLowerCase()} · ${m.age} · ${m.city}`)}</div>
+      </div>
+    </div>
+    <div class="hero" style="padding-top:14px">
+      <div class="btn2">
+        <button class="btn gold" data-dm="${esc(m.n)}">Message ${esc(m.n)}</button>
+        <button class="btn out" style="border-color:#5C7BA5;color:#fff" data-askthem="${esc(m.n)}">Ask ${esc(m.n)}</button>
+      </div>
+    </div>
+    <div class="pad">
+      <div class="sec">Happy to talk about</div>
+      <div class="s" style="margin:-4px 0 9px">Tap any of these to open the room where the club discusses it.</div>
+      <div class="chips" style="margin-top:0">${m.top.map(t=>
+        `<button class="chip" data-topic="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+
+      <div class="sec">Function &amp; living situation</div>
+      <div class="body m" style="margin-top:0">${esc(m.fn)}</div>
+
+      ${m.int.length?`<div class="sec">Interests</div>
+      <div class="chips" style="margin-top:0">${m.int.map(t=>
+        `<button class="chip out" data-topic="${esc(t)}">${esc(t)}</button>`).join("")}</div>`:""}
+
+      ${m.dev.length?`<div class="sec">Uses day to day</div>
+      <div class="chips" style="margin-top:0">${m.dev.map(t=>
+        `<button class="chip gold" data-topic="${esc(t)}">${esc(t)}</button>`).join("")}</div>`:""}
+
+      <div class="sec">Details</div>
+      <div class="card">
+        ${[["Independence",m.ind],["Work",m.job],["Field",m.field],["Education",m.edu],
+           ["Languages",(m.lang||[]).join(", ")]]
+          .filter(r=>r[1]).map(r=>`<div class="lstrow"><span style="flex:none;width:104px" class="s">${esc(r[0])}</span>
+            <span style="font-size:13.6px;line-height:1.42">${esc(r[1])}</span></div>`).join("")}
+      </div>
+
+      <div class="sec">Also a member of</div>
+      ${(m.aff||[]).map(a=>{const o = ORGS.find(o=>o.n===a);
+        return `<button class="card flat" ${o?`data-org="${o.id}"`:""} style="padding:12px">
+          <div class="row" style="align-items:center;gap:11px">
+            <span class="av sm" style="background:linear-gradient(140deg,#8A6712,#C9A227);font-size:11px">
+              ${esc((o?o.k:a.slice(0,2)).slice(0,3))}</span>
+            <span class="nm" style="font-size:14.5px">${esc(a)}</span>
+            ${o?`<span class="gt" style="margin-left:auto">›</span>`:""}
+          </div></button>`}).join("")}
+
+      <div class="note">Everything here is what ${esc(m.n)} chose to publish in the NorCal SCI mentor
+        directory. The club never shows a phone number, an address or an email — first contact
+        always goes through a message.</div>
+      <div style="height:12px"></div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================ EVENTS */
+function evPage(){
+  const sg = [["upcoming","Upcoming"],["going","I'm going"],["sport","Adaptive sport"],["online","Online"],["orgs","Organizations"]];
+  if (S.evSeg==="orgs") return head("Events",{segs:segs(sg,S.evSeg,"evseg")}) + orgList();
+  let list = EV.slice();
+  if (S.evSeg==="going") list = list.filter(e=>S.new.going.includes(e.id));
+  if (S.evSeg==="sport") list = list.filter(e=>e.cat.includes("Adaptive sport"));
+  if (S.evSeg==="online") list = list.filter(e=>e.city==="Online");
+  return head("Events",{segs:segs(sg,S.evSeg,"evseg")})
+  + `<div class="scroll"><div class="pad">
+    <div class="chips" style="margin:0 0 13px">
+      <button class="chip on">For you ▾</button>
+      <button class="chip out">Northern California</button>
+      <button class="chip out">This month</button></div>
+    ${list.map(evCard).join("")}
+    ${list.length?"":`<div class="empty">Nothing here yet.</div>`}
+    <div style="height:6px"></div>
+  </div></div>`;
+}
+const MONS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+function evParts(e){
+  const m = /^(\w{3}) (\d+) (\w{3}) · (.+)$/.exec(e.when);
+  return m ? {dow:m[1].toUpperCase(), day:m[2], mon:m[3].toUpperCase(), time:m[4]}
+           : {dow:"", day:"", mon:"", time:e.when};
+}
+function evCard(e){
+  const d = evParts(e);
+  const going = S.new.going.includes(e.id), inter = S.new.interested.includes(e.id);
+  const friends = e.going.slice(0,2);
+  if (S.dismissed.includes(e.id)) return "";
+  return `<div class="card ecard">
+    <button class="x" data-dismiss="${e.id}" aria-label="Not interested">✕</button>
+    <button class="row" data-ev="${e.id}" style="width:100%;gap:13px">
+      <span class="datetile"><i>${esc(d.dow)}</i><b>${esc(d.day)}</b><u>${esc(d.mon)}</u></span>
+      <span style="flex:1;min-width:0;padding-right:20px">
+        <span class="nm" style="font-size:16.5px;line-height:1.28">${esc(e.t)}</span>
+        <span class="chips" style="margin-top:7px">${e.cat.map(c=>
+          `<span class="chip ${c==="Online"?"gold":""}">${esc(c)}</span>`).join("")}</span>
+        <span class="meta">${esc(ORGS[e.org].n)} · ${esc(e.city)}</span>
+        <span class="s" style="display:block;margin-top:2px">${esc(d.time)} · ${esc(e.place)}</span>
+        <span class="cnt">${e.going.length + (going?1:0)} going · ${e.interested.length + (inter?1:0)} interested</span>
+        ${friends.length?`<span class="prf">
+          <span style="display:flex">${friends.map((g,i)=>
+            `<span style="margin-left:${i?-8:0}px;border-radius:9px;box-shadow:0 0 0 2px #fff;display:inline-block">${av(g,"sm")}</span>`).join("")}</span>
+          <span>${esc(friends.join(" and "))} ${friends.length>1?"are":"is"} going</span></span>`:""}
+      </span>
+    </button>
+    <div class="btn2" style="margin-top:12px">
+      <button class="btn ${inter?"ghost":"out"}" style="min-height:40px;font-size:14px" data-int="${e.id}">
+        ${inter?"Interested ✓":"Interested"}</button>
+      <button class="btn ${going?"ghost":"solid"}" style="min-height:40px;font-size:14px" data-go="${e.id}">
+        ${going?"Going ✓":"Going"}</button>
+    </div>
+  </div>`;
+}
+function evDetail(id){
+  const e = EV[id], org = ORGS[e.org];
+  const going = S.new.going.includes(e.id), inter = S.new.interested.includes(e.id);
+  return `<div class="scroll">
+    <div class="hero">
+      <button class="back" style="color:#B9CADF;padding:0 0 12px" data-act="back">← Events</button>
+      <div class="tagrow" style="color:#EBD277">${I.pin}<span>${esc(e.when)}</span></div>
+      <div class="h1" style="font-size:23px;line-height:1.28;margin-top:8px">${esc(e.t)}</div>
+      <div class="meta" style="margin-top:6px">${esc(e.place)} · ${esc(e.city)}</div>
+      <div class="chips">${e.cat.map(c=>`<button class="chip" data-topic="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <div class="btn2" style="margin-top:15px">
+        <button class="btn ${going?"ghost":"gold"}" data-go="${e.id}">${going?"You're going":"I'm going"}</button>
+        <button class="btn out" style="border-color:#5C7BA5;color:#fff" data-int="${e.id}">${inter?"Interested ✓":"Interested"}</button>
+      </div>
+    </div>
+    <div class="pad">
+      <div class="body" style="margin-top:2px">${esc(e.d)}</div>
+      ${going?`<button class="card flat" data-group="${esc(evGroup(e))}" style="margin-top:14px">
+        <div class="row" style="align-items:center;gap:11px"><span class="roomico">${I.chat.replace('<svg','<svg width="16" height="16" style="stroke:var(--navy);fill:none;stroke-width:2"')}</span>
+        <span style="flex:1"><span class="nm" style="font-size:14.5px">Group chat for this event</span>
+        <span class="s">Everyone who says they're going</span></span><span class="gt">›</span></div></button>`:""}
+
+      <div class="sec">Going</div>
+      ${e.going.map(g=>miniRow(mem(g))).join("")}
+      ${going?`<div class="lstrow">${meAv("sm")}<span><span class="nm" style="font-size:14.5px">You</span>
+        <span class="s">${esc(S.new.city||"San Jose")}</span></span></div>`:""}
+      ${e.interested.length?`<div class="sec">Interested</div>
+        ${e.interested.map(g=>miniRow(mem(g))).join("")}`:""}
+
+      <div class="sec">Hosted by</div>
+      <button class="card flat" data-org="${org.id}">
+        <div class="row" style="align-items:center;gap:11px">
+          <span class="av sm" style="background:linear-gradient(140deg,#8A6712,#C9A227);font-size:11px">${esc(org.k)}</span>
+          <span style="flex:1"><span class="nm" style="font-size:14.5px">${esc(org.n)}</span>
+          <span class="s">${esc(org.city)}</span></span><span class="gt">›</span></div></button>
+      <div style="height:14px"></div>
+    </div>
+  </div>`;
+}
+function miniRow(m){
+  return `<button class="lstrow" data-m="${m.id}" style="width:100%">${av(m,"sm")}
+    <span style="flex:1;min-width:0"><span class="nm" style="font-size:14.5px">${esc(m.n)}</span>
+    <span class="s">${esc([m.lvl,m.city].join(" · "))}</span></span><span class="gt">›</span></button>`;
+}
+function orgList(){
+  return `<div class="scroll"><div class="pad">
+    ${ORGS.map(o=>`<button class="card" data-org="${o.id}">
+      <div class="row" style="align-items:center;gap:12px">
+        <span class="av" style="background:linear-gradient(140deg,#8A6712,#C9A227);font-size:14px">${esc(o.k)}</span>
+        <span style="flex:1;min-width:0"><span class="nm">${esc(o.n)}</span>
+        <span class="meta">${esc(o.city)} · ${o.members} ${o.members===1?"member":"members"}</span></span>
+      </div>
+      ${o.inv?`<div class="chips"><span class="chip gold">Can issue invites</span></div>`:""}
+    </button>`).join("")}
+    <div class="note">Organizations are one of the two ways a new member gets in. The other is a mentor.</div>
+  </div></div>`;
+}
+function orgPage(id){
+  const o = ORGS[id];
+  const list = M.filter(m=>(m.aff||[]).includes(o.n));
+  const ev = EV.filter(e=>e.org===id);
+  return `<div class="scroll">
+    <div class="hero">
+      <button class="back" style="color:#B9CADF;padding:0 0 12px" data-act="back">← Back</button>
+      <div class="row" style="gap:13px;align-items:center">
+        <span class="av lg" style="background:linear-gradient(140deg,#8A6712,#C9A227);font-size:22px;width:66px;height:66px;border-radius:20px">${esc(o.k)}</span>
+        <span><span class="nm lg" style="font-size:21px">${esc(o.n)}</span>
+        <span class="meta">${esc(o.city)}</span></span></div>
+      <div class="chips">${o.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}
+        ${o.inv?`<span class="chip gold">Can issue invites</span>`:""}</div>
+      <button class="btn gold" style="width:100%;margin-top:14px" data-follow="${o.id}">Follow</button>
+    </div>
+    <div class="pad">
+      <div class="body" style="margin-top:2px">${esc(o.d)}</div>
+      ${ev.length?`<div class="sec">Upcoming</div>${ev.map(evCard).join("")}`:""}
+      ${list.length?`<div class="sec">${list.length} members here</div>${list.map(miniRow).join("")}`:""}
+      <div style="height:14px"></div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================ CHAT
+   Direct and group threads are chat. Discussion rooms are a forum,
+   organised the way Discourse organises one: a category list, then a
+   topic list with replies / views / activity you can sort by, then
+   the topic itself. */
+const room  = id => S.rooms.find(r=>r.id===id);
+const group = id => S.groups.find(g=>g.id===id);
+const dm    = id => S.dms.find(d=>d.id===id);
+const topicOf = (r,tid) => r.threads.find(t=>t.id===tid);
+function roomFor(topic){
+  const hit = ROOM_MAP.find(([re]) => re.test(topic||""));
+  return hit ? hit[1] : null;
+}
+function evGroup(e){
+  let g = S.groups.find(g=>g.ev===e.id);
+  if (!g){
+    g = {id:"ev"+e.id, ev:e.id, n:e.t, icon:"◎", sub:e.when, members:e.going.slice(),
+         msgs:[{by:e.going[0], when:"Today", t:"See you Saturday. Anyone who wants a lift from the South Bay, say so here."}]};
+    S.groups.push(g);
+  }
+  return g.id;
+}
+const lastOf = t => t.msgs[t.msgs.length-1];
+const CATCOL = {Body:"#1A3E70", Life:"#8A6712", Kit:"#2F6B57"};
+
+function chatPage(){
+  const sg = [["all","All"],["dm","Direct"],["grp","Groups"],["room","Rooms"]];
+  const rows = [];
+  if (S.chatSeg==="all"||S.chatSeg==="dm")  S.dms.forEach(d=>rows.push({k:"dm",o:d}));
+  if (S.chatSeg==="all"||S.chatSeg==="grp") S.groups.forEach(g=>rows.push({k:"grp",o:g}));
+  const showRooms = S.chatSeg==="all" || S.chatSeg==="room";
+
+  return head("Chat",{search:true, segs:segs(sg,S.chatSeg,"chatseg")})
+  + `<div class="scroll"><div class="pad">
+    ${rows.length?`<div class="card" style="padding:2px 14px">${rows.map(chatRow).join("")}</div>`
+      : S.chatSeg!=="room" ? `<div class="empty">No conversations yet.<br>Open a room below, or message a peer.</div>`:""}
+
+    ${showRooms?`
+      <div class="sec">Discussion rooms</div>
+      <div class="s" style="margin:-4px 0 12px">Open to every member, with the whole history from
+        before you joined. Nothing here is public.</div>
+      ${["Body","Life","Kit"].map(c=>{
+        const rs = S.rooms.filter(r=>r.cat===c); if (!rs.length) return "";
+        return `<div class="catlabel" style="--c:${CATCOL[c]}">${esc(c)}</div>
+        ${rs.map(r=>`<button class="card cat" data-room="${r.id}" style="--c:${CATCOL[c]}">
+          <div class="row" style="align-items:flex-start;gap:11px">
+            <span class="roomico">${esc(r.icon)}</span>
+            <span style="flex:1;min-width:0">
+              <span class="nm" style="font-size:15px">${esc(r.n)}${
+                S.joined.includes(r.id)?`<span class="chip gold" style="margin-left:7px;vertical-align:2px">Joined</span>`:""}</span>
+              <span class="s" style="display:block;margin-top:3px;line-height:1.45">${esc(r.d)}</span>
+              <span class="s" style="display:block;margin-top:6px;color:var(--navy);font-weight:600">
+                ${r.threads.length} topics · ${r.posts} posts · ${r.members} members</span>
+            </span></div></button>`).join("")}`}).join("")}
+      `:""}
+    <div style="height:8px"></div>
+  </div></div>`;
+}
+function chatRow(r){
+  const o = r.o, last = lastOf(o);
+  const title = r.k==="dm" ? o.with : o.n;
+  const sub   = r.k==="dm" ? `${mem(o.with).lvl} · ${mem(o.with).city}` : o.sub || "";
+  const icon  = r.k==="dm" ? av(o.with,"sm") : `<span class="roomico">${esc(o.icon)}</span>`;
+  const attr  = r.k==="dm" ? `data-dmid="${esc(o.id)}"` : `data-group="${esc(o.id)}"`;
+  return `<button class="lstrow" ${attr} style="width:100%">${icon}
+    <span style="flex:1;min-width:0">
+      <span class="nm" style="font-size:14.5px">${esc(title)}</span>
+      <span class="s" style="display:block;margin-top:1px">${esc(sub)}</span>
+      <span class="lastmsg">${esc(last ? (last.by?last.by+": ":"You: ")+last.t : "")}</span></span>
+    <span class="s" style="flex:none;align-self:flex-start">${esc(last?last.when.replace(/^Today /,""):"")}</span>
+  </button>`;
+}
+
+/* ---------------------------------------------------------- room = topic list */
+const SORTS = [["last","Activity"],["replies","Replies"],["views","Views"]];
+function roomPage(id){
+  const r = room(id), joined = S.joined.includes(id);
+  const ts = r.threads.slice().sort((a,b)=>
+    S.roomSort==="replies" ? b.replies-a.replies :
+    S.roomSort==="views"   ? b.views-a.views : a.ago-b.ago);
+  return `<div class="screen">
+    <div class="top" style="padding-bottom:0">
+      <button class="back" data-act="back" style="padding:0 0 8px">← Chat</button>
+      <div class="row" style="align-items:flex-start;gap:11px">
+        <span class="roomico" style="--c:${CATCOL[r.cat]}">${esc(r.icon)}</span>
+        <span style="flex:1;min-width:0">
+          <span class="nm" style="font-size:18px">${esc(r.n)}</span>
+          <span class="s" style="display:block;margin-top:3px;line-height:1.45">${esc(r.d)}</span>
+          <span class="s" style="display:block;margin-top:5px;color:var(--navy);font-weight:600">
+            ${r.threads.length} topics · ${r.members} members · open to all, full history</span></span>
+      </div>
+      <div class="sortbar">
+        <span class="s" style="flex:1;font-weight:700;color:var(--ink2)">Topic</span>
+        ${SORTS.map(([k,l])=>`<button class="sortb ${S.roomSort===k?"on":""}" data-sort="${k}">${l}${
+          S.roomSort===k?" ▾":""}</button>`).join("")}
+      </div>
+    </div>
+    <div class="scroll"><div class="pad" style="padding-top:10px">
+      ${ts.map(t=>topicRow(r,t)).join("")}
+      ${joined?`<button class="btn out" style="width:100%;margin-top:4px" data-newtopic="${r.id}">+ New topic</button>`:""}
+      <div style="height:10px"></div>
+    </div></div>
+    ${joined?"":`<div class="composer"><button class="btn gold" style="width:100%" data-join="${r.id}">
+      Join ${esc(r.n)}</button></div>`}
+    ${nav()}
+  </div>`;
+}
+function topicRow(r,t){
+  const people = [...new Set(t.posts.map(p=>p.by))].slice(0,4);
+  return `<button class="card topic" data-topicid="${r.id}|${t.id}">
+    <div class="nm" style="font-size:15.5px;line-height:1.34">${esc(t.t)}</div>
+    <div class="row" style="align-items:center;gap:10px;margin-top:10px">
+      <span style="display:flex;flex:none">${people.map((p,i)=>
+        `<span style="margin-left:${i?-8:0}px;border-radius:11px;box-shadow:0 0 0 2px #fff;display:inline-block">${av(p,"sm")}</span>`).join("")}</span>
+      <span class="tstats">
+        <b>${t.replies}</b><i>${t.replies===1?"reply":"replies"}</i>
+        <b>${t.views>999?(t.views/1000).toFixed(1)+"k":t.views}</b><i>views</i>
+        <b>${esc(t.last)}</b>
+      </span>
+    </div>
+  </button>`;
+}
+
+/* ---------------------------------------------------------- topic = posts */
+function topicPage(rid, tid){
+  const r = room(rid), t = topicOf(r,tid), joined = S.joined.includes(rid);
+  return `<div class="screen">
+    <div class="top" style="padding-bottom:12px">
+      <button class="back" data-act="back" style="padding:0 0 8px">← ${esc(r.n)}</button>
+      <div class="nm" style="font-size:18px;line-height:1.3">${esc(t.t)}</div>
+      <div class="s" style="margin-top:6px">${t.replies} ${t.replies===1?"reply":"replies"} · ${t.views} views ·
+        started by ${esc(t.by)} ${esc(t.started)}</div>
+    </div>
+    <div class="scroll" id="thread"><div class="pad" style="padding-top:12px">
+      ${t.posts.map((p,i)=>fpost(p,i+1,t.posts.length)).join("")}
+      <div style="height:8px"></div>
+    </div></div>
+    ${joined?`<div class="composer">
+      <input class="cin" id="msg" data-bind="draft" value="${esc(S.draft)}" placeholder="Reply to this topic">
+      <button class="sendbtn" data-send="topic|${esc(rid)}|${esc(tid)}" ${S.draft.trim()?"":"disabled"}>${I.send}</button>
+    </div>`:`<div class="composer"><button class="btn gold" style="width:100%" data-join="${rid}">
+      Join ${esc(r.n)} to reply</button></div>`}
+    ${nav()}
+  </div>`;
+}
+function fpost(p,n,total){
+  const mine = !p.by, m = mine ? null : mem(p.by);
+  return `<div class="fp">
+    <div class="row" style="align-items:center;gap:10px">
+      ${mine?meAv("sm"):`<button data-m="${m.id}" style="flex:none">${av(m,"sm")}</button>`}
+      <span style="flex:1;min-width:0">
+        <span class="nm" style="font-size:14px">${mine?esc(S.new.name||"You"):esc(m.n)}${
+          mine?"":`<span class="s" style="font-weight:600;margin-left:7px">${esc(m.lvl)}</span>`}</span>
+        <span class="s">${esc(p.when)}</span></span>
+      <span class="pnum">${n}/${total}</span>
+    </div>
+    <div class="body" style="margin-top:8px">${esc(p.t)}</div>
+  </div>`;
+}
+
+/* ---------------------------------------------------------- direct & group */
+function threadPage(kind, id){
+  const o = kind==="grp"?group(id):dm(id);
+  if (!o) return `<div class="empty">Gone.</div>`;
+  const title = kind==="dm" ? o.with : o.n;
+  const sub = kind==="dm" ? `${mem(o.with).lvl} ${mem(o.with).comp.toLowerCase()} · ${mem(o.with).city}`
+                          : `${(o.members||[]).length} members · ${o.sub||""}`;
+  return `<div class="screen">
+    <div class="top" style="padding-bottom:12px">
+      <button class="back" data-act="back" style="padding:0 0 8px">← Chat</button>
+      <div class="row" style="align-items:center;gap:11px">
+        ${kind==="dm"?av(o.with,"sm"):`<span class="roomico">${esc(o.icon)}</span>`}
+        <span style="flex:1;min-width:0"><span class="nm" style="font-size:16px">${esc(title)}</span>
+        <span class="s">${esc(sub)}</span></span>
+        ${kind==="dm"?`<button class="chip out" data-m="${mem(o.with).id}">Profile</button>`:""}
+      </div>
+    </div>
+    <div class="scroll" id="thread"><div class="pad" style="padding-top:12px">
+      ${o.msgs.map(msgBubble).join("")}
+      <div style="height:8px"></div>
+    </div></div>
+    <div class="composer">
+      <input class="cin" id="msg" data-bind="draft" value="${esc(S.draft)}" placeholder="Message ${esc(title)}">
+      <button class="sendbtn" data-send="${kind}|${esc(id)}" ${S.draft.trim()?"":"disabled"}>${I.send}</button>
+    </div>
+    ${nav()}
+  </div>`;
+}
+function msgBubble(x){
+  if (!x.by) return `<div class="msg me"><div class="bub">${esc(x.t)}</div>
+    <div class="mt">You · ${esc(x.when)}</div></div>`;
+  const m = mem(x.by);
+  return `<div class="msg">
+    <button data-m="${m.id}" style="flex:none">${av(m,"sm")}</button>
+    <div style="min-width:0">
+      <div class="mt" style="margin:0 0 3px">${esc(m.n)} · ${esc(m.lvl)} · ${esc(x.when)}</div>
+      <div class="bub">${esc(x.t)}</div>
+    </div></div>`;
+}
+
+/* ============================================================ ME */
+function profDone(){
+  const need = PROFILE.filter(p=>!p.onlyIf || p.onlyIf(S.prof));
+  const done = need.filter(p=>{ const v=S.prof[p.key];
+    return Array.isArray(v)?v.length:(v!=null && String(v).trim()!==""); });
+  return {done:done.length, total:need.length, pct:Math.round(done.length/need.length*100)};
+}
+function mePage(){
+  const nm = S.new.name || "You", pd = profDone();
+  return `<div class="scroll">
+    <div class="hero" style="padding-bottom:26px">
+      <div class="tbar" style="margin-bottom:14px">${BRAND}
+        <button class="iconbtn" style="background:#22406B" data-act="bell">${I.bell}</button></div>
+      <div class="row" style="gap:14px;align-items:center">${meAv("lg")}
+        <div><div class="nm lg">${esc(nm)}</div>
+          <div class="meta">${esc([S.new.lvl, ageOf(S.new.dob), S.new.city||"San Jose"].filter(Boolean).join(" · "))}</div>
+          <div class="chips"><span class="chip gold">Member since today</span>${
+            bdayLabel(S.new.dob)?`<span class="chip gold">${esc(bdayLabel(S.new.dob))}</span>`:""}
+            ${S.mentor?`<span class="chip gold">Mentor</span>`:""}</div>
+        </div></div>
+    </div>
+    <div class="pad" style="margin-top:-12px">
+      <div class="stat">
+        <div><b>${S.dms.length}</b><span>CONVERSATIONS</span></div>
+        <div><b>${S.joined.length}</b><span>ROOMS</span></div>
+        <div><b>${S.new.going.length}</b><span>MEETING UP</span></div>
+      </div>
+
+      <div class="sec">Your profile</div>
+      <button class="card" data-act="profile" style="text-align:left">
+        <div class="row" style="align-items:center;gap:13px">
+          <span class="ring" style="--p:${pd.pct}"><b>${pd.pct}<i>%</i></b></span>
+          <span style="flex:1"><span class="nm" style="font-size:15.5px">${
+            pd.pct===100?"Profile complete":"Complete your profile"}</span>
+          <span class="s" style="display:block;margin-top:3px;line-height:1.45">${
+            pd.pct===100 ? "You are searchable on every field members filter by."
+            : `${pd.total-pd.done} questions left. The more of it you fill in, the better the club
+               can match you to people and events.`}</span></span>
+          <span class="gt">›</span></div>
+      </button>
+
+      <div class="sec">Standing</div>
+      <div class="card">
+        <div class="row" style="align-items:center;gap:11px">
+          <span style="color:var(--gold-dp);display:flex">${I.shield}</span>
+          <span style="flex:1"><span class="nm" style="font-size:15px">Good standing</span>
+          <span class="s" style="display:block">Invited by ${esc(S.new.invitedBy||"NorCal SCI")}</span></span>
+        </div>
+        <div class="hr"></div>
+        <div class="s" style="line-height:1.55">Membership can be lost. Selling to members, harassing
+          anyone, giving medical advice as fact, or taking what is said in a room outside it all end it.</div>
+        <button class="btn link" style="width:100%;margin-top:6px" data-act="conduct">Read the house rules →</button>
+      </div>
+
+      <div class="sec">Invites</div>
+      <div class="card">
+        <div class="row" style="align-items:center;gap:11px">
+          <span class="qmark" style="background:var(--tint);color:var(--navy)">✉</span>
+          <span style="flex:1"><span class="nm" style="font-size:15px">${
+            S.mentor?"You can invite people":"Members cannot invite"}</span>
+          <span class="s" style="display:block;margin-top:2px;line-height:1.45">${
+            S.mentor
+            ? "As a mentor you have 2 invites. Sent by text, tied to that phone, non-transferable."
+            : "Invites come from a member organization or from a peer mentor — never from an ordinary member. It is what keeps the club closed."}</span></span>
+        </div>
+        ${S.mentor?`<button class="btn solid" style="width:100%;margin-top:12px" data-act="invite">Invite someone</button>`
+         :`<button class="btn link" style="width:100%;margin-top:6px" data-act="profile">Become a mentor →</button>`}
+      </div>
+
+      <div class="note"><b>Principle three.</b> Everyone here has an SCI. Everyone was invited by a
+        mentor or a member organization. Membership can be taken away.</div>
+      <div style="height:16px"></div>
+    </div>
+  </div>`;
+}
+
+/* ============================================================ nav */
+function nav(){
+  const t = [["home","Home",I.home],["peers","Peers",I.peers],["chat","Chat",I.chat],
+             ["events","Events",I.ev],["me","Me",I.me]];
+  return `<div class="nav">${t.map(x=>
+    `<b class="${S.tab===x[0]?"on":""} ${x[0]==="chat"?"mid":""}" data-tab="${x[0]}">
+      <span class="ni">${x[2]}</span><span>${x[1]}</span>${
+      x[0]==="chat"?'<span class="pip"></span>':""}</b>`).join("")}</div>`;
+}
+
+/* ------------------------------------------------------------ dates */
+const MON = ["January","February","March","April","May","June","July",
+             "August","September","October","November","December"];
+function dobParts(v){
+  if (!v) return null;
+  const p = String(v).split("-");
+  if (p.length!==3) return null;
+  const y=+p[0], mo=+p[1], d=+p[2];
+  if (!y||!mo||!d||y<1900||mo>12||d>31) return null;
+  return {y, mo, d};
+}
+function ageOf(v){
+  const p = dobParts(v); if (!p) return null;
+  const now = new Date(2026, 8, 1);
+  let a = now.getFullYear()-p.y;
+  if (now.getMonth()+1 < p.mo || (now.getMonth()+1===p.mo && now.getDate() < p.d)) a--;
+  return a>0 && a<120 ? a : null;
+}
+function dobLabel(v){ const p=dobParts(v); return p ? `${MON[p.mo-1]} ${p.d}, ${p.y}` : ""; }
+function bdayLabel(v){
+  const p = dobParts(v); if (!p) return "";
+  const now = new Date(2026, 8, 1);
+  let next = new Date(now.getFullYear(), p.mo-1, p.d);
+  if (next < now) next = new Date(now.getFullYear()+1, p.mo-1, p.d);
+  const days = Math.round((next-now)/86400000);
+  if (days===0) return "Birthday today";
+  if (days<=30) return `Birthday in ${days} day${days===1?"":"s"}`;
+  return `${MON[p.mo-1]} ${p.d} birthday`;
+}
+/* ============================================================ init */
+Object.assign(S.new, {going:[], interested:[], invitedBy:"NorCal SCI"});
+
+const TOPICS = ["Adaptive sports","Driving","Back to school","Caregivers","Pain management",
+  "Intimacy","Advocacy","Travel","Equipment","Catheter","Mental health","Parenting","Cooking"];
+const CITIES = [...new Set(M.map(m=>m.city))].sort();
+
+/* ============================================================ sheets */
+function sheet(){
+  if (!S.sheet) return "";
+  const k = S.sheet;
+  let inner = "";
+
+  if (k==="filters"){
+    const f = S.filter, n = f.grp.length+f.topic.length+f.city.length;
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">Filter peers</div>
+      <div class="s">${M.filter(matches).length} members match right now</div>
+      <div class="sec">Level of injury</div>
+      <div class="chips" style="margin-top:0">${GRPS.map(g=>
+        `<button class="chip ${f.grp.includes(g)?"on":"out"}" data-f="grp|${esc(g)}">${esc(g)}</button>`).join("")}</div>
+      <div class="sec">Happy to talk about</div>
+      <div class="chips" style="margin-top:0">${TOPICS.map(t=>
+        `<button class="chip ${f.topic.includes(t)?"on":"out"}" data-f="topic|${esc(t)}">${esc(t)}</button>`).join("")}</div>
+      <div class="sec">City</div>
+      <div class="chips" style="margin-top:0">${CITIES.map(c=>
+        `<button class="chip ${f.city.includes(c)?"on":"out"}" data-f="city|${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <div class="note">Step-free access is assumed everywhere in the club, so it is not a filter.</div>
+      <div style="height:16px"></div></div>
+    <footer><div class="btn2">
+      <button class="btn ghost" data-act="clearf">Clear${n?` (${n})`:""}</button>
+      <button class="btn solid" data-act="closesheet">Show ${M.filter(matches).length}</button>
+    </div></footer>`;
+  }
+
+  if (k==="hfilters"){
+    const h = S.hfilter, n = hcount();
+    const shown = S.feed.filter(f => (S.homeSeg==="all"||f.k===S.homeSeg) && hmatch(f)).length;
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">Filter your feed</div>
+      <div class="s">${shown} of ${S.feed.length} items match</div>
+      <div class="sec">Topic</div>
+      <div class="chips" style="margin-top:0">${FCATS.map(c=>
+        `<button class="chip ${h.cat.includes(c)?"on":"out"}" data-h="cat|${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <div class="sec">Where</div>
+      <div class="chips" style="margin-top:0">${["San Jose","Santa Clara","Fremont","Santa Cruz","San Francisco","Sacramento","Online"].map(c=>
+        `<button class="chip ${h.city.includes(c)?"on":"out"}" data-h="city|${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <div class="note">The segments across the top filter by kind — question, post, event, person.
+        This narrows what is inside them.</div>
+      <div style="height:16px"></div></div>
+    <footer><div class="btn2">
+      <button class="btn ghost" data-act="clearh">Clear${n?` (${n})`:""}</button>
+      <button class="btn solid" data-act="closesheet">Show ${shown}</button>
+    </div></footer>`;
+  }
+
+  if (k==="compose"){
+    const isQ = S.composeKind==="q";
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 10px">${isQ?"Ask the club":"Share a photo"}</div>
+      <div class="chips" style="margin:0 0 4px">
+        <button class="chip ${isQ?"on":"out"}" data-kind="q">Ask a question</button>
+        <button class="chip ${isQ?"out":"on"}" data-kind="post">Share something</button>
+      </div>
+      ${isQ?`
+      <div class="s" style="margin-top:10px">Goes to every member. Answers come from people who have lived it.</div>
+      <textarea class="fld" id="qq" data-bind="compose" placeholder="What do you want to know?">${esc(S.compose)}</textarea>
+      <div class="sec">Category</div>
+      <div class="chips" style="margin-top:0">${QCATS.map(c=>
+        `<button class="chip ${S.composeCat===c?"on":"out"}" data-cat="${esc(c)}">${esc(c)}</button>`).join("")}</div>
+      <button class="lstrow" data-act="anon" style="width:100%;margin-top:14px">
+        <span style="flex:1"><span class="nm" style="font-size:14.5px">Ask anonymously</span>
+        <span class="s" style="display:block;margin-top:2px">Your name is hidden on this question only.</span></span>
+        <span class="sw ${S.composeAnon?"on":""}"><i></i></span></button>`
+      :`
+      <div class="s" style="margin-top:10px">A picture and a line about it. Most of what gets shared
+        here is something you did, made or worked out.</div>
+      <div class="picker">
+        ${[0,1,2,3].map(i=>`<button class="slot ${S.pics>i?"on":""}" data-pic="${i}">
+          ${S.pics>i?`<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><path d="M5 12.5 10 17l9-10"/></svg>`
+            :`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>`}
+        </button>`).join("")}
+      </div>
+      <p class="fine" style="text-align:center">${S.pics? `${S.pics} photo${S.pics>1?"s":""} selected` : "Tap to add up to four photos"}</p>
+      <textarea class="fld" id="qq" data-bind="compose" style="min-height:78px"
+        placeholder="Say something about it…">${esc(S.compose)}</textarea>`}
+      <div style="height:16px"></div></div>
+    <footer><button class="btn gold" style="width:100%" data-act="post"
+      ${(isQ? S.compose.trim() : (S.pics||S.compose.trim()))?"":"disabled"}>${isQ?"Post question":"Share"}</button></footer>`;
+  }
+
+  if (k==="invite"){
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">Invite someone</div>
+      <div class="s">Mentors get two. You have ${S.invitesLeft} left.</div>
+      <input class="fld" id="ivp" data-bind="ivphone" type="tel" inputmode="tel" placeholder="(408) 555-0148">
+      <div class="sec">How it works</div>
+      <div class="card" style="margin:0">
+        ${[["1","We text a link to that number and nowhere else."],
+           ["2","The link only opens on the phone that received it. No code, no forwarding."],
+           ["3","The number becomes their account. Lose the club, lose it for that number."]]
+          .map(r=>`<div class="lstrow"><span class="qmark" style="width:26px;height:26px;font-size:13px">${r[0]}</span>
+            <span style="font-size:13.5px;line-height:1.45">${esc(r[1])}</span></div>`).join("")}
+      </div>
+      <div class="note"><b>Only invite someone with an SCI.</b> You are vouching for them, and their
+        conduct reflects on your standing as a mentor.</div>
+      <div style="height:16px"></div></div>
+    <footer><button class="btn gold" style="width:100%" data-act="sendinvite">Send invite by text</button></footer>`;
+  }
+
+  if (k==="conduct"){
+    const rules = [
+      ["Everyone here has an SCI","That is the whole membership test, and it is why you can ask anything. Spouses and partners may be added later; nobody else."],
+      ["Invites come from mentors and organizations","Ordinary members cannot invite. It is the only thing keeping the club closed."],
+      ["Nobody sells anything","No products, no supplements, no clinics, no 'programme I built'. Recommending gear you actually use is not selling."],
+      ["Your experience is yours","Say what happened to you. Do not tell someone what will happen to them, and never present it as medical advice."],
+      ["What is said in a room stays in it","Rooms have full history precisely because nothing leaves. Screenshots leave the club, and so does whoever took them."],
+      ["Meeting up is the point","But nobody owes anybody a meeting, a reply, or a reason."],
+    ];
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">House rules</div>
+      <div class="s">Six of them. Breaking one can cost you membership.</div>
+      ${rules.map((r,i)=>`<div class="card" style="margin-top:11px">
+        <div class="nm" style="font-size:15px">${i+1}. ${esc(r[0])}</div>
+        <div class="body m" style="margin-top:6px">${esc(r[1])}</div></div>`).join("")}
+      <div style="height:16px"></div></div>
+    <footer><button class="btn solid" style="width:100%" data-act="closesheet">Got it</button></footer>`;
+  }
+
+  if (k==="search"){
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">Search members</div>
+      <input class="fld" id="sq" data-bind="search" value="${esc(S.search)}"
+        placeholder="rugby, botox, driving, Sacramento…">
+      <div class="sec">Try</div>
+      <div class="chips" style="margin-top:0">${
+        ["wheelchair rugby","suprapubic","driving","back to school","photography","pregnancy","SmartDrive","monoski"]
+        .map(t=>`<button class="chip out" data-search="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+      <div style="height:16px"></div></div>
+    <footer><button class="btn solid" style="width:100%" data-act="closesheet">Search</button></footer>`;
+  }
+
+  if (k==="bell"){
+    const notes = [
+      ["Nicole","Nicole replied in Equipment &amp; assistive tech.","1h"],
+      ["Kevin","Kevin sent you a message.","3h"],
+      [null,"5 new messages in Bowel management.","5h"],
+      ["Jan","Jan replied in Aging with SCI.","2d"],
+    ];
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 8px">Activity</div>
+      ${notes.map(n=>`<div class="lstrow">
+        ${n[0]?av(n[0],"sm"):`<span class="roomico">◍</span>`}
+        <span style="flex:1"><span style="font-size:13.8px;line-height:1.45;display:block">${n[1]}</span>
+        <span class="s">${esc(n[2])}</span></span></div>`).join("")}
+      <div style="height:16px"></div></div>
+    <footer><button class="btn solid" style="width:100%" data-act="closesheet">Close</button></footer>`;
+  }
+
+  return `<div class="veil" data-act="closesheet"></div><div class="sheet"><div class="grab"></div>${inner}</div>`;
+}
+
+/* ============================================================ profile flow */
+function pqs(sc){ return sc.keys.map(k=>PQ[k]).filter(p=>!p.onlyIf || p.onlyIf(S.prof)); }
+function answered(p){
+  const v = S.prof[p.key];
+  return Array.isArray(v) ? v.length>0 : (v!=null && String(v).trim()!=="");
+}
+/* a screen advances itself only when every question on it is a single
+   choice, or a capped multi-select that has reached its cap */
+function autoReady(sc){
+  const qs = pqs(sc);
+  if (!qs.length) return false;
+  return qs.every(p =>
+    p.kind==="one" ? answered(p)
+    : p.kind==="many" && p.max ? (S.prof[p.key]||[]).length>=p.max
+    : false);
+}
+function profDone(){
+  const need = [];
+  PSCREENS.forEach(sc => pqs(sc).forEach(p=>need.push(p)));
+  const done = need.filter(answered);
+  return {done:done.length, total:need.length, pct:Math.round(done.length/need.length*100)};
+}
+function profView(){
+  const i = Math.min(S.profStep, PSCREENS.length-1), sc = PSCREENS[i], qs = pqs(sc);
+  const pd = profDone();
+  return `<div class="screen">
+    <div class="prog">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="s" style="font-weight:700;color:var(--navy)" data-prof="exit">✕ Save &amp; close</button>
+        <span class="s">${pd.pct}% complete</span></div>
+      <div class="track"><i style="width:${pd.pct}%"></i></div>
+    </div>
+    <div class="scroll" style="padding:0 18px 12px">
+      ${i>0?`<button class="back" data-prof="back">← Back</button>`:`<div style="height:14px"></div>`}
+      <h2 class="q">${esc(sc.t)}</h2>
+      ${sc.hint?`<p class="sub">${esc(sc.hint)}</p>`:`<div style="height:6px"></div>`}
+      ${qs.map((p,n)=>{
+        const v = S.prof[p.key];
+        const chosen = Array.isArray(v)?v:(v==null?[]:[v]);
+        const full = p.kind==="many" && p.max && chosen.length>=p.max;
+        return `<div style="margin-top:${n?20:16}px">
+          <div class="qlab">${esc(p.t)}<span>Q${esc(p.q)}</span></div>
+          ${p.kind==="text"
+            ? `<textarea class="fld" data-prof-in="${esc(p.key)}" placeholder="${esc(p.ph||"")}"
+                 style="min-height:88px">${esc(v||"")}</textarea>`
+            : `<div class="chips">${p.opts.map(o=>{
+                 const on = chosen.includes(o);
+                 return `<button class="chip ${on?"on":"out"} ${!on&&full?"dim":""}"
+                   data-prof-pick="${esc(p.key)}|${esc(o)}|${p.kind}|${p.max||0}">${esc(o)}</button>`;}).join("")}
+               ${p.max?`<span class="s" style="align-self:center;margin-left:4px">${chosen.length}/${p.max}</span>`:""}</div>`}
+        </div>`}).join("")}
+      <div style="height:18px"></div>
+    </div>
+    <footer class="cta">
+      <button class="btn gold" style="width:100%" data-prof="next">
+        ${i===PSCREENS.length-1?"Finish":"Continue"}</button>
+      <button class="btn link" style="width:100%;margin-top:2px" data-prof="skip">Skip this one</button>
+    </footer>
+  </div>`;
+}
+function profAdvance(){
+  const sc = PSCREENS[Math.min(S.profStep, PSCREENS.length-1)];
+  if (!autoReady(sc)) return false;
+  setTimeout(()=>{ const b = document.querySelector('[data-prof="next"]'); if (b) b.click(); }, 420);
+  return true;
+}
+
+/* ============================================================ onboarding */
+const STEP = ["welcome","invite","name","birthday","injury","city","photo"];
+const LEVELS = ["C1–C4","C5–C8","T1–T6","T7–T12","L1–S5","Not sure yet"];
+
+function setupBody(){
+  const m = S.new;
+  switch (STEP[S.step]){
+    case "invite": return `<h2 class="q">This invite is tied to your phone</h2>
+      <p class="sub">NorCal SCI texted it to <b>(408) •••-••12</b>. The link only works on the phone
+      that received it, so there is no code to type and nothing to verify.</p>
+      <div class="card" style="margin-top:18px">
+        ${[["Your number is your account","It is never shown to another member."],
+           ["One number, one place","If you lose your membership, that number cannot come back under a new name."],
+           ["No forwarding","An invite passed to someone else simply stops working."]]
+          .map(r=>`<div class="lstrow"><span style="color:var(--gold-dp);display:flex;flex:none">${I.shield}</span>
+            <span><span class="nm" style="font-size:14px">${esc(r[0])}</span>
+            <span class="s" style="display:block;margin-top:2px">${esc(r[1])}</span></span></div>`).join("")}
+      </div>`;
+
+    case "name": return `<h2 class="q">What should people call you?</h2>
+      <p class="sub">First name is plenty — no last names anywhere in the club.</p>
+      <input class="fld" id="nm" data-new="name" value="${esc(m.name)}" placeholder="Alex">`;
+
+    case "birthday": return `<h2 class="q">When is your birthday?</h2>
+      <p class="sub">Age matters for matching — a 28-year-old and a 68-year-old with the same
+      injury are living different days. And we would like to know when yours comes round.</p>
+      <input class="fld" id="db" data-new="dob" type="date" value="${esc(m.dob)}" max="2012-12-31">
+      <div id="derive">${deriveDob()}</div>
+      <p class="fine">Your birthday is never shown to other members — only your age is.</p>`;
+
+    case "injury": return `<h2 class="q">Tell us about your injury</h2>
+      <p class="sub">The two things members filter on most.</p>
+      <h3 class="sec">Level of injury</h3>
+      <div class="chips" style="margin-top:0">${LEVELS.map(x=>
+        `<button class="chip ${m.lvl===x?"on":"out"}" data-newpick="lvl|${esc(x)}">${esc(x)}</button>`).join("")}</div>
+      <h3 class="sec">How many years have you been injured?</h3>
+      <div style="display:flex;align-items:center;gap:12px">
+        <input class="fld" id="yr" data-new="years" type="number" inputmode="numeric" min="0" max="90"
+          style="width:110px;margin-top:0;text-align:center;font-size:22px;font-weight:700"
+          value="${esc(m.years)}" placeholder="0">
+        <span class="s" style="font-size:14px">years</span>
+      </div>
+      <div id="derive2">${deriveInjury()}</div>`;
+
+    case "city": return `<h2 class="q">Where do you live?</h2>
+      <p class="sub">Because the goal is meeting in person, the club sorts everything by how close it is to you.</p>
+      <div class="chips">${["San Jose","San Francisco","Santa Cruz","Sacramento","Fremont","Oakland","Somewhere else"]
+        .map(x=>`<button class="chip ${m.city===x?"on":"out"}" data-newpick="city|${esc(x)}">${esc(x)}</button>`).join("")}</div>
+      <p class="fine">A city, never a location. The club never stores where you are right now.</p>`;
+
+    case "photo": return `<h2 class="q">Add a photo?</h2>
+      <p class="sub">Optional and never required — but this is a club of about two dozen people near you,
+      and a face makes the first meet-up much easier.</p>
+      <button data-newpick="photo|1" style="width:150px;height:150px;border-radius:44px;
+        border:2.5px dashed var(--navy);margin:26px auto 0;display:grid;place-items:center;
+        background:${m.photo?"var(--navy)":"#fff"};color:${m.photo?"#fff":"var(--navy)"}">
+        ${m.photo?`<span style="font-family:var(--head);font-weight:800;font-size:34px">${
+          esc((m.name||"A").slice(0,2).toUpperCase())}</span>`
+        :`<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>`}</button>
+      <p class="fine" style="margin-top:26px">Skip and your tile is generated from your initials.</p>`;
+  }
+}
+/* derived cards are re-rendered in place, so typing never loses the caret */
+function deriveDob(){
+  if (!ageOf(S.new.dob)) return "";
+  return `<div class="card" style="margin-top:14px">
+    <div class="row" style="align-items:center;gap:11px">
+      <span class="qmark" style="background:var(--navy);color:#fff">${ageOf(S.new.dob)}</span>
+      <span><span class="nm" style="font-size:14.5px">${esc(dobLabel(S.new.dob))}</span>
+      <span class="s" style="display:block;margin-top:2px">${esc(bdayLabel(S.new.dob))}</span></span>
+    </div></div>`;
+}
+function injuredAt(){
+  const a = ageOf(S.new.dob), y = parseInt(S.new.years,10);
+  if (a===null || isNaN(y) || y<0 || y>a) return null;
+  return a-y;
+}
+function deriveInjury(){
+  if (injuredAt()===null) return "";
+  return `<div class="card" style="margin-top:16px">
+    <div class="row" style="align-items:center;gap:11px">
+      <span style="color:var(--gold-dp);display:flex">${I.spark}</span>
+      <span class="s" style="font-size:13.4px;color:var(--ink2)">You were injured at
+        <b style="color:var(--ink)">${injuredAt()}</b>. We use that to put you next to people who were
+        injured around the same age, not just at the same level.</span></div></div>`;
+}
+function canNext(){
+  const m = S.new;
+  switch (STEP[S.step]){
+    case "name": return m.name.trim().length>0;
+    case "birthday": return ageOf(m.dob)!==null;
+    case "injury": return !!m.lvl && String(m.years).trim()!=="" && !isNaN(parseInt(m.years,10));
+    case "city": return !!m.city;
+    default: return true;
+  }
+}
+function welcomeView(){
+  return `<div class="screen welcome" style="background:var(--canvas)">
+    <div class="scroll" style="padding:0 22px">
+      <div class="lock">
+        <div class="sign">${sign(126)}</div>
+        <h1 class="hero1">Meet peers, mentors,<br>and find <em>SCI events</em>.</h1>
+        <p class="hero2">An app built by people with SCI for people with SCI.</p>
+        <p class="hero3">A private community for people living with spinal cord injury.
+          Ask the questions you can't ask anyone else, find the people who have already
+          answered them, and get to something worth going to.</p>
+      </div>
+    </div>
+    <footer class="cta">
+      <div class="btn2">
+        <button class="btn solid" data-setup="next">I have an invite</button>
+        <button class="btn out" data-act="howto">How to get one</button>
+      </div>
+      <p class="fine" style="text-align:center;margin:11px 0 2px">Members only. Nothing inside the club is public.</p>
+    </footer>
+  </div>`;
+}
+function setupView(){
+  if (STEP[S.step]==="welcome") return welcomeView();
+  const n = S.step-1, show = S.step>=2, last = STEP[S.step]==="photo";
+  return `<div class="screen">
+    ${show?`<div class="prog"><div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="s" style="font-weight:700;color:var(--navy)">THE SCI CLUB</span>
+        <span class="s">Step ${n} of 5</span></div>
+      <div class="track"><i style="width:${n/5*100}%"></i></div></div>`:`<div style="height:44px"></div>`}
+    <div class="scroll" style="padding:0 18px 12px">
+      <button class="back" data-setup="back">← Back</button>
+      ${setupBody()}<div style="height:16px"></div>
+    </div>
+    <footer class="cta">
+      <button class="btn gold" style="width:100%" data-setup="next" ${canNext()?"":"disabled"}>
+        ${last?"Enter the club":"Continue"}</button>
+      ${last?`<button class="btn link" style="width:100%;margin-top:2px" data-setup="skip">Skip for now</button>`:""}
+    </footer>
+  </div>`;
+}
+
+/* ============================================================ render */
+function render(){
+  const a = $("#app");
+  if (S.setup){ a.innerHTML = setupView(); return; }
+  if (S.view && S.view.k==="prof"){ a.innerHTML = profView(); return; }
+  if (S.view && S.view.k==="room"){ a.innerHTML = roomPage(S.view.id); return; }
+  if (S.view && S.view.k==="topic"){
+    a.innerHTML = topicPage(S.view.rid, S.view.tid);
+    const t = $("#thread"); if (t) t.scrollTop = t.scrollHeight;
+    if (S.focusMsg){ const f=$("#msg"); if (f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); } }
+    return;
+  }
+  if (S.view && (S.view.k==="grp"||S.view.k==="dm")){
+    a.innerHTML = threadPage(S.view.k, S.view.id);
+    const t = $("#thread"); if (t) t.scrollTop = t.scrollHeight;
+    if (S.focusMsg){ const f=$("#msg"); if (f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); } }
+    return;
+  }
+  let body;
+  if (S.view && S.view.k==="q")        body = qPage(S.view.id);
+  else if (S.view && S.view.k==="m")   body = peerPage(S.view.id);
+  else if (S.view && S.view.k==="ev")  body = evDetail(S.view.id);
+  else if (S.view && S.view.k==="org") body = orgPage(S.view.id);
+  else if (S.tab==="home")   body = homePage();
+  else if (S.tab==="peers")  body = peersPage();
+  else if (S.tab==="chat")   body = chatPage();
+  else if (S.tab==="events") body = evPage();
+  else                       body = mePage();
+
+  a.innerHTML = `<div class="screen">${body}
+    ${S.tab==="home"&&!S.view?`<button class="fab" data-act="compose">${I.plus}Post</button>`:""}
+    ${nav()}
+    ${S.toast?`<div class="toast">${esc(S.toast)}</div>`:""}
+    ${sheet()}</div>`;
+}
+let tt;
+function toast(m){ S.toast=m; render(); clearTimeout(tt); tt=setTimeout(()=>{S.toast=null;render();},3400); }
+
+function openDM(name){
+  let d = S.dms.find(d=>d.with===name);
+  if (!d){ d = {id:"dm-"+name.toLowerCase(), with:name, msgs:[]}; S.dms.unshift(d); }
+  S.view = {k:"dm", id:d.id}; S.tab="chat"; S.draft=""; render();
+}
+function openTopic(t){
+  const id = roomFor(t);
+  if (id){
+    if (!S.joined.includes(id)) S.joined.push(id);
+    S.view={k:"room",id}; S.tab="chat"; S.draft=""; render();
+    toast(`“${t}” lives in ${room(id).n}. Full history, open to all members.`);
+  } else {
+    S.search = t; S.tab="peers"; S.peerSeg="all"; S.view=null; render();
+    toast(`No room for “${t}” yet — showing members who mention it.`);
+  }
+}
+
+/* ============================================================ events */
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-act],[data-tab],[data-q],[data-m],[data-ev],[data-org],[data-homeseg],[data-chatseg],[data-kind],[data-peerseg],[data-evseg],[data-f],[data-h],[data-cat],[data-search],[data-dm],[data-dmid],[data-room],[data-topicid],[data-sort],[data-newtopic],[data-group],[data-topic],[data-thank],[data-pic],[data-dismiss],[data-go],[data-int],[data-setup],[data-newpick],[data-askthem],[data-follow],[data-send],[data-join],[data-prof],[data-prof-pick]");
+  if (!t) return;
+  const d = t.dataset;
+
+  /* ---- profile completion flow */
+  if (d.profPick){
+    const [key,val,kind,max] = d.profPick.split("|");
+    if (kind==="many"){
+      const cur = S.prof[key] || [];
+      if (cur.includes(val)) S.prof[key] = cur.filter(v=>v!==val);
+      else if (!+max || cur.length < +max) S.prof[key] = cur.concat([val]);
+      else { toast(`Pick up to ${max} — deselect one first.`); return; }
+    } else S.prof[key] = val;
+    render(); profAdvance(); return;
+  }
+  if (d.prof){
+    const stash = () => document.querySelectorAll("[data-prof-in]").forEach(f=>{
+      if (f.value.trim()) S.prof[f.dataset.profIn] = f.value; });
+    if (d.prof==="next" || d.prof==="skip"){
+      stash();
+      if (S.profStep >= PSCREENS.length-1){
+        S.mentor = S.prof.mentor==="Yes";
+        if (S.mentor) S.invitesLeft = 2;
+        S.view=null; S.tab="me"; render();
+        toast(S.mentor ? "Profile saved. As a mentor you now have 2 invites."
+                       : `Profile saved — ${profDone().pct}% complete.`);
+        return;
+      }
+      S.profStep++; render(); return;
+    }
+    if (d.prof==="back"){ stash(); S.profStep=Math.max(0,S.profStep-1); render(); return; }
+    if (d.prof==="exit"){ stash(); S.view=null; render(); toast("Saved. Pick it up any time from Me."); return; }
+  }
+
+  if (d.kind){ S.composeKind=d.kind; render(); return; }
+  if (d.pic!==undefined && t.hasAttribute("data-pic")){
+    S.pics = (+d.pic)+1 === S.pics ? +d.pic : (+d.pic)+1; render(); return; }
+  if (d.dismiss!==undefined && t.hasAttribute("data-dismiss")){
+    S.dismissed.push(+d.dismiss); render();
+    toast("Hidden. We'll show you fewer like it."); return; }
+
+  /* ---- onboarding */
+  if (d.newpick){
+    const [k,v] = d.newpick.split("|");
+    S.new[k] = k==="photo" ? !S.new.photo : v; render(); return;
+  }
+  if (d.setup){
+    const stash=()=>document.querySelectorAll("[data-new]").forEach(f=>{S.new[f.dataset.new]=f.value;});
+    if (d.setup==="next"){ stash();
+      if (STEP[S.step]==="photo"){ S.setup=false; render();
+        toast("You're in. 23 members near you, all invited the same way."); return; }
+      S.step++; render(); return; }
+    if (d.setup==="back"){ stash(); S.step=Math.max(0,S.step-1); render(); return; }
+    if (d.setup==="skip"){ S.setup=false; render();
+      toast("You're in. Add a photo any time from Me."); return; }
+  }
+
+  /* ---- chat */
+  if (d.dm !== undefined && t.hasAttribute("data-dm")){ openDM(d.dm); return; }
+  if (d.dmid){ S.view={k:"dm",id:d.dmid}; S.tab="chat"; S.draft=""; render(); return; }
+  if (d.room){ S.view={k:"room",id:d.room}; S.tab="chat"; S.draft=""; render(); return; }
+  if (d.topicid){ const [rid,tid]=d.topicid.split("|");
+    const t = topicOf(room(rid),tid); if (t) t.views++;
+    S.view={k:"topic",rid,tid}; S.tab="chat"; S.draft=""; render(); return; }
+  if (d.sort){ S.roomSort=d.sort; render(); return; }
+  if (d.newtopic){ toast("In the real app this opens the new-topic composer."); return; }
+  if (d.group){ S.view={k:"grp",id:d.group}; S.tab="chat"; S.draft=""; render(); return; }
+  if (d.topic){ openTopic(d.topic); return; }
+  if (d.join){ if (!S.joined.includes(d.join)) S.joined.push(d.join);
+    render(); toast(`Joined ${room(d.join).n}. Every topic above it was here before you.`); return; }
+  if (d.send){
+    const f = $("#msg"); const txt = (f?f.value:S.draft).trim();
+    if (!txt) return;
+    const parts = d.send.split("|");
+    if (parts[0]==="topic"){
+      const t = topicOf(room(parts[1]), parts[2]);
+      t.posts.push({by:null, when:"Just now", t:txt});
+      t.replies = t.posts.length-1; t.last = "just now"; t.ago = 0;
+    } else {
+      const o = parts[0]==="grp"?group(parts[1]):dm(parts[1]);
+      o.msgs.push({by:null, when:"Now", t:txt});
+    }
+    S.draft=""; S.focusMsg=true; render(); S.focusMsg=false; return;
+  }
+
+  /* ---- nav + views */
+  if (d.tab){ S.tab=d.tab; S.view=null; S.sheet=null; render(); return; }
+  if (d.q!==undefined && t.hasAttribute("data-q")){ S.view={k:"q",id:+d.q}; render(); return; }
+  if (d.m!==undefined && t.hasAttribute("data-m")){ S.view={k:"m",id:+d.m}; S.tab="peers"; render(); return; }
+  if (d.ev!==undefined && t.hasAttribute("data-ev")){ S.view={k:"ev",id:+d.ev}; render(); return; }
+  if (d.org!==undefined&& t.hasAttribute("data-org")){ S.view={k:"org",id:+d.org}; render(); return; }
+
+  if (d.homeseg){ S.homeSeg=d.homeseg; render(); return; }
+  if (d.chatseg){ S.chatSeg=d.chatseg; render(); return; }
+  if (d.peerseg){ S.peerSeg=d.peerseg; render(); return; }
+  if (d.evseg){ S.evSeg=d.evseg; render(); return; }
+
+  if (d.f){ const [k,v]=d.f.split("|"); const a=S.filter[k];
+    a.includes(v)?a.splice(a.indexOf(v),1):a.push(v); render(); return; }
+  if (d.h){ const [k,v]=d.h.split("|"); const a=S.hfilter[k];
+    a.includes(v)?a.splice(a.indexOf(v),1):a.push(v); render(); return; }
+  if (d.cat){ S.composeCat=d.cat; render(); return; }
+  if (d.search!==undefined && t.hasAttribute("data-search")){
+    S.search=d.search; S.tab="peers"; S.peerSeg="all"; S.view=null; S.sheet=null; render();
+    toast(`Members matching “${d.search}”.`); return; }
+
+  if (d.askthem!==undefined && t.hasAttribute("data-askthem")){
+    S.sheet="compose"; S.composeKind="q"; S.composeCat="Something else"; render();
+    toast(`Asking the club — ${d.askthem} gets it first.`); return; }
+  if (d.thank){ S.thanks[d.thank]=!S.thanks[d.thank]; render(); return; }
+  if (d.go!==undefined && t.hasAttribute("data-go")){
+    const id=+d.go, g=S.new.going;
+    if (g.includes(id)){ g.splice(g.indexOf(id),1); render(); }
+    else { g.push(id); evGroup(EV[id]); render();
+      toast("You're on the list, and in the group chat for it."); }
+    return; }
+  if (d.int!==undefined && t.hasAttribute("data-int")){
+    const id=+d.int, g=S.new.interested;
+    g.includes(id)?g.splice(g.indexOf(id),1):g.push(id); render(); return; }
+  if (d.follow!==undefined && t.hasAttribute("data-follow")){
+    render(); toast(`Following ${ORGS[+d.follow].n}. Their events show up first.`); return; }
+
+  switch (d.act){
+    case "back":
+      if (S.view && S.view.k==="topic"){ S.view={k:"room",id:S.view.rid}; render(); return; }
+      S.view=null; render(); return;
+    case "profile": S.view={k:"prof"}; render(); return;
+    case "filters": case "hfilters": case "compose": case "invite":
+    case "conduct": case "search": case "bell":
+      S.sheet=d.act; render(); return;
+    case "closesheet": S.sheet=null; render(); return;
+    case "clearf": S.filter={grp:[],topic:[],city:[]}; S.search=""; render(); return;
+    case "clearh": S.hfilter={cat:[],city:[]}; render(); return;
+    case "anon": S.composeAnon=!S.composeAnon; render(); return;
+    case "post": {
+      if (S.composeKind==="q"){
+        const id = Math.max(...S.q.map(v=>v.id))+1;
+        S.q.unshift({id, by:null, anon:S.composeAnon, when:"Just now", cat:S.composeCat, q:S.compose.trim(), a:[]});
+        S.feed.unshift({k:"q", id});
+        const r = roomFor(S.composeCat);
+        toast(r ? `Posted. Also visible in the ${room(r).n} room.`
+                : "Posted. If nobody answers in 24 hours we route it to three matching members.");
+      } else {
+        const id = Math.max(...POSTS.map(v=>v.id))+1;
+        POSTS.unshift({id, by:null, mine:true, photo:S.pics>0, when:"Just now", cat:"",
+                       t:S.compose.trim() || "…"});
+        S.feed.unshift({k:"post", id});
+        toast(S.pics ? `Shared ${S.pics} photo${S.pics>1?"s":""} with the club.` : "Shared with the club.");
+      }
+      S.compose=""; S.pics=0; S.sheet=null; S.tab="home"; S.homeSeg="all"; S.view=null; render(); return; }
+    case "answer": toast("In the real app this opens the answer composer."); return;
+    case "howto": toast("Invites come from a peer mentor, or from a member organization like NorCal SCI."); return;
+    case "sendinvite":
+      if (S.invitesLeft>0) S.invitesLeft--;
+      S.sheet=null; render();
+      toast("Invite texted. It only opens on that phone, and it expires in 7 days."); return;
+    case "noop": return;
+  }
+});
+
+document.addEventListener("input", e=>{
+  const el = e.target;
+
+  /* derived cards update in place — never re-render a focused field */
+  if (el.dataset.new==="dob"){ S.new.dob=el.value;
+    const d=$("#derive"); if (d) d.innerHTML=deriveDob(); syncNext(); return; }
+  if (el.dataset.new==="years"){ S.new.years=el.value;
+    const d=$("#derive2"); if (d) d.innerHTML=deriveInjury(); syncNext(); return; }
+  if (el.dataset.new){ S.new[el.dataset.new]=el.value; syncNext(); return; }
+
+  if (el.dataset.profIn){ S.prof[el.dataset.profIn]=el.value; return; }
+
+  const k = el.dataset.bind;
+  if (k){ S[k]=el.value;
+    if (k==="compose"){ const b=$('[data-act="post"]');
+      if (b){ b.disabled=!S.compose.trim(); b.style.opacity=S.compose.trim()?"":".42"; } }
+    if (k==="draft"){ const b=$('[data-send]');
+      if (b){ b.disabled=!S.draft.trim(); } }
+  }
+});
+function syncNext(){
+  const b=$('[data-setup="next"]');
+  if (b){ b.disabled=!canNext(); b.style.opacity=canNext()?"":".42"; }
+}
+document.addEventListener("keydown", e=>{
+  if (e.key==="Enter" && e.target.id==="msg"){ const b=$("[data-send]"); if (b && !b.disabled) b.click(); }
+});
+
+render();
+
+</script></body></html>
