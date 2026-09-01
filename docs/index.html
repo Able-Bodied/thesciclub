@@ -26,6 +26,18 @@ input,textarea,select{font:inherit;color:inherit}
   position:relative;overflow:hidden;display:flex;flex-direction:column}
 .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:29px;
   background:#10151C;border-radius:0 0 18px 18px;z-index:60}
+
+/* on an actual phone the app is the app — no simulated handset around it */
+@media (max-width:520px), (max-height:900px) and (max-width:760px){
+  body{padding:0;display:block;background:var(--canvas)}
+  .phone{width:100%;height:100vh;height:100dvh;border-radius:0;box-shadow:none}
+  .notch{display:none}
+  .top{padding-top:max(18px,env(safe-area-inset-top))}
+  .prog{padding-top:max(18px,env(safe-area-inset-top))}
+  .pback{top:max(18px,env(safe-area-inset-top))}
+  .hero{padding-top:max(18px,env(safe-area-inset-top))}
+  .nav{padding-bottom:max(12px,env(safe-area-inset-bottom))}
+}
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--canvas)}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .scroll::-webkit-scrollbar{width:0}
@@ -236,6 +248,12 @@ textarea.fld{min-height:110px;resize:none;line-height:1.5}
   letter-spacing:-.01em;margin-bottom:9px}
 .qlab span{font-size:10.5px;font-weight:800;letter-spacing:.08em;color:var(--gold-dp);
   background:var(--gold-lt);padding:2px 7px;border-radius:6px;flex:none}
+
+.qrwrap{margin:18px auto 14px;width:246px;padding:18px 18px 12px;background:#fff;border-radius:22px;
+  border:1px solid var(--line);box-shadow:0 8px 22px rgba(10,20,35,.10);text-align:center}
+.qr{display:block;margin:0 auto}
+.qrlabel{margin-top:10px;font-family:var(--head);font-weight:800;font-size:13px;letter-spacing:.03em;color:var(--navy)}
+.qrmini{width:46px;height:46px;flex:none;border-radius:10px;overflow:hidden;border:1px solid var(--line);display:block}
 
 /* ---------------------------------------------------------------- chat */
 .roomico{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;
@@ -1016,7 +1034,7 @@ const S = {
   hfilter:{cat:[],city:[]},                  // home feed
   view:null, sheet:null, toast:null,
   search:"", compose:"", composeAnon:false, composeCat:"Bladder & bowel", composeKind:"q",
-  new:{name:"",dob:"",years:"",lvl:"",city:"",photo:false},
+  new:{name:"",phone:"",code:"",dob:"",years:"",lvl:"",city:"",photo:false}, blocked:false,
   q:Q.map(x=>({...x})), feed:FEED.slice(), thanks:{},
   rooms:ROOMS.map(r=>({...r, threads:r.threads.map(t=>({...t, posts:t.posts.slice()}))})),
   groups:GROUPS.map(g=>({...g, msgs:g.msgs.slice()})),
@@ -1756,12 +1774,21 @@ function mePage(){
             S.mentor?"You can invite people":"Members cannot invite"}</span>
           <span class="s" style="display:block;margin-top:2px;line-height:1.45">${
             S.mentor
-            ? "As a mentor you have 2 invites. Sent by text, tied to that phone, non-transferable."
-            : "Invites come from a member organization or from a peer mentor — never from an ordinary member. It is what keeps the club closed."}</span></span>
+            ? "As a mentor you can put two numbers on the club's list. They join by verifying that number."
+            : "Only a member organization or a peer mentor can put a number on the club's list. It is what keeps the club closed."}</span></span>
         </div>
-        ${S.mentor?`<button class="btn solid" style="width:100%;margin-top:12px" data-act="invite">Invite someone</button>`
+        ${S.mentor?`<button class="btn solid" style="width:100%;margin-top:12px" data-act="invite">Add someone to the list</button>`
          :`<button class="btn link" style="width:100%;margin-top:6px" data-act="profile">Become a mentor →</button>`}
       </div>
+
+      <button class="card" data-act="qr" style="text-align:left">
+        <div class="row" style="align-items:center;gap:13px">
+          <span class="qrmini">${qrSVG("https://sciclub.app", 46)}</span>
+          <span style="flex:1"><span class="nm" style="font-size:15px">Share the club</span>
+          <span class="s" style="display:block;margin-top:3px;line-height:1.45">A QR code for the app.
+            It carries a link and nothing else — no phone numbers.</span></span>
+          <span class="gt">›</span></div>
+      </button>
 
       <div class="note"><b>Principle three.</b> Everyone here has an SCI. Everyone was invited by a
         mentor or a member organization. Membership can be taken away.</div>
@@ -1808,6 +1835,134 @@ function bdayLabel(v){
   if (days===0) return "Birthday today";
   if (days<=30) return `Birthday in ${days} day${days===1?"":"s"}`;
   return `${MON[p.mo-1]} ${p.d} birthday`;
+}
+
+/* ============================================================ QR
+   A real QR code, generated in-page: version 2, byte mode, error
+   correction level M — enough for a short https URL. No library and
+   no network, so the demo works offline. The payload is the app link
+   and nothing else: no phone number is ever encoded. */
+function qrMatrix(text){
+  const N = 25, CAP = 28;                       // v2-M: 28 data + 16 ECC codewords
+  const bytes = [...new TextEncoder().encode(text)];
+  if (bytes.length > CAP - 2) throw new Error("payload too long for v2");
+
+  const bits = [];
+  const push = (v,n) => { for (let i=n-1;i>=0;i--) bits.push((v>>i)&1); };
+  push(4,4); push(bytes.length,8); bytes.forEach(b=>push(b,8));
+  push(0, Math.min(4, CAP*8 - bits.length));
+  while (bits.length % 8) bits.push(0);
+  const data = [];
+  for (let i=0;i<bits.length;i+=8) data.push(parseInt(bits.slice(i,i+8).join(""),2));
+  const PAD = [0xEC,0x11];
+  for (let i=0; data.length<CAP; i++) data.push(PAD[i%2]);
+
+  /* GF(256) */
+  const EXP=[], LOG=[];
+  for (let i=0,x=1;i<256;i++){ EXP[i]=x; LOG[x]=i; x<<=1; if (x&256) x^=0x11d; }
+  const mul=(a,b)=> (a&&b) ? EXP[(LOG[a]+LOG[b])%255] : 0;
+  let g=[1];
+  for (let i=0;i<16;i++){
+    const ng = new Array(g.length+1).fill(0);
+    for (let j=0;j<g.length;j++){ ng[j]^=g[j]; ng[j+1]^=mul(g[j],EXP[i]); }
+    g = ng;
+  }
+  const ecc = new Array(16).fill(0);
+  data.forEach(d=>{
+    const f = d ^ ecc[0];
+    ecc.shift(); ecc.push(0);
+    if (f) for (let j=0;j<16;j++) ecc[j] ^= mul(g[j+1], f);
+  });
+  const code = data.concat(ecc);
+
+  /* function patterns */
+  const m = Array.from({length:N},()=>new Array(N).fill(null));
+  const res = Array.from({length:N},()=>new Array(N).fill(false));
+  const set=(r,c,v)=>{ m[r][c]=v?1:0; res[r][c]=true; };
+  const finder=(R,C)=>{
+    for (let r=-1;r<=7;r++) for (let c=-1;c<=7;c++){
+      const rr=R+r, cc=C+c; if (rr<0||cc<0||rr>=N||cc>=N) continue;
+      const inSq = r>=0&&r<=6&&c>=0&&c<=6;
+      const on = inSq && (r===0||r===6||c===0||c===6 || (r>=2&&r<=4&&c>=2&&c<=4));
+      set(rr,cc,on);
+    }
+  };
+  finder(0,0); finder(0,N-7); finder(N-7,0);
+  for (let i=8;i<N-8;i++){ set(6,i,i%2===0); set(i,6,i%2===0); }
+  for (let r=-2;r<=2;r++) for (let c=-2;c<=2;c++)
+    set(18+r,18+c, Math.max(Math.abs(r),Math.abs(c))!==1);
+  set(4*2+9, 8, 1);                              // dark module
+  for (let i=0;i<9;i++){                          // reserve format areas
+    if (m[8][i]===null){ m[8][i]=0; res[8][i]=true; }
+    if (m[i][8]===null){ m[i][8]=0; res[i][8]=true; }
+  }
+  for (let i=0;i<8;i++){
+    if (m[8][N-1-i]===null){ m[8][N-1-i]=0; res[8][N-1-i]=true; }
+    if (m[N-1-i][8]===null){ m[N-1-i][8]=0; res[N-1-i][8]=true; }
+  }
+
+  /* data placement, zigzag from bottom-right */
+  const raw = [];
+  code.forEach(b=>{ for (let i=7;i>=0;i--) raw.push((b>>i)&1); });
+  for (let i=0;i<7;i++) raw.push(0);              // remainder bits
+  let idx=0, up=true;
+  for (let col=N-1; col>0; col-=2){
+    if (col===6) col--;
+    for (let k=0;k<N;k++){
+      const row = up ? N-1-k : k;
+      for (const c of [col, col-1]){
+        if (res[row][c]) continue;
+        m[row][c] = idx<raw.length ? raw[idx++] : 0;
+      }
+    }
+    up = !up;
+  }
+
+  /* masks + penalty */
+  const MASK = [
+    (r,c)=>(r+c)%2===0, (r,c)=>r%2===0, (r,c)=>c%3===0, (r,c)=>(r+c)%3===0,
+    (r,c)=>(((r/2)|0)+((c/3)|0))%2===0, (r,c)=>((r*c)%2)+((r*c)%3)===0,
+    (r,c)=>((((r*c)%2)+((r*c)%3))%2)===0, (r,c)=>((((r+c)%2)+((r*c)%3))%2)===0];
+  const penalty = grid=>{
+    let p=0;
+    const runs = line=>{ let n=1,s=0;
+      for (let i=1;i<line.length;i++){ if (line[i]===line[i-1]) n++;
+        else { if (n>=5) s+=n-2; n=1; } }
+      if (n>=5) s+=n-2; return s; };
+    for (let i=0;i<N;i++){ p+=runs(grid[i]); p+=runs(grid.map(r=>r[i])); }
+    for (let r=0;r<N-1;r++) for (let c=0;c<N-1;c++)
+      if (grid[r][c]===grid[r][c+1] && grid[r][c]===grid[r+1][c] && grid[r][c]===grid[r+1][c+1]) p+=3;
+    const dark = grid.flat().filter(v=>v).length;
+    p += 10*Math.floor(Math.abs(dark*100/(N*N) - 50)/5);
+    return p;
+  };
+  let best=null, bestP=Infinity;
+  for (let k=0;k<8;k++){
+    const grid = m.map((row,r)=>row.map((v,c)=> res[r][c] ? v : (v ^ (MASK[k](r,c)?1:0))));
+    const fmt = (0b00<<3) | k;                    // ECC level M
+    let bch = fmt<<10;
+    for (let i=4;i>=0;i--) if (bch & (1<<(i+10))) bch ^= 0x537 << i;
+    const f = ((fmt<<10) | bch) ^ 0x5412;
+    const bit = i => (f>>i)&1;
+    for (let i=0;i<=5;i++) grid[8][i]=bit(i);            // copy 1
+    grid[8][7]=bit(6); grid[8][8]=bit(7); grid[7][8]=bit(8);
+    for (let i=9;i<=14;i++) grid[14-i][8]=bit(i);
+    for (let i=0;i<=6;i++) grid[N-1-i][8]=bit(i);        // copy 2
+    for (let i=7;i<=14;i++) grid[8][N-15+i]=bit(i);
+    grid[N-8][8]=1;                                      // dark module
+    const p = penalty(grid);
+    if (p<bestP){ bestP=p; best=grid; }
+  }
+  return best;
+}
+function qrSVG(text, px){
+  let g; try { g = qrMatrix(text); } catch(e){ return ""; }
+  const N = g.length, Q = 3, T = N + Q*2;
+  let d = "";
+  for (let r=0;r<N;r++) for (let c=0;c<N;c++)
+    if (g[r][c]) d += `M${c+Q} ${r+Q}h1v1h-1z`;
+  return `<svg class="qr" width="${px}" height="${px}" viewBox="0 0 ${T} ${T}" shape-rendering="crispEdges">
+    <rect width="${T}" height="${T}" fill="#fff" rx="1"/><path d="${d}" fill="#102A4C"/></svg>`;
 }
 /* ============================================================ init */
 Object.assign(S.new, {going:[], interested:[], invitedBy:"NorCal SCI"});
@@ -1902,27 +2057,49 @@ function sheet(){
 
   if (k==="invite"){
     inner = `<div class="scroll">
-      <div class="h1" style="font-size:21px;margin:4px 0 2px">Invite someone</div>
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">Add someone to the list</div>
       <div class="s">Mentors get two. You have ${S.invitesLeft} left.</div>
       <input class="fld" id="ivp" data-bind="ivphone" type="tel" inputmode="tel" placeholder="(408) 555-0148">
       <div class="sec">How it works</div>
       <div class="card" style="margin:0">
-        ${[["1","We text a link to that number and nowhere else."],
-           ["2","The link only opens on the phone that received it. No code, no forwarding."],
-           ["3","The number becomes their account. Lose the club, lose it for that number."]]
+        ${[["1","Their number goes on the club's list. Nothing is sent anywhere."],
+           ["2","They download the app — from a QR code, a link, the store, however they like."],
+           ["3","They verify that number and the club recognises it. Any other number bounces."]]
           .map(r=>`<div class="lstrow"><span class="qmark" style="width:26px;height:26px;font-size:13px">${r[0]}</span>
             <span style="font-size:13.5px;line-height:1.45">${esc(r[1])}</span></div>`).join("")}
       </div>
-      <div class="note"><b>Only invite someone with an SCI.</b> You are vouching for them, and their
+      <div class="note"><b>Only add someone with an SCI.</b> You are vouching for them, and their
         conduct reflects on your standing as a mentor.</div>
       <div style="height:16px"></div></div>
-    <footer><button class="btn gold" style="width:100%" data-act="sendinvite">Send invite by text</button></footer>`;
+    <footer><button class="btn gold" style="width:100%" data-act="sendinvite">Add to the list</button></footer>`;
+  }
+
+  if (k==="qr"){
+    inner = `<div class="scroll">
+      <div class="h1" style="font-size:21px;margin:4px 0 2px">Share the club</div>
+      <div class="s">Point a camera at this to get the app.</div>
+      <div class="qrwrap">${qrSVG("https://sciclub.app", 210)}
+        <div class="qrlabel">sciclub.app</div></div>
+      <div class="card" style="margin-top:4px">
+        <div class="row" style="align-items:flex-start;gap:11px">
+          <span style="color:var(--gold-dp);display:flex;flex:none">${I.shield}</span>
+          <span><span class="nm" style="font-size:14px">This code carries a link and nothing else</span>
+          <span class="s" style="display:block;margin-top:3px;line-height:1.5">No phone number is
+            encoded in it — not yours, not anyone's. Printing it on a flyer or a clinic wall is safe,
+            and it cannot be used to work out who shared it.</span></span>
+        </div>
+        <div class="hr"></div>
+        <div class="s" style="line-height:1.55">It gets someone the app, not a membership. They still
+          need their number on the club's list before it will let them past the first screen.</div>
+      </div>
+      <div style="height:16px"></div></div>
+    <footer><button class="btn solid" style="width:100%" data-act="closesheet">Done</button></footer>`;
   }
 
   if (k==="conduct"){
     const rules = [
       ["Everyone here has an SCI","That is the whole membership test, and it is why you can ask anything. Spouses and partners may be added later; nobody else."],
-      ["Invites come from mentors and organizations","Ordinary members cannot invite. It is the only thing keeping the club closed."],
+      ["The list comes from mentors and organizations","Ordinary members cannot add anyone. A QR code shares the app; only the list lets someone in."],
       ["Nobody sells anything","No products, no supplements, no clinics, no 'programme I built'. Recommending gear you actually use is not selling."],
       ["Your experience is yours","Say what happened to you. Do not tell someone what will happen to them, and never present it as medical advice."],
       ["What is said in a room stays in it","Rooms have full history precisely because nothing leaves. Screenshots leave the club, and so does whoever took them."],
@@ -2039,26 +2216,37 @@ function profAdvance(){
 }
 
 /* ============================================================ onboarding */
-const STEP = ["welcome","invite","name","birthday","injury","city","photo"];
+const STEP = ["welcome","phone","code","name","birthday","injury","city","photo"];
 const LEVELS = ["C1–C4","C5–C8","T1–T6","T7–T12","L1–S5","Not sure yet"];
 
 function setupBody(){
   const m = S.new;
   switch (STEP[S.step]){
-    case "invite": return `<h2 class="q">This invite is tied to your phone</h2>
-      <p class="sub">NorCal SCI texted it to <b>(408) •••-••12</b>. The link only works on the phone
-      that received it, so there is no code to type and nothing to verify.</p>
-      <div class="card" style="margin-top:18px">
-        ${[["Your number is your account","It is never shown to another member."],
-           ["One number, one place","If you lose your membership, that number cannot come back under a new name."],
-           ["No forwarding","An invite passed to someone else simply stops working."]]
+    case "phone": return `<h2 class="q">What's your number?</h2>
+      <p class="sub">Your phone number is your account here, and the club checks it against
+      the list of people a member organization or a mentor has vouched for.</p>
+      <input class="fld" id="ph" data-new="phone" type="tel" inputmode="tel"
+        value="${esc(m.phone||"")}" placeholder="(408) 555-0112">
+      <div class="card" style="margin-top:16px">
+        ${[["It is never shown to another member","Not on your profile, not in a room, not in a message."],
+           ["One number, one membership","If you lose your place, that number cannot come back under a new name."],
+           ["It is the only thing stopping automated signups","Which is why the club can be as open as it is inside."]]
           .map(r=>`<div class="lstrow"><span style="color:var(--gold-dp);display:flex;flex:none">${I.shield}</span>
             <span><span class="nm" style="font-size:14px">${esc(r[0])}</span>
             <span class="s" style="display:block;margin-top:2px">${esc(r[1])}</span></span></div>`).join("")}
-      </div>`;
+      </div>
+      <button class="btn link" style="width:100%;margin-top:8px" data-setup="notlisted">
+        Demo: try a number that isn't on the list</button>`;
 
+    case "code": return `<h2 class="q">Enter your code</h2>
+      <p class="sub">We sent six digits to ${esc(m.phone || "your phone")}.</p>
+      <input class="fld" id="cd" data-new="code" inputmode="numeric" maxlength="6"
+        value="${esc(m.code||"")}" placeholder="000000"
+        style="letter-spacing:.42em;text-align:center;font-size:24px;font-weight:800">
+      <p class="fine" style="text-align:center">Any six digits work in the demo. On a real phone the
+        code is read from the incoming message and this screen lasts about a second.</p>`;
     case "name": return `<h2 class="q">What should people call you?</h2>
-      <p class="sub">First name is plenty — no last names anywhere in the club.</p>
+      <p class="sub">First name is plenty.</p>
       <input class="fld" id="nm" data-new="name" value="${esc(m.name)}" placeholder="Alex">`;
 
     case "birthday": return `<h2 class="q">When is your birthday?</h2>
@@ -2128,6 +2316,8 @@ function deriveInjury(){
 function canNext(){
   const m = S.new;
   switch (STEP[S.step]){
+    case "phone": return (m.phone||"").replace(/\D/g,"").length >= 10;
+    case "code":  return (m.code||"").replace(/\D/g,"").length === 6;
     case "name": return m.name.trim().length>0;
     case "birthday": return ageOf(m.dob)!==null;
     case "injury": return !!m.lvl && String(m.years).trim()!=="" && !isNaN(parseInt(m.years,10));
@@ -2148,17 +2338,41 @@ function welcomeView(){
       </div>
     </div>
     <footer class="cta">
-      <div class="btn2">
-        <button class="btn solid" data-setup="next">I have an invite</button>
-        <button class="btn out" data-act="howto">How to get one</button>
-      </div>
+      <button class="btn solid" style="width:100%" data-setup="next">Join the club</button>
       <p class="fine" style="text-align:center;margin:11px 0 2px">Members only. Nothing inside the club is public.</p>
     </footer>
   </div>`;
 }
+function blockedView(){
+  return `<div class="screen">
+    <div style="height:44px"></div>
+    <div class="scroll" style="padding:0 18px">
+      <button class="back" data-setup="unblock">← Back</button>
+      <div style="width:56px;height:56px;border-radius:18px;background:var(--gold-lt);display:grid;
+        place-items:center;color:var(--gold-dp);margin-top:10px">${I.shield}</div>
+      <h2 class="q" style="margin-top:16px">This number isn't on the list</h2>
+      <p class="sub">The club is closed. A member organization or a peer mentor has to add your
+        number before you can join — the app itself cannot let you in.</p>
+      <div class="card" style="margin-top:16px">
+        ${[["NCS","NorCal SCI","Runs the peer mentor programme most members came through."],
+           ["SC","SCVMC SCI Peer Support","Weekly, including bedside visits on the rehab unit."],
+           ["WWM","Wheel with Me Foundation","Grants and adaptive sport programming."]]
+          .map(r=>`<div class="lstrow"><span class="orgmark" style="width:30px;height:30px;font-size:9.5px">${r[0]}</span>
+            <span><span class="nm" style="font-size:14px">${esc(r[1])}</span>
+            <span class="s" style="display:block;margin-top:2px">${esc(r[2])}</span></span></div>`).join("")}
+      </div>
+      <p class="fine">If a member gave you a QR code, it gets you the app — it does not get you in.
+        Someone still has to add your number.</p>
+    </div>
+    <footer class="cta">
+      <button class="btn gold" style="width:100%" data-setup="unblock">Try another number</button>
+    </footer>
+  </div>`;
+}
 function setupView(){
+  if (S.blocked) return blockedView();
   if (STEP[S.step]==="welcome") return welcomeView();
-  const n = S.step-1, show = S.step>=2, last = STEP[S.step]==="photo";
+  const n = S.step-2, show = S.step>=3, last = STEP[S.step]==="photo";
   return `<div class="screen">
     ${show?`<div class="prog"><div style="display:flex;justify-content:space-between;align-items:center">
         <span class="s" style="font-weight:700;color:var(--navy)">THE SCI CLUB</span>
@@ -2282,12 +2496,17 @@ document.addEventListener("click", e=>{
   if (d.setup){
     const stash=()=>document.querySelectorAll("[data-new]").forEach(f=>{S.new[f.dataset.new]=f.value;});
     if (d.setup==="next"){ stash();
+      if (STEP[S.step]==="code"){
+        S.step++; render();
+        toast("On the list — added by NorCal SCI on 12 August."); return; }
       if (STEP[S.step]==="photo"){ S.setup=false; render();
         toast("You're in. 23 members near you, all invited the same way."); return; }
       S.step++; render(); return; }
     if (d.setup==="back"){ stash(); S.step=Math.max(0,S.step-1); render(); return; }
     if (d.setup==="skip"){ S.setup=false; render();
       toast("You're in. Add a photo any time from Me."); return; }
+    if (d.setup==="notlisted"){ S.new.phone="(408) 555-0000"; S.blocked=true; render(); return; }
+    if (d.setup==="unblock"){ S.blocked=false; S.new.phone=""; S.step=1; render(); return; }
   }
 
   /* ---- chat */
@@ -2360,7 +2579,7 @@ document.addEventListener("click", e=>{
       if (S.view && S.view.k==="topic"){ S.view={k:"room",id:S.view.rid}; render(); return; }
       S.view=null; render(); return;
     case "profile": S.view={k:"prof"}; render(); return;
-    case "filters": case "hfilters": case "compose": case "invite":
+    case "filters": case "hfilters": case "compose": case "invite": case "qr":
     case "conduct": case "search": case "bell":
       S.sheet=d.act; render(); return;
     case "closesheet": S.sheet=null; render(); return;
@@ -2388,7 +2607,7 @@ document.addEventListener("click", e=>{
     case "sendinvite":
       if (S.invitesLeft>0) S.invitesLeft--;
       S.sheet=null; render();
-      toast("Invite texted. It only opens on that phone, and it expires in 7 days."); return;
+      toast("Added to the list. They can join from any phone using that number."); return;
     case "noop": return;
   }
 });
