@@ -7,7 +7,7 @@ import { ClubMark } from '@/components/club-mark';
  * The logo carries "MEMBERS ONLY" on it, which is why the footer line beneath
  * the button is short — the badge has already said it.
  */
-export function WelcomeScreen({ onStart }: { onStart: () => void }) {
+export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSignIn: () => void }) {
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="flex flex-1 flex-col justify-center overflow-y-auto px-[22px] py-8">
@@ -35,10 +35,17 @@ export function WelcomeScreen({ onStart }: { onStart: () => void }) {
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
         <button
           type="button"
-          onClick={onStart}
+          onClick={onJoin}
           className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[15px] text-white"
         >
           Join the club
+        </button>
+        <button
+          type="button"
+          onClick={onSignIn}
+          className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[15px] text-navy"
+        >
+          I already have an account
         </button>
         <p className="mt-2.5 text-center text-[12.5px] text-grey">
           Members only. Nothing inside the club is public.

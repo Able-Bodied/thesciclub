@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -15,6 +15,7 @@ const calls = vi.hoisted(() => ({
   verifyError: null as string | null,
   invited: true,
   claimableId: null as string | null,
+  existingMember: null as { id: string } | null,
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -46,7 +47,15 @@ vi.mock('@/lib/supabase', () => ({
       };
     },
     from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }) }),
+      select: () => ({
+        // Used two ways: without a filter to ask "do I already have a profile",
+        // and with .eq(id) to read a claimable one.
+        maybeSingle: () => {
+          calls.order.push('members.self');
+          return Promise.resolve({ data: calls.existingMember });
+        },
+        eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }),
+      }),
     }),
   }),
 }));
@@ -74,6 +83,7 @@ beforeEach(() => {
   calls.verifyError = null;
   calls.invited = true;
   calls.claimableId = null;
+  calls.existingMember = null;
 });
 
 describe('joining', () => {
@@ -102,7 +112,7 @@ describe('joining', () => {
     expect(calls.order).toEqual(['signInWithOtp']);
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(calls.order).toEqual(['signInWithOtp', 'verifyOtp', 'my_invite_status']);
+    expect(calls.order).toEqual(['signInWithOtp', 'verifyOtp', 'members.self', 'my_invite_status']);
   });
 
   it('shows the closed door when the verified number is not on the list', async () => {
@@ -153,5 +163,62 @@ describe('the welcome screen', () => {
   it('shows the club mark', () => {
     renderJoin();
     expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
+  });
+
+  it('offers both doors', () => {
+    renderJoin();
+    expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
+  });
+});
+
+describe('the two doors', () => {
+  const openSignIn = async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+  };
+
+  it('greets a returning member differently', async () => {
+    await openSignIn();
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.queryByText(/vouched for/)).not.toBeInTheDocument();
+  });
+
+  it('lets somebody who picked the wrong door switch without starting over', async () => {
+    await openSignIn();
+    await userEvent.click(screen.getByRole('button', { name: /Don't have an account yet/ }));
+    expect(screen.getByText("What's your number?")).toBeInTheDocument();
+    // And back again.
+    await userEvent.click(screen.getByRole('button', { name: /Already a member/ }));
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
+  it('keeps the number typed when switching doors', async () => {
+    await openSignIn();
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: /Don't have an account yet/ }));
+    expect(screen.getByPlaceholderText('(408) 555-0112')).toHaveValue('(408) 555-0112');
+  });
+
+  it('lets an existing member straight in, even through the Join door', async () => {
+    calls.existingMember = { id: 'u1' };
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    // The invite list is not consulted for somebody who has already joined.
+    await waitFor(() => {
+      expect(calls.order).not.toContain('my_invite_status');
+    });
+  });
+
+  it('hands the questions to somebody who signed in but never finished joining', async () => {
+    calls.existingMember = null;
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
   });
 });

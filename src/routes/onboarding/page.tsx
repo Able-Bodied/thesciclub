@@ -44,6 +44,18 @@ import type { BrowseMember } from '@/types/domain';
 
 type Phase = 'wizard' | 'blocked' | 'submitting';
 
+/**
+ * Which door somebody came through.
+ *
+ * It changes the wording and nothing else. Where they end up after verifying is
+ * decided by what is actually true of their number — whether they already have
+ * a profile, and whether they are on the list — not by which button they
+ * pressed. Somebody who taps Join but already has a profile should simply be
+ * let in, and somebody who taps Sign in but has never finished signing up
+ * should be handed the questions rather than an error.
+ */
+type Mode = 'join' | 'signin';
+
 /** What my_invite_status() returns. See the migration of the same name. */
 interface InviteStatus {
   invited: boolean;
@@ -54,6 +66,7 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const account = useAccount();
   const [step, setStep] = useState<Step>('welcome');
+  const [mode, setMode] = useState<Mode>('join');
   const [phase, setPhase] = useState<Phase>('wizard');
   const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
   const [claimable, setClaimable] = useState<BrowseMember | null>(null);
@@ -108,6 +121,16 @@ export default function OnboardingPage() {
     // Taken whole rather than destructured: rpc() types its payload as `any`,
     // and destructuring would launder that straight into a branch that decides
     // whether somebody is let into the club.
+    // Already a member? Then this was a sign-in, whichever button was pressed.
+    // Checked before the invite list, because somebody who has joined does not
+    // need to be re-vetted — and because their invite is consumed, not pending.
+    const existing = await supabase.from('members').select('id').maybeSingle();
+    if (existing.data) {
+      setBusy(false);
+      void navigate('/peers', { replace: true });
+      return;
+    }
+
     const statusResult = await supabase.rpc('my_invite_status').single();
     setBusy(false);
     if (statusResult.error) {
@@ -169,7 +192,12 @@ export default function OnboardingPage() {
   if (step === 'welcome') {
     return (
       <WelcomeScreen
-        onStart={() => {
+        onJoin={() => {
+          setMode('join');
+          setStep('phone');
+        }}
+        onSignIn={() => {
+          setMode('signin');
           setStep('phone');
         }}
       />
@@ -240,10 +268,25 @@ export default function OnboardingPage() {
               Skip for now
             </LinkButton>
           ) : null}
+          {/* Landing on the wrong door should not mean starting over. The two
+              flows share every screen up to here, so switching costs nothing
+              but the wording. */}
+          {step === 'phone' ? (
+            <LinkButton
+              onClick={() => {
+                setMode(mode === 'join' ? 'signin' : 'join');
+                setError(null);
+              }}
+            >
+              {mode === 'signin'
+                ? "Don't have an account yet? Join the club"
+                : 'Already a member? Sign in'}
+            </LinkButton>
+          ) : null}
         </>
       }
     >
-      {step === 'phone' ? <PhoneStep data={data} set={set} /> : null}
+      {step === 'phone' ? <PhoneStep data={data} set={set} mode={mode} /> : null}
       {step === 'code' ? <CodeStep data={data} set={set} /> : null}
       {step === 'claim' && claimable ? (
         <ClaimStep

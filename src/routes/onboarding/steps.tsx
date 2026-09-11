@@ -25,13 +25,14 @@ interface StepProps {
   set: (patch: Partial<OnboardingData>) => void;
 }
 
-export function PhoneStep({ data, set }: StepProps) {
+export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'signin' }) {
   return (
     <>
-      <Question>What's your number?</Question>
+      <Question>{mode === 'signin' ? 'Welcome back' : "What's your number?"}</Question>
       <Sub>
-        Your number is your account, and it is how the club checks you against the list of people a
-        member organization or a mentor has vouched for. It is never shown to another member.
+        {mode === 'signin'
+          ? 'Your number is your account. We will text you a code to sign you back in.'
+          : 'Your number is your account, and it is how the club checks you against the list of people a member organization or a mentor has vouched for. It is never shown to another member.'}
       </Sub>
       <label htmlFor="phone" className="mt-5 block font-bold text-[13px] text-ink">
         Phone number
