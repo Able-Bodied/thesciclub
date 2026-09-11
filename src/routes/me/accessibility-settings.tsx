@@ -127,7 +127,7 @@ export function AccessibilitySettings() {
 
         <Row
           title="Bigger tap targets"
-          description="Grows the hit area of small controls, like the ✕ that hides an event, without changing how they look."
+          description="Grows the hit area of small controls, like the filter button, without changing how they look."
         >
           <OnOff
             value={preferences.largeTargets}

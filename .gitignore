@@ -30,3 +30,5 @@ coverage
 # Supabase CLI local state
 supabase/.temp/
 supabase/.branches/
+screenshots/
+.logo-candidates/
