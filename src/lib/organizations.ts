@@ -22,7 +22,7 @@ interface OrganizationRow {
   description: string;
   tags: string[] | null;
   can_invite: boolean;
-  logo_url: string | null;
+  logo_path: string | null;
 }
 
 export function toOrganization(row: OrganizationRow): Organization {
@@ -34,7 +34,7 @@ export function toOrganization(row: OrganizationRow): Organization {
     description: row.description,
     tags: row.tags ?? [],
     canInvite: row.can_invite,
-    logoUrl: row.logo_url,
+    logoPath: row.logo_path,
   };
 }
 
@@ -62,7 +62,7 @@ export function useOrganizations(): OrganizationsState {
       try {
         const { data, error } = await getSupabase()
           .from('organizations')
-          .select('id, short_code, name, city, description, tags, can_invite, logo_url')
+          .select('id, short_code, name, city, description, tags, can_invite, logo_path')
           .order('name')
           .abortSignal(signal);
         if (aborted()) return;

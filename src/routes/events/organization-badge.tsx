@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { shortCodeFor } from '@/routes/peers/member-card';
 import type { Organization } from '@/types/domain';
@@ -13,16 +14,15 @@ import type { Organization } from '@/types/domain';
  * ---------------------------------------------------------------------------
  * The fallback is the point
  * ---------------------------------------------------------------------------
- * `logo_url` is hotlinked from the organization's own site, so it can break
- * without anything here changing: they redesign, the CDN path moves, the image
- * 404s. A badge that renders as a broken-image glyph reads as this app being
- * broken, so `onError` drops back to the tile and the card looks deliberate
- * either way. That is also why the tile is rendered underneath rather than
- * instead — there is no flash of nothing while the image loads.
+ * The logo now comes from our own bucket rather than the organization's CDN,
+ * but the fallback matters just as much: five of the six organizations have no
+ * logo at all, local development runs with the storage service switched off
+ * entirely, and a file can always go missing. A badge that renders as a
+ * broken-image glyph reads as this app being broken, so `onError` drops back to
+ * the tile and the row looks deliberate either way.
  *
- * `referrerPolicy="no-referrer"` stops the organization's CDN learning which
- * page the request came from. Events are public, so this is not a secret, but
- * which event a person is reading is still nobody else's business.
+ * That is also why the tile is rendered underneath rather than instead of the
+ * image — there is no flash of nothing while it loads.
  */
 
 export interface OrganizationBadgeProps {
@@ -46,7 +46,7 @@ export function OrganizationBadge({
   if (!name) return null;
 
   const letters = organization?.shortCode ?? shortCodeFor(name);
-  const logo = organization?.logoUrl;
+  const logo = photoUrlFor(organization?.logoPath);
   const showLogo = Boolean(logo) && !logoFailed;
 
   const box =

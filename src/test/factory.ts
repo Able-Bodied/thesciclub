@@ -82,7 +82,7 @@ export function makeOrganization(overrides: Partial<Organization> = {}): Organiz
     description: '',
     tags: [],
     canInvite: true,
-    logoUrl: null,
+    logoPath: null,
     ...overrides,
   };
 }

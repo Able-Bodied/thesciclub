@@ -351,11 +351,12 @@ export interface Organization {
   /** Whether this organization can put numbers on the list. */
   canInvite: boolean;
   /**
-   * Hotlinked from the organization's own site, or null to fall back to the
-   * short-code badge. Never a path into our storage bucket — see
-   * supabase/migrations/20260911230000_organization_logos.sql.
+   * Path within the public `photos` bucket, or null to fall back to the
+   * short-code badge. Not a URL — `photoUrlFor()` composes one, so the data
+   * stays portable between projects. See
+   * supabase/migrations/20260911260000_organization_logos_to_storage.sql.
    */
-  logoUrl: string | null;
+  logoPath: string | null;
 }
 
 /* ------------------------------------------------------------------ browse */
