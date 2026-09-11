@@ -10,6 +10,7 @@ import MePage from '@/routes/me/page';
 import OnboardingPage from '@/routes/onboarding/page';
 import MemberDetailPage from '@/routes/peers/member-detail';
 import PeersPage from '@/routes/peers/page';
+import ProfileSurveyPage from '@/routes/profile/page';
 
 /**
  * The signed-in shell: one scrolling surface above a fixed five-tab bar.
@@ -46,6 +47,8 @@ export default function App() {
       {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
       {/* Outside the shell: onboarding has its own footer and no tab bar. */}
       <Route path="/join" element={<OnboardingPage />} />
+      {/* Outside the shell: its own footer, no tab bar. */}
+      <Route path="/profile" element={<ProfileSurveyPage />} />
       <Route path="/dev-login" element={<DevLoginPage />} />
       <Route
         path="/*"

@@ -7,6 +7,10 @@ import type { Account } from '@/lib/account';
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const auth = vi.hoisted(() => ({ signedOut: 0, failWith: null as string | null }));
 
+vi.mock('@/routes/profile/profile-api', () => ({
+  loadAnswers: () => Promise.resolve({ ok: true as const, answers: { gender: 'Female' } }),
+}));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
   signOut: () => {
@@ -69,5 +73,15 @@ describe('MePage', () => {
   it('shows no admin link to an ordinary member', () => {
     renderMe();
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
+  });
+
+  it('links to the survey and says how much of it is done', async () => {
+    renderMe();
+    const link = screen.getByRole('link', { name: /Complete your profile/ });
+    expect(link).toHaveAttribute('href', '/profile');
+    await waitFor(() => {
+      // One of seventeen applicable questions answered.
+      expect(screen.getByText('6%')).toBeInTheDocument();
+    });
   });
 });

@@ -1,0 +1,147 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Account } from '@/lib/account';
+import type { Answers } from '@/routes/profile/questions';
+
+const account = vi.hoisted(() => ({ current: null as Account | null }));
+const api = vi.hoisted(() => ({
+  answers: {},
+  saves: [] as { keys: string[]; answers: Answers }[],
+  failWith: null as string | null,
+}));
+
+vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
+vi.mock('@/routes/profile/profile-api', () => ({
+  loadAnswers: () => Promise.resolve({ ok: true as const, answers: api.answers }),
+  saveAnswers: (_userId: string, keys: string[], answers: Answers) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.saves.push({ keys, answers });
+    return Promise.resolve({ ok: true });
+  },
+}));
+
+const { default: ProfileSurveyPage } = await import('@/routes/profile/page');
+
+function renderSurvey() {
+  return render(
+    <MemoryRouter initialEntries={['/profile']}>
+      <Routes>
+        <Route path="/profile" element={<ProfileSurveyPage />} />
+        <Route path="/me" element={<p>The Me tab</p>} />
+        <Route path="/join" element={<p>Welcome screen</p>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+/** Advance one screen without answering. Skip rather than Continue, because
+ *  both are on screen and only one of them is unambiguous. */
+async function skip(times = 1) {
+  for (let i = 0; i < times; i++) {
+    await userEvent.click(screen.getByRole('button', { name: 'Skip this one' }));
+  }
+}
+
+beforeEach(() => {
+  account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Nicole' };
+  api.answers = {};
+  api.saves = [];
+  api.failWith = null;
+});
+
+describe('the profile survey', () => {
+  it('sends a non-member to the welcome screen', async () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    renderSurvey();
+    expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
+  });
+
+  it('starts on the first screen and says where you are', async () => {
+    renderSurvey();
+    expect(await screen.findByText('About you')).toBeInTheDocument();
+    expect(screen.getByText(/1 of 12/)).toBeInTheDocument();
+  });
+
+  it('resumes from what is already answered rather than starting blank', async () => {
+    api.answers = { gender: 'Female', languages: ['English', 'Spanish'] };
+    renderSurvey();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Female' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+    expect(screen.getByRole('button', { name: /Spanish/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('saves the screen as it is left, not everything at the end', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await userEvent.click(screen.getByRole('button', { name: 'Male' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await waitFor(() => {
+      expect(api.saves).toHaveLength(1);
+    });
+    expect(api.saves[0]?.keys).toEqual(['gender', 'languages']);
+  });
+
+  it('lets any question be skipped', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip();
+    expect(await screen.findByText('How it happened')).toBeInTheDocument();
+  });
+
+  it('advances a single-choice-only screen by itself once it is answered', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip(6);
+    // Education is two single-choice questions and nothing else.
+    expect(await screen.findByText('Education')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Some college' }));
+    await userEvent.click(screen.getByRole('button', { name: 'After' }));
+    // No Continue tapped — the screen moves on by itself.
+    expect(await screen.findByText('Work')).toBeInTheDocument();
+  });
+
+  it('does not advance a screen with a text answer on it', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip();
+    await screen.findByText('How it happened');
+    await userEvent.type(screen.getByRole('textbox'), 'Car accident');
+    // Still here: a person is not finished with prose until they say so.
+    expect(screen.getByText('How it happened')).toBeInTheDocument();
+  });
+
+  it('stops at three interests rather than silently dropping one', async () => {
+    api.answers = { interests: ['Travel', 'Cooking', 'Reading'] };
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip(8);
+    expect(await screen.findByText('Interests')).toBeInTheDocument();
+    expect(screen.getByText(/3 of 3 chosen/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Climbing' })).toBeDisabled();
+  });
+
+  it('asks when children arrived only once it knows there are any', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip(4);
+    expect(await screen.findByText('Family')).toBeInTheDocument();
+    expect(screen.queryByText('Before or after your injury?')).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Yes' }));
+    expect(await screen.findByText('Before or after your injury?')).toBeInTheDocument();
+  });
+
+  it('surfaces a save failure instead of pretending it moved on', async () => {
+    api.failWith = 'permission denied';
+    renderSurvey();
+    await screen.findByText('About you');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('permission denied')).toBeInTheDocument();
+    expect(screen.getByText('About you')).toBeInTheDocument();
+  });
+});
