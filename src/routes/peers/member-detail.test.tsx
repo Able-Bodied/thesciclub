@@ -104,6 +104,26 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByText('Languages')).not.toBeInTheDocument();
   });
 
+  it('credits the directory only for members who came from it', () => {
+    state.current = ok(makeMember({ displayName: 'Todd', isSeed: true }));
+    renderDetail();
+    expect(
+      screen.getByText(/chose to publish in the NorCal SCI mentor directory/),
+    ).toBeInTheDocument();
+  });
+
+  it('does not tell somebody who just signed up that they published a directory profile', () => {
+    state.current = ok(makeMember({ displayName: 'Alfred', isSeed: false }));
+    renderDetail();
+    expect(screen.queryByText(/NorCal SCI mentor directory/)).not.toBeInTheDocument();
+  });
+
+  it('promises no contact details to everybody, seeded or not', () => {
+    state.current = ok(makeMember({ isSeed: false }));
+    renderDetail();
+    expect(screen.getByText(/never shows a phone number/)).toBeInTheDocument();
+  });
+
   it('tells a signed-out visitor the club is members only', () => {
     state.current = { member: null, loading: false, error: null, signedOut: true, notFound: false };
     renderDetail();
