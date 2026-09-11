@@ -370,3 +370,136 @@ export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   topics: [],
   search: '',
 };
+
+/* ------------------------------------------------------------------ events */
+
+/**
+ * An event on the club's calendar.
+ *
+ * Ingested from a partner organization's own calendar, never written in the
+ * app — there is no "create an event" screen and no plan for one. Events are
+ * the club's public surface (docs/CONTEXT.md, "What is public"), which is why
+ * this type has no field that identifies a member: who is going is
+ * `EventAttendee`, and it is answered by a different, members-only query.
+ *
+ * `latitude` and `longitude` exist on the table and are deliberately absent
+ * here. The browser is not granted the column privilege, so a field for them
+ * would be one nobody could ever fill.
+ */
+export const EVENT_FORMATS = ['in_person', 'online', 'hybrid'] as const;
+export type EventFormat = (typeof EVENT_FORMATS)[number];
+
+export const EVENT_FORMAT_LABELS: Record<EventFormat, string> = {
+  in_person: 'In person',
+  online: 'Online',
+  hybrid: 'Hybrid',
+};
+
+export interface EventTag {
+  slug: string;
+  name: string;
+  /** The parent category, for grouping in the filter sheet. */
+  categorySlug: string;
+  categoryName: string;
+}
+
+export interface ClubEvent {
+  id: string;
+  title: string;
+  /** Plain text, for the card and for search. */
+  description: string;
+  /** Sanitized HTML with absolute links, for the detail view. */
+  descriptionHtml: string;
+  /** ISO 8601. Always present — an event with no start time is not ingested. */
+  startTime: string;
+  endTime: string | null;
+  /**
+   * The IANA zone the event's times should be *read* in, from its feed.
+   *
+   * A calendar entry means a wall-clock time at a place: a ride that starts at
+   * 9am in Santa Cruz starts at 9am whether the member reading about it is in
+   * San Jose or in London. Formatting in the viewer's own zone would quietly
+   * restate it as 5pm for the traveller, so every date on this flow is
+   * formatted in this zone instead.
+   *
+   * It comes from the feed rather than the venue, which is the best available
+   * answer and not always the right one — a feed listing an event in another
+   * state would be read in the publisher's zone. Every organization the club
+   * has is in California, so that case does not exist yet.
+   */
+  timezone: string;
+  /** Free text venue, exactly as the feed wrote it. */
+  location: string;
+  city: string | null;
+  url: string | null;
+  registrationUrl: string | null;
+  /** Null means the ingest job could not tell, which is not the same as in person. */
+  format: EventFormat | null;
+  /** Set only when the host is an organization the club already has. */
+  organizationId: string | null;
+  /** The feed's own name for the host, when it is not a club organization. */
+  hostName: string | null;
+  tags: EventTag[];
+  goingCount: number;
+  interestedCount: number;
+}
+
+export const RSVP_STATUSES = ['interested', 'going'] as const;
+export type RsvpStatus = (typeof RSVP_STATUSES)[number];
+
+/**
+ * A member who has RSVPed, as one other member sees them.
+ *
+ * Read from `event_attendees`, which joins through `browse_members` — so this
+ * only ever describes somebody who is in the club, in good standing, and has
+ * not opted out of being browsed. A member who opted out still counts towards
+ * `ClubEvent.goingCount`; they just have no row here.
+ */
+export interface EventAttendee {
+  memberId: string;
+  status: RsvpStatus;
+  displayName: string;
+  photoPath: string | null;
+  photoAlt: string | null;
+  avatarColor: string | null;
+  city: string | null;
+  levelRange: string;
+  exactLevel: string | null;
+  type: MemberType;
+}
+
+/** The segment pills across the top of the Events tab, from the mock's `evPage()`. */
+export const EVENTS_SEGMENTS = ['upcoming', 'going', 'sport', 'online', 'orgs'] as const;
+export type EventsSegment = (typeof EVENTS_SEGMENTS)[number];
+
+/** How far ahead the list looks. `past` is the only one that looks backwards. */
+export const DATE_WINDOWS = ['week', 'month', 'any', 'past'] as const;
+export type DateWindow = (typeof DATE_WINDOWS)[number];
+
+export const DATE_WINDOW_LABELS: Record<DateWindow, string> = {
+  week: 'This week',
+  month: 'This month',
+  any: 'Any time',
+  past: 'Past events',
+};
+
+export interface EventFilters {
+  when: DateWindow;
+  formats: EventFormat[];
+  /** Tag slugs. Selected tags are OR-ed: an event matching any of them is in. */
+  tags: string[];
+  cities: string[];
+  /** Organization ids. */
+  organizations: string[];
+  /** Off by default — events marked Not interested stay out until this is on. */
+  showHidden: boolean;
+}
+
+export const EMPTY_EVENT_FILTERS: EventFilters = {
+  when: 'month',
+  formats: [],
+  tags: [],
+  cities: [],
+  organizations: [],
+  showHidden: false,
+};
