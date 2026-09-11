@@ -1,4 +1,5 @@
 import { ageFrom } from '@/lib/injury';
+import { formatPhoneInput } from '@/lib/phone';
 import { photoUrlFor } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub } from '@/routes/onboarding/chrome';
 import type { OnboardingData } from '@/routes/onboarding/types';
@@ -29,17 +30,28 @@ export function PhoneStep({ data, set }: StepProps) {
         Your number is your account, and it is how the club checks you against the list of people a
         member organization or a mentor has vouched for. It is never shown to another member.
       </Sub>
-      <Field
-        id="phone"
-        type="tel"
-        inputMode="tel"
-        autoComplete="tel"
-        placeholder="(408) 555-0112"
-        value={data.phone}
-        onChange={(e) => {
-          set({ phone: e.target.value });
-        }}
-      />
+      <label htmlFor="phone" className="mt-5 block font-bold text-[13px] text-ink">
+        Phone number
+      </label>
+      <div className="flex items-stretch gap-2.5">
+        {/* A fixed +1 rather than a country picker: the club is US-only today,
+            and a picker would imply otherwise. */}
+        <span className="mt-2.5 grid flex-none place-items-center rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-semibold text-[16px] text-ink2">
+          +1
+        </span>
+        <Field
+          id="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="(408) 555-0112"
+          value={data.phone}
+          onChange={(e) => {
+            set({ phone: formatPhoneInput(e.target.value) });
+          }}
+        />
+      </div>
+      <Fine>We text you a one-time code to verify it. Message and data rates may apply.</Fine>
     </>
   );
 }

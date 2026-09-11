@@ -1,3 +1,4 @@
+import { isCompletePhone } from '@/lib/phone';
 import type { Completeness, DatePrecision, LevelRange } from '@/types/domain';
 
 /**
@@ -92,7 +93,7 @@ export function injuryDateOf(
 export function canAdvance(step: Step, data: OnboardingData): boolean {
   switch (step) {
     case 'phone':
-      return data.phone.replace(/\D/g, '').length >= 10;
+      return isCompletePhone(data.phone);
     case 'code':
       return data.code.replace(/\D/g, '').length === 6;
     case 'name':

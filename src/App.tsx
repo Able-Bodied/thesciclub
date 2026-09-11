@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
+import { RequireMember } from '@/components/require-member';
 import ChatPage from '@/routes/chat/page';
 import DevLoginPage from '@/routes/dev-login/page';
 import EventsPage from '@/routes/events/page';
@@ -43,7 +44,14 @@ export default function App() {
       {/* Outside the shell: onboarding has its own footer and no tab bar. */}
       <Route path="/join" element={<OnboardingPage />} />
       <Route path="/dev-login" element={<DevLoginPage />} />
-      <Route path="/*" element={<AppShell />} />
+      <Route
+        path="/*"
+        element={
+          <RequireMember>
+            <AppShell />
+          </RequireMember>
+        }
+      />
     </Routes>
   );
 }

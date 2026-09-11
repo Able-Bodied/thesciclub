@@ -1,7 +1,9 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { useAccount } from '@/lib/account';
 import { type BrowseMemberRow, toMember } from '@/lib/members';
+import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, StepFrame } from '@/routes/onboarding/chrome';
@@ -50,6 +52,7 @@ interface InviteStatus {
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const account = useAccount();
   const [step, setStep] = useState<Step>('welcome');
   const [phase, setPhase] = useState<Phase>('wizard');
   const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
@@ -63,9 +66,15 @@ export default function OnboardingPage() {
 
   /** Send the code. No invite check here, on purpose — see the file header. */
   async function requestCode() {
+    // Supabase wants E.164; the field holds what the person typed.
+    const phone = toE164(data.phone);
+    if (!phone) {
+      setError('That does not look like a ten-digit US number.');
+      return;
+    }
     setBusy(true);
     setError(null);
-    const { error: otpError } = await getSupabase().auth.signInWithOtp({ phone: data.phone });
+    const { error: otpError } = await getSupabase().auth.signInWithOtp({ phone });
     setBusy(false);
     if (otpError) {
       setError(otpError.message);
@@ -79,8 +88,14 @@ export default function OnboardingPage() {
     setBusy(true);
     setError(null);
     const supabase = getSupabase();
+    const phone = toE164(data.phone);
+    if (!phone) {
+      setBusy(false);
+      setError('That does not look like a ten-digit US number.');
+      return;
+    }
     const { error: verifyError } = await supabase.auth.verifyOtp({
-      phone: data.phone,
+      phone,
       token: data.code,
       type: 'sms',
     });
@@ -132,6 +147,11 @@ export default function OnboardingPage() {
       return;
     }
     void navigate('/peers', { replace: true });
+  }
+
+  // Somebody who already finished has no business being asked again.
+  if (account.status === 'member') {
+    return <Navigate to="/peers" replace />;
   }
 
   if (phase === 'blocked') {
