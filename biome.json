@@ -19,7 +19,9 @@
       "!supabase/.branches",
       "!jobs/event-ingest/out",
       "!.claude",
-      "!docs"
+      "!docs",
+      "!.logo-candidates",
+      "!screenshots"
     ]
   },
   "formatter": {
