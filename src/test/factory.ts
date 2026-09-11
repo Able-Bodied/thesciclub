@@ -1,4 +1,4 @@
-import type { BrowseMember } from '@/types/domain';
+import type { BrowseMember, ClubEvent, EventTag } from '@/types/domain';
 
 /** A member with everything empty, for tests to fill in only what they care about. */
 export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember {
@@ -41,4 +41,33 @@ export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember 
     createdAt: '2026-01-01T00:00:00Z',
     ...overrides,
   };
+}
+
+/** An event with everything plausible, for tests to override only what they mean. */
+export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
+  return {
+    id: Math.random().toString(36).slice(2),
+    title: 'Test event',
+    description: '',
+    descriptionHtml: '',
+    startTime: '2026-09-05T17:00:00.000Z',
+    endTime: null,
+    timezone: 'America/Los_Angeles',
+    location: 'Somewhere',
+    city: 'San Jose',
+    url: null,
+    registrationUrl: null,
+    format: 'in_person',
+    organizationId: null,
+    hostName: null,
+    tags: [],
+    goingCount: 0,
+    interestedCount: 0,
+    ...overrides,
+  };
+}
+
+/** A tag in the shape `ClubEvent.tags` carries, with its category. */
+export function makeTag(slug: string, categorySlug = 'sport'): EventTag {
+  return { slug, name: slug, categorySlug, categoryName: categorySlug };
 }
