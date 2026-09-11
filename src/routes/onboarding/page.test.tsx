@@ -18,6 +18,36 @@ const calls = vi.hoisted(() => ({
   existingMember: null as { id: string } | null,
 }));
 
+vi.mock('@/lib/organizations', () => ({
+  useOrganizations: () => ({
+    organizations: [
+      {
+        id: 'ncs',
+        shortCode: 'NCS',
+        name: 'NorCal SCI',
+        city: 'Northern California',
+        description: 'Peer mentoring, support groups and a regional events calendar.',
+        tags: [],
+        canInvite: true,
+        logoPath: null,
+      },
+      {
+        id: 'wwm',
+        shortCode: 'WWM',
+        name: 'Wheel with Me Foundation',
+        city: 'East Bay',
+        description: 'Grants and adaptive sport programming.',
+        tags: [],
+        canInvite: false,
+        logoPath: null,
+      },
+    ],
+    byId: new Map(),
+    loading: false,
+    error: null,
+  }),
+}));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'signed-out', userId: null, isAdmin: false, displayName: null }),
 }));
@@ -123,6 +153,18 @@ describe('joining', () => {
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
     // And it says who can open it, rather than being a dead end.
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+  });
+
+  it('names only the organizations that can actually add a number', async () => {
+    // This screen used to hardcode three. Naming a body that cannot add
+    // somebody sends a newly injured person to the wrong place, at the worst
+    // possible moment to be sent to the wrong place.
+    calls.invited = false;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.queryByText('Wheel with Me Foundation')).not.toBeInTheDocument();
   });
 
   it('lets somebody turned away try a different number', async () => {

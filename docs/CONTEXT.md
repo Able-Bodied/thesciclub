@@ -30,7 +30,7 @@ registration form do not produce a community; they produce a directory of abando
 
 So membership is granted by a person, not claimed by a form:
 
-- A **member organization** (NorCal SCI, SCVMC SCI Peer Support, Wheel with Me) adds numbers.
+- A **member organization** (NorCal SCI, SCVMC SCI Peer Support) adds numbers.
 - A **peer mentor** can add two.
 - The QR code gets somebody the app. It does not get them in. Somebody still has to add the number.
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as

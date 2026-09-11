@@ -1,4 +1,5 @@
 import { ShieldCheck } from 'lucide-react';
+import { useOrganizations } from '@/lib/organizations';
 
 /**
  * The number verified, and it is not on the list.
@@ -7,15 +8,29 @@ import { ShieldCheck } from 'lucide-react';
  * the organizations who can open it, so somebody who wants in knows exactly
  * what to do next — a dead end with no route out of it is the thing that makes
  * an invite-only product feel like a snub rather than a club.
+ *
+ * ---------------------------------------------------------------------------
+ * The list is read, not written here
+ * ---------------------------------------------------------------------------
+ * It used to be three hardcoded rows. That was wrong the moment Wheel with Me
+ * stopped being able to issue invites: this screen would have kept telling a
+ * newly injured person to contact a foundation that cannot add them, at the
+ * worst possible moment to be sent to the wrong place.
+ *
+ * `can_invite` is the one fact that decides who belongs here, so the screen
+ * asks the database for it. `organizations` is public-read, which is what makes
+ * that possible on a screen nobody is signed in to yet.
+ *
+ * When the query fails there is no fallback list, deliberately. The sentence
+ * above it still says a member organization or a mentor has to add the number,
+ * and "Try another number" still works — a shorter true page beats a complete
+ * one that might name the wrong body.
  */
 
-const VOUCHERS = [
-  ['NCS', 'NorCal SCI', 'Runs the peer mentor programme most members came through.'],
-  ['SC', 'SCVMC SCI Peer Support', 'Weekly, including bedside visits on the rehab unit.'],
-  ['WWM', 'Wheel with Me Foundation', 'Grants and adaptive sport programming.'],
-] as const;
-
 export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
+  const { organizations, loading } = useOrganizations();
+  const vouchers = organizations.filter((organization) => organization.canInvite);
+
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="flex-1 overflow-y-auto px-[18px] pt-12">
@@ -30,21 +45,33 @@ export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
           you can join — the app itself cannot let you in.
         </p>
 
-        <div className="mt-4 rounded-[17px] border border-line bg-paper px-3.5">
-          {VOUCHERS.map(([code, name, blurb]) => (
-            <div key={code} className="flex gap-3 border-line border-b py-3.5 last:border-b-0">
-              <span className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[10px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.59375rem] text-white">
-                {code}
-              </span>
-              <span>
-                <span className="block font-extrabold font-head text-[0.875rem]">{name}</span>
-                <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.42]">
-                  {blurb}
+        {loading || vouchers.length > 0 ? (
+          <div className="mt-4 min-h-[60px] rounded-[17px] border border-line bg-paper px-3.5">
+            {vouchers.map((organization) => (
+              <div
+                key={organization.id}
+                className="flex gap-3 border-line border-b py-3.5 last:border-b-0"
+              >
+                <span className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[10px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.59375rem] text-white">
+                  {organization.shortCode}
                 </span>
-              </span>
-            </div>
-          ))}
-        </div>
+                <span className="min-w-0">
+                  <span className="block font-extrabold font-head text-[0.875rem]">
+                    {organization.name}
+                  </span>
+                  {/* Clamped: these descriptions are written for the
+                      organization's own page, and this screen wants the name,
+                      the place, and enough to recognise it by — not a
+                      paragraph somebody has to read while being turned away. */}
+                  <span className="mt-0.5 line-clamp-2 block text-[0.78125rem] text-grey leading-[1.42]">
+                    {organization.description}
+                  </span>
+                  <span className="mt-0.5 block text-[0.75rem] text-grey">{organization.city}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <p className="mt-3 text-[0.78125rem] text-grey leading-[1.5]">
           If a member gave you a QR code, it gets you the app — it does not get you in. Someone
