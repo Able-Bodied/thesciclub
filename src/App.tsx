@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
+import AdminPage from '@/routes/admin/page';
 import ChatPage from '@/routes/chat/page';
 import DevLoginPage from '@/routes/dev-login/page';
 import EventsPage from '@/routes/events/page';
@@ -30,6 +31,8 @@ function AppShell() {
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/me" element={<MePage />} />
+        {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
+        <Route path="/admin" element={<AdminPage />} />
       </Routes>
       <AppNav />
     </div>

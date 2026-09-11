@@ -27,7 +27,7 @@ function renderGuarded() {
 }
 
 beforeEach(() => {
-  account.current = { status: 'member', userId: 'u1' };
+  account.current = { status: 'member', userId: 'u1', isAdmin: false };
 });
 
 describe('RequireMember', () => {
@@ -37,20 +37,20 @@ describe('RequireMember', () => {
   });
 
   it('sends a signed-out visitor to the welcome screen', () => {
-    account.current = { status: 'signed-out', userId: null };
+    account.current = { status: 'signed-out', userId: null, isAdmin: false };
     renderGuarded();
     expect(screen.getByText('Welcome screen')).toBeInTheDocument();
     expect(screen.queryByText('Inside the club')).not.toBeInTheDocument();
   });
 
   it('sends somebody who abandoned signup back to finish it', () => {
-    account.current = { status: 'signed-up', userId: 'u1' };
+    account.current = { status: 'signed-up', userId: 'u1', isAdmin: false };
     renderGuarded();
     expect(screen.getByText('Welcome screen')).toBeInTheDocument();
   });
 
   it('renders nothing of the club while it is still deciding', () => {
-    account.current = { status: 'loading', userId: null };
+    account.current = { status: 'loading', userId: null, isAdmin: false };
     renderGuarded();
     expect(screen.queryByText('Inside the club')).not.toBeInTheDocument();
     expect(screen.queryByText('Welcome screen')).not.toBeInTheDocument();

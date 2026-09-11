@@ -23,10 +23,16 @@ export type AccountStatus = 'loading' | 'signed-out' | 'signed-up' | 'member';
 export interface Account {
   status: AccountStatus;
   userId: string | null;
+  /** Read from the member's own row, which RLS already scopes to them. */
+  isAdmin: boolean;
 }
 
 export function useAccount(): Account {
-  const [account, setAccount] = useState<Account>({ status: 'loading', userId: null });
+  const [account, setAccount] = useState<Account>({
+    status: 'loading',
+    userId: null,
+    isAdmin: false,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
@@ -35,12 +41,21 @@ export function useAccount(): Account {
 
     async function resolve(userId: string | null) {
       if (!userId) {
-        if (!aborted()) setAccount({ status: 'signed-out', userId: null });
+        if (!aborted()) setAccount({ status: 'signed-out', userId: null, isAdmin: false });
         return;
       }
-      const result = await supabase.from('members').select('id').eq('id', userId).maybeSingle();
+      const result = await supabase
+        .from('members')
+        .select('id, is_admin')
+        .eq('id', userId)
+        .maybeSingle();
       if (aborted()) return;
-      setAccount({ status: result.data ? 'member' : 'signed-up', userId });
+      const row = result.data;
+      setAccount({
+        status: row ? 'member' : 'signed-up',
+        userId,
+        isAdmin: row?.is_admin ?? false,
+      });
     }
 
     void supabase.auth.getSession().then(({ data }) => {
