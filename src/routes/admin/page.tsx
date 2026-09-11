@@ -50,16 +50,31 @@ export default function AdminPage() {
   // ordinary member sees the club rather than an empty admin screen.
   if (!account.isAdmin) return <Navigate to="/peers" replace />;
 
-  async function act(id: string, run: () => Promise<{ ok: boolean; error?: string }>) {
+  /**
+   * Runs one administrative action and returns nothing.
+   *
+   * Deliberately not async: these are handed to onClick, which expects void,
+   * and an async handler's rejection there goes unhandled — so a dropped
+   * connection would leave the row spinning with no error shown. Everything is
+   * caught here instead, including a thrown one.
+   */
+  function act(id: string, run: () => Promise<{ ok: boolean; error?: string }>) {
     setBusyId(id);
-    const result = await run();
-    setBusyId(null);
-    if (!result.ok) {
-      setError(result.error ?? 'That did not work.');
-      return;
-    }
-    setError(null);
-    await load();
+    run()
+      .then(async (result) => {
+        if (!result.ok) {
+          setError(result.error ?? 'That did not work.');
+          return;
+        }
+        setError(null);
+        await load();
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : 'That did not work.');
+      })
+      .finally(() => {
+        setBusyId(null);
+      });
   }
 
   const real = members.filter((m) => !m.isSeed);
@@ -92,9 +107,15 @@ export default function AdminPage() {
                   member={m}
                   busy={busyId === m.id}
                   isSelf={m.id === account.userId}
-                  onSuspend={() => act(m.id, () => setMemberStatus(m.id, 'suspended'))}
-                  onReactivate={() => act(m.id, () => setMemberStatus(m.id, 'active'))}
-                  onDelete={() => act(m.id, () => deleteMember(m.id))}
+                  onSuspend={() => {
+                    act(m.id, () => setMemberStatus(m.id, 'suspended'));
+                  }}
+                  onReactivate={() => {
+                    act(m.id, () => setMemberStatus(m.id, 'active'));
+                  }}
+                  onDelete={() => {
+                    act(m.id, () => deleteMember(m.id));
+                  }}
                 />
               ))}
               {real.length === 0 ? (
@@ -112,9 +133,15 @@ export default function AdminPage() {
                   member={m}
                   busy={busyId === m.id}
                   isSelf={false}
-                  onSuspend={() => act(m.id, () => setMemberStatus(m.id, 'suspended'))}
-                  onReactivate={() => act(m.id, () => setMemberStatus(m.id, 'active'))}
-                  onDelete={() => act(m.id, () => deleteMember(m.id))}
+                  onSuspend={() => {
+                    act(m.id, () => setMemberStatus(m.id, 'suspended'));
+                  }}
+                  onReactivate={() => {
+                    act(m.id, () => setMemberStatus(m.id, 'active'));
+                  }}
+                  onDelete={() => {
+                    act(m.id, () => deleteMember(m.id));
+                  }}
                 />
               ))}
             </Section>
