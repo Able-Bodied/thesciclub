@@ -5,6 +5,7 @@ import DevLoginPage from '@/routes/dev-login/page';
 import EventsPage from '@/routes/events/page';
 import HomePage from '@/routes/home/page';
 import MePage from '@/routes/me/page';
+import OnboardingPage from '@/routes/onboarding/page';
 import MemberDetailPage from '@/routes/peers/member-detail';
 import PeersPage from '@/routes/peers/page';
 
@@ -39,6 +40,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
       {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
+      {/* Outside the shell: onboarding has its own footer and no tab bar. */}
+      <Route path="/join" element={<OnboardingPage />} />
       <Route path="/dev-login" element={<DevLoginPage />} />
       <Route path="/*" element={<AppShell />} />
     </Routes>

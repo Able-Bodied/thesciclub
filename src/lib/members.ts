@@ -14,7 +14,7 @@ import type { BrowseMember } from '@/types/domain';
  * mapping happens once, here, rather than in every component.
  */
 
-interface BrowseMemberRow {
+export interface BrowseMemberRow {
   id: string;
   type: string;
   display_name: string;
@@ -52,7 +52,8 @@ interface BrowseMemberRow {
   created_at: string;
 }
 
-function toMember(row: BrowseMemberRow): BrowseMember {
+/** The one row -> domain mapping. Exported so nothing writes a second one. */
+export function toMember(row: BrowseMemberRow): BrowseMember {
   return {
     id: row.id,
     type: row.type === 'mentor' ? 'mentor' : 'peer',

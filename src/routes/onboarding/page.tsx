@@ -1,0 +1,253 @@
+import { Loader2 } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { type BrowseMemberRow, toMember } from '@/lib/members';
+import { getSupabase } from '@/lib/supabase';
+import { BlockedScreen } from '@/routes/onboarding/blocked';
+import { LinkButton, PrimaryButton, StepFrame } from '@/routes/onboarding/chrome';
+import {
+  BirthdayStep,
+  CityStep,
+  ClaimStep,
+  CodeStep,
+  InjuryStep,
+  NameStep,
+  PhoneStep,
+  PhotoStep,
+} from '@/routes/onboarding/steps';
+import { submitOnboarding } from '@/routes/onboarding/submit-onboarding';
+import {
+  COUNTED_STEPS,
+  canAdvance,
+  INITIAL_ONBOARDING_DATA,
+  type OnboardingData,
+  type Step,
+  stepNumber,
+} from '@/routes/onboarding/types';
+import { WelcomeScreen } from '@/routes/onboarding/welcome';
+import type { BrowseMember } from '@/types/domain';
+
+/**
+ * Joining the club.
+ *
+ * The order of the first three screens is the security decision in this file.
+ * The number is verified *before* the club says whether it is on the list,
+ * because a check that anybody can run against any number would disclose who
+ * has a spinal cord injury. See the migration for my_invite_status().
+ *
+ * So: number, code, and only then does the answer come back — either the
+ * blocked screen, or the rest of the questions. It costs an SMS to somebody who
+ * turns out not to be invited. That is the cheaper of the two mistakes.
+ */
+
+type Phase = 'wizard' | 'blocked' | 'submitting';
+
+/** What my_invite_status() returns. See the migration of the same name. */
+interface InviteStatus {
+  invited: boolean;
+  claimable_member_id: string | null;
+}
+
+export default function OnboardingPage() {
+  const navigate = useNavigate();
+  const [step, setStep] = useState<Step>('welcome');
+  const [phase, setPhase] = useState<Phase>('wizard');
+  const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
+  const [claimable, setClaimable] = useState<BrowseMember | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const set = useCallback((patch: Partial<OnboardingData>) => {
+    setData((d) => ({ ...d, ...patch }));
+  }, []);
+
+  /** Send the code. No invite check here, on purpose — see the file header. */
+  async function requestCode() {
+    setBusy(true);
+    setError(null);
+    const { error: otpError } = await getSupabase().auth.signInWithOtp({ phone: data.phone });
+    setBusy(false);
+    if (otpError) {
+      setError(otpError.message);
+      return;
+    }
+    setStep('code');
+  }
+
+  /** Verify, then — and only then — ask whether this number is on the list. */
+  async function verifyCode() {
+    setBusy(true);
+    setError(null);
+    const supabase = getSupabase();
+    const { error: verifyError } = await supabase.auth.verifyOtp({
+      phone: data.phone,
+      token: data.code,
+      type: 'sms',
+    });
+    if (verifyError) {
+      setBusy(false);
+      setError(verifyError.message);
+      return;
+    }
+
+    // Taken whole rather than destructured: rpc() types its payload as `any`,
+    // and destructuring would launder that straight into a branch that decides
+    // whether somebody is let into the club.
+    const statusResult = await supabase.rpc('my_invite_status').single();
+    setBusy(false);
+    if (statusResult.error) {
+      setError(statusResult.error.message);
+      return;
+    }
+
+    const row = statusResult.data as InviteStatus;
+    if (!row.invited) {
+      setPhase('blocked');
+      return;
+    }
+
+    if (row.claimable_member_id) {
+      // Same reason as above: maybeSingle() types its data as `any`.
+      const profileResult = await supabase
+        .from('browse_members')
+        .select('*')
+        .eq('id', row.claimable_member_id)
+        .maybeSingle();
+      const profile = profileResult.data as BrowseMemberRow | null;
+      if (profile) {
+        setClaimable(toMember(profile));
+        setStep('claim');
+        return;
+      }
+    }
+    setStep('name');
+  }
+
+  async function finish() {
+    setPhase('submitting');
+    const result = await submitOnboarding(data);
+    if (!result.ok) {
+      setPhase('wizard');
+      setError(result.error ?? 'Could not finish signing up.');
+      return;
+    }
+    void navigate('/peers', { replace: true });
+  }
+
+  if (phase === 'blocked') {
+    return (
+      <BlockedScreen
+        onTryAnother={() => {
+          setPhase('wizard');
+          setStep('phone');
+          set({ code: '' });
+        }}
+      />
+    );
+  }
+
+  if (step === 'welcome') {
+    return (
+      <WelcomeScreen
+        onStart={() => {
+          setStep('phone');
+        }}
+      />
+    );
+  }
+
+  const back: Record<Step, Step | undefined> = {
+    welcome: undefined,
+    phone: 'welcome',
+    code: 'phone',
+    // No way back past a verified number: the account already exists.
+    claim: undefined,
+    name: undefined,
+    birthday: 'name',
+    injury: 'birthday',
+    city: 'injury',
+    photo: 'city',
+  };
+
+  const n = stepNumber(step);
+  const ready = canAdvance(step, data);
+  const previous = back[step];
+
+  return (
+    <StepFrame
+      stepNumber={n}
+      totalSteps={COUNTED_STEPS.length}
+      onBack={
+        previous
+          ? () => {
+              setStep(previous);
+            }
+          : undefined
+      }
+      footer={
+        <>
+          {error ? (
+            <p className="mb-2.5 text-[13px] text-destructive leading-[1.45]">{error}</p>
+          ) : null}
+          {step === 'claim' ? null : (
+            <PrimaryButton
+              disabled={!ready || busy || phase === 'submitting'}
+              onClick={() => {
+                if (step === 'phone') return void requestCode();
+                if (step === 'code') return void verifyCode();
+                if (step === 'photo') return void finish();
+                const order: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
+                const next = order[order.indexOf(step) + 1];
+                if (next) setStep(next);
+              }}
+            >
+              {busy || phase === 'submitting' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : step === 'photo' ? (
+                'Enter the club'
+              ) : (
+                'Continue'
+              )}
+            </PrimaryButton>
+          )}
+          {step === 'photo' ? (
+            <LinkButton
+              onClick={() => {
+                set({ photoFile: null, photoPreviewUrl: null });
+                void finish();
+              }}
+            >
+              Skip for now
+            </LinkButton>
+          ) : null}
+        </>
+      }
+    >
+      {step === 'phone' ? <PhoneStep data={data} set={set} /> : null}
+      {step === 'code' ? <CodeStep data={data} set={set} /> : null}
+      {step === 'claim' && claimable ? (
+        <ClaimStep
+          profile={claimable}
+          onAccept={() => {
+            set({
+              displayName: claimable.displayName,
+              levelRange: claimable.levelRange,
+              completeness: claimable.completeness,
+              city: claimable.city ?? '',
+              state: claimable.state,
+            });
+            setStep('name');
+          }}
+          onDecline={() => {
+            setStep('name');
+          }}
+        />
+      ) : null}
+      {step === 'name' ? <NameStep data={data} set={set} /> : null}
+      {step === 'birthday' ? <BirthdayStep data={data} set={set} /> : null}
+      {step === 'injury' ? <InjuryStep data={data} set={set} /> : null}
+      {step === 'city' ? <CityStep data={data} set={set} /> : null}
+      {step === 'photo' ? <PhotoStep data={data} set={set} /> : null}
+    </StepFrame>
+  );
+}
