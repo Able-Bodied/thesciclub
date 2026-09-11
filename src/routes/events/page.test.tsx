@@ -224,6 +224,33 @@ describe('EventsPage', () => {
       expect(screen.getByRole('button', { name: 'wheelchair-rugby' })).toBeInTheDocument();
     });
 
+    it('keeps offering the other cities after one is picked', async () => {
+      // The sheet's options ignore the filters the sheet itself sets. Otherwise
+      // picking "San Jose" would make every other city vanish from the list you
+      // picked it from, and there would be no way back without Clear.
+      state.events = [
+        makeEvent({ id: 'a', startTime: soon(1), city: 'San Jose' }),
+        makeEvent({ id: 'b', startTime: soon(2), city: 'Santa Cruz' }),
+      ];
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      await userEvent.click(screen.getByRole('button', { name: 'San Jose' }));
+      expect(screen.getByRole('button', { name: 'Santa Cruz' })).toBeInTheDocument();
+    });
+
+    it('only offers a city that has an event in the chosen window', async () => {
+      state.events = [
+        makeEvent({ id: 'a', startTime: soon(1), city: 'San Jose' }),
+        makeEvent({ id: 'b', startTime: soon(200), city: 'Truckee' }),
+      ];
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      // Truckee's only event is 200 days out, well past the default month.
+      expect(screen.queryByRole('button', { name: 'Truckee' })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Any time' }));
+      expect(screen.getByRole('button', { name: 'Truckee' })).toBeInTheDocument();
+    });
+
     it('narrows the list when a tag is picked', async () => {
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
