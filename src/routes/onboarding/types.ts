@@ -1,5 +1,5 @@
 import { isCompletePhone } from '@/lib/phone';
-import type { Completeness, DatePrecision, LevelRange } from '@/types/domain';
+import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
 
 /**
  * The shape onboarding collects, and the order it collects it in.
@@ -14,7 +14,7 @@ export interface OnboardingData {
   code: string;
   displayName: string;
   birthDate: string;
-  levelRange: LevelRange | null;
+  exactLevel: ExactLevel | null;
   completeness: Completeness;
   /** Stored as a date; asked as a year, refined only if somebody wants to. */
   injuryYear: string;
@@ -22,6 +22,8 @@ export interface OnboardingData {
   injuryDay: string;
   city: string;
   state: string;
+  /** Only used to look up a city and state. Never stored. */
+  zip: string;
   photoFile: File | null;
   photoPreviewUrl: string | null;
 }
@@ -31,13 +33,14 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   code: '',
   displayName: '',
   birthDate: '',
-  levelRange: null,
+  exactLevel: null,
   completeness: 'Do not know',
   injuryYear: '',
   injuryMonth: '',
   injuryDay: '',
   city: '',
-  state: 'CA',
+  state: '',
+  zip: '',
   photoFile: null,
   photoPreviewUrl: null,
 };
@@ -101,8 +104,10 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
     case 'birthday':
       return /^\d{4}-\d{2}-\d{2}$/.test(data.birthDate);
     case 'injury':
-      return data.levelRange !== null && injuryDateOf(data) !== null;
+      return data.exactLevel !== null && injuryDateOf(data) !== null;
     case 'city':
+      // A state is the coarsest thing we always want. City can be blank —
+      // "somewhere else" is a real answer.
       return data.state.trim().length > 0;
     default:
       return true;

@@ -251,7 +251,7 @@ export default function OnboardingPage() {
           onAccept={() => {
             set({
               displayName: claimable.displayName,
-              levelRange: claimable.levelRange,
+              exactLevel: claimable.exactLevel,
               completeness: claimable.completeness,
               city: claimable.city ?? '',
               state: claimable.state,

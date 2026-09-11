@@ -84,6 +84,25 @@ export function regionForRange(range: LevelRange): InjuryRegion {
   }
 }
 
+/**
+ * The coarse range an exact level falls into, by its first segment.
+ *
+ * Derived rather than asked twice: onboarding collects the exact level, and the
+ * range exists so a filter has something broad to group on. Taking the first
+ * segment of a between-segments level ("C4/5" -> C4) is the conservative read —
+ * it does not overstate function.
+ */
+export function rangeForExact(level: ExactLevel): LevelRange {
+  if (level === 'Do not know') return 'Not sure yet';
+  const match = /^([CTLS])(\d+)/.exec(level);
+  if (!match) return 'Not sure yet';
+  const segment = match[1];
+  const n = Number(match[2]);
+  if (segment === 'C') return n <= 4 ? 'C1–C4' : 'C5–C8';
+  if (segment === 'T') return n <= 6 ? 'T1–T6' : 'T7–T12';
+  return 'L1–S5';
+}
+
 export const COMPLETENESS = ['Complete', 'Incomplete', 'Do not know'] as const;
 export type Completeness = (typeof COMPLETENESS)[number];
 
@@ -140,6 +159,80 @@ export const MARITAL_STATUS = [
   'Widowed',
 ] as const;
 export type MaritalStatus = (typeof MARITAL_STATUS)[number];
+
+/* ------------------------------------------------------------------ member */
+
+/* ---------------------------------------------------------------- location */
+
+/**
+ * States, as the two-letter codes the `state` column holds. All fifty plus DC:
+ * the club is Northern California today, but somebody moves, and a list that
+ * cannot express where they live is a worse problem than a long dropdown.
+ */
+export const US_STATES = [
+  ['AL', 'Alabama'],
+  ['AK', 'Alaska'],
+  ['AZ', 'Arizona'],
+  ['AR', 'Arkansas'],
+  ['CA', 'California'],
+  ['CO', 'Colorado'],
+  ['CT', 'Connecticut'],
+  ['DE', 'Delaware'],
+  ['DC', 'District of Columbia'],
+  ['FL', 'Florida'],
+  ['GA', 'Georgia'],
+  ['HI', 'Hawaii'],
+  ['ID', 'Idaho'],
+  ['IL', 'Illinois'],
+  ['IN', 'Indiana'],
+  ['IA', 'Iowa'],
+  ['KS', 'Kansas'],
+  ['KY', 'Kentucky'],
+  ['LA', 'Louisiana'],
+  ['ME', 'Maine'],
+  ['MD', 'Maryland'],
+  ['MA', 'Massachusetts'],
+  ['MI', 'Michigan'],
+  ['MN', 'Minnesota'],
+  ['MS', 'Mississippi'],
+  ['MO', 'Missouri'],
+  ['MT', 'Montana'],
+  ['NE', 'Nebraska'],
+  ['NV', 'Nevada'],
+  ['NH', 'New Hampshire'],
+  ['NJ', 'New Jersey'],
+  ['NM', 'New Mexico'],
+  ['NY', 'New York'],
+  ['NC', 'North Carolina'],
+  ['ND', 'North Dakota'],
+  ['OH', 'Ohio'],
+  ['OK', 'Oklahoma'],
+  ['OR', 'Oregon'],
+  ['PA', 'Pennsylvania'],
+  ['RI', 'Rhode Island'],
+  ['SC', 'South Carolina'],
+  ['SD', 'South Dakota'],
+  ['TN', 'Tennessee'],
+  ['TX', 'Texas'],
+  ['UT', 'Utah'],
+  ['VT', 'Vermont'],
+  ['VA', 'Virginia'],
+  ['WA', 'Washington'],
+  ['WV', 'West Virginia'],
+  ['WI', 'Wisconsin'],
+  ['WY', 'Wyoming'],
+] as const;
+
+export type UsStateCode = (typeof US_STATES)[number][0];
+
+export function stateNameFor(code: string): string | null {
+  return US_STATES.find(([c]) => c === code)?.[1] ?? null;
+}
+
+export function stateCodeForName(name: string): string | null {
+  const wanted = name.trim().toLowerCase();
+  return US_STATES.find(([, n]) => n.toLowerCase() === wanted)?.[0] ?? null;
+}
 
 /* ------------------------------------------------------------------ member */
 

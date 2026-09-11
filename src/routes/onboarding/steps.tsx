@@ -1,3 +1,6 @@
+import { Loader2, LocateFixed } from 'lucide-react';
+import { useState } from 'react';
+import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom } from '@/lib/injury';
 import { formatPhoneInput } from '@/lib/phone';
 import { photoUrlFor } from '@/lib/photos';
@@ -5,7 +8,7 @@ import { Chip, Field, Fine, Question, Sub } from '@/routes/onboarding/chrome';
 import type { OnboardingData } from '@/routes/onboarding/types';
 import { injuryDateOf } from '@/routes/onboarding/types';
 import type { BrowseMember } from '@/types/domain';
-import { COMPLETENESS, LEVEL_RANGES } from '@/types/domain';
+import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
 
 /**
  * The questions.
@@ -140,22 +143,32 @@ export function InjuryStep({ data, set }: StepProps) {
       <Question>Tell us about your injury</Question>
       <Sub>The things members filter on most.</Sub>
 
-      <h2 className="mt-5 mb-2 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <label
+        htmlFor="level"
+        className="mt-5 mb-2 block font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]"
+      >
         Level of injury
-      </h2>
-      <div className="flex flex-wrap gap-2">
-        {LEVEL_RANGES.map((level) => (
-          <Chip
-            key={level}
-            selected={data.levelRange === level}
-            onClick={() => {
-              set({ levelRange: level });
-            }}
-          >
+      </label>
+      <select
+        id="level"
+        value={data.exactLevel ?? ''}
+        onChange={(e) => {
+          set({ exactLevel: (e.target.value || null) as OnboardingData['exactLevel'] });
+        }}
+        className="w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[16px] outline-none focus:border-navy"
+      >
+        <option value="">Select a level</option>
+        {EXACT_LEVELS.map((level) => (
+          <option key={level} value={level}>
             {level}
-          </Chip>
+          </option>
         ))}
-      </div>
+      </select>
+      {data.exactLevel && data.exactLevel !== 'Do not know' ? (
+        <p className="mt-2 text-[12.5px] text-grey leading-[1.5]">
+          Members browsing by level will find you under {rangeForExact(data.exactLevel)}.
+        </p>
+      ) : null}
 
       <h2 className="mt-5 mb-2 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
         Complete or incomplete?
@@ -238,45 +251,132 @@ export function InjuryStep({ data, set }: StepProps) {
   );
 }
 
-const CITIES = [
-  'San Jose',
-  'San Francisco',
-  'Santa Clara',
-  'Oakland',
-  'Fremont',
-  'Santa Cruz',
-  'Sacramento',
-];
-
 export function CityStep({ data, set }: StepProps) {
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [zipStatus, setZipStatus] = useState<'idle' | 'looking' | 'missed'>('idle');
+
+  function useMyLocation() {
+    setLocationError(null);
+    if (!('geolocation' in navigator)) {
+      setLocationError('This browser cannot share a location — choose it below.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        void reverseGeocode(position.coords.latitude, position.coords.longitude)
+          .then((place) => {
+            if (place) set({ city: place.city, state: place.state });
+            else setLocationError("Couldn't match that to a city — choose it below.");
+          })
+          .finally(() => {
+            setLocating(false);
+          });
+      },
+      () => {
+        setLocationError('Location permission denied — choose it below.');
+        setLocating(false);
+      },
+      { timeout: 10000 },
+    );
+  }
+
+  function onZipChange(value: string) {
+    const zip = value.replace(/\D/g, '').slice(0, 5);
+    set({ zip });
+    if (zip.length !== 5) {
+      setZipStatus('idle');
+      return;
+    }
+    setZipStatus('looking');
+    void geocodeZip(zip).then((place) => {
+      if (place) {
+        set({ city: place.city, state: place.state });
+        setZipStatus('idle');
+      } else {
+        setZipStatus('missed');
+      }
+    });
+  }
+
   return (
     <>
       <Question>Where do you live?</Question>
-      <Sub>
-        Because the point is meeting in person, the club sorts by how close things are to you.
-      </Sub>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {CITIES.map((city) => (
-          <Chip
-            key={city}
-            selected={data.city === city}
-            onClick={() => {
-              set({ city, state: 'CA' });
-            }}
-          >
-            {city}
-          </Chip>
+      <Sub>We show peers and events near you first. City and state only — never your address.</Sub>
+
+      <button
+        type="button"
+        onClick={useMyLocation}
+        disabled={locating}
+        className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper font-bold font-head text-[15px] text-ink disabled:opacity-50"
+      >
+        {locating ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <LocateFixed className="h-4 w-4" />
+        )}
+        {locating ? 'Finding you…' : 'Use my location'}
+      </button>
+      {locationError ? (
+        <p className="mt-2 text-[12.5px] text-destructive leading-[1.45]">{locationError}</p>
+      ) : null}
+
+      <p className="mt-4 text-center text-[12.5px] text-grey">or choose it yourself</p>
+
+      <label htmlFor="zip" className="mt-4 block font-bold text-[13px] text-ink">
+        ZIP code
+      </label>
+      <Field
+        id="zip"
+        inputMode="numeric"
+        maxLength={5}
+        placeholder="95814"
+        value={data.zip}
+        onChange={(e) => {
+          onZipChange(e.target.value);
+        }}
+      />
+      <p className="mt-1.5 text-[12px] text-grey leading-[1.45]">
+        {zipStatus === 'looking'
+          ? 'Looking that up…'
+          : zipStatus === 'missed'
+            ? "Couldn't find that ZIP — pick a state and city below."
+            : 'Fills in the city and state for you. The ZIP itself is not stored.'}
+      </p>
+
+      <label htmlFor="state" className="mt-4 block font-bold text-[13px] text-ink">
+        State
+      </label>
+      <select
+        id="state"
+        value={data.state}
+        onChange={(e) => {
+          set({ state: e.target.value });
+        }}
+        className="mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[16px] outline-none focus:border-navy"
+      >
+        <option value="">Select a state</option>
+        {US_STATES.map(([code, name]) => (
+          <option key={code} value={code}>
+            {name}
+          </option>
         ))}
-        <Chip
-          selected={data.city === ''}
-          onClick={() => {
-            set({ city: '' });
-          }}
-        >
-          Somewhere else
-        </Chip>
-      </div>
-      <Fine>A city, never a location. The club never stores where you are right now.</Fine>
+      </select>
+
+      <label htmlFor="city" className="mt-4 block font-bold text-[13px] text-ink">
+        City or town
+      </label>
+      <Field
+        id="city"
+        autoComplete="address-level2"
+        placeholder="San Jose"
+        value={data.city}
+        onChange={(e) => {
+          set({ city: e.target.value });
+        }}
+      />
+      <Fine>Leave the city blank if you would rather not say. The state is enough.</Fine>
     </>
   );
 }

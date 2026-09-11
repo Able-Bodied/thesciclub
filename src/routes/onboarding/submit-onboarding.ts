@@ -1,5 +1,6 @@
 import { getSupabase } from '@/lib/supabase';
 import { injuryDateOf, type OnboardingData } from '@/routes/onboarding/types';
+import { rangeForExact } from '@/types/domain';
 
 /**
  * Turning the wizard's answers into the member row.
@@ -30,7 +31,7 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
   }
 
   const injury = injuryDateOf(data);
-  if (!injury || !data.levelRange) {
+  if (!injury || !data.exactLevel) {
     return { ok: false, error: 'Some answers are missing. Go back a step.' };
   }
 
@@ -51,7 +52,10 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     phone: user.phone,
     display_name: data.displayName.trim(),
     birth_date: data.birthDate,
-    level_range: data.levelRange,
+    // Asked once, as an exact level; the range is derived so the two cannot
+    // disagree about the same person.
+    level_range: rangeForExact(data.exactLevel),
+    exact_level: data.exactLevel === 'Do not know' ? null : data.exactLevel,
     completeness: data.completeness,
     injury_date: injury.date,
     injury_date_precision: injury.precision,

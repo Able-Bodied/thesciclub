@@ -56,9 +56,9 @@ describe('canAdvance', () => {
   });
 
   it('needs a level and a year before the injury step is done', () => {
-    expect(canAdvance('injury', data({ levelRange: 'C5–C8' }))).toBe(false);
+    expect(canAdvance('injury', data({ exactLevel: 'C6' }))).toBe(false);
     expect(canAdvance('injury', data({ injuryYear: '2013' }))).toBe(false);
-    expect(canAdvance('injury', data({ levelRange: 'C5–C8', injuryYear: '2013' }))).toBe(true);
+    expect(canAdvance('injury', data({ exactLevel: 'C6', injuryYear: '2013' }))).toBe(true);
   });
 
   it('lets the photo step through without a photo — it is the optional one', () => {
@@ -67,6 +67,10 @@ describe('canAdvance', () => {
 
   it('does not require a city, because "somewhere else" is a real answer', () => {
     expect(canAdvance('city', data({ city: '', state: 'CA' }))).toBe(true);
+  });
+
+  it('does require a state, which is the coarsest thing we always want', () => {
+    expect(canAdvance('city', data({ city: 'San Jose', state: '' }))).toBe(false);
   });
 });
 
