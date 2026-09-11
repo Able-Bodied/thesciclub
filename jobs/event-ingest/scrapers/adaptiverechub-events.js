@@ -2,10 +2,13 @@
  * AdaptiveRecHub Events — list endpoint + per-event detail pages
  *
  * adaptiverechub.org is a hub: one feed carrying events from many different host orgs. Every card
- * names the org hosting it in a "Program" field, which this scraper emits as
- * `organization_name`/`organization_slug` on each event, plus `organization_url` — the org's own
- * page on the hub. Those are not columns — `ingest.js` resolves them to `events.organization_id`
- * and `organizations.source_url`.
+ * names the org hosting it in a "Program" field, which this scraper emits as `host_name`.
+ *
+ * That is a column — `events.host_name` — and it is where the attribution stays unless ingest.js
+ * matches it to an organization the club already has, in which case the event also gets an
+ * `organization_id`. The job never creates an organization from a scrape: `organizations` here is
+ * a curated table whose `can_invite` flag decides who may put a phone number on the club's list.
+ * See the header of supabase/migrations/20260911180000_events.sql.
  *
  * Endpoint details, field coverage and parsing gotchas are documented in
  * ./adaptiverechub-events.md. Three things shape this file:
@@ -92,14 +95,6 @@ function parseCardDate(dateText) {
 }
 
 /** Program name → slug, e.g. "ParaCliffHangers – Movement LIC" → "paracliffhangers-movement-lic". */
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 /**
  * The event chunks of a WordPress sitemap index, in order.
  *
@@ -259,11 +254,11 @@ export class AdaptiveRecHubEventsScraper {
       }
     }
 
-    const withoutProgram = events.filter((event) => !event.organization_slug).length;
+    const withoutProgram = events.filter((event) => !event.host_name).length;
     console.log(
       `  AdaptiveRecHub: ${events.length} events — detail pages ${fetched} fetched, ` +
         `${skipped} unchanged, ${failed} failed; ` +
-        `${withoutProgram} without a Program (those fall back to the feed's own org)`,
+        `${withoutProgram} without a Program (those carry no host attribution)`,
     );
 
     return events;
@@ -407,13 +402,14 @@ export class AdaptiveRecHubEventsScraper {
     if (!title || !url || !startTime) return null;
 
     const sport = $card.find('.sport p').text().trim();
-    // The Program is usually a link to that org's hub page, but a plain <p> on some cards.
-    const $program = $card.find('.program p a');
-    const program = ($program.text() || $card.find('.program p').text()).trim();
+    // The Program is usually a link to that org's hub page, but a plain <p> on some cards, so
+    // both shapes are read. Only the text is kept: the href points at the hub's page about the
+    // org, which is not somewhere this app sends anybody.
+    const program = ($card.find('.program p a').text() || $card.find('.program p').text()).trim();
 
-    // Sport has no column of its own and Program's column is organization_id, so both are also
-    // kept verbatim in the description — this is the fallback copy, replaced by the event page's
-    // real description as soon as a detail fetch succeeds.
+    // Sport has no column of its own, so both are also kept verbatim in the description — this is
+    // the fallback copy, replaced by the event page's real description as soon as a detail fetch
+    // succeeds.
     const description = [sport && `Sport: ${sport}`, program && `Hosted by: ${program}`]
       .filter(Boolean)
       .join('\n');
@@ -431,12 +427,10 @@ export class AdaptiveRecHubEventsScraper {
       url,
       registration_url: null,
       feed_id: feedId,
-      // Not columns: ingest.js resolves these into events.organization_id and
-      // organizations.source_url. The program href is the org's page on the hub — the one place
-      // that links to the org's actual website, which is how the AI pass finds a logo.
-      organization_name: program || null,
-      organization_slug: program ? slugify(program) : null,
-      organization_url: $program.attr('href')?.trim() ?? null,
+      // The hub's own name for whoever is hosting. ingest.js matches it against the club's
+      // organizations and sets organization_id when one matches; otherwise this is the
+      // attribution the card and the detail page show.
+      host_name: program || null,
     };
   }
 }
@@ -453,7 +447,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     : await scraper.scrape('debug-feed-id');
 
   for (const event of events) {
-    console.log(`  ${event.start_time}  ${event.title}  [${event.organization_name ?? '—'}]`);
+    console.log(`  ${event.start_time}  ${event.title}  [${event.host_name ?? '—'}]`);
   }
   console.log(`\nFirst event:\n${JSON.stringify(events[0], null, 2)}`);
 }

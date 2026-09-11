@@ -220,17 +220,8 @@ describe('AdaptiveRecHubEventsScraper.normalizeEvent', () => {
     <div class="program"><p><a href="https://adaptiverechub.org/programs/bay-area-outreach-and-recreation-program/">BORP Adaptive Sports</a></p></div>
   </div>`;
 
-  it("captures the program link as the organization's page on the hub", () => {
-    expect(firstEvent(card).organization_url).toBe(
-      'https://adaptiverechub.org/programs/bay-area-outreach-and-recreation-program/',
-    );
-  });
-
-  it('slugifies the program name into an organization slug', () => {
-    const event = firstEvent(card);
-
-    expect(event.organization_name).toBe('BORP Adaptive Sports');
-    expect(event.organization_slug).toBe('borp-adaptive-sports');
+  it('reads the Program as the host name', () => {
+    expect(firstEvent(card).host_name).toBe('BORP Adaptive Sports');
   });
 
   it('reads a card date as Pacific wall-clock time', () => {
@@ -241,8 +232,15 @@ describe('AdaptiveRecHubEventsScraper.normalizeEvent', () => {
   it('handles a Program that is plain text rather than a link', () => {
     const event = firstEvent(card.replace(/<a href="[^"]*">BORP Adaptive Sports<\/a>/, 'Solo Org'));
 
-    expect(event.organization_name).toBe('Solo Org');
-    expect(event.organization_url).toBeNull();
+    expect(event.host_name).toBe('Solo Org');
+  });
+
+  it('leaves host_name null when a card names no Program', () => {
+    // Those events carry no host attribution rather than being credited to the
+    // hub, which hosts nothing itself.
+    const event = firstEvent(card.replace(/<div class="program">[\s\S]*?<\/div>/, ''));
+
+    expect(event.host_name).toBeNull();
   });
 
   it('throws rather than reporting an empty feed when the card markup stops matching', () => {

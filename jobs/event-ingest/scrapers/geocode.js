@@ -3,7 +3,7 @@
  * ("Gino's Pizza 1761 Monterey Street San Luis Obispo, CA, 93401 United
  * States", or something as loose as "Sacramento Rehabilitation Hospital,
  * Natomas"). Nominatim (OpenStreetMap) — the same provider
- * src/routes/onboarding/location-step.tsx already uses for reverse geocoding
+ * src/lib/geocode.ts already uses for reverse geocoding
  * — resolves free-text place names, not just structured addresses, so it
  * handles both cases with one endpoint.
  *
@@ -14,8 +14,16 @@
  */
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
-const USER_AGENT =
-  'ab-peers-prototype-event-ingest/1.0 (hackathon prototype; no production traffic)';
+// Nominatim's usage policy asks for a User-Agent that identifies the
+// application, so a misbehaving client can be recognised and contacted rather
+// than simply blocked. The string this was ported with claimed to be a
+// hackathon prototype sending no production traffic, which stopped being true
+// the moment this started running on a schedule.
+//
+// TODO(owner): add a real contact address once one exists — the policy prefers
+// one, and an address nobody reads is worse than none. The domain identifies
+// the application in the meantime.
+const USER_AGENT = 'thesciclub-event-ingest/1.0 (+https://www.thesciclub.com)';
 const MIN_REQUEST_INTERVAL_MS = 1100;
 
 /**
