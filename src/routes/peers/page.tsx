@@ -36,7 +36,7 @@ const SEGMENTS: [PeersSegment, string][] = [
 ];
 
 export default function PeersPage() {
-  const { members, loading, error } = useBrowseMembers();
+  const { members, loading, error, signedOut } = useBrowseMembers();
   const [segment, setSegment] = useState<PeersSegment>('everyone');
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_MEMBER_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -143,6 +143,15 @@ export default function PeersPage() {
 
         {loading ? (
           <p className="px-6 py-10 text-center text-[14px] text-grey">Loading members…</p>
+        ) : signedOut ? (
+          <div className="px-6 py-10 text-center">
+            <p className="text-[14px] text-ink2 leading-relaxed">
+              The club is members only. Sign in to see who is here.
+            </p>
+            <p className="mt-2 text-[12.5px] text-grey leading-relaxed">
+              Nothing inside the club is public.
+            </p>
+          </div>
         ) : error ? (
           <div className="px-6 py-10 text-center">
             <p className="text-[14px] text-ink2 leading-relaxed">Could not load members.</p>

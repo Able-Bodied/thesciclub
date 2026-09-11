@@ -97,6 +97,12 @@ export interface MembersState {
   loading: boolean;
   /** The database's own sentence where there is one — not a rewritten summary. */
   error: string | null;
+  /**
+   * No session, as opposed to a failed query. Kept separate because they are
+   * different screens: "permission denied for view browse_members" is an
+   * accurate thing to show a developer and a useless thing to show a member.
+   */
+  signedOut: boolean;
 }
 
 export function useBrowseMembers(): MembersState {
@@ -104,40 +110,64 @@ export function useBrowseMembers(): MembersState {
     members: [],
     loading: true,
     error: null,
+    signedOut: false,
   });
 
   useEffect(() => {
-    let cancelled = false;
+    // An AbortController rather than a `let cancelled` flag: the flag reads as
+    // always-false to the type checker after its first check, since it cannot
+    // see the cleanup closure mutate it across an await. This also genuinely
+    // cancels the request instead of discarding its result.
+    const controller = new AbortController();
+    const { signal } = controller;
+    // Read through a call, not a property: the type checker narrows
+    // `signal.aborted` to false after the first check and then flags every
+    // later one as dead code. A call result cannot be narrowed.
+    const aborted = () => signal.aborted;
 
     async function load() {
       try {
-        const { data, error } = await getSupabase()
+        const supabase = getSupabase();
+
+        // Ask before knocking. Without this, a signed-out visitor gets the
+        // database's refusal rendered at them verbatim.
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (aborted()) return;
+        if (!sessionData.session) {
+          setState({ members: [], loading: false, error: null, signedOut: true });
+          return;
+        }
+
+        const { data, error } = await supabase
           .from('browse_members')
           .select('*')
-          .order('display_name');
-        if (cancelled) return;
+          .order('display_name')
+          .abortSignal(signal);
+        if (aborted()) return;
         if (error) {
-          setState({ members: [], loading: false, error: error.message });
+          setState({ members: [], loading: false, error: error.message, signedOut: false });
           return;
         }
         setState({
           members: (data as BrowseMemberRow[]).map(toMember),
           loading: false,
           error: null,
+          signedOut: false,
         });
       } catch (e) {
-        if (cancelled) return;
+        if (aborted()) return;
         setState({
           members: [],
           loading: false,
           error: e instanceof Error ? e.message : 'Could not load members.',
+          signedOut: false,
         });
       }
     }
 
     void load();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, []);
 

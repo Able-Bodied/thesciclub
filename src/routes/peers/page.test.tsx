@@ -36,7 +36,7 @@ const deck = [
 ];
 
 beforeEach(() => {
-  state.current = { members: deck, loading: false, error: null };
+  state.current = { members: deck, loading: false, error: null, signedOut: false };
 });
 
 describe('PeersPage', () => {
@@ -68,20 +68,43 @@ describe('PeersPage', () => {
     expect(screen.getByText('2 of 2 members')).toBeInTheDocument();
   });
 
+  it('tells a signed-out visitor the club is members only, not "permission denied"', () => {
+    state.current = { members: [], loading: false, error: null, signedOut: true };
+    render(<PeersPage />);
+    expect(screen.getByText(/members only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/permission denied/i)).not.toBeInTheDocument();
+  });
+
+  it('still surfaces a genuine database error, which is a different thing', () => {
+    state.current = {
+      members: [],
+      loading: false,
+      error: 'permission denied for view browse_members',
+      signedOut: false,
+    };
+    render(<PeersPage />);
+    expect(screen.getByText('permission denied for view browse_members')).toBeInTheDocument();
+  });
+
   it('shows a loading state rather than an empty deck', () => {
-    state.current = { members: [], loading: true, error: null };
+    state.current = { members: [], loading: true, error: null, signedOut: false };
     render(<PeersPage />);
     expect(screen.getByText(/Loading members/)).toBeInTheDocument();
   });
 
   it('surfaces the database’s own error sentence instead of swallowing it', () => {
-    state.current = { members: [], loading: false, error: 'permission denied for view' };
+    state.current = {
+      members: [],
+      loading: false,
+      error: 'permission denied for view',
+      signedOut: false,
+    };
     render(<PeersPage />);
     expect(screen.getByText('permission denied for view')).toBeInTheDocument();
   });
 
   it('tells somebody the deck is empty because of their filters, not because the club is', async () => {
-    state.current = { members: [], loading: false, error: null };
+    state.current = { members: [], loading: false, error: null, signedOut: false };
     render(<PeersPage />);
     await waitFor(() => expect(screen.getByText(/Nobody matches that yet/)).toBeInTheDocument());
   });
