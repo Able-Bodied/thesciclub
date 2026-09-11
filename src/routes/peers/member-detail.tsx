@@ -1,6 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ClubMark } from '@/components/club-mark';
+import { ClubMark, ClubWordmark } from '@/components/club-mark';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { photoUrlFor } from '@/lib/photos';
@@ -267,22 +267,32 @@ function Centered({ children }: { children: React.ReactNode }) {
 function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () => void }) {
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="relative mx-auto flex h-[340px] w-full max-w-[760px] flex-col items-center justify-center bg-navy lg:rounded-b-[28px]">
-        <button
-          type="button"
-          onClick={onBack}
-          className="absolute top-4 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 py-2 pr-3.5 pl-2 font-bold text-[13.5px] text-white backdrop-blur-sm"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Peers
-        </button>
-        <span className="absolute top-4 right-4 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase tracking-[0.08em]">
-          Official
-        </span>
-        <ClubMark size={92} />
-        <h1 className="mt-5 font-extrabold font-head text-[28px] text-white tracking-[-0.02em]">
-          {member.displayName}
-        </h1>
+      <div className="relative mx-auto w-full max-w-[760px] bg-navy px-[18px] pt-4 pb-7 lg:rounded-b-[28px]">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-1 rounded-full bg-white/10 py-1.5 pr-3 pl-1.5 font-bold text-[13px] text-white"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Peers
+          </button>
+          <ClubWordmark onDark />
+        </div>
+
+        <div className="mt-6 flex flex-col items-center">
+          <ClubMark size={104} />
+          <h1 className="mt-5 font-extrabold font-head text-[28px] text-white tracking-[-0.02em]">
+            {member.displayName}
+          </h1>
+          {/* The mock's own badge shape: a white pill with the gold org mark. */}
+          <span className="mt-3 inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[12px] text-navy leading-none">
+            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[8.5px] text-white">
+              SCI
+            </span>
+            Official account
+          </span>
+        </div>
       </div>
 
       <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
@@ -291,11 +301,28 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
             The club's own account, run by whoever is administering The SCI Club. It is not a member
             — there is no injury, no city and no story behind it.
           </p>
-          <p className="mt-3 text-[14.2px] text-ink2 leading-[1.52]">
-            Use it for anything about the club itself: how invites work, a question about the house
-            rules, a profile that looks wrong, or somebody behaving badly. Reports go here and are
-            read by a person.
-          </p>
+        </Section>
+
+        <Section title="What to bring here">
+          <div className="rounded-[17px] border border-line bg-paper px-3.5 py-1">
+            {[
+              ['Invites', 'How they work, and getting somebody you know onto the list.'],
+              [
+                'The house rules',
+                'What ends a membership, and what to do if somebody breaks them.',
+              ],
+              [
+                'A profile that looks wrong',
+                'Yours or anybody else’s, including one from the directory.',
+              ],
+              ['Anything that has gone wrong', 'Reports come here and are read by a person.'],
+            ].map(([title, blurb]) => (
+              <div key={title} className="border-line border-b py-3 last:border-b-0">
+                <span className="block font-extrabold font-head text-[14.5px]">{title}</span>
+                <span className="mt-0.5 block text-[12.8px] text-ink2 leading-[1.45]">{blurb}</span>
+              </div>
+            ))}
+          </div>
         </Section>
 
         <Section title="Getting in touch">
@@ -306,8 +333,8 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
         </Section>
 
         <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[12.6px] text-[#5C4409] leading-[1.5]">
-          Membership can be lost. Selling to members, harassing anyone, giving medical advice as
-          fact, or repeating outside a room what was said in it all end it.
+          <b className="font-bold">Membership can be lost.</b> Selling to members, harassing anyone,
+          giving medical advice as fact, or repeating outside a room what was said in it all end it.
         </div>
       </div>
     </div>

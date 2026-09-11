@@ -109,3 +109,30 @@ export function ClubMark({ size = 88, className }: { size?: number; className?: 
     </svg>
   );
 }
+
+/**
+ * The wordmark beside the mark — the club's header lockup from the mock's
+ * `BRAND`. "THE" small and quiet, "CLUB" in gold.
+ *
+ * `onDark` flips it for a navy ground, which is the only variation the mock
+ * makes and the only one worth having.
+ */
+export function ClubWordmark({ onDark = false }: { onDark?: boolean }) {
+  return (
+    <span className="flex items-center gap-2.5">
+      <ClubMark size={26} />
+      <span
+        className={`font-extrabold font-head text-[16.5px] leading-none tracking-[-0.01em] ${
+          onDark ? 'text-white' : 'text-ink'
+        }`}
+      >
+        <span
+          className={`text-[11px] tracking-[0.06em] ${onDark ? 'text-[#9FB3CD]' : 'text-ink2'}`}
+        >
+          THE
+        </span>{' '}
+        SCI <span className={onDark ? 'text-[#E7C868]' : 'text-gold-dp'}>CLUB</span>
+      </span>
+    </span>
+  );
+}

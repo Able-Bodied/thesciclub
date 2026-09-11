@@ -170,4 +170,20 @@ describe('the official account profile', () => {
     renderDetail();
     expect(screen.getByText(/Membership can be lost/)).toBeInTheDocument();
   });
+
+  it('carries the club mark and the official badge', () => {
+    state.current = ok(makeMember({ isAdmin: true }));
+    renderDetail();
+    // Two marks: the big one and the small one in the wordmark.
+    expect(screen.getAllByRole('img', { name: 'The SCI Club' }).length).toBeGreaterThan(0);
+    expect(screen.getByText('Official account')).toBeInTheDocument();
+  });
+
+  it('says what to bring to the account rather than leaving it abstract', () => {
+    state.current = ok(makeMember({ isAdmin: true }));
+    renderDetail();
+    expect(screen.getByText('Invites')).toBeInTheDocument();
+    expect(screen.getByText('The house rules')).toBeInTheDocument();
+    expect(screen.getByText(/Reports come here and are read by a person/)).toBeInTheDocument();
+  });
 });
