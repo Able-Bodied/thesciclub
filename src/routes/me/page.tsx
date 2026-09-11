@@ -1,19 +1,38 @@
-import { ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
+import { ChevronRight, LogOut, Mail, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
+import { useViewerEvents } from '@/lib/events';
+import { useOwnMember } from '@/lib/members';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
+import { MeHero } from '@/routes/me/hero';
+import { MeStats } from '@/routes/me/stats';
 import { loadAnswers } from '@/routes/profile/profile-api';
 import { progressOf } from '@/routes/profile/questions';
 
 /**
- * Me — your standing in the club, and the way out.
+ * Me — who the club thinks you are, where you stand, and the way out.
  *
- * Most of this tab is still to come with the profile survey. What is here now
- * is what somebody actually needs today: which account they are signed in as,
- * and how to leave it. Testing this app means switching between accounts
- * constantly, and without a way out the only route is clearing site data.
+ * Follows `mePage()` in the mock: a navy hero, counters, then Your profile,
+ * Standing and Invites as cards. Two departures, both for the same reason —
+ * nothing here is allowed to be invented, because this is the screen a member
+ * reads to find out what the club actually knows about them. See
+ * src/routes/me/stats.tsx for the counters, and the Standing card below for
+ * why there is no link on the house rules.
+ *
+ * On a wide screen the cards go into two columns rather than one long strip.
+ * They are independent panels, not a sequence, so the second column costs
+ * nothing to read and halves the distance to the bottom of the page.
  */
+
+/** A section heading, matching `.sec` in the mock. */
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+      {children}
+    </h2>
+  );
+}
 /** A ring rather than a bar: it sits beside a line of text, not under one. */
 function ProgressRing({ percent }: { percent: number }) {
   const radius = 18;
@@ -40,10 +59,16 @@ function ProgressRing({ percent }: { percent: number }) {
 }
 
 export default function MePage() {
-  const { displayName, isAdmin } = useAccount();
+  const { userId, displayName, isAdmin } = useAccount();
+  const { member, invitedBy } = useOwnMember(userId);
+  const viewer = useViewerEvents(userId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
+
+  const rsvps = [...viewer.rsvps.values()];
+  const going = rsvps.filter((status) => status === 'going').length;
+  const interested = rsvps.filter((status) => status === 'interested').length;
 
   useEffect(() => {
     void loadAnswers().then((result) => {
@@ -70,72 +95,123 @@ export default function MePage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
-          Me
-        </h1>
-      </header>
+      {member ? (
+        <MeHero member={member} />
+      ) : (
+        <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
+          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+            Me
+          </h1>
+          <p className="mt-0.5 text-[0.78125rem] text-grey">Signed in as {displayName ?? '—'}</p>
+        </header>
+      )}
 
-      <div className="mx-auto w-full max-w-[480px] px-4 py-4">
-        <div className="rounded-[17px] border border-line bg-paper p-3.5">
-          <p className="text-[0.78125rem] text-grey">Signed in as</p>
-          <p className="mt-0.5 font-extrabold font-head text-[1.125rem] text-ink">
-            {displayName ?? '—'}
-          </p>
-          {isAdmin ? (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gold-lt px-2.5 py-1 font-bold text-[0.6875rem] text-gold-dp uppercase tracking-wider">
-              <ShieldCheck className="h-3 w-3" />
-              Administrator
-            </span>
-          ) : null}
+      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 py-4">
+        <MeStats going={going} interested={interested} />
+
+        {/* Two columns on a wide screen. Each card stands alone, so reading
+            order across columns costs nothing and the page stops being a
+            single long reach to the bottom. */}
+        <div className="lg:grid lg:grid-cols-2 lg:gap-x-5">
+          <div>
+            <SectionHeading>Your profile</SectionHeading>
+            <Link
+              to="/profile"
+              className="flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
+            >
+              <ProgressRing percent={percent ?? 0} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
+                  {percent === 100 ? 'Profile complete' : 'Complete your profile'}
+                </span>
+                <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
+                  {percent === 100
+                    ? 'You are searchable on every field members filter by.'
+                    : 'The more of it you fill in, the better the club can put you next to the right people.'}
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 flex-none text-grey" />
+            </Link>
+
+            <Link
+              to="/profile/details"
+              className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
+                  Your details
+                </span>
+                <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
+                  Name, photo, birthday, injury and where you live — fix anything onboarding got
+                  wrong.
+                </span>
+              </span>
+              <ChevronRight className="h-5 w-5 flex-none text-grey" />
+            </Link>
+
+            <SectionHeading>Standing</SectionHeading>
+            <div className="rounded-[17px] border border-line bg-paper p-3.5">
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className="h-5 w-5 flex-none text-gold-dp" />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
+                    Good standing
+                  </span>
+                  {invitedBy ? (
+                    <span className="block text-[0.78125rem] text-grey">
+                      Invited by {invitedBy}
+                    </span>
+                  ) : null}
+                </span>
+              </div>
+              <div className="my-3 h-px bg-line" />
+              {/* The mock links this to a house-rules page. There is no such
+                  page, so the rule is stated here instead of behind a link that
+                  goes nowhere — and CONTEXT.md asks that losing membership stay
+                  visible in the product rather than buried in a terms page,
+                  which an inline sentence does better than a link anyway. */}
+              <p className="text-[0.78125rem] text-ink2 leading-[1.55]">
+                Membership can be lost. Selling to members, harassing anyone, giving medical advice
+                as fact, or repeating outside a room what was said in it all end it.
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading>Invites</SectionHeading>
+            <div className="rounded-[17px] border border-line bg-paper p-3.5">
+              <div className="flex items-start gap-2.5">
+                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-navy">
+                  <Mail className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
+                    {member?.type === 'mentor' ? 'You can invite people' : 'Members cannot invite'}
+                  </span>
+                  <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
+                    {member?.type === 'mentor'
+                      ? "As a mentor you can put two numbers on the club's list. They join by verifying that number."
+                      : "Only a member organization or a peer mentor can put a number on the club's list. It is what keeps the club closed."}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {isAdmin ? (
+              <Link
+                to="/admin"
+                className="mt-2.5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
+              >
+                Admin
+              </Link>
+            ) : null}
+
+            {/* Above sign-out deliberately: somebody who cannot read the screen
+                needs to find this, and the last thing on the page is the
+                hardest thing to reach with a head pointer or a mouth stick. */}
+            <AccessibilitySettings />
+          </div>
         </div>
-
-        <Link
-          to="/profile"
-          className="mt-4 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
-        >
-          <ProgressRing percent={percent ?? 0} />
-          <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
-              {percent === 100 ? 'Profile complete' : 'Complete your profile'}
-            </span>
-            <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-              {percent === 100
-                ? 'You are searchable on every field members filter by.'
-                : 'The more of it you fill in, the better the club can put you next to the right people.'}
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 flex-none text-grey" />
-        </Link>
-
-        <Link
-          to="/profile/details"
-          className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
-              Your details
-            </span>
-            <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-              Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 flex-none text-grey" />
-        </Link>
-
-        {isAdmin ? (
-          <Link
-            to="/admin"
-            className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
-          >
-            Admin
-          </Link>
-        ) : null}
-
-        {/* Above sign-out deliberately: somebody who cannot read the screen
-            needs to find this, and the last thing on the page is the hardest
-            thing to reach with a head pointer or a mouth stick. */}
-        <AccessibilitySettings />
 
         {error ? (
           <p className="mt-4 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>

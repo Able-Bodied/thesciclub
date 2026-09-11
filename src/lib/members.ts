@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getSupabase } from '@/lib/supabase';
-import type { BrowseMember } from '@/types/domain';
+import type { BrowseMember, MemberType } from '@/types/domain';
 
 /**
  * Reading members.
@@ -272,6 +272,129 @@ export function useBrowseMember(id: string | undefined): MemberState {
       controller.abort();
     };
   }, [id]);
+
+  return state;
+}
+
+/* -------------------------------------------------------------- own profile */
+
+/**
+ * The signed-in member's own row, for the Me screen.
+ *
+ * Reads `members` directly rather than `browse_members`, which is the one place
+ * in the app that is correct: own-row-only RLS means this returns exactly one
+ * row — yours — and `birth_date` is yours to see. It never leaves the server
+ * *to another member*, which is a different statement from never leaving it at
+ * all, and the Me hero shows an age and a birthday derived from it.
+ *
+ * `phone` is still not selected. Nothing on this screen shows it, and a column
+ * you do not fetch cannot end up somewhere it should not be.
+ */
+export interface OwnMember {
+  id: string;
+  displayName: string;
+  type: MemberType;
+  photoPath: string | null;
+  photoAlt: string | null;
+  city: string | null;
+  state: string;
+  levelRange: string;
+  exactLevel: string | null;
+  /** ISO date. Own-row only — used for the age and the birthday chip. */
+  birthDate: string;
+  /** When they joined, for "Member since". */
+  createdAt: string;
+  isAdmin: boolean;
+  wantsToMentor: boolean | null;
+}
+
+export interface OwnMemberState {
+  member: OwnMember | null;
+  /** The organization or mentor who put this member's number on the list. */
+  invitedBy: string | null;
+  loading: boolean;
+  error: string | null;
+}
+
+export function useOwnMember(userId: string | null): OwnMemberState {
+  const [state, setState] = useState<OwnMemberState>({
+    member: null,
+    invitedBy: null,
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!userId) {
+      setState({ member: null, invitedBy: null, loading: false, error: null });
+      return;
+    }
+    const controller = new AbortController();
+    const { signal } = controller;
+    const aborted = () => signal.aborted;
+
+    async function load() {
+      try {
+        const supabase = getSupabase();
+        const [own, inviter] = await Promise.all([
+          supabase
+            .from('members')
+            .select(
+              'id, display_name, type, photo_path, photo_alt, city, state, level_range, exact_level, birth_date, created_at, is_admin, wants_to_mentor',
+            )
+            .abortSignal(signal)
+            .maybeSingle(),
+          // A function, not a join: the invite row itself is not readable by
+          // the member it admitted, and should not be.
+          supabase.rpc('my_invited_by'),
+        ]);
+        if (aborted()) return;
+
+        if (own.error) {
+          setState({ member: null, invitedBy: null, loading: false, error: own.error.message });
+          return;
+        }
+        const row = own.data as Record<string, unknown> | null;
+        setState({
+          member: row
+            ? {
+                id: row.id as string,
+                displayName: row.display_name as string,
+                type: row.type === 'mentor' ? 'mentor' : 'peer',
+                photoPath: (row.photo_path as string | null) ?? null,
+                photoAlt: (row.photo_alt as string | null) ?? null,
+                city: (row.city as string | null) ?? null,
+                state: row.state as string,
+                levelRange: row.level_range as string,
+                exactLevel: (row.exact_level as string | null) ?? null,
+                birthDate: row.birth_date as string,
+                createdAt: row.created_at as string,
+                isAdmin: Boolean(row.is_admin),
+                wantsToMentor: (row.wants_to_mentor as boolean | null) ?? null,
+              }
+            : null,
+          // A failed lookup is not worth an error screen — the card simply does
+          // not say who invited them.
+          invitedBy: inviter.error ? null : ((inviter.data as string | null) ?? null),
+          loading: false,
+          error: null,
+        });
+      } catch (e) {
+        if (aborted()) return;
+        setState({
+          member: null,
+          invitedBy: null,
+          loading: false,
+          error: e instanceof Error ? e.message : 'Could not load your profile.',
+        });
+      }
+    }
+
+    void load();
+    return () => {
+      controller.abort();
+    };
+  }, [userId]);
 
   return state;
 }
