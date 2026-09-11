@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
+import { AccessibilityProvider } from '@/lib/accessibility';
 import AdminPage from '@/routes/admin/page';
 import ChatPage from '@/routes/chat/page';
 import DevLoginPage from '@/routes/dev-login/page';
@@ -27,7 +28,10 @@ function AppShell() {
   // Widened on large screens rather than left as a 480px ribbon on a 27-inch
   // monitor — the deck grids into the extra width.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas lg:max-w-[1180px]">
+    <div
+      data-ui-scale-root
+      className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas lg:max-w-[1180px]"
+    >
       <Routes>
         <Route path="/home" element={<HomePage />} />
         <Route path="/peers" element={<PeersPage />} />
@@ -46,6 +50,14 @@ function AppShell() {
 }
 
 export default function App() {
+  return (
+    <AccessibilityProvider>
+      <AppRoutes />
+    </AccessibilityProvider>
+  );
+}
+
+function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />

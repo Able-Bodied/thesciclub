@@ -65,7 +65,8 @@ export function EventCard({
         type="button"
         onClick={onDismiss}
         aria-label={`Not interested in ${event.title}`}
-        className="absolute top-[9px] right-2.5 z-[2] grid h-7 w-7 place-items-center rounded-full bg-canvas text-grey"
+        data-target="small"
+        className="absolute top-[9px] right-2.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-canvas text-grey"
       >
         <X className="h-3.5 w-3.5" strokeWidth={2.2} />
       </button>

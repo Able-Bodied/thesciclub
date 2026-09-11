@@ -2,6 +2,7 @@ import { ChevronRight, LogOut, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
+import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { loadAnswers } from '@/routes/profile/profile-api';
 import { progressOf } from '@/routes/profile/questions';
 
@@ -128,6 +129,11 @@ export default function MePage() {
             Admin
           </Link>
         ) : null}
+
+        {/* Above sign-out deliberately: somebody who cannot read the screen
+            needs to find this, and the last thing on the page is the hardest
+            thing to reach with a head pointer or a mouth stick. */}
+        <AccessibilitySettings />
 
         {error ? <p className="mt-4 text-[13px] text-destructive leading-[1.45]">{error}</p> : null}
 

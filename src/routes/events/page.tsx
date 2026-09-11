@@ -154,7 +154,8 @@ export default function EventsPage() {
                 setSheetOpen(true);
               }}
               aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-              className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint"
+              data-target="small"
+              className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint"
             >
               <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
               {filterCount ? (

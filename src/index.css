@@ -1,3 +1,11 @@
+/**
+ * biome-ignore-all lint/complexity/noImportantStyles: the reduced-motion block
+ * at the bottom of this file is a kill-switch, and it has to beat both inline
+ * styles and Tailwind's own animation utilities — `.data-[state=open]:animate-in`
+ * compiles to a higher specificity than any plain selector here can reach.
+ * Losing that race means an animation plays for somebody who asked for none,
+ * which is why every published reduced-motion reset uses !important too.
+ */
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -134,4 +142,84 @@
     font-family: var(--head);
     letter-spacing: -0.02em;
   }
+}
+
+/* ============================================================ accessibility */
+/*
+ * The display preferences from src/lib/accessibility.tsx, applied through
+ * attributes on <html>. See that file for why this is hand-built rather than an
+ * off-the-shelf accessibility widget.
+ */
+
+/* ---------------------------------------------------------------- text size */
+/*
+ * `zoom` rather than a root font-size, because this design is 266 hard-coded
+ * pixel sizes lifted from the mock and a root font-size cannot move any of
+ * them. Zoom scales text and controls together, which is also the behaviour
+ * somebody actually wants here: a member who needs larger type generally needs
+ * a larger target too.
+ *
+ * The height compensation is not optional. The shell is `h-dvh`, and a zoomed
+ * element resolves viewport units *before* the zoom is applied — so at 1.35 the
+ * shell would compute a full viewport height and then be scaled to 135% of it,
+ * pushing the tab bar off the bottom of the screen. Dividing by the same factor
+ * cancels exactly.
+ */
+[data-ui-scale-root] {
+  zoom: var(--ui-scale, 1);
+  height: calc(100dvh / var(--ui-scale, 1));
+}
+
+/* ------------------------------------------------------------ tap targets */
+/*
+ * WCAG 2.2 puts the minimum target at 24px and the enhanced level at 44px.
+ * Everything primary here already clears 44. This raises the small secondary
+ * controls — the dismiss ✕, the filter button — for somebody driving a pointer
+ * with their head or a mouth stick, where a 28px circle is a genuinely hard
+ * thing to land on.
+ *
+ * It grows the hit area without growing the drawn control, using a pseudo
+ * element, so the layout does not reflow and the design does not turn into a
+ * page of large grey circles.
+ */
+:root[data-large-targets="on"] [data-target="small"] {
+  position: relative;
+}
+
+:root[data-large-targets="on"] [data-target="small"]::after {
+  content: "";
+  position: absolute;
+  /* Centres a 48px hit area on the control whatever size it is drawn at. */
+  top: 50%;
+  left: 50%;
+  width: max(48px, 100%);
+  height: max(48px, 100%);
+  transform: translate(-50%, -50%);
+}
+
+/* --------------------------------------------------------- reduced motion */
+/*
+ * Both the OS signal and the in-app preference, because they answer different
+ * questions: the OS one is a standing preference across every app, and the
+ * in-app one lets somebody turn motion off here without changing their whole
+ * machine — or back on, if they set the system flag for a different reason.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-reduce-motion="off"]) *,
+  :root:not([data-reduce-motion="off"]) *::before,
+  :root:not([data-reduce-motion="off"]) *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+:root[data-reduce-motion="on"] *,
+:root[data-reduce-motion="on"] *::before,
+:root[data-reduce-motion="on"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
