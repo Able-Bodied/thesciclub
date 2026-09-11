@@ -1,6 +1,6 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
@@ -18,6 +18,7 @@ import {
 import { OrganizationList } from '@/routes/events/organization-list';
 import {
   EMPTY_EVENT_FILTERS,
+  EVENTS_SEGMENTS,
   type EventFilters,
   type EventsSegment,
   type RsvpStatus,
@@ -71,7 +72,24 @@ export default function EventsPage() {
   const { organizations, byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
 
-  const [segment, setSegment] = useState<EventsSegment>('upcoming');
+  // The segment lives in the URL, not in component state. Opening an
+  // organization and pressing back used to land on Upcoming, because the state
+  // died with the unmounted page — and a back arrow that does not go back is
+  // worse than no back arrow. It also makes a segment linkable and survives a
+  // refresh.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromUrl = searchParams.get('segment');
+  const segment: EventsSegment = EVENTS_SEGMENTS.includes(fromUrl as EventsSegment)
+    ? (fromUrl as EventsSegment)
+    : 'upcoming';
+  const setSegment = useCallback(
+    (next: EventsSegment) => {
+      // Replace rather than push: the segment pills are a filter, and tapping
+      // through four of them should not mean four presses of back to leave.
+      setSearchParams(next === 'upcoming' ? {} : { segment: next }, { replace: true });
+    },
+    [setSearchParams],
+  );
   const [filters, setFilters] = useState<EventFilters>(EMPTY_EVENT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
@@ -177,7 +195,7 @@ export default function EventsPage() {
               organizations={organizations}
               events={events}
               onOpen={(id) => {
-                void navigate(`/events/organizations/${id}`);
+                void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
             />
           ) : loading ? (
@@ -201,7 +219,7 @@ export default function EventsPage() {
                       : null
                   }
                   onOpen={() => {
-                    void navigate(`/events/${event.id}`);
+                    void navigate(`/events/${event.id}`, { state: { segment } });
                   }}
                   onRsvp={(next) => {
                     onRsvp(event.id, next);

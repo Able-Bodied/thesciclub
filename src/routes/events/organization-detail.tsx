@@ -1,9 +1,10 @@
 import { ChevronRight } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEvents } from '@/lib/events';
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizations } from '@/lib/organizations';
 import { photoUrlFor } from '@/lib/photos';
+import { backLabel, backToEvents } from '@/routes/events/back';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
@@ -20,6 +21,8 @@ import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 export default function OrganizationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const back = backToEvents(location);
   const { byId, loading } = useOrganizations();
   const { events } = useEvents();
   const { members } = useBrowseMembers();
@@ -36,7 +39,7 @@ export default function OrganizationDetailPage() {
         <button
           type="button"
           onClick={() => {
-            void navigate('/events');
+            void navigate(back);
           }}
           className="mt-4 font-bold font-head text-[0.9375rem] text-navy"
         >
@@ -62,11 +65,11 @@ export default function OrganizationDetailPage() {
           <button
             type="button"
             onClick={() => {
-              void navigate('/events');
+              void navigate(back);
             }}
             className="block pb-3 text-[#B9CADF] text-[0.875rem]"
           >
-            ← Back
+            ← {backLabel(location)}
           </button>
 
           <div className="flex items-center gap-[13px]">

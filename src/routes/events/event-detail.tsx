@@ -1,11 +1,12 @@
 import { ChevronRight, ExternalLink, MapPin } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
+import { backLabel, backToEvents } from '@/routes/events/back';
 import { isOnline } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
@@ -26,6 +27,8 @@ import type { EventAttendee, RsvpStatus } from '@/types/domain';
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const back = backToEvents(location);
   const session = useSession();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
@@ -71,7 +74,7 @@ export default function EventDetailPage() {
         <button
           type="button"
           onClick={() => {
-            void navigate('/events');
+            void navigate(back);
           }}
           className="mt-4 font-bold font-head text-[0.9375rem] text-navy"
         >
@@ -99,11 +102,11 @@ export default function EventDetailPage() {
           <button
             type="button"
             onClick={() => {
-              void navigate('/events');
+              void navigate(back);
             }}
             className="block pb-3 text-[#B9CADF] text-[0.875rem]"
           >
-            ← Events
+            ← {backLabel(location)}
           </button>
 
           <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[0.71875rem] uppercase tracking-[0.07em]">
