@@ -4,6 +4,8 @@ import { RequireMember } from '@/components/require-member';
 import AdminPage from '@/routes/admin/page';
 import ChatPage from '@/routes/chat/page';
 import DevLoginPage from '@/routes/dev-login/page';
+import EventDetailPage from '@/routes/events/event-detail';
+import OrganizationDetailPage from '@/routes/events/organization-detail';
 import EventsPage from '@/routes/events/page';
 import HomePage from '@/routes/home/page';
 import MePage from '@/routes/me/page';
@@ -32,6 +34,8 @@ function AppShell() {
         <Route path="/peers/:id" element={<MemberDetailPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/events" element={<EventsPage />} />
+        <Route path="/events/:id" element={<EventDetailPage />} />
+        <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
         <Route path="/me" element={<MePage />} />
         {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
         <Route path="/admin" element={<AdminPage />} />
