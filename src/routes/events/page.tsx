@@ -79,8 +79,8 @@ export default function EventsPage() {
   // The sheet's options come from the events the segment and the date window
   // have already selected, not from the whole calendar: a chip offered while
   // "Online" is on should narrow the online events, and a city chip offered
-  // while the window says "This week" should be a city that has an event this
-  // week. The other narrowing filters are deliberately *not* applied — they are
+  // while the window says "Next 7 days" should be a city with an event in the next
+  // seven. The other narrowing filters are deliberately *not* applied — they are
   // what the sheet is for, and dropping them means picking one city does not
   // make every other city vanish from the list you picked it from.
   const inSegment = useMemo(

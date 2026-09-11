@@ -28,23 +28,40 @@ function daysFromNow(days: number): string {
 }
 
 describe('dateWindowRange', () => {
-  it('starts the week at midnight today, not at now', () => {
+  it('starts at midnight today, not at now', () => {
     // Otherwise an event that began an hour ago vanishes, and the list appears
     // to lose events as the afternoon goes on.
-    const range = dateWindowRange('week', NOW);
+    const range = dateWindowRange('next7', NOW);
     expect(new Date(range?.from ?? '').getHours()).toBe(0);
     expect(new Date(range?.from ?? '').getDate()).toBe(5);
   });
 
-  it('ends the month on the last day of it', () => {
-    const range = dateWindowRange('month', NOW);
-    expect(new Date(range?.to ?? '').getMonth()).toBe(8);
-    expect(new Date(range?.to ?? '').getDate()).toBe(30);
+  it('spans the same number of days whenever it is asked', () => {
+    // The bug this replaced: the long window ran to the end of the calendar
+    // month, so the default view held twenty days of events on the 11th and one
+    // day on the 30th — while a full next month sat just outside it.
+    const spanInDays = (when: 'next7' | 'next30', day: number) => {
+      const now = new Date(2026, 8, day, 14, 0, 0);
+      const range = dateWindowRange(when, now);
+      const from = new Date(range?.from ?? '').getTime();
+      const to = new Date(range?.to ?? '').getTime();
+      return Math.round((to - from) / 86_400_000);
+    };
+    for (const day of [1, 11, 20, 28, 30]) {
+      expect(spanInDays('next30', day)).toBe(30);
+      expect(spanInDays('next7', day)).toBe(7);
+    }
   });
 
-  it('handles February in a leap year without a table', () => {
-    const range = dateWindowRange('month', new Date(2028, 1, 10, 9, 0, 0));
-    expect(new Date(range?.to ?? '').getDate()).toBe(29);
+  it('crosses a month boundary rather than stopping at it', () => {
+    // Asked on 28 September, "next 30 days" reaches well into October.
+    const range = dateWindowRange('next30', new Date(2026, 8, 28, 14, 0, 0));
+    expect(new Date(range?.to ?? '').getMonth()).toBe(9);
+  });
+
+  it('crosses a year boundary too', () => {
+    const range = dateWindowRange('next30', new Date(2026, 11, 20, 9, 0, 0));
+    expect(new Date(range?.to ?? '').getFullYear()).toBe(2027);
   });
 
   it('has no bound at all for "any"', () => {
@@ -53,7 +70,7 @@ describe('dateWindowRange', () => {
 
   it('makes past and this-month disjoint', () => {
     const pastEnd = dateWindowRange('past', NOW)?.to ?? '';
-    const monthStart = dateWindowRange('month', NOW)?.from ?? '';
+    const monthStart = dateWindowRange('next30', NOW)?.from ?? '';
     expect(pastEnd).not.toBe('');
     expect(monthStart).not.toBe('');
     // Past ends strictly before the forward window opens, so no event is in both.
@@ -65,14 +82,14 @@ describe('filterEvents', () => {
   it('keeps an event that started earlier today', () => {
     const earlier = makeEvent({ startTime: new Date(2026, 8, 5, 13, 0, 0).toISOString() });
     expect(
-      filterEvents([earlier], withFilters({ when: 'week' }), 'upcoming', viewer(), NOW),
+      filterEvents([earlier], withFilters({ when: 'next7' }), 'upcoming', viewer(), NOW),
     ).toHaveLength(1);
   });
 
   it('drops an event beyond the window', () => {
     const nextYear = makeEvent({ startTime: daysFromNow(400) });
     expect(
-      filterEvents([nextYear], withFilters({ when: 'month' }), 'upcoming', viewer(), NOW),
+      filterEvents([nextYear], withFilters({ when: 'next30' }), 'upcoming', viewer(), NOW),
     ).toHaveLength(0);
   });
 
@@ -170,7 +187,7 @@ describe('filterEvents', () => {
       const faraway = makeEvent({ id: 'trip', startTime: daysFromNow(120) });
       const state = viewer({ rsvps: new Map([['trip', 'going' as const]]) });
       expect(
-        filterEvents([faraway], withFilters({ when: 'week' }), 'going', state, NOW),
+        filterEvents([faraway], withFilters({ when: 'next7' }), 'going', state, NOW),
       ).toHaveLength(1);
     });
 
@@ -218,7 +235,7 @@ describe('activeFilterCount', () => {
   });
 
   it('counts a non-default window as one', () => {
-    expect(activeFilterCount(withFilters({ when: 'week' }))).toBe(1);
+    expect(activeFilterCount(withFilters({ when: 'next7' }))).toBe(1);
   });
 
   it('counts each selected value', () => {

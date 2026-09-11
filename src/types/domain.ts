@@ -472,13 +472,23 @@ export interface EventAttendee {
 export const EVENTS_SEGMENTS = ['upcoming', 'going', 'sport', 'online', 'orgs'] as const;
 export type EventsSegment = (typeof EVENTS_SEGMENTS)[number];
 
-/** How far ahead the list looks. `past` is the only one that looks backwards. */
-export const DATE_WINDOWS = ['week', 'month', 'any', 'past'] as const;
+/**
+ * How far ahead the list looks. `past` is the only one that looks backwards.
+ *
+ * Both forward windows are rolling counts of days from today, and they are
+ * named for what they are. An earlier version called them "This week" and
+ * "This month", where the first was a rolling seven days but the second ran to
+ * the end of the calendar month — so the default view shrank as the month went
+ * on, and on the 30th showed a single day while a full next month sat just
+ * outside it. Two adjacent options cannot mean two different things, and the
+ * one that degrades must not be the default.
+ */
+export const DATE_WINDOWS = ['next7', 'next30', 'any', 'past'] as const;
 export type DateWindow = (typeof DATE_WINDOWS)[number];
 
 export const DATE_WINDOW_LABELS: Record<DateWindow, string> = {
-  week: 'This week',
-  month: 'This month',
+  next7: 'Next 7 days',
+  next30: 'Next 30 days',
   any: 'Any time',
   past: 'Past events',
 };
@@ -496,7 +506,7 @@ export interface EventFilters {
 }
 
 export const EMPTY_EVENT_FILTERS: EventFilters = {
-  when: 'month',
+  when: 'next30',
   formats: [],
   tags: [],
   cities: [],

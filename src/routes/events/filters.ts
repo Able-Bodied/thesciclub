@@ -53,10 +53,15 @@ export interface DateRange {
  * The range a window selects, or null for "no bound at all".
  *
  * The forward windows start at midnight *today* rather than at `now`, so an
- * event that started an hour ago is still in this week's list — somebody
- * checking at 2pm has not missed a thing that began at 1pm, and dropping it
- * makes the list appear to lose events as the day goes on. They end at the last
- * instant of the final day so an 8pm event on the boundary is inside.
+ * event that started an hour ago is still in the list — somebody checking at
+ * 2pm has not missed a thing that began at 1pm, and dropping it makes the list
+ * appear to lose events as the day goes on. They end at the last instant of the
+ * final day so an 8pm event on the boundary is inside.
+ *
+ * Both are rolling counts of days, so the window a member sees is the same size
+ * whenever they open the app. An earlier version ran the longer one to the end
+ * of the calendar month instead, which meant the default view held twenty days
+ * of events on the 11th and one day on the 30th.
  *
  * `past` is the mirror image and ends the instant before today begins, so the
  * two never overlap and no event is in both.
@@ -73,12 +78,9 @@ export function dateWindowRange(when: DateWindow, now: Date = new Date()): DateR
     return { to: new Date(startOfToday.getTime() - 1).toISOString() };
   }
 
-  const to =
-    when === 'week'
-      ? new Date(now.getFullYear(), now.getMonth(), now.getDate() + 6, 23, 59, 59, 999)
-      : // Day 0 of next month is the last day of this one, which handles month
-        // length and leap years without a table.
-        new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  // Inclusive of today, so `next7` is today plus the six that follow.
+  const days = when === 'next7' ? 6 : 29;
+  const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days, 23, 59, 59, 999);
 
   return { from: startOfToday.toISOString(), to: to.toISOString() };
 }
@@ -184,8 +186,8 @@ export function activeFilterCount(filters: EventFilters): number {
     filters.tags.length +
     filters.cities.length +
     filters.organizations.length +
-    // The window is a filter too, but only when it is not the default month.
-    (filters.when === 'month' ? 0 : 1)
+    // The window is a filter too, but only when it is not the default.
+    (filters.when === 'next30' ? 0 : 1)
   );
 }
 
