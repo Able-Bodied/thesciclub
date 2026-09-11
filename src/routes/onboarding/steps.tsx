@@ -1,7 +1,7 @@
 import { Loader2, LocateFixed } from 'lucide-react';
 import { useState } from 'react';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
-import { ageFrom } from '@/lib/injury';
+import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
 import { formatPhoneInput } from '@/lib/phone';
 import { photoUrlFor } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub } from '@/routes/onboarding/chrome';
@@ -101,23 +101,35 @@ export function NameStep({ data, set }: StepProps) {
 
 export function BirthdayStep({ data, set }: StepProps) {
   const age = ageFrom(data.birthDate || null);
+  const entered = data.birthDate !== '';
+  const adult = isAdult(data.birthDate || null);
+
   return (
     <>
       <Question>When is your birthday?</Question>
       <Sub>
         Age matters for matching — a 28-year-old and a 68-year-old with the same injury are living
-        different days.
+        different days. The club is {MINIMUM_AGE}+.
       </Sub>
       <Field
         id="birthday"
         type="date"
-        max="2008-12-31"
+        // Computed, not hard-coded: a year written into the markup is right for
+        // about twelve months.
+        max={latestAdultBirthDate()}
         value={data.birthDate}
         onChange={(e) => {
           set({ birthDate: e.target.value });
         }}
       />
-      {age !== null ? (
+      {entered && !adult ? (
+        <div className="mt-3.5 rounded-[17px] border border-destructive/30 bg-destructive/5 p-3.5 text-[13.4px] text-ink2 leading-[1.5]">
+          <b className="font-bold text-ink">The SCI Club is for adults.</b> Everything inside it is
+          written by adults for adults, and none of it is moderated for a younger reader. You will
+          be welcome the year you turn {MINIMUM_AGE}.
+        </div>
+      ) : null}
+      {entered && adult && age !== null ? (
         <div className="mt-3.5 flex items-center gap-3 rounded-[17px] border border-line bg-paper p-3.5">
           <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-navy font-extrabold font-head text-[15px] text-white">
             {age}

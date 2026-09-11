@@ -52,6 +52,19 @@ Use these words exactly. Do not invent synonyms.
 There is no "user", no "peer" as an identity (the Peers tab is a surface, not a class of person),
 and no "coordinator" — that role belongs to a different product.
 
+## Adults only
+
+Eighteen and over, with no version for anybody younger.
+
+Everything inside the club is written by adults for adults — bowel programmes,
+intimacy, catheters, what happened the night somebody was injured — and none of
+it is moderated for a younger reader. A minor with a spinal cord injury needs
+support, and this is not the place it should come from.
+
+The rule is a trigger on `members`, not a form validation, so it holds however
+the row is written. The form states it before asking and explains rather than
+silently disabling a button.
+
 ## Who it is for
 
 - **Newly injured members.** Want answers and someone who has been there. Hardest to reach, and

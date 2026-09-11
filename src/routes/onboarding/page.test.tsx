@@ -222,3 +222,46 @@ describe('the two doors', () => {
     expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
   });
 });
+
+describe('the club is adults only', () => {
+  const yearsAgo = (n: number) => {
+    const d = new Date();
+    d.setUTCFullYear(d.getUTCFullYear() - n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  async function reachBirthday() {
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText(/What should people call you/i);
+    await userEvent.type(screen.getByPlaceholderText('Alex'), 'Sam');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('When is your birthday?');
+  }
+
+  it('says up front that the club is 18+', async () => {
+    await reachBirthday();
+    expect(screen.getByText(/The club is 18\+/)).toBeInTheDocument();
+  });
+
+  it('explains rather than just disabling, when the date is under 18', async () => {
+    await reachBirthday();
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    await userEvent.clear(input);
+    await userEvent.type(input, yearsAgo(15));
+    expect(await screen.findByText(/The SCI Club is for adults/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  it('lets an adult through, and shows the age it will publish', async () => {
+    await reachBirthday();
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    await userEvent.clear(input);
+    await userEvent.type(input, yearsAgo(30));
+    expect(await screen.findByText(/never your birthday/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+});

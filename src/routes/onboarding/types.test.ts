@@ -74,6 +74,27 @@ describe('canAdvance', () => {
   });
 });
 
+describe('the age gate', () => {
+  const yearsAgo = (n: number) => {
+    const d = new Date();
+    d.setUTCFullYear(d.getUTCFullYear() - n);
+    return d.toISOString().slice(0, 10);
+  };
+
+  it('will not advance past the birthday step for somebody under 18', () => {
+    expect(canAdvance('birthday', data({ birthDate: yearsAgo(17) }))).toBe(false);
+  });
+
+  it('advances for an adult', () => {
+    expect(canAdvance('birthday', data({ birthDate: yearsAgo(30) }))).toBe(true);
+  });
+
+  it('still refuses a malformed date', () => {
+    expect(canAdvance('birthday', data({ birthDate: 'nonsense' }))).toBe(false);
+    expect(canAdvance('birthday', data({ birthDate: '' }))).toBe(false);
+  });
+});
+
 describe('stepNumber', () => {
   it('numbers only the five counted steps', () => {
     expect(stepNumber('name')).toBe(1);

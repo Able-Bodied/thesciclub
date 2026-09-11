@@ -105,3 +105,23 @@ export function ageFrom(birthDate: string | null, now: Date = new Date()): numbe
   if (beforeBirthday) age -= 1;
   return age;
 }
+
+/** The club is 18+. One place decides what that means. */
+export const MINIMUM_AGE = 18;
+
+export function isAdult(birthDate: string | null, now?: Date): boolean {
+  const age = ageFrom(birthDate, now);
+  return age !== null && age >= MINIMUM_AGE;
+}
+
+/**
+ * The latest birth date that is old enough, as an ISO date — for the `max` on
+ * a date input. Computed rather than hard-coded, because a year written into
+ * the markup is correct for about twelve months.
+ */
+export function latestAdultBirthDate(now: Date = new Date()): string {
+  const d = new Date(
+    Date.UTC(now.getUTCFullYear() - MINIMUM_AGE, now.getUTCMonth(), now.getUTCDate()),
+  );
+  return d.toISOString().slice(0, 10);
+}

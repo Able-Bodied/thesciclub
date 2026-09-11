@@ -1,3 +1,4 @@
+import { isAdult } from '@/lib/injury';
 import { isCompletePhone } from '@/lib/phone';
 import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
 
@@ -102,7 +103,9 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
     case 'name':
       return data.displayName.trim().length > 0;
     case 'birthday':
-      return /^\d{4}-\d{2}-\d{2}$/.test(data.birthDate);
+      // Not just a well-formed date: the club is 18+, and the database
+      // refuses anybody younger, so the form must not let them get that far.
+      return isAdult(data.birthDate);
     case 'injury':
       return data.exactLevel !== null && injuryDateOf(data) !== null;
     case 'city':

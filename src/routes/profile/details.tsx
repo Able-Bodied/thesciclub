@@ -2,7 +2,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
-import { ageFrom } from '@/lib/injury';
+import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
 import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import {
@@ -169,12 +169,17 @@ export default function ProfileDetailsPage() {
               <Input
                 id="d-birthday"
                 type="date"
+                max={latestAdultBirthDate()}
                 value={details.birthDate}
                 onChange={(v) => {
                   set({ birthDate: v });
                 }}
               />
-              {age !== null ? (
+              {!isAdult(details.birthDate) ? (
+                <p className="mt-1.5 text-[12.5px] text-destructive leading-[1.45]">
+                  The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than that.
+                </p>
+              ) : age !== null ? (
                 <p className="mt-1.5 text-[12px] text-grey">
                   Members see {age}, never the date itself.
                 </p>
@@ -307,7 +312,7 @@ export default function ProfileDetailsPage() {
         {saved ? <p className="mb-2.5 text-center text-[13px] text-navy">Saved.</p> : null}
         <button
           type="button"
-          disabled={saving || loading || !details}
+          disabled={saving || loading || !details || !isAdult(details.birthDate)}
           onClick={submit}
           className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[15px] text-white disabled:opacity-40"
         >
@@ -347,11 +352,13 @@ const CONTROL =
 function Input({
   id,
   type,
+  max,
   value,
   onChange,
 }: {
   id: string;
   type?: string;
+  max?: string;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -359,6 +366,7 @@ function Input({
     <input
       id={id}
       type={type}
+      max={max}
       value={value}
       onChange={(e) => {
         onChange(e.target.value);

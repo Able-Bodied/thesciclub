@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   ageFrom,
   injuryDateLabel,
+  isAdult,
   isNewlyInjured,
+  latestAdultBirthDate,
   timeSinceLabel,
   yearsSinceInjury,
 } from '@/lib/injury';
@@ -102,5 +104,24 @@ describe('the anniversary edge case', () => {
 
   it('is still newly injured the day before', () => {
     expect(isNewlyInjured(dated('2025-09-12'), NOW)).toBe(true);
+  });
+});
+
+describe('the age gate', () => {
+  it('admits somebody exactly eighteen today', () => {
+    expect(isAdult('2008-09-11', NOW)).toBe(true);
+  });
+
+  it('refuses somebody who turns eighteen tomorrow', () => {
+    expect(isAdult('2008-09-12', NOW)).toBe(false);
+  });
+
+  it('refuses a missing date rather than letting it through', () => {
+    expect(isAdult(null, NOW)).toBe(false);
+    expect(isAdult('', NOW)).toBe(false);
+  });
+
+  it('computes the cut-off date rather than hard-coding a year', () => {
+    expect(latestAdultBirthDate(NOW)).toBe('2008-09-11');
   });
 });
