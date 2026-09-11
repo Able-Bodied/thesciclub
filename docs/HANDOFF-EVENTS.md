@@ -11,13 +11,35 @@ need to re-read the previous conversation.
 PWA for people living with spinal cord injury. Vite 8 / React 19 / TypeScript
 strict / Tailwind 4 / Supabase / Vitest, pnpm, Node 24.
 
-Branch: `scaffold-and-peers-deck`, ~34 commits ahead of `main`, **unpushed** —
+Branch: `scaffold-and-peers-deck`, ~35 commits ahead of `main`, **unpushed** —
 the owner (Alfred, GitHub `Alfredx48`) has read-only access to
 `Able-Bodied/thesciclub` and is waiting on write access. Do not try to push.
 Do not commit to `main`.
 
 Two of the three planned flows are done: **Peers** (the members deck) and
 **onboarding + the profile survey**. **Events is the last one.**
+
+## This is a port, not a design exercise
+
+Events is **already built and working** in the sibling repo
+`/home/alfred/projects/ab-peers-prototype` — schema, list, filters, RSVPs,
+detail, and a scraper job that ingests real events from NorCal SCI's and
+AdaptiveRecHub's live calendars. It runs against a real Supabase database
+today.
+
+Your job is to port and adapt it, not to invent it. Read that implementation
+before designing anything. Where this brief says "decide deliberately", it
+means a decision ab-peers made for a different product that may not hold here —
+not an invitation to start from a blank page.
+
+The same is true of the two flows already finished here: Peers and onboarding
+were both ported from ab-peers, keeping its logic and taking the mock's design.
+Follow that pattern.
+
+**`ab-peers-prototype` is reference only.** Read from it freely; never commit
+to it. Its own docs (`README.md`, `AGENTS.md`, `docs/CONTEXT.md`) describe a
+different, broader product — a general disability app with a coordinator
+dashboard — and are stale even for that. Trust its *code*, not its prose.
 
 ## Read these first
 
