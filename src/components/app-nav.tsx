@@ -26,7 +26,7 @@ export function AppNav() {
   return (
     <nav
       aria-label="Main"
-      className="z-40 flex-none border-line border-t bg-paper px-2 pt-[7px] pb-[max(22px,env(safe-area-inset-bottom))]"
+      className="z-40 flex-none border-line border-t bg-paper px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto grid w-full max-w-[480px] grid-cols-5 gap-0.5">
         {TABS.map(({ to, label, Icon, ...rest }) => {
@@ -37,7 +37,7 @@ export function AppNav() {
               to={to}
               className={({ isActive }) =>
                 cn(
-                  'relative flex flex-col items-center gap-[3px] rounded-xl pt-[7px] pb-[3px] font-bold text-[0.6375rem]',
+                  'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
                   isActive ? 'text-navy' : 'text-grey',
                 )
               }
@@ -47,11 +47,11 @@ export function AppNav() {
                   <span
                     className={cn(
                       middle &&
-                        '-mt-[13px] grid h-[42px] w-[42px] place-items-center rounded-[15px] shadow-[0_3px_10px_rgba(16,42,76,.14)]',
+                        '-mt-2.5 grid h-[36px] w-[36px] place-items-center rounded-[13px] shadow-[0_3px_10px_rgba(16,42,76,.14)]',
                       middle && (isActive ? 'bg-navy text-paper' : 'bg-tint'),
                     )}
                   >
-                    <Icon className={cn('h-[22px] w-[22px]', isActive && '[stroke-width:2.3]')} />
+                    <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
                   </span>
                   <span>{label}</span>
                 </>

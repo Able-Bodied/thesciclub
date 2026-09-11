@@ -109,52 +109,73 @@ export default function MemberDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div
-        className="relative mx-auto h-[340px] w-full max-w-[760px] lg:h-[420px] lg:rounded-b-[28px]"
-        style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
-      >
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 grid place-items-center font-extrabold font-head text-[110px] text-white opacity-[0.13]"
-        >
-          {initialsOf(member.displayName)}
-        </span>
-        {photo ? (
-          <img
-            src={photo}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover object-[50%_28%]"
-            onError={(e) => {
-              e.currentTarget.remove();
+      <div className="mx-auto w-full max-w-[760px] px-4 pt-3">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate(-1);
             }}
-          />
-        ) : null}
-        <span className="absolute inset-x-0 bottom-0 h-[200px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
-
-        <button
-          type="button"
-          onClick={() => {
-            void navigate(-1);
-          }}
-          className="absolute top-4 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 py-2 pr-3.5 pl-2 font-bold text-[0.84375rem] text-white backdrop-blur-sm"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Peers
-        </button>
-
-        {member.type === 'mentor' ? (
-          <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
-            Mentor
-          </span>
-        ) : null}
-
-        <div className="absolute inset-x-0 bottom-0 px-[18px] pb-[18px]">
-          <h1 className="font-extrabold font-head text-[1.875rem] text-white tracking-[-0.02em] [text-shadow:0_1px_12px_rgba(10,29,54,.7)]">
-            {member.displayName}
-          </h1>
-          <p className="mt-1.5 text-[0.84375rem] text-[#D3DFEE]">{summaryLine(member)}</p>
-          {injury ? <p className="mt-1 text-[0.78125rem] text-[#9FB3CD]">{injury}</p> : null}
+            className="-ml-1.5 inline-flex items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-navy"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Peers
+          </button>
+          {member.type === 'mentor' ? (
+            <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
+              Mentor
+            </span>
+          ) : null}
         </div>
+
+        {/* The whole photograph, not a crop of it.
+         *
+         * The deck crops to a tall card because it is a deck — the frame is
+         * fixed and the face has to be in it. A profile is where somebody
+         * actually looks at the person, so the picture they chose is shown
+         * entire.
+         *
+         * The frame takes the photograph's shape rather than the other way
+         * round. These come from a directory and are every aspect ratio there
+         * is; forcing them into one leaves a landscape shot floating in a
+         * portrait box with a third of the card empty. Height is capped so a
+         * very tall picture cannot push the name off the screen. */}
+        {photo ? (
+          <div
+            className="relative mt-2 overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+            style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+          >
+            <img
+              src={photo}
+              alt=""
+              className="mx-auto block h-auto max-h-[56vh] w-full object-contain"
+              onError={(e) => {
+                e.currentTarget.remove();
+              }}
+            />
+          </div>
+        ) : (
+          <div
+            className="relative mt-2 grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)] sm:aspect-[3/2]"
+            style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+          >
+            <span
+              aria-hidden="true"
+              className="font-extrabold font-head text-[5rem] text-white opacity-[0.13]"
+            >
+              {initialsOf(member.displayName)}
+            </span>
+          </div>
+        )}
+
+        {/* Name and summary sit under the picture rather than over it. With the
+         * photograph uncropped its bottom edge is wherever it falls, so text
+         * laid on top would land on a face as often as on background. */}
+        <h1 className="mt-3.5 font-extrabold font-head text-[1.75rem] text-ink leading-tight tracking-[-0.02em]">
+          {member.displayName}
+        </h1>
+        <p className="mt-1 text-[0.875rem] text-ink2">{summaryLine(member)}</p>
+        {injury ? <p className="mt-0.5 text-[0.78125rem] text-grey">{injury}</p> : null}
       </div>
 
       <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
