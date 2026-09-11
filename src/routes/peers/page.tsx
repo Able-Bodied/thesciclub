@@ -1,7 +1,9 @@
 import { SlidersHorizontal, X } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBrowseMembers } from '@/lib/members';
 import { cn } from '@/lib/utils';
+import { FilterSheet } from '@/routes/peers/filter-sheet';
 import {
   activeFilterCount,
   citiesIn,
@@ -36,6 +38,7 @@ const SEGMENTS: [PeersSegment, string][] = [
 ];
 
 export default function PeersPage() {
+  const navigate = useNavigate();
   const { members, loading, error, signedOut } = useBrowseMembers();
   const [segment, setSegment] = useState<PeersSegment>('everyone');
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_MEMBER_FILTERS);
@@ -163,7 +166,13 @@ export default function PeersPage() {
               {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
             </p>
             {visible.map((member) => (
-              <MemberCard key={member.id} member={member} onOpen={() => undefined} />
+              <MemberCard
+                key={member.id}
+                member={member}
+                onOpen={() => {
+                  void navigate(`/peers/${member.id}`);
+                }}
+              />
             ))}
             {visible.length === 0 ? (
               <p className="px-6 py-10 text-center text-[14px] text-grey leading-relaxed">
@@ -180,71 +189,21 @@ export default function PeersPage() {
         <FilterSheet
           regions={regionsIn(members)}
           cities={citiesIn(members)}
-          topics={topicsIn(members)}
+          // Capped and frequency-ordered: the long tail of one-person topics
+          // would bury the ones that actually narrow a deck.
+          topics={topicsIn(members, 24)}
           filters={filters}
+          matchCount={visible.length}
+          activeCount={filterCount}
           onChange={setFilters}
+          onClear={() => {
+            setFilters(EMPTY_MEMBER_FILTERS);
+          }}
           onClose={() => {
             setSheetOpen(false);
           }}
         />
       ) : null}
     </div>
-  );
-}
-
-/**
- * Placeholder, so the filter button does something honest until the sheet is
- * built.
- *
- * The backdrop is a real `<button>`, not a `<div>` with a click handler. A div
- * that only answers a mouse leaves anybody using a keyboard, a switch or
- * VoiceOver with no way out of the sheet — which in an app for people with
- * disabilities is not a lint nit. Escape closes it too.
- */
-function FilterSheet({
-  onClose,
-}: {
-  regions: string[];
-  cities: string[];
-  topics: string[];
-  filters: MemberFilters;
-  onChange: (f: MemberFilters) => void;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
-
-  return (
-    <>
-      <button
-        type="button"
-        aria-label="Close filters"
-        onClick={onClose}
-        className="absolute inset-0 z-[70] bg-[rgba(10,20,35,.5)]"
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Filters"
-        className="absolute inset-x-0 bottom-0 z-[71] rounded-t-3xl bg-paper p-5 pb-8"
-      >
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] rounded-[3px] bg-line" />
-        <p className="py-6 text-center text-[14px] text-grey">Filters are not built yet.</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-navy font-bold font-head text-[15px] text-white"
-        >
-          Close
-        </button>
-      </div>
-    </>
   );
 }

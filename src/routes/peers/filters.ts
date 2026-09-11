@@ -95,6 +95,23 @@ export function citiesIn(members: BrowseMember[]): string[] {
   return [...new Set(members.map((m) => m.city).filter((c): c is string => Boolean(c)))].sort();
 }
 
-export function topicsIn(members: BrowseMember[]): string[] {
-  return [...new Set(members.flatMap((m) => m.topics))].sort();
+/**
+ * Topics, most-shared first.
+ *
+ * 23 members produce well over a hundred distinct topics, most named by exactly
+ * one person. Sorting alphabetically buries the ones that would actually narrow
+ * a deck under a wall of singletons, so this orders by how many members share a
+ * topic and lets the caller cap the list.
+ */
+export function topicsIn(members: BrowseMember[], limit?: number): string[] {
+  const counts = new Map<string, number>();
+  for (const member of members) {
+    for (const topic of member.topics) {
+      counts.set(topic, (counts.get(topic) ?? 0) + 1);
+    }
+  }
+  const sorted = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([topic]) => topic);
+  return limit === undefined ? sorted : sorted.slice(0, limit);
 }

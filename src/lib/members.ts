@@ -173,3 +173,102 @@ export function useBrowseMembers(): MembersState {
 
   return state;
 }
+
+/**
+ * One member, by id.
+ *
+ * Fetches rather than reading from a loaded deck, so a profile opens correctly
+ * on a direct link or a refresh — the deck is not guaranteed to be in memory.
+ * `notFound` is distinct from an error: somebody whose membership ended, or a
+ * stale link, is not a failure to report.
+ */
+export interface MemberState {
+  member: BrowseMember | null;
+  loading: boolean;
+  error: string | null;
+  signedOut: boolean;
+  notFound: boolean;
+}
+
+export function useBrowseMember(id: string | undefined): MemberState {
+  const [state, setState] = useState<MemberState>({
+    member: null,
+    loading: true,
+    error: null,
+    signedOut: false,
+    notFound: false,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const aborted = () => signal.aborted;
+
+    async function load() {
+      if (!id) {
+        setState({ member: null, loading: false, error: null, signedOut: false, notFound: true });
+        return;
+      }
+      try {
+        const supabase = getSupabase();
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (aborted()) return;
+        if (!sessionData.session) {
+          setState({
+            member: null,
+            loading: false,
+            error: null,
+            signedOut: true,
+            notFound: false,
+          });
+          return;
+        }
+
+        // Taken whole rather than destructured: maybeSingle() types `data` as
+        // `any`, and destructuring it would launder an untyped value into state
+        // with nothing to flag it.
+        const result = await supabase
+          .from('browse_members')
+          .select('*')
+          .eq('id', id)
+          .abortSignal(signal)
+          .maybeSingle();
+        if (aborted()) return;
+        if (result.error) {
+          setState({
+            member: null,
+            loading: false,
+            error: result.error.message,
+            signedOut: false,
+            notFound: false,
+          });
+          return;
+        }
+        const row = result.data as BrowseMemberRow | null;
+        setState({
+          member: row ? toMember(row) : null,
+          loading: false,
+          error: null,
+          signedOut: false,
+          notFound: row === null,
+        });
+      } catch (e) {
+        if (aborted()) return;
+        setState({
+          member: null,
+          loading: false,
+          error: e instanceof Error ? e.message : 'Could not load this member.',
+          signedOut: false,
+          notFound: false,
+        });
+      }
+    }
+
+    void load();
+    return () => {
+      controller.abort();
+    };
+  }, [id]);
+
+  return state;
+}

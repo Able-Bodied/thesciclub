@@ -64,14 +64,35 @@ describe('MemberCard', () => {
     expect(screen.getByText('C6 incomplete · 28 · Santa Clara')).toBeInTheDocument();
   });
 
-  it('badges a mentor', () => {
+  it('flags a mentor, so they are recognisable while scrolling', () => {
     render(<MemberCard member={makeMember({ type: 'mentor' })} onOpen={() => undefined} />);
-    expect(screen.getByText('Peer mentor')).toBeInTheDocument();
+    expect(screen.getByText('Mentor')).toBeInTheDocument();
   });
 
-  it('does not badge a peer', () => {
+  it('does not flag a peer', () => {
     render(<MemberCard member={makeMember({ type: 'peer' })} onOpen={() => undefined} />);
-    expect(screen.queryByText('Peer mentor')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mentor')).not.toBeInTheDocument();
+  });
+
+  it('names the vouching organization, which is separate information from being a mentor', () => {
+    render(
+      <MemberCard
+        member={makeMember({ type: 'mentor', affiliations: ['NorCal SCI'] })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.getByText('NS')).toBeInTheDocument();
+  });
+
+  it('shows an affiliation for a peer too — it is not a mentor-only badge', () => {
+    render(
+      <MemberCard
+        member={makeMember({ type: 'peer', affiliations: ['ReCARES'] })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('ReCARES')).toBeInTheDocument();
   });
 
   it('shows at most three topics', () => {

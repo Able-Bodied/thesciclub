@@ -5,6 +5,7 @@ import DevLoginPage from '@/routes/dev-login/page';
 import EventsPage from '@/routes/events/page';
 import HomePage from '@/routes/home/page';
 import MePage from '@/routes/me/page';
+import MemberDetailPage from '@/routes/peers/member-detail';
 import PeersPage from '@/routes/peers/page';
 
 /**
@@ -20,6 +21,7 @@ function AppShell() {
       <Routes>
         <Route path="/home" element={<HomePage />} />
         <Route path="/peers" element={<PeersPage />} />
+        <Route path="/peers/:id" element={<MemberDetailPage />} />
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/me" element={<MePage />} />

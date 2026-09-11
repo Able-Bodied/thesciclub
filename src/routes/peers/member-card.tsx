@@ -52,6 +52,26 @@ export function summaryLine(member: BrowseMember): string {
   return [levelPart, member.age, member.city].filter(Boolean).join(' · ');
 }
 
+/** An organization's badge letters, from its name, when we only have the name. */
+export function shortCodeFor(organizationName: string): string {
+  const words = organizationName.split(/\s+/).filter(Boolean);
+  if (words.length === 1) return (words[0] ?? '').slice(0, 3).toUpperCase();
+  return words
+    .map((w) => w.charAt(0))
+    .join('')
+    .slice(0, 4)
+    .toUpperCase();
+}
+
+/** The star on the mentor flag. Inline so the flag is one element, not two. */
+function MentorStar() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[11px] w-[11px] fill-current">
+      <path d="m12 2 2.1 5.6L20 9.7l-5.1 3 .8 6.1-3.7-3-3.7 3 .8-6.1-5.1-3 5.9-2.1L12 2Z" />
+    </svg>
+  );
+}
+
 export interface MemberCardProps {
   member: BrowseMember;
   onOpen: () => void;
@@ -61,6 +81,7 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
   const photo = photoUrlFor(member.photoPath);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);
+  const verifier = member.affiliations[0] ?? null;
 
   return (
     <button
@@ -93,7 +114,14 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
       <span className="absolute inset-x-0 top-0 h-[180px] bg-gradient-to-b from-[#0A1D36E0] to-transparent" />
       <span className="absolute inset-x-0 bottom-0 h-[250px] bg-gradient-to-b from-transparent via-[#0A1D36D9] to-[#0A1D36F2]" />
 
-      <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px]">
+      {member.type === 'mentor' ? (
+        <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
+          <MentorStar />
+          Mentor
+        </span>
+      ) : null}
+
+      <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px] pr-[104px]">
         <span className="block font-extrabold font-head text-[28px] text-white leading-tight tracking-[-0.01em]">
           {member.displayName}
         </span>
@@ -103,12 +131,12 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
       </span>
 
       <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-[18px]">
-        {member.type === 'mentor' ? (
+        {verifier ? (
           <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[12px] text-navy leading-none">
             <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[8.5px] text-white">
-              NCS
+              {shortCodeFor(verifier)}
             </span>
-            Peer mentor
+            {verifier}
           </span>
         ) : null}
         {chips.length ? (
