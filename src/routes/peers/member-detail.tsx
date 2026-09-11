@@ -99,7 +99,7 @@ export default function MemberDetailPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div
-        className="relative h-[340px]"
+        className="relative mx-auto h-[340px] w-full max-w-[760px] lg:h-[420px] lg:rounded-b-[28px]"
         style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
       >
         <span
@@ -118,7 +118,7 @@ export default function MemberDetailPage() {
             }}
           />
         ) : null}
-        <span className="absolute inset-x-0 bottom-0 h-[220px] bg-gradient-to-b from-transparent via-[#0A1D36D9] to-[#0A1D36F2]" />
+        <span className="absolute inset-x-0 bottom-0 h-[200px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
 
         <button
           type="button"
@@ -138,7 +138,7 @@ export default function MemberDetailPage() {
         ) : null}
 
         <div className="absolute inset-x-0 bottom-0 px-[18px] pb-[18px]">
-          <h1 className="font-extrabold font-head text-[30px] text-white tracking-[-0.02em]">
+          <h1 className="font-extrabold font-head text-[30px] text-white tracking-[-0.02em] [text-shadow:0_1px_12px_rgba(10,29,54,.7)]">
             {member.displayName}
           </h1>
           <p className="mt-1.5 text-[13.5px] text-[#D3DFEE]">{summaryLine(member)}</p>
@@ -146,7 +146,7 @@ export default function MemberDetailPage() {
         </div>
       </div>
 
-      <div className="px-4 pb-6">
+      <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
         {member.topics.length ? (
           <Section title="Happy to talk about">
             <p className="-mt-1 mb-2.5 text-[12.5px] text-grey leading-[1.45]">

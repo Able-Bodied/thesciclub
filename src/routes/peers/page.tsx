@@ -84,7 +84,7 @@ export default function PeersPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="flex min-h-[38px] items-center justify-between gap-2.5">
+        <div className="mx-auto flex w-full max-w-[1100px] min-h-[38px] items-center justify-between gap-2.5">
           <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">
             Peers
           </h1>
@@ -103,7 +103,7 @@ export default function PeersPage() {
           </button>
         </div>
 
-        <div className="flex gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
+        <div className="mx-auto flex w-full max-w-[1100px] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
           {SEGMENTS.map(([value, label]) => (
             <button
               key={value}
@@ -127,7 +127,7 @@ export default function PeersPage() {
         ref={deckRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px]"
+        className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] lg:px-6"
       >
         {filters.search ? (
           <div className="mb-2.5">
@@ -162,18 +162,25 @@ export default function PeersPage() {
           </div>
         ) : (
           <>
-            <p className="mb-3 text-[12.5px] text-grey">
-              {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
-            </p>
-            {visible.map((member) => (
-              <MemberCard
-                key={member.id}
-                member={member}
-                onOpen={() => {
-                  void navigate(`/peers/${member.id}`);
-                }}
-              />
-            ))}
+            <div className="mx-auto w-full max-w-[1100px]">
+              <p className="mb-3 text-[12.5px] text-grey">
+                {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
+              </p>
+              {/* One column on a phone, more as the shell widens. The gap
+                  replaces the card's own bottom margin so rows and columns are
+                  spaced the same. */}
+              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                {visible.map((member) => (
+                  <MemberCard
+                    key={member.id}
+                    member={member}
+                    onOpen={() => {
+                      void navigate(`/peers/${member.id}`);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
             {visible.length === 0 ? (
               <p className="px-6 py-10 text-center text-[14px] text-grey leading-relaxed">
                 Nobody matches that yet.

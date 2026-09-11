@@ -16,8 +16,11 @@ import PeersPage from '@/routes/peers/page';
  * rather than children of it.
  */
 function AppShell() {
+  // Phone-width by default, because that is the design and the PWA target.
+  // Widened on large screens rather than left as a 480px ribbon on a 27-inch
+  // monitor — the deck grids into the extra width.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas lg:max-w-[1180px]">
       <Routes>
         <Route path="/home" element={<HomePage />} />
         <Route path="/peers" element={<PeersPage />} />

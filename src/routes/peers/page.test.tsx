@@ -199,3 +199,15 @@ describe('the filter sheet', () => {
     );
   });
 });
+
+describe('layout', () => {
+  it('renders every visible member as its own card, whatever the column count', async () => {
+    renderPage();
+    // The grid is CSS; what matters behaviourally is that nothing is dropped
+    // or duplicated when the deck reflows into columns.
+    expect(await screen.findByText('Nicole')).toBeInTheDocument();
+    expect(screen.getByText('Todd')).toBeInTheDocument();
+    expect(screen.getByText('Kerry')).toBeInTheDocument();
+    expect(screen.getAllByText('Nicole')).toHaveLength(1);
+  });
+});

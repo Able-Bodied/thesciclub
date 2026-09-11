@@ -87,7 +87,7 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="relative mb-3.5 block h-[424px] w-full overflow-hidden rounded-[26px] text-left shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+      className="relative block h-[424px] w-full overflow-hidden rounded-[26px] text-left shadow-[0_10px_26px_rgba(10,20,35,.18)]"
       style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
     >
       {/* The initials sit behind the photo, so a photo that fails to load
@@ -111,8 +111,8 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
         />
       ) : null}
 
-      <span className="absolute inset-x-0 top-0 h-[180px] bg-gradient-to-b from-[#0A1D36E0] to-transparent" />
-      <span className="absolute inset-x-0 bottom-0 h-[250px] bg-gradient-to-b from-transparent via-[#0A1D36D9] to-[#0A1D36F2]" />
+      <span className="absolute inset-x-0 top-0 h-[120px] bg-gradient-to-b from-[#0A1D3699] via-[#0A1D3640] to-transparent" />
+      <span className="absolute inset-x-0 bottom-0 h-[230px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
 
       {member.type === 'mentor' ? (
         <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
@@ -122,15 +122,15 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
       ) : null}
 
       <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px] pr-[104px]">
-        <span className="block font-extrabold font-head text-[28px] text-white leading-tight tracking-[-0.01em]">
+        <span className="block font-extrabold font-head text-[28px] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
           {member.displayName}
         </span>
-        <span className="mt-[7px] block text-[13.5px] text-[#D3DFEE] leading-[1.45]">
+        <span className="mt-[7px] block text-[13.5px] text-[#DCE6F2] leading-[1.45] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
           {summaryLine(member)}
         </span>
       </span>
 
-      <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-[18px]">
+      <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-5">
         {verifier ? (
           <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[12px] text-navy leading-none">
             <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[8.5px] text-white">
@@ -140,11 +140,11 @@ export function MemberCard({ member, onOpen }: MemberCardProps) {
           </span>
         ) : null}
         {chips.length ? (
-          <span className={cn('mt-2.5 flex flex-wrap gap-1.5', member.type !== 'mentor' && 'mt-0')}>
+          <span className={cn('flex flex-wrap gap-2', verifier ? 'mt-3' : 'mt-0')}>
             {chips.map((topic) => (
               <span
                 key={topic}
-                className="inline-block rounded-full bg-white/90 px-3 py-1.5 font-bold text-[12px] text-navy leading-[1.2]"
+                className="inline-block rounded-full bg-white/92 px-3 py-[7px] font-bold text-[12px] text-navy leading-[1.2]"
               >
                 {topic}
               </span>
