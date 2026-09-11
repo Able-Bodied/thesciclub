@@ -487,3 +487,77 @@ export function useEventAttendees(eventId: string | undefined): AttendeesState {
 
   return state;
 }
+
+export interface AttendeesByEventState {
+  /** Event id -> the members going or interested, as this viewer may see them. */
+  byEvent: Map<string, EventAttendee[]>;
+  loading: boolean;
+  error: string | null;
+}
+
+/**
+ * Every attendee the viewer is allowed to see, for the whole list at once.
+ *
+ * The card shows two overlapping avatars and "Nicole and Jake are going", so
+ * the list needs attendees for every event on it, not one event at a time —
+ * a request per card would be a request per card.
+ *
+ * This is small in practice: `event_attendees` only has rows for members who
+ * have actually RSVPed, and the view already refuses everything unless the
+ * viewer is an active member, so a signed-out or suspended caller gets an empty
+ * map rather than an error to render.
+ */
+export function useAttendeesByEvent(): AttendeesByEventState {
+  const [state, setState] = useState<AttendeesByEventState>({
+    byEvent: new Map(),
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+    const aborted = () => signal.aborted;
+
+    async function load() {
+      try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase
+          .from('event_attendees')
+          .select(
+            'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, type',
+          )
+          .order('display_name')
+          .abortSignal(signal);
+        if (aborted()) return;
+        if (error) {
+          setState({ byEvent: new Map(), loading: false, error: error.message });
+          return;
+        }
+
+        const byEvent = new Map<string, EventAttendee[]>();
+        for (const row of data as (AttendeeRow & { event_id: string })[]) {
+          const attendee = toAttendee(row);
+          const existing = byEvent.get(row.event_id);
+          if (existing) existing.push(attendee);
+          else byEvent.set(row.event_id, [attendee]);
+        }
+        setState({ byEvent, loading: false, error: null });
+      } catch (e) {
+        if (aborted()) return;
+        setState({
+          byEvent: new Map(),
+          loading: false,
+          error: e instanceof Error ? e.message : 'Could not load who is going.',
+        });
+      }
+    }
+
+    void load();
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  return state;
+}
