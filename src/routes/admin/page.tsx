@@ -3,11 +3,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { cn } from '@/lib/utils';
+import { InviteForm } from '@/routes/admin/invite-form';
 import {
+  type AdminInvite,
   type AdminMember,
   deleteMember,
   fetchAdminMembers,
+  fetchInvites,
+  revokeInvite,
   setMemberStatus,
+  setMemberType,
 } from '@/routes/admin/members-admin';
 
 /**
@@ -25,18 +30,22 @@ import {
 export default function AdminPage() {
   const account = useAccount();
   const [members, setMembers] = useState<AdminMember[]>([]);
+  const [invites, setInvites] = useState<AdminInvite[]>([]);
+  const [tab, setTab] = useState<'members' | 'invites'>('members');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const result = await fetchAdminMembers();
-    if (result.ok) {
-      setMembers(result.members);
-      setError(null);
-    } else {
-      setError(result.error);
-    }
+    const [memberResult, inviteResult] = await Promise.all([fetchAdminMembers(), fetchInvites()]);
+    if (memberResult.ok) setMembers(memberResult.members);
+    if (inviteResult.ok) setInvites(inviteResult.invites);
+    const failure = !memberResult.ok
+      ? memberResult.error
+      : !inviteResult.ok
+        ? inviteResult.error
+        : null;
+    setError(failure);
     setLoading(false);
   }, []);
 
@@ -79,14 +88,34 @@ export default function AdminPage() {
 
   const real = members.filter((m) => !m.isSeed);
   const seeded = members.filter((m) => m.isSeed);
+  const pending = invites.filter((i) => i.status === 'pending');
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
         <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">Admin</h1>
         <p className="mt-1 text-[12.5px] text-grey">
-          {real.length} joined · {seeded.length} from the directory
+          {real.length} joined · {seeded.length} from the directory · {pending.length} invite
+          {pending.length === 1 ? '' : 's'} waiting
         </p>
+        <div className="mt-3 flex gap-[7px]">
+          {(['members', 'invites'] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setTab(value);
+              }}
+              aria-pressed={tab === value}
+              className={cn(
+                'rounded-full px-3.5 py-[7px] font-semibold text-[13.5px] capitalize',
+                tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
+              )}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-3.5">
@@ -100,7 +129,46 @@ export default function AdminPage() {
           <p className="py-10 text-center text-[14px] text-grey">Loading the roster…</p>
         ) : (
           <div className="mx-auto w-full max-w-[760px]">
-            <Section title="Joined" subtitle="People who signed up. These can be removed.">
+            {tab === 'invites' ? (
+              <>
+                <Section title="Add to the list" subtitle="Nobody can join without a number on it.">
+                  <div className="p-3">
+                    <InviteForm
+                      onCreated={() => {
+                        void load();
+                      }}
+                    />
+                  </div>
+                </Section>
+
+                <Section
+                  title="The list"
+                  subtitle="Pending invites can be revoked; used ones cannot."
+                >
+                  {invites.map((invite) => (
+                    <InviteRow
+                      key={invite.id}
+                      invite={invite}
+                      busy={busyId === invite.id}
+                      onRevoke={() => {
+                        act(invite.id, () => revokeInvite(invite.id));
+                      }}
+                    />
+                  ))}
+                  {invites.length === 0 ? (
+                    <p className="py-6 text-center text-[13px] text-grey">
+                      Nobody is on the list yet.
+                    </p>
+                  ) : null}
+                </Section>
+              </>
+            ) : null}
+
+            <Section
+              title="Joined"
+              subtitle="People who signed up. These can be removed."
+              hidden={tab !== 'members'}
+            >
               {real.map((m) => (
                 <Row
                   key={m.id}
@@ -116,6 +184,9 @@ export default function AdminPage() {
                   onDelete={() => {
                     act(m.id, () => deleteMember(m.id));
                   }}
+                  onToggleMentor={() => {
+                    act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
+                  }}
                 />
               ))}
               {real.length === 0 ? (
@@ -126,6 +197,7 @@ export default function AdminPage() {
             <Section
               title="From the directory"
               subtitle="Seeded from NorCal SCI. Suspending one hides it from the deck."
+              hidden={tab !== 'members'}
             >
               {seeded.map((m) => (
                 <Row
@@ -142,6 +214,9 @@ export default function AdminPage() {
                   onDelete={() => {
                     act(m.id, () => deleteMember(m.id));
                   }}
+                  onToggleMentor={() => {
+                    act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
+                  }}
                 />
               ))}
             </Section>
@@ -156,11 +231,14 @@ function Section({
   title,
   subtitle,
   children,
+  hidden,
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  hidden?: boolean;
 }) {
+  if (hidden) return null;
   return (
     <>
       <h2 className="mt-4 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
@@ -179,6 +257,7 @@ function Row({
   onSuspend,
   onReactivate,
   onDelete,
+  onToggleMentor,
 }: {
   member: AdminMember;
   busy: boolean;
@@ -186,6 +265,7 @@ function Row({
   onSuspend: () => void;
   onReactivate: () => void;
   onDelete: () => void;
+  onToggleMentor: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
@@ -211,6 +291,9 @@ function Row({
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
       ) : (
         <span className="flex flex-none gap-1.5">
+          <SmallButton onClick={onToggleMentor}>
+            {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
+          </SmallButton>
           {member.status === 'active' ? (
             <SmallButton onClick={onSuspend}>Suspend</SmallButton>
           ) : (
@@ -249,5 +332,59 @@ function SmallButton({
     >
       {children}
     </button>
+  );
+}
+
+function InviteRow({
+  invite,
+  busy,
+  onRevoke,
+}: {
+  invite: AdminInvite;
+  busy: boolean;
+  onRevoke: () => void;
+}) {
+  const vouchedBy = invite.invitedByOrganization ?? invite.invitedByMember ?? 'unknown';
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
+      <span className="min-w-0 flex-1">
+        <span className="block font-extrabold font-head text-[14.5px]">
+          {invite.phone}
+          {invite.claimableName ? (
+            <span className="ml-2 rounded-full bg-tint px-2 py-0.5 font-bold text-[10px] text-navy">
+              claims {invite.claimableName}
+            </span>
+          ) : null}
+        </span>
+        <span className="mt-0.5 block text-[12px] text-grey">
+          {vouchedBy} ·{' '}
+          <span
+            className={cn(
+              invite.status === 'consumed' && 'font-bold text-navy',
+              invite.status === 'revoked' && 'text-destructive',
+            )}
+          >
+            {invite.status}
+          </span>
+          {invite.note ? ` · ${invite.note}` : ''}
+        </span>
+      </span>
+
+      {busy ? (
+        <Loader2 className="h-4 w-4 animate-spin text-grey" />
+      ) : invite.status === 'pending' ? (
+        <SmallButton
+          destructive
+          onClick={() => {
+            const ok = window.confirm(
+              `Take ${invite.phone} off the list?\n\nThey will not be able to join. The number can be added again later.`,
+            );
+            if (ok) onRevoke();
+          }}
+        >
+          Revoke
+        </SmallButton>
+      ) : null}
+    </div>
   );
 }

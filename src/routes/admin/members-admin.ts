@@ -77,3 +77,121 @@ export async function deleteMember(target: string): Promise<{ ok: boolean; error
   const { error } = await getSupabase().rpc('admin_delete_member', { target });
   return error ? { ok: false, error: error.message } : { ok: true };
 }
+
+/* ----------------------------------------------------------------- invites */
+
+export interface AdminInvite {
+  id: string;
+  phone: string;
+  status: 'pending' | 'consumed' | 'revoked';
+  note: string | null;
+  createdAt: string;
+  invitedByOrganization: string | null;
+  invitedByMember: string | null;
+  /** The seeded profile this invite entitles its holder to claim, if any. */
+  claimableName: string | null;
+}
+
+interface AdminInviteRow {
+  id: string;
+  phone: string;
+  status: string;
+  note: string | null;
+  created_at: string;
+  invited_by_organization: string | null;
+  invited_by_member: string | null;
+  claimable_name: string | null;
+}
+
+export interface InvitingOrganization {
+  id: string;
+  name: string;
+  shortCode: string;
+}
+
+export interface ClaimableProfile {
+  id: string;
+  displayName: string;
+  city: string | null;
+  state: string;
+}
+
+export async function fetchInvites(): Promise<
+  { ok: true; invites: AdminInvite[] } | { ok: false; error: string }
+> {
+  const result = await getSupabase()
+    .from('admin_invites')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (result.error) return { ok: false, error: result.error.message };
+  return {
+    ok: true,
+    invites: (result.data as AdminInviteRow[]).map((row) => ({
+      id: row.id,
+      phone: row.phone,
+      status: row.status as AdminInvite['status'],
+      note: row.note,
+      createdAt: row.created_at,
+      invitedByOrganization: row.invited_by_organization,
+      invitedByMember: row.invited_by_member,
+      claimableName: row.claimable_name,
+    })),
+  };
+}
+
+/** Organizations allowed to vouch. Public data, but only listed to admins here. */
+export async function fetchInvitingOrganizations(): Promise<InvitingOrganization[]> {
+  const result = await getSupabase()
+    .from('organizations')
+    .select('id, name, short_code')
+    .eq('can_invite', true)
+    .order('name');
+  if (result.error) return [];
+  return (result.data as { id: string; name: string; short_code: string }[]).map((o) => ({
+    id: o.id,
+    name: o.name,
+    shortCode: o.short_code,
+  }));
+}
+
+export async function fetchClaimableProfiles(): Promise<ClaimableProfile[]> {
+  const result = await getSupabase()
+    .from('admin_claimable_members')
+    .select('id, display_name, city, state')
+    .order('display_name');
+  if (result.error) return [];
+  return (
+    result.data as { id: string; display_name: string; city: string | null; state: string }[]
+  ).map((m) => ({ id: m.id, displayName: m.display_name, city: m.city, state: m.state }));
+}
+
+export async function createInvite(input: {
+  phone: string;
+  organizationId: string;
+  claimMemberId: string | null;
+  note: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_create_invite', {
+    raw_phone: input.phone,
+    organization: input.organizationId,
+    claim_member: input.claimMemberId,
+    invite_note: input.note,
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export async function revokeInvite(target: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_revoke_invite', { target });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export async function setMemberType(
+  target: string,
+  type: 'peer' | 'mentor',
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_set_member_type', {
+    target,
+    new_type: type,
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}

@@ -1,22 +1,44 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { Account } from '@/lib/account';
-import type { AdminMember } from '@/routes/admin/members-admin';
+import type { AdminInvite, AdminMember } from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
 const api = vi.hoisted(() => ({
   members: [] as AdminMember[],
+  invites: [] as AdminInvite[],
   deleted: [] as string[],
+  revoked: [] as string[],
   statusCalls: [] as [string, string][],
+  typeCalls: [] as [string, string][],
+  created: [] as unknown[],
   failWith: null as string | null,
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
 vi.mock('@/routes/admin/members-admin', () => ({
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
+  fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
+  fetchInvitingOrganizations: () =>
+    Promise.resolve([{ id: 'org1', name: 'NorCal SCI', shortCode: 'NCS' }]),
+  fetchClaimableProfiles: () =>
+    Promise.resolve([{ id: 'seed1', displayName: 'Bob', city: 'Aptos', state: 'CA' }]),
+  createInvite: (input: unknown) => {
+    api.created.push(input);
+    return Promise.resolve({ ok: true });
+  },
+  revokeInvite: (id: string) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.revoked.push(id);
+    return Promise.resolve({ ok: true });
+  },
+  setMemberType: (id: string, type: string) => {
+    api.typeCalls.push([id, type]);
+    return Promise.resolve({ ok: true });
+  },
   deleteMember: (id: string) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
     api.deleted.push(id);
@@ -60,8 +82,12 @@ function renderAdmin() {
 beforeEach(() => {
   account.current = { status: 'member', userId: 'me', isAdmin: true };
   api.members = [member()];
+  api.invites = [];
   api.deleted = [];
+  api.revoked = [];
   api.statusCalls = [];
+  api.typeCalls = [];
+  api.created = [];
   api.failWith = null;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
@@ -88,7 +114,12 @@ describe('AdminPage', () => {
   it('separates people who joined from the seeded directory', async () => {
     api.members = [member(), member({ id: 'm2', displayName: 'Todd', isSeed: true })];
     renderAdmin();
-    expect(await screen.findByText('1 joined · 1 from the directory')).toBeInTheDocument();
+    await screen.findByText('Alfred S');
+    // The counts share one line with the invite tally, so read the header whole
+    // rather than matching a string that spans several elements.
+    const header = screen.getByRole('banner');
+    expect(header.textContent).toContain('1 joined');
+    expect(header.textContent).toContain('1 from the directory');
   });
 
   it('suspends a member', async () => {
@@ -140,5 +171,102 @@ describe('AdminPage', () => {
     // The page heading is also "Admin", so match the badge specifically.
     const badges = screen.getAllByText('Admin').filter((el) => el.tagName !== 'H1');
     expect(badges).toHaveLength(1);
+  });
+});
+
+const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
+  id: 'i1',
+  phone: '14085551234',
+  status: 'pending',
+  note: null,
+  createdAt: '2026-09-11T09:00:00Z',
+  invitedByOrganization: 'NorCal SCI',
+  invitedByMember: null,
+  claimableName: null,
+  ...o,
+});
+
+describe('the invite list', () => {
+  const openInvites = async () => {
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'invites' }));
+  };
+
+  it('counts who is waiting, in the header', async () => {
+    api.invites = [invite(), invite({ id: 'i2', status: 'consumed' })];
+    renderAdmin();
+    expect(await screen.findByText(/1 invite waiting/)).toBeInTheDocument();
+  });
+
+  it('shows the list with who vouched for each number', async () => {
+    api.invites = [invite()];
+    await openInvites();
+    expect(screen.getByText('14085551234')).toBeInTheDocument();
+    // The form's organization dropdown also says "NorCal SCI"; the row's meta
+    // line is the one followed by a separator.
+    expect(screen.getByText(/NorCal SCI ·/)).toBeInTheDocument();
+  });
+
+  it('marks an invite that carries a claim', async () => {
+    api.invites = [invite({ claimableName: 'Bob' })];
+    await openInvites();
+    expect(screen.getByText('claims Bob')).toBeInTheDocument();
+  });
+
+  it('revokes a pending invite, after confirming', async () => {
+    api.invites = [invite()];
+    await openInvites();
+    await userEvent.click(screen.getByRole('button', { name: 'Revoke' }));
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(api.revoked).toEqual(['i1']);
+    });
+  });
+
+  it('offers no revoke on an invite somebody already used', async () => {
+    api.invites = [invite({ status: 'consumed' })];
+    await openInvites();
+    expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+  });
+
+  it('will not add a number until it is complete', async () => {
+    await openInvites();
+    const add = screen.getByRole('button', { name: 'Add to the list' });
+    expect(add).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Phone number'), '4085550112');
+    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeEnabled();
+  });
+
+  it('only offers seeded profiles nobody has joined as yet', async () => {
+    await openInvites();
+    const select = screen.getByLabelText(/already in the directory/);
+    expect(within(select).getByRole('option', { name: /Bob/ })).toBeInTheDocument();
+  });
+
+  it('warns before attaching somebody else’s profile to a number', async () => {
+    await openInvites();
+    await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
+    expect(
+      screen.getByText(/Attach it only if you know the number belongs to them/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('mentor status', () => {
+  it('promotes a peer', async () => {
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make mentor' }));
+    await waitFor(() => {
+      expect(api.typeCalls).toEqual([['m1', 'mentor']]);
+    });
+  });
+
+  it('demotes a mentor', async () => {
+    api.members = [member({ type: 'mentor' })];
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make peer' }));
+    await waitFor(() => {
+      expect(api.typeCalls).toEqual([['m1', 'peer']]);
+    });
   });
 });
