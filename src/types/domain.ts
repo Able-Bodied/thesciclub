@@ -302,6 +302,8 @@ export interface BrowseMember {
   wantsToMentor: boolean;
   /** Seeded from the NorCal SCI directory rather than entered by the member. */
   isSeed: boolean;
+  /** The club's own account. Shown as official; grants nothing on its own. */
+  isAdmin: boolean;
   createdAt: string;
 }
 

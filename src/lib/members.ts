@@ -49,6 +49,7 @@ export interface BrowseMemberRow {
   affiliations: string[] | null;
   wants_to_mentor: boolean;
   is_seed: boolean;
+  is_admin: boolean;
   created_at: string;
 }
 
@@ -89,6 +90,7 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     affiliations: row.affiliations ?? [],
     wantsToMentor: row.wants_to_mentor,
     isSeed: row.is_seed,
+    isAdmin: row.is_admin,
     createdAt: row.created_at,
   };
 }
