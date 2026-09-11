@@ -54,7 +54,10 @@ export function useAccount(): Account {
       setAccount({
         status: row ? 'member' : 'signed-up',
         userId,
-        isAdmin: row?.is_admin ?? false,
+        // Coerced rather than passed through: the client types individual
+        // selected columns as `any`, and this one decides whether somebody
+        // sees the admin tools.
+        isAdmin: Boolean(row?.is_admin),
       });
     }
 

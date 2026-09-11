@@ -1,11 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import type { AdminMember } from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
+let confirmSpy: MockInstance<typeof window.confirm>;
 const api = vi.hoisted(() => ({
   members: [] as AdminMember[],
   deleted: [] as string[],
@@ -62,7 +63,7 @@ beforeEach(() => {
   api.deleted = [];
   api.statusCalls = [];
   api.failWith = null;
-  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
 describe('AdminPage', () => {
@@ -110,14 +111,14 @@ describe('AdminPage', () => {
   it('asks before deleting, because a real person loses their profile', async () => {
     renderAdmin();
     await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
-    expect(window.confirm).toHaveBeenCalled();
+    expect(confirmSpy).toHaveBeenCalled();
     await waitFor(() => {
       expect(api.deleted).toEqual(['m1']);
     });
   });
 
   it('does not delete when the confirmation is declined', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    confirmSpy.mockReturnValue(false);
     renderAdmin();
     await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
     expect(api.deleted).toEqual([]);
