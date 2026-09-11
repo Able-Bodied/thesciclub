@@ -96,11 +96,11 @@ describe('EventCard', () => {
       expect(screen.getByText(/Nicole is going/)).toBeInTheDocument();
     });
 
-    it('counts the overflow rather than listing everybody', () => {
+    it('lets the overflow take the "and" slot rather than stacking two', () => {
       renderCard({
         attendees: [attendee('Nicole'), attendee('Jake'), attendee('Bob'), attendee('Jan')],
       });
-      expect(screen.getByText(/Nicole and Jake and 2 others are going/)).toBeInTheDocument();
+      expect(screen.getByText(/Nicole, Jake and 2 others are going/)).toBeInTheDocument();
     });
 
     it('leaves out members who are only interested', () => {

@@ -66,10 +66,14 @@ export function AttendeeRow({
 
   const names = shown.map((a) => a.displayName);
   const rest = attendees.length - shown.length;
+
+  // The overflow takes the "and" slot, so two names plus more reads "Nicole,
+  // Jake and 2 others" rather than "Nicole and Jake and 2 others".
+  const tail = rest > 0 ? `${rest} other${rest === 1 ? '' : 's'}` : null;
+  const parts = tail ? [...names, tail] : names;
   const listed =
-    names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
-  const verb = names.length === 1 && rest === 0 ? 'is' : 'are';
-  const tail = rest > 0 ? ` and ${rest} other${rest === 1 ? '' : 's'}` : '';
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}`;
+  const verb = parts.length === 1 ? 'is' : 'are';
 
   return (
     <span className="mt-[7px] flex items-center gap-2 font-semibold text-[12.6px] text-ink2">
@@ -85,8 +89,7 @@ export function AttendeeRow({
         ))}
       </span>
       <span>
-        {listed}
-        {tail} {verb} going
+        {listed} {verb} going
       </span>
     </span>
   );
