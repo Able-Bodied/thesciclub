@@ -105,6 +105,21 @@ export default function MePage() {
           <ChevronRight className="h-5 w-5 flex-none text-grey" />
         </Link>
 
+        <Link
+          to="/profile/details"
+          className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
+        >
+          <span className="min-w-0 flex-1">
+            <span className="block font-extrabold font-head text-[15.5px] text-ink">
+              Your details
+            </span>
+            <span className="mt-0.5 block text-[12.5px] text-ink2 leading-[1.45]">
+              Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 flex-none text-grey" />
+        </Link>
+
         {isAdmin ? (
           <Link
             to="/admin"

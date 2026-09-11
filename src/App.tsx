@@ -10,6 +10,7 @@ import MePage from '@/routes/me/page';
 import OnboardingPage from '@/routes/onboarding/page';
 import MemberDetailPage from '@/routes/peers/member-detail';
 import PeersPage from '@/routes/peers/page';
+import ProfileDetailsPage from '@/routes/profile/details';
 import ProfileSurveyPage from '@/routes/profile/page';
 
 /**
@@ -49,6 +50,7 @@ export default function App() {
       <Route path="/join" element={<OnboardingPage />} />
       {/* Outside the shell: its own footer, no tab bar. */}
       <Route path="/profile" element={<ProfileSurveyPage />} />
+      <Route path="/profile/details" element={<ProfileDetailsPage />} />
       <Route path="/dev-login" element={<DevLoginPage />} />
       <Route
         path="/*"
