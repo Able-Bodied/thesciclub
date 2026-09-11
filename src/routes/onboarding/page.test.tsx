@@ -80,7 +80,10 @@ describe('joining', () => {
   it('starts on the welcome screen, not on a form', () => {
     renderJoin();
     expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
-    expect(screen.getByText(/Members only/i)).toBeInTheDocument();
+    // The logo carries "MEMBERS ONLY" too, so match the footer line whole.
+    expect(
+      screen.getByText(/Members only\. Nothing inside the club is public\./),
+    ).toBeInTheDocument();
   });
 
   it('will not send a code until there are ten digits', async () => {
@@ -143,5 +146,12 @@ describe('joining', () => {
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(calls.order).not.toContain('my_invite_status');
+  });
+});
+
+describe('the welcome screen', () => {
+  it('shows the club mark', () => {
+    renderJoin();
+    expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
   });
 });

@@ -1,26 +1,37 @@
+import { ClubMark } from '@/components/club-mark';
+
 /**
- * The first screen. It has one job: say what this is and who it is for, so the
- * phone number on the next screen feels like joining something rather than
- * filling in a form.
+ * The first screen, matching the published demo: the mark, then the promise,
+ * then what the club is.
+ *
+ * The logo carries "MEMBERS ONLY" on it, which is why the footer line beneath
+ * the button is short — the badge has already said it.
  */
 export function WelcomeScreen({ onStart }: { onStart: () => void }) {
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
-      <div className="flex flex-1 flex-col justify-center overflow-y-auto px-6">
-        <h1 className="font-extrabold font-head text-[32px] text-ink leading-[1.12] tracking-[-0.03em]">
+      <div className="flex flex-1 flex-col justify-center overflow-y-auto px-[22px] py-8">
+        <div className="flex justify-center">
+          <ClubMark size={126} />
+        </div>
+
+        <h1 className="mt-9 text-center font-extrabold font-head text-[30px] text-ink leading-[1.14] tracking-[-0.03em]">
           Meet peers, mentors,
           <br />
           and find <em className="text-gold-dp not-italic">SCI events</em>.
         </h1>
-        <p className="mt-3.5 font-semibold text-[15px] text-ink2">
-          An app built by people with SCI, for people with SCI.
+
+        <p className="mt-4 text-center font-bold text-[15px] text-navy leading-[1.45]">
+          An app built by people with SCI for people with SCI.
         </p>
-        <p className="mt-3 text-[14.2px] text-ink2 leading-[1.55]">
+
+        <p className="mt-3.5 text-center text-[14.2px] text-ink2 leading-[1.6]">
           A private community for people living with spinal cord injury. Ask the questions you can't
           ask anyone else, find the people who have already answered them, and get to something
           worth going to.
         </p>
       </div>
+
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
         <button
           type="button"
