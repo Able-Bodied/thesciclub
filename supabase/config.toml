@@ -255,7 +255,7 @@ otp_expiry = 3600
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.
-enable_signup = false
+enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
 # Template for sending OTP to users
@@ -263,9 +263,13 @@ template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# Use pre-defined map of phone number to OTP for testing.
-# [auth.sms.test_otp]
-# 4152127777 = "123456"
+# Local-only test numbers, matching the ones configured on the hosted project.
+# These never dispatch an SMS. 12222222222 is deliberately NOT on the invite
+# list in seed.sql, so the blocked path can be exercised.
+[auth.sms.test_otp]
+11111111111 = "111111"
+12222222222 = "222222"
+13333333333 = "333333"
 
 # Configure logged in session timeouts.
 # [auth.sessions]
@@ -275,22 +279,33 @@ max_frequency = "5s"
 # inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
+# The invite gate, deliberately OFF. Enabling it makes /auth/v1/otp answer 200
+# for an invited number and 403 for an uninvited one, which turns a public
+# endpoint into a per-number test for whether somebody has a spinal cord
+# injury. See migration 20260911120000_before_user_created_hook.sql before
+# changing this.
 # [auth.hook.before_user_created]
 # enabled = true
-# uri = "pg-functions://postgres/auth/before-user-created-hook"
+# uri = "pg-functions://postgres/public/before_user_created"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 # [auth.hook.custom_access_token]
 # enabled = true
 # uri = "pg-functions://<database>/<schema>/<hook_name>"
 
-# Configure one of the supported SMS providers: `twilio`, `twilio_verify`, `messagebird`, `textlocal`, `vonage`.
+# LOCAL ONLY. The hosted project's SMS provider is configured in its dashboard
+# and is not managed from this file — never run `supabase config push`, which
+# would overwrite real Twilio credentials with the placeholders below.
+#
+# A provider has to be "enabled" for GoTrue to accept phone logins at all, even
+# when every number in use is a test number. [auth.sms.test_otp] intercepts
+# before anything reaches Twilio, so these values are never used for a request
+# and are deliberately not real.
 [auth.sms.twilio]
-enabled = false
-account_sid = ""
-message_service_sid = ""
-# DO NOT commit your Twilio auth token to git. Use environment variable substitution instead:
-auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
+enabled = true
+account_sid = "AClocaldevplaceholdernotarealsid"
+message_service_sid = "MGlocaldevplaceholdernotarealsid"
+auth_token = "local-dev-placeholder-not-a-real-token"
 
 # Multi-factor-authentication is available to Supabase Pro plan.
 [auth.mfa]
