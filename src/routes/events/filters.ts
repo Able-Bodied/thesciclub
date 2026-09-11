@@ -26,6 +26,7 @@ import type {
   EventFilters,
   EventFormat,
   EventsSegment,
+  EventTag,
 } from '@/types/domain';
 
 /** What the viewer has already said about these events. */
@@ -222,4 +223,29 @@ function byFrequency(values: string[]): string[] {
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .map(([value]) => value);
+}
+
+/**
+ * The distinct tags present on a set of events, category order preserved.
+ *
+ * Drawn from the events rather than from the taxonomy table so the sheet never
+ * offers a chip that matches nothing — see the sheet's own header. Within a
+ * category the order is first-seen, which is the taxonomy's `display_order`
+ * because the list arrives sorted by it.
+ */
+export function tagsIn(events: ClubEvent[]): EventTag[] {
+  const seen = new Map<string, EventTag>();
+  for (const event of events) {
+    for (const tag of event.tags) {
+      if (!seen.has(tag.slug)) seen.set(tag.slug, tag);
+    }
+  }
+  return [...seen.values()].sort(
+    (a, b) => a.categoryName.localeCompare(b.categoryName) || a.name.localeCompare(b.name),
+  );
+}
+
+/** The organization ids hosting any of these events, for the "Hosted by" group. */
+export function organizationIdsIn(events: ClubEvent[]): Set<string> {
+  return new Set(events.flatMap((event) => (event.organizationId ? [event.organizationId] : [])));
 }
