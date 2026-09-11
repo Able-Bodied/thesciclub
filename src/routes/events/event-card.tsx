@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { isOnline } from '@/routes/events/filters';
 import { dateTileParts, timeRange } from '@/routes/events/format';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
 /**
@@ -74,16 +75,21 @@ export function EventCard({
         onClick={onOpen}
         className="flex w-full items-start gap-[13px] text-left"
       >
-        <span className="block w-[58px] flex-none rounded-[14px] bg-tint px-0 pt-2 pb-[9px] text-center">
-          <span className="block font-extrabold text-[10.5px] text-ink2 tracking-[0.09em]">
-            {tile.dow}
+        {/* Date and host stacked in one narrow column, so the title always
+            starts at the same x no matter which of them is present. */}
+        <span className="flex flex-none flex-col items-center gap-2">
+          <span className="block w-[58px] rounded-[14px] bg-tint px-0 pt-2 pb-[9px] text-center">
+            <span className="block font-extrabold text-[10.5px] text-ink2 tracking-[0.09em]">
+              {tile.dow}
+            </span>
+            <span className="block font-extrabold font-head text-[23px] text-navy leading-[1.15]">
+              {tile.day}
+            </span>
+            <span className="block font-extrabold text-[10.5px] text-ink2 tracking-[0.09em]">
+              {tile.mon}
+            </span>
           </span>
-          <span className="block font-extrabold font-head text-[23px] text-navy leading-[1.15]">
-            {tile.day}
-          </span>
-          <span className="block font-extrabold text-[10.5px] text-ink2 tracking-[0.09em]">
-            {tile.mon}
-          </span>
+          <OrganizationBadge organization={organization} hostName={event.hostName} />
         </span>
 
         <span className="min-w-0 flex-1 pr-5">
@@ -127,7 +133,12 @@ export function EventCard({
         </span>
       </button>
 
-      <div className="mt-3 grid grid-cols-2 gap-[9px]">
+      {/* Capped and left-aligned rather than stretched across the card. On a
+          wide screen a half-card-wide button is a long way from the title
+          somebody just read, and every RSVP becomes a trip across the screen.
+          Full width on a phone, where the card is narrow and the thumb is
+          already there. */}
+      <div className="mt-3 grid max-w-[420px] grid-cols-2 gap-[9px]">
         <button
           type="button"
           // Pressing the button you are already on takes the RSVP back, which

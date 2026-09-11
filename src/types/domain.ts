@@ -350,6 +350,12 @@ export interface Organization {
   tags: string[];
   /** Whether this organization can put numbers on the list. */
   canInvite: boolean;
+  /**
+   * Hotlinked from the organization's own site, or null to fall back to the
+   * short-code badge. Never a path into our storage bucket — see
+   * supabase/migrations/20260911230000_organization_logos.sql.
+   */
+  logoUrl: string | null;
 }
 
 /* ------------------------------------------------------------------ browse */

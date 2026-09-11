@@ -1,3 +1,4 @@
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { Organization } from '@/types/domain';
 
 /**
@@ -30,12 +31,11 @@ export function OrganizationList({
           className="mb-[11px] block w-full rounded-[17px] border border-line bg-paper p-3.5 text-left"
         >
           <div className="flex items-center gap-3">
-            <span
-              className="grid h-[52px] w-[52px] flex-none place-items-center rounded-[16px] font-extrabold font-head text-[14px] text-white"
-              style={{ background: 'linear-gradient(140deg,#8A6712,#C9A227)' }}
-            >
-              {organization.shortCode}
-            </span>
+            <OrganizationBadge
+              organization={organization}
+              size="lg"
+              className="h-[52px] w-[52px] rounded-[16px] text-[14px]"
+            />
             <span className="min-w-0 flex-1">
               <span className="block font-extrabold font-head text-[16.5px] text-ink leading-[1.2] tracking-[-0.01em]">
                 {organization.name}

@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { EventCard, type EventCardProps } from '@/routes/events/event-card';
-import { makeEvent, makeTag } from '@/test/factory';
-import type { EventAttendee, Organization } from '@/types/domain';
+import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
+import type { EventAttendee } from '@/types/domain';
 
 function attendee(name: string, status: 'going' | 'interested' = 'going'): EventAttendee {
   return {
@@ -117,15 +117,7 @@ describe('EventCard', () => {
 
   describe('who is hosting', () => {
     it('prefers a club organization', () => {
-      const organization: Organization = {
-        id: 'o1',
-        shortCode: 'NCS',
-        name: 'NorCal SCI',
-        city: 'Northern California',
-        description: '',
-        tags: [],
-        canInvite: true,
-      };
+      const organization = makeOrganization();
       renderCard({ organization, event: makeEvent({ hostName: 'Somebody else' }) });
       expect(screen.getByText(/NorCal SCI/)).toBeInTheDocument();
       expect(screen.queryByText(/Somebody else/)).not.toBeInTheDocument();

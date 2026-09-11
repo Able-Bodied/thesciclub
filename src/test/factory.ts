@@ -1,4 +1,4 @@
-import type { BrowseMember, ClubEvent, EventTag } from '@/types/domain';
+import type { BrowseMember, ClubEvent, EventTag, Organization } from '@/types/domain';
 
 /** A member with everything empty, for tests to fill in only what they care about. */
 export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember {
@@ -70,4 +70,19 @@ export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
 /** A tag in the shape `ClubEvent.tags` carries, with its category. */
 export function makeTag(slug: string, categorySlug = 'sport'): EventTag {
   return { slug, name: slug, categorySlug, categoryName: categorySlug };
+}
+
+/** An organization, for tests that only care about one or two of its fields. */
+export function makeOrganization(overrides: Partial<Organization> = {}): Organization {
+  return {
+    id: 'org-1',
+    shortCode: 'NCS',
+    name: 'NorCal SCI',
+    city: 'Northern California',
+    description: '',
+    tags: [],
+    canInvite: true,
+    logoUrl: null,
+    ...overrides,
+  };
 }

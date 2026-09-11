@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { makeEvent, makeTag } from '@/test/factory';
+import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
 const state = vi.hoisted(() => ({
@@ -181,15 +181,7 @@ describe('EventDetailPage', () => {
   });
 
   describe('who is hosting', () => {
-    const organization: Organization = {
-      id: 'o1',
-      shortCode: 'NCS',
-      name: 'NorCal SCI',
-      city: 'Northern California',
-      description: '',
-      tags: [],
-      canInvite: true,
-    };
+    const organization = makeOrganization({ id: 'o1' });
 
     it('links to a club organization', () => {
       state.organizations = [organization];

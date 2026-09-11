@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { isOnline } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { EventDescription } from '@/routes/events/rich-text';
 import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
@@ -92,77 +93,79 @@ export default function EventDetailPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="bg-navy px-4 pt-[18px] pb-5 text-white">
-        <button
-          type="button"
-          onClick={() => {
-            void navigate('/events');
-          }}
-          className="block pb-3 text-[#B9CADF] text-[14px]"
-        >
-          ← Events
-        </button>
+        <div className="mx-auto w-full max-w-[var(--events-measure)]">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/events');
+            }}
+            className="block pb-3 text-[#B9CADF] text-[14px]"
+          >
+            ← Events
+          </button>
 
-        <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[11.5px] uppercase tracking-[0.07em]">
-          <MapPin className="h-[13px] w-[13px]" aria-hidden="true" />
-          <span>{longWhen(event.startTime, event.timezone)}</span>
-        </div>
-
-        <h1 className="mt-2 font-extrabold font-head text-[23px] leading-[1.28] tracking-[-0.02em]">
-          {event.title}
-        </h1>
-
-        <p className="mt-1.5 text-[#B9CADF] text-[13px] leading-[1.42]">
-          {[timeRange(event.startTime, event.endTime, event.timezone), event.location, event.city]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-
-        {isOnline(event) || event.tags.length ? (
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {isOnline(event) ? (
-              <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[11.8px]">
-                {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
-              </span>
-            ) : null}
-            {event.tags.map((tag) => (
-              <span
-                key={tag.slug}
-                className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[11.8px]"
-              >
-                {tag.name}
-              </span>
-            ))}
+          <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[11.5px] uppercase tracking-[0.07em]">
+            <MapPin className="h-[13px] w-[13px]" aria-hidden="true" />
+            <span>{longWhen(event.startTime, event.timezone)}</span>
           </div>
-        ) : null}
 
-        <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
-          <button
-            type="button"
-            onClick={() => {
-              onRsvp(going ? null : 'going');
-            }}
-            aria-pressed={going}
-            className={cn(
-              'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[15px]',
-              going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
-            )}
-          >
-            {going ? "You're going" : "I'm going"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onRsvp(interested ? null : 'interested');
-            }}
-            aria-pressed={interested}
-            className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[15px] text-white"
-          >
-            {interested ? 'Interested ✓' : 'Interested'}
-          </button>
+          <h1 className="mt-2 font-extrabold font-head text-[23px] leading-[1.28] tracking-[-0.02em]">
+            {event.title}
+          </h1>
+
+          <p className="mt-1.5 text-[#B9CADF] text-[13px] leading-[1.42]">
+            {[timeRange(event.startTime, event.endTime, event.timezone), event.location, event.city]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+
+          {isOnline(event) || event.tags.length ? (
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {isOnline(event) ? (
+                <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[11.8px]">
+                  {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
+                </span>
+              ) : null}
+              {event.tags.map((tag) => (
+                <span
+                  key={tag.slug}
+                  className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[11.8px]"
+                >
+                  {tag.name}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
+            <button
+              type="button"
+              onClick={() => {
+                onRsvp(going ? null : 'going');
+              }}
+              aria-pressed={going}
+              className={cn(
+                'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[15px]',
+                going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
+              )}
+            >
+              {going ? "You're going" : "I'm going"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onRsvp(interested ? null : 'interested');
+              }}
+              aria-pressed={interested}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[15px] text-white"
+            >
+              {interested ? 'Interested ✓' : 'Interested'}
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="px-4 pb-5">
+      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
         {writeError ? (
           <p className="mt-3 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[#8C1D18] text-[12.6px]">
             {writeError}
@@ -227,12 +230,7 @@ export default function EventDetailPage() {
                 }}
                 className="flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
               >
-                <span
-                  className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] font-extrabold font-head text-[11px] text-white"
-                  style={{ background: 'linear-gradient(140deg,#8A6712,#C9A227)' }}
-                >
-                  {organization.shortCode}
-                </span>
+                <OrganizationBadge organization={organization} />
                 <span className="min-w-0 flex-1">
                   <span className="block font-extrabold font-head text-[14.5px] text-ink">
                     {organization.name}

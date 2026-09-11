@@ -35,6 +35,21 @@
   --head: Archivo, "TeX Gyre Heros", "Liberation Sans", sans-serif;
   --body: "Public Sans", "Liberation Sans", sans-serif;
 
+  /* --------------------------------------------------------- measures */
+  /*
+   * The reading column for a date-ordered list.
+   *
+   * Wider than the phone shell so a desktop is not a 480px ribbon, and far
+   * narrower than the window so a card's title, host and buttons stay within
+   * one eye movement — and one short pointer movement — of each other. A
+   * member driving this with a head pointer or a mouth stick pays for width in
+   * effort, not just in aesthetics.
+   *
+   * Peers deliberately does not use this: a deck of faces is scanned across,
+   * so it grids into the full shell instead.
+   */
+  --events-measure: 720px;
+
   /* ------------------------------------------------------ semantic */
   --radius: 0.875rem;
 

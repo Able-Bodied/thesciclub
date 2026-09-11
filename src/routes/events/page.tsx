@@ -33,6 +33,22 @@ import {
  * Events — what there is to go to, from the partner organizations' own
  * calendars.
  *
+ * ---------------------------------------------------------------------------
+ * Why this is a column and not the full shell
+ * ---------------------------------------------------------------------------
+ * Peers grids its cards into the shell's full width, because a deck is
+ * something you scan. A calendar is something you read down: one event after
+ * another in date order, and the order is the content. Stretched to 1100px
+ * every card's title, chips, host and buttons sit at wildly different x
+ * positions, so following the list means sweeping the eye — and every RSVP
+ * means dragging the pointer — right across the screen.
+ *
+ * That cost is not evenly shared. A member with a cervical injury may be
+ * driving this with a head pointer, a mouth stick or a trackball, where
+ * distance is effort rather than a flick of the wrist. So the column is capped
+ * at a comfortable reading measure: wider than the phone, nowhere near the
+ * window, and the same shape on every screen.
+ *
  * Nothing on this screen is written by the club. Every event here was published
  * by somebody else and ingested (jobs/event-ingest), which is why there is no
  * "create an event" affordance and no plan for one.
@@ -127,7 +143,7 @@ export default function EventsPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto flex min-h-[38px] w-full max-w-[1100px] items-center justify-between gap-2.5">
+        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
           <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">
             Events
           </h1>
@@ -148,7 +164,7 @@ export default function EventsPage() {
           ) : null}
         </div>
 
-        <div className="mx-auto flex w-full max-w-[1100px] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
+        <div className="mx-auto flex w-full max-w-[var(--events-measure)] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
           {SEGMENTS.map(([value, label]) => (
             <button
               key={value}
@@ -169,7 +185,7 @@ export default function EventsPage() {
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] lg:px-6">
-        <div className="mx-auto w-full max-w-[1100px]">
+        <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {writeError ? (
             <p className="mb-2.5 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[12.6px] text-[#8C1D18]">
               {writeError}

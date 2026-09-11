@@ -5,6 +5,7 @@ import { useBrowseMembers } from '@/lib/members';
 import { useOrganizations } from '@/lib/organizations';
 import { photoUrlFor } from '@/lib/photos';
 import { dateTileParts } from '@/routes/events/format';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 
 /**
@@ -57,49 +58,46 @@ export default function OrganizationDetailPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="bg-navy px-4 pt-[18px] pb-5 text-white">
-        <button
-          type="button"
-          onClick={() => {
-            void navigate('/events');
-          }}
-          className="block pb-3 text-[#B9CADF] text-[14px]"
-        >
-          ← Back
-        </button>
-
-        <div className="flex items-center gap-[13px]">
-          <span
-            className="grid h-[66px] w-[66px] flex-none place-items-center rounded-[20px] font-extrabold font-head text-[22px] text-white"
-            style={{ background: 'linear-gradient(140deg,#8A6712,#C9A227)' }}
+        <div className="mx-auto w-full max-w-[var(--events-measure)]">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/events');
+            }}
+            className="block pb-3 text-[#B9CADF] text-[14px]"
           >
-            {organization.shortCode}
-          </span>
-          <span>
-            <span className="block font-extrabold font-head text-[21px] leading-[1.2] tracking-[-0.02em]">
-              {organization.name}
-            </span>
-            <span className="mt-[3px] block text-[#B9CADF] text-[13px]">{organization.city}</span>
-          </span>
-        </div>
+            ← Back
+          </button>
 
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {organization.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[11.8px]"
-            >
-              {tag}
+          <div className="flex items-center gap-[13px]">
+            <OrganizationBadge organization={organization} size="lg" />
+            <span>
+              <span className="block font-extrabold font-head text-[21px] leading-[1.2] tracking-[-0.02em]">
+                {organization.name}
+              </span>
+              <span className="mt-[3px] block text-[#B9CADF] text-[13px]">{organization.city}</span>
             </span>
-          ))}
-          {organization.canInvite ? (
-            <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[11.8px]">
-              Can issue invites
-            </span>
-          ) : null}
+          </div>
+
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {organization.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[11.8px]"
+              >
+                {tag}
+              </span>
+            ))}
+            {organization.canInvite ? (
+              <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[11.8px]">
+                Can issue invites
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      <div className="px-4 pb-5">
+      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
         {organization.description ? (
           <p className="mt-2.5 text-[14.2px] text-ink leading-[1.52]">{organization.description}</p>
         ) : null}
