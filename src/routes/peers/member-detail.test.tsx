@@ -148,3 +148,26 @@ describe('MemberDetailPage', () => {
     expect(screen.getByText('network is unreachable')).toBeInTheDocument();
   });
 });
+
+describe('the official account profile', () => {
+  it('explains what the account is instead of showing empty member sections', () => {
+    state.current = ok(makeMember({ displayName: 'admin', isAdmin: true }));
+    renderDetail();
+    expect(screen.getByText('What this account is')).toBeInTheDocument();
+    expect(screen.queryByText('Details')).not.toBeInTheDocument();
+    expect(screen.queryByText('Happy to talk about')).not.toBeInTheDocument();
+  });
+
+  it('says plainly that messaging is not on yet, rather than offering a dead button', () => {
+    state.current = ok(makeMember({ isAdmin: true }));
+    renderDetail();
+    expect(screen.getByText(/Messaging is not switched on yet/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /message/i })).not.toBeInTheDocument();
+  });
+
+  it('repeats the rule that membership can be lost', () => {
+    state.current = ok(makeMember({ isAdmin: true }));
+    renderDetail();
+    expect(screen.getByText(/Membership can be lost/)).toBeInTheDocument();
+  });
+});

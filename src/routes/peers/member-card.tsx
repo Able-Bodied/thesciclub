@@ -1,3 +1,4 @@
+import { ClubMark } from '@/components/club-mark';
 import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import type { BrowseMember } from '@/types/domain';
@@ -78,6 +79,39 @@ export interface MemberCardProps {
 }
 
 export function MemberCard({ member, onOpen }: MemberCardProps) {
+  if (member.isAdmin) return <OfficialCard member={member} onOpen={onOpen} />;
+  return <PersonCard member={member} onOpen={onOpen} />;
+}
+
+/**
+ * The club's own account.
+ *
+ * Deliberately not a photo card. This account is not a person, and the things
+ * a person card shows — a level, an age, a city — would be fiction on it.
+ */
+function OfficialCard({ member, onOpen }: MemberCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="relative flex h-[424px] w-full flex-col items-center justify-center overflow-hidden rounded-[26px] bg-navy px-8 text-center shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+    >
+      <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase tracking-[0.08em]">
+        Official
+      </span>
+      <ClubMark size={96} />
+      <span className="mt-6 block font-extrabold font-head text-[24px] text-white tracking-[-0.01em]">
+        {member.displayName}
+      </span>
+      <span className="mt-2 block text-[13.5px] text-[#B9CADF] leading-[1.5]">
+        The club's own account. Questions about membership, the house rules, or anything that has
+        gone wrong — this is who answers.
+      </span>
+    </button>
+  );
+}
+
+function PersonCard({ member, onOpen }: MemberCardProps) {
   const photo = photoUrlFor(member.photoPath);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);

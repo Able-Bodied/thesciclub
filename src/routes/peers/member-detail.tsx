@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ClubMark } from '@/components/club-mark';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { photoUrlFor } from '@/lib/photos';
@@ -90,6 +91,16 @@ export default function MemberDetailPage() {
   if (error || !member) {
     return <Centered>{error ?? 'Could not load this member.'}</Centered>;
   }
+
+  if (member.isAdmin)
+    return (
+      <OfficialProfile
+        member={member}
+        onBack={() => {
+          void navigate(-1);
+        }}
+      />
+    );
 
   const [from, to] = gradientFor(member.id);
   const photo = photoUrlFor(member.photoPath);
@@ -237,6 +248,68 @@ function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 items-center justify-center px-8">
       <p className="text-center text-[14px] text-ink2 leading-relaxed">{children}</p>
+    </div>
+  );
+}
+
+/**
+ * The club's own account.
+ *
+ * None of the sections a member profile shows apply here — there is no injury,
+ * no city, no list of topics somebody agreed to be asked about. Rendering them
+ * empty would make the account look like an abandoned profile rather than the
+ * one that answers you, so this says what the account is instead.
+ *
+ * There is deliberately no message button. Messaging is not built, and an
+ * official account whose contact button silently does nothing is worse than one
+ * that tells you plainly where things stand.
+ */
+function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () => void }) {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="relative mx-auto flex h-[340px] w-full max-w-[760px] flex-col items-center justify-center bg-navy lg:rounded-b-[28px]">
+        <button
+          type="button"
+          onClick={onBack}
+          className="absolute top-4 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 py-2 pr-3.5 pl-2 font-bold text-[13.5px] text-white backdrop-blur-sm"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Peers
+        </button>
+        <span className="absolute top-4 right-4 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase tracking-[0.08em]">
+          Official
+        </span>
+        <ClubMark size={92} />
+        <h1 className="mt-5 font-extrabold font-head text-[28px] text-white tracking-[-0.02em]">
+          {member.displayName}
+        </h1>
+      </div>
+
+      <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
+        <Section title="What this account is">
+          <p className="text-[14.2px] text-ink2 leading-[1.52]">
+            The club's own account, run by whoever is administering The SCI Club. It is not a member
+            — there is no injury, no city and no story behind it.
+          </p>
+          <p className="mt-3 text-[14.2px] text-ink2 leading-[1.52]">
+            Use it for anything about the club itself: how invites work, a question about the house
+            rules, a profile that looks wrong, or somebody behaving badly. Reports go here and are
+            read by a person.
+          </p>
+        </Section>
+
+        <Section title="Getting in touch">
+          <p className="text-[14.2px] text-ink2 leading-[1.52]">
+            Messaging is not switched on yet. When it is, this is the account to write to — until
+            then, whoever invited you is the fastest route to an answer.
+          </p>
+        </Section>
+
+        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[12.6px] text-[#5C4409] leading-[1.5]">
+          Membership can be lost. Selling to members, harassing anyone, giving medical advice as
+          fact, or repeating outside a room what was said in it all end it.
+        </div>
+      </div>
     </div>
   );
 }

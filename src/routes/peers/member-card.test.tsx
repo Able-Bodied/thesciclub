@@ -117,3 +117,35 @@ describe('MemberCard', () => {
     expect(screen.getByText('V')).toBeInTheDocument();
   });
 });
+
+describe('the official account', () => {
+  it('is badged Official and named, without a level or an age', () => {
+    render(
+      <MemberCard
+        member={makeMember({ displayName: 'admin', isAdmin: true, exactLevel: 'T4', age: 30 })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('Official')).toBeInTheDocument();
+    expect(screen.getByText('admin')).toBeInTheDocument();
+    // A level and an age would be fiction on an account that is not a person.
+    expect(screen.queryByText(/T4/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/· 30 ·/)).not.toBeInTheDocument();
+  });
+
+  it('uses the club mark rather than a photograph', () => {
+    render(
+      <MemberCard
+        member={makeMember({ isAdmin: true, photoPath: 'seed/x.webp' })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
+    expect(document.querySelector('img')).toBeNull();
+  });
+
+  it('does not badge an ordinary member as official', () => {
+    render(<MemberCard member={makeMember({ isAdmin: false })} onOpen={() => undefined} />);
+    expect(screen.queryByText('Official')).not.toBeInTheDocument();
+  });
+});
