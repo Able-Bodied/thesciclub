@@ -1,0 +1,43 @@
+import type { BrowseMember } from '@/types/domain';
+
+/** A member with everything empty, for tests to fill in only what they care about. */
+export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember {
+  return {
+    id: Math.random().toString(36).slice(2),
+    type: 'peer',
+    displayName: 'Test',
+    photoPath: null,
+    photoAlt: null,
+    avatarColor: null,
+    city: 'San Jose',
+    state: 'CA',
+    levelRange: 'T1–T6',
+    exactLevel: null,
+    completeness: 'Do not know',
+    injuryDate: null,
+    injuryDatePrecision: null,
+    region: 'Thoracic',
+    age: 40,
+    howInjured: null,
+    bio: null,
+    detail: null,
+    gender: null,
+    languages: [],
+    independence: null,
+    employment: null,
+    fieldOfWork: null,
+    education: null,
+    educationWhen: null,
+    maritalStatus: null,
+    hasChildren: null,
+    childrenWhen: null,
+    interests: [],
+    topics: [],
+    selfCare: [],
+    affiliations: [],
+    wantsToMentor: false,
+    isSeed: false,
+    createdAt: '2026-01-01T00:00:00Z',
+    ...overrides,
+  };
+}

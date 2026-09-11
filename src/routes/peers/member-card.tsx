@@ -1,0 +1,129 @@
+import { photoUrlFor } from '@/lib/photos';
+import { cn } from '@/lib/utils';
+import type { BrowseMember } from '@/types/domain';
+
+/**
+ * The full-bleed browse card, matching `.pcard` in docs/index.html. The photo
+ * *is* the card: it fills the frame and everything else sits on top of it.
+ *
+ * Purely presentational. It takes a member and a tap handler; it never fetches
+ * and holds no state.
+ */
+
+/** Deterministic gradient pairs for members with no photo, from the mock's palette. */
+const DEFAULT_GRADIENT: [string, string] = ['#102A4C', '#1A3E70'];
+
+const PALETTE: [string, string][] = [
+  DEFAULT_GRADIENT,
+  ['#1A3E70', '#2C5590'],
+  ['#8A6712', '#C9A227'],
+  ['#2F6B57', '#3E8F74'],
+  ['#4A2E6B', '#6B4494'],
+];
+
+/** Stable per-member, so somebody's tile colour does not change between renders. */
+export function gradientFor(id: string): [string, string] {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return PALETTE[hash % PALETTE.length] ?? DEFAULT_GRADIENT;
+}
+
+export function initialsOf(displayName: string): string {
+  const letters = displayName
+    .split(/\s+/)
+    .map((part) => part.replace(/[^\p{L}]/gu, '').charAt(0))
+    .filter(Boolean);
+  return (letters.slice(0, 2).join('') || '?').toUpperCase();
+}
+
+/**
+ * The line under the name: level, completeness, age, city.
+ *
+ * Every part is optional and the separators come from joining what survives, so
+ * a member with no city or no age gets a shorter line rather than a line with a
+ * gap in it. Completeness is lowercased to read as prose — "C6 incomplete"
+ * rather than "C6 Incomplete" — and omitted entirely when unknown, because
+ * "C6 do not know" says nothing.
+ */
+export function summaryLine(member: BrowseMember): string {
+  const level = member.exactLevel ?? member.levelRange;
+  const levelPart =
+    member.completeness === 'Do not know' ? level : `${level} ${member.completeness.toLowerCase()}`;
+  return [levelPart, member.age, member.city].filter(Boolean).join(' · ');
+}
+
+export interface MemberCardProps {
+  member: BrowseMember;
+  onOpen: () => void;
+}
+
+export function MemberCard({ member, onOpen }: MemberCardProps) {
+  const photo = photoUrlFor(member.photoPath);
+  const [from, to] = gradientFor(member.id);
+  const chips = member.topics.slice(0, 3);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="relative mb-3.5 block h-[424px] w-full overflow-hidden rounded-[26px] text-left shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+      style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+    >
+      {/* The initials sit behind the photo, so a photo that fails to load
+          reveals a designed tile rather than a broken-image icon. */}
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 grid place-items-center font-extrabold font-head text-[118px] text-white opacity-[0.13] tracking-[-0.04em]"
+      >
+        {initialsOf(member.displayName)}
+      </span>
+
+      {photo ? (
+        <img
+          src={photo}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover object-[50%_28%]"
+          onError={(e) => {
+            e.currentTarget.remove();
+          }}
+        />
+      ) : null}
+
+      <span className="absolute inset-x-0 top-0 h-[180px] bg-gradient-to-b from-[#0A1D36E0] to-transparent" />
+      <span className="absolute inset-x-0 bottom-0 h-[250px] bg-gradient-to-b from-transparent via-[#0A1D36D9] to-[#0A1D36F2]" />
+
+      <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px]">
+        <span className="block font-extrabold font-head text-[28px] text-white leading-tight tracking-[-0.01em]">
+          {member.displayName}
+        </span>
+        <span className="mt-[7px] block text-[13.5px] text-[#D3DFEE] leading-[1.45]">
+          {summaryLine(member)}
+        </span>
+      </span>
+
+      <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-[18px]">
+        {member.type === 'mentor' ? (
+          <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[12px] text-navy leading-none">
+            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[8.5px] text-white">
+              NCS
+            </span>
+            Peer mentor
+          </span>
+        ) : null}
+        {chips.length ? (
+          <span className={cn('mt-2.5 flex flex-wrap gap-1.5', member.type !== 'mentor' && 'mt-0')}>
+            {chips.map((topic) => (
+              <span
+                key={topic}
+                className="inline-block rounded-full bg-white/90 px-3 py-1.5 font-bold text-[12px] text-navy leading-[1.2]"
+              >
+                {topic}
+              </span>
+            ))}
+          </span>
+        ) : null}
+      </span>
+    </button>
+  );
+}

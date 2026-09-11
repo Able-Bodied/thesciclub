@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import ChatPage from '@/routes/chat/page';
+import DevLoginPage from '@/routes/dev-login/page';
 import EventsPage from '@/routes/events/page';
 import HomePage from '@/routes/home/page';
 import MePage from '@/routes/me/page';
@@ -32,6 +33,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/home" replace />} />
+      {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
+      <Route path="/dev-login" element={<DevLoginPage />} />
       <Route path="/*" element={<AppShell />} />
     </Routes>
   );
