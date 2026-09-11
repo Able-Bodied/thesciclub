@@ -175,6 +175,7 @@ export default function EventsPage() {
           {segment === 'orgs' ? (
             <OrganizationList
               organizations={organizations}
+              events={events}
               onOpen={(id) => {
                 void navigate(`/events/organizations/${id}`);
               }}

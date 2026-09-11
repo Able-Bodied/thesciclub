@@ -1,5 +1,6 @@
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import type { Organization } from '@/types/domain';
+import { eventCountsByOrganization, groupOrganizations } from '@/routes/events/organization-groups';
+import type { ClubEvent, Organization } from '@/types/domain';
 
 /**
  * The organizations directory, from `orgList()` in the mock.
@@ -8,55 +9,92 @@ import type { Organization } from '@/types/domain';
  * where the mock puts it, and the reason holds: an organization is mostly
  * interesting here as the thing running what you are looking at.
  *
- * The note at the bottom is not decoration. docs/CONTEXT.md asks that how
- * somebody gets into the club stays visible in the product rather than buried
- * in a terms page, and this is the screen where the answer is in front of them.
+ * Grouped rather than one alphabetical run — see organization-groups.ts. The
+ * note about how somebody gets into the club now sits under the group it is
+ * actually true of, instead of at the bottom of a list where twenty of the
+ * twenty-three rows above it cannot let anybody in. docs/CONTEXT.md asks that
+ * this stay visible in the product; it does not ask for it to be misleading.
  */
-export function OrganizationList({
-  organizations,
+
+function OrganizationRow({
+  organization,
+  eventCount,
   onOpen,
 }: {
-  organizations: Organization[];
+  organization: Organization;
+  eventCount: number;
   onOpen: (id: string) => void;
 }) {
   return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen(organization.id);
+      }}
+      className="mb-[11px] block w-full rounded-[17px] border border-line bg-paper p-3.5 text-left"
+    >
+      <div className="flex items-center gap-3">
+        <OrganizationBadge
+          organization={organization}
+          size="lg"
+          className="h-[52px] w-[52px] rounded-[16px] text-[0.875rem]"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.2] tracking-[-0.01em]">
+            {organization.name}
+          </span>
+          <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
+            {/* The count is the rest of the answer: it is how somebody sees that
+                NorCal SCI runs the calendar even though it is filed under
+                "can let you in". */}
+            {[organization.city, eventCount > 0 ? `${eventCount} on the calendar` : null]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </span>
+      </div>
+    </button>
+  );
+}
+
+export function OrganizationList({
+  organizations,
+  events,
+  onOpen,
+}: {
+  organizations: Organization[];
+  /** Used only to count what each organization is running. */
+  events: ClubEvent[];
+  onOpen: (id: string) => void;
+}) {
+  const counts = eventCountsByOrganization(events);
+  const groups = groupOrganizations(organizations, counts);
+
+  return (
     <>
-      {organizations.map((organization) => (
-        <button
-          key={organization.id}
-          type="button"
-          onClick={() => {
-            onOpen(organization.id);
-          }}
-          className="mb-[11px] block w-full rounded-[17px] border border-line bg-paper p-3.5 text-left"
-        >
-          <div className="flex items-center gap-3">
-            <OrganizationBadge
+      {groups.map((group) => (
+        <section key={group.key} aria-labelledby={`orggroup-${group.key}`}>
+          <h2
+            id={`orggroup-${group.key}`}
+            className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em] first:mt-0"
+          >
+            {group.title}
+          </h2>
+          {group.blurb ? (
+            <p className="mb-2.5 text-[0.78125rem] text-grey leading-[1.5]">{group.blurb}</p>
+          ) : (
+            <div className="mb-2.5" />
+          )}
+          {group.organizations.map((organization) => (
+            <OrganizationRow
+              key={organization.id}
               organization={organization}
-              size="lg"
-              className="h-[52px] w-[52px] rounded-[16px] text-[0.875rem]"
+              eventCount={counts.get(organization.id) ?? 0}
+              onOpen={onOpen}
             />
-            <span className="min-w-0 flex-1">
-              <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.2] tracking-[-0.01em]">
-                {organization.name}
-              </span>
-              <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
-                {organization.city}
-              </span>
-            </span>
-          </div>
-          {organization.canInvite ? (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              <span className="rounded-full bg-gold-lt px-2.5 py-[5px] font-semibold text-[0.7375rem] text-gold-dp leading-[1.25]">
-                Can issue invites
-              </span>
-            </div>
-          ) : null}
-        </button>
+          ))}
+        </section>
       ))}
-      <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
-        Organizations are one of the two ways a new member gets in. The other is a mentor.
-      </p>
     </>
   );
 }
