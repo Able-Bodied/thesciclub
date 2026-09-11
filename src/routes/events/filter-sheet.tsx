@@ -198,16 +198,6 @@ export function EventFilterSheet({
             </Group>
           ) : null}
 
-          <Group title="Hidden events">
-            <Chip
-              label="Show events I said no to"
-              on={filters.showHidden}
-              onClick={() => {
-                onChange({ ...filters, showHidden: !filters.showHidden });
-              }}
-            />
-          </Group>
-
           <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[12.6px] text-[#5C4409] leading-[1.5]">
             Events come from the organizations’ own calendars. If something is missing, it is
             missing there too.

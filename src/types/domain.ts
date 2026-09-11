@@ -507,8 +507,6 @@ export interface EventFilters {
   cities: string[];
   /** Organization ids. */
   organizations: string[];
-  /** Off by default — events marked Not interested stay out until this is on. */
-  showHidden: boolean;
 }
 
 export const EMPTY_EVENT_FILTERS: EventFilters = {
@@ -517,5 +515,4 @@ export const EMPTY_EVENT_FILTERS: EventFilters = {
   tags: [],
   cities: [],
   organizations: [],
-  showHidden: false,
 };

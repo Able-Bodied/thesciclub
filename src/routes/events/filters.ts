@@ -33,14 +33,9 @@ import type {
 export interface ViewerEventState {
   /** Event id -> the viewer's own RSVP. Absent means they have not said. */
   rsvps: Map<string, 'interested' | 'going'>;
-  /** Event ids the viewer marked Not interested. */
-  dismissed: Set<string>;
 }
 
-export const NO_VIEWER_STATE: ViewerEventState = {
-  rsvps: new Map(),
-  dismissed: new Set(),
-};
+export const NO_VIEWER_STATE: ViewerEventState = { rsvps: new Map() };
 
 export interface DateRange {
   /** Inclusive lower bound, ISO. Absent for `past`, which has no lower bound. */
@@ -147,8 +142,6 @@ export function filterEvents(
   now: Date = new Date(),
 ): ClubEvent[] {
   const kept = events.filter((event) => {
-    if (!filters.showHidden && viewer.dismissed.has(event.id)) return false;
-
     // The "I'm going" segment deliberately ignores the date window. Somebody
     // checking what they have committed to means all of it, and a list that
     // silently dropped next month's trip because the window says "this week"

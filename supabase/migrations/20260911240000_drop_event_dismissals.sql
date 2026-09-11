@@ -1,0 +1,26 @@
+-- ============================================================================
+-- Drop event_dismissals — nothing reads it and nothing should
+-- ============================================================================
+-- 20260911200000 created this alongside event_rsvps to back a "Not interested"
+-- ✕ on the event card, ported from ab-peers. The ✕ has been removed and the
+-- table goes with it.
+--
+-- Why the feature went, since the table is the cheap part: nothing consumed the
+-- signal. There is no ranking that learns from a dismissal, so hiding an event
+-- only ever shortened one list, and the way back was a toggle buried in the
+-- filter sheet. A control whose effect is invisible and whose undo is hidden is
+-- not a feature, it is a way to lose an event.
+--
+-- It was also aimed at the wrong problem. NorCal SCI publishes about a hundred
+-- events made of about fifteen distinct ones repeating weekly, so what a member
+-- actually wants is "not this, ever" — and hiding one occurrence of a Friday
+-- group does nothing about next Friday. If this returns it should key on a
+-- series, which is a different table from this one, not a renamed version of
+-- it. Keeping this shape around would mean the next person builds the wrong
+-- thing because the schema suggested it.
+--
+-- Safe to drop: it has never held a row in any environment, verified against
+-- the hosted database before writing this.
+-- ============================================================================
+
+drop table if exists public.event_dismissals;

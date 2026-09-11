@@ -8,13 +8,11 @@ import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types
 const state = vi.hoisted(() => ({
   events: [] as ClubEvent[],
   rsvps: new Map<string, RsvpStatus>(),
-  dismissed: new Set<string>(),
   attendees: new Map<string, EventAttendee[]>(),
   organizations: [] as Organization[],
   loading: false,
   error: null as string | null,
   setRsvp: vi.fn(),
-  setDismissed: vi.fn(),
   reload: vi.fn(),
 }));
 
@@ -23,15 +21,12 @@ vi.mock('@/lib/events', () => ({
   useAttendeesByEvent: () => ({ byEvent: state.attendees, loading: false, error: null }),
   useViewerEvents: () => ({
     rsvps: state.rsvps,
-    dismissed: state.dismissed,
     loading: false,
     error: null,
     reload: state.reload,
   }),
   setRsvp: (...args: unknown[]): Promise<{ ok: boolean; error?: string }> =>
     state.setRsvp(...args) as Promise<{ ok: boolean; error?: string }>,
-  setDismissed: (...args: unknown[]): Promise<{ ok: boolean; error?: string }> =>
-    state.setDismissed(...args) as Promise<{ ok: boolean; error?: string }>,
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -83,13 +78,11 @@ beforeEach(() => {
     makeEvent({ id: 'zoom', title: 'Driving Q&A', startTime: soon(3), format: 'online', tags: [] }),
   ];
   state.rsvps = new Map();
-  state.dismissed = new Set();
   state.attendees = new Map();
   state.organizations = [];
   state.loading = false;
   state.error = null;
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
-  state.setDismissed = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
 });
 
@@ -184,22 +177,6 @@ describe('EventsPage', () => {
       renderPage();
       await userEvent.click(firstGoingButton());
       expect(await screen.findByText('permission denied')).toBeInTheDocument();
-    });
-  });
-
-  describe('dismissal', () => {
-    it('hides a dismissed event from the list', () => {
-      state.dismissed = new Set(['rugby']);
-      renderPage();
-      expect(screen.queryByText('Wheelchair rugby')).not.toBeInTheDocument();
-    });
-
-    it('records the dismissal against the member', async () => {
-      renderPage();
-      await userEvent.click(
-        screen.getByRole('button', { name: 'Not interested in Wheelchair rugby' }),
-      );
-      expect(state.setDismissed).toHaveBeenCalledWith('rugby', 'me', true);
     });
   });
 

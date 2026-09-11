@@ -228,7 +228,6 @@ export function useEvents(): EventsState {
 
 export interface ViewerState {
   rsvps: Map<string, RsvpStatus>;
-  dismissed: Set<string>;
   loading: boolean;
   error: string | null;
   /** Re-read after a write, so a second tab or a failed mutation cannot drift. */
@@ -244,7 +243,6 @@ export interface ViewerState {
  */
 export function useViewerEvents(memberId: string | null): ViewerState {
   const [rsvps, setRsvps] = useState<Map<string, RsvpStatus>>(new Map());
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -257,35 +255,29 @@ export function useViewerEvents(memberId: string | null): ViewerState {
       const aborted = () => signal.aborted;
       if (!memberId) {
         setRsvps(new Map());
-        setDismissed(new Set());
         setLoading(false);
         return;
       }
       try {
         const supabase = getSupabase();
-        const [mine, hidden] = await Promise.all([
-          supabase.from('event_rsvps').select('event_id, status').abortSignal(signal),
-          supabase.from('event_dismissals').select('event_id').abortSignal(signal),
-        ]);
+        const mine = await supabase
+          .from('event_rsvps')
+          .select('event_id, status')
+          .abortSignal(signal);
         if (aborted()) return;
-
-        const failure = [mine, hidden].find((result) => result.error);
-        if (failure?.error) {
-          setError(failure.error.message);
+        if (mine.error) {
+          setError(mine.error.message);
           setLoading(false);
           return;
         }
 
         setRsvps(
           new Map(
-            ((mine.data ?? []) as { event_id: string; status: RsvpStatus }[]).map((row) => [
+            (mine.data as { event_id: string; status: RsvpStatus }[]).map((row) => [
               row.event_id,
               row.status,
             ]),
           ),
-        );
-        setDismissed(
-          new Set(((hidden.data ?? []) as { event_id: string }[]).map((row) => row.event_id)),
         );
         setError(null);
         setLoading(false);
@@ -310,7 +302,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
     void load(new AbortController().signal);
   }, [load]);
 
-  return { rsvps, dismissed, loading, error, reload };
+  return { rsvps, loading, error, reload };
 }
 
 /* --------------------------------------------------------------- mutations */
@@ -352,36 +344,6 @@ export async function setRsvp(
         { event_id: eventId, member_id: memberId, status },
         { onConflict: 'event_id,member_id' },
       );
-    return error ? { ok: false, error: error.message } : { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Could not save that.' };
-  }
-}
-
-/**
- * Hide an event, or bring it back.
- *
- * A dismissal has no status column — the row's existence is the whole fact —
- * so undoing one is a delete.
- */
-export async function setDismissed(
-  eventId: string,
-  memberId: string,
-  hidden: boolean,
-): Promise<WriteResult> {
-  try {
-    const supabase = getSupabase();
-    if (!hidden) {
-      const { error } = await supabase
-        .from('event_dismissals')
-        .delete()
-        .eq('event_id', eventId)
-        .eq('member_id', memberId);
-      return error ? { ok: false, error: error.message } : { ok: true };
-    }
-    const { error } = await supabase
-      .from('event_dismissals')
-      .upsert({ event_id: eventId, member_id: memberId }, { onConflict: 'event_id,member_id' });
     return error ? { ok: false, error: error.message } : { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Could not save that.' };

@@ -21,7 +21,6 @@ vi.mock('@/lib/events', () => ({
   useAttendeesByEvent: () => ({ byEvent: state.attendees, loading: false, error: null }),
   useViewerEvents: () => ({
     rsvps: state.rsvps,
-    dismissed: new Set<string>(),
     loading: false,
     error: null,
     reload: state.reload,

@@ -28,7 +28,6 @@ function renderCard(overrides: Partial<EventCardProps> = {}) {
     organization: null,
     onOpen: vi.fn(),
     onRsvp: vi.fn(),
-    onDismiss: vi.fn(),
     ...overrides,
   };
   render(<EventCard {...props} />);
@@ -74,15 +73,6 @@ describe('EventCard', () => {
         'false',
       );
     });
-  });
-
-  it('names the event in the dismiss button, so a list of them is distinguishable', () => {
-    // Twelve buttons all called "Not interested" is a screen reader's problem,
-    // not a design one.
-    renderCard({ event: makeEvent({ title: 'Handcycle ride' }) });
-    expect(
-      screen.getByRole('button', { name: 'Not interested in Handcycle ride' }),
-    ).toBeInTheDocument();
   });
 
   describe('who is going', () => {

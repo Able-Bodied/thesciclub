@@ -1,13 +1,7 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  setDismissed,
-  setRsvp,
-  useAttendeesByEvent,
-  useEvents,
-  useViewerEvents,
-} from '@/lib/events';
+import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
@@ -82,10 +76,7 @@ export default function EventsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
 
-  const viewerState = useMemo(
-    () => ({ rsvps: viewer.rsvps, dismissed: viewer.dismissed }),
-    [viewer.rsvps, viewer.dismissed],
-  );
+  const viewerState = useMemo(() => ({ rsvps: viewer.rsvps }), [viewer.rsvps]);
 
   const visible = useMemo(
     () => filterEvents(events, filters, segment, viewerState),
@@ -120,18 +111,6 @@ export default function EventsPage() {
         // the button disagreeing until the next load.
         if (result.ok) viewer.reload();
         else setWriteError(result.error ?? 'Could not save that.');
-      });
-    },
-    [memberId, viewer],
-  );
-
-  const onDismiss = useCallback(
-    (eventId: string) => {
-      if (!memberId) return;
-      setWriteError(null);
-      void setDismissed(eventId, memberId, true).then((result) => {
-        if (result.ok) viewer.reload();
-        else setWriteError(result.error ?? 'Could not hide that.');
       });
     },
     [memberId, viewer],
@@ -225,9 +204,6 @@ export default function EventsPage() {
                   }}
                   onRsvp={(next) => {
                     onRsvp(event.id, next);
-                  }}
-                  onDismiss={() => {
-                    onDismiss(event.id);
                   }}
                 />
               ))}

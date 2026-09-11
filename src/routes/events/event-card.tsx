@@ -1,4 +1,3 @@
-import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { isOnline } from '@/routes/events/filters';
@@ -20,6 +19,21 @@ import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types
  * row on the card itself and the owner took that, which is the right call: the
  * decision is one tap and a dialog turns it into three, on a surface somebody
  * is scanning quickly.
+ *
+ * ---------------------------------------------------------------------------
+ * There is no "not interested" ✕
+ * ---------------------------------------------------------------------------
+ * ab-peers had one and this card carried it for a while. It was removed,
+ * because nothing consumed the signal: there is no ranking that learns from a
+ * dismissal, so hiding an event only ever shortened one list, and the way back
+ * was a toggle buried in the filter sheet.
+ *
+ * It also solved the wrong problem. NorCal SCI's calendar is ~100 events made
+ * of ~15 distinct ones repeating weekly, so the annoyance is "not this, ever",
+ * and hiding a single occurrence of a Friday group does nothing about next
+ * Friday. If that returns it should dismiss a series — and a small ✕ sitting
+ * against the edge of a tappable card is a mis-tap waiting to happen for
+ * anybody aiming with a head pointer.
  */
 
 export interface EventCardProps {
@@ -32,7 +46,6 @@ export interface EventCardProps {
   organization: Organization | null;
   onOpen: () => void;
   onRsvp: (next: RsvpStatus | null) => void;
-  onDismiss: () => void;
 }
 
 export function EventCard({
@@ -42,7 +55,6 @@ export function EventCard({
   organization,
   onOpen,
   onRsvp,
-  onDismiss,
 }: EventCardProps) {
   const tile = dateTileParts(event.startTime, event.timezone);
   const going = status === 'going';
@@ -61,16 +73,6 @@ export function EventCard({
 
   return (
     <div className="relative mb-[11px] w-full rounded-[17px] border border-line bg-paper p-3.5">
-      <button
-        type="button"
-        onClick={onDismiss}
-        aria-label={`Not interested in ${event.title}`}
-        data-target="small"
-        className="absolute top-[9px] right-2.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-canvas text-grey"
-      >
-        <X className="h-3.5 w-3.5" strokeWidth={2.2} />
-      </button>
-
       <button
         type="button"
         onClick={onOpen}

@@ -15,7 +15,7 @@ import { EMPTY_EVENT_FILTERS, type EventFilters } from '@/types/domain';
 const NOW = new Date(2026, 8, 5, 14, 0, 0);
 
 function viewer(partial: Partial<ViewerEventState> = {}): ViewerEventState {
-  return { rsvps: new Map(), dismissed: new Set(), ...partial };
+  return { rsvps: new Map(), ...partial };
 }
 
 function withFilters(overrides: Partial<EventFilters> = {}): EventFilters {
@@ -111,15 +111,6 @@ describe('filterEvents', () => {
       NOW,
     );
     expect(result.map((e) => e.id)).toEqual(['recent', 'old']);
-  });
-
-  it('hides a dismissed event, and shows it again when asked', () => {
-    const event = makeEvent({ id: 'x' });
-    const state = viewer({ dismissed: new Set(['x']) });
-    expect(filterEvents([event], withFilters(), 'upcoming', state, NOW)).toHaveLength(0);
-    expect(
-      filterEvents([event], withFilters({ showHidden: true }), 'upcoming', state, NOW),
-    ).toHaveLength(1);
   });
 
   describe('empty selections mean "do not narrow", never "match nothing"', () => {
