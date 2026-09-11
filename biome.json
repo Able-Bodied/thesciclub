@@ -21,7 +21,8 @@
       "!.claude",
       "!docs",
       "!.logo-candidates",
-      "!screenshots"
+      "!screenshots",
+      "!logos-from-you"
     ]
   },
   "formatter": {
