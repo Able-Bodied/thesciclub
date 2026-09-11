@@ -12,25 +12,10 @@ import {
 
 const STORAGE_KEY = 'thesciclub.accessibility';
 
-/** Pretend the OS asks for reduced motion, or does not. */
-function mockPrefersReducedMotion(reduce: boolean) {
-  vi.stubGlobal(
-    'matchMedia',
-    vi.fn((query: string) => ({
-      matches: query.includes('prefers-reduced-motion') ? reduce : false,
-      media: query,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    })),
-  );
-}
-
 beforeEach(() => {
   localStorage.clear();
-  mockPrefersReducedMotion(false);
   document.documentElement.removeAttribute('data-text-size');
   document.documentElement.removeAttribute('data-large-targets');
-  document.documentElement.removeAttribute('data-reduce-motion');
 });
 
 afterEach(() => {
@@ -39,12 +24,14 @@ afterEach(() => {
 
 describe('parsePreferences', () => {
   it('reads back what was written', () => {
-    const stored = JSON.stringify({ textSize: 'large', largeTargets: true, reduceMotion: true });
-    expect(parsePreferences(stored)).toEqual({
-      textSize: 'large',
-      largeTargets: true,
-      reduceMotion: true,
-    });
+    const stored = JSON.stringify({ textSize: 'large', largeTargets: true });
+    expect(parsePreferences(stored)).toEqual({ textSize: 'large', largeTargets: true });
+  });
+
+  it('drops a setting we no longer have', () => {
+    // A device that stored reduceMotion before it was removed must not carry
+    // it back into state as an unknown key.
+    expect(parsePreferences(JSON.stringify({ reduceMotion: true }))).toEqual({});
   });
 
   it('ignores a text size that is not one of ours', () => {
@@ -72,19 +59,10 @@ describe('parsePreferences', () => {
 });
 
 describe('systemDefaults', () => {
-  it('starts reduced motion on when the OS asks for it', () => {
-    mockPrefersReducedMotion(true);
-    expect(systemDefaults().reduceMotion).toBe(true);
-  });
-
-  it('starts it off when the OS does not', () => {
-    expect(systemDefaults().reduceMotion).toBe(false);
-  });
-
-  it('does not invent values for the settings the OS says nothing about', () => {
-    mockPrefersReducedMotion(true);
-    expect(systemDefaults().textSize).toBe(DEFAULT_PREFERENCES.textSize);
-    expect(systemDefaults().largeTargets).toBe(DEFAULT_PREFERENCES.largeTargets);
+  it('is just the defaults — the OS is asked nothing', () => {
+    // Reduced motion used to be seeded from the OS here. It was removed with
+    // the toggle it fed; the media query in index.css covers it with no UI.
+    expect(systemDefaults()).toEqual(DEFAULT_PREFERENCES);
   });
 });
 
@@ -94,7 +72,6 @@ function Probe() {
   return (
     <div>
       <span data-testid="size">{preferences.textSize}</span>
-      <span data-testid="motion">{String(preferences.reduceMotion)}</span>
       <button
         type="button"
         onClick={() => {
@@ -134,29 +111,6 @@ describe('AccessibilityProvider', () => {
     );
   });
 
-  it('takes the OS reduced-motion setting when nothing is stored', () => {
-    mockPrefersReducedMotion(true);
-    render(
-      <AccessibilityProvider>
-        <Probe />
-      </AccessibilityProvider>,
-    );
-    expect(screen.getByTestId('motion')).toHaveTextContent('true');
-    expect(document.documentElement.dataset.reduceMotion).toBe('on');
-  });
-
-  it('lets a stored choice override the OS', () => {
-    // Somebody may have the system flag on for a reason that is not this app.
-    mockPrefersReducedMotion(true);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ reduceMotion: false }));
-    render(
-      <AccessibilityProvider>
-        <Probe />
-      </AccessibilityProvider>,
-    );
-    expect(document.documentElement.dataset.reduceMotion).toBe('off');
-  });
-
   it('persists a change', async () => {
     render(
       <AccessibilityProvider>
@@ -168,18 +122,15 @@ describe('AccessibilityProvider', () => {
     expect(parsePreferences(localStorage.getItem(STORAGE_KEY)).textSize).toBe('larger');
   });
 
-  it('reset goes back to the OS settings, not to a hardcoded off', () => {
-    mockPrefersReducedMotion(true);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ textSize: 'larger', reduceMotion: false }));
+  it('reset goes back to the defaults', async () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ textSize: 'larger', largeTargets: true }));
     render(
       <AccessibilityProvider>
         <Probe />
       </AccessibilityProvider>,
     );
-    return userEvent.click(screen.getByRole('button', { name: 'reset' })).then(() => {
-      expect(screen.getByTestId('size')).toHaveTextContent('normal');
-      expect(screen.getByTestId('motion')).toHaveTextContent('true');
-    });
+    await userEvent.click(screen.getByRole('button', { name: 'reset' }));
+    expect(screen.getByTestId('size')).toHaveTextContent('normal');
   });
 
   it('still renders when storage throws', () => {

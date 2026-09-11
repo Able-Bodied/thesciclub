@@ -199,27 +199,20 @@
 
 /* --------------------------------------------------------- reduced motion */
 /*
- * Both the OS signal and the in-app preference, because they answer different
- * questions: the OS one is a standing preference across every app, and the
- * in-app one lets somebody turn motion off here without changing their whole
- * machine — or back on, if they set the system flag for a different reason.
+ * The OS signal only. There is no in-app toggle and deliberately so: across the
+ * whole app the thing this governs is six loading spinners and two progress
+ * bars, and a settings row that changes almost nothing is worse than no row.
+ *
+ * This stays because it costs nothing and means any motion added later is
+ * respected without anybody remembering to think about it.
  */
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-reduce-motion="off"]) *,
-  :root:not([data-reduce-motion="off"]) *::before,
-  :root:not([data-reduce-motion="off"]) *::after {
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-:root[data-reduce-motion="on"] *,
-:root[data-reduce-motion="on"] *::before,
-:root[data-reduce-motion="on"] *::after {
-  animation-duration: 0.01ms !important;
-  animation-iteration-count: 1 !important;
-  transition-duration: 0.01ms !important;
-  scroll-behavior: auto !important;
 }

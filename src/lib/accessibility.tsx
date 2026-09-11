@@ -37,9 +37,9 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
  * the preference applies before any session exists, which matters because
  * events are public and somebody may arrive here without an account.
  *
- * The cost is that a new device starts from the system defaults. That is the
- * right trade — and the system defaults are already a good guess, which is why
- * `reduceMotion` seeds from the OS rather than from `false`.
+ * The cost is that a new device starts from the defaults. That is the right
+ * trade: a preference that follows you onto a machine you drive differently is
+ * a preference in the wrong place.
  */
 
 export const TEXT_SIZES = ['normal', 'large', 'larger'] as const;
@@ -68,27 +68,30 @@ export interface AccessibilityPreferences {
    * and not the other.
    */
   largeTargets: boolean;
-  /** Suppresses transitions and animation. Seeded from the OS setting. */
-  reduceMotion: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AccessibilityPreferences = {
   textSize: 'normal',
   largeTargets: false,
-  reduceMotion: false,
 };
 
 const STORAGE_KEY = 'thesciclub.accessibility';
 
-/** What the operating system already says, for a device with nothing stored. */
+/**
+ * What the operating system already says, for a device with nothing stored.
+ *
+ * Nothing yet. Reduced motion used to be seeded here and offered as a toggle,
+ * and it was removed: measured across the whole app it governed six loading
+ * spinners and two progress bars, none of them on a surface anybody spends time
+ * on — and stopping a spinner makes it read as a hang rather than as a load.
+ * A settings row that changes almost nothing is the failure docs/CONTEXT.md
+ * describes for screens, in miniature.
+ *
+ * The `prefers-reduced-motion` media query is still honoured in src/index.css,
+ * with no UI attached, so anything animated later respects it for free.
+ */
 export function systemDefaults(): AccessibilityPreferences {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-    return DEFAULT_PREFERENCES;
-  }
-  return {
-    ...DEFAULT_PREFERENCES,
-    reduceMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-  };
+  return DEFAULT_PREFERENCES;
 }
 
 /**
@@ -111,7 +114,6 @@ export function parsePreferences(raw: string | null): Partial<AccessibilityPrefe
       out.textSize = candidate.textSize as TextSize;
     }
     if (typeof candidate.largeTargets === 'boolean') out.largeTargets = candidate.largeTargets;
-    if (typeof candidate.reduceMotion === 'boolean') out.reduceMotion = candidate.reduceMotion;
     return out;
   } catch {
     return {};
@@ -140,7 +142,6 @@ function applyToDocument(preferences: AccessibilityPreferences): void {
   const root = document.documentElement;
   root.dataset.textSize = preferences.textSize;
   root.dataset.largeTargets = preferences.largeTargets ? 'on' : 'off';
-  root.dataset.reduceMotion = preferences.reduceMotion ? 'on' : 'off';
   root.style.setProperty('--ui-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
 }
 

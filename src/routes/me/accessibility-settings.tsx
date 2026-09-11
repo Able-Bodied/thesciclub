@@ -4,9 +4,11 @@ import { cn } from '@/lib/utils';
 /**
  * Display settings, on the Me tab.
  *
- * Three controls, because three is what can be made to work properly. A longer
- * list of toggles that each half-work is the overlay-widget failure mode in
- * miniature — see the header of src/lib/accessibility.tsx.
+ * Two controls, because two is what this app can currently make good on. A
+ * third — reduce motion — was here and was removed: it governed six spinners
+ * and nothing else. A longer list of toggles that each half-work is the
+ * overlay-widget failure mode in miniature, and the point of not using one of
+ * those was to avoid exactly that.
  *
  * Every control here is a real button with a real pressed state, sized well
  * past the 44px target guideline, and changes apply immediately rather than
@@ -131,18 +133,6 @@ export function AccessibilitySettings() {
             value={preferences.largeTargets}
             onChange={(next) => {
               setPreference('largeTargets', next);
-            }}
-          />
-        </Row>
-
-        <Row
-          title="Reduce motion"
-          description="Turns off sliding and fading. Starts from your device setting."
-        >
-          <OnOff
-            value={preferences.reduceMotion}
-            onChange={(next) => {
-              setPreference('reduceMotion', next);
             }}
           />
         </Row>
