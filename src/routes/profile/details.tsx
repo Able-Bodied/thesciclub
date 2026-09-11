@@ -32,7 +32,6 @@ export default function ProfileDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (account.status !== 'member') return;
@@ -48,7 +47,6 @@ export default function ProfileDetailsPage() {
 
   function set(patch: Partial<MemberDetails>) {
     setDetails((d) => (d ? { ...d, ...patch } : d));
-    setSaved(false);
   }
 
   function submit() {
@@ -62,7 +60,10 @@ export default function ProfileDetailsPage() {
           setError(result.error ?? 'Could not save that.');
           return;
         }
-        setSaved(true);
+        // Back to Me on success. Staying put with a "Saved" note leaves people
+        // wondering whether there is anything else to do here; leaving says it
+        // plainly. A failure keeps them on the page, where the field is.
+        void navigate('/me');
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : 'Could not save that.');
@@ -309,7 +310,6 @@ export default function ProfileDetailsPage() {
         {error && details ? (
           <p className="mb-2.5 text-[13px] text-destructive leading-[1.45]">{error}</p>
         ) : null}
-        {saved ? <p className="mb-2.5 text-center text-[13px] text-navy">Saved.</p> : null}
         <button
           type="button"
           disabled={saving || loading || !details || !isAdult(details.birthDate)}

@@ -129,10 +129,20 @@ describe('Your details', () => {
     expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
   });
 
-  it('confirms when it worked', async () => {
+  it('returns to Me once it has saved', async () => {
     renderDetails();
     await screen.findByLabelText('Name');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+    expect(await screen.findByText('The Me tab')).toBeInTheDocument();
+  });
+
+  it('stays on the page when saving fails, so the field is still there', async () => {
+    api.failWith = 'permission denied';
+    renderDetails();
+    await screen.findByLabelText('Name');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await screen.findByText('permission denied');
+    expect(screen.queryByText('The Me tab')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toBeInTheDocument();
   });
 });
