@@ -1,0 +1,131 @@
+# Context
+
+What The SCI Club is, who it is for, and what it deliberately is not. Read this before building
+anything. Where this file and any other document disagree, this one wins.
+
+## Mission
+
+The SCI Club is a private community for people living with spinal cord injury. Members find peers,
+find mentors, and find something worth going to.
+
+Two things make it different from every general disability app, and both are constraints rather
+than features:
+
+**Spinal cord injury only.** Not a disability forum, not a chronic illness network. Everyone here
+shares a vocabulary from the first screen — level, complete or incomplete, years since injury,
+bowel programme, transfers, catheters. That vocabulary is the product. It is why a member can ask
+a question here they could not ask anywhere else, and it is the one thing that cannot be
+retrofitted later onto something broader.
+
+**Invite only.** A member organization or a peer mentor puts your phone number on the list before
+you can join. The app itself cannot let you in. This is not a growth tactic — it is what makes the
+first two true. A closed room of two hundred people who have all been through it is worth more
+than an open one with twenty thousand registrations and fifty monthly visitors.
+
+## Why closed, specifically
+
+CareCure — the best-known SCI forum — has roughly 20,000 registered members and around 50 monthly
+visitors. The lesson is not that online SCI community does not work. It is that an open door and a
+registration form do not produce a community; they produce a directory of abandoned accounts.
+
+So membership is granted by a person, not claimed by a form:
+
+- A **member organization** (NorCal SCI, SCVMC SCI Peer Support, Wheel with Me) adds numbers.
+- A **peer mentor** can add two.
+- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number.
+- Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
+  fact, or repeating outside a room what was said in it — any of those end it.
+
+That last point is load-bearing and must stay visible in the product, not buried in a terms page.
+A club where membership cannot be lost is not a club.
+
+## Vocabulary
+
+Use these words exactly. Do not invent synonyms.
+
+- **Member** — anybody in the club. Everybody is one.
+- **Mentor** — a member who has agreed to be one, and appears first to newly injured members. An
+  attribute of a member, not a separate kind of person.
+- **Organization** — a hospital, foundation or programme that can vouch for numbers and run events.
+- **Invite** — one phone number, placed on the list by an organization or a mentor.
+
+There is no "user", no "peer" as an identity (the Peers tab is a surface, not a class of person),
+and no "coordinator" — that role belongs to a different product.
+
+## Who it is for
+
+- **Newly injured members.** Want answers and someone who has been there. Hardest to reach, and
+  the reason mentors surface first.
+- **Experienced members.** Years in, often the best answer to somebody else's worst week.
+- **Mentors.** Trained, vouched for, and able to bring two more people in.
+- **Organizations.** Bring their people, run the events, and are the primary way anyone gets in.
+
+## What actually works
+
+Three surfaces are real. Everything else is deliberately not built yet.
+
+| Surface | State | Notes |
+| --- | --- | --- |
+| **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
+| **Events** | Real | Ingested from partner organization calendars, with RSVPs. |
+| **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
+| Home | Placeholder | The mixed feed. Needs four content types and a moderation story. |
+| Chat | Placeholder | DMs, event groups, topic rooms. |
+
+A placeholder says plainly that it is not built. It does not show invented content. A screen that
+looks finished and does nothing gets demoed, believed, and then explained.
+
+## Deliberately deferred
+
+Real, wanted, and explicitly not now. If a task seems to need one of these, say so rather than
+quietly scoping it in.
+
+- **Topic rooms / forum.** Wanted eventually, and the reason to build it is not to depend on
+  CareCure. But a room of two dozen members is empty by construction. It arrives when there are
+  enough members for a room to be worth opening.
+- **The Home feed.** Questions, photo posts, comments, member suggestions.
+- **Mentor badging** (e.g. "Craig-certified").
+- **Coordinator tooling**, classifieds, equipment exchange, AI-assisted matching.
+
+## What is public, and what is not
+
+Two tiers, and the line sits between content and people.
+
+| Public, no account | Behind sign-in |
+| --- | --- |
+| Events, including online ones | Every member profile |
+| Organization pages | Photos, names, bios, topics, levels |
+| Marketing pages | Messages and rosters |
+
+Events are the public shopfront: they are already public on the organizations' own calendars, they
+are genuinely useful to somebody without an account, and somebody searching "adaptive handcycling
+near me" should land on a real event.
+
+Members are not. A public directory of disabled people with names, photos, injury levels and
+catheter preferences is a scraping target and a training-data donation. Member pages carry
+`noindex`, and the API requires a session. `browse_members` is the single projection through which
+one member is visible to another, and it does not select `phone` or `birth_date` at all.
+
+## How injury is recorded
+
+**Level, completeness, and date of injury.** Not a disability type, not a duration bucket.
+
+Onboarding asks for a coarse level range (C1–C4, C5–C8, T1–T6, T7–T12, L1–S5, or not sure yet)
+because that is answerable in one tap by somebody who may be filling this in from a hospital bed.
+The profile survey refines it to an exact level later, for anybody who wants to.
+
+Duration is a **date**, not a number of years. A stored year count is wrong within twelve months
+of being entered and needs something to roll it forward; a date is simply correct forever. Because
+not everybody will give an exact date — and asking somebody for the precise date of the worst day
+of their life at minute two of signup is a heavy question — the date carries a precision alongside
+it, and year-only is a normal answer rather than a skip. Nothing displays more precision than was
+given.
+
+Age is never stored. `birth_date` is, it never leaves the server, and every screen reads an age
+derived from it.
+
+## Working model
+
+One repo, shipping to `www.thesciclub.com`. The design mock in `docs/index.html` is the reference
+for how screens should look and read — it is a prototype, not a spec, and where it conflicts with
+this document, this document wins.

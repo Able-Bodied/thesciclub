@@ -1,0 +1,122 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Design tokens for The SCI Club.
+ *
+ * The brand half of this file (--navy … --tint, --head, --body) is lifted
+ * verbatim from the design mock in docs/index.html, hex for hex, so a screen
+ * ported from the mock can keep its own values and still be on-system. The
+ * shadcn half below maps those same colours onto the semantic names the
+ * primitives in src/components/ui/ read, so a <Button> is navy without any
+ * component knowing what navy is.
+ *
+ * Deliberately light-only for now. The mock has no dark palette, and a
+ * half-guessed one is worse than none — see docs/CONTEXT.md.
+ */
+
+:root {
+  /* ---------------------------------------------------------- brand */
+  --navy: #102a4c;
+  --navy-hi: #1a3e70;
+  --navy-dp: #0a1d36;
+  --gold: #c9a227;
+  --gold-dp: #8a6712;
+  --gold-lt: #f6edd5;
+
+  --canvas: #f4f6f9;
+  --paper: #fff;
+  --ink: #0f1620;
+  --ink2: #455163;
+  --grey: #7c8899;
+  --line: #cbd3de;
+  --tint: #e4e9f1;
+
+  --head: Archivo, "TeX Gyre Heros", "Liberation Sans", sans-serif;
+  --body: "Public Sans", "Liberation Sans", sans-serif;
+
+  /* ------------------------------------------------------ semantic */
+  --radius: 0.875rem;
+
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--paper);
+  --card-foreground: var(--ink);
+  --popover: var(--paper);
+  --popover-foreground: var(--ink);
+  --primary: var(--navy);
+  --primary-foreground: #fff;
+  --secondary: var(--tint);
+  --secondary-foreground: var(--navy);
+  --muted: var(--tint);
+  --muted-foreground: var(--ink2);
+  --accent: var(--gold);
+  --accent-foreground: #2a1e06;
+  --destructive: #b3261e;
+  --border: var(--line);
+  --input: var(--paper);
+  --ring: var(--navy);
+}
+
+@theme inline {
+  --color-navy: var(--navy);
+  --color-navy-hi: var(--navy-hi);
+  --color-navy-dp: var(--navy-dp);
+  --color-gold: var(--gold);
+  --color-gold-dp: var(--gold-dp);
+  --color-gold-lt: var(--gold-lt);
+  --color-canvas: var(--canvas);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink2);
+  --color-grey: var(--grey);
+  --color-line: var(--line);
+  --color-tint: var(--tint);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --font-head: var(--head);
+  --font-sans: var(--body);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--body);
+    /* The app is installed to a home screen; rubber-banding the whole page
+     * under a fixed tab bar reads as a bug rather than as scrolling. */
+    overscroll-behavior-y: none;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--head);
+    letter-spacing: -0.02em;
+  }
+}

@@ -1,0 +1,32 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Env — .env.local carries the Supabase anon key and the service_role key.
+# The service_role key bypasses RLS entirely; it must never be committed and
+# never reach the browser bundle.
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage
+*.tsbuildinfo
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
