@@ -71,12 +71,18 @@ function requireEnv() {
 /**
  * Match a feed's host name to one of the club's organizations.
  *
- * Case- and punctuation-insensitive, because a hub writes "BORP Adaptive
- * Sports" where the club wrote "BORP Adaptive Sports" and a stray comma should
+ * Case- and punctuation-insensitive, because a stray comma or a capital should
  * not decide whether an event is attributed. Deliberately not fuzzy beyond
  * that: a near-match that is wrong credits an event to an organization that is
  * not running it, in a product where an organization's name is a vouching
  * signal.
+ *
+ * `aliases` is how a feed gets to call one organization several things without
+ * fuzzy matching. Adaptive Rec Hub names ParaCliffHangers once per gym —
+ * "ParaCliffHangers – Berkeley Ironworks" and two more — so without the list
+ * they would be three organizations or none. Every alias is a curated string
+ * somebody read; the venue belongs in the event's location, not in the host's
+ * name.
  */
 function normalizeName(name) {
   return (name ?? '')
@@ -89,7 +95,11 @@ function normalizeName(name) {
 export function matchOrganization(hostName, organizations) {
   const normalized = normalizeName(hostName);
   if (!normalized) return null;
-  const hit = organizations.find((org) => normalizeName(org.name) === normalized);
+  const hit = organizations.find(
+    (org) =>
+      normalizeName(org.name) === normalized ||
+      (org.aliases ?? []).some((alias) => normalizeName(alias) === normalized),
+  );
   return hit?.id ?? null;
 }
 
@@ -134,7 +144,9 @@ async function loadFeeds(supabase, only) {
 }
 
 async function loadOrganizations(supabase) {
-  const { data, error } = await supabase.from('organizations').select('id, name, short_code');
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name, short_code, aliases');
   if (error) throw new Error(`Could not read organizations: ${error.message}`);
   return data;
 }

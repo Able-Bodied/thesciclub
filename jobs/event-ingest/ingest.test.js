@@ -2,9 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { eventChanged, matchOrganization } from './ingest.js';
 
 const ORGANIZATIONS = [
-  { id: 'ncs', name: 'NorCal SCI', short_code: 'NCS' },
-  { id: 'wwm', name: 'Wheel with Me Foundation', short_code: 'WWM' },
-  { id: 'hf', name: 'High Fives Foundation', short_code: 'HF' },
+  { id: 'ncs', name: 'NorCal SCI', short_code: 'NCS', aliases: [] },
+  { id: 'wwm', name: 'Wheel with Me Foundation', short_code: 'WWM', aliases: [] },
+  { id: 'hf', name: 'High Fives Foundation', short_code: 'HF', aliases: [] },
+  {
+    id: 'pch',
+    name: 'ParaCliffHangers',
+    short_code: 'PCH',
+    aliases: ['ParaCliffHangers – Berkeley Ironworks', 'ParaCliffHangers – Pacific Pipe'],
+  },
 ];
 
 describe('matchOrganization', () => {
@@ -28,7 +34,29 @@ describe('matchOrganization', () => {
   });
 
   it('is null for a host the club does not have', () => {
-    expect(matchOrganization('BORP Adaptive Sports', ORGANIZATIONS)).toBeNull();
+    expect(matchOrganization('Abilitylab Blackhawks', ORGANIZATIONS)).toBeNull();
+  });
+
+  describe('aliases', () => {
+    it('matches a name the feed uses that is not the organization name', () => {
+      // Adaptive Rec Hub names this organization once per gym it runs at.
+      expect(matchOrganization('ParaCliffHangers – Berkeley Ironworks', ORGANIZATIONS)).toBe('pch');
+      expect(matchOrganization('ParaCliffHangers – Pacific Pipe', ORGANIZATIONS)).toBe('pch');
+    });
+
+    it('still matches the organization’s own name', () => {
+      expect(matchOrganization('ParaCliffHangers', ORGANIZATIONS)).toBe('pch');
+    });
+
+    it('does not match a venue the aliases do not list', () => {
+      // Aliases are curated strings, not a prefix rule — a new gym is a
+      // decision somebody makes, not one the job makes for them.
+      expect(matchOrganization('ParaCliffHangers – Somewhere New', ORGANIZATIONS)).toBeNull();
+    });
+
+    it('survives an organization with no aliases column', () => {
+      expect(matchOrganization('NorCal SCI', [{ id: 'x', name: 'NorCal SCI' }])).toBe('x');
+    });
   });
 
   it('is null for no host at all', () => {
