@@ -299,7 +299,8 @@ export interface BrowseMember {
   selfCare: string[];
 
   affiliations: string[];
-  wantsToMentor: boolean;
+  /** Null until the survey asks. Not the same as a no. */
+  wantsToMentor: boolean | null;
   /** Seeded from the NorCal SCI directory rather than entered by the member. */
   isSeed: boolean;
   /** The club's own account. Shown as official; grants nothing on its own. */

@@ -47,7 +47,7 @@ export interface BrowseMemberRow {
   topics: string[] | null;
   self_care: string[] | null;
   affiliations: string[] | null;
-  wants_to_mentor: boolean;
+  wants_to_mentor: boolean | null;
   is_seed: boolean;
   is_admin: boolean;
   created_at: string;

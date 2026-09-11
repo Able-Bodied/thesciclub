@@ -1,5 +1,5 @@
 import { Check, ChevronLeft, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { cn } from '@/lib/utils';
@@ -76,11 +76,36 @@ export default function ProfileSurveyPage() {
     [screen, account.userId, answers, navigate],
   );
 
-  // A screen with nothing left to decide moves on by itself.
+  /**
+   * Whether the screen we are on was already complete when we arrived on it.
+   *
+   * This is what stops auto-advance from being a trap. A screen of
+   * single-choice questions should move on when somebody *answers* the last
+   * one — but arriving at a screen that is already answered, which is exactly
+   * what happens when you press Back to change something, must not bounce you
+   * straight out again. Without this you can never revise an answer on
+   * Education, Day to day, Family or Mentoring: the screen ejects you before
+   * you can touch it.
+   */
+  const completeOnArrival = useRef(false);
+  const arrivedAt = useRef(-1);
+
+  useEffect(() => {
+    if (!screen || loading) return;
+    if (arrivedAt.current === index) return;
+    arrivedAt.current = index;
+    completeOnArrival.current = questionsOn(screen, answers).every((q) => isAnswered(q, answers));
+  }, [screen, index, answers, loading]);
+
+  // A screen with nothing left to decide moves on by itself — but only if the
+  // person decided it here, not if it was already done before they arrived.
   useEffect(() => {
     if (!screen || loading || saving) return;
+    if (arrivedAt.current !== index) return;
+    if (completeOnArrival.current) return;
     if (!advancesItself(screen, answers)) return;
     const questions = questionsOn(screen, answers);
+    if (questions.length === 0) return;
     if (!questions.every((q) => isAnswered(q, answers))) return;
     const timer = setTimeout(() => {
       commit(index + 1);

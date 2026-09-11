@@ -136,6 +136,48 @@ describe('the profile survey', () => {
     expect(await screen.findByText('Before or after your injury?')).toBeInTheDocument();
   });
 
+  it('does not eject you from a screen that was already answered when you arrived', async () => {
+    api.answers = { education: 'Some college', educationWhen: 'After' };
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip(6);
+    expect(await screen.findByText('Education')).toBeInTheDocument();
+    // Both answers are already there. Without the arrival guard this screen
+    // advances immediately and the answer can never be revised.
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.getByText('Education')).toBeInTheDocument();
+  });
+
+  it('lets you go back and change a single-choice answer', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip(6);
+    await screen.findByText('Education');
+    await userEvent.click(screen.getByRole('button', { name: 'Some college' }));
+    await userEvent.click(screen.getByRole('button', { name: 'After' }));
+    await screen.findByText('Work');
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Education')).toBeInTheDocument();
+    // Still here after the auto-advance delay would have fired.
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.getByText('Education')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: "Bachelor's degree" }));
+    expect(screen.getByRole('button', { name: "Bachelor's degree" })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('asks the mentoring question rather than treating an unset flag as a no', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skip(11);
+    expect(await screen.findByText('Mentoring')).toBeInTheDocument();
+    await new Promise((r) => setTimeout(r, 400));
+    // Still on it: nothing has been answered, so there is nothing to advance from.
+    expect(screen.getByText('Mentoring')).toBeInTheDocument();
+  });
+
   it('surfaces a save failure instead of pretending it moved on', async () => {
     api.failWith = 'permission denied';
     renderSurvey();
