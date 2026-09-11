@@ -34,13 +34,13 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
           ? 'Your number is your account. We will text you a code to sign you back in.'
           : 'Your number is your account, and it is how the club checks you against the list of people a member organization or a mentor has vouched for. It is never shown to another member.'}
       </Sub>
-      <label htmlFor="phone" className="mt-5 block font-bold text-[13px] text-ink">
+      <label htmlFor="phone" className="mt-5 block font-bold text-[0.8125rem] text-ink">
         Phone number
       </label>
       <div className="flex items-stretch gap-2.5">
         {/* A fixed +1 rather than a country picker: the club is US-only today,
             and a picker would imply otherwise. */}
-        <span className="mt-2.5 grid flex-none place-items-center rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-semibold text-[16px] text-ink2">
+        <span className="mt-2.5 grid flex-none place-items-center rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-semibold text-[1rem] text-ink2">
           +1
         </span>
         <Field
@@ -71,7 +71,7 @@ export function CodeStep({ data, set }: StepProps) {
         autoComplete="one-time-code"
         maxLength={6}
         placeholder="000000"
-        className="text-center font-extrabold text-[24px] tracking-[.42em]"
+        className="text-center font-extrabold text-[1.5rem] tracking-[.42em]"
         value={data.code}
         onChange={(e) => {
           set({ code: e.target.value.replace(/\D/g, '') });
@@ -123,7 +123,7 @@ export function BirthdayStep({ data, set }: StepProps) {
         }}
       />
       {entered && !adult ? (
-        <div className="mt-3.5 rounded-[17px] border border-destructive/30 bg-destructive/5 p-3.5 text-[13.4px] text-ink2 leading-[1.5]">
+        <div className="mt-3.5 rounded-[17px] border border-destructive/30 bg-destructive/5 p-3.5 text-[0.8375rem] text-ink2 leading-[1.5]">
           <b className="font-bold text-ink">The SCI Club is for adults.</b> Everything inside it is
           written by adults for adults, and none of it is moderated for a younger reader. You will
           be welcome the year you turn {MINIMUM_AGE}.
@@ -131,10 +131,10 @@ export function BirthdayStep({ data, set }: StepProps) {
       ) : null}
       {entered && adult && age !== null ? (
         <div className="mt-3.5 flex items-center gap-3 rounded-[17px] border border-line bg-paper p-3.5">
-          <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-navy font-extrabold font-head text-[15px] text-white">
+          <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-navy font-extrabold font-head text-[0.9375rem] text-white">
             {age}
           </span>
-          <span className="text-[13.4px] text-ink2 leading-[1.45]">
+          <span className="text-[0.8375rem] text-ink2 leading-[1.45]">
             Other members see your age, never your birthday.
           </span>
         </div>
@@ -158,7 +158,7 @@ export function InjuryStep({ data, set }: StepProps) {
 
       <label
         htmlFor="level"
-        className="mt-5 mb-2 block font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]"
+        className="mt-5 mb-2 block font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
         Level of injury
       </label>
@@ -168,7 +168,7 @@ export function InjuryStep({ data, set }: StepProps) {
         onChange={(e) => {
           set({ exactLevel: (e.target.value || null) as OnboardingData['exactLevel'] });
         }}
-        className="w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[16px] outline-none focus:border-navy"
+        className="w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy"
       >
         <option value="">Select a level</option>
         {EXACT_LEVELS.map((level) => (
@@ -178,12 +178,12 @@ export function InjuryStep({ data, set }: StepProps) {
         ))}
       </select>
       {data.exactLevel && data.exactLevel !== 'Do not know' ? (
-        <p className="mt-2 text-[12.5px] text-grey leading-[1.5]">
+        <p className="mt-2 text-[0.78125rem] text-grey leading-[1.5]">
           Members browsing by level will find you under {rangeForExact(data.exactLevel)}.
         </p>
       ) : null}
 
-      <h2 className="mt-5 mb-2 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <h2 className="mt-5 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         Complete or incomplete?
       </h2>
       <div className="flex flex-wrap gap-2">
@@ -200,15 +200,15 @@ export function InjuryStep({ data, set }: StepProps) {
         ))}
       </div>
 
-      <h2 className="mt-5 mb-1 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <h2 className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         When were you injured?
       </h2>
-      <p className="text-[12.5px] text-grey leading-[1.5]">
+      <p className="text-[0.78125rem] text-grey leading-[1.5]">
         The year on its own is a complete answer. Add more only if you want to.
       </p>
       <div className="mt-2.5 flex items-end gap-2">
         <div className="flex-1">
-          <label htmlFor="injury-year" className="text-[12px] text-grey">
+          <label htmlFor="injury-year" className="text-[0.75rem] text-grey">
             Year
           </label>
           <Field
@@ -223,7 +223,7 @@ export function InjuryStep({ data, set }: StepProps) {
           />
         </div>
         <div className="w-[88px]">
-          <label htmlFor="injury-month" className="text-[12px] text-grey">
+          <label htmlFor="injury-month" className="text-[0.75rem] text-grey">
             Month
           </label>
           <Field
@@ -238,7 +238,7 @@ export function InjuryStep({ data, set }: StepProps) {
           />
         </div>
         <div className="w-[88px]">
-          <label htmlFor="injury-day" className="text-[12px] text-grey">
+          <label htmlFor="injury-day" className="text-[0.75rem] text-grey">
             Day
           </label>
           <Field
@@ -255,7 +255,7 @@ export function InjuryStep({ data, set }: StepProps) {
       </div>
 
       {injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (
-        <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[13.4px] text-ink2 leading-[1.45]">
+        <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
           You were injured at <b className="text-ink">{injuredAt}</b>. We use that to put you next
           to people injured around the same age, not just at the same level.
         </div>
@@ -322,7 +322,7 @@ export function CityStep({ data, set }: StepProps) {
         type="button"
         onClick={useMyLocation}
         disabled={locating}
-        className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper font-bold font-head text-[15px] text-ink disabled:opacity-50"
+        className="mt-5 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper font-bold font-head text-[0.9375rem] text-ink disabled:opacity-50"
       >
         {locating ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -332,12 +332,12 @@ export function CityStep({ data, set }: StepProps) {
         {locating ? 'Finding you…' : 'Use my location'}
       </button>
       {locationError ? (
-        <p className="mt-2 text-[12.5px] text-destructive leading-[1.45]">{locationError}</p>
+        <p className="mt-2 text-[0.78125rem] text-destructive leading-[1.45]">{locationError}</p>
       ) : null}
 
-      <p className="mt-4 text-center text-[12.5px] text-grey">or choose it yourself</p>
+      <p className="mt-4 text-center text-[0.78125rem] text-grey">or choose it yourself</p>
 
-      <label htmlFor="zip" className="mt-4 block font-bold text-[13px] text-ink">
+      <label htmlFor="zip" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         ZIP code
       </label>
       <Field
@@ -350,7 +350,7 @@ export function CityStep({ data, set }: StepProps) {
           onZipChange(e.target.value);
         }}
       />
-      <p className="mt-1.5 text-[12px] text-grey leading-[1.45]">
+      <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
         {zipStatus === 'looking'
           ? 'Looking that up…'
           : zipStatus === 'missed'
@@ -358,7 +358,7 @@ export function CityStep({ data, set }: StepProps) {
             : 'Fills in the city and state for you. The ZIP itself is not stored.'}
       </p>
 
-      <label htmlFor="state" className="mt-4 block font-bold text-[13px] text-ink">
+      <label htmlFor="state" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         State
       </label>
       <select
@@ -367,7 +367,7 @@ export function CityStep({ data, set }: StepProps) {
         onChange={(e) => {
           set({ state: e.target.value });
         }}
-        className="mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[16px] outline-none focus:border-navy"
+        className="mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy"
       >
         <option value="">Select a state</option>
         {US_STATES.map(([code, name]) => (
@@ -377,7 +377,7 @@ export function CityStep({ data, set }: StepProps) {
         ))}
       </select>
 
-      <label htmlFor="city" className="mt-4 block font-bold text-[13px] text-ink">
+      <label htmlFor="city" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         City or town
       </label>
       <Field
@@ -407,7 +407,7 @@ export function PhotoStep({ data, set }: StepProps) {
         {data.photoPreviewUrl ? (
           <img src={data.photoPreviewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="font-extrabold font-head text-[34px] text-navy">+</span>
+          <span className="font-extrabold font-head text-[2.125rem] text-navy">+</span>
         )}
         <input
           type="file"
@@ -454,10 +454,10 @@ export function ClaimStep({
           />
         ) : null}
         <span>
-          <span className="block font-extrabold font-head text-[16.5px]">
+          <span className="block font-extrabold font-head text-[1.03125rem]">
             {profile.displayName}
           </span>
-          <span className="mt-0.5 block text-[13px] text-ink2">
+          <span className="mt-0.5 block text-[0.8125rem] text-ink2">
             {[profile.exactLevel ?? profile.levelRange, profile.city].filter(Boolean).join(' · ')}
           </span>
         </span>
@@ -466,14 +466,14 @@ export function ClaimStep({
         <button
           type="button"
           onClick={onAccept}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[15px] text-white"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white"
         >
           Yes, that's me
         </button>
         <button
           type="button"
           onClick={onDecline}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[15px] text-navy"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
         >
           Start fresh
         </button>

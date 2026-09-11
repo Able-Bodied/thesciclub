@@ -99,14 +99,14 @@ describe('AccessibilityProvider', () => {
     expect(document.documentElement.dataset.largeTargets).toBe('on');
   });
 
-  it('sets the scale variable the CSS zoom reads', () => {
+  it('sets the multiplier the root font size reads', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ textSize: 'larger' }));
     render(
       <AccessibilityProvider>
         <Probe />
       </AccessibilityProvider>,
     );
-    expect(document.documentElement.style.getPropertyValue('--ui-scale')).toBe(
+    expect(document.documentElement.style.getPropertyValue('--text-scale')).toBe(
       String(TEXT_SIZE_SCALE.larger),
     );
   });

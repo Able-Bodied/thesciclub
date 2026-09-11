@@ -24,7 +24,7 @@ export function AttendeeAvatar({
   return (
     <span
       className={cn(
-        'relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] font-extrabold font-head text-[13px] text-white',
+        'relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] font-extrabold font-head text-[0.8125rem] text-white',
         className,
       )}
       style={{ background: `linear-gradient(140deg, ${from}, ${to})` }}
@@ -76,7 +76,7 @@ export function AttendeeRow({
   const verb = parts.length === 1 ? 'is' : 'are';
 
   return (
-    <span className="mt-[7px] flex items-center gap-2 font-semibold text-[12.6px] text-ink2">
+    <span className="mt-[7px] flex items-center gap-2 font-semibold text-[0.7875rem] text-ink2">
       <span className="flex">
         {shown.map((attendee, index) => (
           <AttendeeAvatar

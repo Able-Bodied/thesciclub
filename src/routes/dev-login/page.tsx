@@ -63,7 +63,7 @@ export default function DevLoginPage() {
 
   return (
     <div className="grid min-h-dvh place-items-center bg-canvas px-8">
-      <p className="text-center text-[14px] text-ink2 leading-relaxed">{status}</p>
+      <p className="text-center text-[0.875rem] text-ink2 leading-relaxed">{status}</p>
     </div>
   );
 }

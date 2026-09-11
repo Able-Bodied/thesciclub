@@ -31,8 +31,10 @@ export function StepFrame({
       ) : (
         <div className="flex-none px-[18px] pt-4">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-[12.5px] text-navy tracking-wide">THE SCI CLUB</span>
-            <span className="text-[12.5px] text-grey">
+            <span className="font-bold text-[0.78125rem] text-navy tracking-wide">
+              THE SCI CLUB
+            </span>
+            <span className="text-[0.78125rem] text-grey">
               Step {stepNumber} of {totalSteps}
             </span>
           </div>
@@ -50,7 +52,7 @@ export function StepFrame({
           <button
             type="button"
             onClick={onBack}
-            className="-ml-1.5 mt-2 inline-flex items-center gap-0.5 py-2 font-semibold text-[14px] text-navy"
+            className="-ml-1.5 mt-2 inline-flex items-center gap-0.5 py-2 font-semibold text-[0.875rem] text-navy"
           >
             <ChevronLeft className="h-4 w-4" />
             Back
@@ -71,18 +73,18 @@ export function StepFrame({
 
 export function Question({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="mt-2 font-extrabold font-head text-[25px] text-ink leading-tight tracking-[-0.02em]">
+    <h1 className="mt-2 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.02em]">
       {children}
     </h1>
   );
 }
 
 export function Sub({ children }: { children: React.ReactNode }) {
-  return <p className="mt-2.5 text-[14.2px] text-ink2 leading-[1.52]">{children}</p>;
+  return <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">{children}</p>;
 }
 
 export function Fine({ children }: { children: React.ReactNode }) {
-  return <p className="mt-3 text-[12.5px] text-grey leading-[1.5]">{children}</p>;
+  return <p className="mt-3 text-[0.78125rem] text-grey leading-[1.5]">{children}</p>;
 }
 
 export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -91,7 +93,7 @@ export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...rest}
       className={cn(
-        'mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[16px] outline-none focus:border-navy',
+        'mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy',
         className,
       )}
     />
@@ -106,7 +108,7 @@ export function PrimaryButton({
     <button
       type="button"
       {...props}
-      className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[15px] disabled:opacity-40"
+      className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] disabled:opacity-40"
     >
       {children}
     </button>
@@ -118,7 +120,7 @@ export function LinkButton({ children, ...props }: React.ButtonHTMLAttributes<HT
     <button
       type="button"
       {...props}
-      className="mt-1 flex min-h-[40px] w-full items-center justify-center font-bold text-[14px] text-navy"
+      className="mt-1 flex min-h-[40px] w-full items-center justify-center font-bold text-[0.875rem] text-navy"
     >
       {children}
     </button>
@@ -137,7 +139,7 @@ export function Chip({
       aria-pressed={selected}
       {...props}
       className={cn(
-        'rounded-full px-3.5 py-2 font-semibold text-[13.5px] leading-[1.25]',
+        'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem] leading-[1.25]',
         selected ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
       )}
     >

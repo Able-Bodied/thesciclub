@@ -81,14 +81,16 @@ export function EventCard({
         {/* Date and host stacked in one narrow column, so the title always
             starts at the same x no matter which of them is present. */}
         <span className="flex flex-none flex-col items-center gap-2">
-          <span className="block w-[58px] rounded-[14px] bg-tint px-0 pt-2 pb-[9px] text-center">
-            <span className="block font-extrabold text-[10.5px] text-ink2 tracking-[0.09em]">
+          {/* Width in rem so the tile grows with the text inside it. Left in
+              pixels, "SEP" wraps as soon as somebody raises the text size. */}
+          <span className="block w-[3.625rem] rounded-[14px] bg-tint px-0 pt-2 pb-[9px] text-center">
+            <span className="block font-extrabold text-[0.65625rem] text-ink2 tracking-[0.09em]">
               {tile.dow}
             </span>
-            <span className="block font-extrabold font-head text-[23px] text-navy leading-[1.15]">
+            <span className="block font-extrabold font-head text-[1.4375rem] text-navy leading-[1.15]">
               {tile.day}
             </span>
-            <span className="block font-extrabold text-[10.5px] text-ink2 tracking-[0.09em]">
+            <span className="block font-extrabold text-[0.65625rem] text-ink2 tracking-[0.09em]">
               {tile.mon}
             </span>
           </span>
@@ -96,7 +98,7 @@ export function EventCard({
         </span>
 
         <span className="min-w-0 flex-1 pr-5">
-          <span className="block font-extrabold font-head text-[16.5px] text-ink leading-[1.28] tracking-[-0.01em]">
+          <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.28] tracking-[-0.01em]">
             {event.title}
           </span>
 
@@ -105,14 +107,14 @@ export function EventCard({
                 is the question that decides whether the rest of the card is
                 worth reading. */}
             {isOnline(event) ? (
-              <span className="rounded-full bg-gold-lt px-2.5 py-[5px] font-semibold text-[11.8px] text-gold-dp leading-[1.25]">
+              <span className="rounded-full bg-gold-lt px-2.5 py-[5px] font-semibold text-[0.7375rem] text-gold-dp leading-[1.25]">
                 {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
               </span>
             ) : null}
             {event.tags.map((tag) => (
               <span
                 key={tag.slug}
-                className="rounded-full bg-tint px-2.5 py-[5px] font-semibold text-[11.8px] text-navy leading-[1.25]"
+                className="rounded-full bg-tint px-2.5 py-[5px] font-semibold text-[0.7375rem] text-navy leading-[1.25]"
               >
                 {tag.name}
               </span>
@@ -120,14 +122,18 @@ export function EventCard({
           </span>
 
           {metaLine ? (
-            <span className="mt-[3px] block text-[13px] text-ink2 leading-[1.42]">{metaLine}</span>
+            <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
+              {metaLine}
+            </span>
           ) : null}
           {whenLine ? (
-            <span className="mt-0.5 block text-[12.5px] text-grey leading-[1.42]">{whenLine}</span>
+            <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.42]">
+              {whenLine}
+            </span>
           ) : null}
 
           {event.goingCount || event.interestedCount ? (
-            <span className="mt-2 block font-bold text-[13px] text-navy">
+            <span className="mt-2 block font-bold text-[0.8125rem] text-navy">
               {event.goingCount} going · {event.interestedCount} interested
             </span>
           ) : null}
@@ -151,7 +157,7 @@ export function EventCard({
           }}
           aria-pressed={interested}
           className={cn(
-            'flex min-h-10 items-center justify-center rounded-[13px] font-bold font-head text-[14px]',
+            'flex min-h-10 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem]',
             interested ? 'bg-tint text-navy' : 'border-[1.6px] border-navy text-navy',
           )}
         >
@@ -164,7 +170,7 @@ export function EventCard({
           }}
           aria-pressed={going}
           className={cn(
-            'flex min-h-10 items-center justify-center rounded-[13px] font-bold font-head text-[14px]',
+            'flex min-h-10 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem]',
             going ? 'bg-tint text-navy' : 'bg-navy text-white',
           )}
         >

@@ -100,21 +100,21 @@ export default function ProfileDetailsPage() {
           onClick={() => {
             void navigate('/me');
           }}
-          className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[14px] text-navy"
+          className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
         >
           <ChevronLeft className="h-4 w-4" />
           Me
         </button>
-        <h1 className="mt-1 font-extrabold font-head text-[23px] text-ink tracking-[-0.02em]">
+        <h1 className="mt-1 font-extrabold font-head text-[1.4375rem] text-ink tracking-[-0.02em]">
           Your details
         </h1>
       </header>
 
       <div className="flex-1 overflow-y-auto px-[18px] py-4">
         {loading ? (
-          <p className="py-10 text-center text-[14px] text-grey">Loading…</p>
+          <p className="py-10 text-center text-[0.875rem] text-grey">Loading…</p>
         ) : !details ? (
-          <p className="py-10 text-center text-[14px] text-ink2">{error}</p>
+          <p className="py-10 text-center text-[0.875rem] text-ink2">{error}</p>
         ) : (
           <>
             <Field label="Photo">
@@ -123,7 +123,7 @@ export default function ProfileDetailsPage() {
                   {photo ? (
                     <img src={photo} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <span className="font-extrabold font-head text-[24px] text-navy">+</span>
+                    <span className="font-extrabold font-head text-[1.5rem] text-navy">+</span>
                   )}
                   <input
                     type="file"
@@ -144,12 +144,12 @@ export default function ProfileDetailsPage() {
                         set({ photoPath: null });
                       });
                     }}
-                    className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[12.5px] text-navy"
+                    className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
                   >
                     Remove
                   </button>
                 ) : (
-                  <span className="text-[12.5px] text-grey leading-[1.45]">
+                  <span className="text-[0.78125rem] text-grey leading-[1.45]">
                     Without one, your card is made from your initials.
                   </span>
                 )}
@@ -177,11 +177,11 @@ export default function ProfileDetailsPage() {
                 }}
               />
               {!isAdult(details.birthDate) ? (
-                <p className="mt-1.5 text-[12.5px] text-destructive leading-[1.45]">
+                <p className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
                   The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than that.
                 </p>
               ) : age !== null ? (
-                <p className="mt-1.5 text-[12px] text-grey">
+                <p className="mt-1.5 text-[0.75rem] text-grey">
                   Members see {age}, never the date itself.
                 </p>
               ) : null}
@@ -203,7 +203,7 @@ export default function ProfileDetailsPage() {
                 ))}
               </Select>
               {details.exactLevel && details.exactLevel !== 'Do not know' ? (
-                <p className="mt-1.5 text-[12px] text-grey">
+                <p className="mt-1.5 text-[0.75rem] text-grey">
                   Browsed under {rangeForExact(details.exactLevel)}.
                 </p>
               ) : null}
@@ -239,7 +239,7 @@ export default function ProfileDetailsPage() {
                 }}
               />
               {details.injuryDatePrecision === 'year' && details.injuryDate ? (
-                <p className="mt-1.5 text-[12px] text-grey">
+                <p className="mt-1.5 text-[0.75rem] text-grey">
                   You gave {details.injuryDate.slice(0, 4)} only. Changing this records an exact
                   date.
                 </p>
@@ -280,10 +280,10 @@ export default function ProfileDetailsPage() {
               className="mt-5 flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
             >
               <span className="flex-1">
-                <span className="block font-extrabold font-head text-[14.5px]">
+                <span className="block font-extrabold font-head text-[0.90625rem]">
                   Show me in the deck
                 </span>
-                <span className="mt-0.5 block text-[12.5px] text-grey leading-[1.45]">
+                <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.45]">
                   Turn this off and no other member can find you. You can still browse.
                 </span>
               </span>
@@ -308,13 +308,13 @@ export default function ProfileDetailsPage() {
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
         {error && details ? (
-          <p className="mb-2.5 text-[13px] text-destructive leading-[1.45]">{error}</p>
+          <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
         ) : null}
         <button
           type="button"
           disabled={saving || loading || !details || !isAdult(details.birthDate)}
           onClick={submit}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[15px] text-white disabled:opacity-40"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
         </button>
@@ -335,11 +335,11 @@ function Field({
   return (
     <div className="mt-4 first:mt-0">
       {htmlFor ? (
-        <label htmlFor={htmlFor} className="block font-bold text-[13px] text-ink">
+        <label htmlFor={htmlFor} className="block font-bold text-[0.8125rem] text-ink">
           {label}
         </label>
       ) : (
-        <span className="block font-bold text-[13px] text-ink">{label}</span>
+        <span className="block font-bold text-[0.8125rem] text-ink">{label}</span>
       )}
       <div className="mt-1.5">{children}</div>
     </div>
@@ -347,7 +347,7 @@ function Field({
 }
 
 const CONTROL =
-  'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[16px] outline-none focus:border-navy';
+  'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy';
 
 function Input({
   id,
@@ -416,7 +416,7 @@ function Chip({
       aria-pressed={selected}
       onClick={onClick}
       className={cn(
-        'rounded-full px-3.5 py-2 font-semibold text-[13.5px]',
+        'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
         selected ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
       )}
     >

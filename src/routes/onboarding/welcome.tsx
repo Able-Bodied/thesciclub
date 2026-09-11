@@ -15,17 +15,17 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
           <ClubMark size={126} />
         </div>
 
-        <h1 className="mt-9 text-center font-extrabold font-head text-[30px] text-ink leading-[1.14] tracking-[-0.03em]">
+        <h1 className="mt-9 text-center font-extrabold font-head text-[1.875rem] text-ink leading-[1.14] tracking-[-0.03em]">
           Meet peers, mentors,
           <br />
           and find <em className="text-gold-dp not-italic">SCI events</em>.
         </h1>
 
-        <p className="mt-4 text-center font-bold text-[15px] text-navy leading-[1.45]">
+        <p className="mt-4 text-center font-bold text-[0.9375rem] text-navy leading-[1.45]">
           An app built by people with SCI for people with SCI.
         </p>
 
-        <p className="mt-3.5 text-center text-[14.2px] text-ink2 leading-[1.6]">
+        <p className="mt-3.5 text-center text-[0.8875rem] text-ink2 leading-[1.6]">
           A private community for people living with spinal cord injury. Ask the questions you can't
           ask anyone else, find the people who have already answered them, and get to something
           worth going to.
@@ -36,18 +36,18 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
         <button
           type="button"
           onClick={onJoin}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[15px] text-white"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white"
         >
           Join the club
         </button>
         <button
           type="button"
           onClick={onSignIn}
-          className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[15px] text-navy"
+          className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
         >
           I already have an account
         </button>
-        <p className="mt-2.5 text-center text-[12.5px] text-grey">
+        <p className="mt-2.5 text-center text-[0.78125rem] text-grey">
           Members only. Nothing inside the club is public.
         </p>
       </footer>

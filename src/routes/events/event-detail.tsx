@@ -50,13 +50,13 @@ export default function EventDetailPage() {
   );
 
   if (loading) {
-    return <p className="px-6 py-10 text-center text-[14px] text-grey">Loading…</p>;
+    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
   }
   if (error) {
     return (
       <div className="px-6 py-10 text-center">
-        <p className="text-[14px] text-ink2">Could not load this event.</p>
-        <p className="mt-2 text-[12.5px] text-grey">{error}</p>
+        <p className="text-[0.875rem] text-ink2">Could not load this event.</p>
+        <p className="mt-2 text-[0.78125rem] text-grey">{error}</p>
       </div>
     );
   }
@@ -65,13 +65,15 @@ export default function EventDetailPage() {
     // an error to report — just a thing that is no longer there.
     return (
       <div className="px-6 py-10 text-center">
-        <p className="text-[14px] text-ink2 leading-relaxed">This event is not on the calendar.</p>
+        <p className="text-[0.875rem] text-ink2 leading-relaxed">
+          This event is not on the calendar.
+        </p>
         <button
           type="button"
           onClick={() => {
             void navigate('/events');
           }}
-          className="mt-4 font-bold font-head text-[15px] text-navy"
+          className="mt-4 font-bold font-head text-[0.9375rem] text-navy"
         >
           Back to Events
         </button>
@@ -99,21 +101,21 @@ export default function EventDetailPage() {
             onClick={() => {
               void navigate('/events');
             }}
-            className="block pb-3 text-[#B9CADF] text-[14px]"
+            className="block pb-3 text-[#B9CADF] text-[0.875rem]"
           >
             ← Events
           </button>
 
-          <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[11.5px] uppercase tracking-[0.07em]">
+          <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[0.71875rem] uppercase tracking-[0.07em]">
             <MapPin className="h-[13px] w-[13px]" aria-hidden="true" />
             <span>{longWhen(event.startTime, event.timezone)}</span>
           </div>
 
-          <h1 className="mt-2 font-extrabold font-head text-[23px] leading-[1.28] tracking-[-0.02em]">
+          <h1 className="mt-2 font-extrabold font-head text-[1.4375rem] leading-[1.28] tracking-[-0.02em]">
             {event.title}
           </h1>
 
-          <p className="mt-1.5 text-[#B9CADF] text-[13px] leading-[1.42]">
+          <p className="mt-1.5 text-[#B9CADF] text-[0.8125rem] leading-[1.42]">
             {[timeRange(event.startTime, event.endTime, event.timezone), event.location, event.city]
               .filter(Boolean)
               .join(' · ')}
@@ -122,14 +124,14 @@ export default function EventDetailPage() {
           {isOnline(event) || event.tags.length ? (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {isOnline(event) ? (
-                <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[11.8px]">
+                <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[0.7375rem]">
                   {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
                 </span>
               ) : null}
               {event.tags.map((tag) => (
                 <span
                   key={tag.slug}
-                  className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[11.8px]"
+                  className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
                 >
                   {tag.name}
                 </span>
@@ -145,7 +147,7 @@ export default function EventDetailPage() {
               }}
               aria-pressed={going}
               className={cn(
-                'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[15px]',
+                'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem]',
                 going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
               )}
             >
@@ -157,7 +159,7 @@ export default function EventDetailPage() {
                 onRsvp(interested ? null : 'interested');
               }}
               aria-pressed={interested}
-              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[15px] text-white"
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[0.9375rem] text-white"
             >
               {interested ? 'Interested ✓' : 'Interested'}
             </button>
@@ -167,7 +169,7 @@ export default function EventDetailPage() {
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
         {writeError ? (
-          <p className="mt-3 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[#8C1D18] text-[12.6px]">
+          <p className="mt-3 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[#8C1D18] text-[0.7875rem]">
             {writeError}
           </p>
         ) : null}
@@ -175,7 +177,7 @@ export default function EventDetailPage() {
         <EventDescription
           html={event.descriptionHtml}
           text={event.description}
-          className="mt-2.5 text-[14.2px] text-ink leading-[1.52] [&_a]:text-navy [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
+          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-navy [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
         />
 
         {event.registrationUrl || event.url ? (
@@ -183,7 +185,7 @@ export default function EventDetailPage() {
             href={event.registrationUrl ?? event.url ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[15px] text-navy"
+            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
           >
             {event.registrationUrl ? 'Register' : 'Details on their site'}
             <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
@@ -193,7 +195,7 @@ export default function EventDetailPage() {
         {/* Where the mock puts a group chat. Messaging is not built, and a
             button that does nothing gets demoed, believed, and then explained. */}
         {going ? (
-          <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[12.6px] leading-[1.5]">
+          <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
             There will be a group chat for everyone going to this. It is not built yet.
           </p>
         ) : null}
@@ -219,7 +221,7 @@ export default function EventDetailPage() {
 
         {host ? (
           <>
-            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
               Hosted by
             </h2>
             {organization ? (
@@ -232,10 +234,10 @@ export default function EventDetailPage() {
               >
                 <OrganizationBadge organization={organization} />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-extrabold font-head text-[14.5px] text-ink">
+                  <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
                     {organization.name}
                   </span>
-                  <span className="block text-[12.5px] text-grey">{organization.city}</span>
+                  <span className="block text-[0.78125rem] text-grey">{organization.city}</span>
                 </span>
                 <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
               </button>
@@ -243,7 +245,7 @@ export default function EventDetailPage() {
               // A host from the feed that the club has no organization for. Not
               // a link, because there is no page to go to — pretending
               // otherwise is a dead end wearing a chevron.
-              <p className="rounded-[14px] border border-line bg-paper p-3.5 text-[14.5px] text-ink">
+              <p className="rounded-[14px] border border-line bg-paper p-3.5 text-[0.90625rem] text-ink">
                 {host}
               </p>
             )}
@@ -280,7 +282,7 @@ function AttendeeSection({
 
   return (
     <>
-      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title} · {total}
       </h2>
       {attendees.map((attendee) => (
@@ -294,10 +296,10 @@ function AttendeeSection({
         >
           <AttendeeAvatar attendee={attendee} />
           <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[14.5px] text-ink">
+            <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
               {attendee.displayName}
             </span>
-            <span className="block text-[12.5px] text-grey">
+            <span className="block text-[0.78125rem] text-grey">
               {[attendee.exactLevel ?? attendee.levelRange, attendee.city]
                 .filter(Boolean)
                 .join(' · ')}
@@ -307,7 +309,7 @@ function AttendeeSection({
         </button>
       ))}
       {unnamed > 0 ? (
-        <p className="py-2.5 text-[12.5px] text-grey">
+        <p className="py-2.5 text-[0.78125rem] text-grey">
           {attendees.length === 0
             ? `${unnamed} member${unnamed === 1 ? '' : 's'}, not shown by choice`
             : `and ${unnamed} more who ${unnamed === 1 ? 'is' : 'are'} not shown by choice`}

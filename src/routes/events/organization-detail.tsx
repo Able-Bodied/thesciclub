@@ -27,18 +27,18 @@ export default function OrganizationDetailPage() {
   const organization = id ? (byId.get(id) ?? null) : null;
 
   if (loading) {
-    return <p className="px-6 py-10 text-center text-[14px] text-grey">Loading…</p>;
+    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
   }
   if (!organization) {
     return (
       <div className="px-6 py-10 text-center">
-        <p className="text-[14px] text-ink2">No such organization.</p>
+        <p className="text-[0.875rem] text-ink2">No such organization.</p>
         <button
           type="button"
           onClick={() => {
             void navigate('/events');
           }}
-          className="mt-4 font-bold font-head text-[15px] text-navy"
+          className="mt-4 font-bold font-head text-[0.9375rem] text-navy"
         >
           Back to Events
         </button>
@@ -64,7 +64,7 @@ export default function OrganizationDetailPage() {
             onClick={() => {
               void navigate('/events');
             }}
-            className="block pb-3 text-[#B9CADF] text-[14px]"
+            className="block pb-3 text-[#B9CADF] text-[0.875rem]"
           >
             ← Back
           </button>
@@ -72,10 +72,12 @@ export default function OrganizationDetailPage() {
           <div className="flex items-center gap-[13px]">
             <OrganizationBadge organization={organization} size="lg" />
             <span>
-              <span className="block font-extrabold font-head text-[21px] leading-[1.2] tracking-[-0.02em]">
+              <span className="block font-extrabold font-head text-[1.3125rem] leading-[1.2] tracking-[-0.02em]">
                 {organization.name}
               </span>
-              <span className="mt-[3px] block text-[#B9CADF] text-[13px]">{organization.city}</span>
+              <span className="mt-[3px] block text-[#B9CADF] text-[0.8125rem]">
+                {organization.city}
+              </span>
             </span>
           </div>
 
@@ -83,13 +85,13 @@ export default function OrganizationDetailPage() {
             {organization.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[11.8px]"
+                className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
               >
                 {tag}
               </span>
             ))}
             {organization.canInvite ? (
-              <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[11.8px]">
+              <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[0.7375rem]">
                 Can issue invites
               </span>
             ) : null}
@@ -99,12 +101,14 @@ export default function OrganizationDetailPage() {
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
         {organization.description ? (
-          <p className="mt-2.5 text-[14.2px] text-ink leading-[1.52]">{organization.description}</p>
+          <p className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52]">
+            {organization.description}
+          </p>
         ) : null}
 
         {upcoming.length > 0 ? (
           <>
-            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
               Upcoming
             </h2>
             {upcoming.map((event) => {
@@ -119,18 +123,18 @@ export default function OrganizationDetailPage() {
                   className="mb-[11px] flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
                 >
                   <span className="block w-[46px] flex-none rounded-[12px] bg-tint py-1.5 text-center">
-                    <span className="block font-extrabold font-head text-[19px] text-navy leading-[1.15]">
+                    <span className="block font-extrabold font-head text-[1.1875rem] text-navy leading-[1.15]">
                       {tile.day}
                     </span>
-                    <span className="block font-extrabold text-[10px] text-ink2 tracking-[0.09em]">
+                    <span className="block font-extrabold text-[0.625rem] text-ink2 tracking-[0.09em]">
                       {tile.mon}
                     </span>
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold font-head text-[14.5px] text-ink leading-[1.25]">
+                    <span className="block font-extrabold font-head text-[0.90625rem] text-ink leading-[1.25]">
                       {event.title}
                     </span>
-                    <span className="block text-[12.5px] text-grey">{event.city}</span>
+                    <span className="block text-[0.78125rem] text-grey">{event.city}</span>
                   </span>
                   <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
                 </button>
@@ -141,7 +145,7 @@ export default function OrganizationDetailPage() {
 
         {affiliated.length > 0 ? (
           <>
-            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
               Members here
             </h2>
             {affiliated.map((member) => {
@@ -157,7 +161,7 @@ export default function OrganizationDetailPage() {
                   className="flex w-full items-center gap-3 border-line border-b py-[13px] text-left last:border-b-0"
                 >
                   <span
-                    className="relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] font-extrabold font-head text-[13px] text-white"
+                    className="relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] font-extrabold font-head text-[0.8125rem] text-white"
                     style={{ background: `linear-gradient(140deg, ${from}, ${to})` }}
                   >
                     {photo ? (
@@ -171,10 +175,10 @@ export default function OrganizationDetailPage() {
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold font-head text-[14.5px] text-ink">
+                    <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
                       {member.displayName}
                     </span>
-                    <span className="block text-[12.5px] text-grey">
+                    <span className="block text-[0.78125rem] text-grey">
                       {[member.exactLevel ?? member.levelRange, member.city]
                         .filter(Boolean)
                         .join(' · ')}
@@ -188,7 +192,7 @@ export default function OrganizationDetailPage() {
         ) : null}
 
         {organization.canInvite ? (
-          <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[12.6px] leading-[1.5]">
+          <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
             {organization.name} can put a phone number on the club's list. Membership is granted by
             a person, never claimed by a form.
           </p>

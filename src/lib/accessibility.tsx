@@ -51,7 +51,15 @@ export const TEXT_SIZE_LABELS: Record<TextSize, string> = {
   larger: 'Larger',
 };
 
-/** The zoom factor each step applies. 1.15 and 1.35 are noticeable without reflowing to nonsense. */
+/**
+ * The multiplier each step applies to the root font size.
+ *
+ * A multiplier rather than an absolute size, so it compounds with whatever the
+ * member's browser is already set to instead of overriding it — somebody
+ * running a 20px browser default who picks Large gets 23px, not 18.4px. Taking
+ * their browser setting away from them would be a strange thing for this
+ * screen in particular to do.
+ */
 export const TEXT_SIZE_SCALE: Record<TextSize, number> = {
   normal: 1,
   large: 1.15,
@@ -59,7 +67,13 @@ export const TEXT_SIZE_SCALE: Record<TextSize, number> = {
 };
 
 export interface AccessibilityPreferences {
-  /** Scales the whole interface — text and controls together. */
+  /**
+   * Multiplies the root font size, and so every `rem` in the type scale.
+   *
+   * Text only: spacing, images and the shell keep their pixel dimensions, so
+   * this is not a second copy of the browser's zoom. Controls still grow,
+   * because their heights are `min-h` around text that got bigger.
+   */
   textSize: TextSize;
   /**
    * Enlarges controls that are smaller than the 44px target-size guideline
@@ -142,7 +156,7 @@ function applyToDocument(preferences: AccessibilityPreferences): void {
   const root = document.documentElement;
   root.dataset.textSize = preferences.textSize;
   root.dataset.largeTargets = preferences.largeTargets ? 'on' : 'off';
-  root.style.setProperty('--ui-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
+  root.style.setProperty('--text-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
 }
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {

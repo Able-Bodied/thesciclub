@@ -35,8 +35,8 @@ function Row({
 }) {
   return (
     <fieldset className="border-line border-b py-4 last:border-b-0">
-      <legend className="font-extrabold font-head text-[15px] text-ink">{title}</legend>
-      <p className="mt-1 text-[12.8px] text-ink2 leading-[1.5]">{description}</p>
+      <legend className="font-extrabold font-head text-[0.9375rem] text-ink">{title}</legend>
+      <p className="mt-1 text-[0.8rem] text-ink2 leading-[1.5]">{description}</p>
       <div className="mt-2.5">{children}</div>
     </fieldset>
   );
@@ -65,7 +65,7 @@ function OnOff({ value, onChange }: { value: boolean; onChange: (next: boolean) 
             onChange(option.on);
           }}
           className={cn(
-            'min-h-[48px] min-w-[88px] rounded-xl px-4 font-bold font-head text-[15px]',
+            'min-h-[48px] min-w-[88px] rounded-xl px-4 font-bold font-head text-[0.9375rem]',
             value === option.on
               ? 'bg-navy text-white'
               : 'border-[1.6px] border-line bg-paper text-ink2',
@@ -85,18 +85,18 @@ export function AccessibilitySettings() {
     <section aria-labelledby="display-settings-heading" className="mt-6">
       <h2
         id="display-settings-heading"
-        className="mb-1 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]"
+        className="mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
         Display
       </h2>
-      <p className="mb-1 text-[12.5px] text-grey leading-[1.5]">
+      <p className="mb-1 text-[0.78125rem] text-grey leading-[1.5]">
         Saved on this device, so a phone and a desktop can be set differently.
       </p>
 
       <div className="rounded-[17px] border border-line bg-paper px-3.5">
         <Row
-          title="Text and button size"
-          description="Scales the whole app, so buttons grow with the words."
+          title="Text size"
+          description="Makes the words bigger, and the buttons around them with it. Starts from your browser’s own text setting."
         >
           <div className="flex flex-wrap gap-2">
             {TEXT_SIZES.map((size: TextSize) => (
@@ -111,9 +111,9 @@ export function AccessibilitySettings() {
                   'min-h-[48px] min-w-[88px] rounded-xl px-4 font-bold font-head',
                   // Each option is drawn at the size it applies, so the choice
                   // is legible without reading the label.
-                  size === 'normal' && 'text-[15px]',
-                  size === 'large' && 'text-[17px]',
-                  size === 'larger' && 'text-[20px]',
+                  size === 'normal' && 'text-[0.9375rem]',
+                  size === 'large' && 'text-[1.0625rem]',
+                  size === 'larger' && 'text-[1.25rem]',
                   preferences.textSize === size
                     ? 'bg-navy text-white'
                     : 'border-[1.6px] border-line bg-paper text-ink2',
@@ -141,7 +141,7 @@ export function AccessibilitySettings() {
       <button
         type="button"
         onClick={reset}
-        className="mt-3 min-h-[48px] rounded-xl px-4 font-bold font-head text-[14px] text-navy underline"
+        className="mt-3 min-h-[48px] rounded-xl px-4 font-bold font-head text-[0.875rem] text-navy underline"
       >
         Reset to my device settings
       </button>

@@ -24,8 +24,8 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
   if (!value) return null;
   return (
     <div className="flex gap-3 border-line border-b py-3 last:border-b-0">
-      <span className="w-[104px] flex-none text-[12.5px] text-grey">{label}</span>
-      <span className="text-[13.6px] leading-[1.42]">{value}</span>
+      <span className="w-[104px] flex-none text-[0.78125rem] text-grey">{label}</span>
+      <span className="text-[0.85rem] leading-[1.42]">{value}</span>
     </div>
   );
 }
@@ -33,7 +33,7 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <>
-      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title}
       </h2>
       {children}
@@ -53,7 +53,7 @@ function Chips({ items, tone }: { items: string[]; tone: 'solid' | 'outline' | '
       {items.map((item) => (
         <span
           key={item}
-          className={`rounded-full px-2.5 py-[5px] font-semibold text-[11.8px] leading-[1.25] ${cls}`}
+          className={`rounded-full px-2.5 py-[5px] font-semibold text-[0.7375rem] leading-[1.25] ${cls}`}
         >
           {item}
         </span>
@@ -136,31 +136,31 @@ export default function MemberDetailPage() {
           onClick={() => {
             void navigate(-1);
           }}
-          className="absolute top-4 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 py-2 pr-3.5 pl-2 font-bold text-[13.5px] text-white backdrop-blur-sm"
+          className="absolute top-4 left-3 inline-flex items-center gap-1 rounded-full bg-black/35 py-2 pr-3.5 pl-2 font-bold text-[0.84375rem] text-white backdrop-blur-sm"
         >
           <ChevronLeft className="h-4 w-4" />
           Peers
         </button>
 
         {member.type === 'mentor' ? (
-          <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase tracking-[0.08em]">
+          <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
             Mentor
           </span>
         ) : null}
 
         <div className="absolute inset-x-0 bottom-0 px-[18px] pb-[18px]">
-          <h1 className="font-extrabold font-head text-[30px] text-white tracking-[-0.02em] [text-shadow:0_1px_12px_rgba(10,29,54,.7)]">
+          <h1 className="font-extrabold font-head text-[1.875rem] text-white tracking-[-0.02em] [text-shadow:0_1px_12px_rgba(10,29,54,.7)]">
             {member.displayName}
           </h1>
-          <p className="mt-1.5 text-[13.5px] text-[#D3DFEE]">{summaryLine(member)}</p>
-          {injury ? <p className="mt-1 text-[12.5px] text-[#9FB3CD]">{injury}</p> : null}
+          <p className="mt-1.5 text-[0.84375rem] text-[#D3DFEE]">{summaryLine(member)}</p>
+          {injury ? <p className="mt-1 text-[0.78125rem] text-[#9FB3CD]">{injury}</p> : null}
         </div>
       </div>
 
       <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
         {member.topics.length ? (
           <Section title="Happy to talk about">
-            <p className="-mt-1 mb-2.5 text-[12.5px] text-grey leading-[1.45]">
+            <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">
               What {member.displayName} offered to be asked about.
             </p>
             <Chips items={member.topics} tone="solid" />
@@ -169,13 +169,13 @@ export default function MemberDetailPage() {
 
         {member.bio ? (
           <Section title="Function & living situation">
-            <p className="text-[14.2px] text-ink2 leading-[1.52]">{member.bio}</p>
+            <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.bio}</p>
           </Section>
         ) : null}
 
         {member.howInjured ? (
           <Section title="How it happened">
-            <p className="text-[14.2px] text-ink2 leading-[1.52]">{member.howInjured}</p>
+            <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.howInjured}</p>
           </Section>
         ) : null}
 
@@ -215,10 +215,10 @@ export default function MemberDetailPage() {
                 key={org}
                 className="mb-2 flex items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
               >
-                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[11px] text-white">
+                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.6875rem] text-white">
                   {shortCodeFor(org)}
                 </span>
-                <span className="font-extrabold font-head text-[14.5px]">{org}</span>
+                <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
               </div>
             ))}
           </Section>
@@ -229,7 +229,7 @@ export default function MemberDetailPage() {
             telling them they did is a small lie that undermines every other
             claim on the page. The contact promise applies to everybody, so it
             is the half that always shows. */}
-        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[12.6px] text-[#5C4409] leading-[1.5]">
+        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
           {member.isSeed ? (
             <>
               Everything here is what {member.displayName} chose to publish in the NorCal SCI mentor
@@ -247,7 +247,7 @@ export default function MemberDetailPage() {
 function Centered({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-1 items-center justify-center px-8">
-      <p className="text-center text-[14px] text-ink2 leading-relaxed">{children}</p>
+      <p className="text-center text-[0.875rem] text-ink2 leading-relaxed">{children}</p>
     </div>
   );
 }
@@ -272,7 +272,7 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1 rounded-full bg-white/10 py-1.5 pr-3 pl-1.5 font-bold text-[13px] text-white"
+            className="inline-flex items-center gap-1 rounded-full bg-white/10 py-1.5 pr-3 pl-1.5 font-bold text-[0.8125rem] text-white"
           >
             <ChevronLeft className="h-4 w-4" />
             Peers
@@ -282,12 +282,12 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
 
         <div className="mt-6 flex flex-col items-center">
           <ClubMark size={104} />
-          <h1 className="mt-5 font-extrabold font-head text-[28px] text-white tracking-[-0.02em]">
+          <h1 className="mt-5 font-extrabold font-head text-[1.75rem] text-white tracking-[-0.02em]">
             {member.displayName}
           </h1>
           {/* The mock's own badge shape: a white pill with the gold org mark. */}
-          <span className="mt-3 inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[12px] text-navy leading-none">
-            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[8.5px] text-white">
+          <span className="mt-3 inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
+            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.53125rem] text-white">
               SCI
             </span>
             Official account
@@ -297,7 +297,7 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
 
       <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
         <Section title="What this account is">
-          <p className="text-[14.2px] text-ink2 leading-[1.52]">
+          <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
             The club's own account, run by whoever is administering The SCI Club. It is not a member
             — there is no injury, no city and no story behind it.
           </p>
@@ -318,21 +318,21 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
               ['Anything that has gone wrong', 'Reports come here and are read by a person.'],
             ].map(([title, blurb]) => (
               <div key={title} className="border-line border-b py-3 last:border-b-0">
-                <span className="block font-extrabold font-head text-[14.5px]">{title}</span>
-                <span className="mt-0.5 block text-[12.8px] text-ink2 leading-[1.45]">{blurb}</span>
+                <span className="block font-extrabold font-head text-[0.90625rem]">{title}</span>
+                <span className="mt-0.5 block text-[0.8rem] text-ink2 leading-[1.45]">{blurb}</span>
               </div>
             ))}
           </div>
         </Section>
 
         <Section title="Getting in touch">
-          <p className="text-[14.2px] text-ink2 leading-[1.52]">
+          <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
             Messaging is not switched on yet. When it is, this is the account to write to — until
             then, whoever invited you is the fastest route to an answer.
           </p>
         </Section>
 
-        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[12.6px] text-[#5C4409] leading-[1.5]">
+        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
           <b className="font-bold">Membership can be lost.</b> Selling to members, harassing anyone,
           giving medical advice as fact, or repeating outside a room what was said in it all end it.
         </div>

@@ -123,7 +123,7 @@ export default function EventsPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">
+          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
             Events
           </h1>
           {showingList ? (
@@ -154,7 +154,7 @@ export default function EventsPage() {
               }}
               aria-pressed={segment === value}
               className={cn(
-                'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[13.5px]',
+                'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem]',
                 segment === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
               )}
             >
@@ -167,7 +167,7 @@ export default function EventsPage() {
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] lg:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {writeError ? (
-            <p className="mb-2.5 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[12.6px] text-[#8C1D18]">
+            <p className="mb-2.5 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[0.7875rem] text-[#8C1D18]">
               {writeError}
             </p>
           ) : null}
@@ -180,11 +180,11 @@ export default function EventsPage() {
               }}
             />
           ) : loading ? (
-            <p className="px-6 py-10 text-center text-[14px] text-grey">Loading events…</p>
+            <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading events…</p>
           ) : error ? (
             <div className="px-6 py-10 text-center">
-              <p className="text-[14px] text-ink2 leading-relaxed">Could not load events.</p>
-              <p className="mt-2 text-[12.5px] text-grey leading-relaxed">{error}</p>
+              <p className="text-[0.875rem] text-ink2 leading-relaxed">Could not load events.</p>
+              <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
             </div>
           ) : (
             <>
@@ -246,7 +246,7 @@ export default function EventsPage() {
 function EmptyList({ segment }: { segment: EventsSegment }) {
   if (segment === 'going') {
     return (
-      <p className="px-6 py-10 text-center text-[14px] text-grey leading-relaxed">
+      <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
         You have not said you are going to anything yet.
         <br />
         Events you say yes to show up here.
@@ -254,7 +254,7 @@ function EmptyList({ segment }: { segment: EventsSegment }) {
     );
   }
   return (
-    <p className="px-6 py-10 text-center text-[14px] text-grey leading-relaxed">
+    <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
       Nothing on the calendar for that.
       <br />
       Try a wider date range or fewer filters.

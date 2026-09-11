@@ -153,21 +153,26 @@
 
 /* ---------------------------------------------------------------- text size */
 /*
- * `zoom` rather than a root font-size, because this design is 266 hard-coded
- * pixel sizes lifted from the mock and a root font-size cannot move any of
- * them. Zoom scales text and controls together, which is also the behaviour
- * somebody actually wants here: a member who needs larger type generally needs
- * a larger target too.
+ * Type is sized in `rem`, so it answers to two things at once.
  *
- * The height compensation is not optional. The shell is `h-dvh`, and a zoomed
- * element resolves viewport units *before* the zoom is applied — so at 1.35 the
- * shell would compute a full viewport height and then be scaled to 135% of it,
- * pushing the tab bar off the bottom of the screen. Dividing by the same factor
- * cancels exactly.
+ * The first is the member's own browser setting, which this app ignored
+ * entirely until the type scale was converted: every size was a hard pixel
+ * value from the mock, so somebody who had set their browser to 20px because
+ * they cannot comfortably read 16 still got our 14. That is a real defect, it
+ * affected people who would never find an in-app control, and rem fixes it for
+ * free.
+ *
+ * The second is the setting on the Me tab, which multiplies whatever the
+ * browser already said rather than replacing it — a member at 20px who picks
+ * Large gets 23, not 18.4. `--text-scale` is the multiplier; 100% is the
+ * browser's own answer, whatever that is.
+ *
+ * This replaced a `zoom` implementation, which was honest about nothing: it
+ * scaled the entire interface including spacing and images, which is what the
+ * browser's own zoom already does, and left the browser font setting ignored.
  */
-[data-ui-scale-root] {
-  zoom: var(--ui-scale, 1);
-  height: calc(100dvh / var(--ui-scale, 1));
+:root {
+  font-size: calc(100% * var(--text-scale, 1));
 }
 
 /* ------------------------------------------------------------ tap targets */

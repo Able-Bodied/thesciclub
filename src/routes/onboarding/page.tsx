@@ -235,7 +235,7 @@ export default function OnboardingPage() {
       footer={
         <>
           {error ? (
-            <p className="mb-2.5 text-[13px] text-destructive leading-[1.45]">{error}</p>
+            <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
           ) : null}
           {step === 'claim' ? null : (
             <PrimaryButton

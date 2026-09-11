@@ -51,8 +51,8 @@ export function OrganizationBadge({
 
   const box =
     size === 'lg'
-      ? 'h-[66px] w-[66px] rounded-[20px] text-[22px]'
-      : 'h-[38px] w-[38px] rounded-[12px] text-[11px]';
+      ? 'h-[66px] w-[66px] rounded-[20px] text-[1.375rem]'
+      : 'h-[38px] w-[38px] rounded-[12px] text-[0.6875rem]';
 
   return (
     <span

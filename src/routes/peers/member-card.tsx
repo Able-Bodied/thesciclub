@@ -96,14 +96,14 @@ function OfficialCard({ member, onOpen }: MemberCardProps) {
       onClick={onOpen}
       className="relative flex h-[424px] w-full flex-col items-center justify-center overflow-hidden rounded-[26px] bg-navy px-8 text-center shadow-[0_10px_26px_rgba(10,20,35,.18)]"
     >
-      <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase tracking-[0.08em]">
+      <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
         Official
       </span>
       <ClubMark size={96} />
-      <span className="mt-6 block font-extrabold font-head text-[24px] text-white tracking-[-0.01em]">
+      <span className="mt-6 block font-extrabold font-head text-[1.5rem] text-white tracking-[-0.01em]">
         {member.displayName}
       </span>
-      <span className="mt-2 block text-[13.5px] text-[#B9CADF] leading-[1.5]">
+      <span className="mt-2 block text-[0.84375rem] text-[#B9CADF] leading-[1.5]">
         The club's own account. Questions about membership, the house rules, or anything that has
         gone wrong — this is who answers.
       </span>
@@ -149,25 +149,25 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       <span className="absolute inset-x-0 bottom-0 h-[230px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
 
       {member.type === 'mentor' ? (
-        <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[11px] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
+        <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
           <MentorStar />
           Mentor
         </span>
       ) : null}
 
       <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px] pr-[104px]">
-        <span className="block font-extrabold font-head text-[28px] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
+        <span className="block font-extrabold font-head text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
           {member.displayName}
         </span>
-        <span className="mt-[7px] block text-[13.5px] text-[#DCE6F2] leading-[1.45] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
+        <span className="mt-[7px] block text-[0.84375rem] text-[#DCE6F2] leading-[1.45] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
           {summaryLine(member)}
         </span>
       </span>
 
       <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-5">
         {verifier ? (
-          <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[12px] text-navy leading-none">
-            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[8.5px] text-white">
+          <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
+            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.53125rem] text-white">
               {shortCodeFor(verifier)}
             </span>
             {verifier}
@@ -178,7 +178,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
             {chips.map((topic) => (
               <span
                 key={topic}
-                className="inline-block rounded-full bg-white/92 px-3 py-[7px] font-bold text-[12px] text-navy leading-[1.2]"
+                className="inline-block rounded-full bg-white/92 px-3 py-[7px] font-bold text-[0.75rem] text-navy leading-[1.2]"
               >
                 {topic}
               </span>

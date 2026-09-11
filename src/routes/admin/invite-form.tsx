@@ -72,7 +72,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
     <div className="rounded-[14px] border border-line bg-paper p-3.5">
       <div className="flex flex-wrap items-end gap-2.5">
         <div className="min-w-[180px] flex-1">
-          <label htmlFor="invite-phone" className="block font-bold text-[12px] text-ink">
+          <label htmlFor="invite-phone" className="block font-bold text-[0.75rem] text-ink">
             Phone number
           </label>
           <input
@@ -84,12 +84,12 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setPhone(formatPhoneInput(e.target.value));
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[15px] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
           />
         </div>
 
         <div className="min-w-[160px] flex-1">
-          <label htmlFor="invite-org" className="block font-bold text-[12px] text-ink">
+          <label htmlFor="invite-org" className="block font-bold text-[0.75rem] text-ink">
             Vouched for by
           </label>
           <select
@@ -98,7 +98,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setOrganizationId(e.target.value);
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[15px] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
           >
             {organizations.map((o) => (
               <option key={o.id} value={o.id}>
@@ -111,7 +111,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
         <div className="min-w-[200px] flex-1">
-          <label htmlFor="invite-claim" className="block font-bold text-[12px] text-ink">
+          <label htmlFor="invite-claim" className="block font-bold text-[0.75rem] text-ink">
             Is this someone already in the directory?
           </label>
           <select
@@ -120,7 +120,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setClaimMemberId(e.target.value);
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[15px] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
           >
             <option value="">No — a new member</option>
             {claimable.map((m) => (
@@ -133,7 +133,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
         </div>
 
         <div className="min-w-[160px] flex-1">
-          <label htmlFor="invite-note" className="block font-bold text-[12px] text-ink">
+          <label htmlFor="invite-note" className="block font-bold text-[0.75rem] text-ink">
             Note (optional)
           </label>
           <input
@@ -143,27 +143,27 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setNote(e.target.value);
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[15px] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
           />
         </div>
       </div>
 
       {claimMemberId ? (
-        <p className="mt-2.5 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[12px] text-[#5C4409] leading-[1.45]">
+        <p className="mt-2.5 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.75rem] text-[#5C4409] leading-[1.45]">
           Whoever verifies this number will be offered that profile. Attach it only if you know the
           number belongs to them.
         </p>
       ) : null}
 
       {error ? (
-        <p className="mt-2.5 text-[12.5px] text-destructive leading-[1.45]">{error}</p>
+        <p className="mt-2.5 text-[0.78125rem] text-destructive leading-[1.45]">{error}</p>
       ) : null}
 
       <button
         type="button"
         disabled={!ready || busy}
         onClick={submit}
-        className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] bg-navy font-bold font-head text-[14px] text-white disabled:opacity-40"
+        className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] bg-navy font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
       >
         {busy ? 'Adding…' : 'Add to the list'}
       </button>

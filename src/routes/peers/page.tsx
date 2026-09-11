@@ -85,7 +85,7 @@ export default function PeersPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto flex w-full max-w-[1100px] min-h-[38px] items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">
+          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
             Peers
           </h1>
           <button
@@ -113,7 +113,7 @@ export default function PeersPage() {
               }}
               aria-pressed={segment === value}
               className={cn(
-                'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[13.5px]',
+                'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem]',
                 segment === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
               )}
             >
@@ -136,7 +136,7 @@ export default function PeersPage() {
               onClick={() => {
                 setFilters((f) => ({ ...f, search: '' }));
               }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-navy px-2.5 py-1.5 font-semibold text-[11.8px] text-white"
+              className="inline-flex items-center gap-1.5 rounded-full bg-navy px-2.5 py-1.5 font-semibold text-[0.7375rem] text-white"
             >
               “{filters.search}”
               <X className="h-3 w-3" />
@@ -145,25 +145,25 @@ export default function PeersPage() {
         ) : null}
 
         {loading ? (
-          <p className="px-6 py-10 text-center text-[14px] text-grey">Loading members…</p>
+          <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading members…</p>
         ) : signedOut ? (
           <div className="px-6 py-10 text-center">
-            <p className="text-[14px] text-ink2 leading-relaxed">
+            <p className="text-[0.875rem] text-ink2 leading-relaxed">
               The club is members only. Sign in to see who is here.
             </p>
-            <p className="mt-2 text-[12.5px] text-grey leading-relaxed">
+            <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">
               Nothing inside the club is public.
             </p>
           </div>
         ) : error ? (
           <div className="px-6 py-10 text-center">
-            <p className="text-[14px] text-ink2 leading-relaxed">Could not load members.</p>
-            <p className="mt-2 text-[12.5px] text-grey leading-relaxed">{error}</p>
+            <p className="text-[0.875rem] text-ink2 leading-relaxed">Could not load members.</p>
+            <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
           </div>
         ) : (
           <>
             <div className="mx-auto w-full max-w-[1100px]">
-              <p className="mb-3 text-[12.5px] text-grey">
+              <p className="mb-3 text-[0.78125rem] text-grey">
                 {visible.length} of {totalInSegment} member{totalInSegment === 1 ? '' : 's'}
               </p>
               {/* One column on a phone, more as the shell widens. The gap
@@ -182,7 +182,7 @@ export default function PeersPage() {
               </div>
             </div>
             {visible.length === 0 ? (
-              <p className="px-6 py-10 text-center text-[14px] text-grey leading-relaxed">
+              <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
                 Nobody matches that yet.
                 <br />
                 Try widening the filters.

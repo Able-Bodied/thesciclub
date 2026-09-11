@@ -93,8 +93,10 @@ export default function AdminPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">Admin</h1>
-        <p className="mt-1 text-[12.5px] text-grey">
+        <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          Admin
+        </h1>
+        <p className="mt-1 text-[0.78125rem] text-grey">
           {real.length} joined · {seeded.length} from the directory · {pending.length} invite
           {pending.length === 1 ? '' : 's'} waiting
         </p>
@@ -108,7 +110,7 @@ export default function AdminPage() {
               }}
               aria-pressed={tab === value}
               className={cn(
-                'rounded-full px-3.5 py-[7px] font-semibold text-[13.5px] capitalize',
+                'rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
                 tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
               )}
             >
@@ -120,13 +122,13 @@ export default function AdminPage() {
 
       <div className="flex-1 overflow-y-auto px-4 py-3.5">
         {error ? (
-          <p className="mb-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[13px] text-destructive leading-[1.45]">
+          <p className="mb-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
             {error}
           </p>
         ) : null}
 
         {loading ? (
-          <p className="py-10 text-center text-[14px] text-grey">Loading the roster…</p>
+          <p className="py-10 text-center text-[0.875rem] text-grey">Loading the roster…</p>
         ) : (
           <div className="mx-auto w-full max-w-[760px]">
             {tab === 'invites' ? (
@@ -156,7 +158,7 @@ export default function AdminPage() {
                     />
                   ))}
                   {invites.length === 0 ? (
-                    <p className="py-6 text-center text-[13px] text-grey">
+                    <p className="py-6 text-center text-[0.8125rem] text-grey">
                       Nobody is on the list yet.
                     </p>
                   ) : null}
@@ -190,7 +192,9 @@ export default function AdminPage() {
                 />
               ))}
               {real.length === 0 ? (
-                <p className="py-6 text-center text-[13px] text-grey">Nobody has joined yet.</p>
+                <p className="py-6 text-center text-[0.8125rem] text-grey">
+                  Nobody has joined yet.
+                </p>
               ) : null}
             </Section>
 
@@ -241,10 +245,10 @@ function Section({
   if (hidden) return null;
   return (
     <>
-      <h2 className="mt-4 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <h2 className="mt-4 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title}
       </h2>
-      <p className="mt-1 mb-2 text-[12px] text-grey leading-[1.45]">{subtitle}</p>
+      <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">{subtitle}</p>
       <div className="overflow-hidden rounded-[14px] border border-line bg-paper">{children}</div>
     </>
   );
@@ -270,16 +274,16 @@ function Row({
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
       <span className="min-w-0 flex-1">
-        <span className="block font-extrabold font-head text-[14.5px]">
+        <span className="block font-extrabold font-head text-[0.90625rem]">
           {member.displayName}
           {member.isAdmin ? (
-            <span className="ml-2 rounded-full bg-gold-lt px-2 py-0.5 font-bold text-[10px] text-gold-dp uppercase tracking-wider">
+            <span className="ml-2 rounded-full bg-gold-lt px-2 py-0.5 font-bold text-[0.625rem] text-gold-dp uppercase tracking-wider">
               Admin
             </span>
           ) : null}
-          {isSelf ? <span className="ml-2 text-[11px] text-grey">you</span> : null}
+          {isSelf ? <span className="ml-2 text-[0.6875rem] text-grey">you</span> : null}
         </span>
-        <span className="mt-0.5 block text-[12px] text-grey">
+        <span className="mt-0.5 block text-[0.75rem] text-grey">
           {member.phone} · {[member.city, member.state].filter(Boolean).join(', ')} ·{' '}
           <span className={cn(member.status !== 'active' && 'font-bold text-destructive')}>
             {member.status}
@@ -326,7 +330,7 @@ function SmallButton({
       type="button"
       {...props}
       className={cn(
-        'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[12px]',
+        'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[0.75rem]',
         destructive ? 'bg-destructive/10 text-destructive' : 'bg-tint text-navy',
       )}
     >
@@ -348,15 +352,15 @@ function InviteRow({
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
       <span className="min-w-0 flex-1">
-        <span className="block font-extrabold font-head text-[14.5px]">
+        <span className="block font-extrabold font-head text-[0.90625rem]">
           {invite.phone}
           {invite.claimableName ? (
-            <span className="ml-2 rounded-full bg-tint px-2 py-0.5 font-bold text-[10px] text-navy">
+            <span className="ml-2 rounded-full bg-tint px-2 py-0.5 font-bold text-[0.625rem] text-navy">
               claims {invite.claimableName}
             </span>
           ) : null}
         </span>
-        <span className="mt-0.5 block text-[12px] text-grey">
+        <span className="mt-0.5 block text-[0.75rem] text-grey">
           {vouchedBy} ·{' '}
           <span
             className={cn(

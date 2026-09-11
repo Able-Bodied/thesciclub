@@ -34,7 +34,7 @@ function ProgressRing({ percent }: { percent: number }) {
           strokeDashoffset={circumference * (1 - percent / 100)}
         />
       </svg>
-      <span className="relative font-extrabold font-head text-[12px] text-navy">{percent}%</span>
+      <span className="relative font-extrabold font-head text-[0.75rem] text-navy">{percent}%</span>
     </span>
   );
 }
@@ -71,17 +71,19 @@ export default function MePage() {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <h1 className="font-extrabold font-head text-[25px] text-ink tracking-[-0.02em]">Me</h1>
+        <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          Me
+        </h1>
       </header>
 
       <div className="mx-auto w-full max-w-[480px] px-4 py-4">
         <div className="rounded-[17px] border border-line bg-paper p-3.5">
-          <p className="text-[12.5px] text-grey">Signed in as</p>
-          <p className="mt-0.5 font-extrabold font-head text-[18px] text-ink">
+          <p className="text-[0.78125rem] text-grey">Signed in as</p>
+          <p className="mt-0.5 font-extrabold font-head text-[1.125rem] text-ink">
             {displayName ?? '—'}
           </p>
           {isAdmin ? (
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gold-lt px-2.5 py-1 font-bold text-[11px] text-gold-dp uppercase tracking-wider">
+            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-gold-lt px-2.5 py-1 font-bold text-[0.6875rem] text-gold-dp uppercase tracking-wider">
               <ShieldCheck className="h-3 w-3" />
               Administrator
             </span>
@@ -94,10 +96,10 @@ export default function MePage() {
         >
           <ProgressRing percent={percent ?? 0} />
           <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[15.5px] text-ink">
+            <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
               {percent === 100 ? 'Profile complete' : 'Complete your profile'}
             </span>
-            <span className="mt-0.5 block text-[12.5px] text-ink2 leading-[1.45]">
+            <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
               {percent === 100
                 ? 'You are searchable on every field members filter by.'
                 : 'The more of it you fill in, the better the club can put you next to the right people.'}
@@ -111,10 +113,10 @@ export default function MePage() {
           className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
         >
           <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[15.5px] text-ink">
+            <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
               Your details
             </span>
-            <span className="mt-0.5 block text-[12.5px] text-ink2 leading-[1.45]">
+            <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
               Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.
             </span>
           </span>
@@ -124,7 +126,7 @@ export default function MePage() {
         {isAdmin ? (
           <Link
             to="/admin"
-            className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[15px] text-navy"
+            className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
           >
             Admin
           </Link>
@@ -135,18 +137,20 @@ export default function MePage() {
             thing to reach with a head pointer or a mouth stick. */}
         <AccessibilitySettings />
 
-        {error ? <p className="mt-4 text-[13px] text-destructive leading-[1.45]">{error}</p> : null}
+        {error ? (
+          <p className="mt-4 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
+        ) : null}
 
         <button
           type="button"
           onClick={leave}
           disabled={busy}
-          className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-tint font-bold font-head text-[15px] text-navy disabled:opacity-50"
+          className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-tint font-bold font-head text-[0.9375rem] text-navy disabled:opacity-50"
         >
           <LogOut className="h-4 w-4" />
           {busy ? 'Signing out…' : 'Sign out'}
         </button>
-        <p className="mt-2 text-center text-[12px] text-grey leading-[1.45]">
+        <p className="mt-2 text-center text-[0.75rem] text-grey leading-[1.45]">
           Your profile stays. Signing back in needs a code sent to your number.
         </p>
       </div>

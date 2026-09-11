@@ -49,7 +49,7 @@ function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () 
       aria-pressed={on}
       onClick={onClick}
       className={cn(
-        'rounded-full px-2.5 py-[5px] font-semibold text-[11.8px] leading-[1.25]',
+        'rounded-full px-2.5 py-[5px] font-semibold text-[0.7375rem] leading-[1.25]',
         on ? 'bg-navy text-white' : 'border border-line text-ink2',
       )}
     >
@@ -61,7 +61,7 @@ function Chip({ label, on, onClick }: { label: string; on: boolean; onClick: () 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <>
-      <h3 className="mt-5 mb-2.5 font-extrabold font-head text-[12px] text-grey uppercase tracking-[0.13em]">
+      <h3 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title}
       </h3>
       <div className="flex flex-wrap gap-1.5">{children}</div>
@@ -116,10 +116,10 @@ export function EventFilterSheet({
         <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line" />
 
         <div className="flex-1 overflow-y-auto px-[18px]">
-          <h2 className="mt-1 font-extrabold font-head text-[21px] tracking-[-0.02em]">
+          <h2 className="mt-1 font-extrabold font-head text-[1.3125rem] tracking-[-0.02em]">
             Filter events
           </h2>
-          <p className="mt-0.5 text-[12.5px] text-grey">
+          <p className="mt-0.5 text-[0.78125rem] text-grey">
             {matchCount} event{matchCount === 1 ? '' : 's'} match right now
           </p>
 
@@ -198,7 +198,7 @@ export function EventFilterSheet({
             </Group>
           ) : null}
 
-          <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[12.6px] text-[#5C4409] leading-[1.5]">
+          <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
             Events come from the organizations’ own calendars. If something is missing, it is
             missing there too.
           </p>
@@ -210,14 +210,14 @@ export function EventFilterSheet({
             type="button"
             onClick={onClear}
             disabled={activeCount === 0}
-            className="flex min-h-[44px] items-center justify-center rounded-xl bg-tint font-bold font-head text-[15px] text-navy disabled:opacity-40"
+            className="flex min-h-[44px] items-center justify-center rounded-xl bg-tint font-bold font-head text-[0.9375rem] text-navy disabled:opacity-40"
           >
             Clear{activeCount ? ` (${activeCount})` : ''}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="flex min-h-[44px] items-center justify-center rounded-xl bg-navy font-bold font-head text-[15px] text-white"
+            className="flex min-h-[44px] items-center justify-center rounded-xl bg-navy font-bold font-head text-[0.9375rem] text-white"
           >
             Show {matchCount}
           </button>

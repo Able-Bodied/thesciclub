@@ -37,7 +37,7 @@ export function AppNav() {
               to={to}
               className={({ isActive }) =>
                 cn(
-                  'relative flex flex-col items-center gap-[3px] rounded-xl pt-[7px] pb-[3px] font-bold text-[10.2px]',
+                  'relative flex flex-col items-center gap-[3px] rounded-xl pt-[7px] pb-[3px] font-bold text-[0.6375rem]',
                   isActive ? 'text-navy' : 'text-grey',
                 )
               }
