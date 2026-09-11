@@ -1,0 +1,18 @@
+{
+  "name": "@thesciclub/event-ingest",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Ingests partner organizations' public calendars into the club's events table.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node ingest.js",
+    "check-feeds": "node ingest.js --dry-run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
+    "cheerio": "^1.2.0"
+  }
+}
