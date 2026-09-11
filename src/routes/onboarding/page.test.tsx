@@ -18,7 +18,7 @@ const calls = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/account', () => ({
-  useAccount: () => ({ status: 'signed-out', userId: null, isAdmin: false }),
+  useAccount: () => ({ status: 'signed-out', userId: null, isAdmin: false, displayName: null }),
 }));
 
 vi.mock('@/lib/supabase', () => ({

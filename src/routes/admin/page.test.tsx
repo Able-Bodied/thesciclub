@@ -80,7 +80,7 @@ function renderAdmin() {
 }
 
 beforeEach(() => {
-  account.current = { status: 'member', userId: 'me', isAdmin: true };
+  account.current = { status: 'member', userId: 'me', isAdmin: true, displayName: 'Test' };
   api.members = [member()];
   api.invites = [];
   api.deleted = [];
@@ -94,13 +94,13 @@ beforeEach(() => {
 
 describe('AdminPage', () => {
   it('sends an ordinary member back to the club rather than showing an empty tool', async () => {
-    account.current = { status: 'member', userId: 'me', isAdmin: false };
+    account.current = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Test' };
     renderAdmin();
     expect(await screen.findByText('The deck')).toBeInTheDocument();
   });
 
   it('sends a signed-out visitor to the welcome screen', async () => {
-    account.current = { status: 'signed-out', userId: null, isAdmin: false };
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: 'Test' };
     renderAdmin();
     expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
   });

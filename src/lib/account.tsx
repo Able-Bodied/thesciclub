@@ -25,6 +25,8 @@ export interface Account {
   userId: string | null;
   /** Read from the member's own row, which RLS already scopes to them. */
   isAdmin: boolean;
+  /** Who you are signed in as. Null until the member row is read. */
+  displayName: string | null;
 }
 
 export function useAccount(): Account {
@@ -32,6 +34,7 @@ export function useAccount(): Account {
     status: 'loading',
     userId: null,
     isAdmin: false,
+    displayName: null,
   });
 
   useEffect(() => {
@@ -41,12 +44,14 @@ export function useAccount(): Account {
 
     async function resolve(userId: string | null) {
       if (!userId) {
-        if (!aborted()) setAccount({ status: 'signed-out', userId: null, isAdmin: false });
+        if (!aborted()) {
+          setAccount({ status: 'signed-out', userId: null, isAdmin: false, displayName: null });
+        }
         return;
       }
       const result = await supabase
         .from('members')
-        .select('id, is_admin')
+        .select('id, is_admin, display_name')
         .eq('id', userId)
         .maybeSingle();
       if (aborted()) return;
@@ -58,6 +63,7 @@ export function useAccount(): Account {
         // selected columns as `any`, and this one decides whether somebody
         // sees the admin tools.
         isAdmin: Boolean(row?.is_admin),
+        displayName: row?.display_name ? String(row.display_name) : null,
       });
     }
 
@@ -76,4 +82,16 @@ export function useAccount(): Account {
   }, []);
 
   return account;
+}
+
+/**
+ * Sign out.
+ *
+ * `useAccount` is subscribed to auth changes, so the app reacts on its own:
+ * the shell's guard sees a signed-out account and sends the person back to the
+ * welcome screen. Nothing here has to navigate.
+ */
+export async function signOut(): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().auth.signOut();
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
