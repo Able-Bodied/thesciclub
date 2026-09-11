@@ -210,7 +210,7 @@ function Row({
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
       ) : (
-        <span className="flex gap-1.5">
+        <span className="flex flex-none gap-1.5">
           {member.status === 'active' ? (
             <SmallButton onClick={onSuspend}>Suspend</SmallButton>
           ) : (
@@ -243,7 +243,7 @@ function SmallButton({
       type="button"
       {...props}
       className={cn(
-        'rounded-full px-3 py-1.5 font-semibold text-[12px]',
+        'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[12px]',
         destructive ? 'bg-destructive/10 text-destructive' : 'bg-tint text-navy',
       )}
     >
