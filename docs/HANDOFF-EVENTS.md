@@ -1,7 +1,21 @@
 # Handoff: build the Events flow
 
-Paste this into a fresh session. It is the whole context needed; you should not
-need to re-read the previous conversation.
+It is the whole context needed; you should not need to re-read the previous
+conversation.
+
+**Start the session in `/home/alfred/projects`**, not inside either repo — the
+work spans two of them:
+
+```
+/home/alfred/projects/
+  thesciclub/            <- the app you are building. All bare paths below are
+                            relative to here.
+  ab-peers-prototype/    <- reference only. Never commit to it.
+```
+
+So `docs/CONTEXT.md` means `thesciclub/docs/CONTEXT.md`, and anything prefixed
+`ab-peers/` means `ab-peers-prototype/`. Every `pnpm` and `supabase` command in
+this brief runs from inside `thesciclub`.
 
 ---
 
