@@ -20,9 +20,23 @@ export default defineConfig({
         background_color: '#F4F6F9',
         display: 'standalone',
         start_url: '/',
+        // The glyph fills the square edge to edge, so it survives the circular
+        // and squircle masks Android and iOS apply — which is exactly why the
+        // full lockup was the wrong choice here. 'any maskable' rather than a
+        // separate padded icon, for the same reason.
         icons: [
-          { src: '/favicon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-          { src: '/favicon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          {
+            src: '/favicon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
+          {
+            src: '/favicon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable',
+          },
         ],
       },
     }),
