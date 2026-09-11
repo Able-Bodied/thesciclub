@@ -1,0 +1,80 @@
+# Keeps the club's calendar current.
+#
+# Events are the one surface where being out of date is the same as being
+# broken: a member who opens Events and sees last month is being told the club
+# has nothing going on. The scrapers were run by hand until now, which is why
+# this exists.
+#
+# WHAT THIS NEEDS BEFORE IT CAN RUN
+#   Two repository secrets, Settings > Secrets and variables > Actions:
+#     SUPABASE_URL                 https://erijdvqnxavwezsbbojv.supabase.co
+#     SUPABASE_SERVICE_ROLE_KEY    the sb_secret_… key
+#
+#   The service role key bypasses RLS completely. It is a secret rather than a
+#   variable, it is never echoed, and it must never be added to the Vite build —
+#   anything prefixed VITE_ is compiled into the bundle and served to everyone.
+#
+#   The feed and organization rows must also exist; they are seeded by
+#   supabase/migrations/20260911220000_seed_event_feeds.sql, so a database that
+#   has had migrations applied is ready.
+
+name: Event ingest
+
+on:
+  schedule:
+    # 08:10 UTC daily — just after 1am Pacific, when both sources are quiet and
+    # a member opening the app over breakfast sees a calendar refreshed hours
+    # ago rather than one refreshed last week. The offset from the hour is
+    # deliberate: GitHub delays jobs scheduled on the hour, when everybody
+    # else's cron fires too.
+    - cron: '10 8 * * *'
+  # So a feed can be re-pulled after a fix without waiting a day.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Scrape and print, write nothing'
+        type: boolean
+        default: false
+
+# A second run overlapping the first would have two writers upserting the same
+# (feed_id, external_id) rows, and Adaptive Rec Hub's crawl delay means a run
+# can last twenty minutes. Queued rather than cancelled: a half-finished ingest
+# leaves some feeds refreshed and others stale.
+concurrency:
+  group: event-ingest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    # Adaptive Rec Hub's robots.txt asks for a 10 second crawl delay and the
+    # sitemap makes detail fetches incremental, so a steady-state run is short
+    # and a first run is long. This is the ceiling, not the expectation.
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # The job needs cheerio and supabase-js; nothing here builds the app.
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Ingest
+        working-directory: jobs/event-ingest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        # The job exits non-zero if any feed failed, so a site that changed its
+        # markup shows up as a red run rather than as a calendar that quietly
+        # stopped growing. It still writes whatever the other feed returned.
+        run: node ingest.js ${{ inputs.dry_run && '--dry-run' || '' }}
