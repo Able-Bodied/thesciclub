@@ -9,7 +9,7 @@ vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
 }));
 
-const { default: MemberDetailPage } = await import('@/routes/peers/member-detail');
+const { default: MemberDetailPage, childrenLabel } = await import('@/routes/peers/member-detail');
 
 const ok = (member: ReturnType<typeof makeMember>): MemberState => ({
   member,
@@ -31,6 +31,27 @@ function renderDetail() {
 
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
+});
+
+describe('childrenLabel', () => {
+  it('says when somebody became a parent', () => {
+    // The point of the row: raising a child you already had and learning to
+    // parent from a chair from the start draw different questions.
+    expect(childrenLabel(true, 'Before')).toBe('Yes — before the injury');
+    expect(childrenLabel(true, 'After')).toBe('Yes — since the injury');
+    expect(childrenLabel(true, 'Both')).toBe('Yes — before and since the injury');
+  });
+
+  it('still says yes when they did not answer the follow-up', () => {
+    expect(childrenLabel(true, null)).toBe('Yes');
+  });
+
+  it('publishes nothing for a no, or for an unanswered question', () => {
+    // Nobody answering a yes/no about their family asked for the negative to
+    // be put on their profile.
+    expect(childrenLabel(false, null)).toBeNull();
+    expect(childrenLabel(null, null)).toBeNull();
+  });
 });
 
 describe('MemberDetailPage', () => {

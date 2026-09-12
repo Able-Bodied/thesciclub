@@ -5,7 +5,7 @@ import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { photoUrlFor } from '@/lib/photos';
 import { gradientFor, initialsOf, shortCodeFor, summaryLine } from '@/routes/peers/member-card';
-import type { BrowseMember } from '@/types/domain';
+import type { BeforeAfter, BrowseMember } from '@/types/domain';
 
 /**
  * One member's full profile — where a tapped card lands.
@@ -18,6 +18,30 @@ import type { BrowseMember } from '@/types/domain';
  * There is no contact action yet. Messaging is not built, and a button that
  * opens nothing is worse than no button.
  */
+
+/**
+ * "Children", for the details card.
+ *
+ * Whether somebody became a parent before or after their injury is the part a
+ * peer is actually reaching for. Raising a child you already had and learning
+ * to parent from a chair from the start are different experiences, and they
+ * draw different questions — so the survey has asked it all along
+ * (`children_when`, Before/After/Both) and no screen showed the answer.
+ *
+ * Only rendered for members who said yes. A row reading "Children: No" is not
+ * the fact this exists to carry, and nobody answering a yes/no about their
+ * family asked for the negative to be published on their profile.
+ */
+export function childrenLabel(
+  hasChildren: boolean | null,
+  when: BeforeAfter | null,
+): string | null {
+  if (hasChildren !== true) return null;
+  if (when === 'Before') return 'Yes — before the injury';
+  if (when === 'After') return 'Yes — since the injury';
+  if (when === 'Both') return 'Yes — before and since the injury';
+  return 'Yes';
+}
 
 /** A labelled row in the details card, skipped entirely when empty. */
 function DetailRow({ label, value }: { label: string; value: string | null }) {
@@ -234,6 +258,10 @@ export default function MemberDetailPage() {
                 <DetailRow label="Work" value={member.employment} />
                 <DetailRow label="Field" value={member.fieldOfWork} />
                 <DetailRow label="Education" value={member.education} />
+                <DetailRow
+                  label="Children"
+                  value={childrenLabel(member.hasChildren, member.childrenWhen)}
+                />
                 <DetailRow
                   label="Languages"
                   value={member.languages.length ? member.languages.join(', ') : null}
