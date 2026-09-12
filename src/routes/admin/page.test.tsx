@@ -215,10 +215,15 @@ describe('what an invite says it is', () => {
     );
   });
 
-  it('calls an invite backing nobody unused', () => {
+  it('reads an invite backing nobody exactly like one never used', () => {
     // The row this was found on. "consumed" claimed somebody used this and is
-    // in the club, when nobody is.
-    expect(inviteState(invite({ status: 'consumed', heldBy: null }))).toBe('unused');
+    // in the club, when nobody is — and a word of its own only raised the
+    // question of what the difference was, when for an administrator there
+    // isn't one: nobody is behind it and it can come off the list.
+    expect(inviteState(invite({ status: 'consumed', heldBy: null }))).toBe('not used yet');
+    expect(inviteState(invite({ status: 'consumed', heldBy: null }))).toBe(
+      inviteState(invite({ status: 'pending' })),
+    );
   });
 
   it('claims nothing about a holder the database does not report', () => {

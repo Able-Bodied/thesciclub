@@ -234,11 +234,14 @@ export function inviteState(invite: AdminInvite): string {
   // The view does not carry a holder. Say what the status says and no more.
   if (invite.heldBy === undefined) return 'used';
 
-  // Used once, and nobody is on the number now. "Unused" rather than an
-  // explanation of what became of them: what an administrator is reading this
-  // column for is whether the number is backing anybody, and it is not.
-  // Deletion revokes as of 20260912000000, so new ones do not land here.
-  if (invite.heldBy === null) return 'unused';
+  // Used once, and nobody is on the number now — which is the same thing an
+  // administrator needs to know about it as a number that was never used at
+  // all: nobody is behind it, and you can take it off the list. It reads the
+  // same because it is the same, and a separate word for it only invited the
+  // question of what the difference was. The row keeps its 'consumed' status
+  // in the database, so the history is not lost, only the distinction that
+  // nobody could act on.
+  if (invite.heldBy === null) return 'not used yet';
 
   if (invite.heldByStatus === 'removed') return `used by ${invite.heldBy}, who was removed`;
   if (invite.heldByStatus === 'suspended') return `used by ${invite.heldBy}, suspended`;

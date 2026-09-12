@@ -147,7 +147,7 @@ export default function AdminPage() {
 
                 <Section
                   title="The list"
-                  subtitle="Pending invites can be revoked; used ones cannot."
+                  subtitle="A number nobody is on can be taken off the list."
                 >
                   {invites.map((invite) => (
                     <InviteRow
