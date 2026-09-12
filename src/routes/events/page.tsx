@@ -57,6 +57,7 @@ import {
 const SEGMENTS: [EventsSegment, string][] = [
   ['upcoming', 'Upcoming'],
   ['going', "I'm going"],
+  ['interested', 'Interested'],
   ['sport', 'Adaptive sport'],
   ['online', 'Online'],
   ['orgs', 'Organizations'],
@@ -269,6 +270,18 @@ function EmptyList({ segment }: { segment: EventsSegment }) {
         You have not said you are going to anything yet.
         <br />
         Events you say yes to show up here.
+      </p>
+    );
+  }
+  if (segment === 'interested') {
+    // Its own sentence rather than "nothing matches that": an empty Interested
+    // is not a filter that found nothing, it is a question nobody has answered
+    // yet, and the two read very differently to somebody new.
+    return (
+      <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
+        Nothing marked interested yet.
+        <br />
+        Tap Interested on an event to keep it here while you decide.
       </p>
     );
   }

@@ -249,3 +249,30 @@ describe('toggleFilter', () => {
     expect(before.cities).toEqual(['San Jose']);
   });
 });
+
+describe('the interested segment', () => {
+  const said = viewer({
+    rsvps: new Map<string, 'interested' | 'going'>([
+      ['a', 'interested'],
+      ['b', 'going'],
+    ]),
+  });
+
+  it('lists what the viewer marked interested, and nothing else', () => {
+    const events = [makeEvent({ id: 'a' }), makeEvent({ id: 'b' }), makeEvent({ id: 'c' })];
+    expect(filterEvents(events, EMPTY_EVENT_FILTERS, 'interested', said).map((e) => e.id)).toEqual([
+      'a',
+    ]);
+  });
+
+  it('ignores the date window, like "I am going" does', () => {
+    // Somebody checking what they were weighing up means all of it. A list
+    // that dropped next month's trip because the window says "this week" is
+    // answering a question they did not ask.
+    const now = new Date('2026-09-11T12:00:00Z');
+    const nextYear = makeEvent({ id: 'a', startTime: '2027-09-11T17:00:00Z' });
+    expect(
+      filterEvents([nextYear], { ...EMPTY_EVENT_FILTERS, when: 'next7' }, 'interested', said, now),
+    ).toHaveLength(1);
+  });
+});

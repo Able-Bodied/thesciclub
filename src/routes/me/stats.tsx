@@ -20,11 +20,9 @@ import { Link } from 'react-router-dom';
  * So the row carries what is real, which is both halves of an RSVP. They also
  * go somewhere, which is more use than a number nobody can act on.
  *
- * Going lands on the segment of the same name. Interested has no segment to
- * land on — the events row offers Upcoming, I'm going, Adaptive sport, Online
- * and Organizations — so it opens the list unfiltered rather than pretending.
- * Both tiles pointed at the unfiltered list until now, including the one that
- * had somewhere better to be.
+ * Each lands on the events segment of the same name. Interested had no segment
+ * to land on for a while and opened the list unfiltered; it has one now, which
+ * is the other half of the same pair.
  */
 
 export interface MeStatsProps {
@@ -52,7 +50,7 @@ export function MeStats({ going, interested }: MeStatsProps) {
   return (
     <div className="flex gap-2.5">
       <Stat value={going} label="Going" to="/events?segment=going" />
-      <Stat value={interested} label="Interested" to="/events" />
+      <Stat value={interested} label="Interested" to="/events?segment=interested" />
     </div>
   );
 }

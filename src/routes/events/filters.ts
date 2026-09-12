@@ -109,10 +109,17 @@ export function isSport(event: ClubEvent): boolean {
   return event.tags.some((tag) => tag.categorySlug === 'sport');
 }
 
+/** The segments that list the viewer's own answers rather than a slice of the feed. */
+function isRsvpSegment(segment: EventsSegment): boolean {
+  return segment === 'going' || segment === 'interested';
+}
+
 function matchesSegment(event: ClubEvent, segment: EventsSegment, viewer: ViewerEventState) {
   switch (segment) {
     case 'going':
       return viewer.rsvps.get(event.id) === 'going';
+    case 'interested':
+      return viewer.rsvps.get(event.id) === 'interested';
     case 'sport':
       return isSport(event);
     case 'online':
@@ -142,11 +149,12 @@ export function filterEvents(
   now: Date = new Date(),
 ): ClubEvent[] {
   const kept = events.filter((event) => {
-    // The "I'm going" segment deliberately ignores the date window. Somebody
-    // checking what they have committed to means all of it, and a list that
-    // silently dropped next month's trip because the window says "this week"
-    // would be answering a question they did not ask.
-    if (segment !== 'going' && !inDateWindow(event, filters.when, now)) return false;
+    // The two RSVP segments deliberately ignore the date window. Somebody
+    // checking what they have committed to, or what they were weighing up,
+    // means all of it — and a list that silently dropped next month's trip
+    // because the window says "this week" would be answering a question they
+    // did not ask.
+    if (!isRsvpSegment(segment) && !inDateWindow(event, filters.when, now)) return false;
     if (!matchesSegment(event, segment, viewer)) return false;
 
     if (filters.formats.length > 0) {
@@ -166,7 +174,7 @@ export function filterEvents(
     return true;
   });
 
-  const ascending = segment === 'going' ? true : ascendingByDate(filters.when);
+  const ascending = isRsvpSegment(segment) ? true : ascendingByDate(filters.when);
   return kept.sort((a, b) =>
     ascending ? a.startTime.localeCompare(b.startTime) : b.startTime.localeCompare(a.startTime),
   );

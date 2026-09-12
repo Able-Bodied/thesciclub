@@ -476,7 +476,14 @@ export interface EventAttendee {
 }
 
 /** The segment pills across the top of the Events tab, from the mock's `evPage()`. */
-export const EVENTS_SEGMENTS = ['upcoming', 'going', 'sport', 'online', 'orgs'] as const;
+export const EVENTS_SEGMENTS = [
+  'upcoming',
+  'going',
+  'interested',
+  'sport',
+  'online',
+  'orgs',
+] as const;
 export type EventsSegment = (typeof EVENTS_SEGMENTS)[number];
 
 /**
