@@ -142,13 +142,15 @@ export default function MemberDetailPage() {
          * very tall picture cannot push the name off the screen. */}
         {photo ? (
           <div
-            className="relative mt-2 overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+            // Left edge aligned with the name and every section under it. Centred,
+            // the picture floated away from its own text.
+            className="relative mt-2 w-fit max-w-full overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)]"
             style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
           >
             <img
               src={photo}
               alt=""
-              className="mx-auto block h-auto max-h-[56vh] w-full object-contain"
+              className="block h-auto max-h-[56vh] w-auto max-w-full"
               onError={(e) => {
                 e.currentTarget.remove();
               }}
