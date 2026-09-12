@@ -186,12 +186,19 @@ describe('what an invite says it is', () => {
     );
   });
 
-  it('says so when the account that used it is gone', () => {
+  it('calls an invite backing nobody unused', () => {
     // The row this was found on. "consumed" claimed somebody used this and is
     // in the club, when nobody is.
-    expect(inviteState(invite({ status: 'consumed', heldBy: null }))).toBe(
-      'used — that account has since been deleted',
-    );
+    expect(inviteState(invite({ status: 'consumed', heldBy: null }))).toBe('unused');
+  });
+
+  it('claims nothing about a holder the database does not report', () => {
+    // `held_by` arrived in a later migration. An app deployed ahead of its
+    // database printed "that account has since been deleted" against every
+    // used invite, the club's own administrator included, purely because the
+    // column was missing. Absent is not the same as none.
+    const { heldBy: _h, heldByStatus: _s, ...withoutTheColumn } = invite({ status: 'consumed' });
+    expect(inviteState(withoutTheColumn as AdminInvite)).toBe('used');
   });
 
   it('does not present a removed member as a member in good standing', () => {

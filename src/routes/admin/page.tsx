@@ -365,10 +365,11 @@ function InviteRow({
           {vouchedBy} ·{' '}
           <span
             className={cn(
-              invite.status === 'consumed' && invite.heldBy && 'font-bold text-navy',
-              // An invite used by nobody is not a healthy "used". It reads as
-              // the loose end it is rather than as a member who joined.
-              invite.status === 'consumed' && !invite.heldBy && 'text-destructive',
+              invite.status === 'consumed' && invite.heldBy !== null && 'font-bold text-navy',
+              // Used once and backing nobody now. Marked as the loose end it
+              // is — but only when the view actually said so, never because it
+              // did not report a holder at all.
+              invite.status === 'consumed' && invite.heldBy === null && 'text-destructive',
               invite.status === 'revoked' && 'text-destructive',
             )}
           >

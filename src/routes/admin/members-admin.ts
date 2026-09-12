@@ -91,13 +91,20 @@ export interface AdminInvite {
   /** The seeded profile this invite entitles its holder to claim, if any. */
   claimableName: string | null;
   /**
-   * The member on this number, if there still is one.
+   * The member on this number.
    *
-   * Null beside a 'consumed' status is a real state and not a loading gap: the
-   * invite was used and that account has since been deleted.
+   * Three values, and they are three different things. A name is a member who
+   * is here. `null` is "nobody is on this number". `undefined` is "this copy of
+   * the view does not report it" — `held_by` arrived in a later migration, and
+   * a deployment where the app is ahead of the database gets that.
+   *
+   * Keeping the third apart from the second matters: conflating them printed
+   * "that account has since been deleted" against every used invite on a
+   * database that simply had not been migrated yet, including the club's own
+   * administrator.
    */
-  heldBy: string | null;
-  heldByStatus: 'active' | 'suspended' | 'removed' | null;
+  heldBy: string | null | undefined;
+  heldByStatus: 'active' | 'suspended' | 'removed' | null | undefined;
 }
 
 interface AdminInviteRow {
@@ -211,15 +218,28 @@ export async function setMemberType(
 /**
  * What an invite's state is, in English.
  *
- * The status alone was printed raw, which said "consumed" for an invite whose
- * member has since been deleted — somebody used this and is in the club, when
- * nobody is. The list is read by whoever decides who belongs; it should not
- * assert that.
+ * The status alone was printed raw, so a consumed invite whose member has
+ * since been deleted read "consumed" — which asserts that somebody used this
+ * and is in the club, when nobody is. The list is read by whoever decides who
+ * belongs; it should not assert that.
+ *
+ * Nor should it assert the opposite. `heldBy` being absent means this database
+ * does not report holders yet, which is not the same as there being none, and
+ * saying nothing is the honest answer there.
  */
 export function inviteState(invite: AdminInvite): string {
   if (invite.status === 'revoked') return 'revoked';
   if (invite.status === 'pending') return 'not used yet';
-  if (!invite.heldBy) return 'used — that account has since been deleted';
+
+  // The view does not carry a holder. Say what the status says and no more.
+  if (invite.heldBy === undefined) return 'used';
+
+  // Used once, and nobody is on the number now. "Unused" rather than an
+  // explanation of what became of them: what an administrator is reading this
+  // column for is whether the number is backing anybody, and it is not.
+  // Deletion revokes as of 20260912000000, so new ones do not land here.
+  if (invite.heldBy === null) return 'unused';
+
   if (invite.heldByStatus === 'removed') return `used by ${invite.heldBy}, who was removed`;
   if (invite.heldByStatus === 'suspended') return `used by ${invite.heldBy}, suspended`;
   return `used by ${invite.heldBy}`;
