@@ -29,6 +29,9 @@ function AppShell() {
   // monitor — the deck grids into the extra width.
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas lg:max-w-[1180px]">
+      {/* First in the DOM, painted last on a phone and first on a desktop —
+          see the ordering note in app-nav.tsx. */}
+      <AppNav />
       <Routes>
         <Route path="/home" element={<HomePage />} />
         <Route path="/peers" element={<PeersPage />} />
@@ -41,7 +44,6 @@ function AppShell() {
         {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
-      <AppNav />
     </div>
   );
 }
