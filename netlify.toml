@@ -3,6 +3,15 @@
 # The mock stays on GitHub Pages at www.thesciclub.com — that is the public
 # shopfront and this is not. Nothing here touches docs/, so the two are
 # independent: Pages serves docs/, Netlify serves the built app from dist/.
+#
+# ---------------------------------------------------------------------------
+# vercel.json mirrors this file, and the two have to move together
+# ---------------------------------------------------------------------------
+# Vercel serves the same build, so it needs the same SPA rewrite and the same
+# four headers. It is JSON and cannot hold the reasoning, so the reasoning
+# stays here: anything changed below should be changed there in the same
+# commit, or one host will quietly serve the app on different terms from the
+# other. The headers were compared key by key when vercel.json was written.
 
 [build]
   command = "pnpm build"
