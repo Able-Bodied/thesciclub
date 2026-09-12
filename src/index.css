@@ -29,14 +29,23 @@
   --navy-hi: #1a3e70;
   --navy-dp: #0a1d36;
   --gold: #c9a227;
-  --gold-dp: #8a6712;
+  /* On --gold-lt, which is the only thing it is ever drawn on. #8a6712 was
+     4.47:1 there — under AA by three hundredths, on the "Online" badge. */
+  --gold-dp: #886510;
   --gold-lt: #f6edd5;
 
   --canvas: #f4f6f9;
   --paper: #fff;
   --ink: #0f1620;
   --ink2: #455163;
-  --grey: #7c8899;
+  /* 4.88:1 on --paper and 4.51:1 on --canvas. It was #7c8899, which is 3.60:1
+     on white — under AA for text this size, and this is the token the time and
+     place of an event are drawn in. Both grounds have to clear it: grey sits on
+     cards and on the page behind them, and the page is the darker of the two,
+     so measuring against white alone picks a colour that fails in half the
+     places it is used. The club already offers a text-size setting and bigger
+     tap targets; being legible at the default size belongs with them. */
+  --grey: #667283;
   --line: #cbd3de;
   --tint: #e4e9f1;
 
