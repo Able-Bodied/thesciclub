@@ -239,6 +239,19 @@ only invite surface is `/admin`, which ordinary mentors cannot reach.
 This is the largest gap between what the product claims and what a member can
 do.
 
+Every piece it needs is already in the database, which is worth knowing before
+anybody plans a schema change for it. Three policies on `invites` are written
+and tested — `mentors can invite up to two people`, `mentors can see invites
+they sent`, and `mentors can revoke their own pending invites` — so a mentor
+can read, issue and withdraw their own without any new grant. `Me` already
+tells a mentor they have two, in the Invites card; it just has nowhere to send
+them.
+
+The allowance behaves properly now, too: `live_invite_count` counts pending and
+consumed, and deleting a member revokes their invite, so a mentor gets their
+slot back when somebody they brought in leaves. That was not true when this
+entry was written.
+
 ## 3. ~~The blocked screen hardcodes three organizations~~ — already fixed
 
 This was stale when it was written. `blocked.tsx` reads `can_invite` from the
