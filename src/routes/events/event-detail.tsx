@@ -1,4 +1,4 @@
-import { ChevronRight, ExternalLink, MapPin } from 'lucide-react';
+import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
@@ -110,8 +110,10 @@ export default function EventDetailPage() {
             ← {backLabel(location)}
           </button>
 
+          {/* A calendar, because the line is a date. This was a map pin, which
+              says "place" in front of text that says "Friday 11 September". */}
           <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[0.71875rem] uppercase tracking-[0.07em]">
-            <MapPin className="h-[13px] w-[13px]" aria-hidden="true" />
+            <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
             <span>{longWhen(event.startTime, event.timezone)}</span>
           </div>
 
