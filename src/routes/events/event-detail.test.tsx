@@ -113,21 +113,21 @@ describe('EventDetailPage', () => {
   describe('RSVP', () => {
     it('records going', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: "I'm going" }));
+      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
     });
 
     it('takes it back when pressed again', async () => {
       state.rsvps = new Map([['rugby', 'going']]);
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: "You're going" }));
+      await userEvent.click(screen.getByRole('button', { name: 'Going ✓' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', null);
     });
 
     it('surfaces a failed write', async () => {
       state.setRsvp = vi.fn().mockResolvedValue({ ok: false, error: 'permission denied' });
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: "I'm going" }));
+      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
       expect(await screen.findByText('permission denied')).toBeInTheDocument();
     });
   });

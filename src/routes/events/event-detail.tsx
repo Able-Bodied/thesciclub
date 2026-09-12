@@ -157,7 +157,7 @@ export default function EventDetailPage() {
                 going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
               )}
             >
-              {going ? "You're going" : "I'm going"}
+              {going ? 'Going ✓' : 'Going'}
             </button>
             <button
               type="button"
