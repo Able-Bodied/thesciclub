@@ -93,7 +93,15 @@ export default function ProfileDetailsPage() {
   const photo = photoUrlFor(details?.photoPath ?? null);
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas">
+    // A form, so Enter saves — the same as onboarding. Somebody who learns the
+    // key works there will try it here.
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!saving && !loading && details && isAdult(details.birthDate)) submit();
+      }}
+      className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas"
+    >
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-4 pb-3">
         <button
           type="button"
@@ -311,15 +319,14 @@ export default function ProfileDetailsPage() {
           <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
         ) : null}
         <button
-          type="button"
+          type="submit"
           disabled={saving || loading || !details || !isAdult(details.birthDate)}
-          onClick={submit}
           className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
         </button>
       </footer>
-    </div>
+    </form>
   );
 }
 

@@ -307,3 +307,32 @@ describe('the club is adults only', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 });
+
+describe('the keyboard', () => {
+  it('advances a step on Enter, not only on the button', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    const phone = screen.getByPlaceholderText('(408) 555-0112');
+    await userEvent.type(phone, '4085550112{Enter}');
+    expect(await screen.findByPlaceholderText('000000')).toBeInTheDocument();
+  });
+
+  it('does nothing on Enter when the step is not finished', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    const phone = screen.getByPlaceholderText('(408) 555-0112');
+    await userEvent.type(phone, '408555{Enter}');
+    // Still on the number, and no code was requested.
+    expect(screen.getByPlaceholderText('(408) 555-0112')).toBeInTheDocument();
+    expect(calls.order).toEqual([]);
+  });
+
+  it('does not fire twice when the button itself is used', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByPlaceholderText('000000');
+    expect(calls.order.filter((c) => c === 'signInWithOtp')).toHaveLength(1);
+  });
+});

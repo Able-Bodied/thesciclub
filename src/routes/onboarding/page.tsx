@@ -221,10 +221,22 @@ export default function OnboardingPage() {
   const ready = canAdvance(step, data);
   const previous = back[step];
 
+  /** What finishing this step does. Shared by the button and by Enter. */
+  function advance() {
+    if (!ready || busy || phase === 'submitting') return;
+    if (step === 'phone') return void requestCode();
+    if (step === 'code') return void verifyCode();
+    if (step === 'photo') return void finish();
+    const order: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
+    const next = order[order.indexOf(step) + 1];
+    if (next) setStep(next);
+  }
+
   return (
     <StepFrame
       stepNumber={n}
       totalSteps={COUNTED_STEPS.length}
+      onSubmit={advance}
       onBack={
         previous
           ? () => {
@@ -238,17 +250,7 @@ export default function OnboardingPage() {
             <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
           ) : null}
           {step === 'claim' ? null : (
-            <PrimaryButton
-              disabled={!ready || busy || phase === 'submitting'}
-              onClick={() => {
-                if (step === 'phone') return void requestCode();
-                if (step === 'code') return void verifyCode();
-                if (step === 'photo') return void finish();
-                const order: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
-                const next = order[order.indexOf(step) + 1];
-                if (next) setStep(next);
-              }}
-            >
+            <PrimaryButton disabled={!ready || busy || phase === 'submitting'}>
               {busy || phase === 'submitting' ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : step === 'photo' ? (

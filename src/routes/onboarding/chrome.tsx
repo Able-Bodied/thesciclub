@@ -17,15 +17,32 @@ export function StepFrame({
   onBack,
   children,
   footer,
+  onSubmit,
 }: {
   stepNumber: number | null;
   totalSteps: number;
   onBack?: (() => void) | undefined;
   children: React.ReactNode;
   footer: React.ReactNode;
+  /** Runs when the step is submitted — by the footer button or by Enter. */
+  onSubmit: () => void;
 }) {
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+    /*
+     * A real form, so Enter finishes a step.
+     *
+     * Typing a number and reaching for Enter is what people do, and a wizard
+     * that ignores it makes somebody move their hand to a button for every one
+     * of eight screens. It also tells a phone keyboard to show Go rather than a
+     * newline, which is the same fix in a different place.
+     */
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+      className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas"
+    >
       {stepNumber === null ? (
         <div className="h-11 flex-none" />
       ) : (
@@ -67,7 +84,7 @@ export function StepFrame({
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
         {footer}
       </footer>
-    </div>
+    </form>
   );
 }
 
@@ -105,8 +122,10 @@ export function PrimaryButton({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
+    // Submits the step's form, so the button and Enter take the same path
+    // rather than two that can drift apart.
     <button
-      type="button"
+      type="submit"
       {...props}
       className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] disabled:opacity-40"
     >

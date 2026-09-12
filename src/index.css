@@ -142,6 +142,31 @@
     font-family: var(--head);
     letter-spacing: -0.02em;
   }
+
+  /*
+   * Tailwind 4's reset sets buttons to `cursor: default`, which is correct to
+   * the HTML spec and wrong for this app — almost every control here is a
+   * button, and a page where nothing indicates it can be clicked reads as
+   * inert. Restored for everything that actually does something, including the
+   * labels that wrap a hidden file input.
+   */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  label:has(input[type="file"]),
+  select:not(:disabled),
+  summary,
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
 
 /* ============================================================ accessibility */
