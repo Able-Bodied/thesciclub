@@ -31,7 +31,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-503 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+536 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## Read these first
@@ -89,36 +89,58 @@ do not commit with either failing.**
 
 Roughly in order of how much they matter.
 
-## 1. Event cards show raw scraper output
+## 1. A UI and UX pass has been done — read this before redoing it
 
-`src/routes/events/event-card.tsx` prints `event.location` verbatim. One real
-example: *"Archer Bicycle 431 13th Street Oakland, California, 94607 United
-States"*. It wraps to three lines in the smallest grey text on the card — it
-does not truncate, as an earlier draft of this file claimed — so the noisiest
-events get the tallest cards, which is backwards.
+The event-card location problem that stood here is fixed, along with a batch of
+others found by going through every screen at 430px and 1280px. What follows is
+what changed and, more usefully, what was looked at and deliberately left.
 
-The worse half is quieter. The card builds two lines:
+**Fixed**
 
-    metaLine = host · city
-    whenLine = time · location
+- `src/routes/events/place.ts` reads a feed's location out as a place: the
+  venue name paired with the geocoded city, the country and postcode trimmed,
+  and no more printing the city twice. Longest string 95 → 40 characters. The
+  empty field is answered by format — silent for the 47 online events, "Location
+  on the organizer's page" for the 42 in person or unclassified.
+- `--grey` was #7c8899, which is 3.60:1 on white and under AA for text that
+  size, in 81 places including an event's time and place. It is #667283 and
+  `src/theme-contrast.test.ts` holds the palette there. Both grounds have to
+  clear — grey sits on cards *and* on the page behind them, and the page is
+  darker.
+- `src/routes/peers/topics.ts` groups the free-text topics. 61 distinct strings
+  across 18 members with 53 named by exactly one person, in a sheet that caps
+  at 24; grouped, 29 and 17. Same shape as the event tags in classify.js, and it
+  keeps a member's own words on their own profile.
+- "/" opens Peers. It opened Home, a placeholder whose copy says the working
+  surfaces are elsewhere.
+- The nav is a top bar on a desktop and the Chat tab is no longer raised — the
+  strongest mark in the bar was on the one tab that does nothing.
+- Organizations are ordered by what they are running. 5 of 23 host anything.
+- The club's own account sorts to the end of the Peers deck rather than the top.
+- The survey's Continue follows the questions on a desktop: pinning it put 461
+  measured pixels between the last answer and the button, twelve times over.
+- Smaller: a calendar rather than a map pin in front of the date; one name for
+  the RSVP button; the Going counter goes to the going list; Admin has its own
+  heading rather than sitting under Invites.
 
-`city` is clean and geocoded, `location` is the feed's raw string with the city
-inside it, so **the city prints twice, two lines apart**. Filter to "In person"
-and all three cards above the fold do it: Oakland, San Jose, Santa Cruz. The
-detail view at `event-detail.tsx:122` is worse — it joins `time · location ·
-city`, appending the city to an address already ending in it.
+**Looked at and left, with reasons — do not "fix" these**
 
-Measured across the 124 ingested events: 89 have no location at all, 26 are
-over 45 characters, and only 22 have a geocoded `city`. But **the empty ones
-are not one case**: 47 are online, where blank is correct and the gold badge
-already answers the question, and 42 are in person or unclassified, where it is
-a real gap. All 42 have a `url`. Do not write one empty-state string for both.
-
-A rule that takes the venue name — the fragment before the street number — and
-pairs it with the geocoded city gets the longest string from 95 characters to
-40. It needs a fallback: six events are a bare street address that also failed
-to geocode, and a first attempt at this rendered them as nothing at all, which
-is worse than today. Nothing in `event-card.test.tsx` touches `location`.
+- **Events is one 720px column and each card has space to its right.** Both are
+  deliberate and the reasoning is in `--events-measure` in index.css: a card's
+  title, host and buttons stay within one eye movement and one short pointer
+  movement, which a member driving this with a head pointer or a mouth stick
+  pays for in effort. Measured, four cards start above the fold at 1280×900.
+  A review of this screen first called the space wasted; that was a screenshot
+  read at the wrong scale, and widening the row would have cost exactly the
+  people the measure protects.
+- **The house-rules sentence under Good standing.** CONTEXT.md asks that losing
+  membership stay visible in the product rather than behind a terms link.
+- **Two links on an event detail.** The description's own "REGISTER HERE" and
+  the "Details on their site" button go to different places, and the button
+  already says "Register" when there is a registration URL.
+- **Uneven column heights on `/me`.** Inherent to two columns of unequal
+  content; rebalancing would fight the deliberate placement of the display
+  settings above sign-out.
 
 ## 2. There is no way for a mentor to use their two invites
 
@@ -130,12 +152,14 @@ only invite surface is `/admin`, which ordinary mentors cannot reach.
 This is the largest gap between what the product claims and what a member can
 do.
 
-## 3. The blocked screen hardcodes three organizations
+## 3. ~~The blocked screen hardcodes three organizations~~ — already fixed
 
-`src/routes/onboarding/blocked.tsx` lists NorCal SCI, SCVMC and Wheel with Me
-as literals. The database has `organizations.can_invite` and it is already
-correct. Add a fourth inviting organization and the screen that tells somebody
-how to get in will not mention it.
+This was stale when it was written. `blocked.tsx` reads `can_invite` from the
+database and has since commit 7cd2cd8, which landed *before* this file. The
+file's own header explains that Wheel with Me lost invite rights, which is the
+exact scenario the entry warned about, and the data agrees: only NorCal SCI and
+SCVMC have `can_invite`. Left here rather than deleted, as a reminder to check
+the code before trusting an entry in this list.
 
 ## 4. The survey is linear only
 
