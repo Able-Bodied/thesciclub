@@ -244,3 +244,21 @@ export function inviteState(invite: AdminInvite): string {
   if (invite.heldByStatus === 'suspended') return `used by ${invite.heldBy}, suspended`;
   return `used by ${invite.heldBy}`;
 }
+
+/**
+ * Whether an administrator can take this number off the list.
+ *
+ * A pending invite, always. A used one only when nobody is on the number —
+ * revoking a live member's invite would take their membership away through the
+ * wrong door, and admin_set_member_status is that door. With the member gone
+ * there is no door to use instead, and the row is otherwise unreachable while
+ * still blocking the number from being invited again.
+ *
+ * `undefined` is not `null`: a view that does not report holders cannot tell
+ * us nobody is there, so the button stays hidden rather than offering an
+ * action the database will refuse.
+ */
+export function canRevoke(invite: AdminInvite): boolean {
+  if (invite.status === 'pending') return true;
+  return invite.status === 'consumed' && invite.heldBy === null;
+}

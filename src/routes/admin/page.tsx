@@ -7,6 +7,7 @@ import { InviteForm } from '@/routes/admin/invite-form';
 import {
   type AdminInvite,
   type AdminMember,
+  canRevoke,
   deleteMember,
   fetchAdminMembers,
   fetchInvites,
@@ -365,11 +366,11 @@ function InviteRow({
           {vouchedBy} ·{' '}
           <span
             className={cn(
+              // A member is on it: the healthy case, and the only one worth
+              // weight. An invite backing nobody reads like the rest of the
+              // list rather than like an alarm — it is not a problem, it is a
+              // number somebody can put back on the list.
               invite.status === 'consumed' && invite.heldBy !== null && 'font-bold text-navy',
-              // Used once and backing nobody now. Marked as the loose end it
-              // is — but only when the view actually said so, never because it
-              // did not report a holder at all.
-              invite.status === 'consumed' && invite.heldBy === null && 'text-destructive',
               invite.status === 'revoked' && 'text-destructive',
             )}
           >
@@ -381,7 +382,7 @@ function InviteRow({
 
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
-      ) : invite.status === 'pending' ? (
+      ) : canRevoke(invite) ? (
         <SmallButton
           destructive
           onClick={() => {

@@ -4,7 +4,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import type * as MembersAdmin from '@/routes/admin/members-admin';
-import { type AdminInvite, type AdminMember, inviteState } from '@/routes/admin/members-admin';
+import {
+  type AdminInvite,
+  type AdminMember,
+  canRevoke,
+  inviteState,
+} from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
@@ -179,6 +184,30 @@ describe('AdminPage', () => {
   });
 });
 
+describe('what an invite can have done to it', () => {
+  it('offers revoke on an invite nobody is on', () => {
+    // It read "unused", offered no way to act on it, and the number underneath
+    // could not be invited again while the dead row counted as live.
+    expect(canRevoke(invite({ status: 'consumed', heldBy: null }))).toBe(true);
+  });
+
+  it('does not offer revoke when somebody is on the number', () => {
+    // That would take a membership away through the wrong door.
+    expect(canRevoke(invite({ status: 'consumed', heldBy: 'Bob', heldByStatus: 'active' }))).toBe(
+      false,
+    );
+  });
+
+  it('offers nothing when the database cannot say who holds it', () => {
+    const { heldBy: _h, ...unknownHolder } = invite({ status: 'consumed' });
+    expect(canRevoke(unknownHolder as AdminInvite)).toBe(false);
+  });
+
+  it('always offers revoke on a pending invite', () => {
+    expect(canRevoke(invite({ status: 'pending' }))).toBe(true);
+  });
+});
+
 describe('what an invite says it is', () => {
   it('names the member holding it rather than saying "consumed"', () => {
     expect(inviteState(invite({ status: 'consumed', heldBy: 'Bob', heldByStatus: 'active' }))).toBe(
@@ -264,10 +293,20 @@ describe('the invite list', () => {
     });
   });
 
-  it('offers no revoke on an invite somebody already used', async () => {
-    api.invites = [invite({ status: 'consumed' })];
+  it('offers no revoke on an invite somebody is on', async () => {
+    // Revoking a live member's invite would take their membership away through
+    // the wrong door. admin_set_member_status is that door.
+    api.invites = [invite({ status: 'consumed', heldBy: 'Bob', heldByStatus: 'active' })];
     await openInvites();
     expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument();
+  });
+
+  it('offers revoke on an invite nobody is on', async () => {
+    // There is no member to remove instead, and the dead row keeps the number
+    // off the list until somebody can clear it.
+    api.invites = [invite({ status: 'consumed', heldBy: null })];
+    await openInvites();
+    expect(screen.getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
   });
 
   it('will not add a number until it is complete', async () => {
