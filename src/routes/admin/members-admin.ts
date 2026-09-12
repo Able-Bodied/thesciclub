@@ -90,6 +90,14 @@ export interface AdminInvite {
   invitedByMember: string | null;
   /** The seeded profile this invite entitles its holder to claim, if any. */
   claimableName: string | null;
+  /**
+   * The member on this number, if there still is one.
+   *
+   * Null beside a 'consumed' status is a real state and not a loading gap: the
+   * invite was used and that account has since been deleted.
+   */
+  heldBy: string | null;
+  heldByStatus: 'active' | 'suspended' | 'removed' | null;
 }
 
 interface AdminInviteRow {
@@ -101,6 +109,8 @@ interface AdminInviteRow {
   invited_by_organization: string | null;
   invited_by_member: string | null;
   claimable_name: string | null;
+  held_by: string | null;
+  held_by_status: string | null;
 }
 
 export interface InvitingOrganization {
@@ -135,6 +145,8 @@ export async function fetchInvites(): Promise<
       invitedByOrganization: row.invited_by_organization,
       invitedByMember: row.invited_by_member,
       claimableName: row.claimable_name,
+      heldBy: row.held_by,
+      heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
     })),
   };
 }
@@ -194,4 +206,21 @@ export async function setMemberType(
     new_type: type,
   });
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
+ * What an invite's state is, in English.
+ *
+ * The status alone was printed raw, which said "consumed" for an invite whose
+ * member has since been deleted — somebody used this and is in the club, when
+ * nobody is. The list is read by whoever decides who belongs; it should not
+ * assert that.
+ */
+export function inviteState(invite: AdminInvite): string {
+  if (invite.status === 'revoked') return 'revoked';
+  if (invite.status === 'pending') return 'not used yet';
+  if (!invite.heldBy) return 'used — that account has since been deleted';
+  if (invite.heldByStatus === 'removed') return `used by ${invite.heldBy}, who was removed`;
+  if (invite.heldByStatus === 'suspended') return `used by ${invite.heldBy}, suspended`;
+  return `used by ${invite.heldBy}`;
 }

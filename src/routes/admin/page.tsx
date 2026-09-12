@@ -10,6 +10,7 @@ import {
   deleteMember,
   fetchAdminMembers,
   fetchInvites,
+  inviteState,
   revokeInvite,
   setMemberStatus,
   setMemberType,
@@ -364,11 +365,14 @@ function InviteRow({
           {vouchedBy} ·{' '}
           <span
             className={cn(
-              invite.status === 'consumed' && 'font-bold text-navy',
+              invite.status === 'consumed' && invite.heldBy && 'font-bold text-navy',
+              // An invite used by nobody is not a healthy "used". It reads as
+              // the loose end it is rather than as a member who joined.
+              invite.status === 'consumed' && !invite.heldBy && 'text-destructive',
               invite.status === 'revoked' && 'text-destructive',
             )}
           >
-            {invite.status}
+            {inviteState(invite)}
           </span>
           {invite.note ? ` · ${invite.note}` : ''}
         </span>

@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { Account } from '@/lib/account';
-import type { AdminInvite, AdminMember } from '@/routes/admin/members-admin';
+import type * as MembersAdmin from '@/routes/admin/members-admin';
+import { type AdminInvite, type AdminMember, inviteState } from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
@@ -19,7 +20,11 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
-vi.mock('@/routes/admin/members-admin', () => ({
+// Partial: the network calls are stubbed, but `inviteState` is a pure
+// formatter and the page should be rendering the real one — a stub of it would
+// let this file assert whatever wording it liked.
+vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
+  ...(await importOriginal<typeof MembersAdmin>()),
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
   fetchInvitingOrganizations: () =>
@@ -174,6 +179,33 @@ describe('AdminPage', () => {
   });
 });
 
+describe('what an invite says it is', () => {
+  it('names the member holding it rather than saying "consumed"', () => {
+    expect(inviteState(invite({ status: 'consumed', heldBy: 'Bob', heldByStatus: 'active' }))).toBe(
+      'used by Bob',
+    );
+  });
+
+  it('says so when the account that used it is gone', () => {
+    // The row this was found on. "consumed" claimed somebody used this and is
+    // in the club, when nobody is.
+    expect(inviteState(invite({ status: 'consumed', heldBy: null }))).toBe(
+      'used — that account has since been deleted',
+    );
+  });
+
+  it('does not present a removed member as a member in good standing', () => {
+    expect(
+      inviteState(invite({ status: 'consumed', heldBy: 'Bob', heldByStatus: 'removed' })),
+    ).toBe('used by Bob, who was removed');
+  });
+
+  it('puts the other two states in English too', () => {
+    expect(inviteState(invite({ status: 'pending' }))).toBe('not used yet');
+    expect(inviteState(invite({ status: 'revoked' }))).toBe('revoked');
+  });
+});
+
 const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   id: 'i1',
   phone: '14085551234',
@@ -183,6 +215,8 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   invitedByOrganization: 'NorCal SCI',
   invitedByMember: null,
   claimableName: null,
+  heldBy: null,
+  heldByStatus: null,
   ...o,
 });
 
