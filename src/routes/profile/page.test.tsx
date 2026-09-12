@@ -201,8 +201,11 @@ describe('the profile survey', () => {
       // open set. The club's own seed data has "Being a mom in a wheelchair",
       // which no fixed list would have guessed.
       await goToTopics();
-      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
-      await userEvent.type(screen.getByLabelText(/add your own/i), 'Being a mom in a wheelchair');
+      await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
+      await userEvent.type(
+        screen.getByLabelText(/your own answer/i),
+        'Being a mom in a wheelchair',
+      );
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       const added = await screen.findByRole('button', { name: /being a mom in a wheelchair/i });
@@ -215,8 +218,8 @@ describe('the profile survey', () => {
       // offered option is always there to pick up again, but one of your own
       // exists because you chose it, and an unchosen one is just gone.
       await goToTopics();
-      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
-      await userEvent.type(screen.getByLabelText(/add your own/i), 'Neural implant');
+      await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
+      await userEvent.type(screen.getByLabelText(/your own answer/i), 'Neural implant');
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       await userEvent.click(await screen.findByRole('button', { name: /neural implant/i }));
@@ -225,16 +228,35 @@ describe('the profile survey', () => {
 
     it('does not add a second chip for a different capitalisation', async () => {
       await goToTopics();
-      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
-      await userEvent.type(screen.getByLabelText(/add your own/i), 'pain management');
+      await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
+      await userEvent.type(screen.getByLabelText(/your own answer/i), 'pain management');
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
 
       expect(await screen.findAllByRole('button', { name: /pain management/i })).toHaveLength(1);
     });
 
+    it('offers the box on languages beside the "Other" chip', async () => {
+      // Eight languages in a state that speaks more than two hundred. "Other"
+      // stays — it is a real answer and members have already picked it — but a
+      // member who speaks Punjabi is worth finding by name.
+      renderSurvey();
+      await screen.findByRole('button', { name: 'Skip this one' });
+      await screen.findByText(/what languages do you speak/i);
+
+      expect(screen.getByRole('button', { name: 'Other' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
+      await userEvent.type(screen.getByLabelText(/your own answer/i), 'Punjabi');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      expect(await screen.findByRole('button', { name: /punjabi/i })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
     it('ignores an empty entry', async () => {
       await goToTopics();
-      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
+      await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
       expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
     });
   });

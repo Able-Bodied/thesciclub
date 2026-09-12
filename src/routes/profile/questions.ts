@@ -142,6 +142,11 @@ export const QUESTIONS: Question[] = [
     title: 'What languages do you speak?',
     kind: 'many',
     options: LANGUAGES,
+    // "Other" stays in the list and the box is offered alongside it. The list
+    // is eight languages in a state that speaks more than two hundred, so it
+    // was always a sample — and a member who speaks Punjabi is worth finding
+    // by name, not by a chip that says only "not one of these".
+    allowOther: true,
   },
 
   {

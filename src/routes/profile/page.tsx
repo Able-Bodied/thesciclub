@@ -369,6 +369,10 @@ function QuestionBlock({
               );
             })}
 
+            {/* "Add your own", not "Something else" — the self-care list has
+                an option literally called "Something else", and two controls
+                with one name on the same screen is a coin toss for anybody
+                reading it out. */}
             {question.allowOther && !otherOpen && !atCap ? (
               <button
                 type="button"
@@ -378,7 +382,7 @@ function QuestionBlock({
                 className="inline-flex items-center gap-1.5 rounded-full border border-line border-dashed bg-paper px-3.5 py-2 font-semibold text-[0.84375rem] text-navy"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Something else
+                Add your own
               </button>
             ) : null}
           </div>
@@ -389,7 +393,7 @@ function QuestionBlock({
                   box people retype into. */}
               <input
                 ref={otherInputRef}
-                aria-label={`Add your own — ${question.title}`}
+                aria-label={`Your own answer — ${question.title}`}
                 value={otherDraft}
                 onChange={(e) => {
                   setOtherDraft(e.target.value);
