@@ -77,9 +77,23 @@ describe('filters', () => {
 
   it('matches a topic filter against interests too, since people file things under both', () => {
     const deck = [makeMember({ displayName: 'A', topics: [], interests: ['Adaptive sports'] })];
-    expect(filterMembers(deck, { ...none, topics: ['Adaptive sports'] }, 'everyone')).toHaveLength(
+    // The chip carries the grouped label, because that is what topicsIn offers.
+    expect(filterMembers(deck, { ...none, topics: ['Adaptive sport'] }, 'everyone')).toHaveLength(
       1,
     );
+  });
+
+  it('finds a member who wrote the topic another way', () => {
+    const deck = [
+      makeMember({ displayName: 'Wrote it one way', topics: ['Going back to school'] }),
+      makeMember({ displayName: 'Wrote it another', topics: ['Returning to college'] }),
+      makeMember({ displayName: 'Not interested', topics: ['Cooking'] }),
+    ];
+    expect(
+      filterMembers(deck, { ...none, topics: ['Back to school'] }, 'everyone').map(
+        (m) => m.displayName,
+      ),
+    ).toEqual(['Wrote it one way', 'Wrote it another']);
   });
 
   it('combines filters with AND, not OR', () => {
@@ -138,7 +152,9 @@ describe('option lists', () => {
   it('deduplicates and drops null cities', () => {
     expect(regionsIn(deck)).toEqual(['Cervical']);
     expect(citiesIn(deck)).toEqual(['San Jose']);
-    expect(topicsIn(deck)).toEqual(['Driving', 'Travel']);
+    // Grouped: "Driving" is one of the wordings under the driving group, and
+    // "Travel" is claimed by nothing, so it keeps the member's own word.
+    expect(topicsIn(deck)).toEqual(['Driving and getting about', 'Travel']);
   });
 
   it('counts active filters but not the search box', () => {

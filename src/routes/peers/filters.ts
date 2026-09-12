@@ -13,6 +13,7 @@
  * field we decided in advance was the searchable one.
  */
 
+import { canonicalTopicsOf } from '@/routes/peers/topics';
 import type { BrowseMember, InjuryRegion, MemberFilters, PeersSegment } from '@/types/domain';
 
 /** Cities that count as the South Bay for the "Near me" segment. */
@@ -92,9 +93,16 @@ export function filterMembers(
     }
     // A member matches a topic filter if any selected topic appears in their
     // topics *or* their interests — people file the same thing under both.
+    //
+    // Matched on the grouped form, so "Back to school" finds the member who
+    // wrote "Going back to school" as well. See topics.ts for why that is not
+    // a nicety: the raw strings split six members wanting one conversation
+    // across four chips, none of which found more than two of them.
     if (filters.topics.length) {
-      const theirs = [...member.topics, ...member.interests].map((t) => t.toLowerCase());
-      const hit = filters.topics.some((t) => theirs.some((v) => v.includes(t.toLowerCase())));
+      const theirs = new Set(
+        canonicalTopicsOf([...member.topics, ...member.interests]).map((t) => t.toLowerCase()),
+      );
+      const hit = filters.topics.some((t) => theirs.has(t.toLowerCase()));
       if (!hit) return false;
     }
     return matchesSearch(member, filters.search);
@@ -116,15 +124,21 @@ export function citiesIn(members: BrowseMember[]): string[] {
 /**
  * Topics, most-shared first.
  *
- * 23 members produce well over a hundred distinct topics, most named by exactly
- * one person. Sorting alphabetically buries the ones that would actually narrow
- * a deck under a wall of singletons, so this orders by how many members share a
- * topic and lets the caller cap the list.
+ * Grouped before counting (topics.ts), which is what makes the count mean
+ * anything: the raw strings are free text and 53 of the 61 in the seeded
+ * directory were named by exactly one person, so ordering by frequency was
+ * ordering a list of ones. Grouped, that falls to 17 of 29.
+ *
+ * Sorting alphabetically would bury the topics that actually narrow a deck
+ * under the singletons that remain, so this orders by how many members share
+ * one and lets the caller cap the list.
  */
 export function topicsIn(members: BrowseMember[], limit?: number): string[] {
   const counts = new Map<string, number>();
   for (const member of members) {
-    for (const topic of member.topics) {
+    // Deduplicated per member, so somebody who wrote both "Back to school" and
+    // "Returning to college" counts once toward the group rather than twice.
+    for (const topic of canonicalTopicsOf(member.topics)) {
       counts.set(topic, (counts.get(topic) ?? 0) + 1);
     }
   }
