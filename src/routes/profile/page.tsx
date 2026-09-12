@@ -126,8 +126,12 @@ export default function ProfileSurveyPage() {
     setAnswers((a) => ({ ...a, [key]: value }));
   }
 
+  // Full viewport height on a phone, so the footer is pinned under the thumb.
+  // On a desktop the page grows to its content instead: pinning put 461
+  // measured pixels of empty canvas between the last answer and Continue, and
+  // this flow asks twelve questions in a row.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas">
+    <div className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas lg:h-auto lg:min-h-dvh">
       <div className="flex-none px-[18px] pt-4">
         <div className="flex items-center justify-between">
           <button
@@ -153,7 +157,7 @@ export default function ProfileSurveyPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3">
+      <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">
         <h1 className="font-extrabold font-head text-[1.4375rem] text-ink leading-tight tracking-[-0.02em]">
           {screen.title}
         </h1>
