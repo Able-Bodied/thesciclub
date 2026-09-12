@@ -109,7 +109,7 @@ export default function MemberDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-[760px] px-4 pt-3">
+      <div className="mx-auto w-full max-w-[62rem] px-4 pt-3">
         <div className="flex items-center justify-between">
           <button
             type="button"
@@ -128,140 +128,157 @@ export default function MemberDetailPage() {
           ) : null}
         </div>
 
-        {/* The whole photograph, not a crop of it.
+        {/*
+         * Two columns from `lg`: the picture on the left at a fixed column
+         * width, everything about the person on the right.
          *
-         * The deck crops to a tall card because it is a deck — the frame is
-         * fixed and the face has to be in it. A profile is where somebody
-         * actually looks at the person, so the picture they chose is shown
-         * entire.
-         *
-         * The frame takes the photograph's shape rather than the other way
-         * round. These come from a directory and are every aspect ratio there
-         * is; forcing them into one leaves a landscape shot floating in a
-         * portrait box with a third of the card empty. Height is capped so a
-         * very tall picture cannot push the name off the screen. */}
-        {photo ? (
-          <div
-            // Left edge aligned with the name and every section under it. Centred,
-            // the picture floated away from its own text.
-            className="relative mt-2 w-fit max-w-full overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)]"
-            style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
-          >
-            <img
-              src={photo}
-              alt=""
-              className="block h-auto max-h-[56vh] w-auto max-w-full"
-              onError={(e) => {
-                e.currentTarget.remove();
-              }}
-            />
-          </div>
-        ) : (
-          <div
-            className="relative mt-2 grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)] sm:aspect-[3/2]"
-            style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
-          >
-            <span
-              aria-hidden="true"
-              className="font-extrabold font-head text-[5rem] text-white opacity-[0.13]"
-            >
-              {initialsOf(member.displayName)}
-            </span>
-          </div>
-        )}
-
-        {/* Name and summary sit under the picture rather than over it. With the
-         * photograph uncropped its bottom edge is wherever it falls, so text
-         * laid on top would land on a face as often as on background. */}
-        <h1 className="mt-3.5 font-extrabold font-head text-[1.75rem] text-ink leading-tight tracking-[-0.02em]">
-          {member.displayName}
-        </h1>
-        <p className="mt-1 text-[0.875rem] text-ink2">{summaryLine(member)}</p>
-        {injury ? <p className="mt-0.5 text-[0.78125rem] text-grey">{injury}</p> : null}
-      </div>
-
-      <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
-        {member.topics.length ? (
-          <Section title="Happy to talk about">
-            <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">
-              What {member.displayName} offered to be asked about.
-            </p>
-            <Chips items={member.topics} tone="solid" />
-          </Section>
-        ) : null}
-
-        {member.bio ? (
-          <Section title="Function & living situation">
-            <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.bio}</p>
-          </Section>
-        ) : null}
-
-        {member.howInjured ? (
-          <Section title="How it happened">
-            <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.howInjured}</p>
-          </Section>
-        ) : null}
-
-        {member.interests.length ? (
-          <Section title="Interests">
-            <Chips items={member.interests} tone="outline" />
-          </Section>
-        ) : null}
-
-        {member.selfCare.length ? (
-          <Section title="Uses day to day">
-            <Chips items={member.selfCare} tone="gold" />
-          </Section>
-        ) : null}
-
-        <Section title="Details">
-          <div className="rounded-[17px] border border-line bg-paper px-3.5 py-1">
-            <DetailRow label="Independence" value={member.independence} />
-            <DetailRow label="Work" value={member.employment} />
-            <DetailRow label="Field" value={member.fieldOfWork} />
-            <DetailRow label="Education" value={member.education} />
-            <DetailRow
-              label="Languages"
-              value={member.languages.length ? member.languages.join(', ') : null}
-            />
-            <DetailRow
-              label="Where"
-              value={[member.city, member.state].filter(Boolean).join(', ') || null}
-            />
-          </div>
-        </Section>
-
-        {verifier ? (
-          <Section title="Also a member of">
-            {member.affiliations.map((org) => (
+         * Letting the frame hug the photograph removed the navy bands but made
+         * the page's shape depend on the picture — a portrait left an empty
+         * half-screen beside it, a landscape did not, and every profile looked
+         * like a different design. Fixing the *column* rather than the picture
+         * gives every profile the same shape while still showing each
+         * photograph whole.
+         */}
+        <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-8">
+          <div>
+            {/* The whole photograph, not a crop of it.
+             *
+             * The deck crops to a tall card because it is a deck — the frame is
+             * fixed and the face has to be in it. A profile is where somebody
+             * actually looks at the person, so the picture they chose is shown
+             * entire.
+             *
+             * The frame takes the photograph's shape rather than the other way
+             * round. These come from a directory and are every aspect ratio there
+             * is; forcing them into one leaves a landscape shot floating in a
+             * portrait box with a third of the card empty. Height is capped so a
+             * very tall picture cannot push the name off the screen. */}
+            {photo ? (
               <div
-                key={org}
-                className="mb-2 flex items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
+                // Left edge aligned with the name and every section under it. Centred,
+                // the picture floated away from its own text.
+                className="relative mt-2 w-fit max-w-full overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+                style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
               >
-                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.6875rem] text-white">
-                  {shortCodeFor(org)}
-                </span>
-                <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
+                <img
+                  src={photo}
+                  alt=""
+                  className="block h-auto max-h-[56vh] w-auto max-w-full"
+                  onError={(e) => {
+                    e.currentTarget.remove();
+                  }}
+                />
               </div>
-            ))}
-          </Section>
-        ) : null}
+            ) : (
+              <div
+                className="relative mt-2 grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)] sm:aspect-[3/2]"
+                style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+              >
+                <span
+                  aria-hidden="true"
+                  className="font-extrabold font-head text-[5rem] text-white opacity-[0.13]"
+                >
+                  {initialsOf(member.displayName)}
+                </span>
+              </div>
+            )}
 
-        {/* The provenance sentence is only true of the seeded directory rows.
+            {/* Name and summary sit under the picture rather than over it. With the
+             * photograph uncropped its bottom edge is wherever it falls, so text
+             * laid on top would land on a face as often as on background. */}
+          </div>
+
+          <div className="min-w-0 lg:pt-1">
+            <h1 className="mt-3.5 font-extrabold font-head text-[1.75rem] text-ink leading-tight tracking-[-0.02em] lg:mt-0">
+              {member.displayName}
+            </h1>
+            <p className="mt-1 text-[0.875rem] text-ink2">{summaryLine(member)}</p>
+            {injury ? <p className="mt-0.5 text-[0.78125rem] text-grey">{injury}</p> : null}
+
+            {member.topics.length ? (
+              <Section title="Happy to talk about">
+                <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">
+                  What {member.displayName} offered to be asked about.
+                </p>
+                <Chips items={member.topics} tone="solid" />
+              </Section>
+            ) : null}
+
+            {member.bio ? (
+              <Section title="Function & living situation">
+                <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.bio}</p>
+              </Section>
+            ) : null}
+
+            {member.howInjured ? (
+              <Section title="How it happened">
+                <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.howInjured}</p>
+              </Section>
+            ) : null}
+
+            {member.interests.length ? (
+              <Section title="Interests">
+                <Chips items={member.interests} tone="outline" />
+              </Section>
+            ) : null}
+
+            {member.selfCare.length ? (
+              <Section title="Uses day to day">
+                <Chips items={member.selfCare} tone="gold" />
+              </Section>
+            ) : null}
+
+            <Section title="Details">
+              <div className="rounded-[17px] border border-line bg-paper px-3.5 py-1">
+                <DetailRow label="Independence" value={member.independence} />
+                <DetailRow label="Work" value={member.employment} />
+                <DetailRow label="Field" value={member.fieldOfWork} />
+                <DetailRow label="Education" value={member.education} />
+                <DetailRow
+                  label="Languages"
+                  value={member.languages.length ? member.languages.join(', ') : null}
+                />
+                <DetailRow
+                  label="Where"
+                  value={[member.city, member.state].filter(Boolean).join(', ') || null}
+                />
+              </div>
+            </Section>
+
+            {verifier ? (
+              <Section title="Also a member of">
+                {member.affiliations.map((org) => (
+                  <div
+                    key={org}
+                    className="mb-2 flex items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
+                  >
+                    <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.6875rem] text-white">
+                      {shortCodeFor(org)}
+                    </span>
+                    <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
+                  </div>
+                ))}
+              </Section>
+            ) : null}
+
+            {/* The provenance sentence is only true of the seeded directory rows.
             Somebody who signed up never published anything in a directory, and
             telling them they did is a small lie that undermines every other
             claim on the page. The contact promise applies to everybody, so it
             is the half that always shows. */}
-        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
-          {member.isSeed ? (
-            <>
-              Everything here is what {member.displayName} chose to publish in the NorCal SCI mentor
-              directory.{' '}
-            </>
-          ) : null}
-          The club never shows a phone number, an address or an email — first contact always goes
-          through a message.
+            <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
+              {member.isSeed ? (
+                <>
+                  Everything here is what {member.displayName} chose to publish in the NorCal SCI
+                  mentor directory.{' '}
+                </>
+              ) : null}
+              The club never shows a phone number, an address or an email — first contact always
+              goes through a message.
+            </div>
+          </div>
         </div>
+        <div className="h-6" />
       </div>
     </div>
   );
