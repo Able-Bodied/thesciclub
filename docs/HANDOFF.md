@@ -21,7 +21,7 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~45 commits ahead of `main`, **unpushed** —
+Branch `scaffold-and-peers-deck`, ~109 commits ahead of `main`, **unpushed** —
 the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
 write access. Do not try to push. Do not commit to `main`.
 
@@ -31,8 +31,30 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-536 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+553 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
+
+## The hosted database is ahead of `main`, and three migrations are live on it
+
+This is the thing most likely to catch somebody out, so it is first.
+
+`pnpm exec supabase db push` has been run against the hosted project
+(`erijdvqnxavwezsbbojv`). Everything in `supabase/migrations/` is applied there
+and locally — `pnpm exec supabase migration list` shows nothing pending. That
+includes three migrations written after the branch was last summarised, all of
+which change how invites behave:
+
+- `20260912000000` — deleting a member revokes their invite.
+- `20260912010000` — `admin_invites` reports who holds each number.
+- `20260912020000` — an invite nobody is on can be revoked.
+
+**The code for all three is unpushed, but the database changes are real and
+live.** So the hosted project is running schema that only exists on this
+branch. Do not reset or roll the hosted database back to `main`'s state
+expecting the app to work.
+
+`supabase db push` is safe and was used deliberately; `supabase config push` is
+still the one to never run — see Environment below.
 
 ## Read these first
 
@@ -142,6 +164,71 @@ what changed and, more usefully, what was looked at and deliberately left.
   content; rebalancing would fight the deliberate placement of the display
   settings above sign-out.
 
+## 1b. A second pass, on the profile survey and the invite system
+
+Everything below is done. It is here so the next session does not rediscover
+the reasoning, and because two of the invite items changed behaviour that a
+member can feel.
+
+**The survey and profiles**
+
+- Topics, interests, self-care and languages take an answer in the member's own
+  words: "Add your own" opens a box, and what they type joins the row as one of
+  their answers. The lists were a sample of an open set — every option came off
+  a real directory — and the seeded data already held a neural implant and
+  "being a mom in a wheelchair". Own answers are derived from what is saved,
+  not held in state, so tapping one off removes it rather than leaving it
+  unselected. The button is "Add your own" and not "Something else", which is
+  already an option in the self-care list.
+- "Other" is gone from languages. It recorded only "not one of these", which
+  nobody can be searched by. Anybody who already picked it keeps it: a saved
+  answer missing from the options renders as one of their own, and that is
+  tested.
+- Whether children came before or after the injury now shows on a profile.
+  `children_when` has been asked since the first members migration and nothing
+  ever displayed it. Rendered only for members who said yes — "Children: No" is
+  not the fact it carries.
+- The birthday chip is off the Me hero. Me is the only screen you see of your
+  own, so it told you your own birthday. The date still feeds `ageFrom`.
+- A profile flows past the photograph rather than beside it. The picture is a
+  float at `lg`, so the page takes the whole width once past the bottom of it,
+  instead of leaving 776 measured pixels of empty column. The bordered cards
+  are `flow-root` so they narrow beside the picture rather than sliding under
+  it. Checked against a tall portrait.
+
+**Events**
+
+- There is an Interested segment. It ignores the date window for the same
+  reason "I'm going" does, and the Interested counter on Me finally has
+  somewhere to point.
+
+**The invite system — read this before touching `admin_delete_member`**
+
+Three bugs, all found by running the lifecycle rather than reading it. The
+probe that found them is checked in as `supabase/tests/invite-lifecycle.sql`;
+it runs in one transaction and rolls back.
+
+- **Deleting a member did not keep them out.** Their invite stayed 'consumed',
+  and `has_active_invite` accepts consumed, so they could sign in and recreate
+  their row unasked with a null `invite_id`. The house rules say membership can
+  be lost; it could not be. Deletion revokes now, so it can.
+- **Deleting a mentor holding invites failed outright** — `on delete set null`
+  against a check constraint that demanded exactly one inviter. The check is
+  "never both" now, and the "at least one" half is an insert trigger.
+- **A used invite nobody was on could not be cleared.** `admin_revoke_invite`
+  refused it and advised removing the member instead, which was impossible
+  because the member was gone, while the dead row kept the number off the list.
+  It tests for a member on the number now, not for the invite having been used.
+
+The admin list also says who holds each number rather than printing the raw
+status. An invite nobody is on reads exactly like one never used — same words,
+same weight, same Revoke — because for an administrator there is no difference
+between them. The 'consumed' status stays in the database either way.
+
+One trap worth naming: the holder is joined on `phone`, not on `invite_id`.
+The phone is the club's identity and somebody who rejoined after a deletion has
+a null `invite_id`, so an id join reports them missing while they sit there.
+
 ## 2. There is no way for a mentor to use their two invites
 
 `docs/CONTEXT.md` says a mentor can put two numbers on the club's list, and the
@@ -183,8 +270,11 @@ silently does nothing is worse than a sentence explaining where things stand.
 
 ## Smaller things noticed but not fixed
 
-- Peers filter sheet caps topics at 24 by frequency; there is no search box, so
-  a rarer topic cannot be reached.
+- Peers filter sheet still caps topics at 24 by frequency and has no search
+  box. It matters much less than it did: `src/routes/peers/topics.ts` groups
+  the free text first, so the list is 29 entries rather than 61 and the ones
+  that narrow a deck are at the top. A rare one-person topic is still
+  unreachable.
 - The deck crops photos at a fixed `object-[50%_28%]`. It suits all 23 seeded
   photographs — verified, every face is in frame — but an uploaded photo with
   an unusual composition could crop badly. No fix needed yet; know it exists.
@@ -226,6 +316,10 @@ whether it is Zoom or a gym. Do not add a rule that invents an answer.
 **Pending: the hosted rows still hold the old nulls.** The classifier runs at
 ingest, so `.github/workflows/event-ingest.yml` has to run before any of this
 reaches the app. That writes to the live database and was left for the owner.
+
+Still true as of the latest check: 124 events on the hosted project, 39 of them
+with a null format. Unlike the invite migrations, this one has *not* been run —
+`supabase db push` moves schema, not feed data.
 
 # Hosting on Netlify
 
