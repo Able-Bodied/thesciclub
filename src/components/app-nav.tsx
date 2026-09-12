@@ -44,10 +44,14 @@ export function AppNav() {
             >
               {({ isActive }) => (
                 <>
+                  {/* Every item gets the same row height, so the five labels
+                      sit on one line. Chat keeps a badge behind its icon — the
+                      mock's raised middle button, minus the raise, which needed
+                      a taller bar than this one to look deliberate rather than
+                      like it had not fitted. */}
                   <span
                     className={cn(
-                      middle &&
-                        '-mt-2.5 grid h-[36px] w-[36px] place-items-center rounded-[13px] shadow-[0_3px_10px_rgba(16,42,76,.14)]',
+                      'grid h-7 w-7 place-items-center rounded-[10px]',
                       middle && (isActive ? 'bg-navy text-paper' : 'bg-tint'),
                     )}
                   >
