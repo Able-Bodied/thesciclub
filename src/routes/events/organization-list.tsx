@@ -23,7 +23,28 @@ import type { ClubEvent, Organization } from '@/types/domain';
  *
  * The event count stays, because "101 on the calendar" is what tells somebody
  * which of these is actually running things.
+ *
+ * ---------------------------------------------------------------------------
+ * Ordered by that count, not by name
+ * ---------------------------------------------------------------------------
+ * Alphabetical put Ability360 — Phoenix, nothing on the calendar — at the top
+ * and NorCal SCI, which is running 101 of the 124 events, seven rows down.
+ * Only 5 of the 23 organizations host anything at all, and many of the rest are
+ * nowhere near a member: Portland, Atlanta, Chicago, Short Hills.
+ *
+ * So the list opens with the ones a member can actually turn up to, and the
+ * directory of bodies worth knowing about follows, alphabetically among
+ * themselves. This is ordering, not the sectioning that was tried and reverted
+ * above — there are no headings, and nothing is promoted to a category.
  */
+
+/** Busiest first, then alphabetical among the equally quiet. */
+export function byCalendarActivity(
+  counts: Map<string, number>,
+): (a: Organization, b: Organization) => number {
+  return (a, b) =>
+    (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.name.localeCompare(b.name);
+}
 
 function OrganizationRow({
   organization,
@@ -88,7 +109,7 @@ export function OrganizationList({
 
   return (
     <>
-      {organizations.map((organization) => (
+      {[...organizations].sort(byCalendarActivity(counts)).map((organization) => (
         <OrganizationRow
           key={organization.id}
           organization={organization}
