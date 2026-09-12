@@ -12,6 +12,29 @@ import { EMPTY_MEMBER_FILTERS } from '@/types/domain';
 
 const none = EMPTY_MEMBER_FILTERS;
 
+describe("the club's own account", () => {
+  it('sorts last, not first', () => {
+    // It used to arrive first by accident — the query orders by display_name
+    // and the account is called "Admin" — so the deck opened on a full-height
+    // card for the one member who is not a peer.
+    const deck = [
+      makeMember({ displayName: 'Admin', isAdmin: true }),
+      makeMember({ displayName: 'Bea' }),
+      makeMember({ displayName: 'Cal' }),
+    ];
+    expect(filterMembers(deck, none, 'everyone').map((m) => m.displayName)).toEqual([
+      'Bea',
+      'Cal',
+      'Admin',
+    ]);
+  });
+
+  it('is still in the deck, because it is how you reach the club', () => {
+    const deck = [makeMember({ displayName: 'Admin', isAdmin: true })];
+    expect(filterMembers(deck, none, 'everyone')).toHaveLength(1);
+  });
+});
+
 describe('segments', () => {
   const deck = [
     makeMember({ displayName: 'Mentor', type: 'mentor', city: 'Eureka' }),

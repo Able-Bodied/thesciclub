@@ -64,12 +64,27 @@ function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
   return true;
 }
 
+/**
+ * The club's own account sorts last.
+ *
+ * It arrived first by accident: the query orders by display_name and the
+ * account is called "Admin". That put a full-height card for a non-person at
+ * the top of the deck, so every visit to Peers opened on the one card that is
+ * not a peer and you scrolled past it to reach one.
+ *
+ * Last rather than removed. It is how somebody reaches the club with a problem,
+ * and a deck that never shows it makes that harder to find than it was.
+ */
+function officialLast(a: BrowseMember, b: BrowseMember): number {
+  return Number(a.isAdmin) - Number(b.isAdmin);
+}
+
 export function filterMembers(
   members: BrowseMember[],
   filters: MemberFilters,
   segment: PeersSegment,
 ): BrowseMember[] {
-  return members.filter((member) => {
+  const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
     if (filters.regions.length && !filters.regions.includes(member.region)) return false;
     if (filters.cities.length && (!member.city || !filters.cities.includes(member.city))) {
@@ -84,6 +99,9 @@ export function filterMembers(
     }
     return matchesSearch(member, filters.search);
   });
+
+  // Stable, so everyone else keeps the query's display_name order.
+  return [...kept].sort(officialLast);
 }
 
 /** The distinct values present in a deck, for building the filter sheet's options. */
