@@ -21,7 +21,7 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~112 commits ahead of `main`, **unpushed** —
+Branch `scaffold-and-peers-deck`, ~115 commits ahead of `main`, **unpushed** —
 the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
 write access. Do not try to push. Do not commit to `main`.
 
@@ -31,7 +31,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-553 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+555 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -211,6 +211,31 @@ member can feel.
   not the fact it carries.
 - The birthday chip is off the Me hero. Me is the only screen you see of your
   own, so it told you your own birthday. The date still feeds `ageFrom`.
+- **Peers no longer lists the person reading it**, and the count under the
+  deck no longer counts them. Nobody had decided it did: `browse_members`
+  filters on `show_in_browse` and `status` and never excluded `auth.uid()`, and
+  the client did not either. The deck answers "who could I talk to", and you
+  are not one of them.
+
+  The exclusion is `othersOnly` in `src/routes/peers/filters.ts`, applied in
+  the page — **not** in `browse_members`, and that placement is the point. The
+  view also backs `/peers/:id`, so dropping yourself from it would take your
+  own profile with it.
+- **Me links to your own card**, at `/peers/<your id>`, under "How you look to
+  other members". The survey exists to shape what other members see and the
+  only feedback on it was a percentage; a ring saying 62% does not tell you
+  that your photograph crops badly. It renders through the ordinary profile
+  page — no new screen — and it is the only route to that page now the deck
+  excludes you.
+
+  Its back button reads where it goes. It has always been `navigate(-1)`, so
+  arriving from Me it returned to Me while saying "Peers"; `backFrom(state)` in
+  `member-detail.tsx` takes a `{ from: 'me' }` on the link. Both the ordinary
+  profile and the official-account variant use it.
+
+  Signed in as **Admin** you see neither yourself nor the club's official card,
+  because they are the same row. Every other member still gets the official
+  card at the end of their deck, which is how they reach the club.
 - A profile flows past the photograph rather than beside it. The picture is a
   float at `lg`, so the page takes the whole width once past the bottom of it,
   instead of leaving 776 measured pixels of empty column. The bordered cards
