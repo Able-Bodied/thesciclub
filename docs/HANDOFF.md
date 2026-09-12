@@ -31,7 +31,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-497 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+503 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## Read these first
@@ -93,12 +93,32 @@ Roughly in order of how much they matter.
 
 `src/routes/events/event-card.tsx` prints `event.location` verbatim. One real
 example: *"Archer Bicycle 431 13th Street Oakland, California, 94607 United
-States"* — which truncates mid-word at the fold on a phone.
+States"*. It wraps to three lines in the smallest grey text on the card — it
+does not truncate, as an earlier draft of this file claimed — so the noisiest
+events get the tallest cards, which is backwards.
 
-Measured across the 124 ingested events: **89 have no location at all**, 26 are
-over 45 characters, and only 22 have a geocoded `city`. So the fix is not just
-trimming — it has to read well when the field is empty, which is the common
-case.
+The worse half is quieter. The card builds two lines:
+
+    metaLine = host · city
+    whenLine = time · location
+
+`city` is clean and geocoded, `location` is the feed's raw string with the city
+inside it, so **the city prints twice, two lines apart**. Filter to "In person"
+and all three cards above the fold do it: Oakland, San Jose, Santa Cruz. The
+detail view at `event-detail.tsx:122` is worse — it joins `time · location ·
+city`, appending the city to an address already ending in it.
+
+Measured across the 124 ingested events: 89 have no location at all, 26 are
+over 45 characters, and only 22 have a geocoded `city`. But **the empty ones
+are not one case**: 47 are online, where blank is correct and the gold badge
+already answers the question, and 42 are in person or unclassified, where it is
+a real gap. All 42 have a `url`. Do not write one empty-state string for both.
+
+A rule that takes the venue name — the fragment before the street number — and
+pairs it with the geocoded city gets the longest string from 95 characters to
+40. It needs a fallback: six events are a bare street address that also failed
+to geocode, and a first attempt at this rendered them as nothing at all, which
+is worse than today. Nothing in `event-card.test.tsx` touches `location`.
 
 ## 2. There is no way for a mentor to use their two invites
 
@@ -151,6 +171,37 @@ silently does nothing is worse than a sentence explaining where things stand.
   is correct, and makes the route nearly dead weight.
 
 ---
+
+# The event format classifier, and one pending re-ingest
+
+`jobs/event-ingest/classify.js` decides `event_format` from what the feed
+wrote. Null is a deliberate fourth answer meaning "the feed did not say", and
+`filters.ts:149` excludes null from every format chip — so an event the
+classifier could not place never appears under "In person". That trade is
+documented in the migration header and in `classify.js`, and it is the right
+way round: the costly mistake is calling a Zoom event in person, which sends
+somebody on a journey to nothing.
+
+Thirty-nine events were null, and they are five distinct events repeating.
+Two rules were added for ten of them:
+
+- `ONLINE_IN_COPY` now allows one word between "virtual"/"online" and the
+  gathering noun. It was adjacent-only, so "this virtual *annual* event" —
+  NorCal SCI's Inspire 2026 — matched nothing.
+- The prose is now read for evidence of a *place*, not only of a screen: a
+  vocabulary of interior spaces ("2nd floor meeting room", "cafeteria") and
+  the value of a "Where:" line, guarded so "Where: Online" is not a place.
+
+Re-classifying all 124 live rows moves exactly those 10 and leaves 114
+untouched.
+
+**The remaining 29 are correct and should stay null.** They are all "Staying
+Driven Wheelchair Fitness", and NorCal SCI's own page for it never says
+whether it is Zoom or a gym. Do not add a rule that invents an answer.
+
+**Pending: the hosted rows still hold the old nulls.** The classifier runs at
+ingest, so `.github/workflows/event-ingest.yml` has to run before any of this
+reaches the app. That writes to the live database and was left for the owner.
 
 # Hosting on Netlify
 
