@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Loader2 } from 'lucide-react';
+import { Check, ChevronLeft, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
@@ -234,6 +234,48 @@ function QuestionBlock({
   const selected = Array.isArray(value) ? value : [];
   const atCap = question.max !== undefined && selected.length >= question.max;
 
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [otherDraft, setOtherDraft] = useState('');
+  const otherInputRef = useRef<HTMLInputElement>(null);
+
+  // The box is opened by the member's own tap, so the caret belongs in it —
+  // moved here rather than with autoFocus so it happens on opening and not on
+  // every render, and so a screen reader is told about the box that appeared.
+  useEffect(() => {
+    if (otherOpen) otherInputRef.current?.focus();
+  }, [otherOpen]);
+
+  // Answers this member typed rather than picked. Derived from what is saved,
+  // not remembered in state, so they survive a reload and a walk back through
+  // the survey with Back.
+  //
+  // It follows that tapping one off removes its chip rather than leaving it
+  // unselected, and that is the right way round: an offered option is always
+  // there to pick up again, but one of your own is on the screen because you
+  // chose it, and an unchosen one is just gone.
+  const ownAnswers = selected.filter((answer) => !question.options?.includes(answer));
+
+  function closeOther() {
+    setOtherOpen(false);
+    setOtherDraft('');
+  }
+
+  function addOther() {
+    const entry = otherDraft.trim().replace(/\s+/g, ' ');
+    if (!entry) return;
+
+    // Matched without case, so "back to school" does not become a second chip
+    // beside "Back to school". The first spelling wins; the member can remove
+    // it if they want the other.
+    const already = [...(question.options ?? []), ...selected].find(
+      (existing) => existing.toLowerCase() === entry.toLowerCase(),
+    );
+    const answer = already ?? entry;
+
+    if (!selected.includes(answer)) onChange(toggleMany(selected, answer, question.max));
+    closeOther();
+  }
+
   return (
     <section className="mt-6">
       {solo ? null : (
@@ -299,7 +341,12 @@ function QuestionBlock({
       {question.kind === 'many' ? (
         <>
           <div className="flex flex-wrap gap-2">
-            {question.options?.map((option) => {
+            {/* The offered options, then anything this member typed for
+                themselves. Own answers render after, and identically — once it
+                is chosen it is one of your answers, not a lesser kind. Without
+                this second list a custom answer would be saved and then
+                invisible, with no way to take it back off. */}
+            {[...(question.options ?? []), ...ownAnswers].map((option) => {
               const on = selected.includes(option);
               return (
                 <button
@@ -321,7 +368,52 @@ function QuestionBlock({
                 </button>
               );
             })}
+
+            {question.allowOther && !otherOpen && !atCap ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOtherOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line border-dashed bg-paper px-3.5 py-2 font-semibold text-[0.84375rem] text-navy"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Something else
+              </button>
+            ) : null}
           </div>
+
+          {question.allowOther && otherOpen ? (
+            <div className="mt-2.5 flex gap-2">
+              {/* Enter submits, because a one-line box that ignores Enter is a
+                  box people retype into. */}
+              <input
+                ref={otherInputRef}
+                aria-label={`Add your own — ${question.title}`}
+                value={otherDraft}
+                onChange={(e) => {
+                  setOtherDraft(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addOther();
+                  }
+                  if (e.key === 'Escape') closeOther();
+                }}
+                placeholder="In your own words"
+                className="min-h-[44px] min-w-0 flex-1 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] outline-none focus:border-navy"
+              />
+              <button
+                type="button"
+                onClick={addOther}
+                disabled={!otherDraft.trim()}
+                className="min-h-[44px] flex-none rounded-[13px] bg-navy px-4 font-bold font-head text-[0.875rem] text-paper disabled:opacity-40"
+              >
+                Add
+              </button>
+            </div>
+          ) : null}
           {question.max !== undefined ? (
             <p className="mt-2 text-[0.75rem] text-grey">
               {selected.length} of {question.max} chosen

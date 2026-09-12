@@ -27,6 +27,18 @@ export interface Question {
   placeholder?: string;
   /** Cap on a multi-select, so the choices mean something. */
   max?: number;
+  /**
+   * Whether a multi-select offers "Something else" and a box to type it in.
+   *
+   * On for the three lists that are a sample of an open set rather than the
+   * whole of one. Every option here came off a real directory, which means it
+   * is what twenty-five people happened to write down — the club's own seed
+   * data already contains a suprapubic catheter, a neural implant and "being a
+   * mom in a wheelchair", none of which any fixed list would have guessed.
+   *
+   * Off for closed sets. Adding a language nobody can search on helps nobody.
+   */
+  allowOther?: boolean;
   /** Only asked when this returns true. */
   onlyIf?: (answers: Answers) => boolean;
 }
@@ -154,6 +166,7 @@ export const QUESTIONS: Question[] = [
     title: 'Topics you are happy to talk about',
     kind: 'many',
     options: TOPICS,
+    allowOther: true,
   },
 
   {
@@ -218,6 +231,7 @@ export const QUESTIONS: Question[] = [
     kind: 'many',
     options: INTERESTS,
     max: 3,
+    allowOther: true,
   },
 
   {
@@ -226,6 +240,7 @@ export const QUESTIONS: Question[] = [
     title: 'Self-care devices and procedures',
     kind: 'many',
     options: SELF_CARE,
+    allowOther: true,
   },
 
   {

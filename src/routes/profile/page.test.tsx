@@ -186,4 +186,56 @@ describe('the profile survey', () => {
     expect(await screen.findByText('permission denied')).toBeInTheDocument();
     expect(screen.getByText('About you')).toBeInTheDocument();
   });
+
+  describe('answering in your own words', () => {
+    /** Topics is the fourth screen; three skips lands on it. */
+    async function goToTopics() {
+      renderSurvey();
+      await screen.findByRole('button', { name: 'Skip this one' });
+      await skip(3);
+      await screen.findByText(/happy to talk about/i);
+    }
+
+    it('adds a topic the list does not offer', async () => {
+      // Every option came off a real directory, so the list is a sample of an
+      // open set. The club's own seed data has "Being a mom in a wheelchair",
+      // which no fixed list would have guessed.
+      await goToTopics();
+      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
+      await userEvent.type(screen.getByLabelText(/add your own/i), 'Being a mom in a wheelchair');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      const added = await screen.findByRole('button', { name: /being a mom in a wheelchair/i });
+      expect(added).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('lets a member take their own answer back off, and it goes', async () => {
+      // It would otherwise be saved and then invisible, with no way to undo it.
+      // Tapping it off removes the chip rather than leaving it unselected: an
+      // offered option is always there to pick up again, but one of your own
+      // exists because you chose it, and an unchosen one is just gone.
+      await goToTopics();
+      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
+      await userEvent.type(screen.getByLabelText(/add your own/i), 'Neural implant');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      await userEvent.click(await screen.findByRole('button', { name: /neural implant/i }));
+      expect(screen.queryByRole('button', { name: /neural implant/i })).not.toBeInTheDocument();
+    });
+
+    it('does not add a second chip for a different capitalisation', async () => {
+      await goToTopics();
+      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
+      await userEvent.type(screen.getByLabelText(/add your own/i), 'pain management');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+      expect(await screen.findAllByRole('button', { name: /pain management/i })).toHaveLength(1);
+    });
+
+    it('ignores an empty entry', async () => {
+      await goToTopics();
+      await userEvent.click(screen.getByRole('button', { name: /something else/i }));
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+    });
+  });
 });
