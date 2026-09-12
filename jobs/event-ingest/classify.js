@@ -58,6 +58,35 @@ const ONLINE_VENUE = /\b(zoom|online|virtual|webinar|teams|google meet|livestrea
 const ONLINE_IN_COPY =
   /\b(zoom|google meet|microsoft teams|webex|webinar|livestream|virtually|(online|virtual) (\w+ )?(group|meeting|event|session|class|workshop|support))\b/i;
 
+/**
+ * Copy that names somewhere physical to be.
+ *
+ * The mirror of ONLINE_IN_COPY, and it exists because the prose was only ever
+ * read for evidence of a screen. Nine of NorCal SCI's events say plainly where
+ * the room is and were classified null anyway: the Sacramento and UC Davis
+ * meetups are "in the 2nd floor meeting room" and "in the cafeteria", which is
+ * as positive a statement that there is somewhere to go as a street address.
+ *
+ * This bar is higher than the online one, not lower, because the mistake costs
+ * more. Calling a Zoom event in person sends somebody on a journey to nothing,
+ * so the vocabulary here is interior spaces that cannot exist on a screen — a
+ * cafeteria is somewhere you sit, "venue", "location" and "address" are words
+ * a registration page uses about itself and are deliberately absent.
+ */
+const PLACE_IN_COPY =
+  /\b(meeting room|conference room|community room|cafeteria|auditorium|gymnasium|lobby|classroom|parking lot|\d+(?:st|nd|rd|th) floor)\b/i;
+
+/**
+ * The value of a "Where:" line, for the feeds that write labelled blocks.
+ *
+ * NorCal SCI posts some events as Who/What/When/Where, and a Where naming
+ * anything that is not a platform is the organiser stating a place: "Where: The
+ * Rehabilitation Center (RSVP required)" carries no room word for the rule
+ * above to find. Line-anchored so it takes that line and not the paragraph
+ * after it.
+ */
+const WHERE_LINE = /^\s*where\s*:\s*(.+?)\s*$/im;
+
 /** Copy that says the event is both at a place and on a screen. */
 const HYBRID = /\b(hybrid|in[- ]person (and|or) (online|virtual|zoom)|both in[- ]person)\b/i;
 
@@ -83,7 +112,22 @@ export function classifyFormat({ location = '', title = '', description = '' } =
   if (venue !== '') return ONLINE_VENUE.test(venue) ? 'online' : 'in_person';
 
   // No venue at all, so the prose is the only evidence — and the bar is higher.
-  return ONLINE_IN_COPY.test(copy) ? 'online' : null;
+  // Online is asked first: an event that names both a platform and a room is
+  // reachable from a chair, and ONLINE_IN_COPY is the stricter of the two.
+  if (ONLINE_IN_COPY.test(copy)) return 'online';
+  if (saysPlace(copy)) return 'in_person';
+
+  return null;
+}
+
+/** Whether the prose names somewhere physical, by either of the two rules. */
+function saysPlace(copy) {
+  if (PLACE_IN_COPY.test(copy)) return true;
+
+  // A "Where:" that names a platform is not a place. Bare "online" never
+  // reaches ONLINE_IN_COPY on its own, so this is the guard that catches it.
+  const where = WHERE_LINE.exec(copy);
+  return where !== null && !ONLINE_VENUE.test(where[1]);
 }
 
 /**

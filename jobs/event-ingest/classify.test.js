@@ -91,6 +91,58 @@ describe('classifyFormat', () => {
     ).toBeNull();
   });
 
+  it('reads a named room with no venue as in person', () => {
+    // Real: NorCal SCI's Sacramento meetup, which the location field left
+    // blank. A 2nd floor meeting room is as positive a statement that there is
+    // somewhere to go as a street address would have been.
+    expect(
+      classifyFormat({
+        location: '',
+        title: 'Meet Up, Sacramento Rehab Hospital',
+        description:
+          'Every third Thursday of the month 6:00-7:00pm Sacramento Rehabilitation Hospital, Natomas, and The Lionheart Community hosts a meetup in the 2nd floor meeting room. Light dinner will be provided.',
+      }),
+    ).toBe('in_person');
+  });
+
+  it('reads a "Where:" line naming a place as in person', () => {
+    // Real: NorCal SCI's SCVMC reunion, posted as a Who/What/When/Where block
+    // with no room word anywhere for the vocabulary rule to find.
+    expect(
+      classifyFormat({
+        location: '',
+        title: 'SCVMC Anniversary Party',
+        description:
+          'Who: Former Rehabilitation Center patients and staff\n\nWhen: Saturday, September 26, 2026\n\nWhere: The Rehabilitation Center (RSVP required)',
+      }),
+    ).toBe('in_person');
+  });
+
+  it('does not read a "Where:" naming a platform as in person', () => {
+    // Bare "online" never clears ONLINE_IN_COPY on its own, so without this
+    // guard a "Where: Online" line would be read as somewhere to travel to —
+    // the one mistake the whole rule is shaped to avoid.
+    expect(
+      classifyFormat({
+        location: '',
+        title: 'Peer support group',
+        description: 'When: Tuesdays at 6pm\n\nWhere: Online',
+      }),
+    ).not.toBe('in_person');
+  });
+
+  it('prefers online when the copy names both a platform and a room', () => {
+    // Somebody who can join from a chair should see it as online. The room is
+    // real, but the screen is the reachable door and ONLINE_IN_COPY is stricter.
+    expect(
+      classifyFormat({
+        location: '',
+        title: 'Benefits advice',
+        description: 'We meet in the community room; the online session is also on Zoom.',
+      }),
+    ).toBe('online');
+  });
+
   it('returns null rather than guessing when nothing says', () => {
     // Null is "the feed did not tell us", which is different from "in person".
     // An unconditional default would silently claim the second.
