@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark, ClubWordmark } from '@/components/club-mark';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
@@ -41,6 +41,19 @@ export function childrenLabel(
   if (when === 'After') return 'Yes — since the injury';
   if (when === 'Both') return 'Yes — before and since the injury';
   return 'Yes';
+}
+
+/**
+ * What the back button calls the place it returns to.
+ *
+ * It goes to `navigate(-1)` either way — browser history is the honest answer
+ * to "back" and it always was. The label is the part that can be wrong: Me now
+ * links here so a member can see their own card, and a button reading "Peers"
+ * that lands you on Me is a small lie told on every visit.
+ */
+export function backFrom(state: unknown): string {
+  const from = (state as { from?: unknown } | null)?.from;
+  return from === 'me' ? 'Me' : 'Peers';
 }
 
 /** A labelled row in the details card, skipped entirely when empty. */
@@ -101,6 +114,7 @@ function injuryLine(member: BrowseMember): string | null {
 export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { member, loading, error, signedOut, notFound } = useBrowseMember(id);
 
   if (loading) {
@@ -120,6 +134,7 @@ export default function MemberDetailPage() {
     return (
       <OfficialProfile
         member={member}
+        backLabel={backFrom(location.state)}
         onBack={() => {
           void navigate(-1);
         }}
@@ -143,7 +158,7 @@ export default function MemberDetailPage() {
             className="-ml-1.5 inline-flex items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-navy"
           >
             <ChevronLeft className="h-4 w-4" />
-            Peers
+            {backFrom(location.state)}
           </button>
           {member.type === 'mentor' ? (
             <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
@@ -343,7 +358,15 @@ function Centered({ children }: { children: React.ReactNode }) {
  * official account whose contact button silently does nothing is worse than one
  * that tells you plainly where things stand.
  */
-function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () => void }) {
+function OfficialProfile({
+  member,
+  onBack,
+  backLabel,
+}: {
+  member: BrowseMember;
+  onBack: () => void;
+  backLabel: string;
+}) {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="relative mx-auto w-full max-w-[760px] bg-navy px-[18px] pt-4 pb-7 lg:rounded-b-[28px]">
@@ -354,7 +377,7 @@ function OfficialProfile({ member, onBack }: { member: BrowseMember; onBack: () 
             className="inline-flex items-center gap-1 rounded-full bg-white/10 py-1.5 pr-3 pl-1.5 font-bold text-[0.8125rem] text-white"
           >
             <ChevronLeft className="h-4 w-4" />
-            Peers
+            {backLabel}
           </button>
           <ClubWordmark onDark />
         </div>

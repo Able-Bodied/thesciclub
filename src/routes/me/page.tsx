@@ -149,6 +149,36 @@ export default function MePage() {
               <ChevronRight className="h-5 w-5 flex-none text-grey" />
             </Link>
 
+            {/* The card itself, as the deck draws it.
+             *
+             * The survey exists to shape what other members see, and until now
+             * the only feedback on it was a percentage. A ring saying 62% does
+             * not tell you that your photograph crops badly or that the one
+             * topic you offered reads oddly next to your name.
+             *
+             * Peers no longer lists you, which is what makes this worth having
+             * rather than redundant: the page is otherwise unreachable from
+             * inside the app. `/peers/:id` renders any member, your own row
+             * included — browse_members still carries it, deliberately. */}
+            {userId ? (
+              <Link
+                to={`/peers/${userId}`}
+                state={{ from: 'me' }}
+                className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
+                    How you look to other members
+                  </span>
+                  <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
+                    Your profile exactly as the club sees it. You are not in your own deck, so this
+                    is the only way to it.
+                  </span>
+                </span>
+                <ChevronRight className="h-5 w-5 flex-none text-grey" />
+              </Link>
+            ) : null}
+
             <SectionHeading>Standing</SectionHeading>
             <div className="rounded-[17px] border border-line bg-paper p-3.5">
               <div className="flex items-center gap-2.5">
