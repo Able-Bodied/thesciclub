@@ -197,13 +197,19 @@ export default function MePage() {
               </div>
             </div>
 
+            {/* Its own heading. It sat directly under the Invites card with
+                nothing between them, so the club's admin tools read as part of
+                a section about who may invite whom. */}
             {isAdmin ? (
-              <Link
-                to="/admin"
-                className="mt-2.5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
-              >
-                Admin
-              </Link>
+              <>
+                <SectionHeading>Club tools</SectionHeading>
+                <Link
+                  to="/admin"
+                  className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
+                >
+                  Admin
+                </Link>
+              </>
             ) : null}
 
             {/* Above sign-out deliberately: somebody who cannot read the screen
