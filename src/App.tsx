@@ -57,7 +57,11 @@ export default function App() {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/home" replace />} />
+      {/* Peers, not Home. Home is a placeholder that says so in words
+          (docs/CONTEXT.md), so landing there opened the app on a page whose
+          own copy points at the working surfaces. Peers is the one the club
+          exists for, and it has content from the first sign-in. */}
+      <Route path="/" element={<Navigate to="/peers" replace />} />
       {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
       {/* Outside the shell: onboarding has its own footer and no tab bar. */}
       <Route path="/join" element={<OnboardingPage />} />
