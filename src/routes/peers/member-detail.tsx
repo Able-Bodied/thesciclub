@@ -153,18 +153,21 @@ export default function MemberDetailPage() {
         </div>
 
         {/*
-         * Two columns from `lg`: the picture on the left at a fixed column
-         * width, everything about the person on the right.
+         * From `lg` the picture is floated, not a column: the profile runs
+         * beside it and then takes the whole width once it is past the bottom
+         * of the photograph.
          *
-         * Letting the frame hug the photograph removed the navy bands but made
-         * the page's shape depend on the picture — a portrait left an empty
-         * half-screen beside it, a landscape did not, and every profile looked
-         * like a different design. Fixing the *column* rather than the picture
-         * gives every profile the same shape while still showing each
-         * photograph whole.
+         * It was a two-column grid, which fixed the picture's column at 20rem
+         * and gave the rest of the page the other one. That kept every profile
+         * the same shape — the reason it was built that way, and still worth
+         * having — but the left column ended with the photograph and the page
+         * carried on for another 776 measured pixels beside an empty strip.
+         *
+         * The float keeps the fixed 20rem so the shape is still constant, and
+         * spends the space underneath on the profile instead of on nothing.
          */}
-        <div className="lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-8">
-          <div>
+        <div className="lg:block">
+          <div className="lg:float-left lg:mr-8 lg:mb-3 lg:w-[20rem]">
             {/* The whole photograph, not a crop of it.
              *
              * The deck crops to a tall card because it is a deck — the frame is
@@ -212,7 +215,11 @@ export default function MemberDetailPage() {
              * laid on top would land on a face as often as on background. */}
           </div>
 
-          <div className="min-w-0 lg:pt-1">
+          {/* `contents` at lg so the sections below become siblings of the
+              floated picture and flow past it one at a time. Wrapped in a box
+              of their own they would all sit beside it or all below it, which
+              is the grid this replaced. */}
+          <div className="min-w-0 lg:contents">
             <h1 className="mt-3.5 font-extrabold font-head text-[1.75rem] text-ink leading-tight tracking-[-0.02em] lg:mt-0">
               {member.displayName}
             </h1>
@@ -253,7 +260,11 @@ export default function MemberDetailPage() {
             ) : null}
 
             <Section title="Details">
-              <div className="rounded-[17px] border border-line bg-paper px-3.5 py-1">
+              {/* `flow-root` so the card sits beside the floated picture and
+                  narrows, instead of sliding its border underneath it. A plain
+                  block only wraps its text around a float; a bordered box has
+                  to be told to keep out of the way. */}
+              <div className="flow-root rounded-[17px] border border-line bg-paper px-3.5 py-1">
                 <DetailRow label="Independence" value={member.independence} />
                 <DetailRow label="Work" value={member.employment} />
                 <DetailRow label="Field" value={member.fieldOfWork} />
@@ -278,7 +289,7 @@ export default function MemberDetailPage() {
                 {member.affiliations.map((org) => (
                   <div
                     key={org}
-                    className="mb-2 flex items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
+                    className="mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
                   >
                     <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.6875rem] text-white">
                       {shortCodeFor(org)}
