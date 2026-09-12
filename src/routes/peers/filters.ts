@@ -112,6 +112,25 @@ export function filterMembers(
   return [...kept].sort(officialLast);
 }
 
+/**
+ * Everyone but the person reading.
+ *
+ * The deck answers "who could I talk to", and you are not one of them — every
+ * other card is a conversation that could happen and your own is a dead end.
+ * It skewed the counts too: "25 of 25 members" counted the reader, and in a
+ * club this size a filter down to one city could say three when it means two
+ * other people and you.
+ *
+ * Done here rather than in `browse_members`, deliberately. The view backs
+ * `/peers/:id` as well as the deck, and dropping yourself from it would take
+ * your own profile with it — which is the page Me now links to so you can see
+ * what you are presenting.
+ */
+export function othersOnly(members: BrowseMember[], viewerId: string | null): BrowseMember[] {
+  if (!viewerId) return members;
+  return members.filter((member) => member.id !== viewerId);
+}
+
 /** The distinct values present in a deck, for building the filter sheet's options. */
 export function regionsIn(members: BrowseMember[]): InjuryRegion[] {
   return [...new Set(members.map((m) => m.region))].sort();

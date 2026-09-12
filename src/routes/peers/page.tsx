@@ -2,12 +2,14 @@ import { SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBrowseMembers } from '@/lib/members';
+import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { FilterSheet } from '@/routes/peers/filter-sheet';
 import {
   activeFilterCount,
   citiesIn,
   filterMembers,
+  othersOnly,
   regionsIn,
   topicsIn,
 } from '@/routes/peers/filters';
@@ -40,6 +42,8 @@ const SEGMENTS: [PeersSegment, string][] = [
 export default function PeersPage() {
   const navigate = useNavigate();
   const { members, loading, error, signedOut } = useBrowseMembers();
+  const session = useSession();
+  const memberId = session.status === 'signed-in' ? session.userId : null;
   const [segment, setSegment] = useState<PeersSegment>('everyone');
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_MEMBER_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -51,9 +55,13 @@ export default function PeersPage() {
   // rankMembers keeps the incoming order when the viewer is null.
   const viewer = null;
 
+  // Filtered once, before both the deck and the count below it, so the two
+  // cannot disagree about who is in it.
+  const others = useMemo(() => othersOnly(members, memberId), [members, memberId]);
+
   const visible = useMemo(
-    () => rankMembers(filterMembers(members, filters, segment), viewer),
-    [members, filters, segment],
+    () => rankMembers(filterMembers(others, filters, segment), viewer),
+    [others, filters, segment],
   );
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
@@ -79,7 +87,7 @@ export default function PeersPage() {
   }, []);
 
   const filterCount = activeFilterCount(filters);
-  const totalInSegment = filterMembers(members, EMPTY_MEMBER_FILTERS, segment).length;
+  const totalInSegment = filterMembers(others, EMPTY_MEMBER_FILTERS, segment).length;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">

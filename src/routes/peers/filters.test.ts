@@ -3,6 +3,7 @@ import {
   activeFilterCount,
   citiesIn,
   filterMembers,
+  othersOnly,
   regionsIn,
   toggleFilter,
   topicsIn,
@@ -11,6 +12,24 @@ import { makeMember } from '@/test/factory';
 import { EMPTY_MEMBER_FILTERS } from '@/types/domain';
 
 const none = EMPTY_MEMBER_FILTERS;
+
+describe('othersOnly', () => {
+  const deck = [
+    makeMember({ id: 'me', displayName: 'You' }),
+    makeMember({ id: 'a', displayName: 'Ajay' }),
+  ];
+
+  it('drops the person reading it', () => {
+    // The deck answers "who could I talk to", and the reader is not one of
+    // them. It skewed the count under it too.
+    expect(othersOnly(deck, 'me').map((m) => m.displayName)).toEqual(['Ajay']);
+  });
+
+  it('drops nobody when there is no viewer', () => {
+    // Signed out, or before onboarding has written a member row.
+    expect(othersOnly(deck, null)).toHaveLength(2);
+  });
+});
 
 describe("the club's own account", () => {
   it('sorts last, not first', () => {
