@@ -52,6 +52,32 @@ describe('classifyFormat', () => {
     expect(classifyFormat({ location: '', title: 'Webinar: benefits advice' })).toBe('online');
   });
 
+  it('reads "virtual" through one word to the gathering noun', () => {
+    // Real: NorCal SCI's "Inspire 2026". An adjacent-only rule stopped at
+    // "annual" and left a Zoom event looking like somewhere to travel to.
+    expect(
+      classifyFormat({
+        location: '',
+        title: 'Inspire 2026',
+        description:
+          'Join us for an evening of fun, wonderful stories and learning what NorCal SCI is all about at this virtual annual event.',
+      }),
+    ).toBe('online');
+  });
+
+  it('still requires a gathering noun after the gap', () => {
+    // The gap is one word wide, not a licence to match any later "online".
+    // "register online by Friday" must stay undetermined: Friday is not one of
+    // the nouns, and this is the phrase the whole rule exists to survive.
+    expect(
+      classifyFormat({
+        location: '',
+        title: 'Monthly meet up',
+        description: 'Please register online by Friday for the September outing.',
+      }),
+    ).toBeNull();
+  });
+
   it('does not read a bare "register online" with no venue as an online event', () => {
     // A description is where "please register online" lives. Without a platform
     // named, or "online" attached to a word meaning the gathering itself, this

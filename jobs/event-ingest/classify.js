@@ -44,9 +44,19 @@ const ONLINE_VENUE = /\b(zoom|online|virtual|webinar|teams|google meet|livestrea
  *
  * So this wants a platform named, or "online"/"virtual" attached to a word that
  * means the gathering itself. Bare "online" is not enough.
+ *
+ * One word is allowed between the two, because the feeds put one there and an
+ * adjacent-only rule missed a real event: "Inspire 2026" is described as "this
+ * virtual annual event" and classified as null for want of matching past
+ * "annual". The gathering noun is still required, so "register online by
+ * Friday" is untouched — "Friday" is not one of them.
+ *
+ * Widening this errs in the safe direction. The costly mistake is calling a
+ * screen-only event in person, which sends somebody on a journey to nothing;
+ * reading a marginal case as online never does that.
  */
 const ONLINE_IN_COPY =
-  /\b(zoom|google meet|microsoft teams|webex|webinar|livestream|virtually|(online|virtual) (group|meeting|event|session|class|workshop|support))\b/i;
+  /\b(zoom|google meet|microsoft teams|webex|webinar|livestream|virtually|(online|virtual) (\w+ )?(group|meeting|event|session|class|workshop|support))\b/i;
 
 /** Copy that says the event is both at a place and on a screen. */
 const HYBRID = /\b(hybrid|in[- ]person (and|or) (online|virtual|zoom)|both in[- ]person)\b/i;
