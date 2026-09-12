@@ -10,6 +10,7 @@ import { backLabel, backToEvents } from '@/routes/events/back';
 import { isOnline } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { placeLine } from '@/routes/events/place';
 import { EventDescription } from '@/routes/events/rich-text';
 import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
@@ -119,7 +120,7 @@ export default function EventDetailPage() {
           </h1>
 
           <p className="mt-1.5 text-[#B9CADF] text-[0.8125rem] leading-[1.42]">
-            {[timeRange(event.startTime, event.endTime, event.timezone), event.location, event.city]
+            {[timeRange(event.startTime, event.endTime, event.timezone), placeLine(event)]
               .filter(Boolean)
               .join(' · ')}
           </p>

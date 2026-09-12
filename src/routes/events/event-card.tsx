@@ -3,6 +3,7 @@ import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { isOnline } from '@/routes/events/filters';
 import { dateTileParts, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { placeLine } from '@/routes/events/place';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
 /**
@@ -61,13 +62,13 @@ export function EventCard({
   const interested = status === 'interested';
 
   // The host line: a club organization if it links to one, otherwise the name
-  // the feed gave. Joined from what survives, so an event with neither does not
-  // render a lonely separator.
-  const host = organization?.name ?? event.hostName;
-  const metaLine = [host, event.city].filter(Boolean).join(' · ');
-  const whenLine = [timeRange(event.startTime, event.endTime, event.timezone), event.location]
-    .filter(Boolean)
-    .join(' · ');
+  // the feed gave. The city used to sit here too, and the raw location on the
+  // line below carried its own copy of it — so every card with an address
+  // printed its city twice, a line apart. "Where" is one line now, and the
+  // host has this one to itself.
+  const metaLine = organization?.name ?? event.hostName;
+  const whenLine = timeRange(event.startTime, event.endTime, event.timezone);
+  const whereLine = placeLine(event);
 
   const goingOnly = attendees.filter((a) => a.status === 'going');
 
@@ -129,6 +130,11 @@ export function EventCard({
           {whenLine ? (
             <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.42]">
               {whenLine}
+            </span>
+          ) : null}
+          {whereLine ? (
+            <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.42]">
+              {whereLine}
             </span>
           ) : null}
 
