@@ -27,8 +27,10 @@ export interface Question {
   placeholder?: string;
   /** Cap on a multi-select, so the choices mean something. */
   max?: number;
+  /** What the "add your own" box suggests, when "In your own words" is wrong. */
+  otherPlaceholder?: string;
   /**
-   * Whether a multi-select offers "Something else" and a box to type it in.
+   * Whether a multi-select offers "Add your own" and a box to type it in.
    *
    * On for the three lists that are a sample of an open set rather than the
    * whole of one. Every option here came off a real directory, which means it
@@ -53,7 +55,6 @@ export const LANGUAGES = [
   'Mandarin',
   'Cantonese',
   'ASL',
-  'Other',
 ] as const;
 
 /**
@@ -142,11 +143,15 @@ export const QUESTIONS: Question[] = [
     title: 'What languages do you speak?',
     kind: 'many',
     options: LANGUAGES,
-    // "Other" stays in the list and the box is offered alongside it. The list
-    // is eight languages in a state that speaks more than two hundred, so it
-    // was always a sample — and a member who speaks Punjabi is worth finding
-    // by name, not by a chip that says only "not one of these".
+    // Seven languages in a state that speaks more than two hundred, so the
+    // list was always a sample. "Other" used to sit at the end of it and is
+    // gone: it recorded only "not one of these", which no member can be found
+    // by, and the box that replaced it records the language itself.
+    //
+    // Anybody who already picked "Other" keeps it — a saved answer that is no
+    // longer on the list still renders, as one of their own.
     allowOther: true,
+    otherPlaceholder: 'Punjabi, Hmong, Farsi…',
   },
 
   {
@@ -172,6 +177,7 @@ export const QUESTIONS: Question[] = [
     kind: 'many',
     options: TOPICS,
     allowOther: true,
+    otherPlaceholder: 'In your own words',
   },
 
   {
@@ -237,6 +243,7 @@ export const QUESTIONS: Question[] = [
     options: INTERESTS,
     max: 3,
     allowOther: true,
+    otherPlaceholder: 'In your own words',
   },
 
   {
@@ -246,6 +253,7 @@ export const QUESTIONS: Question[] = [
     kind: 'many',
     options: SELF_CARE,
     allowOther: true,
+    otherPlaceholder: 'In your own words',
   },
 
   {

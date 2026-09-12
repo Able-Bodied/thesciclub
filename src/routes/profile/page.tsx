@@ -405,7 +405,7 @@ function QuestionBlock({
                   }
                   if (e.key === 'Escape') closeOther();
                 }}
-                placeholder="In your own words"
+                placeholder={question.otherPlaceholder ?? 'In your own words'}
                 className="min-h-[44px] min-w-0 flex-1 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] outline-none focus:border-navy"
               />
               <button

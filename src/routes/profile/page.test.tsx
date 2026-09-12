@@ -235,15 +235,14 @@ describe('the profile survey', () => {
       expect(await screen.findAllByRole('button', { name: /pain management/i })).toHaveLength(1);
     });
 
-    it('offers the box on languages beside the "Other" chip', async () => {
-      // Eight languages in a state that speaks more than two hundred. "Other"
-      // stays — it is a real answer and members have already picked it — but a
-      // member who speaks Punjabi is worth finding by name.
+    it('takes a language by name, where "Other" used to be', async () => {
+      // Seven languages in a state that speaks more than two hundred. "Other"
+      // recorded only "not one of these", which nobody can be found by.
       renderSurvey();
       await screen.findByRole('button', { name: 'Skip this one' });
       await screen.findByText(/what languages do you speak/i);
 
-      expect(screen.getByRole('button', { name: 'Other' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Other' })).not.toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
       await userEvent.type(screen.getByLabelText(/your own answer/i), 'Punjabi');
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -251,6 +250,31 @@ describe('the profile survey', () => {
       expect(await screen.findByRole('button', { name: /punjabi/i })).toHaveAttribute(
         'aria-pressed',
         'true',
+      );
+    });
+
+    it('keeps an answer that is no longer on the list', async () => {
+      // "Other" was removed from LANGUAGES. Anybody who had already picked it
+      // still has it saved, and a saved answer missing from the options renders
+      // as one of their own rather than vanishing.
+      api.answers = { languages: ['English', 'Other'] };
+      renderSurvey();
+      await screen.findByRole('button', { name: 'Skip this one' });
+
+      expect(await screen.findByRole('button', { name: 'Other' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    it('suggests a language rather than "in your own words"', async () => {
+      renderSurvey();
+      await screen.findByRole('button', { name: 'Skip this one' });
+      await userEvent.click(screen.getByRole('button', { name: 'Add your own' }));
+
+      expect(screen.getByLabelText(/your own answer/i)).toHaveAttribute(
+        'placeholder',
+        'Punjabi, Hmong, Farsi…',
       );
     });
 
