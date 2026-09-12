@@ -21,7 +21,7 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~109 commits ahead of `main`, **unpushed** —
+Branch `scaffold-and-peers-deck`, ~112 commits ahead of `main`, **unpushed** —
 the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
 write access. Do not try to push. Do not commit to `main`.
 
@@ -76,10 +76,14 @@ still the one to never run — see Environment below.
   This has bitten repeatedly.
 - Comments explain *why*. Several decisions here look wrong without their
   reason attached.
-- **Watch for tests that pass by not running.** This has happened four times:
-  a silent RLS no-op, a subquery that returned nothing, Testing Library
-  renders leaking between tests, and an assertion matching the prose that
-  promised the thing rather than the thing.
+- **Watch for tests that pass by not running.** Six times now: a silent RLS
+  no-op, a subquery that returned nothing, Testing Library renders leaking
+  between tests, an assertion matching the prose that promised the thing rather
+  than the thing, a `vi.mock` of a whole module that would have stubbed the
+  pure function under test and let the test assert its own wording, and a test
+  named for one case whose fixture put it in another — "offers no revoke on an
+  invite somebody already used", with no holder set, was exercising the
+  orphaned invite instead.
 - **Look at what you changed.** `pnpm shoot <route>` writes a PNG; read it.
   Every layout problem in this project was found by eye, never by a test — and
   two were introduced by "fixes" that looked right in isolation. Check a
@@ -92,16 +96,33 @@ still the one to never run — see Environment below.
   Project ref `erijdvqnxavwezsbbojv`.
 - **Storage rejects the new-format secret key in `Authorization`** — it wants
   it as `apikey`.
+- **The Supabase CLI is a devDependency, not a global.** Bare `supabase …`
+  gives `command not found`; every invocation needs `pnpm exec supabase …`.
+  Worth keeping that way: `pnpm exec` runs the version the project pins, and a
+  globally installed CLI drifts from it — `db push` writes to the live
+  database, which is not where a version surprise belongs.
 - Local Supabase: `pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`.
-  After `supabase db reset`, run **`pnpm demo-member`** — a reset drops the auth
-  schema, so the test account loses its member row and every sign-in lands back
-  in onboarding.
-- **Never run `supabase config push`** — `config.toml` holds placeholder local
-  Twilio credentials and would overwrite the hosted project's real ones.
+  After `pnpm exec supabase db reset`, run **`pnpm demo-member`** — a reset
+  drops the auth schema, so the test account loses its member row and every
+  sign-in lands back in onboarding.
+- **Never run `pnpm exec supabase config push`** — `config.toml` holds
+  placeholder local Twilio credentials and would overwrite the hosted project's
+  real ones. `db push` is fine and is how the migrations above got there.
 - Test numbers (fixed OTPs, no SMS): `11111111111`/`111111`,
   `12222222222`/`222222`, `13333333333`/`333333`. `11111111111` is **Admin**.
-- Dev server: `./node_modules/.bin/vite --port 5180 --strictPort`. Screenshots:
-  `SHOOT_BASE=http://localhost:5180 pnpm shoot /peers --both`.
+- Dev server: `pnpm dev` (5173), or
+  `./node_modules/.bin/vite --port 5180 --strictPort` to leave 5173 free for
+  whatever the owner has open. Screenshots:
+  `SHOOT_BASE=http://localhost:5180 pnpm shoot /peers --both` — `pnpm shoot`
+  defaults to 5181, so it nearly always needs SHOOT_BASE.
+- Sharing the dev server through a tunnel: ngrok and cloudflared hostnames are
+  in `server.allowedHosts` in vite.config.ts. Vite refuses a Host header it does
+  not recognise, and that check is load-bearing — it is what stops a page
+  elsewhere pointing a hostname at 127.0.0.1 and reading back whatever this
+  server inlines. Hot reload through a tunnel also needs **`TUNNEL=1 pnpm
+  dev`**: the page loads over 443 but the reload client connects back on
+  `server.port`, which no tunnel exposes, so without it the socket dies and the
+  page quietly stops updating.
 - No host `psql`; use
   `docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine psql …`.
 
@@ -232,9 +253,17 @@ a null `invite_id`, so an id join reports them missing while they sit there.
 ## 2. There is no way for a mentor to use their two invites
 
 `docs/CONTEXT.md` says a mentor can put two numbers on the club's list, and the
-database enforces exactly that: the RLS policy, the two-invite allowance, and
-`live_invite_count()` all exist and are tested. **There is no UI for it.** The
-only invite surface is `/admin`, which ordinary mentors cannot reach.
+database enforces exactly that: the RLS policy, the two-invite allowance and
+`live_invite_count()` all exist. **There is no UI for it.** The only invite
+surface is `/admin`, which ordinary mentors cannot reach.
+
+An earlier draft of this entry said they were "tested". They are not, and it is
+worth being exact about what that means before somebody builds on the claim.
+`live_invite_count` is exercised by `supabase/tests/invite-lifecycle.sql`, but
+that is a probe run by hand, and it writes as the superuser — which bypasses
+RLS entirely. **The insert policy that caps a mentor at two has never been
+exercised by anything that runs.** Whoever builds the screen should prove the
+cap holds for a real mentor session before trusting it.
 
 This is the largest gap between what the product claims and what a member can
 do.
