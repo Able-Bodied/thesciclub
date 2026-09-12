@@ -1,0 +1,36 @@
+# Netlify, for showing the club to one or two people before it is real.
+#
+# The mock stays on GitHub Pages at www.thesciclub.com — that is the public
+# shopfront and this is not. Nothing here touches docs/, so the two are
+# independent: Pages serves docs/, Netlify serves the built app from dist/.
+
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+  # Corepack so the pinned pnpm in package.json is the one that runs.
+  NPM_FLAGS = "--version"
+
+# A single-page app: every path is served by index.html and routed in the
+# browser. Without this, /peers and /join 404 on a refresh or a shared link —
+# they work when you navigate to them and break when you reload, which is the
+# confusing half of the bug.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # index.html already carries a noindex meta. This is the same instruction
+    # in a header, which is what a crawler sees first and what covers the
+    # responses that are not HTML.
+    X-Robots-Tag = "noindex, nofollow"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    # Nothing here needs a camera, a microphone, or a location beyond the one
+    # the location step asks for explicitly.
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(self)"
