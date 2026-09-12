@@ -5,16 +5,25 @@ import { cn } from '@/lib/utils';
 /**
  * The five-tab bottom bar, matching `nav()` in docs/index.html.
  *
- * Chat sits in the middle and is raised, which is the mock's shape — not a
- * statement about Chat's importance. Home and Chat are placeholder surfaces
- * for now (docs/CONTEXT.md); they are in the bar because leaving a hole there
- * would change every other tab's position once they land.
+ * Home and Chat are placeholder surfaces for now (docs/CONTEXT.md); they are
+ * in the bar because leaving a hole there would change every other tab's
+ * position once they land.
+ *
+ * ---------------------------------------------------------------------------
+ * Chat is not raised
+ * ---------------------------------------------------------------------------
+ * The mock gives the middle tab a badge behind its icon and this bar carried
+ * it for a while. It was removed: the badge is the strongest mark in the nav,
+ * and it sat on the one tab that does nothing yet — so the bar pointed hardest
+ * at the only place with nothing to find. The mock drew a finished app.
+ *
+ * It should come back with Chat itself, not before it.
  */
 
 const TABS = [
   { to: '/home', label: 'Home', Icon: HomeIcon },
   { to: '/peers', label: 'Peers', Icon: PeersIcon },
-  { to: '/chat', label: 'Chat', Icon: ChatIcon, middle: true },
+  { to: '/chat', label: 'Chat', Icon: ChatIcon },
   { to: '/events', label: 'Events', Icon: EventsIcon },
   { to: '/me', label: 'Me', Icon: MeIcon },
 ] as const;
@@ -29,8 +38,7 @@ export function AppNav() {
       className="z-40 flex-none border-line border-t bg-paper px-2 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
     >
       <div className="mx-auto grid w-full max-w-[480px] grid-cols-5 gap-0.5">
-        {TABS.map(({ to, label, Icon, ...rest }) => {
-          const middle = 'middle' in rest && rest.middle;
+        {TABS.map(({ to, label, Icon }) => {
           return (
             <NavLink
               key={to}
@@ -45,16 +53,8 @@ export function AppNav() {
               {({ isActive }) => (
                 <>
                   {/* Every item gets the same row height, so the five labels
-                      sit on one line. Chat keeps a badge behind its icon — the
-                      mock's raised middle button, minus the raise, which needed
-                      a taller bar than this one to look deliberate rather than
-                      like it had not fitted. */}
-                  <span
-                    className={cn(
-                      'grid h-7 w-7 place-items-center rounded-[10px]',
-                      middle && (isActive ? 'bg-navy text-paper' : 'bg-tint'),
-                    )}
-                  >
+                      sit on one line. */}
+                  <span className="grid h-7 w-7 place-items-center rounded-[10px]">
                     <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
                   </span>
                   <span>{label}</span>
