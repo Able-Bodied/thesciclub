@@ -94,7 +94,12 @@ function OfficialCard({ member, onOpen }: MemberCardProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="relative flex h-[424px] w-full flex-col items-center justify-center overflow-hidden rounded-[26px] bg-navy px-8 text-center shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+      // Sized to what is on it, not to the photo cards around it. Matching
+      // their 424px left a third of the card empty navy, which read as a
+      // profile somebody had abandoned — the opposite of what a badge saying
+      // "official" is for. `self-start` keeps the grid from stretching it back
+      // out to the row height.
+      className="relative flex w-full flex-col items-center justify-center self-start overflow-hidden rounded-[26px] bg-navy px-8 py-10 text-center shadow-[0_10px_26px_rgba(10,20,35,.18)]"
     >
       <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
         Official
