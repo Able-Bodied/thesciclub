@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { cn } from '@/lib/utils';
 import { InviteForm } from '@/routes/admin/invite-form';
@@ -95,7 +96,8 @@ export default function AdminPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+        <BackLink to="/me" label="Me" />
+        <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
           Admin
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey">

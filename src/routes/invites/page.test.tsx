@@ -92,6 +92,17 @@ describe('who can open it', () => {
   });
 });
 
+describe('getting back out', () => {
+  // Unlisted in the tab bar, so without this the only way back is the Me tab.
+  // A Link rather than history: the label names where it goes, and on a
+  // refresh or a deep link history would leave the app while still saying Me.
+  it('offers a link to Me', async () => {
+    renderInvites();
+    const back = await screen.findByRole('link', { name: 'Me' });
+    expect(back).toHaveAttribute('href', '/me');
+  });
+});
+
 describe('the allowance on screen', () => {
   it('says both are free before a mentor has added anybody', async () => {
     renderInvites();

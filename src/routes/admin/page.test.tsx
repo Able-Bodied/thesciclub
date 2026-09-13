@@ -102,6 +102,14 @@ beforeEach(() => {
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
+describe('getting back out', () => {
+  it('offers a link to Me', async () => {
+    renderAdmin();
+    const back = await screen.findByRole('link', { name: 'Me' });
+    expect(back).toHaveAttribute('href', '/me');
+  });
+});
+
 describe('AdminPage', () => {
   it('sends an ordinary member back to the club rather than showing an empty tool', async () => {
     account.current = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Test' };

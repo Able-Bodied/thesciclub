@@ -1,6 +1,7 @@
 import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { useOwnMember } from '@/lib/members';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
@@ -117,7 +118,8 @@ export default function InvitesPage() {
             title sat 460px to the left of the card it names on a desktop, and
             read as a heading for the empty space beside it. */}
         <div className="mx-auto w-full max-w-[560px]">
-          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          <BackLink to="/me" label="Me" />
+          <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
             Your invites
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
