@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-574 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+580 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -52,6 +52,12 @@ which change how invites behave:
 - `20260912010000` — `admin_invites` reports who holds each number.
 - `20260912020000` — an invite nobody is on can be revoked.
 
+And one written after those, which is **not yet pushed** — see the note at the
+end of this section:
+
+- `20260913000000` — `admin_invites` reports whether anybody ever signed up,
+  and `admin_members` reports a mentor's spent allowance.
+
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
 branch. Do not reset or roll the hosted database back to `main`'s state
@@ -59,6 +65,13 @@ expecting the app to work.
 
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
+
+**`20260913000000` is applied locally and not on the hosted project.** The app
+is written to survive that: both views are read with `select('*')` and the two
+new columns arrive as `undefined`, which the client already treats as "this
+copy of the view does not report it" and says nothing extra. So `/admin` works
+against hosted today; it just cannot yet say who signed up without finishing.
+Run `pnpm exec supabase db push` to close the gap.
 
 ## Read these first
 
@@ -344,6 +357,24 @@ Three things it turned up that were not obvious from reading the policies:
   the club", not "used by Dana". That is why the wording differs from
   `/admin`'s deliberately, and it is not an oversight to fix by joining
   `browse_members`.
+
+### What `/admin` gained alongside it
+
+- **A mentor is named as one.** `invited_by_organization` and
+  `invited_by_member` were always separate columns and the page collapsed
+  them, so "NorCal SCI" and "Todd" read identically. `vouchedBy` in
+  `members-admin.ts` distinguishes them.
+- **"Signed up, never finished joining."** A pending invite with an auth
+  account behind it is somebody who verified their number and abandoned
+  onboarding — the invite is consumed by a trigger on the *member* insert, so
+  nothing recorded the attempt. It was indistinguishable from a number nobody
+  had touched. Needs `20260913000000`.
+- **A mentor's spent allowance on the roster**, from `live_invite_count()` so
+  it cannot disagree with the policy. Not shown on seeded rows: nobody can
+  sign in as one.
+- **Both screens have a back link to Me.** A `Link`, not `navigate(-1)` —
+  they have one entrance, and history leaves the app on a refresh while the
+  label still says Me.
 
 A used invite stays in the list rather than disappearing when the slot is
 accounted for — the slot is spent either way, and the screen that accounts for
