@@ -2,10 +2,10 @@
  * Domain types for The SCI Club.
  *
  * Single source of truth for every shape in the app. Additive changes are fine; renaming a field
- * is a conversation first. Where this disagrees with docs/CONTEXT.md, CONTEXT.md wins and this
+ * is a conversation first. Where this disagrees with CONTEXT.md, CONTEXT.md wins and this
  * file is what should change.
  *
- * Vocabulary, per docs/CONTEXT.md: everyone is a **Member**. **Mentor** is an attribute of a
+ * Vocabulary, per CONTEXT.md: everyone is a **Member**. **Mentor** is an attribute of a
  * member, not a separate kind of person. There is no "user" and no "peer" as an identity.
  */
 
@@ -109,7 +109,7 @@ export type Completeness = (typeof COMPLETENESS)[number];
 /**
  * How precisely somebody gave their date of injury. Stored so nothing ever displays more precision
  * than was actually offered — "injured 2013", never a fabricated "1 March 2013". Year-only is a
- * normal answer, not a skip (docs/CONTEXT.md).
+ * normal answer, not a skip (CONTEXT.md).
  */
 export const DATE_PRECISIONS = ['day', 'month', 'year'] as const;
 export type DatePrecision = (typeof DATE_PRECISIONS)[number];
@@ -240,7 +240,7 @@ export const MEMBER_TYPES = ['peer', 'mentor'] as const;
 export type MemberType = (typeof MEMBER_TYPES)[number];
 
 /**
- * Membership can be lost — see docs/CONTEXT.md. `suspended` and `removed` both drop somebody out
+ * Membership can be lost — see CONTEXT.md. `suspended` and `removed` both drop somebody out
  * of `browse_members`; the difference is whether it is reversible.
  */
 export const MEMBER_STATUSES = ['active', 'suspended', 'removed'] as const;
@@ -385,7 +385,7 @@ export const EMPTY_MEMBER_FILTERS: MemberFilters = {
  *
  * Ingested from a partner organization's own calendar, never written in the
  * app — there is no "create an event" screen and no plan for one. Events are
- * the club's public surface (docs/CONTEXT.md, "What is public"), which is why
+ * the club's public surface (CONTEXT.md, "What is public"), which is why
  * this type has no field that identifies a member: who is going is
  * `EventAttendee`, and it is answered by a different, members-only query.
  *

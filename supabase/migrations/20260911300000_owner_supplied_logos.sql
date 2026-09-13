@@ -39,7 +39,7 @@
 -- the right organization instead, so the wrong name is simply never added.
 --
 -- Turning Point Peer Network was on the list too and is deliberately left out:
--- it is not spinal-cord specific, and this club is (docs/CONTEXT.md, "Spinal
+-- it is not spinal-cord specific, and this club is (CONTEXT.md, "Spinal
 -- cord injury only" — a constraint rather than a feature).
 -- ============================================================================
 

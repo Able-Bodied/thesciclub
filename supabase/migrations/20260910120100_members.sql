@@ -1,7 +1,7 @@
 -- ============================================================================
 -- members — one row per person in the club
 -- ============================================================================
--- Vocabulary (docs/CONTEXT.md): everybody here is a *member*. `type` says
+-- Vocabulary (CONTEXT.md): everybody here is a *member*. `type` says
 -- whether a member is also a mentor. There is no separate mentors table and no
 -- "peer" as an identity.
 --
@@ -16,7 +16,7 @@
 -- Injury is recorded as level + completeness + a *date*, not as a disability
 -- type and not as a duration bucket. A stored year count is wrong within
 -- twelve months and needs something to roll it forward; a date is simply
--- correct forever. See docs/CONTEXT.md, "How injury is recorded".
+-- correct forever. See CONTEXT.md, "How injury is recorded".
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------

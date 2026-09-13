@@ -20,7 +20,7 @@
  * component knowing what navy is.
  *
  * Deliberately light-only for now. The mock has no dark palette, and a
- * half-guessed one is worse than none — see docs/CONTEXT.md.
+ * half-guessed one is worse than none — see CONTEXT.md.
  */
 
 :root {

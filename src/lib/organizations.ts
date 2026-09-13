@@ -6,7 +6,7 @@ import type { Organization } from '@/types/domain';
  * Reading organizations.
  *
  * Public, unlike almost everything else in the club: an organization is part of
- * the shopfront (docs/CONTEXT.md, "What is public"), it publishes itself
+ * the shopfront (CONTEXT.md, "What is public"), it publishes itself
  * elsewhere already, and an organization page is a reasonable thing to reach
  * from a search engine.
  *

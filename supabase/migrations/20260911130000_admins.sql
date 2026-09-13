@@ -2,7 +2,7 @@
 -- Administrators
 -- ============================================================================
 -- Somebody has to be able to remove an account, suspend a member who breaks the
--- house rules, and see who has actually joined. docs/CONTEXT.md says membership
+-- house rules, and see who has actually joined. CONTEXT.md says membership
 -- can be taken away; this is the mechanism that makes that sentence true.
 --
 -- ---------------------------------------------------------------------------

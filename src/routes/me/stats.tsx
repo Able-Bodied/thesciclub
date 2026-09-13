@@ -10,7 +10,7 @@ import { Link } from 'react-router-dom';
  * `S.joined.length` and `S.new.going.length`. Two of those three describe
  * features that do not exist: messaging is not built, and topic rooms are
  * deliberately deferred until there are enough members for a room not to be
- * empty by construction (docs/CONTEXT.md).
+ * empty by construction (CONTEXT.md).
  *
  * Rendering them would put two invented numbers on the one screen whose job is
  * to tell a member what the club actually knows about them. A zero would be no

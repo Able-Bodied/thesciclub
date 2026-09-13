@@ -60,7 +60,7 @@ function AppRoutes() {
   return (
     <Routes>
       {/* Peers, not Home. Home is a placeholder that says so in words
-          (docs/CONTEXT.md), so landing there opened the app on a page whose
+          (CONTEXT.md), so landing there opened the app on a page whose
           own copy points at the working surfaces. Peers is the one the club
           exists for, and it has content from the first sign-in. */}
       <Route path="/" element={<Navigate to="/peers" replace />} />

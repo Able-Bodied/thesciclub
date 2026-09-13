@@ -3,7 +3,7 @@
 -- ============================================================================
 -- A member organization or a peer mentor puts a phone number on this list.
 -- Nobody can join without a row here. The QR code gets somebody the app; it
--- does not get them in. See docs/CONTEXT.md, "Why closed, specifically".
+-- does not get them in. See CONTEXT.md, "Why closed, specifically".
 --
 -- ---------------------------------------------------------------------------
 -- Where the gate actually lives

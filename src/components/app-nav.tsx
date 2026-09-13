@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 /**
  * The five-tab bottom bar, matching `nav()` in docs/index.html.
  *
- * Home and Chat are placeholder surfaces for now (docs/CONTEXT.md); they are
+ * Home and Chat are placeholder surfaces for now (CONTEXT.md); they are
  * in the bar because leaving a hole there would change every other tab's
  * position once they land.
  *

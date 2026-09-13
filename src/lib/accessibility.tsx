@@ -98,7 +98,7 @@ const STORAGE_KEY = 'thesciclub.accessibility';
  * and it was removed: measured across the whole app it governed six loading
  * spinners and two progress bars, none of them on a surface anybody spends time
  * on — and stopping a spinner makes it read as a hang rather than as a load.
- * A settings row that changes almost nothing is the failure docs/CONTEXT.md
+ * A settings row that changes almost nothing is the failure CONTEXT.md
  * describes for screens, in miniature.
  *
  * The `prefers-reduced-motion` media query is still honoured in src/index.css,

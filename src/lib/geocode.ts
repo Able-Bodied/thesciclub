@@ -10,7 +10,7 @@ import { stateCodeForName } from '@/types/domain';
  * from a zip code they type, which is faster than scrolling a state list.
  *
  * **The zip is never stored.** It resolves to a city and a state and is then
- * discarded — docs/CONTEXT.md says a city, never a location, and a postcode is
+ * discarded — CONTEXT.md says a city, never a location, and a postcode is
  * a good deal narrower than a city. Neither is a set of coordinates ever kept.
  *
  * Nominatim's usage policy asks for at most one request per second and a real

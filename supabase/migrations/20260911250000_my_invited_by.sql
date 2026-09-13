@@ -2,7 +2,7 @@
 -- my_invited_by — who vouched for the member asking
 -- ============================================================================
 -- The Me screen's Standing card says "Invited by NorCal SCI". That sentence is
--- doing real work: docs/CONTEXT.md says membership is granted by a person or an
+-- doing real work: CONTEXT.md says membership is granted by a person or an
 -- organization and can be taken away, and the screen where somebody reads that
 -- should also tell them who let them in.
 --

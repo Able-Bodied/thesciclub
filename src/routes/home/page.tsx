@@ -4,7 +4,7 @@ import { PlaceholderScreen } from '@/components/placeholder-screen';
  * Home — the mixed feed (questions, photo posts, events, member suggestions)
  * from the mock. Deliberately not built yet: it needs four content types and a
  * moderation story, and none of the three flows this app is being built around
- * depend on it. See docs/CONTEXT.md, "Deliberately deferred".
+ * depend on it. See CONTEXT.md, "Deliberately deferred".
  */
 export default function HomePage() {
   return (

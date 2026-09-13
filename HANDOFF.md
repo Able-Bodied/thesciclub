@@ -3,7 +3,7 @@
 It is the whole context needed; you should not need to re-read the previous
 conversation.
 
-This file lives at `thesciclub/docs/HANDOFF.md` and nowhere else. There was a
+This file lives at `thesciclub/HANDOFF.md` and nowhere else. There was a
 symlink to it from `/home/alfred/projects/` for a while; it is gone, so that
 there is one path to quote and one file to edit.
 
@@ -62,7 +62,7 @@ still the one to never run — see Environment below.
 
 ## Read these first
 
-- `docs/CONTEXT.md` — the product definition. SCI-only and invite-only are
+- `CONTEXT.md` — the product definition. SCI-only and invite-only are
   constraints, not features, and it lists what is deliberately deferred.
 - `docs/index.html` — the design mock, published at www.thesciclub.com. The
   visual reference.
@@ -138,7 +138,7 @@ This is what the owner asked to work on next. **Item 2 below is the whole
 brief** — read it before anything else in this section, because the entries
 around it are records of work already done.
 
-The short version: `docs/CONTEXT.md` promises a mentor can put two numbers on
+The short version: `CONTEXT.md` promises a mentor can put two numbers on
 the club's list, the database has enforced exactly that from the beginning, and
 there is no UI for it. `/admin` is the only invite surface and ordinary mentors
 cannot reach it. It is the largest gap between what the product claims and what
@@ -308,7 +308,7 @@ a null `invite_id`, so an id join reports them missing while they sit there.
 
 ## 2. There is no way for a mentor to use their two invites
 
-`docs/CONTEXT.md` says a mentor can put two numbers on the club's list, and the
+`CONTEXT.md` says a mentor can put two numbers on the club's list, and the
 database enforces exactly that: the RLS policy, the two-invite allowance and
 `live_invite_count()` all exist. **There is no UI for it.** The only invite
 surface is `/admin`, which ordinary mentors cannot reach.
@@ -355,7 +355,7 @@ link to a list.
 
 ## 5. Home and Chat are placeholders
 
-Deliberate — see `docs/CONTEXT.md`. They say plainly that they are not built
+Deliberate — see `CONTEXT.md`. They say plainly that they are not built
 rather than showing invented content. **Keep that.** Do not build the Home feed
 or topic rooms without asking; both are explicitly deferred and the reasoning
 is in CONTEXT.

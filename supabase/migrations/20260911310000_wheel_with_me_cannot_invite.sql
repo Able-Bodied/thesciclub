@@ -1,7 +1,7 @@
 -- ============================================================================
 -- Wheel with Me Foundation cannot issue invites
 -- ============================================================================
--- The seed gave it `can_invite = true`, faithfully: docs/CONTEXT.md named it as
+-- The seed gave it `can_invite = true`, faithfully: CONTEXT.md named it as
 -- one of three member organizations, and the design mock carries `inv:true` on
 -- the same row. Neither was questioned when the club was scaffolded.
 --
@@ -16,7 +16,7 @@
 -- add them sends somebody newly injured to the wrong place, at the worst
 -- possible moment to be sent to the wrong place.
 --
--- docs/CONTEXT.md is edited in the same commit. It is the document that wins
+-- CONTEXT.md is edited in the same commit. It is the document that wins
 -- where any two disagree, so leaving it saying three while the database says
 -- two would make the source of truth the thing that is wrong.
 -- ============================================================================

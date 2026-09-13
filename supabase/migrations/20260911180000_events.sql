@@ -8,7 +8,7 @@
 -- ---------------------------------------------------------------------------
 -- Events are public. Everything about a member is not.
 -- ---------------------------------------------------------------------------
--- docs/CONTEXT.md, "What is public", puts the line between content and people,
+-- CONTEXT.md, "What is public", puts the line between content and people,
 -- and events sit firmly on the public side: they are already published on the
 -- organizations' own calendars, they are useful to somebody who has no account
 -- and may not know the club exists, and somebody searching "adaptive
@@ -48,7 +48,7 @@
 --     the write targets of a verification pass that was never wired up in
 --     ab-peers either (its `prompts/ai-verify-events.md` is a manual step).
 --     Columns nothing writes and nothing reads describe a pipeline that does
---     not exist, which is the same failure docs/CONTEXT.md calls out for
+--     not exist, which is the same failure CONTEXT.md calls out for
 --     screens: it gets demoed, believed, and then explained.
 --
 --   auto-created organizations — see the note on `organization_id` below.

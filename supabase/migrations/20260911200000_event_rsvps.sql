@@ -18,7 +18,7 @@
 -- ---------------------------------------------------------------------------
 -- The line this table has to sit on
 -- ---------------------------------------------------------------------------
--- Events are public; members are not (docs/CONTEXT.md, "What is public"). An
+-- Events are public; members are not (CONTEXT.md, "What is public"). An
 -- RSVP is both at once — it is a fact about an event *and* a fact about a
 -- person — and specifically it is a statement that a named individual has a
 -- spinal cord injury and will be at a known place at a known time. That is the

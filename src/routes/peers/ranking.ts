@@ -67,7 +67,7 @@ export function relevanceScore(viewer: BrowseMember, candidate: BrowseMember): n
   const shared = sharedInterests(viewer, candidate).length;
 
   // A mentor surfaces above an equivalent peer for somebody in their first year.
-  // docs/CONTEXT.md: mentors appear first to newly injured members.
+  // CONTEXT.md: mentors appear first to newly injured members.
   const mentorLift = isNewlyInjured(viewer) === true && candidate.type === 'mentor' ? 1 : 0;
 
   return sameState * 100 + sameRegion * 30 + mentorLift * 20 + stage * 10 + Math.min(shared, 5);

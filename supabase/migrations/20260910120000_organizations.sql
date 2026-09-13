@@ -1,7 +1,7 @@
 -- ============================================================================
 -- organizations — the bodies that run events and can vouch for members
 -- ============================================================================
--- Organizations are public (docs/CONTEXT.md, "What is public"): they are the
+-- Organizations are public (CONTEXT.md, "What is public"): they are the
 -- shopfront, they already publish themselves elsewhere, and an organization
 -- page is a reasonable thing to land on from a search engine. Members are not.
 --

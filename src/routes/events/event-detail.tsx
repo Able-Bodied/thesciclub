@@ -20,7 +20,7 @@ import type { EventAttendee, RsvpStatus } from '@/types/domain';
  * who is hosting.
  *
  * The group chat card the mock shows is deliberately not here. Messaging is not
- * built (docs/CONTEXT.md), and the convention in this codebase is that a
+ * built (CONTEXT.md), and the convention in this codebase is that a
  * surface says so plainly rather than showing a button that does nothing — so
  * the place where a group chat would go says what it would be and that it does
  * not exist yet.

@@ -34,7 +34,7 @@
 -- ---------------------------------------------------------------------------
 -- Who can read it
 -- ---------------------------------------------------------------------------
--- `authenticated` only. docs/CONTEXT.md draws the line here: events are public,
+-- `authenticated` only. CONTEXT.md draws the line here: events are public,
 -- people are not. `anon` and `public` are revoked explicitly rather than merely
 -- not granted, because a security-definer view is exactly the object where an
 -- inherited or default grant would be a real leak.
