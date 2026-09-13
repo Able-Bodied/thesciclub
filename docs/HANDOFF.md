@@ -3,6 +3,10 @@
 It is the whole context needed; you should not need to re-read the previous
 conversation.
 
+This file lives at `thesciclub/docs/HANDOFF.md` and nowhere else. There was a
+symlink to it from `/home/alfred/projects/` for a while; it is gone, so that
+there is one path to quote and one file to edit.
+
 **Start the session in `/home/alfred/projects`**, not inside either repo:
 
 ```
