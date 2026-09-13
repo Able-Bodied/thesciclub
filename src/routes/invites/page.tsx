@@ -113,14 +113,19 @@ export default function InvitesPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
-          Your invites
-        </h1>
-        <p className="mt-1 text-[0.78125rem] text-grey">
-          {left === 0
-            ? `Both of your ${MENTOR_ALLOWANCE} invites are in use.`
-            : `${left} of your ${MENTOR_ALLOWANCE} invites ${left === 1 ? 'is' : 'are'} free.`}
-        </p>
+        {/* The same measure as the content below. Left at the page edge, the
+            title sat 460px to the left of the card it names on a desktop, and
+            read as a heading for the empty space beside it. */}
+        <div className="mx-auto w-full max-w-[560px]">
+          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+            Your invites
+          </h1>
+          <p className="mt-1 text-[0.78125rem] text-grey">
+            {left === 0
+              ? `Both of your ${MENTOR_ALLOWANCE} invites are in use.`
+              : `${left} of your ${MENTOR_ALLOWANCE} invites ${left === 1 ? 'is' : 'are'} free.`}
+          </p>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 py-3.5">
@@ -145,6 +150,16 @@ export default function InvitesPage() {
                 yourself, and they join by verifying that number in the app.
               </p>
             </div>
+
+            {/* Above the fields, not under the button. Below it, a mentor
+                with nothing left met a dead form first and the reason for it
+                last. */}
+            {left === 0 ? (
+              <p className="mt-3 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.78125rem] text-[#5C4409] leading-[1.45]">
+                Withdraw one below to free a slot. An invite somebody has already used stays spent
+                until they leave the club.
+              </p>
+            ) : null}
 
             <div className="mt-3">
               <label
@@ -194,13 +209,6 @@ export default function InvitesPage() {
             >
               {busyId === 'new' ? 'Adding…' : 'Add to the list'}
             </button>
-
-            {left === 0 ? (
-              <p className="mt-2.5 text-[0.78125rem] text-ink2 leading-[1.45]">
-                Withdraw one below to free a slot. An invite somebody has already used stays spent
-                until they leave the club.
-              </p>
-            ) : null}
           </div>
 
           <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
