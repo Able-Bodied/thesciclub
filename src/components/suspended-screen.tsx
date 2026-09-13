@@ -25,7 +25,7 @@ import { useOwnMember } from '@/lib/members';
  * follows about naming organizations.
  */
 export function SuspendedScreen() {
-  const { userId, displayName } = useAccount();
+  const { userId } = useAccount();
   const { invitedBy } = useOwnMember(userId);
   const [busy, setBusy] = useState(false);
 
@@ -38,9 +38,13 @@ export function SuspendedScreen() {
         <h1 className="mt-4 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.02em]">
           Your membership is paused
         </h1>
+        {/* No name in front of this. "Dana, an administrator has paused your
+            membership" reads for a moment as though Dana were the
+            administrator, which is the wrong sentence to have to re-read on
+            this screen. */}
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
-          {displayName ? `${displayName}, an ` : 'An '}administrator has paused your membership of
-          The SCI Club. While it is paused you cannot see other members, and they cannot see you.
+          An administrator has paused your membership of The SCI Club. While it is paused you cannot
+          see other members, and they cannot see you.
         </p>
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
           This can be lifted. Nothing on your profile has been deleted.
