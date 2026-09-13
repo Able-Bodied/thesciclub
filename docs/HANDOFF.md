@@ -380,13 +380,29 @@ running it by accident — see the bottom of this section.
 - A feed whose markup changed exits non-zero, so it shows up as a red run
   rather than as a calendar that quietly stopped growing.
 
-**A mirror of this repo will try to run it.** The branch was pushed to
-`Alfredx48/TheSciClub` as a private backup, and GitHub schedules workflows on
-the default branch of every repo that has one — so the cron fired there the
-next morning and failed on missing secrets. Disable Actions on any mirror
-(`gh workflow disable "Event ingest" --repo <mirror>`). **Do not fix it by
-adding the secrets**: that puts the service role key in a second place and
-gives two repositories a writer to the same live tables.
+**Right now it runs from `Alfredx48/TheSciClub`, and that is correct.** The
+owner does not have write access to `Able-Bodied/thesciclub` yet — see "What
+this is" — so their own private repo is where the branch lives and where the
+job has to run, with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set as
+repository secrets on it.
+
+That means exactly one repository is writing to the live tables, which is the
+condition to preserve. GitHub schedules workflows from the default branch of
+**every** repo that has one, so the day the branch is pushed to
+`Able-Bodied/thesciclub` there will be two crons upserting the same
+`(feed_id, external_id)` rows on the same schedule. `concurrency` does not help:
+it serialises runs within one repository and knows nothing about the other.
+
+**So at handover, and not before:** disable the workflow on whichever repo
+stops being the home of record.
+
+    gh workflow disable "Event ingest" --repo <the one that is now a mirror>
+
+An earlier draft of this section said to disable it on the personal repo
+immediately and never to add the secrets there. That was written on the
+assumption that the club's repo was already running the job. It is not running
+anywhere else, and a calendar nobody is refreshing is the failure this workflow
+exists to prevent.
 
 # The event format classifier, and one pending re-ingest
 
