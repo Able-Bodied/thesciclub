@@ -32,6 +32,8 @@ const api = vi.hoisted(() => ({
   }[],
   blockCalls: [] as [string, string | null][],
   unblocked: [] as string[],
+  restores: 0,
+  restoredCount: 4,
   failWith: null as string | null,
 }));
 
@@ -44,6 +46,11 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
   fetchBlockedNumbers: () => Promise.resolve(api.blocked),
+  restoreDirectory: () => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.restores += 1;
+    return Promise.resolve({ ok: true, restored: api.restoredCount });
+  },
   blockNumber: (phone: string, reason: string | null) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
     api.blockCalls.push([phone, reason]);
@@ -124,6 +131,8 @@ beforeEach(() => {
   api.blocked = [];
   api.blockCalls = [];
   api.unblocked = [];
+  api.restores = 0;
+  api.restoredCount = 4;
   api.failWith = null;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   // vi.spyOn on an already-spied method hands back the *existing* spy, so
@@ -451,6 +460,49 @@ describe('blocking a number', () => {
   });
 });
 
+describe('restoring the directory', () => {
+  // Every rehearsal of the claim flow retires a seeded profile, so this is
+  // the button that makes the flow rehearsable more than once.
+  it('restores after confirming, and says how many came back', async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(api.restores).toBe(1);
+    });
+    // A count rather than "done" — the difference between putting four
+    // profiles back and quietly matching nothing is the whole message.
+    expect(await screen.findByText(/4 profiles set back/)).toBeInTheDocument();
+  });
+
+  it('counts one profile in the singular', async () => {
+    const user = userEvent.setup();
+    api.restoredCount = 1;
+    renderAdmin();
+    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
+    expect(await screen.findByText(/1 profile set back/)).toBeInTheDocument();
+  });
+
+  it('does nothing when the confirmation is declined', async () => {
+    const user = userEvent.setup();
+    confirmSpy.mockReturnValue(false);
+    renderAdmin();
+    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
+    expect(api.restores).toBe(0);
+  });
+
+  it("shows the database's refusal rather than claiming success", async () => {
+    const user = userEvent.setup();
+    api.failWith = 'Not an administrator';
+    renderAdmin();
+    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
+    expect(await screen.findByText('Not an administrator')).toBeInTheDocument();
+    expect(screen.queryByText(/set back/)).toBeNull();
+  });
+});
+
 describe('the withdrawn list', () => {
   const revoked = (phone: string, id: string, createdAt: string) =>
     invite({ id, phone, status: 'revoked', createdAt });
@@ -527,10 +579,11 @@ describe('the three lists', () => {
     await screen.findByRole('button', { name: 'invites' });
     await user.click(screen.getByRole('button', { name: 'invites' }));
 
-    // Section renders a heading, a subtitle, then the rows — so the rows for
-    // a section are two siblings along from its heading.
+    // Section renders a heading row, a subtitle, then the rows. The heading
+    // sits inside a flex wrapper so a section-level action can sit beside it,
+    // which is why this starts from the heading's parent.
     const rowsUnder = (title: string) =>
-      screen.getByText(title).nextElementSibling?.nextElementSibling as HTMLElement;
+      screen.getByText(title).parentElement?.nextElementSibling?.nextElementSibling as HTMLElement;
 
     await screen.findByText('The list');
     expect(within(rowsUnder('The list')).getByText('14085550001')).toBeInTheDocument();

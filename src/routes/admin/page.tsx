@@ -16,6 +16,7 @@ import {
   fetchBlockedNumbers,
   fetchInvites,
   inviteState,
+  restoreDirectory,
   revokeInvite,
   setMemberStatus,
   setMemberType,
@@ -44,6 +45,7 @@ export default function AdminPage() {
   const [tab, setTab] = useState<'members' | 'invites'>('members');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -154,6 +156,14 @@ export default function AdminPage() {
         {error ? (
           <p className="mb-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
             {error}
+          </p>
+        ) : null}
+        {/* A count, not "done": the difference between a restore that put
+            four profiles back and one that quietly matched nothing is the
+            only thing worth reading here. */}
+        {notice ? (
+          <p className="mb-3 rounded-[11px] border border-line bg-paper px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            {notice}
           </p>
         ) : null}
 
@@ -300,6 +310,44 @@ export default function AdminPage() {
               title="From the directory"
               subtitle="Seeded from NorCal SCI. Pausing one hides it from the deck."
               hidden={tab !== 'members'}
+              // Rehearsing the claim flow retires a seeded profile every
+              // time — that is what claiming does — so putting the directory
+              // back needs to be a button rather than a migration written by
+              // hand each time.
+              action={
+                <SmallButton
+                  onClick={() => {
+                    const ok = window.confirm(
+                      'Restore the directory?\n\nMissing profiles come back and the ones still here are reset to how they shipped, including any you have paused or edited. Members who have joined are not touched.',
+                    );
+                    if (!ok) return;
+                    setBusyId('directory');
+                    restoreDirectory()
+                      .then(async (result) => {
+                        if (!result.ok) {
+                          setError(result.error);
+                          return;
+                        }
+                        setError(null);
+                        // "Set back", not "put back": the count is every row
+                        // it touched, most of which were present and reset
+                        // rather than missing and re-inserted.
+                        setNotice(
+                          `Directory restored — ${result.restored} profile${result.restored === 1 ? '' : 's'} set back to how they shipped.`,
+                        );
+                        await load();
+                      })
+                      .catch((e: unknown) => {
+                        setError(e instanceof Error ? e.message : 'That did not work.');
+                      })
+                      .finally(() => {
+                        setBusyId(null);
+                      });
+                  }}
+                >
+                  {busyId === 'directory' ? 'Restoring…' : 'Restore directory'}
+                </SmallButton>
+              }
             >
               {seeded.map((m) => (
                 <Row
@@ -337,18 +385,24 @@ function Section({
   subtitle,
   children,
   hidden,
+  action,
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
   hidden?: boolean;
+  /** A control belonging to the section as a whole rather than to a row. */
+  action?: React.ReactNode;
 }) {
   if (hidden) return null;
   return (
     <>
-      <h2 className="mt-4 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-        {title}
-      </h2>
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <h2 className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+          {title}
+        </h2>
+        {action}
+      </div>
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">{subtitle}</p>
       <div className="overflow-hidden rounded-[14px] border border-line bg-paper">{children}</div>
     </>

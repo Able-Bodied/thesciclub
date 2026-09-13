@@ -277,6 +277,27 @@ export function inviteState(invite: AdminInvite): string {
   return `used by ${invite.heldBy}`;
 }
 
+/**
+ * Put the seeded directory back.
+ *
+ * Rehearsing the claim flow retires a seeded profile every time, by design,
+ * so this exists to make that rehearsable. It restores missing rows and
+ * resets the ones still there; it will not overwrite a real member, and it
+ * skips anybody whose number now belongs to somebody who joined. Returns how
+ * many rows it touched, which is the only feedback worth giving — "done"
+ * would not distinguish a working restore from one that quietly matched
+ * nothing.
+ */
+export async function restoreDirectory(): Promise<
+  { ok: true; restored: number } | { ok: false; error: string }
+> {
+  const result = await getSupabase().rpc('admin_restore_directory');
+  if (result.error) return { ok: false, error: result.error.message };
+  // Cast rather than destructure: the client types rpc data as `any`, and
+  // this count is rendered straight at the administrator.
+  return { ok: true, restored: (result.data as number | null) ?? 0 };
+}
+
 /* --------------------------------------------------------- blocked numbers */
 
 export interface BlockedNumber {
