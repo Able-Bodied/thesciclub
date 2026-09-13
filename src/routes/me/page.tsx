@@ -225,6 +225,19 @@ export default function MePage() {
                   </span>
                 </span>
               </div>
+
+              {/* The card stated the allowance and then offered no way to
+                  spend it — /admin was the only invite surface and an
+                  ordinary mentor cannot reach it. */}
+              {member?.type === 'mentor' ? (
+                <Link
+                  to="/invites"
+                  className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-[11px] border-[1.6px] border-navy font-bold font-head text-[0.875rem] text-navy"
+                >
+                  Your invites
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              ) : null}
             </div>
 
             {/* Its own heading. It sat directly under the Invites card with

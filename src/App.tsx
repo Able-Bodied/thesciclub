@@ -9,6 +9,7 @@ import EventDetailPage from '@/routes/events/event-detail';
 import OrganizationDetailPage from '@/routes/events/organization-detail';
 import EventsPage from '@/routes/events/page';
 import HomePage from '@/routes/home/page';
+import InvitesPage from '@/routes/invites/page';
 import MePage from '@/routes/me/page';
 import OnboardingPage from '@/routes/onboarding/page';
 import MemberDetailPage from '@/routes/peers/member-detail';
@@ -41,6 +42,10 @@ function AppShell() {
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
         <Route path="/me" element={<MePage />} />
+        {/* Unlisted in the tab bar; the page redirects a non-mentor away.
+            Reached from the Invites card on Me, which is where a member goes
+            to find out what their membership lets them do. */}
+        <Route path="/invites" element={<InvitesPage />} />
         {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
         <Route path="/admin" element={<AdminPage />} />
       </Routes>
