@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-596 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+597 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -364,25 +364,35 @@ Three things it turned up that were not obvious from reading the policies:
 Worth keeping straight, because two of them look alike from `/admin` and the
 third used to do nothing at all.
 
-- **Suspend** pauses a membership and keeps the row. Reversible with
-  Reactivate. Until 20260913, this did nothing a member could perceive:
+- **Pause** pauses a membership and keeps the row. Reversible with Resume.
+  The button was called Suspend and the column still says `suspended`;
+  renaming the check constraint and the rows under it is churn for a word
+  nobody outside the schema reads, and the member-facing screen always said
+  "paused". Until 20260913, this did nothing a member could perceive:
   `account.tsx` read the member row without selecting `status`, so a
   suspended member resolved to an ordinary one and walked into a club that
   showed them an empty deck and no events with no explanation anywhere.
   `statusFor` decides it now and `RequireMember` renders
   `suspended-screen.tsx` instead of the club.
-- **Delete** removes the profile and revokes their invite. The number is free
-  and they can be invited back tomorrow.
-- **Block** deletes the profile *and* bars the number, so no organization and
-  no mentor can put it back. Two dialogs before it happens. Reversible with
-  Unblock, which restores invitability and not the membership — that row is
-  gone. See `supabase/tests/blocked-numbers.sql`, which runs all three
+- **Remove** replaces the old Delete and Block buttons with one action and a
+  question. Unticked, the profile goes and the invite is revoked, but the
+  number is free and anybody can invite them back. Ticked — "Block this
+  number too" — the number is barred as well, and a reason field appears.
+  The confirm button renames itself to "Remove and block", so the tick does
+  not have to be remembered. Reversible with Unblock, which restores
+  invitability and not the membership — that row is gone.
+
+  The confirmation is a panel in the row, not `window.confirm`. Removing asks
+  two questions at once — are you sure, and can they come back — and a native
+  dialog can only ask one; stacking two made the more serious action the one
+  with more clicking, which is not the same as the one with more thought. See `supabase/tests/blocked-numbers.sql`, which runs all three
   enforcement points as a signed-in administrator.
 
 The reason there are three is that revoking deliberately does not keep a
 number off the list: `invites_live_phone_idx` is partial over pending and
 consumed exactly so a revoked number can be invited again. Block is the
-opposite intent, and it needed somewhere of its own to live.
+opposite intent, and it needed somewhere to live — as the tick on Remove
+rather than a third button nobody could tell from the second.
 
 ### What `/admin` gained alongside it
 
