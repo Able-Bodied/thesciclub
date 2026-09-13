@@ -1,0 +1,84 @@
+import { PauseCircle } from 'lucide-react';
+import { useState } from 'react';
+import { signOut, useAccount } from '@/lib/account';
+import { useOwnMember } from '@/lib/members';
+
+/**
+ * The membership is paused, and the person it belongs to is told so.
+ *
+ * Suspension existed in the database and in `/admin` from the beginning and
+ * did nothing a member could perceive: the row was read without its status, so
+ * a suspended member resolved to an ordinary one and walked in. What they
+ * found was an empty Peers deck and no events — `browse_members` and the
+ * event views filter on status — with nothing anywhere saying why. A club
+ * whose stated sanction is losing membership cannot apply it invisibly.
+ *
+ * Written as a pause, not an error, and not as an accusation. It is reversible
+ * by design — `/admin` has Reactivate beside Suspend — so the copy says that
+ * plainly rather than reading like a verdict.
+ *
+ * Who to ask is the part that has to be true. There is no messaging in the
+ * club (CONTEXT.md), so rather than invent a contact route this names whoever
+ * vouched for them, which `my_invited_by()` will answer for a suspended member
+ * as readily as an active one. When it answers nothing, the screen says less
+ * rather than pointing somewhere wrong — the same rule the blocked screen
+ * follows about naming organizations.
+ */
+export function SuspendedScreen() {
+  const { userId, displayName } = useAccount();
+  const { invitedBy } = useOwnMember(userId);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+      <div className="flex-1 overflow-y-auto px-[18px] pt-12">
+        <div className="grid h-14 w-14 place-items-center rounded-[18px] bg-gold-lt text-gold-dp">
+          <PauseCircle className="h-6 w-6" />
+        </div>
+        <h1 className="mt-4 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.02em]">
+          Your membership is paused
+        </h1>
+        <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
+          {displayName ? `${displayName}, an ` : 'An '}administrator has paused your membership of
+          The SCI Club. While it is paused you cannot see other members, and they cannot see you.
+        </p>
+        <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
+          This can be lifted. Nothing on your profile has been deleted.
+        </p>
+
+        {invitedBy ? (
+          <div className="mt-4 rounded-[17px] border border-line bg-paper px-3.5 py-3.5">
+            <p className="text-[0.78125rem] text-grey leading-[1.5]">
+              {invitedBy} put your number on the club's list. They are the people to ask about it.
+            </p>
+          </div>
+        ) : null}
+
+        {/* The rules, stated rather than linked — the same reason the Standing
+            card on Me states them: CONTEXT.md asks that losing membership stay
+            visible in the product, and this is the screen where that matters
+            most. */}
+        <p className="mt-4 text-[0.78125rem] text-grey leading-[1.55]">
+          Membership can be paused or ended for selling to members, harassing anyone, giving medical
+          advice as fact, or repeating outside a room what was said in it.
+        </p>
+      </div>
+
+      <div className="flex-none px-[18px] pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void signOut().finally(() => {
+              setBusy(false);
+            });
+          }}
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-line font-bold font-head text-[0.9375rem] text-ink2 disabled:opacity-40"
+        >
+          {busy ? 'Signing out…' : 'Sign out'}
+        </button>
+      </div>
+    </div>
+  );
+}

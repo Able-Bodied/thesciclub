@@ -4,7 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
-vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
+vi.mock('@/lib/account', () => ({
+  useAccount: () => account.current,
+  signOut: () => Promise.resolve({ ok: true }),
+}));
+vi.mock('@/lib/members', () => ({
+  useOwnMember: () => ({ member: null, invitedBy: 'NorCal SCI', loading: false, error: null }),
+}));
 
 const { RequireMember } = await import('@/components/require-member');
 
@@ -34,6 +40,30 @@ describe('RequireMember', () => {
   it('lets a member in', () => {
     renderGuarded();
     expect(screen.getByText('Inside the club')).toBeInTheDocument();
+  });
+
+  // Suspension did nothing a member could perceive: the row was read without
+  // its status, so this branch resolved to 'member' and let them in to an
+  // empty deck with no explanation anywhere.
+  it('shows a suspended member why, rather than letting them in', () => {
+    account.current = { status: 'suspended', userId: 'u1', isAdmin: false, displayName: 'Dana' };
+    renderGuarded();
+    expect(screen.getByText('Your membership is paused')).toBeInTheDocument();
+    expect(screen.queryByText('Inside the club')).toBeNull();
+  });
+
+  // Not a redirect. Bouncing them to /join offers them a club they are
+  // already in, and every screen inside comes back empty.
+  it('keeps them where they are rather than sending them to the welcome screen', () => {
+    account.current = { status: 'suspended', userId: 'u1', isAdmin: false, displayName: 'Dana' };
+    renderGuarded();
+    expect(screen.queryByText('Welcome screen')).toBeNull();
+  });
+
+  it('names whoever vouched for them, as the people to ask', () => {
+    account.current = { status: 'suspended', userId: 'u1', isAdmin: false, displayName: 'Dana' };
+    renderGuarded();
+    expect(screen.getByText(/NorCal SCI/)).toBeInTheDocument();
   });
 
   it('sends a signed-out visitor to the welcome screen', () => {

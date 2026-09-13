@@ -1,4 +1,5 @@
 import { Navigate } from 'react-router-dom';
+import { SuspendedScreen } from '@/components/suspended-screen';
 import { useAccount } from '@/lib/account';
 
 /**
@@ -23,6 +24,12 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
   if (status === 'signed-out' || status === 'signed-up') {
     // Someone part-way through signup goes back to finish it, not to a wall.
     return <Navigate to="/join" replace />;
+  }
+  // Not a redirect: there is nowhere to send them that is truer than this, and
+  // bouncing a suspended member around the app while every screen comes back
+  // empty is the behaviour this replaces.
+  if (status === 'suspended') {
+    return <SuspendedScreen />;
   }
   return <>{children}</>;
 }

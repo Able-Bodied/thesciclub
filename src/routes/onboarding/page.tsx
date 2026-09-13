@@ -173,7 +173,12 @@ export default function OnboardingPage() {
   }
 
   // Somebody who already finished has no business being asked again.
-  if (account.status === 'member') {
+  // 'suspended' comes here too. /profile and /profile/details live outside the
+  // shell and send a non-member to /join, so without this a suspended member
+  // bounced to the welcome screen — which invites them to join a club they are
+  // already in. Sending them into the shell lands them on the screen that
+  // explains the pause.
+  if (account.status === 'member' || account.status === 'suspended') {
     return <Navigate to="/peers" replace />;
   }
 

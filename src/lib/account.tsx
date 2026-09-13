@@ -18,7 +18,22 @@ import { getSupabase } from '@/lib/supabase';
  * else's.
  */
 
-export type AccountStatus = 'loading' | 'signed-out' | 'signed-up' | 'member';
+export type AccountStatus =
+  | 'loading'
+  | 'signed-out'
+  | 'signed-up'
+  | 'member'
+  /**
+   * A member row exists and is not active.
+   *
+   * Kept apart from 'member' rather than folded into it, because the app used
+   * to fold it in: the row was read without its status, so a suspended member
+   * resolved to 'member' and walked into the club. They saw an empty deck and
+   * no events — `browse_members` and the event views filter on status — with
+   * nothing anywhere saying why. Suspension is the club's reversible sanction
+   * and it has to be visible to the person it is applied to.
+   */
+  | 'suspended';
 
 export interface Account {
   status: AccountStatus;
@@ -27,6 +42,22 @@ export interface Account {
   isAdmin: boolean;
   /** Who you are signed in as. Null until the member row is read. */
   displayName: string | null;
+}
+
+/**
+ * What the member row makes of the person holding it.
+ *
+ * A pure function because the branch is the whole of suspension: it used to
+ * read `row ? 'member' : 'signed-up'`, with the status never selected, so a
+ * suspended member became an ordinary one and walked into an empty club.
+ *
+ * 'removed' sits with 'suspended'. Deletion takes the row out entirely, so a
+ * row still saying 'removed' is a membership ended without the row going —
+ * not active either way, and owed the same explanation.
+ */
+export function statusFor(row: { status?: unknown } | null | undefined): AccountStatus {
+  if (!row) return 'signed-up';
+  return String(row.status) === 'active' ? 'member' : 'suspended';
 }
 
 export function useAccount(): Account {
@@ -51,13 +82,13 @@ export function useAccount(): Account {
       }
       const result = await supabase
         .from('members')
-        .select('id, is_admin, display_name')
+        .select('id, is_admin, display_name, status')
         .eq('id', userId)
         .maybeSingle();
       if (aborted()) return;
       const row = result.data;
       setAccount({
-        status: row ? 'member' : 'signed-up',
+        status: statusFor(row),
         userId,
         // Coerced rather than passed through: the client types individual
         // selected columns as `any`, and this one decides whether somebody
