@@ -9,6 +9,7 @@ import {
   type AdminMember,
   canRevoke,
   inviteState,
+  vouchedBy,
 } from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
@@ -74,6 +75,7 @@ const member = (o: Partial<AdminMember> = {}): AdminMember => ({
   city: 'Foster City',
   state: 'CA',
   createdAt: '2026-09-11T08:43:18Z',
+  invitesUsed: 0,
   ...o,
 });
 
@@ -255,6 +257,44 @@ describe('what an invite says it is', () => {
   });
 });
 
+describe('who vouched', () => {
+  // The distinction the page used to lose: both rendered as a bare name, so
+  // an organization's invite and a mentor's were indistinguishable.
+  it('names a mentor as one, and an organization plainly', () => {
+    expect(vouchedBy(invite({ invitedByOrganization: 'NorCal SCI', invitedByMember: null }))).toBe(
+      'NorCal SCI',
+    );
+    expect(vouchedBy(invite({ invitedByOrganization: null, invitedByMember: 'Todd' }))).toBe(
+      'Todd (mentor)',
+    );
+  });
+
+  it('says so when the inviter’s account is gone', () => {
+    expect(vouchedBy(invite({ invitedByOrganization: null, invitedByMember: null }))).toBe(
+      'unknown',
+    );
+  });
+});
+
+describe('somebody who started and stopped', () => {
+  // The state nothing could show before: the invite is consumed by a trigger
+  // on the member insert, so abandoning onboarding leaves it pending and
+  // looking exactly like a number nobody has touched.
+  it('is not read as an untouched number', () => {
+    expect(inviteState(invite({ status: 'pending', hasAccount: true }))).toBe(
+      'signed up, never finished joining',
+    );
+    expect(inviteState(invite({ status: 'pending', hasAccount: false }))).toBe('not used yet');
+  });
+
+  // A database that predates the column cannot tell us either way, and
+  // guessing "they never signed up" would be asserting something unknown —
+  // the same trap heldBy's three-valued handling exists for.
+  it('says nothing extra where the view does not report it', () => {
+    expect(inviteState(invite({ status: 'pending', hasAccount: undefined }))).toBe('not used yet');
+  });
+});
+
 const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   id: 'i1',
   phone: '14085551234',
@@ -266,6 +306,7 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   claimableName: null,
   heldBy: null,
   heldByStatus: null,
+  hasAccount: false,
   ...o,
 });
 

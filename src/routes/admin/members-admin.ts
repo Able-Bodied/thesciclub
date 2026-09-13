@@ -20,6 +20,12 @@ export interface AdminMember {
   city: string | null;
   state: string;
   createdAt: string;
+  /**
+   * Invites this member has spent, counted by live_invite_count() — the same
+   * function the insert policy caps on, so the roster cannot disagree with it.
+   * `undefined` where the view does not report it yet.
+   */
+  invitesUsed: number | undefined;
 }
 
 interface AdminMemberRow {
@@ -33,6 +39,7 @@ interface AdminMemberRow {
   city: string | null;
   state: string;
   created_at: string;
+  invites_used: number | null;
 }
 
 function toAdminMember(row: AdminMemberRow): AdminMember {
@@ -47,6 +54,7 @@ function toAdminMember(row: AdminMemberRow): AdminMember {
     city: row.city,
     state: row.state,
     createdAt: row.created_at,
+    invitesUsed: row.invites_used ?? undefined,
   };
 }
 
@@ -105,6 +113,18 @@ export interface AdminInvite {
    */
   heldBy: string | null | undefined;
   heldByStatus: 'active' | 'suspended' | 'removed' | null | undefined;
+  /**
+   * Whether anybody has ever verified this number.
+   *
+   * Not the same question as `heldBy`, and the gap between them is the point:
+   * an invite that is still pending while an account exists is somebody who
+   * started and stopped. The invite is consumed by a trigger on the *member*
+   * insert, so abandoning onboarding leaves no trace anywhere else.
+   *
+   * `undefined` is again "this copy of the view does not report it", for the
+   * same reason it is on `heldBy`.
+   */
+  hasAccount: boolean | undefined;
 }
 
 interface AdminInviteRow {
@@ -118,6 +138,7 @@ interface AdminInviteRow {
   claimable_name: string | null;
   held_by: string | null;
   held_by_status: string | null;
+  has_account: boolean | null;
 }
 
 export interface InvitingOrganization {
@@ -154,6 +175,7 @@ export async function fetchInvites(): Promise<
       claimableName: row.claimable_name,
       heldBy: row.held_by,
       heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
+      hasAccount: row.has_account ?? undefined,
     })),
   };
 }
@@ -229,7 +251,14 @@ export async function setMemberType(
  */
 export function inviteState(invite: AdminInvite): string {
   if (invite.status === 'revoked') return 'revoked';
-  if (invite.status === 'pending') return 'not used yet';
+
+  // Pending with an account behind it is the case nobody could see: they
+  // verified the number, landed in onboarding and stopped. Worth saying,
+  // because it is the one state on this list somebody would act on — the
+  // person tried and something got in the way.
+  if (invite.status === 'pending') {
+    return invite.hasAccount === true ? 'signed up, never finished joining' : 'not used yet';
+  }
 
   // The view does not carry a holder. Say what the status says and no more.
   if (invite.heldBy === undefined) return 'used';
@@ -246,6 +275,24 @@ export function inviteState(invite: AdminInvite): string {
   if (invite.heldByStatus === 'removed') return `used by ${invite.heldBy}, who was removed`;
   if (invite.heldByStatus === 'suspended') return `used by ${invite.heldBy}, suspended`;
   return `used by ${invite.heldBy}`;
+}
+
+/**
+ * Who put this number on the list, and what kind of thing they are.
+ *
+ * The view has carried the organization and the member separately since it
+ * was written, and the page collapsed them into one name — so "NorCal SCI"
+ * and "Todd" read identically. Which of the two vouched is exactly what
+ * matters when a number turns out to belong to somebody who should not be
+ * here: an organization's invite is a process, a mentor's is a person who can
+ * be asked about it.
+ */
+export function vouchedBy(invite: AdminInvite): string {
+  if (invite.invitedByOrganization) return invite.invitedByOrganization;
+  if (invite.invitedByMember) return `${invite.invitedByMember} (mentor)`;
+  // The inviter's account is gone — `on delete set null` keeps the invite and
+  // drops who issued it, which is honest and is not a bug to paper over.
+  return 'unknown';
 }
 
 /**

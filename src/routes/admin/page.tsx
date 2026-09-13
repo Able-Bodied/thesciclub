@@ -16,6 +16,7 @@ import {
   revokeInvite,
   setMemberStatus,
   setMemberType,
+  vouchedBy as vouchedBy_,
 } from '@/routes/admin/members-admin';
 
 /**
@@ -96,31 +97,36 @@ export default function AdminPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <BackLink to="/me" label="Me" />
-        <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
-          Admin
-        </h1>
-        <p className="mt-1 text-[0.78125rem] text-grey">
-          {real.length} joined · {seeded.length} from the directory · {pending.length} invite
-          {pending.length === 1 ? '' : 's'} waiting
-        </p>
-        <div className="mt-3 flex gap-[7px]">
-          {(['members', 'invites'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setTab(value);
-              }}
-              aria-pressed={tab === value}
-              className={cn(
-                'rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
-                tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
-              )}
-            >
-              {value}
-            </button>
-          ))}
+        {/* The same measure as the list below. Left at the page edge, the
+            heading and the tabs sat well to the left of the rows they
+            govern on a desktop — the same mismatch fixed on /invites. */}
+        <div className="mx-auto w-full max-w-[760px]">
+          <BackLink to="/me" label="Me" />
+          <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+            Admin
+          </h1>
+          <p className="mt-1 text-[0.78125rem] text-grey">
+            {real.length} joined · {seeded.length} from the directory · {pending.length} invite
+            {pending.length === 1 ? '' : 's'} waiting
+          </p>
+          <div className="mt-3 flex gap-[7px]">
+            {(['members', 'invites'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  setTab(value);
+                }}
+                aria-pressed={tab === value}
+                className={cn(
+                  'rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
+                  tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
+                )}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -292,6 +298,17 @@ function Row({
           <span className={cn(member.status !== 'active' && 'font-bold text-destructive')}>
             {member.status}
           </span>
+          {/* Only where somebody actually holds invites, or could. Printing
+              "0 of 2" against two dozen peers who cannot invite at all would
+              bury the one mentor who has spent theirs. A former mentor still
+              holding one is why this is not gated on type alone — and a
+              seeded row is excluded whatever its type, because nobody can
+              sign in as one, so its allowance is not a thing that exists. */}
+          {member.invitesUsed !== undefined &&
+          !member.isSeed &&
+          (member.type === 'mentor' || member.invitesUsed > 0) ? (
+            <> · {member.invitesUsed} of 2 invites used</>
+          ) : null}
         </span>
       </span>
 
@@ -352,7 +369,7 @@ function InviteRow({
   busy: boolean;
   onRevoke: () => void;
 }) {
-  const vouchedBy = invite.invitedByOrganization ?? invite.invitedByMember ?? 'unknown';
+  const vouchedBy = vouchedBy_(invite);
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
       <span className="min-w-0 flex-1">
@@ -374,6 +391,9 @@ function InviteRow({
               // number somebody can put back on the list.
               invite.status === 'consumed' && invite.heldBy !== null && 'font-bold text-navy',
               invite.status === 'revoked' && 'text-destructive',
+              // Somebody tried and stopped. The only row on this list that
+              // asks the reader to do something about it.
+              invite.status === 'pending' && invite.hasAccount === true && 'font-bold text-gold-dp',
             )}
           >
             {inviteState(invite)}
