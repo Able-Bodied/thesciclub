@@ -353,6 +353,41 @@ silently does nothing is worse than a sentence explaining where things stand.
 
 ---
 
+# The scraper runs itself, daily
+
+`.github/workflows/event-ingest.yml` keeps the calendar current. It was only
+ever mentioned here in passing, which is how a mirror of this repo ended up
+running it by accident — see the bottom of this section.
+
+- **Daily at 08:10 UTC**, just after 1am Pacific. The offset from the hour is
+  deliberate: GitHub delays jobs scheduled on the hour.
+- **Manually** from the Actions tab — `workflow_dispatch`, with a `dry_run`
+  input that scrapes and prints without writing. Use it to re-pull a feed after
+  a fix rather than waiting a day, and use `dry_run` first when the change is
+  to a scraper rather than to data.
+- **Two repository secrets**, Settings → Secrets and variables → Actions:
+  `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Without them the job fails at
+  the Ingest step, which is the safe failure — it cannot connect, so it writes
+  nothing.
+- **It writes to the live database with the service role key**, which bypasses
+  RLS completely. That is what makes it the one workflow worth being careful
+  with, and why the key is a secret rather than a variable and must never be
+  given a `VITE_` prefix.
+- Runs are queued rather than cancelled (`concurrency: event-ingest`), because
+  a half-finished ingest leaves some feeds refreshed and others stale. A run
+  takes minutes in the steady state and up to 45 on a cold one — Adaptive Rec
+  Hub's robots.txt asks for a ten second crawl delay.
+- A feed whose markup changed exits non-zero, so it shows up as a red run
+  rather than as a calendar that quietly stopped growing.
+
+**A mirror of this repo will try to run it.** The branch was pushed to
+`Alfredx48/TheSciClub` as a private backup, and GitHub schedules workflows on
+the default branch of every repo that has one — so the cron fired there the
+next morning and failed on missing secrets. Disable Actions on any mirror
+(`gh workflow disable "Event ingest" --repo <mirror>`). **Do not fix it by
+adding the secrets**: that puts the service role key in a second place and
+gives two repositories a writer to the same live tables.
+
 # The event format classifier, and one pending re-ingest
 
 `jobs/event-ingest/classify.js` decides `event_format` from what the feed
