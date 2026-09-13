@@ -128,6 +128,33 @@ still the one to never run — see Environment below.
 
 ---
 
+# Next up: the mentor invite screen
+
+This is what the owner asked to work on next. **Item 2 below is the whole
+brief** — read it before anything else in this section, because the entries
+around it are records of work already done.
+
+The short version: `docs/CONTEXT.md` promises a mentor can put two numbers on
+the club's list, the database has enforced exactly that from the beginning, and
+there is no UI for it. `/admin` is the only invite surface and ordinary mentors
+cannot reach it. It is the largest gap between what the product claims and what
+a member can do.
+
+Two things about it are easy to get wrong, both spelled out in item 2:
+
+- **No schema work is needed.** Three policies on `invites` already let a
+  mentor read, issue and withdraw their own, and Me already tells a mentor they
+  have two. It needs a screen, not a migration.
+- **The cap has never actually been exercised.** `live_invite_count` is only
+  covered by a by-hand probe that runs as the superuser and bypasses RLS, so
+  prove the two-invite limit holds for a real mentor session before trusting
+  it. An earlier draft of this file called it "tested"; it is not.
+
+`/admin` is the closest working example of the same shapes — issuing, listing
+and revoking — and `src/routes/admin/members-admin.ts` holds the calls.
+
+---
+
 # The job: UI, UX, and the gaps
 
 Roughly in order of how much they matter.
@@ -384,7 +411,8 @@ running it by accident — see the bottom of this section.
 owner does not have write access to `Able-Bodied/thesciclub` yet — see "What
 this is" — so their own private repo is where the branch lives and where the
 job has to run, with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set as
-repository secrets on it.
+repository secrets on it. Both are set, and a real run has been through
+successfully — see the classifier section for what it changed.
 
 That means exactly one repository is writing to the live tables, which is the
 condition to preserve. GitHub schedules workflows from the default branch of
@@ -431,13 +459,27 @@ untouched.
 Driven Wheelchair Fitness", and NorCal SCI's own page for it never says
 whether it is Zoom or a gym. Do not add a rule that invents an answer.
 
-**Pending: the hosted rows still hold the old nulls.** The classifier runs at
-ingest, so `.github/workflows/event-ingest.yml` has to run before any of this
-reaches the app. That writes to the live database and was left for the owner.
+**Done — the re-ingest has run.** This entry stood for a while as pending,
+because the classifier runs at ingest and `supabase db push` moves schema, not
+feed data. The workflow has now run against the hosted project and the rows
+carry the new formats.
 
-Still true as of the latest check: 124 events on the hosted project, 39 of them
-with a null format. Unlike the invite migrations, this one has *not* been run —
-`supabase db push` moves schema, not feed data.
+    format      before  after
+    in_person       35 ->  44
+    online          47 ->  48
+    hybrid           3 ->   3
+    null            39 ->  29
+    total          124 -> 124   (0 deleted)
+
+Exactly ten events changed, and they are the ten the rules were written for:
+Inspire 2026 to online, and the UC Davis, Sacramento and SCVMC meetups to in
+person, across their recurring dates. Those ten now appear under the "In
+person" filter, which excludes null formats — the bug that started the whole
+thread.
+
+**The 29 that remain null are correct and should stay that way.** They are all
+"Staying Driven Wheelchair Fitness", and NorCal SCI's own page for it never
+says whether it is Zoom or a gym. Do not add a rule to guess.
 
 # Hosting on Netlify
 
