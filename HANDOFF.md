@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-597 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+600 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -58,7 +58,9 @@ end of this section:
 - `20260913000000` — `admin_invites` reports whether anybody ever signed up,
   and `admin_members` reports a mentor's spent allowance. **Pushed.**
 - `20260913010000` — `blocked_numbers`, and `has_active_invite` answers false
-  for a blocked number. **Not pushed.**
+  for a blocked number. **Pushed.**
+- `20260913020000` — `my_claimable_profile()`, and Ajay's seeded row
+  restored. **Pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -68,13 +70,10 @@ expecting the app to work.
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
 
-**`20260913010000` is applied locally and not on the hosted project.** `fetchBlockedNumbers`
-returns an empty list when the view is absent rather than failing, so `/admin`
-still lists members and invites against hosted — the Blocked section simply
-does not appear, and Block will fail with the database's own "function does
-not exist". Run `pnpm exec supabase db push` to close the gap.
+Everything is pushed again as of `20260913020000` — `migration list` shows
+nothing pending.
 
-## Read these first
+## Read these first## Read these first
 
 - `CONTEXT.md` — the product definition. SCI-only and invite-only are
   constraints, not features, and it lists what is deliberately deferred.
@@ -82,6 +81,27 @@ not exist". Run `pnpm exec supabase db push` to close the gap.
   visual reference.
 - Migration headers in `supabase/migrations/` — every schema decision's
   reasoning lives there.
+
+## A view's own security check can break a caller who is not its audience
+
+Worth its own heading because it has now happened once and cost a real
+seeded profile.
+
+`browse_members` requires the *viewer* to be an active member — correctly,
+since 20260911110000, which is the fix that stopped a verified-but-uninvited
+session reading everybody's bio. Onboarding was reading the claimable profile
+out of that same view, on behalf of somebody who by definition is not a
+member yet. It got nothing, treated that as "no claim", and skipped a step
+while the trigger retired the seeded row anyway.
+
+Nothing failed. No error, no console, and the test fixture happened to mock
+that read as `null`, so the broken behaviour was the fixture's expectation
+too. The lesson is narrower than "check your views": **when a caller is
+pre-membership — onboarding, the invite gate, the blocked screen — ask what
+they are allowed to read before reusing a members-only view or table.**
+`my_invite_status()` and `my_claimable_profile()` are the pattern: definer
+functions, no arguments, keyed on the caller's own verified phone, returning
+the fewest columns the screen needs.
 
 ## Conventions that are load-bearing
 
