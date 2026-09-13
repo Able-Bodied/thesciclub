@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-638 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+659 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -72,6 +72,8 @@ end of this section:
   `admin_invites` says whether the member inviter is one. **Pushed.**
 - `20260913080000` — and may attach a directory claim while doing it.
   **Pushed.**
+- `20260913090000` — `event_series`, and `events.series_id`. **Pushed**, and
+  the live calendar is grouped: 124 events, 35 series.
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -675,6 +677,62 @@ assumption that the club's repo was already running the job. It is not running
 anywhere else, and a calendar nobody is refreshing is the failure this workflow
 exists to prevent.
 
+# Repeating events are grouped into series — and nothing uses it yet
+
+The calendar is 124 rows made of 36 distinct events. Three titles are half of
+it: 29 Staying Driven Wheelchair Fitness, 16 Friday Happy Hour, 16 Weekly
+Wednesdays. A member scrolling Events meets the same class 29 times.
+
+`event_series` and `events.series_id` exist now and are populated, and
+**Events still renders exactly as it did**. That is deliberate. Listing every
+occurrence is correct for a calendar — you want to know when *this* Friday's
+happy hour is — so the problem is scanning, not correctness, and collapsing
+the list, a "weekly" badge, a filter and series-level dismissal are four
+different answers to it. None could be judged before the grouping existed.
+It exists; the choice is open.
+
+It is also what the ✕ on an event card was removed for. Hiding one Friday
+does nothing about next Friday, so a dismissal has to mean the series.
+
+## How the matching works, and the trap in it
+
+`jobs/event-ingest/series.js`, imported by both the ingest and
+`pnpm backfill-series`. Never reimplement it in SQL — the grouping is a
+stored identity and two implementations would drift.
+
+Titles are the only signal: every occurrence has its own URL, so
+`external_id` groups nothing, and start times move for holidays. Titles
+drift, so it is normalise → exact → Levenshtein at 0.82.
+
+**Levenshtein alone silently merges different events**, which running it over
+the live calendar is what revealed:
+
+    "Bombers Weekly Power Soccer Practice"
+    "Shockers Weekly Power Soccer Practice"     similarity 0.892
+
+Two teams, well past the threshold, because one distinct word inside a long
+shared phrase is a small fraction of the string. So there is a second rule:
+a candidate is rejected when either title has a substantive word — four
+letters or more — that the other has no near-match for. Drift adds and
+removes grammar; a different event substitutes the word carrying the
+meaning. **Do not "simplify" the matcher down to the distance check**, and do
+not tune the threshold to fix a single pair; both rules are pinned by tests
+including a fixture of the real distribution.
+
+`series_key` is identity and must never move. `title` is display only,
+refreshed from the most recent occurrence and never an input to matching, so
+a drifting title cannot walk a series away from its own key.
+
+## Backfilling
+
+    SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… pnpm backfill-series --dry-run
+
+Reads the stored titles and regroups, without scraping — a full ingest takes
+up to 45 minutes for a result computable from data already held. Safe to
+re-run. The ingest does the same work on every run, over a feed's whole
+calendar rather than the rows it touched, and logs rather than throws on
+failure so a healthy scrape is not reported as a red run.
+
 # The event format classifier
 
 `jobs/event-ingest/classify.js` decides `event_format` from what the feed
@@ -701,6 +759,10 @@ untouched.
 **The remaining 29 are correct and should stay null.** They are all "Staying
 Driven Wheelchair Fitness", and NorCal SCI's own page for it never says
 whether it is Zoom or a gym. Do not add a rule that invents an answer.
+
+Now that events are grouped, that is easier to state precisely: the 29 nulls
+are **one series**, a quarter of the calendar hanging on a single unanswered
+question. Worth asking NorCal SCI rather than guessing in code.
 
 **Done — the re-ingest has run.** This entry stood for a while as pending,
 because the classifier runs at ingest and `supabase db push` moves schema, not
