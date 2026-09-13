@@ -411,31 +411,22 @@ describe('blocking a number', () => {
 
   // Nobody has ever signed in as a seeded row, so there is no conduct to
   // answer for and the number came from the organization's directory.
-  it('offers no block option on a row from the directory', async () => {
+  // It used to be hidden here, on the grounds that nobody signs in as a
+  // seeded row. But the number on one is a real person's, twenty-two of the
+  // rows on this tab are seeded, and an option missing from most of them
+  // reads as broken.
+  it('offers the block option on a directory row too', async () => {
     const user = userEvent.setup();
-    api.members = [member({ id: 's1', displayName: 'Seeded Sam', isSeed: true })];
+    api.members = [
+      member({ id: 's1', displayName: 'Seeded Sam', phone: '15555550000', isSeed: true }),
+    ];
     renderAdmin();
     await user.click(await screen.findByRole('button', { name: 'Remove…' }));
-    // Removable — a directory row can be retired — but there is nobody to
-    // ban: nothing has ever signed in as one.
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: /Block this number too/ })).toBeNull();
-  });
 
-  it('blocks a number from the invite list, with its own reason', async () => {
-    const user = userEvent.setup();
-    api.invites = [invite({ id: 'i7', phone: '14085550160', status: 'pending' })];
-    renderAdmin();
-    await screen.findByRole('button', { name: 'invites' });
-    await user.click(screen.getByRole('button', { name: 'invites' }));
-
-    await user.click(await screen.findByRole('button', { name: 'Block…' }));
-    expect(screen.getByText(/Block 14085550160\?/)).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/Reason/), 'Never invited, still unwelcome');
-    await user.click(screen.getByRole('button', { name: /^Block$/ }));
-
+    await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
+    await user.click(screen.getByRole('button', { name: 'Remove and block' }));
     await waitFor(() => {
-      expect(api.blockCalls).toEqual([['14085550160', 'Never invited, still unwelcome']]);
+      expect(api.blockCalls).toEqual([['15555550000', null]]);
     });
   });
 

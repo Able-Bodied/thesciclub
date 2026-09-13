@@ -511,32 +511,35 @@ function Row({
               separating this from a ban. Left unticked, the number is free
               and anybody can invite them back tomorrow.
 
-              Not offered on a directory row: nobody has ever signed in as
-              one, so there is no conduct to answer for, and the number came
-              from the organization's directory rather than from a person. */}
-          {member.isSeed ? null : (
-            <label
-              htmlFor={`block-${member.id}`}
-              className="mt-2.5 flex cursor-pointer items-start gap-2"
-            >
-              <input
-                id={`block-${member.id}`}
-                type="checkbox"
-                checked={block}
-                onChange={(e) => {
-                  setBlock(e.target.checked);
-                }}
-                className="mt-0.5 h-4 w-4 flex-none accent-[var(--destructive)]"
-              />
-              <span>
-                <span className="block font-bold text-ink">Block this number too</span>
-                <span className="block text-grey">
-                  Nobody — no organization and no mentor — can put it back on the list until an
-                  administrator unblocks it.
-                </span>
+              Offered on every row, directory ones included. It was hidden on
+              those on the grounds that nobody has ever signed in as a seeded
+              row, so there is no conduct to answer for — but the number on a
+              seeded row is still a real person's, and if they should not be
+              in the club then blocking it is exactly the thing an
+              administrator needs. Twenty-two of the rows on this tab are
+              seeded, so the option was missing from most of them, which
+              reads as broken rather than as considered. */}
+          <label
+            htmlFor={`block-${member.id}`}
+            className="mt-2.5 flex cursor-pointer items-start gap-2"
+          >
+            <input
+              id={`block-${member.id}`}
+              type="checkbox"
+              checked={block}
+              onChange={(e) => {
+                setBlock(e.target.checked);
+              }}
+              className="mt-0.5 h-4 w-4 flex-none accent-[var(--destructive)]"
+            />
+            <span>
+              <span className="block font-bold text-ink">Block this number too</span>
+              <span className="block text-grey">
+                Nobody — no organization and no mentor — can put it back on the list until an
+                administrator unblocks it.
               </span>
-            </label>
-          )}
+            </span>
+          </label>
           {block ? (
             <ReasonField id={`reason-${member.id}`} value={reason} onChange={setReason} />
           ) : null}
