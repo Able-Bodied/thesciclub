@@ -1,6 +1,6 @@
 import { isAdult } from '@/lib/injury';
 import { isCompletePhone } from '@/lib/phone';
-import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
+import type { Completeness, DatePrecision, ExactLevel, LevelRange } from '@/types/domain';
 
 /**
  * The shape onboarding collects, and the order it collects it in.
@@ -115,4 +115,27 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
     default:
       return true;
   }
+}
+
+/**
+ * The seeded profile an invite entitles its holder to claim, as much of it as
+ * the claim card needs and no more.
+ *
+ * Not a `BrowseMember`. The person reading this card is not a member yet, and
+ * on a mistyped invite is not the person on the card either — so it carries a
+ * photograph, a name, a level and a city, and not the bio, which on these
+ * rows describes catheters and bowel programmes. `my_claimable_profile()`
+ * returns exactly these columns.
+ */
+export interface ClaimableProfile {
+  id: string;
+  displayName: string;
+  photoPath: string | null;
+  photoAlt: string | null;
+  city: string | null;
+  state: string;
+  levelRange: LevelRange;
+  exactLevel: ExactLevel | null;
+  completeness: Completeness;
+  affiliations: string[];
 }

@@ -2,7 +2,6 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
-import { type BrowseMemberRow, toMember } from '@/lib/members';
 import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
@@ -19,6 +18,7 @@ import {
 } from '@/routes/onboarding/steps';
 import { submitOnboarding } from '@/routes/onboarding/submit-onboarding';
 import {
+  type ClaimableProfile,
   COUNTED_STEPS,
   canAdvance,
   INITIAL_ONBOARDING_DATA,
@@ -27,7 +27,6 @@ import {
   stepNumber,
 } from '@/routes/onboarding/types';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
-import type { BrowseMember } from '@/types/domain';
 
 /**
  * Joining the club.
@@ -62,6 +61,20 @@ interface InviteStatus {
   claimable_member_id: string | null;
 }
 
+/** What my_claimable_profile() returns, before it is given camel case. */
+interface ClaimableProfileRow {
+  id: string;
+  display_name: string;
+  photo_path: string | null;
+  photo_alt: string | null;
+  city: string | null;
+  state: string;
+  level_range: ClaimableProfile['levelRange'];
+  exact_level: ClaimableProfile['exactLevel'];
+  completeness: ClaimableProfile['completeness'];
+  affiliations: string[] | null;
+}
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const account = useAccount();
@@ -69,7 +82,7 @@ export default function OnboardingPage() {
   const [mode, setMode] = useState<Mode>('join');
   const [phase, setPhase] = useState<Phase>('wizard');
   const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
-  const [claimable, setClaimable] = useState<BrowseMember | null>(null);
+  const [claimable, setClaimable] = useState<ClaimableProfile | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -145,15 +158,27 @@ export default function OnboardingPage() {
     }
 
     if (row.claimable_member_id) {
-      // Same reason as above: maybeSingle() types its data as `any`.
-      const profileResult = await supabase
-        .from('browse_members')
-        .select('*')
-        .eq('id', row.claimable_member_id)
-        .maybeSingle();
-      const profile = profileResult.data as BrowseMemberRow | null;
+      // Not `browse_members`. That view requires the viewer to be an active
+      // member — correctly, since 20260911110000 — and somebody part-way
+      // through onboarding is not one, so it answered nothing and the claim
+      // was silently skipped while the seeded row was retired anyway.
+      // my_claimable_profile() is a definer function keyed on the caller's
+      // own verified number.
+      const profileResult = await supabase.rpc('my_claimable_profile').maybeSingle();
+      const profile = profileResult.data as ClaimableProfileRow | null;
       if (profile) {
-        setClaimable(toMember(profile));
+        setClaimable({
+          id: profile.id,
+          displayName: profile.display_name,
+          photoPath: profile.photo_path,
+          photoAlt: profile.photo_alt,
+          city: profile.city,
+          state: profile.state,
+          levelRange: profile.level_range,
+          exactLevel: profile.exact_level,
+          completeness: profile.completeness,
+          affiliations: profile.affiliations ?? [],
+        });
         setStep('claim');
         return;
       }

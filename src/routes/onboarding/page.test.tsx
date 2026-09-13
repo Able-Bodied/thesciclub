@@ -15,6 +15,7 @@ const calls = vi.hoisted(() => ({
   verifyError: null as string | null,
   invited: true,
   claimableId: null as string | null,
+  claimable: null as Record<string, unknown> | null,
   existingMember: null as { id: string } | null,
 }));
 
@@ -66,8 +67,16 @@ vi.mock('@/lib/supabase', () => ({
         });
       },
     },
-    rpc: () => {
-      calls.order.push('my_invite_status');
+    // Switched on the name, because the two calls answer different
+    // questions. The previous mock ignored it and always resolved the
+    // claimable profile to null — which is exactly what the real
+    // `browse_members` did to somebody who is not a member yet, so the
+    // broken behaviour was baked into the fixture and no test could see it.
+    rpc: (name: string) => {
+      calls.order.push(name);
+      if (name === 'my_claimable_profile') {
+        return { maybeSingle: () => Promise.resolve({ data: calls.claimable, error: null }) };
+      }
       return {
         single: () =>
           Promise.resolve({
@@ -78,13 +87,10 @@ vi.mock('@/lib/supabase', () => ({
     },
     from: () => ({
       select: () => ({
-        // Used two ways: without a filter to ask "do I already have a profile",
-        // and with .eq(id) to read a claimable one.
         maybeSingle: () => {
           calls.order.push('members.self');
           return Promise.resolve({ data: calls.existingMember });
         },
-        eq: () => ({ maybeSingle: () => Promise.resolve({ data: null }) }),
       }),
     }),
   }),
@@ -113,6 +119,7 @@ beforeEach(() => {
   calls.verifyError = null;
   calls.invited = true;
   calls.claimableId = null;
+  calls.claimable = null;
   calls.existingMember = null;
 });
 
@@ -334,5 +341,65 @@ describe('the keyboard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByPlaceholderText('000000');
     expect(calls.order.filter((c) => c === 'signInWithOtp')).toHaveLength(1);
+  });
+});
+
+describe('claiming a seeded profile', () => {
+  const ajay = {
+    id: 'c85c10bf-0226-394f-8c91-2a2ffc40a147',
+    display_name: 'Ajay',
+    photo_path: null,
+    photo_alt: null,
+    city: 'San Jose',
+    state: 'CA',
+    level_range: 'C5–C8',
+    exact_level: 'C7',
+    completeness: 'Incomplete',
+    affiliations: ['NorCal SCI'],
+  };
+
+  // The bug: this step never appeared. The profile was read from
+  // `browse_members`, which requires the viewer to be an active member, and
+  // somebody part-way through onboarding is not one — so it resolved to
+  // nothing, the claim was skipped, and the seeded row was retired anyway in
+  // exchange for a prompt nobody saw.
+  it('asks "is this you?" before asking for a name', async () => {
+    calls.invited = true;
+    calls.claimableId = ajay.id;
+    calls.claimable = ajay;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText('Is this you?')).toBeInTheDocument();
+    expect(screen.getByText('Ajay')).toBeInTheDocument();
+    expect(screen.getByText(/San Jose/)).toBeInTheDocument();
+    expect(screen.getByText(/NorCal SCI/)).toBeInTheDocument();
+  });
+
+  it('carries the profile across when they say yes', async () => {
+    calls.invited = true;
+    calls.claimableId = ajay.id;
+    calls.claimable = ajay;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Is this you?');
+
+    await userEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
+    expect(await screen.findByDisplayValue('Ajay')).toBeInTheDocument();
+  });
+
+  // An invite with no claim on it must not stop to ask.
+  it('goes straight to the name when there is nothing to claim', async () => {
+    calls.invited = true;
+    calls.claimableId = null;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByText(/name/i)).toBeInTheDocument();
+    expect(screen.queryByText('Is this you?')).toBeNull();
+    expect(calls.order).not.toContain('my_claimable_profile');
   });
 });

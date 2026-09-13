@@ -5,9 +5,8 @@ import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injur
 import { formatPhoneInput } from '@/lib/phone';
 import { photoUrlFor } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub } from '@/routes/onboarding/chrome';
-import type { OnboardingData } from '@/routes/onboarding/types';
+import type { ClaimableProfile, OnboardingData } from '@/routes/onboarding/types';
 import { injuryDateOf } from '@/routes/onboarding/types';
-import type { BrowseMember } from '@/types/domain';
 import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
 
 /**
@@ -432,7 +431,8 @@ export function ClaimStep({
   onAccept,
   onDecline,
 }: {
-  profile: BrowseMember;
+  /** Ten fields, not a profile — see ClaimableProfile for why. */
+  profile: ClaimableProfile;
   onAccept: () => void;
   onDecline: () => void;
 }) {
