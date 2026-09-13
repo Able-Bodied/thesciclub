@@ -14,7 +14,6 @@ import {
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
-let promptSpy: MockInstance<typeof window.prompt>;
 const api = vi.hoisted(() => ({
   members: [] as AdminMember[],
   invites: [] as AdminInvite[],
@@ -126,14 +125,12 @@ beforeEach(() => {
   api.unblocked = [];
   api.failWith = null;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-  promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Harassing members');
   // vi.spyOn on an already-spied method hands back the *existing* spy, so
   // without this the call history survives from one test to the next and
   // `not.toHaveBeenCalled()` asserts against the previous test's clicks.
   // Setting a return value works either way, which is why the older tests
   // here never noticed.
   confirmSpy.mockClear();
-  promptSpy.mockClear();
 });
 
 describe('getting back out', () => {
@@ -174,43 +171,52 @@ describe('AdminPage', () => {
     expect(header.textContent).toContain('1 from the directory');
   });
 
-  it('suspends a member', async () => {
+  it('pauses a member', async () => {
     renderAdmin();
-    await userEvent.click(await screen.findByRole('button', { name: 'Suspend' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Pause' }));
     await waitFor(() => {
       expect(api.statusCalls).toEqual([['m1', 'suspended']]);
     });
   });
 
-  it('offers to reactivate somebody already suspended', async () => {
+  it('offers to resume somebody already paused', async () => {
     api.members = [member({ status: 'suspended' })];
     renderAdmin();
-    await userEvent.click(await screen.findByRole('button', { name: 'Reactivate' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Resume' }));
     await waitFor(() => {
       expect(api.statusCalls).toEqual([['m1', 'active']]);
     });
   });
 
-  it('asks before deleting, because a real person loses their profile', async () => {
+  it('asks before removing, because a real person loses their profile', async () => {
+    const user = userEvent.setup();
     renderAdmin();
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
-    expect(confirmSpy).toHaveBeenCalled();
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    // The panel, not a native dialog: nothing has happened yet.
+    expect(screen.getByText(/Remove Alfred S from the club\?/)).toBeInTheDocument();
+    expect(api.deleted).toEqual([]);
+
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
     await waitFor(() => {
       expect(api.deleted).toEqual(['m1']);
     });
   });
 
-  it('does not delete when the confirmation is declined', async () => {
-    confirmSpy.mockReturnValue(false);
+  it('does nothing when the panel is cancelled', async () => {
+    const user = userEvent.setup();
     renderAdmin();
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(api.deleted).toEqual([]);
+    expect(screen.queryByText(/Remove Alfred S from the club\?/)).toBeNull();
   });
 
   it("shows the database's own refusal rather than a rewritten one", async () => {
+    const user = userEvent.setup();
     api.failWith = 'An administrator cannot be deleted from the application';
     renderAdmin();
-    await userEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
     expect(
       await screen.findByText('An administrator cannot be deleted from the application'),
     ).toBeInTheDocument();
@@ -334,70 +340,93 @@ describe('blocking a number', () => {
     await user.click(screen.getByRole('button', { name: 'invites' }));
   }
 
-  // Two dialogs on purpose. Ban is the only action here that both deletes a
-  // profile and forecloses the way back, and it sits beside buttons that do
-  // neither — Delete removes somebody who can be re-invited tomorrow.
-  it('asks twice before blocking a member, then sends the reason', async () => {
+  // The checkbox is the whole difference between removing somebody and
+  // banning them, so it is worth proving it is off by default: an
+  // administrator who ticks nothing must not be blocking a number.
+  it('removes without blocking unless the box is ticked', async () => {
     const user = userEvent.setup();
     api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
     renderAdmin();
-    await screen.findByText('Nuisance');
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
 
-    await user.click(screen.getByRole('button', { name: 'Block' }));
+    expect(screen.getByRole('checkbox', { name: /Block this number too/ })).not.toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Remove' }));
 
-    expect(confirmSpy).toHaveBeenCalled();
-    expect(promptSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(api.deleted).toEqual(['m9']);
+    });
+    expect(api.blockCalls).toEqual([]);
+  });
+
+  it('blocks instead, with a reason, when the box is ticked', async () => {
+    const user = userEvent.setup();
+    api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
+    renderAdmin();
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
+
+    // The button says what it will do, rather than leaving the tick to be
+    // remembered.
+    await user.type(screen.getByLabelText(/Reason/), 'Harassing members');
+    await user.click(screen.getByRole('button', { name: 'Remove and block' }));
+
     await waitFor(() => {
       expect(api.blockCalls).toEqual([['14085550150', 'Harassing members']]);
     });
-  });
-
-  it('does nothing if the confirmation is declined', async () => {
-    const user = userEvent.setup();
-    confirmSpy.mockReturnValue(false);
-    api.members = [member({ id: 'm9', phone: '14085550150' })];
-    renderAdmin();
-    await screen.findByText('Alfred S');
-
-    await user.click(screen.getByRole('button', { name: 'Block' }));
-    expect(promptSpy).not.toHaveBeenCalled();
-    expect(api.blockCalls).toEqual([]);
-  });
-
-  // Cancel on the reason has to abort rather than block without one: an
-  // administrator who changes their mind at the second dialog has not
-  // agreed to anything.
-  it('does nothing if the reason is cancelled', async () => {
-    const user = userEvent.setup();
-    promptSpy.mockReturnValue(null);
-    api.members = [member({ id: 'm9', phone: '14085550150' })];
-    renderAdmin();
-    await screen.findByText('Alfred S');
-
-    await user.click(screen.getByRole('button', { name: 'Block' }));
-    expect(api.blockCalls).toEqual([]);
+    // blockNumber deletes the member itself — two calls would be two
+    // round trips with a gap where the number is blocked and they are not.
+    expect(api.deleted).toEqual([]);
   });
 
   it('records no reason rather than an empty one', async () => {
     const user = userEvent.setup();
-    promptSpy.mockReturnValue('   ');
     api.members = [member({ id: 'm9', phone: '14085550150' })];
     renderAdmin();
-    await screen.findByText('Alfred S');
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
+    await user.type(screen.getByLabelText(/Reason/), '   ');
+    await user.click(screen.getByRole('button', { name: 'Remove and block' }));
 
-    await user.click(screen.getByRole('button', { name: 'Block' }));
     await waitFor(() => {
       expect(api.blockCalls).toEqual([['14085550150', null]]);
     });
   });
 
+  it('asks for no reason until there is something to give one for', async () => {
+    const user = userEvent.setup();
+    renderAdmin();
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    expect(screen.queryByLabelText(/Reason/)).toBeNull();
+  });
+
   // Nobody has ever signed in as a seeded row, so there is no conduct to
   // answer for and the number came from the organization's directory.
-  it('is not offered on a row from the directory', async () => {
+  it('offers no block option on a row from the directory', async () => {
+    const user = userEvent.setup();
     api.members = [member({ id: 's1', displayName: 'Seeded Sam', isSeed: true })];
     renderAdmin();
-    await screen.findByText('Seeded Sam');
-    expect(screen.queryByRole('button', { name: 'Block' })).toBeNull();
+    await user.click(await screen.findByRole('button', { name: 'Remove…' }));
+    // Removable — a directory row can be retired — but there is nobody to
+    // ban: nothing has ever signed in as one.
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /Block this number too/ })).toBeNull();
+  });
+
+  it('blocks a number from the invite list, with its own reason', async () => {
+    const user = userEvent.setup();
+    api.invites = [invite({ id: 'i7', phone: '14085550160', status: 'pending' })];
+    renderAdmin();
+    await screen.findByRole('button', { name: 'invites' });
+    await user.click(screen.getByRole('button', { name: 'invites' }));
+
+    await user.click(await screen.findByRole('button', { name: 'Block…' }));
+    expect(screen.getByText(/Block 14085550160\?/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Reason/), 'Never invited, still unwelcome');
+    await user.click(screen.getByRole('button', { name: /^Block$/ }));
+
+    await waitFor(() => {
+      expect(api.blockCalls).toEqual([['14085550160', 'Never invited, still unwelcome']]);
+    });
   });
 
   it('unblocks from the blocked list, after confirming', async () => {

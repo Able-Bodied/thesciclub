@@ -100,25 +100,6 @@ export default function AdminPage() {
       });
   }
 
-  /**
-   * Ask twice, in two different ways: a confirmation that spells out what is
-   * about to happen to a real person, and then the reason, which Cancel
-   * aborts. Ban is the only action here that both deletes a profile and
-   * forecloses the way back, and it sits next to buttons that do neither.
-   */
-  function confirmBan(label: string, phone: string, onReason: (reason: string | null) => void) {
-    const ok = window.confirm(
-      `Block ${label} from The SCI Club?\n\nTheir profile is deleted, their invite is revoked, and nobody — no organization and no mentor — can put this number back on the list until it is unblocked.`,
-    );
-    if (!ok) return;
-    const reason = window.prompt(
-      `Why is ${phone} being blocked? Only administrators see this. Leave it blank if you would rather not say; Cancel stops the block.`,
-      '',
-    );
-    if (reason === null) return;
-    onReason(reason.trim() || null);
-  }
-
   const real = members.filter((m) => !m.isSeed);
   const seeded = members.filter((m) => m.isSeed);
   const pending = invites.filter((i) => i.status === 'pending');
@@ -200,10 +181,8 @@ export default function AdminPage() {
                       onRevoke={() => {
                         act(invite.id, () => revokeInvite(invite.id));
                       }}
-                      onBlock={() => {
-                        confirmBan(invite.phone, invite.phone, (reason) => {
-                          act(invite.id, () => blockNumber(invite.phone, reason));
-                        });
+                      onBlock={(reason) => {
+                        act(invite.id, () => blockNumber(invite.phone, reason));
                       }}
                     />
                   ))}
@@ -229,10 +208,8 @@ export default function AdminPage() {
                         onRevoke={() => {
                           act(invite.id, () => revokeInvite(invite.id));
                         }}
-                        onBlock={() => {
-                          confirmBan(invite.phone, invite.phone, (reason) => {
-                            act(invite.id, () => blockNumber(invite.phone, reason));
-                          });
+                        onBlock={(reason) => {
+                          act(invite.id, () => blockNumber(invite.phone, reason));
                         }}
                       />
                     ))}
@@ -290,22 +267,20 @@ export default function AdminPage() {
                   member={m}
                   busy={busyId === m.id}
                   isSelf={m.id === account.userId}
-                  onSuspend={() => {
+                  onPause={() => {
                     act(m.id, () => setMemberStatus(m.id, 'suspended'));
                   }}
-                  onReactivate={() => {
+                  onResume={() => {
                     act(m.id, () => setMemberStatus(m.id, 'active'));
-                  }}
-                  onDelete={() => {
-                    act(m.id, () => deleteMember(m.id));
                   }}
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
                   }}
-                  onBlock={() => {
-                    confirmBan(m.displayName, m.phone, (reason) => {
-                      act(m.id, () => blockNumber(m.phone, reason));
-                    });
+                  onRemove={(block, reason) => {
+                    // Blocking deletes the member as part of blocking, inside
+                    // one function, so a dropped connection cannot leave the
+                    // number blocked and the person still in the deck.
+                    act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
                   }}
                 />
               ))}
@@ -318,7 +293,7 @@ export default function AdminPage() {
 
             <Section
               title="From the directory"
-              subtitle="Seeded from NorCal SCI. Suspending one hides it from the deck."
+              subtitle="Seeded from NorCal SCI. Pausing one hides it from the deck."
               hidden={tab !== 'members'}
             >
               {seeded.map((m) => (
@@ -327,22 +302,20 @@ export default function AdminPage() {
                   member={m}
                   busy={busyId === m.id}
                   isSelf={false}
-                  onSuspend={() => {
+                  onPause={() => {
                     act(m.id, () => setMemberStatus(m.id, 'suspended'));
                   }}
-                  onReactivate={() => {
+                  onResume={() => {
                     act(m.id, () => setMemberStatus(m.id, 'active'));
-                  }}
-                  onDelete={() => {
-                    act(m.id, () => deleteMember(m.id));
                   }}
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
                   }}
-                  onBlock={() => {
-                    confirmBan(m.displayName, m.phone, (reason) => {
-                      act(m.id, () => blockNumber(m.phone, reason));
-                    });
+                  onRemove={(block, reason) => {
+                    // Blocking deletes the member as part of blocking, inside
+                    // one function, so a dropped connection cannot leave the
+                    // number blocked and the person still in the deck.
+                    act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
                   }}
                 />
               ))}
@@ -381,21 +354,24 @@ function Row({
   member,
   busy,
   isSelf,
-  onSuspend,
-  onReactivate,
-  onDelete,
+  onPause,
+  onResume,
+  onRemove,
   onToggleMentor,
-  onBlock,
 }: {
   member: AdminMember;
   busy: boolean;
   isSelf: boolean;
-  onSuspend: () => void;
-  onReactivate: () => void;
-  onDelete: () => void;
+  onPause: () => void;
+  onResume: () => void;
+  /** One call either way: blocking deletes the member as part of blocking. */
+  onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
-  onBlock: () => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [block, setBlock] = useState(false);
+  const [reason, setReason] = useState('');
+
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
       <span className="min-w-0 flex-1">
@@ -434,35 +410,153 @@ function Row({
           <SmallButton onClick={onToggleMentor}>
             {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
           </SmallButton>
+          {/* "Pause" rather than "Suspend", matching the screen the member
+              actually sees. The column still stores 'suspended'; renaming a
+              check constraint and the rows under it is churn for a word
+              nobody outside the schema reads. */}
           {member.status === 'active' ? (
-            <SmallButton onClick={onSuspend}>Suspend</SmallButton>
+            <SmallButton onClick={onPause}>Pause</SmallButton>
           ) : (
-            <SmallButton onClick={onReactivate}>Reactivate</SmallButton>
+            <SmallButton onClick={onResume}>Resume</SmallButton>
           )}
           <SmallButton
             destructive
             onClick={() => {
-              const ok = window.confirm(
-                `Delete ${member.displayName}'s profile permanently?\n\nTheir sign-in still exists but shows them nothing, and rejoining needs a fresh invite. This cannot be undone.`,
-              );
-              if (ok) onDelete();
+              setConfirming(true);
             }}
           >
-            Delete
+            Remove…
           </SmallButton>
-          {/* Deliberately last, and the only one that forecloses the way
-              back. Delete removes somebody; Block removes them and keeps the
-              number off the list. Seeded rows are excluded: nobody has ever
-              signed in as one, so there is no conduct to answer for and the
-              number is the organization's, not a person's. */}
-          {member.isSeed ? null : (
-            <SmallButton destructive onClick={onBlock}>
-              Block
-            </SmallButton>
-          )}
         </span>
       )}
+
+      {confirming ? (
+        <ConfirmPanel
+          title={`Remove ${member.displayName} from the club?`}
+          confirmLabel={block ? 'Remove and block' : 'Remove'}
+          onCancel={() => {
+            setConfirming(false);
+            setBlock(false);
+            setReason('');
+          }}
+          onConfirm={() => {
+            setConfirming(false);
+            onRemove(block, reason.trim() || null);
+          }}
+        >
+          <p>
+            Their profile is deleted and their invite is revoked. Their sign-in still exists but
+            shows them nothing.
+          </p>
+          {/* The one question worth asking at this moment, and the only thing
+              separating this from a ban. Left unticked, the number is free
+              and anybody can invite them back tomorrow.
+
+              Not offered on a directory row: nobody has ever signed in as
+              one, so there is no conduct to answer for, and the number came
+              from the organization's directory rather than from a person. */}
+          {member.isSeed ? null : (
+            <label
+              htmlFor={`block-${member.id}`}
+              className="mt-2.5 flex cursor-pointer items-start gap-2"
+            >
+              <input
+                id={`block-${member.id}`}
+                type="checkbox"
+                checked={block}
+                onChange={(e) => {
+                  setBlock(e.target.checked);
+                }}
+                className="mt-0.5 h-4 w-4 flex-none accent-[var(--destructive)]"
+              />
+              <span>
+                <span className="block font-bold text-ink">Block this number too</span>
+                <span className="block text-grey">
+                  Nobody — no organization and no mentor — can put it back on the list until an
+                  administrator unblocks it.
+                </span>
+              </span>
+            </label>
+          )}
+          {block ? (
+            <ReasonField id={`reason-${member.id}`} value={reason} onChange={setReason} />
+          ) : null}
+        </ConfirmPanel>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * The confirmation, in the row rather than in a native dialog.
+ *
+ * Removing somebody asks two questions at once — are you sure, and can they
+ * come back — and `window.confirm` can only ask one. Stacking two dialogs to
+ * get the second answer made the more serious action the one with more
+ * clicking, which is not the same as the one with more thought. Here the
+ * question that matters is a checkbox the administrator reads before the
+ * button they press changes its own name.
+ */
+function ConfirmPanel({
+  title,
+  children,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  children: React.ReactNode;
+  confirmLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="mt-2 w-full rounded-[12px] border border-destructive/30 bg-destructive/5 p-3">
+      <p className="font-extrabold font-head text-[0.84375rem] text-ink">{title}</p>
+      <div className="mt-1.5 text-[0.78125rem] text-ink2 leading-[1.5]">{children}</div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="min-h-[38px] rounded-full bg-tint px-3.5 font-semibold text-[0.78125rem] text-navy"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="min-h-[38px] rounded-full bg-destructive px-3.5 font-bold font-head text-[0.78125rem] text-white"
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** The reason a number was blocked. Only administrators ever read it. */
+function ReasonField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label htmlFor={id} className="mt-2.5 block font-bold text-[0.75rem] text-ink">
+      Reason (only administrators see this)
+      <input
+        id={id}
+        value={value}
+        placeholder="Harassing members"
+        onChange={(e) => {
+          onChange(e.target.value);
+        }}
+        className="mt-1 w-full rounded-[10px] border-[1.6px] border-line bg-paper px-2.5 py-1.5 font-normal text-[0.84375rem] outline-none focus:border-navy"
+      />
+    </label>
   );
 }
 
@@ -494,8 +588,10 @@ function InviteRow({
   invite: AdminInvite;
   busy: boolean;
   onRevoke: () => void;
-  onBlock: () => void;
+  onBlock: (reason: string | null) => void;
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const [reason, setReason] = useState('');
   const vouchedBy = vouchedBy_(invite);
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
@@ -551,11 +647,38 @@ function InviteRow({
               asks "should this number ever be", and those have different
               answers — a withdrawn invite is exactly where somebody decides
               the answer is never. */}
-          <SmallButton destructive onClick={onBlock}>
-            Block
+          <SmallButton
+            destructive
+            onClick={() => {
+              setConfirming(true);
+            }}
+          >
+            Block…
           </SmallButton>
         </span>
       )}
+
+      {confirming ? (
+        <ConfirmPanel
+          title={`Block ${invite.phone}?`}
+          confirmLabel="Block"
+          onCancel={() => {
+            setConfirming(false);
+            setReason('');
+          }}
+          onConfirm={() => {
+            setConfirming(false);
+            onBlock(reason.trim() || null);
+          }}
+        >
+          <p>
+            Nobody — no organization and no mentor — can put this number on the list until an
+            administrator unblocks it.
+            {invite.heldBy ? ` ${invite.heldBy}'s profile is deleted with it.` : ''}
+          </p>
+          <ReasonField id={`reason-invite-${invite.id}`} value={reason} onChange={setReason} />
+        </ConfirmPanel>
+      ) : null}
     </div>
   );
 }
