@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-616 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+627 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -140,9 +140,18 @@ restore. The other order leaves the number taken and the profile skipped.
 Name and birthday are required — a row needs a name and the club is 18+, and
 the database enforces the second with a trigger. Everything after that can be
 left: `level_range` has a 'Not sure yet' value, `exact_level`, `injury_date`,
-`city`, `state` and the photograph are all nullable, and "Finish later —
-enter the club" appears from the injury step onward. What is skipped gets
-filled in from Me.
+`city`, `state` and the photograph are all nullable. "Finish later — enter
+the club" appears **on the birthday step**, as soon as the date entered is a
+real and adult one, and on every step after it. Not before that: skipping
+with an empty or under-age birthday writes a row the database refuses, and
+the refusal reaches the member as a sentence about a trigger.
+
+What is skipped gets filled in from Me, which carries a **gold count of what
+is still blank** on the Your details row and names them underneath.
+`missingDetails()` in `details-api.ts` returns the labels rather than a
+number so the badge and the sentence cannot disagree. It deliberately does
+not count 'Do not know' for completeness — an honest answer, not a gap — nor
+the name and birthday, which cannot be absent.
 
 `state` became nullable for this (20260913030000) and is null rather than '',
 because an empty string sorts, filters and compares as though it were a
