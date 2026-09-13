@@ -60,11 +60,22 @@ select count(*) filter (where invited_by_organization is not null and invited_by
   from public.admin_invites where phone in ('14085552100', '14085552200');
 
 \echo ''
-\echo '== 4. a directory claim still needs an organization =='
-\echo '   expect: ERROR:  A directory claim has to be vouched for by an organization'
-savepoint claim_without_org;
-select public.admin_create_invite('4085552300', null, :'ajay_id', null);
-rollback to savepoint claim_without_org;
+\echo '== 4. an administrator vouching alone may still attach a claim =='
+\echo '   expect: Ajay named as claimable, vouched for by the admin'
+\echo '   The rule against this was borrowed from a policy about mentors —'
+\echo '   who cannot call this function at all, and whose own insert policy'
+\echo '   still forbids them a claim. See 20260913080000.'
+select public.admin_create_invite('4085552300', null, :'ajay_id', null) as id;
+select claimable_name, invited_by_member, invited_by_member_is_admin
+  from public.admin_invites where phone = '14085552300';
+
+\echo ''
+\echo '== 4b. but a claim on somebody real is still refused =='
+\echo '   expect: ERROR:  That profile is not one of the seeded directory entries'
+savepoint claim_real_member;
+select public.admin_create_invite('4085552350', null,
+  'bbbbbbbb-2222-2222-2222-222222222222', null);
+rollback to savepoint claim_real_member;
 
 \echo ''
 \echo '== 5. a claim with an organization is still accepted =='

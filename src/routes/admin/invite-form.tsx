@@ -39,12 +39,11 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
     void fetchClaimableProfiles().then(setClaimable);
   }, []);
 
-  // No organization requirement any more: '' means the administrator.
+  // No organization requirement: '' means the administrator is vouching, and
+  // that is a complete answer, claim or no claim. The rule that a claim needs
+  // an organization was borrowed from a policy about mentors — who cannot
+  // reach this form — and withdrawn in 20260913080000.
   const ready = isCompletePhone(phone);
-  // The database refuses this combination — a directory claim is an identity
-  // assertion and only the body that compiled the directory can make it — so
-  // the form says so before the button rather than after.
-  const claimNeedsOrganization = claimMemberId !== '' && organizationId === '';
 
   function submit() {
     setBusy(true);
@@ -157,9 +156,8 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
 
       {claimMemberId ? (
         <p className="mt-2.5 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.75rem] text-[#5C4409] leading-[1.45]">
-          {claimNeedsOrganization
-            ? 'Choose the organization vouching for this number. A directory profile can only be claimed on an organization’s say-so.'
-            : 'Whoever verifies this number will be offered that profile. Attach it only if you know the number belongs to them.'}
+          Whoever verifies this number will be offered that profile. Attach it only if you know the
+          number belongs to them.
         </p>
       ) : null}
 
@@ -169,7 +167,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
 
       <button
         type="button"
-        disabled={!ready || busy || claimNeedsOrganization}
+        disabled={!ready || busy}
         onClick={submit}
         className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] bg-navy font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
       >

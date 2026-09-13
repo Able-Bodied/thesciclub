@@ -680,7 +680,6 @@ describe('the invite list', () => {
 
   it('warns before attaching somebody else’s profile to a number', async () => {
     await openInvites();
-    await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
     await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
     expect(
       screen.getByText(/Attach it only if you know the number belongs to them/),
@@ -713,18 +712,23 @@ describe('the invite list', () => {
     });
   });
 
-  // The database refuses this combination, so the form says so first rather
-  // than letting somebody fill the whole thing in and be turned back.
-  it('will not let the club vouch for a directory claim', async () => {
+  // The rule against this came from a policy about mentors, who cannot reach
+  // this form at all and whose own insert policy still forbids them a claim.
+  // An administrator can already delete any member and block any number, so
+  // withholding a claim protected nothing and forced a false attribution
+  // into the record of who vouched.
+  it('lets the club vouch for a directory claim', async () => {
     await openInvites();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
 
-    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeDisabled();
-    expect(screen.getByText(/only be claimed on an organization/)).toBeInTheDocument();
-
-    await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
     expect(screen.getByRole('button', { name: 'Add to the list' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await waitFor(() => {
+      expect(api.created).toEqual([
+        { phone: '(408) 555-0112', organizationId: null, claimMemberId: 'seed1', note: null },
+      ]);
+    });
   });
 });
 
