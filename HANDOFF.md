@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-580 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+596 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -56,7 +56,9 @@ And one written after those, which is **not yet pushed** — see the note at the
 end of this section:
 
 - `20260913000000` — `admin_invites` reports whether anybody ever signed up,
-  and `admin_members` reports a mentor's spent allowance.
+  and `admin_members` reports a mentor's spent allowance. **Pushed.**
+- `20260913010000` — `blocked_numbers`, and `has_active_invite` answers false
+  for a blocked number. **Not pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -66,12 +68,11 @@ expecting the app to work.
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
 
-**`20260913000000` is applied locally and not on the hosted project.** The app
-is written to survive that: both views are read with `select('*')` and the two
-new columns arrive as `undefined`, which the client already treats as "this
-copy of the view does not report it" and says nothing extra. So `/admin` works
-against hosted today; it just cannot yet say who signed up without finishing.
-Run `pnpm exec supabase db push` to close the gap.
+**`20260913010000` is applied locally and not on the hosted project.** `fetchBlockedNumbers`
+returns an empty list when the view is absent rather than failing, so `/admin`
+still lists members and invites against hosted — the Blocked section simply
+does not appear, and Block will fail with the database's own "function does
+not exist". Run `pnpm exec supabase db push` to close the gap.
 
 ## Read these first
 
@@ -358,6 +359,31 @@ Three things it turned up that were not obvious from reading the policies:
   `/admin`'s deliberately, and it is not an oversight to fix by joining
   `browse_members`.
 
+### Losing membership: three different things
+
+Worth keeping straight, because two of them look alike from `/admin` and the
+third used to do nothing at all.
+
+- **Suspend** pauses a membership and keeps the row. Reversible with
+  Reactivate. Until 20260913, this did nothing a member could perceive:
+  `account.tsx` read the member row without selecting `status`, so a
+  suspended member resolved to an ordinary one and walked into a club that
+  showed them an empty deck and no events with no explanation anywhere.
+  `statusFor` decides it now and `RequireMember` renders
+  `suspended-screen.tsx` instead of the club.
+- **Delete** removes the profile and revokes their invite. The number is free
+  and they can be invited back tomorrow.
+- **Block** deletes the profile *and* bars the number, so no organization and
+  no mentor can put it back. Two dialogs before it happens. Reversible with
+  Unblock, which restores invitability and not the membership — that row is
+  gone. See `supabase/tests/blocked-numbers.sql`, which runs all three
+  enforcement points as a signed-in administrator.
+
+The reason there are three is that revoking deliberately does not keep a
+number off the list: `invites_live_phone_idx` is partial over pending and
+consumed exactly so a revoked number can be invited again. Block is the
+opposite intent, and it needed somewhere of its own to live.
+
 ### What `/admin` gained alongside it
 
 - **A mentor is named as one.** `invited_by_organization` and
@@ -372,6 +398,10 @@ Three things it turned up that were not obvious from reading the policies:
 - **A mentor's spent allowance on the roster**, from `live_invite_count()` so
   it cannot disagree with the policy. Not shown on seeded rows: nobody can
   sign in as one.
+- **Three lists on the Invites tab** — on the list, Withdrawn, Blocked, the
+  last two only when they have rows. "The list" now means the numbers that
+  are on it; withdrawn rows accumulating there is what made deleting them
+  look necessary, and they cost nothing where they are.
 - **Both screens have a back link to Me.** A `Link`, not `navigate(-1)` —
   they have one entrance, and history leaves the app on a refresh while the
   label still says Me.
