@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-607 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+612 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -456,6 +456,16 @@ rather than a third button nobody could tell from the second.
   last two only when they have rows. "The list" now means the numbers that
   are on it; withdrawn rows accumulating there is what made deleting them
   look necessary, and they cost nothing where they are.
+
+  Withdrawn is grouped by `withdrawnNumbers()` in `members-admin.ts`, not a
+  plain filter, and the reason is worth knowing before "simplifying" it:
+  re-inviting a revoked number writes a *new* invite rather than reviving the
+  old one — deliberately, since the second invitation is a separate act by
+  possibly a different person. Withdraw that too and the number has two
+  revoked rows, then three. The function collapses them to the most recent,
+  says "withdrawn 3 times", and drops any number that now has a live invite
+  or is blocked, so nothing appears in two lists at once. The history stays
+  in `invites`.
 - **Both screens have a back link to Me.** A `Link`, not `navigate(-1)` —
   they have one entrance, and history leaves the app on a refresh while the
   label still says Me.
