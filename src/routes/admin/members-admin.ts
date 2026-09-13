@@ -96,6 +96,8 @@ export interface AdminInvite {
   createdAt: string;
   invitedByOrganization: string | null;
   invitedByMember: string | null;
+  /** Whether that member is the club's administrator rather than a mentor. */
+  invitedByMemberIsAdmin: boolean | undefined;
   /** The seeded profile this invite entitles its holder to claim, if any. */
   claimableName: string | null;
   /**
@@ -135,6 +137,7 @@ interface AdminInviteRow {
   created_at: string;
   invited_by_organization: string | null;
   invited_by_member: string | null;
+  invited_by_member_is_admin: boolean | null;
   claimable_name: string | null;
   held_by: string | null;
   held_by_status: string | null;
@@ -172,6 +175,7 @@ export async function fetchInvites(): Promise<
       createdAt: row.created_at,
       invitedByOrganization: row.invited_by_organization,
       invitedByMember: row.invited_by_member,
+      invitedByMemberIsAdmin: row.invited_by_member_is_admin ?? undefined,
       claimableName: row.claimable_name,
       heldBy: row.held_by,
       heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
@@ -208,7 +212,8 @@ export async function fetchClaimableProfiles(): Promise<ClaimableProfile[]> {
 
 export async function createInvite(input: {
   phone: string;
-  organizationId: string;
+  /** Null when the administrator is vouching in their own name. */
+  organizationId: string | null;
   claimMemberId: string | null;
   note: string | null;
 }): Promise<{ ok: boolean; error?: string }> {
@@ -434,7 +439,13 @@ export function withdrawnNumbers(
  */
 export function vouchedBy(invite: AdminInvite): string {
   if (invite.invitedByOrganization) return invite.invitedByOrganization;
-  if (invite.invitedByMember) return `${invite.invitedByMember} (mentor)`;
+  // A member inviter used to mean a mentor and nothing else. An
+  // administrator can now add a number in their own name, and calling them a
+  // mentor on every one of those would be wrong on the record that exists to
+  // say who vouched.
+  if (invite.invitedByMember) {
+    return `${invite.invitedByMember} (${invite.invitedByMemberIsAdmin ? 'admin' : 'mentor'})`;
+  }
   // The inviter's account is gone — `on delete set null` keeps the invite and
   // drops who issued it, which is honest and is not a bug to paper over.
   return 'unknown';

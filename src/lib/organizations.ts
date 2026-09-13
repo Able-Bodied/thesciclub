@@ -38,6 +38,32 @@ export function toOrganization(row: OrganizationRow): Organization {
   };
 }
 
+/**
+ * The club organization behind an affiliation, if there is one.
+ *
+ * `members.affiliations` is free text — the names NorCal SCI's directory used
+ * — so a member can be affiliated with something the club has no row for
+ * ("Christopher Reeve Foundation" is on Bob's row and is not a club
+ * organization). Those still render, as the short-code tile, which is why
+ * this returns null rather than throwing.
+ *
+ * Matched case- and space-insensitively on the name, then on the short code,
+ * because the directory was typed by hand and "NorCal SCI " has turned up.
+ */
+export function organizationByName(
+  organizations: Organization[],
+  name: string | null | undefined,
+): Organization | null {
+  if (!name) return null;
+  const wanted = name.trim().toLowerCase();
+  if (!wanted) return null;
+  return (
+    organizations.find((o) => o.name.trim().toLowerCase() === wanted) ??
+    organizations.find((o) => o.shortCode.trim().toLowerCase() === wanted) ??
+    null
+  );
+}
+
 export interface OrganizationsState {
   organizations: Organization[];
   byId: Map<string, Organization>;

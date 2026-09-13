@@ -603,6 +603,7 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   createdAt: '2026-09-11T09:00:00Z',
   invitedByOrganization: 'NorCal SCI',
   invitedByMember: null,
+  invitedByMemberIsAdmin: undefined,
   claimableName: null,
   heldBy: null,
   heldByStatus: null,
@@ -679,10 +680,89 @@ describe('the invite list', () => {
 
   it('warns before attaching somebody else’s profile to a number', async () => {
     await openInvites();
+    await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
     await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
     expect(
       screen.getByText(/Attach it only if you know the number belongs to them/),
     ).toBeInTheDocument();
+  });
+
+  // An administrator adding a number by hand — the launch allowlist, somebody
+  // met at an event — should be able to say so rather than attributing it to
+  // an organization that had nothing to do with it.
+  it('vouches as the club by default, sending no organization', async () => {
+    await openInvites();
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await waitFor(() => {
+      expect(api.created).toEqual([
+        { phone: '(408) 555-0112', organizationId: null, claimMemberId: null, note: null },
+      ]);
+    });
+  });
+
+  it('sends the organization when one is chosen', async () => {
+    await openInvites();
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
+    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await waitFor(() => {
+      expect(api.created).toEqual([
+        { phone: '(408) 555-0112', organizationId: 'org1', claimMemberId: null, note: null },
+      ]);
+    });
+  });
+
+  // The database refuses this combination, so the form says so first rather
+  // than letting somebody fill the whole thing in and be turned back.
+  it('will not let the club vouch for a directory claim', async () => {
+    await openInvites();
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
+
+    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeDisabled();
+    expect(screen.getByText(/only be claimed on an organization/)).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
+    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeEnabled();
+  });
+});
+
+describe('who vouched, on the list', () => {
+  // A member inviter used to mean a mentor and nothing else.
+  it('tells an administrator apart from a mentor', () => {
+    expect(
+      vouchedBy(
+        invite({
+          invitedByOrganization: null,
+          invitedByMember: 'Alfred Shaheen',
+          invitedByMemberIsAdmin: true,
+        }),
+      ),
+    ).toBe('Alfred Shaheen (admin)');
+    expect(
+      vouchedBy(
+        invite({
+          invitedByOrganization: null,
+          invitedByMember: 'Todd',
+          invitedByMemberIsAdmin: false,
+        }),
+      ),
+    ).toBe('Todd (mentor)');
+  });
+
+  // A database that predates the column cannot say which, and every member
+  // inviter on it is a mentor, because that was the only way in.
+  it('says mentor where the view does not report it', () => {
+    expect(
+      vouchedBy(
+        invite({
+          invitedByOrganization: null,
+          invitedByMember: 'Todd',
+          invitedByMemberIsAdmin: undefined,
+        }),
+      ),
+    ).toBe('Todd (mentor)');
   });
 });
 

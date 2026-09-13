@@ -1,6 +1,8 @@
 import { ClubMark } from '@/components/club-mark';
+import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { BrowseMember } from '@/types/domain';
 
 /**
@@ -116,6 +118,7 @@ function OfficialCard({ member, onOpen }: MemberCardProps) {
 }
 
 function PersonCard({ member, onOpen }: MemberCardProps) {
+  const { organizations } = useOrganizations();
   const photo = photoUrlFor(member.photoPath);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);
@@ -171,9 +174,14 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-5">
         {verifier ? (
           <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
-            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.53125rem] text-white">
-              {shortCodeFor(verifier)}
-            </span>
+            {/* The organization's own logo where the club has a row for it,
+                the short-code tile where it does not — several affiliations
+                on these rows are bodies the club has no organization for. */}
+            <OrganizationBadge
+              organization={organizationByName(organizations, verifier)}
+              hostName={verifier}
+              className="h-[22px] w-[22px] rounded-[7px] text-[0.53125rem]"
+            />
             {verifier}
           </span>
         ) : null}

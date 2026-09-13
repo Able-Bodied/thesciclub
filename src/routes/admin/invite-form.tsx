@@ -24,6 +24,10 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
   const [organizations, setOrganizations] = useState<InvitingOrganization[]>([]);
   const [claimable, setClaimable] = useState<ClaimableProfile[]>([]);
   const [phone, setPhone] = useState('');
+  // '' is the club itself — the administrator vouching in their own name —
+  // rather than "nothing chosen". It is the default because the numbers an
+  // administrator adds by hand are usually theirs to answer for; picking an
+  // organization is the deliberate act.
   const [organizationId, setOrganizationId] = useState('');
   const [claimMemberId, setClaimMemberId] = useState('');
   const [note, setNote] = useState('');
@@ -31,21 +35,23 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchInvitingOrganizations().then((orgs) => {
-      setOrganizations(orgs);
-      setOrganizationId((current) => current || (orgs[0]?.id ?? ''));
-    });
+    void fetchInvitingOrganizations().then(setOrganizations);
     void fetchClaimableProfiles().then(setClaimable);
   }, []);
 
-  const ready = isCompletePhone(phone) && organizationId !== '';
+  // No organization requirement any more: '' means the administrator.
+  const ready = isCompletePhone(phone);
+  // The database refuses this combination — a directory claim is an identity
+  // assertion and only the body that compiled the directory can make it — so
+  // the form says so before the button rather than after.
+  const claimNeedsOrganization = claimMemberId !== '' && organizationId === '';
 
   function submit() {
     setBusy(true);
     setError(null);
     createInvite({
       phone,
-      organizationId,
+      organizationId: organizationId || null,
       claimMemberId: claimMemberId || null,
       note: note.trim() || null,
     })
@@ -100,6 +106,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             }}
             className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
           >
+            <option value="">The club — you are vouching</option>
             {organizations.map((o) => (
               <option key={o.id} value={o.id}>
                 {o.name}
@@ -150,8 +157,9 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
 
       {claimMemberId ? (
         <p className="mt-2.5 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.75rem] text-[#5C4409] leading-[1.45]">
-          Whoever verifies this number will be offered that profile. Attach it only if you know the
-          number belongs to them.
+          {claimNeedsOrganization
+            ? 'Choose the organization vouching for this number. A directory profile can only be claimed on an organization’s say-so.'
+            : 'Whoever verifies this number will be offered that profile. Attach it only if you know the number belongs to them.'}
         </p>
       ) : null}
 
@@ -161,7 +169,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
 
       <button
         type="button"
-        disabled={!ready || busy}
+        disabled={!ready || busy || claimNeedsOrganization}
         onClick={submit}
         className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] bg-navy font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
       >

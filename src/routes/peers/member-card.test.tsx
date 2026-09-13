@@ -1,7 +1,32 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { gradientFor, initialsOf, MemberCard, summaryLine } from '@/routes/peers/member-card';
-import { makeMember } from '@/test/factory';
+import { describe, expect, it, vi } from 'vitest';
+import type * as Organizations from '@/lib/organizations';
+import type { Organization } from '@/types/domain';
+
+const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
+// Partial: `organizationByName` is pure and the card should be running the
+// real one. Without any mock the hook reaches for Supabase and throws inside
+// the render, which would leave the badge silently on its fallback.
+vi.mock('@/lib/organizations', async (importOriginal) => ({
+  ...(await importOriginal<typeof Organizations>()),
+  useOrganizations: () => ({ organizations: orgs.list, loading: false }),
+}));
+
+const { gradientFor, initialsOf, MemberCard, summaryLine } = await import(
+  '@/routes/peers/member-card'
+);
+const { makeMember } = await import('@/test/factory');
+
+const norcal = {
+  id: 'o1',
+  shortCode: 'NCS',
+  name: 'NorCal SCI',
+  city: 'Northern California',
+  description: '',
+  tags: [],
+  canInvite: true,
+  logoPath: 'organizations/ncs.webp',
+} as Organization;
 
 describe('summaryLine', () => {
   it('prefers the exact level over the range once somebody has given one', () => {
@@ -147,5 +172,31 @@ describe('the official account', () => {
   it('does not badge an ordinary member as official', () => {
     render(<MemberCard member={makeMember({ isAdmin: false })} onOpen={() => undefined} />);
     expect(screen.queryByText('Official')).not.toBeInTheDocument();
+  });
+});
+
+describe('the organization on a card', () => {
+  it('shows the organization’s logo where the club has a row for it', () => {
+    orgs.list = [norcal];
+    render(
+      <MemberCard member={makeMember({ affiliations: ['NorCal SCI'] })} onOpen={() => undefined} />,
+    );
+    const logo = document.querySelector('img[src*="organizations/ncs.webp"]');
+    expect(logo).not.toBeNull();
+    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+  });
+
+  // Bob is affiliated with the Christopher Reeve Foundation, which the club
+  // has no organization for. It still has to render.
+  it('falls back to initials for an affiliation the club does not know', () => {
+    orgs.list = [norcal];
+    render(
+      <MemberCard
+        member={makeMember({ affiliations: ['Christopher Reeve Foundation'] })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(document.querySelector('img[src*="organizations"]')).toBeNull();
+    expect(screen.getByText('Christopher Reeve Foundation')).toBeInTheDocument();
   });
 });

@@ -3,8 +3,10 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark, ClubWordmark } from '@/components/club-mark';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
+import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { photoUrlFor } from '@/lib/photos';
-import { gradientFor, initialsOf, shortCodeFor, summaryLine } from '@/routes/peers/member-card';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import type { BeforeAfter, BrowseMember } from '@/types/domain';
 
 /**
@@ -116,6 +118,9 @@ export default function MemberDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { member, loading, error, signedOut, notFound } = useBrowseMember(id);
+  // Before the early returns: hooks cannot run conditionally, and every
+  // branch below this either renders the profile or does not need the list.
+  const { organizations } = useOrganizations();
 
   if (loading) {
     return <Centered>Loading…</Centered>;
@@ -306,9 +311,11 @@ export default function MemberDetailPage() {
                     key={org}
                     className="mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
                   >
-                    <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.6875rem] text-white">
-                      {shortCodeFor(org)}
-                    </span>
+                    <OrganizationBadge
+                      organization={organizationByName(organizations, org)}
+                      hostName={org}
+                      className="h-[34px] w-[34px] rounded-[11px] text-[0.6875rem]"
+                    />
                     <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
                   </div>
                 ))}
