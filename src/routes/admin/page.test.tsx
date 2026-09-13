@@ -10,6 +10,7 @@ import {
   canRevoke,
   inviteState,
   vouchedBy,
+  withdrawnNumbers,
 } from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
@@ -447,6 +448,69 @@ describe('blocking a number', () => {
     await waitFor(() => {
       expect(api.unblocked).toEqual(['14085550150']);
     });
+  });
+});
+
+describe('the withdrawn list', () => {
+  const revoked = (phone: string, id: string, createdAt: string) =>
+    invite({ id, phone, status: 'revoked', createdAt });
+
+  // Re-inviting writes a new row rather than reviving the old one, which is
+  // right — a second invitation is a separate act. Withdraw that too and the
+  // number has two revoked rows, then three, and the list reads as broken.
+  it('collapses repeated cycles on one number to a single row', () => {
+    const rows = withdrawnNumbers([
+      revoked('14085550112', 'a', '2026-09-01T00:00:00Z'),
+      revoked('14085550112', 'b', '2026-09-05T00:00:00Z'),
+      revoked('14085550112', 'c', '2026-09-03T00:00:00Z'),
+    ]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.times).toBe(3);
+    // The most recent invitation, not whichever came back first.
+    expect(rows[0]?.invite.id).toBe('b');
+  });
+
+  // The most confusing thing this list could do: show a number as withdrawn
+  // while it is sitting in "The list" above.
+  it('drops a number that has since been invited again', () => {
+    const rows = withdrawnNumbers([
+      revoked('14085550112', 'old', '2026-09-01T00:00:00Z'),
+      invite({ id: 'new', phone: '14085550112', status: 'pending' }),
+    ]);
+    expect(rows).toEqual([]);
+  });
+
+  it('drops a number that is blocked, which has its own list', () => {
+    const rows = withdrawnNumbers(
+      [revoked('14085550112', 'old', '2026-09-01T00:00:00Z')],
+      ['14085550112'],
+    );
+    expect(rows).toEqual([]);
+  });
+
+  it('keeps distinct numbers apart, newest first', () => {
+    const rows = withdrawnNumbers([
+      revoked('14085550112', 'a', '2026-09-01T00:00:00Z'),
+      revoked('14085550113', 'b', '2026-09-09T00:00:00Z'),
+    ]);
+    expect(rows.map((r) => r.invite.phone)).toEqual(['14085550113', '14085550112']);
+    expect(rows.every((r) => r.times === 1)).toBe(true);
+  });
+
+  it('says how many times, on screen, only when it is more than once', async () => {
+    const user = userEvent.setup();
+    api.invites = [
+      revoked('14085550112', 'a', '2026-09-01T00:00:00Z'),
+      revoked('14085550112', 'b', '2026-09-05T00:00:00Z'),
+      revoked('14085550113', 'c', '2026-09-02T00:00:00Z'),
+    ];
+    renderAdmin();
+    await screen.findByRole('button', { name: 'invites' });
+    await user.click(screen.getByRole('button', { name: 'invites' }));
+
+    expect(await screen.findByText(/withdrawn 2 times/)).toBeInTheDocument();
+    expect(screen.getAllByText('14085550112')).toHaveLength(1);
+    expect(screen.getByText('14085550113')).toBeInTheDocument();
   });
 });
 

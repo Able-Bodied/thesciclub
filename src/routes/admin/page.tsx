@@ -21,6 +21,7 @@ import {
   setMemberType,
   unblockNumber,
   vouchedBy as vouchedBy_,
+  withdrawnNumbers,
 } from '@/routes/admin/members-admin';
 
 /**
@@ -108,7 +109,10 @@ export default function AdminPage() {
   // what made deleting them look necessary — they carry who vouched and when,
   // and the partial unique index means they cost nothing where they are.
   const onTheList = invites.filter((i) => i.status !== 'revoked');
-  const withdrawn = invites.filter((i) => i.status === 'revoked');
+  const withdrawn = withdrawnNumbers(
+    invites,
+    blocked.map((b) => b.phone),
+  );
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -200,10 +204,11 @@ export default function AdminPage() {
                     title="Withdrawn"
                     subtitle="Off the list, and free to be invited again. Kept for the record of who vouched."
                   >
-                    {withdrawn.map((invite) => (
+                    {withdrawn.map(({ invite, times }) => (
                       <InviteRow
                         key={invite.id}
                         invite={invite}
+                        times={times}
                         busy={busyId === invite.id}
                         onRevoke={() => {
                           act(invite.id, () => revokeInvite(invite.id));
@@ -581,11 +586,14 @@ function SmallButton({
 
 function InviteRow({
   invite,
+  times = 1,
   busy,
   onRevoke,
   onBlock,
 }: {
   invite: AdminInvite;
+  /** How many times this number has been invited and withdrawn. */
+  times?: number;
   busy: boolean;
   onRevoke: () => void;
   onBlock: (reason: string | null) => void;
@@ -622,6 +630,9 @@ function InviteRow({
             {inviteState(invite)}
           </span>
           {invite.note ? ` · ${invite.note}` : ''}
+          {/* A number that keeps coming back is worth seeing as a number
+              rather than as five rows that look like a bug. */}
+          {times > 1 ? ` · withdrawn ${times} times` : ''}
         </span>
       </span>
 

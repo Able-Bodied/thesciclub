@@ -344,6 +344,64 @@ export async function unblockNumber(phone: string): Promise<{ ok: boolean; error
 }
 
 /**
+ * The withdrawn list: one row per number, and only numbers that are actually
+ * off the list.
+ *
+ * Revoking does not delete, deliberately — the row keeps who vouched and
+ * when, and the partial unique index means a revoked row costs nothing where
+ * it is. But re-inviting a number writes a *new* row rather than reviving the
+ * old one, which is also right: the second invitation is a separate act, by
+ * possibly a different person, for possibly a different reason. Withdraw that
+ * one too and the number has two revoked rows, then three.
+ *
+ * All of which is sound in the database and unreadable on a screen. So the
+ * grouping happens here:
+ *
+ * - A number with a live invite is not withdrawn, whatever its history says.
+ *   Without this a re-invited number appears in "The list" and in "Withdrawn"
+ *   simultaneously, which is the most confusing thing this list could do.
+ * - A blocked number belongs in Blocked, not in both.
+ * - Everything else collapses to its most recent invitation, with a count
+ *   when there has been more than one. Repeatedly inviting and withdrawing
+ *   the same number is worth seeing as a number, not as five rows that look
+ *   like a bug.
+ *
+ * Most recent first, by when the invitation was created: `admin_invites` does
+ * not carry `revoked_at`, and the newest invitation for a number is the one
+ * whose withdrawal came last anyway.
+ */
+export interface WithdrawnNumber {
+  /** The most recent withdrawn invitation for this number. */
+  invite: AdminInvite;
+  /** How many times this number has been invited and withdrawn. */
+  times: number;
+}
+
+export function withdrawnNumbers(
+  invites: AdminInvite[],
+  blockedPhones: string[] = [],
+): WithdrawnNumber[] {
+  const onTheList = new Set(invites.filter((i) => i.status !== 'revoked').map((i) => i.phone));
+  const blocked = new Set(blockedPhones);
+
+  const byPhone = new Map<string, AdminInvite[]>();
+  for (const invite of invites) {
+    if (invite.status !== 'revoked') continue;
+    if (onTheList.has(invite.phone) || blocked.has(invite.phone)) continue;
+    const group = byPhone.get(invite.phone);
+    if (group) group.push(invite);
+    else byPhone.set(invite.phone, [invite]);
+  }
+
+  return [...byPhone.values()]
+    .map((group) => {
+      const newest = group.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b));
+      return { invite: newest, times: group.length };
+    })
+    .sort((a, b) => b.invite.createdAt.localeCompare(a.invite.createdAt));
+}
+
+/**
  * Who put this number on the list, and what kind of thing they are.
  *
  * The view has carried the organization and the member separately since it
