@@ -247,6 +247,13 @@ export default function OnboardingPage() {
     photo: 'city',
   };
 
+  /**
+   * The steps that can be left unanswered. Everything after the birthday: the
+   * database allows each of these to be absent, and Me is where they get
+   * filled in.
+   */
+  const SKIPPABLE: Step[] = ['injury', 'city', 'photo'];
+
   const n = stepNumber(step);
   const ready = canAdvance(step, data);
   const previous = back[step];
@@ -290,14 +297,26 @@ export default function OnboardingPage() {
               )}
             </PrimaryButton>
           )}
-          {step === 'photo' ? (
+          {/* Once the birthday is in, everything left is optional — the
+              schema says so: `level_range` has a 'Not sure yet' value,
+              `injury_date`, `city`, `state` and the photograph are all
+              nullable. So the rest of the wizard is answerable later from Me,
+              and somebody claiming a seeded profile has had most of it
+              answered for them already. Name and birthday stay required
+              because a row needs a name and the club is 18+.
+
+              "Finish later" rather than "Skip for now" anywhere but the
+              photo: it skips the remaining questions and enters the club, and
+              "skip" on its own reads as skipping only the step in front of
+              you. */}
+          {SKIPPABLE.includes(step) ? (
             <LinkButton
               onClick={() => {
-                set({ photoFile: null, photoPreviewUrl: null });
+                if (step === 'photo') set({ photoFile: null, photoPreviewUrl: null });
                 void finish();
               }}
             >
-              Skip for now
+              {step === 'photo' ? 'Skip for now' : 'Finish later — enter the club'}
             </LinkButton>
           ) : null}
           {/* Landing on the wrong door should not mean starting over. The two
@@ -323,6 +342,13 @@ export default function OnboardingPage() {
       {step === 'claim' && claimable ? (
         <ClaimStep
           profile={claimable}
+          // Straight to the birthday, not to the name. The claim has already
+          // answered the name, the level, the completeness and the place, so
+          // walking somebody through five screens to confirm what an
+          // organization asserted about them is asking them to type their
+          // own profile back in. The birthday is the one thing a claim cannot
+          // supply — the row requires it and the club is 18+ — and once it is
+          // in, "Finish later" is on the next screen.
           onAccept={() => {
             set({
               displayName: claimable.displayName,
@@ -331,8 +357,10 @@ export default function OnboardingPage() {
               city: claimable.city ?? '',
               state: claimable.state,
             });
-            setStep('name');
+            setStep('birthday');
           }}
+          // Declining starts at the name and carries nothing across: the
+          // pre-fill only happens on accept, so there is nothing to undo.
           onDecline={() => {
             setStep('name');
           }}

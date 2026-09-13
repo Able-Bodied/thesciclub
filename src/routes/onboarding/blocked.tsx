@@ -1,5 +1,6 @@
 import { ShieldCheck } from 'lucide-react';
 import { useOrganizations } from '@/lib/organizations';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 
 /**
  * The number verified, and it is not on the list.
@@ -52,9 +53,13 @@ export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
                 key={organization.id}
                 className="flex gap-3 border-line border-b py-3.5 last:border-b-0"
               >
-                <span className="grid h-[30px] w-[30px] flex-none place-items-center rounded-[10px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.59375rem] text-white">
-                  {organization.shortCode}
-                </span>
+                {/* The same badge the events screens use, rather than a
+                    second hand-rolled gold tile that could only ever show
+                    initials. Somebody being turned away recognises NorCal
+                    SCI's logo faster than they read three letters, and this
+                    is the screen where knowing who to contact is the whole
+                    point. It falls back to the tile on its own. */}
+                <OrganizationBadge organization={organization} />
                 <span className="min-w-0">
                   <span className="block font-extrabold font-head text-[0.875rem]">
                     {organization.name}

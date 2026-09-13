@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,6 +17,7 @@ const calls = vi.hoisted(() => ({
   claimableId: null as string | null,
   claimable: null as Record<string, unknown> | null,
   existingMember: null as { id: string } | null,
+  submitted: null as Record<string, unknown> | null,
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -47,6 +48,15 @@ vi.mock('@/lib/organizations', () => ({
     loading: false,
     error: null,
   }),
+}));
+
+// The insert itself is covered by submit-onboarding's own reasoning; what
+// this file cares about is which answers reach it.
+vi.mock('@/routes/onboarding/submit-onboarding', () => ({
+  submitOnboarding: (data: Record<string, unknown>) => {
+    calls.submitted = data;
+    return Promise.resolve({ ok: true });
+  },
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -120,6 +130,7 @@ beforeEach(() => {
   calls.invited = true;
   calls.claimableId = null;
   calls.claimable = null;
+  calls.submitted = null;
   calls.existingMember = null;
 });
 
@@ -344,6 +355,49 @@ describe('the keyboard', () => {
   });
 });
 
+describe('finishing later', () => {
+  async function reachInjury() {
+    calls.invited = true;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  }
+
+  // The club is 18+ and a row needs a name, so those two stay required. Past
+  // them the schema allows every answer to be absent, and Me is where they
+  // get filled in.
+  it('is not offered before the birthday is answered', async () => {
+    calls.invited = true;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByPlaceholderText('Alex');
+    expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
+  });
+
+  it('is offered from the step after the birthday', async () => {
+    await reachInjury();
+    expect(await screen.findByRole('button', { name: /Finish later/ })).toBeInTheDocument();
+  });
+
+  it('enters the club with what was answered so far', async () => {
+    await reachInjury();
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+    await waitFor(() => {
+      expect(calls.submitted?.displayName).toBe('Dana');
+    });
+    // Unanswered, and left that way rather than guessed at.
+    expect(calls.submitted?.exactLevel).toBeNull();
+    expect(calls.submitted?.state).toBe('');
+  });
+});
+
 describe('claiming a seeded profile', () => {
   const ajay = {
     id: 'c85c10bf-0226-394f-8c91-2a2ffc40a147',
@@ -377,7 +431,11 @@ describe('claiming a seeded profile', () => {
     expect(screen.getByText(/NorCal SCI/)).toBeInTheDocument();
   });
 
-  it('carries the profile across when they say yes', async () => {
+  // The point of claiming: the organization has already answered the name,
+  // the level, the completeness and the place, so the only question left is
+  // the one a claim cannot supply. Walking somebody through five screens to
+  // retype their own profile is what this replaces.
+  it('asks only for a birthday, then lets them in', async () => {
     calls.invited = true;
     calls.claimableId = ajay.id;
     calls.claimable = ajay;
@@ -387,7 +445,33 @@ describe('claiming a seeded profile', () => {
     await screen.findByText('Is this you?');
 
     await userEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
-    expect(await screen.findByDisplayValue('Ajay')).toBeInTheDocument();
+    expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
+
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    // And from the next screen they are one link away from the club, with
+    // the claimed name on the row rather than one they retyped.
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+    await waitFor(() => {
+      expect(calls.submitted?.displayName).toBe('Ajay');
+    });
+  });
+
+  it('declines back to the name, carrying nothing across', async () => {
+    calls.invited = true;
+    calls.claimableId = ajay.id;
+    calls.claimable = ajay;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Is this you?');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Start fresh' }));
+    expect(await screen.findByText(/name/i)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Ajay')).toBeNull();
   });
 
   // An invite with no claim on it must not stop to ask.

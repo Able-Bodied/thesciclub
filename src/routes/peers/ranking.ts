@@ -61,7 +61,11 @@ export function stageScore(viewer: BrowseMember, candidate: BrowseMember): numbe
 
 /** Higher sorts first. Exported so the weighting is visible to a test rather than implied. */
 export function relevanceScore(viewer: BrowseMember, candidate: BrowseMember): number {
-  const sameState = candidate.state === viewer.state ? 1 : 0;
+  // Both empty is not a match. State is optional since onboarding gained a
+  // Skip, and scoring two people who have not said where they live as
+  // neighbours would put them at the top of each other's decks for a fact
+  // neither of them gave.
+  const sameState = viewer.state && candidate.state === viewer.state ? 1 : 0;
   const sameRegion = candidate.region === viewer.region && candidate.region !== 'Unknown' ? 1 : 0;
   const stage = stageScore(viewer, candidate) ?? 0;
   const shared = sharedInterests(viewer, candidate).length;

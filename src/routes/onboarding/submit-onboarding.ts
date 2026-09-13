@@ -30,10 +30,13 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     return { ok: false, error: 'You are not signed in. Start again from your phone number.' };
   }
 
+  // Everything past the birthday can be skipped, so none of it is required
+  // here. The two that were checked are the two the schema already allows for:
+  // `level_range` has a 'Not sure yet' value and `injury_date` is nullable,
+  // paired with its precision. Refusing them here would have been the client
+  // inventing a rule the database does not have — and it is the rule that
+  // would stop somebody claiming a seeded profile getting in.
   const injury = injuryDateOf(data);
-  if (!injury || !data.exactLevel) {
-    return { ok: false, error: 'Some answers are missing. Go back a step.' };
-  }
 
   let photoPath: string | null = null;
   if (data.photoFile) {
@@ -54,13 +57,16 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     birth_date: data.birthDate,
     // Asked once, as an exact level; the range is derived so the two cannot
     // disagree about the same person.
-    level_range: rangeForExact(data.exactLevel),
-    exact_level: data.exactLevel === 'Do not know' ? null : data.exactLevel,
+    level_range: data.exactLevel ? rangeForExact(data.exactLevel) : 'Not sure yet',
+    exact_level: !data.exactLevel || data.exactLevel === 'Do not know' ? null : data.exactLevel,
     completeness: data.completeness,
-    injury_date: injury.date,
-    injury_date_precision: injury.precision,
+    // Paired: members_injury_date_precision_paired requires both or neither.
+    injury_date: injury?.date ?? null,
+    injury_date_precision: injury?.precision ?? null,
     city: data.city.trim() || null,
-    state: data.state.trim(),
+    // Null, not '': an empty string sorts and compares as though it were a
+    // place, and two people who skipped it are not from the same one.
+    state: data.state.trim() || null,
     photo_path: photoPath,
   });
 
