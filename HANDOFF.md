@@ -70,6 +70,8 @@ end of this section:
 - `20260913060000` — Ajay's prose moved from `detail` to `bio`. **Pushed.**
 - `20260913070000` — an administrator can invite in their own name, and
   `admin_invites` says whether the member inviter is one. **Pushed.**
+- `20260913080000` — and may attach a directory claim while doing it.
+  **Pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -482,11 +484,18 @@ Three things it turned up that were not obvious from reading the policies:
 A database that predates that column reports every member inviter as a
 mentor, which is what they all were.
 
-**A directory claim still needs an organization.** Only the body that
-compiled the directory may assert that a number belongs to one of its people
-— see 20260910130000 — so the admin-vouching option cannot carry one, and the
-form disables the button and says why rather than letting the database
-refuse after the fact.
+**An administrator vouching alone may attach a directory claim.** It could
+not at first, and the rule was wrong: it was borrowed from 20260910130000,
+which is about *mentors* — "a mentor could hand a seeded person's identity to
+anyone they liked" — and that protection is a policy requiring
+`seed_member_id is null` on a mentor's insert, still in force and still
+tested. An administrator can already delete any member and block any number,
+so withholding a claim protected nothing while forcing a false voucher into
+the record. Withdrawn by 20260913080000.
+
+The claim rule that is about safety rather than attribution stays, and
+should: a claim may only point at a **seeded** row, because an invite aimed
+at a real member would delete them when it was consumed.
 
 ## Losing membership: three different things
 
