@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-612 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+616 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -63,6 +63,8 @@ end of this section:
   restored. **Pushed.**
 - `20260913030000` — Ajay's photo path corrected, and `members.state` is
   nullable so onboarding can be finished later. **Pushed.**
+- `20260913040000` — `directory_seed` and `admin_restore_directory()`.
+  **Pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -86,6 +88,24 @@ nothing pending.
   tile; the blocked screen had one and it could only ever show initials.
 - Migration headers in `supabase/migrations/` — every schema decision's
   reasoning lives there.
+
+## Rehearsing the claim flow costs a seeded profile — put it back with a button
+
+Claiming retires the seeded row, whether the person carried its data across
+or not, because declining still means they have a real row and leaving the
+seeded one behind is the duplicate the mechanism prevents. So every rehearsal
+of that flow spends one of the 23.
+
+**`/admin` → Members → "Restore directory"** puts them back: missing rows
+re-inserted, rows still there reset to how they shipped. It reads
+`directory_seed`, a snapshot taken from `members` itself by 20260913040000,
+so there is no second copy of the directory to drift. It will not overwrite a
+real member's row, and it skips anybody whose number now belongs to somebody
+who joined — that is the claim having worked, and re-inserting would put two
+of them in the deck.
+
+Which means: after rehearsing a claim, remove the test member first, then
+restore. The other order leaves the number taken and the profile skipped.
 
 ## Onboarding is two required questions, then a door
 
