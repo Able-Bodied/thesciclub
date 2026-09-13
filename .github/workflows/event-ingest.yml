@@ -22,12 +22,19 @@ name: Event ingest
 
 on:
   schedule:
-    # 08:10 UTC daily — just after 1am Pacific, when both sources are quiet and
-    # a member opening the app over breakfast sees a calendar refreshed hours
-    # ago rather than one refreshed last week. The offset from the hour is
-    # deliberate: GitHub delays jobs scheduled on the hour, when everybody
-    # else's cron fires too.
-    - cron: '10 8 * * *'
+    # 04:10 UTC daily — 9:10pm Pacific, late enough that both sources are quiet
+    # and early enough that a member opening the app over breakfast sees a
+    # calendar refreshed overnight rather than one refreshed last week.
+    #
+    # The offset from the hour is deliberate: GitHub delays jobs scheduled on
+    # the hour, when everybody else's cron fires too.
+    #
+    # GitHub cron is UTC and knows nothing about daylight saving, so this is
+    # 9:10pm PDT for most of the year and 8:10pm PST from November to March.
+    # If it has to stay at 9pm through the winter, this becomes '10 5 * * *'
+    # — and then it is 10:10pm in the summer. One or the other; there is no
+    # expression that tracks the clock change.
+    - cron: '10 4 * * *'
   # So a feed can be re-pulled after a fix without waiting a day.
   workflow_dispatch:
     inputs:
