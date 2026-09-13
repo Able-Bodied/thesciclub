@@ -8,14 +8,18 @@ import { InviteForm } from '@/routes/admin/invite-form';
 import {
   type AdminInvite,
   type AdminMember,
+  type BlockedNumber,
+  blockNumber,
   canRevoke,
   deleteMember,
   fetchAdminMembers,
+  fetchBlockedNumbers,
   fetchInvites,
   inviteState,
   revokeInvite,
   setMemberStatus,
   setMemberType,
+  unblockNumber,
   vouchedBy as vouchedBy_,
 } from '@/routes/admin/members-admin';
 
@@ -35,15 +39,21 @@ export default function AdminPage() {
   const account = useAccount();
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
+  const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
   const [tab, setTab] = useState<'members' | 'invites'>('members');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [memberResult, inviteResult] = await Promise.all([fetchAdminMembers(), fetchInvites()]);
+    const [memberResult, inviteResult, blockedRows] = await Promise.all([
+      fetchAdminMembers(),
+      fetchInvites(),
+      fetchBlockedNumbers(),
+    ]);
     if (memberResult.ok) setMembers(memberResult.members);
     if (inviteResult.ok) setInvites(inviteResult.invites);
+    setBlocked(blockedRows);
     const failure = !memberResult.ok
       ? memberResult.error
       : !inviteResult.ok
@@ -90,9 +100,34 @@ export default function AdminPage() {
       });
   }
 
+  /**
+   * Ask twice, in two different ways: a confirmation that spells out what is
+   * about to happen to a real person, and then the reason, which Cancel
+   * aborts. Ban is the only action here that both deletes a profile and
+   * forecloses the way back, and it sits next to buttons that do neither.
+   */
+  function confirmBan(label: string, phone: string, onReason: (reason: string | null) => void) {
+    const ok = window.confirm(
+      `Block ${label} from The SCI Club?\n\nTheir profile is deleted, their invite is revoked, and nobody — no organization and no mentor — can put this number back on the list until it is unblocked.`,
+    );
+    if (!ok) return;
+    const reason = window.prompt(
+      `Why is ${phone} being blocked? Only administrators see this. Leave it blank if you would rather not say; Cancel stops the block.`,
+      '',
+    );
+    if (reason === null) return;
+    onReason(reason.trim() || null);
+  }
+
   const real = members.filter((m) => !m.isSeed);
   const seeded = members.filter((m) => m.isSeed);
   const pending = invites.filter((i) => i.status === 'pending');
+  // Three lists, because "The list" should mean the numbers that are on it.
+  // Withdrawn rows used to sit among them and accumulate forever, which is
+  // what made deleting them look necessary — they carry who vouched and when,
+  // and the partial unique index means they cost nothing where they are.
+  const onTheList = invites.filter((i) => i.status !== 'revoked');
+  const withdrawn = invites.filter((i) => i.status === 'revoked');
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -157,7 +192,7 @@ export default function AdminPage() {
                   title="The list"
                   subtitle="A number nobody is on can be taken off the list."
                 >
-                  {invites.map((invite) => (
+                  {onTheList.map((invite) => (
                     <InviteRow
                       key={invite.id}
                       invite={invite}
@@ -165,14 +200,82 @@ export default function AdminPage() {
                       onRevoke={() => {
                         act(invite.id, () => revokeInvite(invite.id));
                       }}
+                      onBlock={() => {
+                        confirmBan(invite.phone, invite.phone, (reason) => {
+                          act(invite.id, () => blockNumber(invite.phone, reason));
+                        });
+                      }}
                     />
                   ))}
-                  {invites.length === 0 ? (
+                  {onTheList.length === 0 ? (
                     <p className="py-6 text-center text-[0.8125rem] text-grey">
                       Nobody is on the list yet.
                     </p>
                   ) : null}
                 </Section>
+
+                {/* Only when there are any. An empty "Withdrawn" heading is a
+                    section about nothing on a screen that is mostly lists. */}
+                {withdrawn.length > 0 ? (
+                  <Section
+                    title="Withdrawn"
+                    subtitle="Off the list, and free to be invited again. Kept for the record of who vouched."
+                  >
+                    {withdrawn.map((invite) => (
+                      <InviteRow
+                        key={invite.id}
+                        invite={invite}
+                        busy={busyId === invite.id}
+                        onRevoke={() => {
+                          act(invite.id, () => revokeInvite(invite.id));
+                        }}
+                        onBlock={() => {
+                          confirmBan(invite.phone, invite.phone, (reason) => {
+                            act(invite.id, () => blockNumber(invite.phone, reason));
+                          });
+                        }}
+                      />
+                    ))}
+                  </Section>
+                ) : null}
+
+                {blocked.length > 0 ? (
+                  <Section
+                    title="Blocked"
+                    subtitle="Cannot be invited by anybody, including a mentor, until unblocked."
+                  >
+                    {blocked.map((row) => (
+                      <div
+                        key={row.id}
+                        className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
+                      >
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-extrabold font-head text-[0.90625rem]">
+                            {row.phone}
+                          </span>
+                          <span className="mt-0.5 block text-[0.75rem] text-grey">
+                            {row.reason ?? 'No reason recorded'}
+                            {row.blockedBy ? ` · blocked by ${row.blockedBy}` : ''}
+                          </span>
+                        </span>
+                        {busyId === row.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-grey" />
+                        ) : (
+                          <SmallButton
+                            onClick={() => {
+                              const ok = window.confirm(
+                                `Unblock ${row.phone}?\n\nThey can be invited again. It does not bring their profile back — that was deleted when the number was blocked.`,
+                              );
+                              if (ok) act(row.id, () => unblockNumber(row.phone));
+                            }}
+                          >
+                            Unblock
+                          </SmallButton>
+                        )}
+                      </div>
+                    ))}
+                  </Section>
+                ) : null}
               </>
             ) : null}
 
@@ -198,6 +301,11 @@ export default function AdminPage() {
                   }}
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
+                  }}
+                  onBlock={() => {
+                    confirmBan(m.displayName, m.phone, (reason) => {
+                      act(m.id, () => blockNumber(m.phone, reason));
+                    });
                   }}
                 />
               ))}
@@ -230,6 +338,11 @@ export default function AdminPage() {
                   }}
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
+                  }}
+                  onBlock={() => {
+                    confirmBan(m.displayName, m.phone, (reason) => {
+                      act(m.id, () => blockNumber(m.phone, reason));
+                    });
                   }}
                 />
               ))}
@@ -272,6 +385,7 @@ function Row({
   onReactivate,
   onDelete,
   onToggleMentor,
+  onBlock,
 }: {
   member: AdminMember;
   busy: boolean;
@@ -280,6 +394,7 @@ function Row({
   onReactivate: () => void;
   onDelete: () => void;
   onToggleMentor: () => void;
+  onBlock: () => void;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
@@ -335,6 +450,16 @@ function Row({
           >
             Delete
           </SmallButton>
+          {/* Deliberately last, and the only one that forecloses the way
+              back. Delete removes somebody; Block removes them and keeps the
+              number off the list. Seeded rows are excluded: nobody has ever
+              signed in as one, so there is no conduct to answer for and the
+              number is the organization's, not a person's. */}
+          {member.isSeed ? null : (
+            <SmallButton destructive onClick={onBlock}>
+              Block
+            </SmallButton>
+          )}
         </span>
       )}
     </div>
@@ -364,10 +489,12 @@ function InviteRow({
   invite,
   busy,
   onRevoke,
+  onBlock,
 }: {
   invite: AdminInvite;
   busy: boolean;
   onRevoke: () => void;
+  onBlock: () => void;
 }) {
   const vouchedBy = vouchedBy_(invite);
   return (
@@ -404,19 +531,31 @@ function InviteRow({
 
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
-      ) : canRevoke(invite) ? (
-        <SmallButton
-          destructive
-          onClick={() => {
-            const ok = window.confirm(
-              `Take ${invite.phone} off the list?\n\nThey will not be able to join. The number can be added again later.`,
-            );
-            if (ok) onRevoke();
-          }}
-        >
-          Revoke
-        </SmallButton>
-      ) : null}
+      ) : (
+        <span className="flex flex-none gap-1.5">
+          {canRevoke(invite) ? (
+            <SmallButton
+              destructive
+              onClick={() => {
+                const ok = window.confirm(
+                  `Take ${invite.phone} off the list?\n\nThey will not be able to join. The number can be added again later.`,
+                );
+                if (ok) onRevoke();
+              }}
+            >
+              Revoke
+            </SmallButton>
+          ) : null}
+          {/* Offered on every row, including one already revoked and one a
+              member is on. Revoke asks "is this number on the list"; Block
+              asks "should this number ever be", and those have different
+              answers — a withdrawn invite is exactly where somebody decides
+              the answer is never. */}
+          <SmallButton destructive onClick={onBlock}>
+            Block
+          </SmallButton>
+        </span>
+      )}
     </div>
   );
 }

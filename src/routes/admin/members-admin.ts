@@ -277,6 +277,72 @@ export function inviteState(invite: AdminInvite): string {
   return `used by ${invite.heldBy}`;
 }
 
+/* --------------------------------------------------------- blocked numbers */
+
+export interface BlockedNumber {
+  id: string;
+  phone: string;
+  reason: string | null;
+  blockedAt: string;
+  blockedBy: string | null;
+}
+
+interface BlockedNumberRow {
+  id: string;
+  phone: string;
+  reason: string | null;
+  blocked_at: string;
+  blocked_by: string | null;
+}
+
+/**
+ * The blocklist.
+ *
+ * Empty rather than failing when the view is absent: the app is deployed
+ * ahead of the database often enough in this project that a missing view
+ * should cost a section of a screen, not the screen. `/admin` still lists
+ * members and invites on a database that has not been migrated.
+ */
+export async function fetchBlockedNumbers(): Promise<BlockedNumber[]> {
+  const result = await getSupabase()
+    .from('admin_blocked_numbers')
+    .select('*')
+    .order('blocked_at', { ascending: false });
+  if (result.error) return [];
+  return (result.data as BlockedNumberRow[]).map((row) => ({
+    id: row.id,
+    phone: row.phone,
+    reason: row.reason,
+    blockedAt: row.blocked_at,
+    blockedBy: row.blocked_by,
+  }));
+}
+
+/**
+ * Ban a number: the member on it is deleted, their invite revoked, and the
+ * number barred from the list until somebody unblocks it.
+ *
+ * All of that happens inside `admin_block_number` rather than as three calls
+ * from here. A ban half-applied — number blocked, member still in the deck —
+ * is the state this is meant to prevent, and a dropped connection between two
+ * client calls is exactly how you would get one.
+ */
+export async function blockNumber(
+  phone: string,
+  reason: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_block_number', {
+    raw_phone: phone,
+    block_reason: reason,
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export async function unblockNumber(phone: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_unblock_number', { raw_phone: phone });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
 /**
  * Who put this number on the list, and what kind of thing they are.
  *

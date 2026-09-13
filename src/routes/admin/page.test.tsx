@@ -14,6 +14,7 @@ import {
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
+let promptSpy: MockInstance<typeof window.prompt>;
 const api = vi.hoisted(() => ({
   members: [] as AdminMember[],
   invites: [] as AdminInvite[],
@@ -22,6 +23,15 @@ const api = vi.hoisted(() => ({
   statusCalls: [] as [string, string][],
   typeCalls: [] as [string, string][],
   created: [] as unknown[],
+  blocked: [] as {
+    id: string;
+    phone: string;
+    reason: string | null;
+    blockedAt: string;
+    blockedBy: string | null;
+  }[],
+  blockCalls: [] as [string, string | null][],
+  unblocked: [] as string[],
   failWith: null as string | null,
 }));
 
@@ -33,6 +43,17 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   ...(await importOriginal<typeof MembersAdmin>()),
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
+  fetchBlockedNumbers: () => Promise.resolve(api.blocked),
+  blockNumber: (phone: string, reason: string | null) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.blockCalls.push([phone, reason]);
+    return Promise.resolve({ ok: true });
+  },
+  unblockNumber: (phone: string) => {
+    api.unblocked.push(phone);
+    api.blocked = api.blocked.filter((b) => b.phone !== phone);
+    return Promise.resolve({ ok: true });
+  },
   fetchInvitingOrganizations: () =>
     Promise.resolve([{ id: 'org1', name: 'NorCal SCI', shortCode: 'NCS' }]),
   fetchClaimableProfiles: () =>
@@ -100,8 +121,19 @@ beforeEach(() => {
   api.statusCalls = [];
   api.typeCalls = [];
   api.created = [];
+  api.blocked = [];
+  api.blockCalls = [];
+  api.unblocked = [];
   api.failWith = null;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  promptSpy = vi.spyOn(window, 'prompt').mockReturnValue('Harassing members');
+  // vi.spyOn on an already-spied method hands back the *existing* spy, so
+  // without this the call history survives from one test to the next and
+  // `not.toHaveBeenCalled()` asserts against the previous test's clicks.
+  // Setting a return value works either way, which is why the older tests
+  // here never noticed.
+  confirmSpy.mockClear();
+  promptSpy.mockClear();
 });
 
 describe('getting back out', () => {
@@ -292,6 +324,137 @@ describe('somebody who started and stopped', () => {
   // the same trap heldBy's three-valued handling exists for.
   it('says nothing extra where the view does not report it', () => {
     expect(inviteState(invite({ status: 'pending', hasAccount: undefined }))).toBe('not used yet');
+  });
+});
+
+describe('blocking a number', () => {
+  async function openInvites(user: ReturnType<typeof userEvent.setup>) {
+    renderAdmin();
+    await screen.findByRole('button', { name: 'invites' });
+    await user.click(screen.getByRole('button', { name: 'invites' }));
+  }
+
+  // Two dialogs on purpose. Ban is the only action here that both deletes a
+  // profile and forecloses the way back, and it sits beside buttons that do
+  // neither — Delete removes somebody who can be re-invited tomorrow.
+  it('asks twice before blocking a member, then sends the reason', async () => {
+    const user = userEvent.setup();
+    api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
+    renderAdmin();
+    await screen.findByText('Nuisance');
+
+    await user.click(screen.getByRole('button', { name: 'Block' }));
+
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(promptSpy).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(api.blockCalls).toEqual([['14085550150', 'Harassing members']]);
+    });
+  });
+
+  it('does nothing if the confirmation is declined', async () => {
+    const user = userEvent.setup();
+    confirmSpy.mockReturnValue(false);
+    api.members = [member({ id: 'm9', phone: '14085550150' })];
+    renderAdmin();
+    await screen.findByText('Alfred S');
+
+    await user.click(screen.getByRole('button', { name: 'Block' }));
+    expect(promptSpy).not.toHaveBeenCalled();
+    expect(api.blockCalls).toEqual([]);
+  });
+
+  // Cancel on the reason has to abort rather than block without one: an
+  // administrator who changes their mind at the second dialog has not
+  // agreed to anything.
+  it('does nothing if the reason is cancelled', async () => {
+    const user = userEvent.setup();
+    promptSpy.mockReturnValue(null);
+    api.members = [member({ id: 'm9', phone: '14085550150' })];
+    renderAdmin();
+    await screen.findByText('Alfred S');
+
+    await user.click(screen.getByRole('button', { name: 'Block' }));
+    expect(api.blockCalls).toEqual([]);
+  });
+
+  it('records no reason rather than an empty one', async () => {
+    const user = userEvent.setup();
+    promptSpy.mockReturnValue('   ');
+    api.members = [member({ id: 'm9', phone: '14085550150' })];
+    renderAdmin();
+    await screen.findByText('Alfred S');
+
+    await user.click(screen.getByRole('button', { name: 'Block' }));
+    await waitFor(() => {
+      expect(api.blockCalls).toEqual([['14085550150', null]]);
+    });
+  });
+
+  // Nobody has ever signed in as a seeded row, so there is no conduct to
+  // answer for and the number came from the organization's directory.
+  it('is not offered on a row from the directory', async () => {
+    api.members = [member({ id: 's1', displayName: 'Seeded Sam', isSeed: true })];
+    renderAdmin();
+    await screen.findByText('Seeded Sam');
+    expect(screen.queryByRole('button', { name: 'Block' })).toBeNull();
+  });
+
+  it('unblocks from the blocked list, after confirming', async () => {
+    const user = userEvent.setup();
+    api.blocked = [
+      {
+        id: 'b1',
+        phone: '14085550150',
+        reason: 'Harassing members',
+        blockedAt: '2026-09-13T00:00:00Z',
+        blockedBy: 'Admin',
+      },
+    ];
+    await openInvites(user);
+
+    expect(await screen.findByText('Harassing members', { exact: false })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Unblock' }));
+    await waitFor(() => {
+      expect(api.unblocked).toEqual(['14085550150']);
+    });
+  });
+});
+
+describe('the three lists', () => {
+  // Withdrawn rows used to sit in "The list", which is the heading claiming
+  // these numbers are on it, and they accumulate forever.
+  it('keeps withdrawn numbers out of the list that says they are on it', async () => {
+    const user = userEvent.setup();
+    api.invites = [
+      invite({ id: 'live', phone: '14085550001', status: 'pending' }),
+      invite({ id: 'gone', phone: '14085550002', status: 'revoked' }),
+    ];
+    renderAdmin();
+    await screen.findByRole('button', { name: 'invites' });
+    await user.click(screen.getByRole('button', { name: 'invites' }));
+
+    // Section renders a heading, a subtitle, then the rows — so the rows for
+    // a section are two siblings along from its heading.
+    const rowsUnder = (title: string) =>
+      screen.getByText(title).nextElementSibling?.nextElementSibling as HTMLElement;
+
+    await screen.findByText('The list');
+    expect(within(rowsUnder('The list')).getByText('14085550001')).toBeInTheDocument();
+    expect(within(rowsUnder('The list')).queryByText('14085550002')).toBeNull();
+    expect(within(rowsUnder('Withdrawn')).getByText('14085550002')).toBeInTheDocument();
+  });
+
+  it('says nothing about withdrawn or blocked when there are none', async () => {
+    const user = userEvent.setup();
+    api.invites = [invite({ id: 'live', status: 'pending' })];
+    renderAdmin();
+    await screen.findByRole('button', { name: 'invites' });
+    await user.click(screen.getByRole('button', { name: 'invites' }));
+
+    await screen.findByText('The list');
+    expect(screen.queryByText('Withdrawn')).toBeNull();
+    expect(screen.queryByText('Blocked')).toBeNull();
   });
 });
 
