@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-600 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+607 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -61,6 +61,8 @@ end of this section:
   for a blocked number. **Pushed.**
 - `20260913020000` — `my_claimable_profile()`, and Ajay's seeded row
   restored. **Pushed.**
+- `20260913030000` — Ajay's photo path corrected, and `members.state` is
+  nullable so onboarding can be finished later. **Pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -79,8 +81,30 @@ nothing pending.
   constraints, not features, and it lists what is deliberately deferred.
 - `docs/index.html` — the design mock, published at www.thesciclub.com. The
   visual reference.
+- `src/routes/events/organization-badge.tsx` — the one way an organization is
+  drawn, logo with a short-code fallback. Do not hand-roll a second gold
+  tile; the blocked screen had one and it could only ever show initials.
 - Migration headers in `supabase/migrations/` — every schema decision's
   reasoning lives there.
+
+## Onboarding is two required questions, then a door
+
+Name and birthday are required — a row needs a name and the club is 18+, and
+the database enforces the second with a trigger. Everything after that can be
+left: `level_range` has a 'Not sure yet' value, `exact_level`, `injury_date`,
+`city`, `state` and the photograph are all nullable, and "Finish later —
+enter the club" appears from the injury step onward. What is skipped gets
+filled in from Me.
+
+`state` became nullable for this (20260913030000) and is null rather than '',
+because an empty string sorts, filters and compares as though it were a
+place — `relevanceScore` was scoring two members who had both skipped it as
+neighbours. Anything reading `state` should expect null.
+
+**Claiming a seeded profile goes straight to the birthday**, not to the name.
+The organization has already asserted the name, level, completeness and
+place; asking somebody to retype their own profile to confirm it is the
+thing that flow exists to avoid. One question, then in.
 
 ## A view's own security check can break a caller who is not its audience
 
