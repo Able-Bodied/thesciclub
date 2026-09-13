@@ -38,6 +38,7 @@ import { classifyFormat, classifyTags, containsContactDetails } from './classify
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
 import { geocodeEvents } from './scrapers/geocode.js';
 import { NorCalSCIEventsJsonScraper } from './scrapers/norcalsci-events-json.js';
+import { seriesAssignments, syncSeries } from './series.js';
 
 const SCRAPERS = {
   'norcalsci-events': () => new NorCalSCIEventsJsonScraper(),
@@ -291,6 +292,34 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
     .upsert(payloads, { onConflict: 'feed_id,external_id' })
     .select('id, external_id');
   if (upsertError) throw new Error(`Upsert failed: ${upsertError.message}`);
+
+  // Grouped after the write and over the feed's whole calendar, not only the
+  // rows this run touched: a weekly event whose title drifts once would
+  // otherwise start a second series, because this run has seen a single
+  // occurrence of it and nothing to match that against. See series.js.
+  try {
+    const { data: allForFeed, error: readError } = await supabase
+      .from('events')
+      .select('external_id, title, start_time')
+      .eq('feed_id', feed.id);
+    if (readError) throw new Error(readError.message);
+
+    const idByKey = await syncSeries(supabase, feed.id, allForFeed, log);
+    for (const { external_id, series_id } of seriesAssignments(allForFeed, idByKey)) {
+      const { error: assignError } = await supabase
+        .from('events')
+        .update({ series_id })
+        .eq('feed_id', feed.id)
+        .eq('external_id', external_id);
+      if (assignError) throw new Error(assignError.message);
+    }
+  } catch (e) {
+    // Grouping is a convenience over a calendar that is already correct
+    // without it. A feed that refreshed successfully must not be reported as
+    // a failed run — and a red run is how a broken scraper is noticed — so
+    // this is logged and carried past rather than thrown.
+    log(`  ! could not group into series: ${e instanceof Error ? e.message : String(e)}`);
+  }
 
   const idByExternalId = new Map(written.map((row) => [row.external_id, row.id]));
   for (const event of usable) {
