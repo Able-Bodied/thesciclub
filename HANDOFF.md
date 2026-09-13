@@ -25,7 +25,7 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~122 commits ahead of `main`, **unpushed** —
+Branch `scaffold-and-peers-deck`, ~130 commits ahead of `main`, **unpushed** —
 the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
 write access. Do not try to push. Do not commit to `main`.
 
@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-555 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+574 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -88,6 +88,15 @@ still the one to never run — see Environment below.
   named for one case whose fixture put it in another — "offers no revoke on an
   invite somebody already used", with no holder set, was exercising the
   orphaned invite instead.
+- **A SQL probe run as the superuser proves nothing about RLS.** `postgres`
+  is BYPASSRLS, so every policy is inert and a file full of passing steps says
+  only that the constraints and triggers hold. To test a policy, switch to the
+  role and set the claims — `set local role authenticated` plus
+  `set local request.jwt.claims = '{"sub":"<uuid>","role":"authenticated"}'` —
+  and print `current_user` in the output so a future run cannot quietly lose
+  that. `supabase/tests/mentor-invites.sql` is the worked example;
+  `invite-lifecycle.sql` is the superuser kind and is right to be, since what
+  it exercises is constraints.
 - **Look at what you changed.** `pnpm shoot <route>` writes a PNG; read it.
   Every layout problem in this project was found by eye, never by a test — and
   two were introduced by "fixes" that looked right in isolation. Check a
@@ -127,35 +136,27 @@ still the one to never run — see Environment below.
   dev`**: the page loads over 443 but the reload client connects back on
   `server.port`, which no tunnel exposes, so without it the socket dies and the
   page quietly stops updating.
+- **CLI clean but the editor red everywhere** means VS Code is not attached to
+  WSL. Opened over `\\wsl.localhost\…` from Windows, its TypeScript server
+  cannot follow pnpm's symlinks into `node_modules/.pnpm`, so every import
+  fails to resolve and most components light up while `pnpm check` passes.
+  Install the WSL extension and open the folder with `code .` from inside WSL;
+  `~/.vscode-server` existing is the tell that it is attached. Then
+  TypeScript: Select TypeScript Version → Use Workspace Version, since the
+  project pins 6.0.3.
 - No host `psql`; use
   `docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine psql …`.
 
 ---
 
-# Next up: the mentor invite screen
+# Next up: the owner's call
 
-This is what the owner asked to work on next. **Item 2 below is the whole
-brief** — read it before anything else in this section, because the entries
-around it are records of work already done.
-
-The short version: `CONTEXT.md` promises a mentor can put two numbers on
-the club's list, the database has enforced exactly that from the beginning, and
-there is no UI for it. `/admin` is the only invite surface and ordinary mentors
-cannot reach it. It is the largest gap between what the product claims and what
-a member can do.
-
-Two things about it are easy to get wrong, both spelled out in item 2:
-
-- **No schema work is needed.** Three policies on `invites` already let a
-  mentor read, issue and withdraw their own, and Me already tells a mentor they
-  have two. It needs a screen, not a migration.
-- **The cap has never actually been exercised.** `live_invite_count` is only
-  covered by a by-hand probe that runs as the superuser and bypasses RLS, so
-  prove the two-invite limit holds for a real mentor session before trusting
-  it. An earlier draft of this file called it "tested"; it is not.
-
-`/admin` is the closest working example of the same shapes — issuing, listing
-and revoking — and `src/routes/admin/members-admin.ts` holds the calls.
+The mentor invite screen, which stood here as the brief, is **built** — see
+item 2 below for what landed and what it turned up. Nothing is queued behind
+it. The remaining entries in the list below are, roughly in the order this
+file has always ranked them: the survey being linear only (item 4), and
+hosting on Netlify, which is configured and waiting on somebody to connect the
+repo.
 
 ---
 
@@ -306,36 +307,52 @@ One trap worth naming: the holder is joined on `phone`, not on `invite_id`.
 The phone is the club's identity and somebody who rejoined after a deletion has
 a null `invite_id`, so an id join reports them missing while they sit there.
 
-## 2. There is no way for a mentor to use their two invites
+## 2. ~~There is no way for a mentor to use their two invites~~ — built
 
-`CONTEXT.md` says a mentor can put two numbers on the club's list, and the
-database enforces exactly that: the RLS policy, the two-invite allowance and
-`live_invite_count()` all exist. **There is no UI for it.** The only invite
-surface is `/admin`, which ordinary mentors cannot reach.
+`/invites`, reached from the Invites card on Me, which stated the allowance
+and then offered no way to spend it. Unlisted in the tab bar and redirects a
+non-mentor to Me, the way `/admin` redirects a non-admin to Peers. Neither is
+the permission check — the insert policy refuses a peer regardless.
 
-An earlier draft of this entry said they were "tested". They are not, and it is
-worth being exact about what that means before somebody builds on the claim.
-`live_invite_count` is exercised by `supabase/tests/invite-lifecycle.sql`, but
-that is a probe run by hand, and it writes as the superuser — which bypasses
-RLS entirely. **The insert policy that caps a mentor at two has never been
-exercised by anything that runs.** Whoever builds the screen should prove the
-cap holds for a real mentor session before trusting it.
+No migration was needed, as this entry predicted. The three mentor policies
+were already correct and the screen writes to `invites` directly rather than
+through an `admin_*` function, because those policies grant exactly what a
+mentor needs and nothing more.
 
-This is the largest gap between what the product claims and what a member can
-do.
+**The cap is now actually exercised.** `supabase/tests/mentor-invites.sql` is
+the probe this entry asked for: seventeen steps as the `authenticated` role
+with `request.jwt.claims` set, the way PostgREST does it, so the policies are
+the only thing deciding each statement. Two invites land, the third is
+refused, withdrawing returns the slot, and a peer, a suspended mentor and a
+signed-out visitor are each refused. Step 0 prints `current_user` on purpose:
+run this file as the superuser again and every refusal turns into a pass.
 
-Every piece it needs is already in the database, which is worth knowing before
-anybody plans a schema change for it. Three policies on `invites` are written
-and tested — `mentors can invite up to two people`, `mentors can see invites
-they sent`, and `mentors can revoke their own pending invites` — so a mentor
-can read, issue and withdraw their own without any new grant. `Me` already
-tells a mentor they have two, in the Invites card; it just has nowhere to send
-them.
+Three things it turned up that were not obvious from reading the policies:
 
-The allowance behaves properly now, too: `live_invite_count` counts pending and
-consumed, and deleting a member revokes their invite, so a mentor gets their
-slot back when somebody they brought in leaves. That was not true when this
-entry was written.
+- **The same action fails two different ways.** With the allowance full, a
+  number already on the list is refused by the *cap* and never reaches
+  `invites_live_phone_idx`. So "refused" cannot be read as "that number is
+  taken" — `describeFailure` in `src/routes/invites/mentor-invites.ts` keys on
+  the SQLSTATE, and the wrong sentence would appear exactly when a mentor was
+  already confused.
+- **A revoked invite cannot be brought back to pending**, which is the one way
+  round the cap worth checking — withdraw, spend the freed slot, then
+  resurrect the withdrawn row and hold three. The update policy only matches
+  pending rows, so it fails. Step 12.
+- **A mentor cannot see who used their invite.** Their select policy returns
+  their own rows and `admin_invites` is admin-only, so the list says "joined
+  the club", not "used by Dana". That is why the wording differs from
+  `/admin`'s deliberately, and it is not an oversight to fix by joining
+  `browse_members`.
+
+A used invite stays in the list rather than disappearing when the slot is
+accounted for — the slot is spent either way, and the screen that accounts for
+the allowance is the right place for "you brought somebody in".
+
+Verified by eye at 430 and 1280, and driven end to end against the local stack
+as a signed-in mentor: withdraw freed a slot, adding spent it, and no error
+banner appeared. Two layout problems were found that way and neither by a
+test — see commit 0e73389.
 
 ## 3. ~~The blocked screen hardcodes three organizations~~ — already fixed
 
