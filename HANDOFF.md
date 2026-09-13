@@ -65,6 +65,9 @@ end of this section:
   nullable so onboarding can be finished later. **Pushed.**
 - `20260913040000` — `directory_seed` and `admin_restore_directory()`.
   **Pushed.**
+- `20260913050000` — claiming carries the seeded profile across instead of
+  deleting it. **Pushed.**
+- `20260913060000` — Ajay's prose moved from `detail` to `bio`. **Pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -88,6 +91,31 @@ nothing pending.
   tile; the blocked screen had one and it could only ever show initials.
 - Migration headers in `supabase/migrations/` — every schema decision's
   reasoning lives there.
+
+## What claiming actually does, now that it works
+
+The client pre-fills five fields — display name, exact level, completeness,
+city, state — because those are the five the wizard asks for. Everything else
+is carried across **in `consume_invite_for_new_member`**, server-side, before
+the seeded row is retired: photograph, bio, the interests, topics, self-care
+and affiliations, the injury date, employment, education and the rest. Until
+20260913050000 none of that happened and a claimed profile came out emptier
+than the directory entry it replaced.
+
+The copy is in the trigger and not the client on purpose. The alternative is
+`my_claimable_profile()` returning the whole profile to somebody who is not
+yet a member and, on a mistyped invite, is not the person on the card — that
+function is ten columns deliberately. Keep it that way.
+
+Two rules to preserve if you touch it:
+
+- **Their answers win.** Every field copies only where the incoming row is
+  null or an empty array.
+- **`type` is not carried.** Several seeded rows are mentors and a mentor can
+  put two numbers on the list, so inheriting it would turn a mistyped invite
+  into an invite-rights grant. Promotion stays an administrator's decision.
+
+`supabase/tests/claim-carries-profile.sql` covers all of it.
 
 ## Rehearsing the claim flow costs a seeded profile — put it back with a button
 
