@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-627 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+638 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -68,6 +68,8 @@ end of this section:
 - `20260913050000` — claiming carries the seeded profile across instead of
   deleting it. **Pushed.**
 - `20260913060000` — Ajay's prose moved from `detail` to `bio`. **Pushed.**
+- `20260913070000` — an administrator can invite in their own name, and
+  `admin_invites` says whether the member inviter is one. **Pushed.**
 
 **The code for all three is unpushed, but the database changes are real and
 live.** So the hosted project is running schema that only exists on this
@@ -88,7 +90,10 @@ nothing pending.
   visual reference.
 - `src/routes/events/organization-badge.tsx` — the one way an organization is
   drawn, logo with a short-code fallback. Do not hand-roll a second gold
-  tile; the blocked screen had one and it could only ever show initials.
+  tile: the blocked screen, the deck card and the profile each had one and
+  none of them could show a logo. Pair it with `organizationByName()` in
+  `lib/organizations.ts` where all you have is an affiliation string, which
+  is free text and often names a body the club has no row for.
 - Migration headers in `supabase/migrations/` — every schema decision's
   reasoning lives there.
 
@@ -460,7 +465,30 @@ Three things it turned up that were not obvious from reading the policies:
   `/admin`'s deliberately, and it is not an oversight to fix by joining
   `browse_members`.
 
-### Losing membership: three different things
+### Who vouched: an organization, a mentor, or the administrator
+
+`invites` records exactly one inviter and there are now three kinds:
+
+- **An organization**, through `admin_create_invite` with one named.
+- **A mentor**, through their own RLS policy, capped at two.
+- **The administrator**, through `admin_create_invite` with no organization
+  — 20260913070000. It writes `invited_by_member_id = auth.uid()`, the same
+  column a mentor's invite uses, so the one-inviter constraint governs both.
+  The form defaults to this: a number an administrator adds by hand is
+  usually theirs to answer for, and attributing it to NorCal SCI was a small
+  lie in the record that exists to say who vouched.
+
+`vouchedBy()` labels the last two apart using `invited_by_member_is_admin`.
+A database that predates that column reports every member inviter as a
+mentor, which is what they all were.
+
+**A directory claim still needs an organization.** Only the body that
+compiled the directory may assert that a number belongs to one of its people
+— see 20260910130000 — so the admin-vouching option cannot carry one, and the
+form disables the button and says why rather than letting the database
+refuse after the fact.
+
+## Losing membership: three different things
 
 Worth keeping straight, because two of them look alike from `/admin` and the
 third used to do nothing at all.
