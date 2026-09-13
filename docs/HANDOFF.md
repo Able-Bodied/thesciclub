@@ -21,7 +21,7 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~115 commits ahead of `main`, **unpushed** —
+Branch `scaffold-and-peers-deck`, ~122 commits ahead of `main`, **unpushed** —
 the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
 write access. Do not try to push. Do not commit to `main`.
 
@@ -386,8 +386,11 @@ silently does nothing is worse than a sentence explaining where things stand.
 ever mentioned here in passing, which is how a mirror of this repo ended up
 running it by accident — see the bottom of this section.
 
-- **Daily at 08:10 UTC**, just after 1am Pacific. The offset from the hour is
-  deliberate: GitHub delays jobs scheduled on the hour.
+- **Daily at 04:10 UTC**, which is 9:10pm Pacific. The offset from the hour is
+  deliberate: GitHub delays jobs scheduled on the hour. Note that GitHub cron
+  is UTC and does not track daylight saving, so this is 9:10pm PDT most of the
+  year and 8:10pm PST from November to March — the workflow's own comment gives
+  the alternative expression if it has to stay at 9pm through the winter.
 - **Manually** from the Actions tab — `workflow_dispatch`, with a `dry_run`
   input that scrapes and prints without writing. Use it to re-pull a feed after
   a fix rather than waiting a day, and use `dry_run` first when the change is
@@ -432,7 +435,7 @@ assumption that the club's repo was already running the job. It is not running
 anywhere else, and a calendar nobody is refreshing is the failure this workflow
 exists to prevent.
 
-# The event format classifier, and one pending re-ingest
+# The event format classifier
 
 `jobs/event-ingest/classify.js` decides `event_format` from what the feed
 wrote. Null is a deliberate fourth answer meaning "the feed did not say", and
