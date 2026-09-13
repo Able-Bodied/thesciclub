@@ -248,11 +248,16 @@ export default function OnboardingPage() {
   };
 
   /**
-   * The steps that can be left unanswered. Everything after the birthday: the
-   * database allows each of these to be absent, and Me is where they get
-   * filled in.
+   * Where the way out appears. The birthday included, once it is a valid one:
+   * name and age are the two answers a row cannot be written without, so the
+   * moment both are in, the rest is optional and there is no reason to make
+   * somebody click Continue first to be told so.
+   *
+   * Everything after them is nullable in the schema — `level_range` has a
+   * 'Not sure yet' value, `exact_level`, `injury_date`, `city`, `state` and
+   * the photograph are all optional — and Me is where they get filled in.
    */
-  const SKIPPABLE: Step[] = ['injury', 'city', 'photo'];
+  const SKIPPABLE: Step[] = ['birthday', 'injury', 'city', 'photo'];
 
   const n = stepNumber(step);
   const ready = canAdvance(step, data);
@@ -309,7 +314,11 @@ export default function OnboardingPage() {
               photo: it skips the remaining questions and enters the club, and
               "skip" on its own reads as skipping only the step in front of
               you. */}
-          {SKIPPABLE.includes(step) ? (
+          {/* On the birthday step only once the date is a real, adult one:
+              skipping with nothing in it would write a row the database
+              refuses, and the refusal would arrive as a sentence about a
+              trigger. */}
+          {SKIPPABLE.includes(step) && (step !== 'birthday' || ready) ? (
             <LinkButton
               onClick={() => {
                 if (step === 'photo') set({ photoFile: null, photoPreviewUrl: null });

@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
+import type * as DetailsApi from '@/routes/profile/details-api';
+import type { MemberDetails } from '@/routes/profile/details-api';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const auth = vi.hoisted(() => ({ signedOut: 0, failWith: null as string | null }));
@@ -11,6 +13,20 @@ const own = vi.hoisted(() => ({
   invitedBy: null as string | null,
 }));
 const rsvps = vi.hoisted(() => ({ current: new Map<string, string>() }));
+
+const completeDetails: MemberDetails = {
+  displayName: 'Dana',
+  birthDate: '1990-04-02',
+  exactLevel: 'C7',
+  completeness: 'Incomplete',
+  injuryDate: '2013-01-01',
+  injuryDatePrecision: 'year',
+  city: 'San Jose',
+  state: 'CA',
+  photoPath: 'u1/profile.jpg',
+  showInBrowse: true,
+};
+const details = vi.hoisted(() => ({ current: null as unknown as MemberDetails }));
 
 vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({
@@ -32,6 +48,13 @@ vi.mock('@/lib/events', () => ({
 
 vi.mock('@/routes/profile/profile-api', () => ({
   loadAnswers: () => Promise.resolve({ ok: true as const, answers: { gender: 'Female' } }),
+}));
+
+// Partial: `missingDetails` and `listInWords` are pure and the page should be
+// running the real ones, or this file would be asserting its own arithmetic.
+vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof DetailsApi>()),
+  loadDetails: () => Promise.resolve({ ok: true as const, details: details.current }),
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -79,6 +102,7 @@ beforeEach(() => {
   rsvps.current = new Map();
   auth.signedOut = 0;
   auth.failWith = null;
+  details.current = completeDetails;
 });
 
 describe('MePage', () => {
@@ -186,5 +210,46 @@ describe('MePage', () => {
       // One of seventeen applicable questions answered.
       expect(screen.getByText('6%')).toBeInTheDocument();
     });
+  });
+});
+
+describe('what is still to fill in', () => {
+  // Onboarding can be finished after the birthday now, so an empty photo or
+  // city is the ordinary state for a while rather than an oversight. The
+  // count is how somebody knows there is anything to come back for.
+  it('counts the blanks on the details row', async () => {
+    details.current = {
+      ...completeDetails,
+      photoPath: null,
+      city: null,
+      state: '',
+    };
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('3')).toBeInTheDocument();
+  });
+
+  // A badge saying 3 with nothing to act on is a nag, so it names them.
+  it('says which ones, in a sentence', async () => {
+    details.current = { ...completeDetails, photoPath: null, city: null };
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Still to add: a photo and your city.')).toBeInTheDocument();
+  });
+
+  it('shows no count at all when there is nothing left', async () => {
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Your details')).toBeInTheDocument();
+    expect(screen.queryByText(/Still to add/)).toBeNull();
   });
 });

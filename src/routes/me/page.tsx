@@ -7,6 +7,7 @@ import { useOwnMember } from '@/lib/members';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { MeHero } from '@/routes/me/hero';
 import { MeStats } from '@/routes/me/stats';
+import { listInWords, loadDetails, missingDetails } from '@/routes/profile/details-api';
 import { loadAnswers } from '@/routes/profile/profile-api';
 import { progressOf } from '@/routes/profile/questions';
 
@@ -65,6 +66,7 @@ export default function MePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
+  const [missing, setMissing] = useState<string[]>([]);
 
   const rsvps = [...viewer.rsvps.values()];
   const going = rsvps.filter((status) => status === 'going').length;
@@ -73,6 +75,9 @@ export default function MePage() {
   useEffect(() => {
     void loadAnswers().then((result) => {
       if (result.ok) setPercent(progressOf(result.answers).percent);
+    });
+    void loadDetails().then((result) => {
+      if (result.ok) setMissing(missingDetails(result.details));
     });
   }, []);
 
@@ -137,13 +142,25 @@ export default function MePage() {
               to="/profile/details"
               className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
             >
+              {/* A count, because onboarding can now be finished after the
+                  birthday — so an empty photo or city is the ordinary state
+                  for a while rather than an oversight, and the number is how
+                  somebody knows there is anything to come back for. It names
+                  what is missing underneath rather than only counting: a
+                  badge saying 3 with nothing to act on is a nag. */}
+              {missing.length > 0 ? (
+                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-gold font-extrabold font-head text-[0.9375rem] text-[#2A1E06]">
+                  {missing.length}
+                </span>
+              ) : null}
               <span className="min-w-0 flex-1">
                 <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
                   Your details
                 </span>
                 <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                  Name, photo, birthday, injury and where you live — fix anything onboarding got
-                  wrong.
+                  {missing.length > 0
+                    ? `Still to add: ${listInWords(missing)}.`
+                    : 'Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.'}
                 </span>
               </span>
               <ChevronRight className="h-5 w-5 flex-none text-grey" />

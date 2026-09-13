@@ -36,6 +36,38 @@ const COLUMNS =
 const asText = (v: unknown): string => (typeof v === 'string' ? v : '');
 const asNullableText = (v: unknown): string | null => (typeof v === 'string' ? v : null);
 
+/**
+ * What is still blank on somebody's details, in the words the screen uses.
+ *
+ * Onboarding can be finished early — name and birthday, then the door — so
+ * these fields are routinely empty for a while rather than exceptional, and
+ * Me needs to say how many are left without the person having to open the
+ * editor to find out.
+ *
+ * Only genuine blanks. `completeness` is not counted: 'Do not know' is a real
+ * answer a lot of people will give honestly, and nagging them to replace it
+ * would be counting a fact as a gap. Name and birthday are not counted
+ * either — a row cannot exist without them.
+ *
+ * Returns the labels rather than a number so that the count and the sentence
+ * naming what is missing can never disagree.
+ */
+export function missingDetails(details: MemberDetails): string[] {
+  const missing: string[] = [];
+  if (!details.photoPath) missing.push('a photo');
+  if (!details.exactLevel) missing.push('your injury level');
+  if (!details.injuryDate) missing.push('when you were injured');
+  if (!details.city) missing.push('your city');
+  if (!details.state) missing.push('your state');
+  return missing;
+}
+
+/** "a photo, your city and your state" — an English list, not a comma dump. */
+export function listInWords(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
 export async function loadDetails(): Promise<
   { ok: true; details: MemberDetails } | { ok: false; error: string }
 > {

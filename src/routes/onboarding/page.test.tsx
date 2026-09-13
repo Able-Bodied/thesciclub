@@ -381,6 +381,52 @@ describe('finishing later', () => {
     expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
   });
 
+  async function reachBirthdayStep() {
+    calls.invited = true;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('When is your birthday?');
+  }
+
+  // Name and age are the two a row cannot be written without, so the way out
+  // appears the moment both are in rather than one Continue later.
+  it('appears on the birthday step itself, once the date is a real one', async () => {
+    await reachBirthdayStep();
+    expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
+
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+
+    expect(await screen.findByRole('button', { name: /Finish later/ })).toBeInTheDocument();
+  });
+
+  // Skipping with an empty or under-age date would write a row the database
+  // refuses, and the refusal would arrive as a sentence about a trigger.
+  it('stays hidden for a birthday the club cannot accept', async () => {
+    await reachBirthdayStep();
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '2020-01-01' } });
+
+    expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
+  });
+
+  it('enters the club straight from the birthday', async () => {
+    await reachBirthdayStep();
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+
+    await waitFor(() => {
+      expect(calls.submitted?.displayName).toBe('Dana');
+    });
+  });
+
   it('is offered from the step after the birthday', async () => {
     await reachInjury();
     expect(await screen.findByRole('button', { name: /Finish later/ })).toBeInTheDocument();
