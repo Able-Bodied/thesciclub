@@ -35,7 +35,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-659 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+663 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and three migrations are live on it
@@ -649,6 +649,14 @@ running it by accident — see the bottom of this section.
   a half-finished ingest leaves some feeds refreshed and others stale. A run
   takes minutes in the steady state and up to 45 on a cold one — Adaptive Rec
   Hub's robots.txt asks for a ten second crawl delay.
+- **"N new or changed" in the log means something again.** It did not until
+  2026-09-14: `eventChanged` compared `start_time` and `end_time` as strings,
+  and the two sides never matched — PostgREST returns
+  `2026-09-12T21:00:00+00:00`, the scrapers build `2026-09-12T21:00:00.000Z`.
+  Every event reported as changed on every run, the job rewrote all 124 rows
+  nightly, and the count was noise. The same scrape that announced 98 changed
+  on the 13th now reports 0. If that line ever goes back to "everything
+  changed", suspect a format, not a feed.
 - A feed whose markup changed exits non-zero, so it shows up as a red run
   rather than as a calendar that quietly stopped growing.
 
