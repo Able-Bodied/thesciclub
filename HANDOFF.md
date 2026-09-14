@@ -25,7 +25,7 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~130 commits ahead of `main`, **unpushed** —
+Branch `scaffold-and-peers-deck`, ~163 commits ahead of `main`, **unpushed** —
 the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
 write access. Do not try to push. Do not commit to `main`.
 
@@ -38,22 +38,22 @@ gate, and a details editor.
 663 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
-## The hosted database is ahead of `main`, and three migrations are live on it
+## The hosted database is ahead of `main`, and thirteen migrations are live on it
 
 This is the thing most likely to catch somebody out, so it is first.
 
 `pnpm exec supabase db push` has been run against the hosted project
 (`erijdvqnxavwezsbbojv`). Everything in `supabase/migrations/` is applied there
 and locally — `pnpm exec supabase migration list` shows nothing pending. That
-includes three migrations written after the branch was last summarised, all of
-which change how invites behave:
+includes thirteen migrations written after the branch was last summarised.
+The first three change how invites behave:
 
 - `20260912000000` — deleting a member revokes their invite.
 - `20260912010000` — `admin_invites` reports who holds each number.
 - `20260912020000` — an invite nobody is on can be revoked.
 
-And one written after those, which is **not yet pushed** — see the note at the
-end of this section:
+And ten from 2026-09-13, all pushed, listed so that a database and a branch
+that disagree can be told apart at a glance:
 
 - `20260913000000` — `admin_invites` reports whether anybody ever signed up,
   and `admin_members` reports a mentor's spent allowance. **Pushed.**
@@ -75,18 +75,18 @@ end of this section:
 - `20260913090000` — `event_series`, and `events.series_id`. **Pushed**, and
   the live calendar is grouped: 124 events, 35 series.
 
-**The code for all three is unpushed, but the database changes are real and
-live.** So the hosted project is running schema that only exists on this
-branch. Do not reset or roll the hosted database back to `main`'s state
-expecting the app to work.
+**The code for every one of them is unpushed, and the database changes are
+real and live.** That asymmetry is the whole point of this section: the
+hosted project is running schema that exists only on this branch. Do not
+reset or roll the hosted database back to `main`'s state expecting the app to
+work — and remember that the nightly ingest runs `main`, so it is executing
+against this schema without any of the code that understands it. See "The
+scraper runs itself, daily".
 
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
 
-Everything is pushed again as of `20260913020000` — `migration list` shows
-nothing pending.
-
-## Read these first## Read these first
+## Read these first
 
 - `CONTEXT.md` — the product definition. SCI-only and invite-only are
   constraints, not features, and it lists what is deliberately deferred.
@@ -226,6 +226,29 @@ the fewest columns the screen needs.
   two were introduced by "fixes" that looked right in isolation. Check a
   component in its row, not cropped to itself.
 
+## The probes in `supabase/tests/`
+
+SQL run by hand against a local stack, each in one transaction that rolls
+back. They exist because policies and triggers are not covered by `pnpm test`
+at all, and six of this project's bugs were found by running a path rather
+than reading it.
+
+| file | what it exercises |
+| --- | --- |
+| `invite-lifecycle.sql` | deleting a member: their invite, the ones they issued, the constraint that used to block it |
+| `mentor-invites.sql` | the two-invite cap, as a real mentor session |
+| `blocked-numbers.sql` | all three places a ban is enforced |
+| `claim-preview.sql` | that somebody mid-onboarding can see the profile they may claim |
+| `claim-carries-profile.sql` | that claiming carries the whole profile and their own answers win |
+| `restore-directory.sql` | restoring the seeded directory without touching anybody real |
+| `admin-vouches-directly.sql` | an administrator inviting in their own name |
+
+**Run them as a signed-in role, not as the superuser**, unless what you are
+testing is a constraint or a trigger — and read the note at the top of each
+about which. Then read "A view's own security check can break a caller who is not its
+audience" above before writing another: that trap has caught four of these
+files, most recently by reporting a restore as broken when it had worked.
+
 ## Environment
 
 - `.env.local` holds `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
@@ -275,12 +298,22 @@ the fewest columns the screen needs.
 
 # Next up: the owner's call
 
-The mentor invite screen, which stood here as the brief, is **built** — see
-item 2 below for what landed and what it turned up. Nothing is queued behind
-it. The remaining entries in the list below are, roughly in the order this
-file has always ranked them: the survey being linear only (item 4), and
-hosting on Netlify, which is configured and waiting on somebody to connect the
-repo.
+Nothing is queued. The mentor invite screen that once stood here is built,
+and so is everything that came after it — see the sections below. Two
+decisions are genuinely open, and both are waiting on a person rather than on
+code:
+
+- **What Events does with series.** Repeating events are grouped and nothing
+  uses the grouping yet, deliberately: collapsing the list, a "weekly" badge,
+  a filter, and series-level dismissal are four different answers and the
+  grouping had to exist before any of them could be judged. It exists now.
+- **The 29 events with no format.** They are one series — a quarter of the
+  calendar — and NorCal SCI's own page never says whether it is Zoom or a
+  gym. That is a question for NorCal SCI, not a rule to write.
+
+After those, the list below still ranks: the survey being linear only
+(item 4), and hosting on Netlify, which is configured and waiting on somebody
+to connect the repo.
 
 ---
 
@@ -659,6 +692,20 @@ running it by accident — see the bottom of this section.
   changed", suspect a format, not a feed.
 - A feed whose markup changed exits non-zero, so it shows up as a red run
   rather than as a calendar that quietly stopped growing.
+
+**The scheduled run executes `main`, which has none of this branch's work.**
+The run of 2026-09-13 checked out `ae984c8`. Two consequences worth holding
+until the branch is pushed:
+
+- **New events arrive ungrouped.** The ingest groups into series only on this
+  branch; `main`'s copy does not know the column exists. The 124 rows already
+  there are grouped because `pnpm backfill-series` was run against the hosted
+  project directly, and a scheduled run leaves `series_id` alone rather than
+  clearing it — but anything genuinely new will be null until the branch
+  lands or the backfill is re-run.
+- **It still rewrites every row nightly.** The timestamp comparison fix is on
+  this branch too, so until it lands the log keeps claiming everything
+  changed.
 
 **Right now it runs from `Alfredx48/TheSciClub`, and that is correct.** The
 owner does not have write access to `Able-Bodied/thesciclub` yet — see "What
