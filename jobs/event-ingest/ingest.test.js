@@ -86,6 +86,48 @@ describe('eventChanged', () => {
     expect(eventChanged({ ...scraped }, scraped)).toBe(false);
   });
 
+  // The case the byte-for-byte test could never catch, because both of its
+  // sides are in the scraper's format. What actually comes back from the
+  // database is PostgREST's "+00:00", against the scraper's ".000Z" — the
+  // same moment, and for months every event reported as changed because of
+  // it.
+  it('is false when the stored time is the same moment written differently', () => {
+    const stored = {
+      ...scraped,
+      start_time: '2026-09-05T17:00:00+00:00',
+    };
+    expect(eventChanged(stored, scraped)).toBe(false);
+  });
+
+  it('handles an end time the same way, including when there is none', () => {
+    const withEnd = { ...scraped, end_time: '2026-09-05T19:00:00.000Z' };
+    expect(eventChanged({ ...withEnd, end_time: '2026-09-05T19:00:00+00:00' }, withEnd)).toBe(
+      false,
+    );
+    // Absent on both sides, spelled two ways, is still absent.
+    expect(eventChanged({ ...scraped, end_time: null }, { ...scraped, end_time: '' })).toBe(false);
+    // Gaining or losing one is a change.
+    expect(eventChanged(scraped, withEnd)).toBe(true);
+    expect(eventChanged(withEnd, scraped)).toBe(true);
+  });
+
+  it('still notices a time that really moved, by any amount', () => {
+    expect(eventChanged({ ...scraped, start_time: '2026-09-05T17:00:01+00:00' }, scraped)).toBe(
+      true,
+    );
+  });
+
+  // A malformed time must read as a change rather than as two equal NaNs.
+  it('falls back to comparing the text when a time will not parse', () => {
+    expect(eventChanged({ ...scraped, start_time: 'not a date' }, scraped)).toBe(true);
+    expect(
+      eventChanged(
+        { ...scraped, start_time: 'not a date' },
+        { ...scraped, start_time: 'not a date' },
+      ),
+    ).toBe(false);
+  });
+
   it('notices a changed time', () => {
     expect(eventChanged({ ...scraped, start_time: '2026-09-05T18:00:00.000Z' }, scraped)).toBe(
       true,

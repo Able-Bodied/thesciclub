@@ -121,9 +121,44 @@ const DIFF_FIELDS = [
   'registration_url',
 ];
 
+/**
+ * The two fields that are instants rather than text, and cannot be compared
+ * as text.
+ *
+ * The database hands these back through PostgREST as
+ * "2026-09-12T21:00:00+00:00" and the scrapers build
+ * "2026-09-12T21:00:00.000Z" — the same moment, spelled two ways. Compared
+ * as strings they never matched, so every event reported as changed on every
+ * run: the ingest rewrote all 124 rows nightly and the "N new or changed"
+ * line in the log carried no information at all. The run of 2026-09-13
+ * announced 98 new or changed and created nothing.
+ *
+ * The test suite missed it for the obvious reason — it compared a scraped
+ * payload against a copy of itself, so both sides were always in the
+ * scraper's format and the database's never appeared.
+ */
+const INSTANT_FIELDS = new Set(['start_time', 'end_time']);
+
+const absent = (value) => value === null || value === undefined || value === '';
+
+/** Same moment, however either side chose to write it. */
+function sameInstant(a, b) {
+  if (absent(a) || absent(b)) return absent(a) && absent(b);
+  const left = Date.parse(a);
+  const right = Date.parse(b);
+  // Unparseable on either side: fall back to text rather than call two NaNs
+  // equal or unequal. A malformed time should still read as a change.
+  if (Number.isNaN(left) || Number.isNaN(right)) return String(a) === String(b);
+  return left === right;
+}
+
 export function eventChanged(prior, scraped) {
   if (!prior) return true;
-  return DIFF_FIELDS.some((field) => (prior[field] ?? '') !== (scraped[field] ?? ''));
+  return DIFF_FIELDS.some((field) =>
+    INSTANT_FIELDS.has(field)
+      ? !sameInstant(prior[field], scraped[field])
+      : (prior[field] ?? '') !== (scraped[field] ?? ''),
+  );
 }
 
 async function loadFeeds(supabase, only) {
