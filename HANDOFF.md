@@ -25,9 +25,15 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~163 commits ahead of `main`, **unpushed** —
-the owner has read-only access to `Able-Bodied/thesciclub` and is waiting on
-write access. Do not try to push. Do not commit to `main`.
+Branch `scaffold-and-peers-deck`, ~164 commits ahead of `origin/main`. The
+owner has read-only access to `Able-Bodied/thesciclub` and is waiting on write
+access, so **`origin` cannot be pushed to** — but there is a second remote,
+`personal` (`Alfredx48/TheSciClub`), and the branch is pushed there. Both its
+`main` and its `scaffold-and-peers-deck` sit at `a830353`, the branch head.
+
+Say which `main` you mean. `origin/main` is at `851fcb1` and is nearly two
+hundred commits behind; `personal/main` is the branch head and is what the
+nightly ingest actually runs. Do not commit to either.
 
 **All three planned flows are built.** Peers (deck, profiles, filters),
 onboarding + the profile survey, and Events (list, detail, RSVPs,
@@ -75,13 +81,13 @@ that disagree can be told apart at a glance:
 - `20260913090000` — `event_series`, and `events.series_id`. **Pushed**, and
   the live calendar is grouped: 124 events, 35 series.
 
-**The code for every one of them is unpushed, and the database changes are
-real and live.** That asymmetry is the whole point of this section: the
-hosted project is running schema that exists only on this branch. Do not
-reset or roll the hosted database back to `main`'s state expecting the app to
-work — and remember that the nightly ingest runs `main`, so it is executing
-against this schema without any of the code that understands it. See "The
-scraper runs itself, daily".
+**The code for every one of them reaches `personal` only, and the database
+changes are real and live.** That asymmetry is the whole point of this
+section: the hosted project is running schema that exists nowhere in
+`Able-Bodied/thesciclub`. Do not reset or roll the hosted database back to
+`origin/main`'s state expecting the app to work. The nightly ingest now runs `personal/main`, which is the branch head, so
+it is executing against this schema *with* the code that understands it — that
+was not true until 2026-09-14. See "The scraper runs itself, daily".
 
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
@@ -693,19 +699,34 @@ running it by accident — see the bottom of this section.
 - A feed whose markup changed exits non-zero, so it shows up as a red run
   rather than as a calendar that quietly stopped growing.
 
-**The scheduled run executes `main`, which has none of this branch's work.**
-The run of 2026-09-13 checked out `ae984c8`. Two consequences worth holding
-until the branch is pushed:
+**The scheduled run executes `personal/main`, and since 2026-09-14 that is the
+branch head.** It is no longer running behind the code.
 
-- **New events arrive ungrouped.** The ingest groups into series only on this
-  branch; `main`'s copy does not know the column exists. The 124 rows already
-  there are grouped because `pnpm backfill-series` was run against the hosted
-  project directly, and a scheduled run leaves `series_id` alone rather than
-  clearing it — but anything genuinely new will be null until the branch
-  lands or the backfill is re-run.
-- **It still rewrites every row nightly.** The timestamp comparison fix is on
-  this branch too, so until it lands the log keeps claiming everything
-  changed.
+This entry used to say the opposite, and the reason is worth keeping: the run
+of 2026-09-13 checked out `ae984c8`, which is *on this branch's history* —
+`personal/main` had been fast-forwarded once and then left there while 39 more
+commits landed. Two of those 39 were the ones the job needed:
+
+- **`6ed6f5e` — the ingest groups into series.** Without it a scheduled run
+  left `series_id` null on anything genuinely new, so the grouping decayed a
+  little each night and needed a backfill to repair.
+- **`a9b0d6c` — event times compared as instants.** Without it the job rewrote
+  all 124 rows nightly and the "N new or changed" line was noise.
+
+Both are live now. Checked at the time of the push: 124 events, 35 series, and
+**zero rows with a null `series_id`** — nothing had drifted, so the push was
+preventive rather than a repair.
+
+The lesson generalises past this job. `personal/main` is a moving target that
+nothing automatically advances, and the gap is invisible from inside the repo —
+`git status` is clean and says nothing about it. **After landing work the
+ingest depends on (`jobs/`, `scripts/backfill-series.mjs`), push `main` too**,
+not only the branch:
+
+    git push personal scaffold-and-peers-deck && git push personal HEAD:main
+
+`git log --oneline personal/main..HEAD -- jobs/` is the one-line check for
+whether that is owed.
 
 **Right now it runs from `Alfredx48/TheSciClub`, and that is correct.** The
 owner does not have write access to `Able-Bodied/thesciclub` yet — see "What
@@ -846,6 +867,13 @@ says whether it is Zoom or a gym. Do not add a rule to guess.
 `netlify.toml` is committed and ready. The mock stays on GitHub Pages at
 www.thesciclub.com; Pages serves `docs/`, Netlify serves the built app from
 `dist/`, and nothing in this config touches `docs/`.
+
+**Pages is served by `Able-Bodied/thesciclub`, from `main` at `/docs`** — the
+org repo, the one with no write access. `Alfredx48/TheSciClub` has no Pages
+site at all. So pushing `personal/main` cannot change what is at
+www.thesciclub.com, and the mock can only be updated by somebody with write
+access to the club's repo. Worth knowing before editing `docs/index.html` and
+expecting the live page to follow.
 
 To deploy: connect the repo in Netlify, and set two environment variables in
 its UI — `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, the same values as
