@@ -173,6 +173,33 @@ describe('MePage', () => {
       expect(screen.getByRole('link', { name: /0\s*Interested/ })).toBeInTheDocument();
     });
 
+    it('counts what you have been to, separately from what is ahead', () => {
+      rsvps.current = new Map([
+        ['went', 'going'],
+        ['soon', 'going'],
+        ['considered', 'interested'],
+      ]);
+      startTimes.current = new Map([
+        ['went', daysFromNow(-9)],
+        ['soon', daysFromNow(4)],
+        ['considered', daysFromNow(-2)],
+      ]);
+      renderMe();
+      expect(screen.getByRole('link', { name: /1\s*Going/ })).toBeInTheDocument();
+      // Past "interested" is not a record of anything, so it counts nowhere.
+      expect(screen.getByRole('link', { name: /1\s*Been to/ })).toHaveAttribute(
+        'href',
+        '/events?segment=been-to',
+      );
+    });
+
+    it('hides "Been to" until there is one, so a new member sees no empty past', () => {
+      rsvps.current = new Map([['soon', 'going']]);
+      startTimes.current = new Map([['soon', daysFromNow(4)]]);
+      renderMe();
+      expect(screen.queryByText(/Been to/i)).not.toBeInTheDocument();
+    });
+
     it('does not count an RSVP whose event did not come back', () => {
       // A number that guesses is worse than one that waits.
       rsvps.current = new Map([['orphan', 'going']]);

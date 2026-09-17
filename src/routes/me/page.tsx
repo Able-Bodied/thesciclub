@@ -85,6 +85,16 @@ export default function MePage() {
   const going = countUpcoming('going');
   const interested = countUpcoming('interested');
 
+  // The other half of the same question. "I'm going" is future tense and now
+  // holds only what is ahead, so what a member has already been to needs a door
+  // of its own, and this is where the rest of what the club knows about them
+  // already lives.
+  const beenTo = [...viewer.rsvps.entries()].filter(([eventId, status]) => {
+    if (status !== 'going') return false;
+    const startTime = viewer.startTimes.get(eventId);
+    return startTime !== undefined && isPastStartTime(startTime);
+  }).length;
+
   useEffect(() => {
     void loadAnswers().then((result) => {
       if (result.ok) setPercent(progressOf(result.answers).percent);
@@ -125,7 +135,7 @@ export default function MePage() {
       )}
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 py-4">
-        <MeStats going={going} interested={interested} />
+        <MeStats going={going} interested={interested} beenTo={beenTo} />
 
         {/* Two columns on a wide screen. Each card stands alone, so reading
             order across columns costs nothing and the page stops being a

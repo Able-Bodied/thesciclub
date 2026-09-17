@@ -7,7 +7,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
-import { isOnline } from '@/routes/events/filters';
+import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { placeLine } from '@/routes/events/place';
@@ -145,31 +145,47 @@ export default function EventDetailPage() {
             </div>
           ) : null}
 
-          <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
-            <button
-              type="button"
-              onClick={() => {
-                onRsvp(going ? null : 'going');
-              }}
-              aria-pressed={going}
-              className={cn(
-                'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem]',
-                going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
-              )}
-            >
-              {going ? 'Going ✓' : 'Going'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onRsvp(interested ? null : 'interested');
-              }}
-              aria-pressed={interested}
-              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[0.9375rem] text-white"
-            >
-              {interested ? 'Interested ✓' : 'Interested'}
-            </button>
-          </div>
+          {/* No RSVP on an event that is over. The list stopped offering it when
+              past events became lines rather than cards; this screen kept
+              offering it, so the same finished evening answered two different
+              ways depending on how you arrived at it. What a member came here
+              for afterwards is the description and the link, and those are
+              below. */}
+          {isPastEvent(event) ? (
+            <p className="mt-[15px] text-[0.8125rem] text-[#9FB3CD] leading-[1.45]">
+              {going
+                ? 'You said you were going to this.'
+                : interested
+                  ? 'You were interested in this.'
+                  : 'This has already happened.'}
+            </p>
+          ) : (
+            <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
+              <button
+                type="button"
+                onClick={() => {
+                  onRsvp(going ? null : 'going');
+                }}
+                aria-pressed={going}
+                className={cn(
+                  'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem]',
+                  going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
+                )}
+              >
+                {going ? 'Going ✓' : 'Going'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRsvp(interested ? null : 'interested');
+                }}
+                aria-pressed={interested}
+                className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[0.9375rem] text-white"
+              >
+                {interested ? 'Interested ✓' : 'Interested'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

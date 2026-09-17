@@ -65,9 +65,16 @@ export interface DateRange {
  * is the one where their own day rolls over.
  */
 export function dateWindowRange(when: DateWindow, now: Date = new Date()): DateRange | null {
-  if (when === 'any') return null;
-
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
+  // "Any time" means any time from today, not any time there has ever been. It
+  // used to have no bound at either end, and because the browsing segments sort
+  // ascending it opened on the oldest thing in the database — so the widest
+  // view of the calendar led with events that had already happened. Looking
+  // backwards is what `past` is for, and the two should not overlap.
+  if (when === 'any') {
+    return { from: startOfToday.toISOString() };
+  }
 
   if (when === 'past') {
     return { to: new Date(startOfToday.getTime() - 1).toISOString() };
@@ -133,17 +140,36 @@ export function isSport(event: ClubEvent): boolean {
   return event.tags.some((tag) => tag.categorySlug === 'sport');
 }
 
-/** The segments that list the viewer's own answers rather than a slice of the feed. */
+/**
+ * The segments that list the viewer's own answers rather than a slice of the
+ * feed, and so answer the date question for themselves rather than from the
+ * window.
+ *
+ * `going` and `interested` are what is ahead of you; `been-to` is what is
+ * behind. All three ignore the window, for the same reason: a trip four months
+ * out must not vanish because the window says "this week", and neither must
+ * last spring's rugby practice.
+ */
 function isRsvpSegment(segment: EventsSegment): boolean {
-  return segment === 'going' || segment === 'interested';
+  return segment === 'going' || segment === 'interested' || segment === 'been-to';
 }
 
-function matchesSegment(event: ClubEvent, segment: EventsSegment, viewer: ViewerEventState) {
+function matchesSegment(
+  event: ClubEvent,
+  segment: EventsSegment,
+  viewer: ViewerEventState,
+  now: Date,
+) {
   switch (segment) {
     case 'going':
       return viewer.rsvps.get(event.id) === 'going';
     case 'interested':
       return viewer.rsvps.get(event.id) === 'interested';
+    // Said yes to, and it has happened. Only 'going': "interested" is a thing
+    // somebody weighed up and did not commit to, and a list of those is not a
+    // record of anything.
+    case 'been-to':
+      return viewer.rsvps.get(event.id) === 'going' && isPastEvent(event, now);
     case 'sport':
       return isSport(event);
     case 'online':
@@ -179,7 +205,7 @@ export function filterEvents(
     // because the window says "this week" would be answering a question they
     // did not ask.
     if (!isRsvpSegment(segment) && !inDateWindow(event, filters.when, now)) return false;
-    if (!matchesSegment(event, segment, viewer)) return false;
+    if (!matchesSegment(event, segment, viewer, now)) return false;
 
     if (filters.formats.length > 0) {
       if (!event.format || !filters.formats.includes(event.format)) return false;
@@ -198,18 +224,21 @@ export function filterEvents(
     return true;
   });
 
-  // The RSVP segments run upcoming first, soonest at the top, and then what is
-  // already over, most recent first. They still ignore the date window — see
-  // above — but ignoring the window is not the same as pretending an event has
-  // not happened, and a flat ascending sort put last August above next week for
-  // ever. The page draws the Past heading at the join; `isPastEvent` decides it
-  // in both places.
+  // "Been to" is the record, and reads newest first: what you did most recently
+  // is what you are most likely looking for.
+  if (segment === 'been-to') {
+    return kept.sort((a, b) => b.startTime.localeCompare(a.startTime));
+  }
+
+  // "I'm going" and "Interested" are what is ahead, and nothing else. They
+  // carried their past occurrences under a Past heading for a day, and the
+  // heading was the tell: a list whose name is future tense should not need a
+  // sign inside it explaining that half of it is not. That half is `been-to`
+  // now, reached from Me.
   if (isRsvpSegment(segment)) {
-    const upcoming = kept.filter((event) => !isPastEvent(event, now));
-    const past = kept.filter((event) => isPastEvent(event, now));
-    upcoming.sort((a, b) => a.startTime.localeCompare(b.startTime));
-    past.sort((a, b) => b.startTime.localeCompare(a.startTime));
-    return [...upcoming, ...past];
+    return kept
+      .filter((event) => !isPastEvent(event, now))
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }
 
   const ascending = ascendingByDate(filters.when);

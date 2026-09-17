@@ -69,6 +69,13 @@ function attendee(name: string, status: RsvpStatus = 'going'): EventAttendee {
   };
 }
 
+/** An ISO start time `days` ahead of now, for cases that must not read as past. */
+function aheadByDays(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
 beforeEach(() => {
   state.events = [
     makeEvent({
@@ -111,6 +118,13 @@ describe('EventDetailPage', () => {
   });
 
   describe('RSVP', () => {
+    // Dated ahead for this block. The fixture's own start time is in the past
+    // now, and an event that is over offers no buttons to press — which is the
+    // subject of the block below this one.
+    beforeEach(() => {
+      state.events = [makeEvent({ id: 'rugby', startTime: aheadByDays(21) })];
+    });
+
     it('records going', async () => {
       renderDetail();
       await userEvent.click(screen.getByRole('button', { name: 'Going' }));
@@ -222,5 +236,24 @@ describe('EventDetailPage', () => {
         'noopener noreferrer',
       );
     });
+  });
+});
+
+describe('an event that is over', () => {
+  it('offers no RSVP, the way the list stopped offering one', () => {
+    // The same finished evening used to answer two different ways depending on
+    // whether you met it in the list or on its own page.
+    state.events = [makeEvent({ id: 'rugby', startTime: '2026-09-06T03:00:00Z' })];
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /^Going/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Interested/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/already happened/i)).toBeInTheDocument();
+  });
+
+  it('still says what you had said about it', () => {
+    state.events = [makeEvent({ id: 'rugby', startTime: '2026-09-06T03:00:00Z' })];
+    state.rsvps = new Map([['rugby', 'going']]);
+    renderDetail();
+    expect(screen.getByText(/you said you were going/i)).toBeInTheDocument();
   });
 });

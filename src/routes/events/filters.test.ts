@@ -65,8 +65,13 @@ describe('dateWindowRange', () => {
     expect(new Date(range?.to ?? '').getFullYear()).toBe(2027);
   });
 
-  it('has no bound at all for "any"', () => {
-    expect(dateWindowRange('any', NOW)).toBeNull();
+  it('bounds "any" at today, so the widest view does not open on last month', () => {
+    // It used to be unbounded at both ends, and the browsing segments sort
+    // ascending, so "Any time" led with the oldest row in the database.
+    const range = dateWindowRange('any', NOW);
+    expect(range?.to).toBeUndefined();
+    expect(new Date(range?.from ?? '').getDate()).toBe(5);
+    expect(new Date(range?.from ?? '').getHours()).toBe(0);
   });
 
   it('makes past and this-month disjoint', () => {
@@ -183,17 +188,15 @@ describe('filterEvents', () => {
       ).toHaveLength(1);
     });
 
-    it('"going" puts what is over below what is coming, not above it', () => {
-      // The bug this pins: a flat ascending sort left an event from August at
-      // the top of the list for ever, so the first thing a member saw under
-      // "I'm going" was something they had already been to.
-      const lastMonth = makeEvent({ id: 'last-month', startTime: daysFromNow(-30) });
+    it('"going" is what is ahead, and nothing else', () => {
+      // It carried its past occurrences under a Past heading for a day. The
+      // heading was the tell: a list whose name is future tense should not need
+      // a sign inside it saying half of it is not.
       const lastWeek = makeEvent({ id: 'last-week', startTime: daysFromNow(-7) });
       const tomorrow = makeEvent({ id: 'tomorrow', startTime: daysFromNow(1) });
       const nextMonth = makeEvent({ id: 'next-month', startTime: daysFromNow(30) });
       const state = viewer({
         rsvps: new Map([
-          ['last-month', 'going' as const],
           ['last-week', 'going' as const],
           ['tomorrow', 'going' as const],
           ['next-month', 'going' as const],
@@ -201,23 +204,16 @@ describe('filterEvents', () => {
       });
 
       const result = filterEvents(
-        [lastMonth, lastWeek, tomorrow, nextMonth],
+        [lastWeek, tomorrow, nextMonth],
         withFilters(),
         'going',
         state,
         NOW,
       );
-
-      // Upcoming soonest-first, then past most-recent-first.
-      expect(result.map((e) => e.id)).toEqual([
-        'tomorrow',
-        'next-month',
-        'last-week',
-        'last-month',
-      ]);
+      expect(result.map((e) => e.id)).toEqual(['tomorrow', 'next-month']);
     });
 
-    it('"interested" splits the same way, and keeps ignoring the window', () => {
+    it('"interested" drops what is over too, and still ignores the window', () => {
       const yesterday = makeEvent({ id: 'yesterday', startTime: daysFromNow(-1) });
       const faraway = makeEvent({ id: 'faraway', startTime: daysFromNow(120) });
       const state = viewer({
@@ -234,8 +230,44 @@ describe('filterEvents', () => {
         state,
         NOW,
       );
+      expect(result.map((e) => e.id)).toEqual(['faraway']);
+    });
 
-      expect(result.map((e) => e.id)).toEqual(['faraway', 'yesterday']);
+    it('"been-to" is the mirror: what you said yes to and has happened', () => {
+      const lastMonth = makeEvent({ id: 'last-month', startTime: daysFromNow(-30) });
+      const lastWeek = makeEvent({ id: 'last-week', startTime: daysFromNow(-7) });
+      const tomorrow = makeEvent({ id: 'tomorrow', startTime: daysFromNow(1) });
+      const state = viewer({
+        rsvps: new Map([
+          ['last-month', 'going' as const],
+          ['last-week', 'going' as const],
+          ['tomorrow', 'going' as const],
+        ]),
+      });
+
+      const result = filterEvents(
+        [lastMonth, lastWeek, tomorrow],
+        withFilters(),
+        'been-to',
+        state,
+        NOW,
+      );
+      // Newest first: what you did most recently is what you are looking for.
+      expect(result.map((e) => e.id)).toEqual(['last-week', 'last-month']);
+    });
+
+    it('"been-to" leaves out what you only marked interested', () => {
+      // Something weighed up and not committed to is not a record of anything.
+      const wentTo = makeEvent({ id: 'went', startTime: daysFromNow(-3) });
+      const considered = makeEvent({ id: 'considered', startTime: daysFromNow(-3) });
+      const state = viewer({
+        rsvps: new Map([
+          ['went', 'going' as const],
+          ['considered', 'interested' as const],
+        ]),
+      });
+      const result = filterEvents([wentTo, considered], withFilters(), 'been-to', state, NOW);
+      expect(result.map((e) => e.id)).toEqual(['went']);
     });
 
     it('"sport" takes the whole category, not one tag', () => {
@@ -315,10 +347,16 @@ describe('the interested segment', () => {
   });
 
   it('lists what the viewer marked interested, and nothing else', () => {
-    const events = [makeEvent({ id: 'a' }), makeEvent({ id: 'b' }), makeEvent({ id: 'c' })];
-    expect(filterEvents(events, EMPTY_EVENT_FILTERS, 'interested', said).map((e) => e.id)).toEqual([
-      'a',
-    ]);
+    // Dated ahead of NOW on purpose: the factory's default start time is in the
+    // past now, and "Interested" is upcoming-only.
+    const events = [
+      makeEvent({ id: 'a', startTime: daysFromNow(3) }),
+      makeEvent({ id: 'b', startTime: daysFromNow(3) }),
+      makeEvent({ id: 'c', startTime: daysFromNow(3) }),
+    ];
+    expect(
+      filterEvents(events, EMPTY_EVENT_FILTERS, 'interested', said, NOW).map((e) => e.id),
+    ).toEqual(['a']);
   });
 
   it('ignores the date window, like "I am going" does', () => {

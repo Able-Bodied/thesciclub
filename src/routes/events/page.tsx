@@ -1,6 +1,6 @@
-import { SlidersHorizontal } from 'lucide-react';
-import { Fragment, useCallback, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { ChevronLeft, SlidersHorizontal } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
@@ -103,15 +103,6 @@ export default function EventsPage() {
     [events, filters, segment, viewerState],
   );
 
-  // Where the Past heading goes, or -1 for a list with nothing past in it.
-  // Only the RSVP segments carry both halves; every other segment is bounded by
-  // the date window, so a past card there is the whole point of the window and
-  // needs no heading.
-  const firstPastIndex = useMemo(() => {
-    if (segment !== 'going' && segment !== 'interested') return -1;
-    return visible.findIndex((event) => isPastEvent(event));
-  }, [visible, segment]);
-
   // The sheet's options come from the events the segment and the date window
   // have already selected, not from the whole calendar: a chip offered while
   // "Online" is on should narrow the online events, and a city chip offered
@@ -147,13 +138,16 @@ export default function EventsPage() {
 
   const filterCount = activeFilterCount(filters);
   const showingList = segment !== 'orgs';
+  // Reached from Me and nowhere else, so it gets its own title and a way back
+  // rather than an unlit chip row somebody cannot tell they are inside.
+  const isRecord = segment === 'been-to';
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
           <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
-            Events
+            {isRecord ? 'Been to' : 'Events'}
           </h1>
           {showingList ? (
             <button
@@ -173,7 +167,27 @@ export default function EventsPage() {
           ) : null}
         </div>
 
-        <div className="mx-auto flex w-full max-w-[var(--events-measure)] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
+        {/* A Link, not navigate(-1): this screen has one entrance, and history
+            leaves the app on a refresh while the label still says Me. Same
+            reasoning as /invites and /admin. */}
+        {isRecord ? (
+          <div className="mx-auto w-full max-w-[var(--events-measure)] pb-3">
+            <Link
+              to="/me"
+              className="inline-flex min-h-[38px] items-center gap-1 font-semibold text-[0.84375rem] text-navy"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+              Me
+            </Link>
+          </div>
+        ) : null}
+
+        <div
+          className={cn(
+            'mx-auto flex w-full max-w-[var(--events-measure)] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]',
+            isRecord && 'hidden',
+          )}
+        >
           {SEGMENTS.map(([value, label]) => (
             <button
               key={value}
@@ -218,31 +232,25 @@ export default function EventsPage() {
             </div>
           ) : (
             <>
-              {visible.map((event, index) => (
-                <Fragment key={event.id}>
-                  {/* The join between what is coming and what is over, drawn
-                      only in the segments that list both. Without it the first
-                      past card looks like a mistake rather than the start of a
-                      record. */}
-                  {firstPastIndex === index ? <PastHeading /> : null}
-                  <EventCard
-                    event={event}
-                    past={isPastEvent(event)}
-                    status={viewer.rsvps.get(event.id) ?? null}
-                    attendees={attendeesByEvent.get(event.id) ?? []}
-                    organization={
-                      event.organizationId
-                        ? (organizationsById.get(event.organizationId) ?? null)
-                        : null
-                    }
-                    onOpen={() => {
-                      void navigate(`/events/${event.id}`, { state: { segment } });
-                    }}
-                    onRsvp={(next) => {
-                      onRsvp(event.id, next);
-                    }}
-                  />
-                </Fragment>
+              {visible.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  past={isPastEvent(event)}
+                  status={viewer.rsvps.get(event.id) ?? null}
+                  attendees={attendeesByEvent.get(event.id) ?? []}
+                  organization={
+                    event.organizationId
+                      ? (organizationsById.get(event.organizationId) ?? null)
+                      : null
+                  }
+                  onOpen={() => {
+                    void navigate(`/events/${event.id}`, { state: { segment } });
+                  }}
+                  onRsvp={(next) => {
+                    onRsvp(event.id, next);
+                  }}
+                />
               ))}
               {visible.length === 0 ? <EmptyList segment={segment} /> : null}
             </>
@@ -280,22 +288,6 @@ export default function EventsPage() {
  * the other means the filters are too narrow. Telling somebody to widen filters
  * they never set is how an app teaches people to distrust it.
  */
-/**
- * The divider between what a member is going to and what they already went to.
- *
- * A heading rather than a separate tab. The two halves answer one question —
- * "what did I say yes to" — and splitting them across tabs would make the
- * record of what somebody has actually attended the thing they have to go
- * looking for.
- */
-function PastHeading() {
-  return (
-    <h2 className="mt-2 mb-1 px-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-      Past
-    </h2>
-  );
-}
-
 function EmptyList({ segment }: { segment: EventsSegment }) {
   if (segment === 'going') {
     return (
@@ -303,6 +295,15 @@ function EmptyList({ segment }: { segment: EventsSegment }) {
         You have not said you are going to anything yet.
         <br />
         Events you say yes to show up here.
+      </p>
+    );
+  }
+  if (segment === 'been-to') {
+    return (
+      <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
+        Nothing here yet.
+        <br />
+        Events you said you were going to appear here once they have happened.
       </p>
     );
   }

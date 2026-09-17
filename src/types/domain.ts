@@ -476,10 +476,18 @@ export interface EventAttendee {
 }
 
 /** The segment pills across the top of the Events tab, from the mock's `evPage()`. */
+/**
+ * Every segment the URL will accept. The chip row is a separate list in
+ * events/page.tsx, and deliberately shorter: `been-to` is reachable and
+ * linkable but has no pill, the same way /invites and /admin are real routes
+ * with no tab. It is reached from Me, which is where the rest of what the club
+ * knows about you already lives.
+ */
 export const EVENTS_SEGMENTS = [
   'upcoming',
   'going',
   'interested',
+  'been-to',
   'sport',
   'online',
   'orgs',
