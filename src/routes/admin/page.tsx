@@ -16,14 +16,17 @@ import {
   fetchAdminMembers,
   fetchBlockedNumbers,
   fetchInvites,
+  fetchStrikes,
   inviteState,
   restoreDirectory,
   revokeInvite,
+  type Strike,
   setMemberStatus,
   setMemberType,
   unblockNumber,
   vouchedBy as vouchedBy_,
   withdrawnNumbers,
+  withdrawStrike,
 } from '@/routes/admin/members-admin';
 
 /**
@@ -41,6 +44,7 @@ import {
 export default function AdminPage() {
   const account = useAccount();
   const [members, setMembers] = useState<AdminMember[]>([]);
+  const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
   const [tab, setTab] = useState<'members' | 'invites'>('members');
@@ -50,13 +54,15 @@ export default function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [memberResult, inviteResult, blockedRows] = await Promise.all([
+    const [memberResult, inviteResult, blockedRows, strikeResult] = await Promise.all([
       fetchAdminMembers(),
       fetchInvites(),
       fetchBlockedNumbers(),
+      fetchStrikes(),
     ]);
     if (memberResult.ok) setMembers(memberResult.members);
     if (inviteResult.ok) setInvites(inviteResult.invites);
+    if (strikeResult.ok) setStrikes(strikeResult.strikes);
     setBlocked(blockedRows);
     const failure = !memberResult.ok
       ? memberResult.error
@@ -301,6 +307,10 @@ export default function AdminPage() {
                   onStrike={(reason) => {
                     act(m.id, () => addStrike(m.id, reason));
                   }}
+                  strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
+                  onWithdrawStrike={(id, reason) => {
+                    act(m.id, () => withdrawStrike(id, reason));
+                  }}
                 />
               ))}
               {real.length === 0 ? (
@@ -377,6 +387,10 @@ export default function AdminPage() {
                   onStrike={(reason) => {
                     act(m.id, () => addStrike(m.id, reason));
                   }}
+                  strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
+                  onWithdrawStrike={(id, reason) => {
+                    act(m.id, () => withdrawStrike(id, reason));
+                  }}
                 />
               ))}
             </Section>
@@ -425,6 +439,8 @@ function Row({
   onRemove,
   onToggleMentor,
   onStrike,
+  strikes,
+  onWithdrawStrike,
 }: {
   member: AdminMember;
   busy: boolean;
@@ -435,12 +451,21 @@ function Row({
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
   onStrike: (reason: string) => void;
+  /** This member's strikes that still count. Withdrawn and expired ones are not here. */
+  strikes: Strike[];
+  onWithdrawStrike: (id: string, reason: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [block, setBlock] = useState(false);
   const [reason, setReason] = useState('');
   const [striking, setStriking] = useState(false);
   const [strikeReason, setStrikeReason] = useState('');
+  // Which strike is being withdrawn, by id. A member can be on three, and an
+  // administrator withdrawing one is almost always correcting a particular
+  // mistake rather than clearing the slate — so they pick which.
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
+  const [withdrawReason, setWithdrawReason] = useState('');
+  const [listingStrikes, setListingStrikes] = useState(false);
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
@@ -474,9 +499,19 @@ function Row({
           {member.strikes > 0 ? (
             <>
               {' · '}
-              <span className="font-bold text-destructive">
+              {/* The count is the way to the strikes themselves. A separate
+                  button would be a second thing to find for something the row
+                  is already reporting. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setListingStrikes((open) => !open);
+                }}
+                aria-expanded={listingStrikes}
+                className="rounded px-0.5 font-bold text-destructive underline decoration-destructive/40 underline-offset-2 transition-colors hover:decoration-destructive"
+              >
                 {member.strikes === 1 ? '1 strike' : `${member.strikes} strikes`}
-              </span>
+              </button>
             </>
           ) : null}
           {member.invitesUsed !== undefined &&
@@ -513,7 +548,7 @@ function Row({
                   setStriking(true);
                 }}
               >
-                Strike…
+                Strike
               </SmallButton>
               {member.status === 'active' ? (
                 <SmallButton onClick={onPause}>Pause</SmallButton>
@@ -526,12 +561,89 @@ function Row({
                   setConfirming(true);
                 }}
               >
-                Remove…
+                Remove
               </SmallButton>
             </>
           )}
         </span>
       )}
+
+      {listingStrikes && strikes.length > 0 ? (
+        <div className="mt-2 w-full rounded-[12px] border border-line bg-canvas p-3">
+          <p className="font-extrabold font-head text-[0.84375rem] text-ink">
+            {member.displayName}’s strikes
+          </p>
+          <ul className="mt-2 flex flex-col gap-2.5">
+            {strikes.map((strike) => (
+              <li key={strike.id} className="flex flex-wrap items-start gap-2">
+                <span className="min-w-0 flex-1 basis-[11rem]">
+                  <span className="block font-bold text-[0.8125rem] text-ink leading-[1.45]">
+                    {strike.reason}
+                  </span>
+                  <span className="mt-0.5 block text-[0.75rem] text-grey">
+                    {new Date(strike.issuedAt).toLocaleDateString(undefined, {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric',
+                    })}
+                    {strike.issuedByName ? ` · ${strike.issuedByName}` : ''}
+                  </span>
+                </span>
+                <SmallButton
+                  onClick={() => {
+                    setWithdrawing(strike.id);
+                  }}
+                >
+                  Withdraw
+                </SmallButton>
+              </li>
+            ))}
+          </ul>
+          {/* Only the ones that still count are listed. A withdrawn or expired
+              strike is on the record and nothing can be done to it, so offering
+              a button beside it would be offering nothing. */}
+          <p className="mt-2.5 text-[0.75rem] text-grey leading-[1.5]">
+            Withdrawing keeps the strike on the record and stops it counting.
+          </p>
+        </div>
+      ) : null}
+
+      {withdrawing ? (
+        <ConfirmPanel
+          title="Withdraw this strike?"
+          confirmLabel="Withdraw it"
+          confirmDisabled={withdrawReason.trim().length === 0}
+          onCancel={() => {
+            setWithdrawing(null);
+            setWithdrawReason('');
+          }}
+          onConfirm={() => {
+            const id = withdrawing;
+            setWithdrawing(null);
+            setWithdrawReason('');
+            onWithdrawStrike(id, withdrawReason.trim());
+          }}
+        >
+          <p>
+            It stops counting towards three and stays on the record, with your reason beside it.
+          </p>
+          <label
+            className="mt-2 block font-semibold text-[0.75rem] text-ink"
+            htmlFor="withdraw-why"
+          >
+            Why are you withdrawing it?
+          </label>
+          <input
+            id="withdraw-why"
+            value={withdrawReason}
+            onChange={(e) => {
+              setWithdrawReason(e.target.value);
+            }}
+            placeholder="Wrong member — meant somebody else"
+            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-navy"
+          />
+        </ConfirmPanel>
+      ) : null}
 
       {striking ? (
         /* The same in-row panel Remove uses, for the same reason: the question
@@ -575,7 +687,10 @@ function Row({
       {confirming ? (
         <ConfirmPanel
           title={`Remove ${member.displayName} from the club?`}
-          confirmLabel={block ? 'Remove and block' : 'Remove'}
+          // "Remove them", not "Remove": the button that opens this panel is
+          // now called Remove too, and a confirm button that repeats the name
+          // of the one you just pressed does not say what pressing it does.
+          confirmLabel={block ? 'Remove and block' : 'Remove them'}
           onCancel={() => {
             setConfirming(false);
             setBlock(false);

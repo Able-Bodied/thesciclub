@@ -721,6 +721,20 @@ Four decisions worth keeping:
 
 An administrator cannot be struck, the same guard the other three carry.
 
+`/admin` issues one behind **Strike**, and the count on the row is itself the
+way into them — a separate button would be a second thing to find for something
+the row already reports. Each strike that still counts lists its reason, date
+and issuer with its own **Withdraw**, because an administrator withdrawing one
+is almost always correcting a particular mistake rather than clearing a slate.
+Withdrawn and expired strikes are not listed there: nothing can be done to them,
+so a button beside one would offer nothing.
+
+**Remove and Strike lost their ellipses at the owner's request**, which cost
+something worth knowing: the confirm button inside the Remove panel was also
+called "Remove", and two buttons with one name is what the ellipsis had been
+preventing. The confirm says **"Remove them"** now — a confirm button should
+name the consequence rather than repeat the button you just pressed.
+
 ### Two select policies are ORed, and that read as somebody else's strike
 
 `member_strikes` lets a member read their own **and** an administrator read
