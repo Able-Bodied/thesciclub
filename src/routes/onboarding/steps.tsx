@@ -4,7 +4,7 @@ import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
 import { formatPhoneInput } from '@/lib/phone';
 import { photoUrlFor } from '@/lib/photos';
-import { Chip, Field, Fine, Question, Sub } from '@/routes/onboarding/chrome';
+import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { ClaimableProfile, OnboardingData } from '@/routes/onboarding/types';
 import { injuryDateOf } from '@/routes/onboarding/types';
 import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
@@ -25,6 +25,7 @@ interface StepProps {
 }
 
 export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'signin' }) {
+  const phoneRef = useAutoFocus();
   return (
     <>
       <Question>{mode === 'signin' ? 'Welcome back' : "What's your number?"}</Question>
@@ -43,6 +44,7 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
           +1
         </span>
         <Field
+          ref={phoneRef}
           id="phone"
           type="tel"
           inputMode="tel"
@@ -60,11 +62,13 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
 }
 
 export function CodeStep({ data, set }: StepProps) {
+  const codeRef = useAutoFocus();
   return (
     <>
       <Question>Enter your code</Question>
       <Sub>We sent six digits to {data.phone || 'your phone'}.</Sub>
       <Field
+        ref={codeRef}
         id="code"
         inputMode="numeric"
         autoComplete="one-time-code"
@@ -81,11 +85,13 @@ export function CodeStep({ data, set }: StepProps) {
 }
 
 export function NameStep({ data, set }: StepProps) {
+  const nameRef = useAutoFocus();
   return (
     <>
       <Question>What should people call you?</Question>
       <Sub>First name is plenty.</Sub>
       <Field
+        ref={nameRef}
         id="name"
         autoComplete="given-name"
         placeholder="Alex"
@@ -143,6 +149,7 @@ export function BirthdayStep({ data, set }: StepProps) {
 }
 
 export function InjuryStep({ data, set }: StepProps) {
+  const injuryYearRef = useAutoFocus();
   const injury = injuryDateOf(data);
   const age = ageFrom(data.birthDate || null);
   const injuredAt =
@@ -211,6 +218,7 @@ export function InjuryStep({ data, set }: StepProps) {
             Year
           </label>
           <Field
+            ref={injuryYearRef}
             id="injury-year"
             inputMode="numeric"
             maxLength={4}

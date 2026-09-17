@@ -1,4 +1,5 @@
 import { ChevronLeft } from 'lucide-react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -104,7 +105,35 @@ export function Fine({ children }: { children: React.ReactNode }) {
   return <p className="mt-3 text-[0.78125rem] text-grey leading-[1.5]">{children}</p>;
 }
 
-export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
+/**
+ * Put the cursor in a step's field as soon as the step appears.
+ *
+ * Onboarding is one question per screen, and on every one of them typing is the
+ * only thing to do — so making somebody tap the box first is a tap that exists
+ * for no reason. It costs most on the code step, where a member is holding a
+ * phone that has just buzzed with six digits, and most of all to anybody
+ * driving this with a head pointer or a mouth stick, for whom a tap is not a
+ * flick of the wrist.
+ *
+ * A field that already has an answer is selected rather than just focused, so
+ * going back to change something means typing over it instead of clearing it
+ * first.
+ *
+ * `preventScroll` because the fields sit near the top of a short screen; the
+ * browser's own scroll-into-view jumps the layout for no gain.
+ */
+export function useAutoFocus<T extends HTMLInputElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.focus({ preventScroll: true });
+    if (el.value) el.select();
+  }, []);
+  return ref;
+}
+
+export function Field(props: React.ComponentPropsWithRef<'input'>) {
   const { className, ...rest } = props;
   return (
     <input
