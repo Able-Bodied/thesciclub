@@ -328,10 +328,11 @@ and so is everything that came after it — see the sections below. Two
 decisions are genuinely open, and both are waiting on a person rather than on
 code:
 
-- **What Events does with series.** Repeating events are grouped and nothing
-  uses the grouping yet, deliberately: collapsing the list, a "weekly" badge,
-  a filter, and series-level dismissal are four different answers and the
-  grouping had to exist before any of them could be judged. It exists now.
+- ~~**What Events does with series.**~~ Decided and built: the list collapses,
+  and opening a series shows its other dates in place. See "Repeating events
+  collapse in the list". Series-level dismissal is still unbuilt, and now has
+  somewhere to hang — the ✕ was removed because hiding one Friday does nothing
+  about next Friday.
 - **The 29 events with no format.** They are one series — a quarter of the
   calendar — and NorCal SCI's own page never says whether it is Zoom or a
   gym. That is a question for NorCal SCI, not a rule to write.
@@ -854,7 +855,48 @@ assumption that the club's repo was already running the job. It is not running
 anywhere else, and a calendar nobody is refreshing is the failure this workflow
 exists to prevent.
 
-# Repeating events are grouped into series — and nothing uses it yet
+# Repeating events collapse in the list
+
+Done. A series is one card — the next occurrence, with its own Interested and
+Going — carrying a line inside it that says how often it repeats and how many
+more dates there are; opening that drops the rest in below as dates alone.
+`groupBySeries` and `cadenceOf` are in `src/routes/events/series-groups.ts`.
+
+Four decisions in it that are load-bearing:
+
+- **The count is of the filtered list, never of the series.** "8 more dates"
+  has to mean eight rows that opening it produces. Reading the series would put
+  27 on a card whose expansion offers nine, under a window the member chose.
+- **The RSVP stays on a real date.** `event_rsvps` is keyed to one event, so
+  the card carrying the buttons is a card for a particular Wednesday. "Going to
+  a series" is not something the schema can say.
+- **Nothing collapses in `going`, `interested` or `been-to`**, which are lists
+  of dates a member chose.
+- **Cadence is a trimmed mean of the gaps — drop the largest, average the
+  rest — and never stored.** Both halves were found by a failing test. A plain
+  mean renames a weekly class when a holiday doubles one gap ([7, 14, 7, 7]
+  averages 8.75). A median breaks on alternating rhythms: Staying Driven runs
+  Wednesdays and Mondays, gaps 5, 2, 5, 2, and the median answers 3.5 with
+  eight gaps and 5 with five — the same event changing rhythm with the size of
+  the window. Three occurrences are required before anything is named at all,
+  because one gap is a coincidence with a number attached: two climbing meet-ups
+  two days apart were being announced as "Daily".
+
+## Adding a column to `events` is two steps, and the second is the grant
+
+`20260911180000` revokes `select` on `events` and re-grants a **named column
+list**, so latitude and longitude cannot be read by asking for them. Correct,
+and it has a trap: a column added afterwards is not in the list.
+
+`20260913090000` added `events.series_id` and granted select on the new
+`event_series` table — the visible half — and missed the column on `events`.
+Nothing noticed for three days, because the only writer was the ingest, which
+uses the service role and bypasses column privileges entirely. The first client
+read of it failed with **`permission denied for table events`**: the whole
+query, not the column, so the symptom was the Events page refusing to load and
+it pointed nowhere near a grant. Fixed by `20260916010000`.
+
+# The old note: repeating events are grouped into series
 
 The calendar is 124 rows made of 36 distinct events. Three titles are half of
 it: 29 Staying Driven Wheelchair Fitness, 16 Friday Happy Hour, 16 Weekly
