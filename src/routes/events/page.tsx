@@ -227,6 +227,7 @@ export default function EventsPage() {
                   {firstPastIndex === index ? <PastHeading /> : null}
                   <EventCard
                     event={event}
+                    past={isPastEvent(event)}
                     status={viewer.rsvps.get(event.id) ?? null}
                     attendees={attendeesByEvent.get(event.id) ?? []}
                     organization={

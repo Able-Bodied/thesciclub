@@ -47,6 +47,14 @@ export interface EventCardProps {
   organization: Organization | null;
   onOpen: () => void;
   onRsvp: (next: RsvpStatus | null) => void;
+  /**
+   * Draw this as a record of something that happened rather than as an offer.
+   *
+   * Set from the event's own date, not from which segment is showing, because
+   * the answer does not change with the segment: there is nothing to decide
+   * about an evening that is over, wherever you meet it.
+   */
+  past?: boolean;
 }
 
 export function EventCard({
@@ -56,6 +64,7 @@ export function EventCard({
   organization,
   onOpen,
   onRsvp,
+  past = false,
 }: EventCardProps) {
   const tile = dateTileParts(event.startTime, event.timezone);
   const going = status === 'going';
@@ -71,6 +80,48 @@ export function EventCard({
   const whereLine = placeLine(event);
 
   const goingOnly = attendees.filter((a) => a.status === 'going');
+
+  // A past event is a line, not a card. Everything the full card carries is
+  // there to answer "should I go to this" — the tags, the place, who else is
+  // going, and the two buttons — and none of that is a live question once the
+  // evening is over. What is left is what a member is actually reading for:
+  // when it was, what it was, and whose it was.
+  //
+  // It stays a button to the detail page. That page still has the description
+  // and the link, which is where somebody goes to remember what a thing was.
+  if (past) {
+    return (
+      <div className="mb-1.5 w-full rounded-[13px] border border-line bg-paper px-3 py-2.5">
+        <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
+          <span className="block w-[3.25rem] flex-none rounded-[10px] bg-tint px-0 py-1 text-center">
+            <span className="block font-extrabold font-head text-[0.9375rem] text-navy leading-[1.1]">
+              {tile.day}
+            </span>
+            <span className="block font-extrabold text-[0.625rem] text-ink2 tracking-[0.08em]">
+              {tile.mon}
+            </span>
+          </span>
+
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-extrabold font-head text-[0.9375rem] text-ink2 leading-[1.3]">
+              {event.title}
+            </span>
+            {/* Host and time on one line. Two lines of grey under a greyed
+                title is most of the height back. */}
+            <span className="mt-[2px] block truncate text-[0.75rem] text-grey leading-[1.35]">
+              {[metaLine, whenLine].filter(Boolean).join(' · ')}
+            </span>
+          </span>
+
+          <OrganizationBadge
+            organization={organization}
+            hostName={event.hostName}
+            className="h-[26px] w-[26px] rounded-[9px] text-[0.5625rem]"
+          />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative mb-[11px] w-full rounded-[17px] border border-line bg-paper p-3.5">

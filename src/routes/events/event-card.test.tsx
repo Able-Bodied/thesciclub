@@ -145,3 +145,44 @@ describe('EventCard', () => {
     expect(props.onOpen).toHaveBeenCalled();
   });
 });
+
+describe('an event that is over', () => {
+  it('offers no Interested or Going, because there is nothing left to decide', () => {
+    renderCard({ past: true });
+    expect(screen.queryByRole('button', { name: /interested/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^going/i })).not.toBeInTheDocument();
+  });
+
+  it('still opens the event, which is where the description is', () => {
+    const props = renderCard({ past: true });
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(props.onOpen).not.toHaveBeenCalled();
+  });
+
+  it('keeps what a member reads it for: when, what, and whose', () => {
+    renderCard({
+      past: true,
+      event: makeEvent({ title: 'Friday Happy Hour', hostName: 'NorCal SCI' }),
+    });
+    expect(screen.getByText('Friday Happy Hour')).toBeInTheDocument();
+    expect(screen.getByText(/NorCal SCI/)).toBeInTheDocument();
+  });
+
+  it('drops what only helps somebody decide whether to go', () => {
+    renderCard({
+      past: true,
+      event: makeEvent({ tags: [makeTag('wheelchair-rugby')] }),
+      attendees: [attendee('Nicole')],
+    });
+    // Tags, the going counter and the faces are all there to answer "should I
+    // go"; none of them is a live question afterwards.
+    expect(screen.queryByText('wheelchair-rugby')).not.toBeInTheDocument();
+    expect(screen.queryByText(/going ·/i)).not.toBeInTheDocument();
+  });
+
+  it('still offers both buttons while the event is ahead', () => {
+    renderCard({ past: false });
+    expect(screen.getByRole('button', { name: /interested/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^going/i })).toBeInTheDocument();
+  });
+});
