@@ -175,7 +175,7 @@ export function EventCard({
           <OrganizationBadge
             organization={organization}
             hostName={event.hostName}
-            className="h-[26px] w-[26px] rounded-[9px] text-[0.5625rem]"
+            className="h-[2.89em] w-[2.89em] rounded-[1em] text-[0.5625rem]"
           />
         </button>
       </div>

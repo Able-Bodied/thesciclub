@@ -343,6 +343,40 @@ to connect the repo.
 
 ---
 
+# A box measured in pixels around text measured in rem
+
+The club offers a text-size setting, and it multiplies the root font size — so
+anything sized in `rem` grows and anything sized in `px` does not. Every bug of
+this shape looks like a rendering glitch and is really that one mismatch.
+
+Found by the owner on `/me`: at the largest setting the profile ring held
+"13%" but clipped "100%" to "00%", because the ring was `h-[46px]` and the
+number inside it was `text-[0.75rem]`. Measured, the label reached exactly 46px
+— the full width of the circle including its stroke.
+
+Swept the rest with a detector rather than by eye
+(`scratchpad/overflow.mjs` in a session; it walks every element at the largest
+setting looking for `scrollWidth > clientWidth` inside a clipping box). It found
+two more:
+
+- **The organization tile.** `h-[38px]` with `text-[0.6875rem]` letters, and
+  the small variant on a peer card 22px. Both now size in `em` off their own
+  letters. It also turned out a four-letter code never fitted at *any* size —
+  CDRF overflowed by twelve pixels, and WWM by two, because letter widths are
+  not equal. Long codes shrink by length now.
+- **`/admin` member and invite rows.** `flex-1` with no basis, so the name
+  column collapsed towards nothing to keep three buttons on one line: at the
+  largest setting a member's phone and city wrapped into a four-character
+  ribbon *underneath* the buttons. The column has a basis and the buttons wrap.
+
+**The rule: if a box contains text, size the box in `em` off that text.** The
+event date tile already did this and its comment says why — it is the one place
+that got it right first.
+
+Two things the detector reports that are correct and should stay: `sr-only`
+elements (they are a clipped 1px box by definition) and the `sr-only` file
+input on `/profile/details`.
+
 # The owner's five, and what two of them turned out to be
 
 Reported 2026-09-16, all fixed. Recorded because two were misdiagnosed in ways

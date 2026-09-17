@@ -49,10 +49,14 @@ export function OrganizationBadge({
   const logo = photoUrlFor(organization?.logoPath);
   const showLogo = Boolean(logo) && !logoFailed;
 
+  // In `em`, off the tile's own letters, so the tile grows with them. In pixels
+  // a four-letter short code overflowed its own square at the largest text
+  // setting — CDRF by twelve pixels — and the fallback that exists so a missing
+  // logo still looks deliberate was the thing that broke.
   const box =
     size === 'lg'
-      ? 'h-[66px] w-[66px] rounded-[20px] text-[1.375rem]'
-      : 'h-[38px] w-[38px] rounded-[12px] text-[0.6875rem]';
+      ? 'h-[3em] w-[3em] rounded-[0.91em] text-[1.375rem]'
+      : 'h-[3.45em] w-[3.45em] rounded-[1.09em] text-[0.6875rem]';
 
   return (
     <span
@@ -69,7 +73,24 @@ export function OrganizationBadge({
       // label of its own would read the organization twice to a screen reader.
       aria-hidden="true"
     >
-      <span>{letters}</span>
+      {/* Four letters never fitted the small tile, at any text size — it was
+          simply less obvious before the tile started scaling. CDRF and WWM are
+          real: an organization's own short code is whatever its row says, and
+          `shortCodeFor` takes up to four initials from a name. Shrunk in `em`
+          so it stays proportional at every setting rather than pinned to one.
+
+          Three gets a step of its own because letter widths are not equal:
+          NCS fits where WWM does not, and a rule that measured characters
+          rather than counting them would be a lot of machinery for a tile
+          holding at most four of them. */}
+      <span
+        className={cn(
+          letters.length === 3 && 'text-[0.88em]',
+          letters.length > 3 && 'text-[0.76em]',
+        )}
+      >
+        {letters}
+      </span>
       {showLogo ? (
         <img
           src={logo ?? ''}

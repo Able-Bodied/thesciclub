@@ -433,7 +433,13 @@ function Row({
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
-      <span className="min-w-0 flex-1">
+      {/* A basis rather than a bare flex-1. With only `flex-1` this column
+          shrank towards nothing to keep three buttons on one line, so at the
+          largest text setting the phone and city wrapped into a four-character
+          ribbon underneath them. Given a basis it holds its width and the
+          buttons wrap to their own row, which is what `flex-wrap` on the row
+          was there for. */}
+      <span className="min-w-0 flex-1 basis-[13rem]">
         <span className="block font-extrabold font-head text-[0.90625rem]">
           {member.displayName}
           {member.isAdmin ? (
@@ -465,7 +471,7 @@ function Row({
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
       ) : (
-        <span className="flex flex-none gap-1.5">
+        <span className="flex flex-wrap gap-1.5">
           <SmallButton onClick={onToggleMentor}>
             {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
           </SmallButton>
@@ -660,7 +666,13 @@ function InviteRow({
   const vouchedBy = vouchedBy_(invite);
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
-      <span className="min-w-0 flex-1">
+      {/* A basis rather than a bare flex-1. With only `flex-1` this column
+          shrank towards nothing to keep three buttons on one line, so at the
+          largest text setting the phone and city wrapped into a four-character
+          ribbon underneath them. Given a basis it holds its width and the
+          buttons wrap to their own row, which is what `flex-wrap` on the row
+          was there for. */}
+      <span className="min-w-0 flex-1 basis-[13rem]">
         <span className="block font-extrabold font-head text-[0.90625rem]">
           {invite.phone}
           {invite.claimableName ? (
@@ -696,7 +708,7 @@ function InviteRow({
       {busy ? (
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
       ) : (
-        <span className="flex flex-none gap-1.5">
+        <span className="flex flex-wrap gap-1.5">
           {canRevoke(invite) ? (
             <SmallButton
               destructive

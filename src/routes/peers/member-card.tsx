@@ -197,7 +197,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
                 key={name}
                 organization={organizationByName(organizations, name)}
                 hostName={name}
-                className="h-[22px] w-[22px] rounded-[7px] text-[0.53125rem]"
+                className="h-[2.59em] w-[2.59em] rounded-[0.82em] text-[0.53125rem]"
               />
             ))}
             {overflow > 0 ? <span className="pr-1.5 pl-0.5">+{overflow}</span> : null}

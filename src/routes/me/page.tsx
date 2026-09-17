@@ -42,8 +42,16 @@ function ProgressRing({ percent }: { percent: number }) {
   const radius = 18;
   const circumference = 2 * Math.PI * radius;
   return (
-    <span className="relative grid h-[46px] w-[46px] flex-none place-items-center">
-      <svg viewBox="0 0 44 44" className="-rotate-90 absolute h-[46px] w-[46px]" aria-hidden="true">
+    // Sized in `em` off its own label rather than in pixels, so the circle grows
+    // with the number inside it. At the largest text setting a fixed 46px ring
+    // held "13%" and clipped "100%" to "00%" — the one member it happened to
+    // was the one who had finished their profile.
+    <span className="relative grid h-[3.85em] w-[3.85em] flex-none place-items-center text-[0.75rem]">
+      <svg
+        viewBox="0 0 44 44"
+        className="-rotate-90 absolute h-[3.85em] w-[3.85em]"
+        aria-hidden="true"
+      >
         <circle cx="22" cy="22" r={radius} fill="none" stroke="var(--tint)" strokeWidth="4" />
         <circle
           cx="22"
@@ -57,7 +65,7 @@ function ProgressRing({ percent }: { percent: number }) {
           strokeDashoffset={circumference * (1 - percent / 100)}
         />
       </svg>
-      <span className="relative font-extrabold font-head text-[0.75rem] text-navy">{percent}%</span>
+      <span className="relative font-extrabold font-head text-navy">{percent}%</span>
     </span>
   );
 }
