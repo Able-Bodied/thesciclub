@@ -21,6 +21,7 @@ const api = vi.hoisted(() => ({
   deleted: [] as string[],
   revoked: [] as string[],
   statusCalls: [] as [string, string][],
+  strikes: [] as [string, string][],
   typeCalls: [] as [string, string][],
   created: [] as unknown[],
   blocked: [] as {
@@ -88,6 +89,11 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
     api.statusCalls.push([id, status]);
     return Promise.resolve({ ok: true });
   },
+  addStrike: (id: string, reason: string) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.strikes.push([id, reason]);
+    return Promise.resolve({ ok: true });
+  },
 }));
 
 const { default: AdminPage } = await import('@/routes/admin/page');
@@ -104,6 +110,7 @@ const member = (o: Partial<AdminMember> = {}): AdminMember => ({
   state: 'CA',
   createdAt: '2026-09-11T08:43:18Z',
   invitesUsed: 0,
+  strikes: 0,
   ...o,
 });
 
@@ -126,6 +133,7 @@ beforeEach(() => {
   api.deleted = [];
   api.revoked = [];
   api.statusCalls = [];
+  api.strikes = [];
   api.typeCalls = [];
   api.created = [];
   api.blocked = [];
@@ -814,5 +822,45 @@ describe('mentor status', () => {
     await waitFor(() => {
       expect(api.typeCalls).toEqual([['m1', 'peer']]);
     });
+  });
+});
+
+describe('giving somebody a strike', () => {
+  it('will not send one without a reason', async () => {
+    // The database refuses an empty reason, and a strike nobody can read the
+    // cause of is unanswerable — so the button does not offer to try.
+    api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Strike…' }));
+    expect(screen.getByRole('button', { name: 'Give the strike' })).toBeDisabled();
+    expect(api.strikes).toEqual([]);
+  });
+
+  it('sends the reason the administrator typed', async () => {
+    api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Strike…' }));
+    await userEvent.type(screen.getByLabelText('What happened?'), '  Sold supplements  ');
+    await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
+    expect(api.strikes).toEqual([['m1', 'Sold supplements']]);
+  });
+
+  it('shows the count on the row, so the roster says where somebody stands', async () => {
+    api.members = [member({ id: 'm1', displayName: 'Ordinary', strikes: 2 })];
+    renderAdmin();
+    expect(await screen.findByText('2 strikes')).toBeInTheDocument();
+  });
+
+  it('says "1 strike", not "1 strikes"', async () => {
+    api.members = [member({ id: 'm1', strikes: 1 })];
+    renderAdmin();
+    expect(await screen.findByText('1 strike')).toBeInTheDocument();
+  });
+
+  it('offers no strike on an administrator, which the database refuses anyway', async () => {
+    api.members = [member({ id: 'a1', displayName: 'Co-admin', isAdmin: true })];
+    renderAdmin();
+    await screen.findByText('Co-admin');
+    expect(screen.queryByRole('button', { name: 'Strike…' })).not.toBeInTheDocument();
   });
 });

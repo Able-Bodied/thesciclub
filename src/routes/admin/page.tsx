@@ -8,6 +8,7 @@ import { InviteForm } from '@/routes/admin/invite-form';
 import {
   type AdminInvite,
   type AdminMember,
+  addStrike,
   type BlockedNumber,
   blockNumber,
   canRevoke,
@@ -297,6 +298,9 @@ export default function AdminPage() {
                     // number blocked and the person still in the deck.
                     act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
                   }}
+                  onStrike={(reason) => {
+                    act(m.id, () => addStrike(m.id, reason));
+                  }}
                 />
               ))}
               {real.length === 0 ? (
@@ -370,6 +374,9 @@ export default function AdminPage() {
                     // number blocked and the person still in the deck.
                     act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
                   }}
+                  onStrike={(reason) => {
+                    act(m.id, () => addStrike(m.id, reason));
+                  }}
                 />
               ))}
             </Section>
@@ -417,6 +424,7 @@ function Row({
   onResume,
   onRemove,
   onToggleMentor,
+  onStrike,
 }: {
   member: AdminMember;
   busy: boolean;
@@ -426,10 +434,13 @@ function Row({
   /** One call either way: blocking deletes the member as part of blocking. */
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
+  onStrike: (reason: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [block, setBlock] = useState(false);
   const [reason, setReason] = useState('');
+  const [striking, setStriking] = useState(false);
+  const [strikeReason, setStrikeReason] = useState('');
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
@@ -460,6 +471,14 @@ function Row({
               holding one is why this is not gated on type alone — and a
               seeded row is excluded whatever its type, because nobody can
               sign in as one, so its allowance is not a thing that exists. */}
+          {member.strikes > 0 ? (
+            <>
+              {' · '}
+              <span className="font-bold text-destructive">
+                {member.strikes === 1 ? '1 strike' : `${member.strikes} strikes`}
+              </span>
+            </>
+          ) : null}
           {member.invitesUsed !== undefined &&
           !member.isSeed &&
           !member.isAdmin &&
@@ -489,6 +508,13 @@ function Row({
                   actually sees. The column still stores 'suspended'; renaming a
                   check constraint and the rows under it is churn for a word
                   nobody outside the schema reads. */}
+              <SmallButton
+                onClick={() => {
+                  setStriking(true);
+                }}
+              >
+                Strike…
+              </SmallButton>
               {member.status === 'active' ? (
                 <SmallButton onClick={onPause}>Pause</SmallButton>
               ) : (
@@ -506,6 +532,45 @@ function Row({
           )}
         </span>
       )}
+
+      {striking ? (
+        /* The same in-row panel Remove uses, for the same reason: the question
+           and the answer stay where the member's name is. The reason is
+           required here rather than optional — the database refuses an empty
+           one, and a strike somebody cannot read the cause of is unanswerable,
+           which is the whole point of writing it down. */
+        <ConfirmPanel
+          title={`Give ${member.displayName} a strike?`}
+          confirmLabel="Give the strike"
+          confirmDisabled={strikeReason.trim().length === 0}
+          onCancel={() => {
+            setStriking(false);
+            setStrikeReason('');
+          }}
+          onConfirm={() => {
+            setStriking(false);
+            onStrike(strikeReason.trim());
+            setStrikeReason('');
+          }}
+        >
+          <p>
+            They will see this on Me, with the date. It stops counting after a year, and it can be
+            withdrawn.
+          </p>
+          <label className="mt-2 block font-semibold text-[0.75rem] text-ink" htmlFor="strike-why">
+            What happened?
+          </label>
+          <input
+            id="strike-why"
+            value={strikeReason}
+            onChange={(e) => {
+              setStrikeReason(e.target.value);
+            }}
+            placeholder="Sold supplements in a room"
+            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-navy"
+          />
+        </ConfirmPanel>
+      ) : null}
 
       {confirming ? (
         <ConfirmPanel
@@ -581,12 +646,15 @@ function ConfirmPanel({
   title,
   children,
   confirmLabel,
+  confirmDisabled = false,
   onCancel,
   onConfirm,
 }: {
   title: string;
   children: React.ReactNode;
   confirmLabel: string;
+  /** For a panel whose answer is not complete yet — a strike with no reason. */
+  confirmDisabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -598,14 +666,15 @@ function ConfirmPanel({
         <button
           type="button"
           onClick={onCancel}
-          className="min-h-[38px] rounded-full bg-tint px-3.5 font-semibold text-[0.78125rem] text-navy"
+          className="min-h-[38px] rounded-full bg-tint px-3.5 font-semibold text-[0.78125rem] text-navy transition-colors hover:bg-line"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          className="min-h-[38px] rounded-full bg-destructive px-3.5 font-bold font-head text-[0.78125rem] text-white"
+          disabled={confirmDisabled}
+          className="min-h-[38px] rounded-full bg-destructive px-3.5 font-bold font-head text-[0.78125rem] text-white transition-colors hover:bg-destructive/85 disabled:opacity-40 disabled:hover:bg-destructive"
         >
           {confirmLabel}
         </button>

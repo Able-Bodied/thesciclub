@@ -695,6 +695,45 @@ The claim rule that is about safety rather than attribution stays, and
 should: a claim may only point at a **seeded** row, because an invite aimed
 at a real member would delete them when it was consumed.
 
+## Strikes: what "Good standing" stands on
+
+CONTEXT.md makes losing membership load-bearing and asks that it stay visible
+in the product. Until 20260916040000 the only visible form of that was a
+sentence listing the four things that end it, and the only mechanism was
+Remove, which is all or nothing.
+
+`member_strikes` — reason, who issued it, when, and a nullable `withdrawn_at`.
+Four decisions worth keeping:
+
+- **Three strikes flags; it does not fire.** No trigger removes or pauses
+  anybody. `event_rsvps` and `event_dismissals` are `on delete cascade`, so an
+  automatic removal would silently destroy a member's whole "Been to" record —
+  and the club's shape is that membership is taken by a person, who can be
+  asked why.
+- **A strike is withdrawn, never edited or deleted.** The case that matters is
+  an administrator striking the wrong person: that should leave evidence of the
+  correction, not of nothing having happened.
+- **They stop counting after `strike_window()`, twelve months.** The row stays
+  and leaves the count, so one bad week is not a permanent sentence.
+- **The member sees the reason.** A strike somebody cannot read the cause of is
+  unanswerable, and being unable to answer is what makes people leave quietly
+  instead of correcting course.
+
+An administrator cannot be struck, the same guard the other three carry.
+
+### Two select policies are ORed, and that read as somebody else's strike
+
+`member_strikes` lets a member read their own **and** an administrator read
+every one. Postgres ORs them, so an unfiltered `select` returns the whole
+club's rows to an administrator — and Me showed "Two strikes" to an
+administrator holding one, the first time it ran against real rows.
+
+The policies are right. `loadMyStrikes(memberId)` takes the id and filters, and
+**that is not optional**. This is the mirror of "A view's own security check can
+break a caller who is not its audience": a policy written to be generous to one
+audience is not a filter for another, and a screen that means "mine" has to say
+so. Step 11b of `supabase/tests/strikes.sql` pins both halves.
+
 ## An administrator is a mentor, and nothing about them is changed from here
 
 Two rules that together mean an administrator's row on `/admin` carries no

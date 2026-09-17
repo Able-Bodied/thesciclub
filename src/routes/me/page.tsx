@@ -1,4 +1,4 @@
-import { ChevronRight, LogOut, Mail, ShieldCheck } from 'lucide-react';
+import { ChevronRight, LogOut, Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
@@ -8,6 +8,8 @@ import { isPastStartTime } from '@/routes/events/filters';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { MeHero } from '@/routes/me/hero';
+import { StandingCard } from '@/routes/me/standing';
+import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
 import { MeStats } from '@/routes/me/stats';
 import { listInWords, loadDetails, missingDetails } from '@/routes/profile/details-api';
 import { loadAnswers } from '@/routes/profile/profile-api';
@@ -81,6 +83,9 @@ export default function MePage() {
   // Null until the details load, so the switch is not drawn in the wrong
   // position for a moment and then corrected under the reader's eye.
   const [showInBrowse, setShowInBrowse] = useState<boolean | null>(null);
+  // Null until they arrive, so the card does not say "Good standing" for a
+  // moment to somebody who is on two and then correct itself.
+  const [strikes, setStrikes] = useState<MyStrike[] | null>(null);
 
   // What the member has coming up, not what they have ever said yes to. These
   // two numbers are the whole of the row, and a count that keeps climbing as
@@ -111,13 +116,18 @@ export default function MePage() {
     void loadAnswers().then((result) => {
       if (result.ok) setPercent(progressOf(result.answers).percent);
     });
+    if (userId) {
+      void loadMyStrikes(userId).then((result) => {
+        if (result.ok) setStrikes(result.strikes);
+      });
+    }
     void loadDetails().then((result) => {
       if (result.ok) {
         setMissing(missingDetails(result.details));
         setShowInBrowse(result.details.showInBrowse);
       }
     });
-  }, []);
+  }, [userId]);
 
   function leave() {
     setBusy(true);
@@ -246,31 +256,7 @@ export default function MePage() {
             ) : null}
 
             <SectionHeading>Standing</SectionHeading>
-            <div className="rounded-[17px] border border-line bg-paper p-3.5">
-              <div className="flex items-center gap-2.5">
-                <ShieldCheck className="h-5 w-5 flex-none text-gold-dp" />
-                <span className="min-w-0 flex-1">
-                  <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
-                    Good standing
-                  </span>
-                  {invitedBy ? (
-                    <span className="block text-[0.78125rem] text-grey">
-                      Invited by {invitedBy}
-                    </span>
-                  ) : null}
-                </span>
-              </div>
-              <div className="my-3 h-px bg-line" />
-              {/* The mock links this to a house-rules page. There is no such
-                  page, so the rule is stated here instead of behind a link that
-                  goes nowhere — and CONTEXT.md asks that losing membership stay
-                  visible in the product rather than buried in a terms page,
-                  which an inline sentence does better than a link anyway. */}
-              <p className="text-[0.78125rem] text-ink2 leading-[1.55]">
-                Membership can be lost. Selling to members, harassing anyone, giving medical advice
-                as fact, or repeating outside a room what was said in it all end it.
-              </p>
-            </div>
+            <StandingCard invitedBy={invitedBy} strikes={strikes} />
           </div>
 
           <div>

@@ -26,6 +26,12 @@ export interface AdminMember {
    * `undefined` where the view does not report it yet.
    */
   invitesUsed: number | undefined;
+  /**
+   * Strikes that still count: not withdrawn, and inside `strike_window()`.
+   * Counted by the database rather than here, so the roster, the member's own
+   * card and the function that issues them cannot disagree about who is on two.
+   */
+  strikes: number;
 }
 
 interface AdminMemberRow {
@@ -40,6 +46,7 @@ interface AdminMemberRow {
   state: string;
   created_at: string;
   invites_used: number | null;
+  strikes: number | null;
 }
 
 function toAdminMember(row: AdminMemberRow): AdminMember {
@@ -55,6 +62,9 @@ function toAdminMember(row: AdminMemberRow): AdminMember {
     state: row.state,
     createdAt: row.created_at,
     invitesUsed: row.invites_used ?? undefined,
+    // A database that predates 20260916040000 reports nothing here, and no
+    // strikes is the honest reading of that rather than a blank.
+    strikes: row.strikes ?? 0,
   };
 }
 
@@ -467,4 +477,76 @@ export function vouchedBy(invite: AdminInvite): string {
 export function canRevoke(invite: AdminInvite): boolean {
   if (invite.status === 'pending') return true;
   return invite.status === 'consumed' && invite.heldBy === null;
+}
+
+/* ----------------------------------------------------------------- strikes */
+
+export interface Strike {
+  id: string;
+  memberId: string;
+  reason: string;
+  issuedAt: string;
+  issuedByName: string | null;
+  withdrawnAt: string | null;
+  withdrawnReason: string | null;
+  /** Whether it still counts towards three. A withdrawn or year-old one does not. */
+  counts: boolean;
+}
+
+interface StrikeRow {
+  id: string;
+  member_id: string;
+  reason: string;
+  issued_at: string;
+  issued_by_name: string | null;
+  withdrawn_at: string | null;
+  withdrawn_reason: string | null;
+  counts: boolean;
+}
+
+function toStrike(row: StrikeRow): Strike {
+  return {
+    id: row.id,
+    memberId: row.member_id,
+    reason: row.reason,
+    issuedAt: row.issued_at,
+    issuedByName: row.issued_by_name,
+    withdrawnAt: row.withdrawn_at,
+    withdrawnReason: row.withdrawn_reason,
+    counts: row.counts,
+  };
+}
+
+/** Every strike the club has issued, newest first. Administrators only. */
+export async function fetchStrikes(): Promise<
+  { ok: true; strikes: Strike[] } | { ok: false; error: string }
+> {
+  const result = await getSupabase()
+    .from('admin_strikes')
+    .select('*')
+    .order('issued_at', { ascending: false });
+  if (result.error) return { ok: false, error: result.error.message };
+  return { ok: true, strikes: (result.data as StrikeRow[]).map(toStrike) };
+}
+
+export async function addStrike(
+  target: string,
+  reason: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_add_strike', {
+    target,
+    strike_reason: reason,
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export async function withdrawStrike(
+  strike: string,
+  reason: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_withdraw_strike', {
+    strike,
+    withdraw_reason: reason,
+  });
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
