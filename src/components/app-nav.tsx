@@ -46,13 +46,13 @@ export function AppNav() {
       className={cn(
         'z-40 order-last flex-none bg-paper px-2',
         'border-line border-t pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]',
-        'lg:order-first lg:border-t-0 lg:border-b lg:px-4 lg:pt-1.5 lg:pb-1.5',
+        'md:order-first md:border-t-0 md:border-b md:px-4 md:pt-1.5 md:pb-1.5',
       )}
     >
       <div
         className={cn(
           'mx-auto grid w-full max-w-[480px] grid-cols-5 gap-0.5',
-          'lg:mx-0 lg:flex lg:max-w-none lg:justify-start lg:gap-1',
+          'md:mx-0 md:flex md:max-w-none md:justify-start md:gap-1',
         )}
       >
         {TABS.map(({ to, label, Icon }) => {
@@ -65,9 +65,9 @@ export function AppNav() {
                   'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
                   // Icon over label on a phone, beside it on a desktop, where
                   // the row is wide and the stacked label is needlessly small.
-                  'lg:flex-row lg:gap-2 lg:px-3 lg:py-1.5 lg:text-[0.875rem]',
+                  'md:flex-row md:gap-2 md:px-3 md:py-1.5 md:text-[0.875rem]',
                   isActive ? 'text-navy' : 'text-grey',
-                  !isActive && 'lg:hover:bg-tint',
+                  !isActive && 'md:hover:bg-tint',
                 )
               }
             >

@@ -135,7 +135,7 @@ export default function PeersPage() {
         ref={deckRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] lg:px-6"
+        className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6"
       >
         {filters.search ? (
           <div className="mb-2.5">
@@ -177,7 +177,10 @@ export default function PeersPage() {
               {/* One column on a phone, more as the shell widens. The gap
                   replaces the card's own bottom margin so rows and columns are
                   spaced the same. */}
-              <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+              {/* The columns follow the shell, not the viewport. At `sm` the deck went
+                  two-up while the shell was still capped at 480px, so two cards shared
+                  a phone-width column and every name wrapped. */}
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
                 {visible.map((member) => (
                   <MemberCard
                     key={member.id}

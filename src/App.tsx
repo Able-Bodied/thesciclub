@@ -27,10 +27,17 @@ import ProfileSurveyPage from '@/routes/profile/page';
  */
 function AppShell() {
   // Phone-width by default, because that is the design and the PWA target.
-  // Widened on large screens rather than left as a 480px ribbon on a 27-inch
-  // monitor — the deck grids into the extra width.
+  // Widened beyond that rather than left as a 480px ribbon on a big screen —
+  // the deck grids into the extra width.
+  //
+  // The switch is `md` (768px) and not `lg`. At `lg` every window from 480 to
+  // 1023 got the ribbon: a browser that is not maximised, a laptop, or half a
+  // screen showed a 480px column with ~260px of dead margin either side and the
+  // tabs at the bottom, which reads as the app failing to fit rather than as a
+  // phone layout. Reported as a Firefox bug; it was neither Firefox nor a bug,
+  // it was this number, and both engines measured identically.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas lg:max-w-[1180px]">
+    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
       {/* First in the DOM, painted last on a phone and first on a desktop —
           see the ordering note in app-nav.tsx. */}
       <AppNav />

@@ -193,7 +193,7 @@ export default function EventsPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] lg:px-6">
+      <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {writeError ? (
             <p className="mb-2.5 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[0.7875rem] text-[#8C1D18]">
