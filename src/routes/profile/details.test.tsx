@@ -110,14 +110,13 @@ describe('Your details', () => {
     expect(await screen.findByText(/Changing this records an exact date/)).toBeInTheDocument();
   });
 
-  it('can hide you from the deck without signing you out of it', async () => {
+  it('does not carry the deck switch, which lives on Me', async () => {
+    // It was here first, four fields down and behind a Save — which is where
+    // it was mistaken for part of onboarding. Being findable is a switch, not
+    // a form field, so it moved to Me and this page does not offer it twice.
     renderDetails();
     await screen.findByLabelText('Name');
-    await userEvent.click(screen.getByRole('button', { name: /Show me in the deck/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
-    await waitFor(() => {
-      expect(api.saves[0]?.details.showInBrowse).toBe(false);
-    });
+    expect(screen.queryByText(/Show me in the deck/)).not.toBeInTheDocument();
   });
 
   it('surfaces a save failure rather than claiming it saved', async () => {

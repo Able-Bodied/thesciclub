@@ -475,23 +475,39 @@ function Row({
           <SmallButton onClick={onToggleMentor}>
             {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
           </SmallButton>
-          {/* "Pause" rather than "Suspend", matching the screen the member
-              actually sees. The column still stores 'suspended'; renaming a
-              check constraint and the rows under it is churn for a word
-              nobody outside the schema reads. */}
-          {member.status === 'active' ? (
-            <SmallButton onClick={onPause}>Pause</SmallButton>
+          {/* An administrator's membership cannot be ended from here — not
+              their own and not another's, so two of them cannot lock each
+              other out of the club they run. The database refuses all three
+              ways (admin_set_member_status, admin_delete_member and
+              admin_block_number), and that is the boundary; this only stops
+              the screen offering a button whose whole job would be to fail.
+              Mentor and peer stay: that is what somebody does, not whether
+              they are still here. */}
+          {member.isAdmin ? (
+            <span className="self-center text-[0.75rem] text-grey">
+              Administrator — removed by the service role
+            </span>
           ) : (
-            <SmallButton onClick={onResume}>Resume</SmallButton>
+            <>
+              {/* "Pause" rather than "Suspend", matching the screen the member
+                  actually sees. The column still stores 'suspended'; renaming a
+                  check constraint and the rows under it is churn for a word
+                  nobody outside the schema reads. */}
+              {member.status === 'active' ? (
+                <SmallButton onClick={onPause}>Pause</SmallButton>
+              ) : (
+                <SmallButton onClick={onResume}>Resume</SmallButton>
+              )}
+              <SmallButton
+                destructive
+                onClick={() => {
+                  setConfirming(true);
+                }}
+              >
+                Remove…
+              </SmallButton>
+            </>
           )}
-          <SmallButton
-            destructive
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Remove…
-          </SmallButton>
         </span>
       )}
 

@@ -232,6 +232,31 @@ describe('AdminPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('offers no way to end an administrator’s membership, their own or another’s', async () => {
+    // All three ways are refused by the database — admin_set_member_status,
+    // admin_delete_member and admin_block_number — so two administrators
+    // cannot lock each other out of the club they run. The screen should not
+    // offer a button whose only outcome is that error.
+    api.members = [
+      member({ id: 'other-admin', displayName: 'Co-admin', isAdmin: true }),
+      member({ id: 'ordinary', displayName: 'Ordinary', isAdmin: false }),
+    ];
+    renderAdmin();
+    await screen.findByText('Co-admin');
+    // One Pause and one Remove on the page, both belonging to the member who
+    // can actually have either done to them.
+    expect(screen.getAllByRole('button', { name: 'Pause' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Remove…' })).toHaveLength(1);
+    expect(screen.getByText(/removed by the service role/i)).toBeInTheDocument();
+  });
+
+  it('still lets an administrator be made a peer or a mentor', async () => {
+    // What somebody does, not whether they are still here.
+    api.members = [member({ id: 'other-admin', displayName: 'Co-admin', isAdmin: true })];
+    renderAdmin();
+    expect(await screen.findByRole('button', { name: /Make (peer|mentor)/ })).toBeInTheDocument();
+  });
+
   it('marks who you are, so you do not act on your own row by accident', async () => {
     api.members = [member({ id: 'me', displayName: 'Alfred Shaheen', isAdmin: true })];
     renderAdmin();

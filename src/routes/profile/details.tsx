@@ -280,35 +280,6 @@ export default function ProfileDetailsPage() {
               />
             </Field>
 
-            <button
-              type="button"
-              onClick={() => {
-                set({ showInBrowse: !details.showInBrowse });
-              }}
-              className="mt-5 flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
-            >
-              <span className="flex-1">
-                <span className="block font-extrabold font-head text-[0.90625rem]">
-                  Show me in the deck
-                </span>
-                <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.45]">
-                  Turn this off and no other member can find you. You can still browse.
-                </span>
-              </span>
-              <span
-                className={cn(
-                  'relative h-[26px] w-[44px] flex-none rounded-full',
-                  details.showInBrowse ? 'bg-navy' : 'bg-line',
-                )}
-              >
-                <span
-                  className={cn(
-                    'absolute top-[3px] h-5 w-5 rounded-full bg-white transition-[left]',
-                    details.showInBrowse ? 'left-[21px]' : 'left-[3px]',
-                  )}
-                />
-              </span>
-            </button>
             <div className="h-4" />
           </>
         )}

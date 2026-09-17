@@ -120,7 +120,11 @@ export async function saveDetails(
       // said. Spelled out rather than leaning on `||`, which reads as a typo.
       city: trimmedOrNull(details.city),
       state: details.state,
-      show_in_browse: details.showInBrowse,
+      // `show_in_browse` is deliberately not written here. It is set from Me,
+      // on the tap, by `setShowInBrowse` — so a details form opened before
+      // somebody hid themselves cannot put them back in the deck when they
+      // press Save on a page that no longer shows the switch. It stays on
+      // `MemberDetails` because Me reads it through `loadDetails`.
     })
     .eq('id', userId);
   return error ? { ok: false, error: error.message } : { ok: true };

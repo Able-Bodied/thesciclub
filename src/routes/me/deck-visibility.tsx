@@ -19,6 +19,12 @@ import { setShowInBrowse } from '@/routes/profile/details-api';
  * It writes immediately rather than waiting for a Save, because it is a switch
  * and not a form — see `setShowInBrowse`.
  *
+ * And it is here and nowhere else. `/profile/details` carried it first, four
+ * fields down behind a Save, which is where it was mistaken for part of
+ * onboarding. `saveDetails` no longer writes `show_in_browse` at all, so a
+ * details form opened before somebody hid themselves cannot put them back in
+ * the deck when they press Save on a page that no longer shows the switch.
+ *
  * Hidden is stated loudly. Being invisible is a thing a member chose, but it is
  * also the explanation for an empty inbox, and a quiet grey row would not
  * reach somebody who has forgotten.

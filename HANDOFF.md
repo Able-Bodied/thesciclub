@@ -674,6 +674,33 @@ The claim rule that is about safety rather than attribution stays, and
 should: a claim may only point at a **seeded** row, because an invite aimed
 at a real member would delete them when it was consumed.
 
+## An administrator cannot lose membership from the application
+
+All three ways of ending one refuse an administrator as a target, and each
+checks for itself — there is no shared gate they pass through, which is exactly
+how the third came to be missing for five days:
+
+| function | refuses an admin target |
+| --- | --- |
+| `admin_delete_member` | since 20260911130000 |
+| `admin_block_number` | since 20260913010000 |
+| `admin_set_member_status` | **only since 20260916020000** |
+
+The gap mattered more than it looks. A suspended administrator fails
+`is_admin()`, which reads `status = 'active'` — so
+`admin_set_member_status(the other admin, 'suspended')` was a way for one
+administrator to take the club, walking past two guards written to prevent
+exactly that. `'removed'` was available the same way.
+
+An administrator is still removed by the service role, deliberately. `/admin`
+says so in the row now rather than offering buttons whose only outcome is that
+error; Make peer and Make mentor stay, because that is what somebody does, not
+whether they are still here. `supabase/tests/admin-is-protected.sql` runs all
+three as a signed-in administrator.
+
+The self-guard on `admin_set_member_status` is a separate rule and stays: it is
+about not locking *yourself* out by accident, and it says so in its own words.
+
 ## Losing membership: three different things
 
 Worth keeping straight, because two of them look alike from `/admin` and the
