@@ -32,7 +32,7 @@ import type { ClubEvent, EventAttendee, EventTag, RsvpStatus } from '@/types/dom
  */
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id';
 
 interface EventRow {
   id: string;
@@ -49,6 +49,7 @@ interface EventRow {
   organization_id: string | null;
   host_name: string | null;
   feed_id: string;
+  series_id: string | null;
 }
 
 interface TagRow {
@@ -134,6 +135,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       format: row.event_format as ClubEvent['format'],
       organizationId: row.organization_id,
       hostName: row.host_name,
+      seriesId: row.series_id,
       // Sorted so a card's chips do not reshuffle between renders.
       tags: (tagsByEvent.get(row.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
       // An event nobody has RSVPed to has no row in the counts view rather

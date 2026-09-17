@@ -23,6 +23,7 @@ function eventRow(overrides: Record<string, unknown> = {}) {
     organization_id: null,
     host_name: null,
     feed_id: 'feed-1',
+    series_id: null,
     ...overrides,
   };
 }
@@ -117,4 +118,11 @@ describe('toEvents', () => {
     const [event] = join({ timezones: new Map() });
     expect(event?.timezone).toBe('America/Los_Angeles');
   });
+});
+
+it('carries the series a repeating event belongs to', () => {
+  // Identity computed at ingest and stored. The client reads it and never
+  // recomputes it, so there is one answer to "the same event".
+  const events = join({ events: [eventRow({ series_id: 's1' }), eventRow({ id: 'e2' })] });
+  expect(events.map((e) => e.seriesId)).toEqual(['s1', null]);
 });

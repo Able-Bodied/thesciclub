@@ -440,6 +440,14 @@ export interface ClubEvent {
   city: string | null;
   url: string | null;
   registrationUrl: string | null;
+  /**
+   * The repeating event this is one occurrence of, or null for a one-off.
+   *
+   * Identity, computed at ingest by jobs/event-ingest/series.js and stored —
+   * never recomputed in the client, and never matched on in SQL, so there is
+   * one implementation of what counts as "the same event".
+   */
+  seriesId: string | null;
   /** Null means the ingest job could not tell, which is not the same as in person. */
   format: EventFormat | null;
   /** Set only when the host is an organization the club already has. */
