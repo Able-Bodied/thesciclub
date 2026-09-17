@@ -168,8 +168,10 @@ export default function EventDetailPage() {
                 }}
                 aria-pressed={going}
                 className={cn(
-                  'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem]',
-                  going ? 'bg-tint text-navy' : 'bg-gold text-[#2A1E06]',
+                  'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
+                  going
+                    ? 'bg-tint text-navy hover:bg-line'
+                    : 'bg-gold text-[#2A1E06] hover:bg-gold-hi',
                 )}
               >
                 {going ? 'Going ✓' : 'Going'}
@@ -180,7 +182,7 @@ export default function EventDetailPage() {
                   onRsvp(interested ? null : 'interested');
                 }}
                 aria-pressed={interested}
-                className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[0.9375rem] text-white"
+                className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-[#1E3A63]"
               >
                 {interested ? 'Interested ✓' : 'Interested'}
               </button>
@@ -207,7 +209,7 @@ export default function EventDetailPage() {
             href={event.registrationUrl ?? event.url ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
+            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint"
           >
             {event.registrationUrl ? 'Register' : 'Details on their site'}
             <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />

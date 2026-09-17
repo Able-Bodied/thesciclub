@@ -36,7 +36,7 @@ function Stat({ value, label, to }: { value: number; label: string; to: string }
   return (
     <Link
       to={to}
-      className="flex min-h-[68px] flex-1 flex-col items-center justify-center rounded-[14px] border border-line bg-paper px-2 py-2.5"
+      className="flex min-h-[68px] flex-1 flex-col items-center justify-center rounded-[14px] border border-line bg-paper px-2 py-2.5 transition-colors hover:border-grey"
     >
       <span className="font-extrabold font-head text-[1.3125rem] text-navy leading-none">
         {value}

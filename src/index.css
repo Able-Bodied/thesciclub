@@ -33,6 +33,10 @@
      4.47:1 there — under AA by three hundredths, on the "Online" badge. */
   --gold-dp: #886510;
   --gold-lt: #f6edd5;
+  /* The hover state for the gold primary, lifted the way --navy-hi lifts navy
+     rather than darkened, so both primaries answer a pointer the same way. The
+     button's ink is #2A1E06, which clears AA on this comfortably. */
+  --gold-hi: #d9b53f;
 
   --canvas: #f4f6f9;
   --paper: #fff;
@@ -96,6 +100,7 @@
   --color-navy-dp: var(--navy-dp);
   --color-gold: var(--gold);
   --color-gold-dp: var(--gold-dp);
+  --color-gold-hi: var(--gold-hi);
   --color-gold-lt: var(--gold-lt);
   --color-canvas: var(--canvas);
   --color-paper: var(--paper);

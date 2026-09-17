@@ -161,7 +161,7 @@ export default function ProfileSurveyPage() {
             onClick={() => {
               commit(SCREENS.length);
             }}
-            className="-mr-1.5 inline-flex items-center gap-1 py-1 font-semibold text-[0.875rem] text-navy disabled:opacity-40"
+            className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-navy transition-colors hover:bg-tint disabled:opacity-40"
           >
             Finish later
             <ChevronRight className="h-4 w-4" />
@@ -216,7 +216,7 @@ export default function ProfileSurveyPage() {
           onClick={() => {
             commit(index + 1);
           }}
-          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] disabled:opacity-40"
+          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
         >
           {saving ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -234,7 +234,7 @@ export default function ProfileSurveyPage() {
           onClick={() => {
             commit(index + 1);
           }}
-          className="mt-1 flex min-h-[38px] w-full items-center justify-center font-bold text-[0.84375rem] text-grey"
+          className="mt-1 flex min-h-[38px] w-full items-center justify-center rounded-[13px] font-bold text-[0.84375rem] text-grey transition-colors hover:bg-tint hover:text-ink2"
         >
           Skip this one
         </button>

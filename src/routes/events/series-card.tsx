@@ -47,7 +47,7 @@ export function SeriesFooter({ group, expanded, onToggle }: SeriesFooterProps) {
       type="button"
       onClick={onToggle}
       aria-expanded={expanded}
-      className="flex w-full items-center gap-1.5 rounded-[11px] px-1 py-2 text-left font-semibold text-[0.8125rem] text-navy"
+      className="flex w-full items-center gap-1.5 rounded-[11px] px-1 py-2 text-left font-semibold text-[0.8125rem] text-navy transition-colors hover:bg-tint"
     >
       <ChevronDown
         className={expanded ? 'h-4 w-4 rotate-180' : 'h-4 w-4'}

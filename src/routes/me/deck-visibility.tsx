@@ -89,7 +89,7 @@ export function DeckVisibility({
           onClick={toggle}
           className={cn(
             'relative h-[30px] w-[52px] flex-none rounded-full transition-colors disabled:opacity-50',
-            showInBrowse ? 'bg-navy' : 'bg-line',
+            showInBrowse ? 'bg-navy hover:bg-navy-hi' : 'bg-line hover:bg-grey',
           )}
         >
           <span

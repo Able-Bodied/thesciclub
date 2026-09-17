@@ -343,6 +343,27 @@ to connect the repo.
 
 ---
 
+# Buttons answer a pointer now
+
+Before this the whole app had exactly one hover state — `md:hover:bg-tint` on
+the nav — so every button on every other screen was inert under a cursor.
+
+One palette, used everywhere, so a control's family is legible from how it
+responds: navy lifts to `--navy-hi`, tint darkens to `--line`, gold lifts to
+`--gold-hi` (added for this), an outline fills with tint, a destructive tint
+deepens, and a card-shaped link firms its border. Everything carries
+`transition-colors`, which the reduced-motion kill switch at the bottom of
+index.css already turns off for anybody who asked for none.
+
+**Plain `hover:` is correct here, not `md:hover:`.** Tailwind 4 compiles the
+hover variant inside `@media (hover: hover)` — confirmed in the built CSS — so
+a touch device never gets the sticky hover that the `md:` prefix was guarding
+against.
+
+The two hover pairs that carry text are in `theme-contrast.test.ts` alongside
+the rest of the palette. A hover colour picked by eye is exactly where a
+palette quietly drops under AA.
+
 # A box measured in pixels around text measured in rem
 
 The club offers a text-size setting, and it multiplies the root font size — so
@@ -673,6 +694,33 @@ the record. Withdrawn by 20260913080000.
 The claim rule that is about safety rather than attribution stays, and
 should: a claim may only point at a **seeded** row, because an invite aimed
 at a real member would delete them when it was consumed.
+
+## An administrator is a mentor, and nothing about them is changed from here
+
+Two rules that together mean an administrator's row on `/admin` carries no
+controls at all — not their own row and not another administrator's.
+
+**Their membership cannot be ended.** All three ways refuse an administrator as
+a target, and each checks for itself, which is how the third came to be missing
+for five days. See the table below.
+
+**Their type is not a choice.** `20260916030000` adds a trigger: `is_admin`
+implies `type = 'mentor'`, however the row is written — including the service
+role promoting somebody, which is the only way anybody becomes one. Mentor
+rather than peer because of what the word does: CONTEXT.md says a mentor
+"appears first to newly injured members", and the person running the club is
+the one member who has undertaken to answer. `admin_set_member_type` refuses an
+administrator too, so it says no rather than appearing to work and being undone
+by the trigger a moment later.
+
+The row shows **nothing** beside an administrator. It briefly carried a
+sentence explaining why, and that was worse than silence — an apology where an
+action goes, on the row an administrator sees every time they open the page.
+
+The mentor allowance line is also hidden for them: every administrator is a
+mentor now, a mentor's row prints "N of 2 invites used", and an administrator
+invites through `admin_create_invite`, which the cap does not govern. The real
+row read **"3 of 2 invites used"**.
 
 ## An administrator cannot lose membership from the application
 

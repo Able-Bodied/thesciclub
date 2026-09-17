@@ -102,7 +102,7 @@ export default function PeersPage() {
               setSheetOpen(true);
             }}
             aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-            className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint"
+            className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
           >
             <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
             {filterCount ? (
@@ -122,7 +122,10 @@ export default function PeersPage() {
               aria-pressed={segment === value}
               className={cn(
                 'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem]',
-                segment === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
+                'transition-colors',
+                segment === value
+                  ? 'bg-navy text-white hover:bg-navy-hi'
+                  : 'bg-tint text-ink2 hover:bg-line',
               )}
             >
               {label}

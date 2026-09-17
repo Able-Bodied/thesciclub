@@ -68,7 +68,17 @@ describe('palette contrast', () => {
     ['--gold-dp on --gold-lt (the "Online" badge)', 'gold-dp', 'gold-lt'],
     ['--navy on --tint (tag pills)', 'navy', 'tint'],
     ['--navy on --paper (links and buttons)', 'navy', 'paper'],
+    // The hover states are pairs that meet on a screen too, and a hover colour
+    // chosen by eye is exactly where a palette quietly drops under AA.
+    ['white on --navy-hi (a primary under the pointer)', 'paper', 'navy-hi'],
+    ['--navy on --line (a tint button under the pointer)', 'navy', 'line'],
   ])('%s clears AA', (_label, fg, bg) => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(AA);
+  });
+
+  it('keeps the gold primary readable under the pointer', () => {
+    // #2A1E06 is written into the button rather than held as a token, so it is
+    // named here rather than read from the CSS.
+    expect(contrast('#2A1E06', token('gold-hi'))).toBeGreaterThanOrEqual(AA);
   });
 });

@@ -292,7 +292,7 @@ export default function ProfileDetailsPage() {
         <button
           type="submit"
           disabled={saving || loading || !details || !isAdult(details.birthDate)}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-navy-hi disabled:opacity-40 disabled:hover:bg-navy"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
         </button>
@@ -395,7 +395,10 @@ function Chip({
       onClick={onClick}
       className={cn(
         'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
-        selected ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
+        'transition-colors',
+        selected
+          ? 'bg-navy text-white hover:bg-navy-hi'
+          : 'border border-line bg-paper text-ink2 hover:bg-tint',
       )}
     >
       {children}

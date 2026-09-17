@@ -156,7 +156,7 @@ export function PrimaryButton({
     <button
       type="submit"
       {...props}
-      className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] disabled:opacity-40"
+      className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
     >
       {children}
     </button>
@@ -188,7 +188,10 @@ export function Chip({
       {...props}
       className={cn(
         'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem] leading-[1.25]',
-        selected ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
+        'transition-colors',
+        selected
+          ? 'bg-navy text-white hover:bg-navy-hi'
+          : 'border border-line bg-paper text-ink2 hover:bg-tint',
       )}
     >
       {children}

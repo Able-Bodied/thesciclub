@@ -232,29 +232,32 @@ describe('AdminPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('offers no way to end an administrator’s membership, their own or another’s', async () => {
-    // All three ways are refused by the database — admin_set_member_status,
-    // admin_delete_member and admin_block_number — so two administrators
-    // cannot lock each other out of the club they run. The screen should not
-    // offer a button whose only outcome is that error.
+  it('offers an administrator no controls at all, not even an explanation', async () => {
+    // Their membership cannot be ended from the application and their type is
+    // a rule rather than a choice, so every control this row could carry is one
+    // the database would refuse. A sentence saying so put an apology where an
+    // action goes, on the row an administrator sees every time.
     api.members = [
       member({ id: 'other-admin', displayName: 'Co-admin', isAdmin: true }),
       member({ id: 'ordinary', displayName: 'Ordinary', isAdmin: false }),
     ];
     renderAdmin();
     await screen.findByText('Co-admin');
-    // One Pause and one Remove on the page, both belonging to the member who
-    // can actually have either done to them.
+    // One of each, all belonging to the member they can actually be done to.
     expect(screen.getAllByRole('button', { name: 'Pause' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Remove…' })).toHaveLength(1);
-    expect(screen.getByText(/removed by the service role/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Make (peer|mentor)/ })).toHaveLength(1);
+    expect(screen.queryByText(/service role/i)).not.toBeInTheDocument();
   });
 
-  it('still lets an administrator be made a peer or a mentor', async () => {
-    // What somebody does, not whether they are still here.
-    api.members = [member({ id: 'other-admin', displayName: 'Co-admin', isAdmin: true })];
+  it('does not hold an administrator to the mentor allowance', async () => {
+    // Every administrator is a mentor now, and a mentor's row prints "N of 2
+    // invites used" — but an administrator invites through admin_create_invite,
+    // which the cap does not govern. The real row read "3 of 2 invites used".
+    api.members = [member({ id: 'me', displayName: 'Admin', isAdmin: true, invitesUsed: 3 })];
     renderAdmin();
-    expect(await screen.findByRole('button', { name: /Make (peer|mentor)/ })).toBeInTheDocument();
+    await screen.findByText(/Admin/);
+    expect(screen.queryByText(/of 2 invites used/)).not.toBeInTheDocument();
   });
 
   it('marks who you are, so you do not act on your own row by accident', async () => {

@@ -462,6 +462,7 @@ function Row({
               sign in as one, so its allowance is not a thing that exists. */}
           {member.invitesUsed !== undefined &&
           !member.isSeed &&
+          !member.isAdmin &&
           (member.type === 'mentor' || member.invitesUsed > 0) ? (
             <> · {member.invitesUsed} of 2 invites used</>
           ) : null}
@@ -472,23 +473,18 @@ function Row({
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
       ) : (
         <span className="flex flex-wrap gap-1.5">
-          <SmallButton onClick={onToggleMentor}>
-            {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
-          </SmallButton>
-          {/* An administrator's membership cannot be ended from here — not
-              their own and not another's, so two of them cannot lock each
-              other out of the club they run. The database refuses all three
-              ways (admin_set_member_status, admin_delete_member and
-              admin_block_number), and that is the boundary; this only stops
-              the screen offering a button whose whole job would be to fail.
-              Mentor and peer stay: that is what somebody does, not whether
-              they are still here. */}
-          {member.isAdmin ? (
-            <span className="self-center text-[0.75rem] text-grey">
-              Administrator — removed by the service role
-            </span>
-          ) : (
+          {/* Nothing at all beside an administrator. Their membership cannot be
+              ended from the application and their type is a rule rather than a
+              choice — an administrator is a mentor, enforced by a trigger since
+              20260916030000 — so every control this row could offer is one the
+              database would refuse. A sentence explaining that was worse than
+              silence: it put an apology where an action goes, on the row an
+              administrator sees every time they open the page. */}
+          {member.isAdmin ? null : (
             <>
+              <SmallButton onClick={onToggleMentor}>
+                {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
+              </SmallButton>
               {/* "Pause" rather than "Suspend", matching the screen the member
                   actually sees. The column still stores 'suspended'; renaming a
                   check constraint and the rows under it is churn for a word
@@ -654,8 +650,10 @@ function SmallButton({
       type="button"
       {...props}
       className={cn(
-        'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[0.75rem]',
-        destructive ? 'bg-destructive/10 text-destructive' : 'bg-tint text-navy',
+        'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[0.75rem] transition-colors',
+        destructive
+          ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
+          : 'bg-tint text-navy hover:bg-line',
       )}
     >
       {children}
