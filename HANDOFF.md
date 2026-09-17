@@ -89,8 +89,7 @@ section: the hosted project is running schema that exists nowhere in
 it is executing against this schema *with* the code that understands it — that
 was not true until 2026-09-14. See "The scraper runs itself, daily".
 
-**One migration is written and not yet applied**, which is the first time that
-has been true — until now every migration in the tree was live:
+One more migration has landed since the thirteen above:
 
 - `20260916000000` — Bob's and Matt's affiliations say "Christopher Reeve
   Foundation" while the club's organization row says "Christopher & Dana Reeve
@@ -98,11 +97,11 @@ has been true — until now every migration in the tree was live:
   tile instead of a logo that exists. It rewrites the string in **both**
   `members` and `directory_seed` — the second because `admin_restore_directory()`
   reads the snapshot, so fixing only `members` leaves the old name waiting to
-  come back the next time somebody presses Restore directory. **Not pushed.**
+  come back the next time somebody presses Restore directory. **Pushed.**
 
-  Apply it with `pnpm exec supabase db push`. Until then the code is correct and
-  the two cards still show the tile: nothing is broken by the gap, it just is
-  not fixed yet.
+  **Applied 2026-09-16.** Both tables now read "Christopher & Dana Reeve
+  Foundation" and all seven affiliation strings in the directory resolve to an
+  organization with a logo.
 
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
@@ -359,6 +358,14 @@ dates reach Me through an embed on the RSVP query rather than by loading the
 calendar on a screen that has no other use for it. `isPastEvent` and
 `isPastStartTime` are one boundary, so the heading and the counter cannot
 disagree about where today begins.
+
+**1b. A past event is drawn as a line, not a card.** Follow-on from the above,
+asked for once the Past group existed. Everything the full card carries answers
+"should I go to this" — tags, place, the going counter, the faces, both buttons
+— and none of it is live afterwards. What is left is when, what and whose.
+Measured: 203px becomes 62px, so seven fit where one and a half did. It is
+keyed off the event's date rather than the segment, so the "Past events" window
+stops offering an RSVP to something that has already happened.
 
 **2. Onboarding made you tap the box first.** `inputMode` and `autoComplete`
 were already right, including `one-time-code`; there was simply no focus.
