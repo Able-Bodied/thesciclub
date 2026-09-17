@@ -41,7 +41,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-663 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+676 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and thirteen migrations are live on it
@@ -304,7 +304,12 @@ files, most recently by reporting a restore as broken when it had worked.
 
 # Next up: the owner's call
 
-Nothing is queued. The mentor invite screen that once stood here is built,
+**Five things the owner reported on 2026-09-16 are fixed** — see "The owner's
+five, and what two of them turned out to be" below. Two of them were not what
+they looked like, which is the part worth reading before trusting a bug report
+from a screen rather than from a measurement.
+
+Nothing else is queued. The mentor invite screen that once stood here is built,
 and so is everything that came after it — see the sections below. Two
 decisions are genuinely open, and both are waiting on a person rather than on
 code:
@@ -322,6 +327,80 @@ After those, the list below still ranks: the survey being linear only
 to connect the repo.
 
 ---
+
+# The owner's five, and what two of them turned out to be
+
+Reported 2026-09-16, all fixed. Recorded because two were misdiagnosed in ways
+that would have cost the next session the same afternoon.
+
+**1. Going and Interested kept events that were over.** Both RSVP segments skip
+the date window deliberately — a trip four months out must not vanish because
+the window says "this week" — but skipping the window is not the same as
+pretending an event has not happened, and a flat ascending sort left last month
+above next week for ever. They run upcoming first, then a Past heading, then
+what is over, most recent first. Me's counters count upcoming only; they used to
+count every RSVP row ever written, so they climbed and never came down. The
+dates reach Me through an embed on the RSVP query rather than by loading the
+calendar on a screen that has no other use for it. `isPastEvent` and
+`isPastStartTime` are one boundary, so the heading and the counter cannot
+disagree about where today begins.
+
+**2. Onboarding made you tap the box first.** `inputMode` and `autoComplete`
+were already right, including `one-time-code`; there was simply no focus.
+`useAutoFocus` in `onboarding/chrome.tsx` covers phone, code, name and the
+injury year — not the birthday, which is a picker, and not the city step, whose
+first offer is "use my location". A field that already has an answer is
+selected, so going back means typing over it.
+
+**3. "Firefox renders the top bar too small" was not Firefox.** Both engines
+measure identically at every width; Firefox was a red herring and the window
+width was the whole story. The shell widened at `lg`, so everything from 480 to
+1023 got a 480px ribbon with dead margin either side and the tabs at the
+bottom. It is `md` now. The deck had the mirror fault — two-up at `sm`, a
+viewport width, while the shell was still capped at 480, so two cards shared a
+phone-width column. **Before believing a browser-specific bug report, measure
+both engines at the same width.** The cost of not doing so here would have been
+a hunt through Tailwind 4's browser support for a number that was in `App.tsx`.
+
+**4. An unknown address rendered the tab bar over nothing.** `/*` matched the
+shell, matched no route inside it, and drew an empty page. There is a
+`not-found` route inside the shell now, with a link out, because a member who
+followed a stale link has nothing behind them.
+
+**5. Every peer card showed the same organization.** `affiliations[0]`, and
+NorCal SCI is first for all 23 members who have one — so Canine Companions, the
+Christopher Reeve Foundation, High Fives, ReCARES, SCVMC and Wheel with Me
+never appeared in the deck at all. The card draws every affiliation as a mark
+and no name; the names are on the profile, which already listed them. The badge
+is `aria-hidden` by contract, so the row carries an `sr-only` name list.
+
+## The publishable key in `.env.local` was wrong, and nothing said so
+
+Local dev could not reach the hosted project at all: every request came back
+`401 Invalid API key`, and the only visible symptom was onboarding refusing to
+advance past the phone step. The service role key was fine, which is why the
+ingest and every script kept working — only the browser half was broken.
+
+The stored key was four characters longer than the real one. Corrected from the
+source of truth:
+
+    pnpm exec supabase projects api-keys --project-ref erijdvqnxavwezsbbojv
+
+The publishable key is browser-visible by design, so this is a correctness
+problem rather than a secret to protect — but **whoever sets Netlify's
+`VITE_SUPABASE_ANON_KEY` should take it from that command, not from a copy.**
+
+## Firefox is installed for Playwright now
+
+`pnpm exec playwright install firefox` refuses to finish because
+`playwright install-deps` needs root, but it downloads the browser before it
+validates, and the browser runs against the same unpacked libraries `pnpm shoot`
+already puts on `LD_LIBRARY_PATH`. So a second engine is available for exactly
+the kind of report item 3 turned out to be:
+
+    LD_LIBRARY_PATH="$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH" node your-script.mjs
+
+`pnpm shoot` itself is still chromium-only.
 
 # The job: UI, UX, and the gaps
 
