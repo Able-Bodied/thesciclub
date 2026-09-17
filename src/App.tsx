@@ -11,6 +11,7 @@ import EventsPage from '@/routes/events/page';
 import HomePage from '@/routes/home/page';
 import InvitesPage from '@/routes/invites/page';
 import MePage from '@/routes/me/page';
+import NotFoundPage from '@/routes/not-found/page';
 import OnboardingPage from '@/routes/onboarding/page';
 import MemberDetailPage from '@/routes/peers/member-detail';
 import PeersPage from '@/routes/peers/page';
@@ -48,6 +49,10 @@ function AppShell() {
         <Route path="/invites" element={<InvitesPage />} />
         {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
         <Route path="/admin" element={<AdminPage />} />
+        {/* Last, and inside the shell on purpose: an unknown path used to match
+            the outer `/*`, reach this switch, match nothing, and leave the tab
+            bar sitting over an empty page. */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </div>
   );
