@@ -89,6 +89,21 @@ section: the hosted project is running schema that exists nowhere in
 it is executing against this schema *with* the code that understands it — that
 was not true until 2026-09-14. See "The scraper runs itself, daily".
 
+**One migration is written and not yet applied**, which is the first time that
+has been true — until now every migration in the tree was live:
+
+- `20260916000000` — Bob's and Matt's affiliations say "Christopher Reeve
+  Foundation" while the club's organization row says "Christopher & Dana Reeve
+  Foundation", so the name matched nothing and their peer cards drew a letter
+  tile instead of a logo that exists. It rewrites the string in **both**
+  `members` and `directory_seed` — the second because `admin_restore_directory()`
+  reads the snapshot, so fixing only `members` leaves the old name waiting to
+  come back the next time somebody presses Restore directory. **Not pushed.**
+
+  Apply it with `pnpm exec supabase db push`. Until then the code is correct and
+  the two cards still show the tile: nothing is broken by the gap, it just is
+  not fixed yet.
+
 `supabase db push` is safe and was used deliberately; `supabase config push` is
 still the one to never run — see Environment below.
 

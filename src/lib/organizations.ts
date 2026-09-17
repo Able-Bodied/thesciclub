@@ -42,10 +42,17 @@ export function toOrganization(row: OrganizationRow): Organization {
  * The club organization behind an affiliation, if there is one.
  *
  * `members.affiliations` is free text — the names NorCal SCI's directory used
- * — so a member can be affiliated with something the club has no row for
- * ("Christopher Reeve Foundation" is on Bob's row and is not a club
- * organization). Those still render, as the short-code tile, which is why
- * this returns null rather than throwing.
+ * — so a member can be affiliated with something the club has no row for.
+ * Those still render, as the short-code tile, which is why this returns null
+ * rather than throwing.
+ *
+ * The comparison is exact, and stays exact. "Christopher Reeve Foundation" sat
+ * on two members for a while and matched nothing, because the club's row is
+ * "Christopher & Dana Reeve Foundation" — fixed in the data by
+ * 20260916000000, deliberately not by loosening this. An organization decides
+ * whose logo is on a member's card and who is recorded as vouching for them;
+ * see the migration header, and see jobs/event-ingest/series.js for what
+ * matching names on a resemblance does to two things that merely read alike.
  *
  * Matched case- and space-insensitively on the name, then on the short code,
  * because the directory was typed by hand and "NorCal SCI " has turned up.

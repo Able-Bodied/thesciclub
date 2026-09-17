@@ -218,17 +218,17 @@ describe('the organization on a card', () => {
     expect(screen.getByText('NorCal SCI')).toHaveClass('sr-only');
   });
 
-  // Bob is affiliated with the Christopher Reeve Foundation, which the club
-  // has no organization for. It still has to render.
+  // Several affiliations name a body the club has no organization row for.
+  // They still have to render.
   it('falls back to initials for an affiliation the club does not know', () => {
     orgs.list = [norcal];
     render(
       <MemberCard
-        member={makeMember({ affiliations: ['Christopher Reeve Foundation'] })}
+        member={makeMember({ affiliations: ['Rotary Club of Aptos'] })}
         onOpen={() => undefined}
       />,
     );
     expect(document.querySelector('img[src*="organizations"]')).toBeNull();
-    expect(screen.getByText('Christopher Reeve Foundation')).toHaveClass('sr-only');
+    expect(screen.getByText('Rotary Club of Aptos')).toHaveClass('sr-only');
   });
 });
