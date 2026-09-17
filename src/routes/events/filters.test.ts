@@ -4,6 +4,7 @@ import {
   dateWindowRange,
   filterEvents,
   isOnline,
+  isPastEvent,
   isSport,
   toggleFilter,
   type ViewerEventState,
@@ -182,6 +183,61 @@ describe('filterEvents', () => {
       ).toHaveLength(1);
     });
 
+    it('"going" puts what is over below what is coming, not above it', () => {
+      // The bug this pins: a flat ascending sort left an event from August at
+      // the top of the list for ever, so the first thing a member saw under
+      // "I'm going" was something they had already been to.
+      const lastMonth = makeEvent({ id: 'last-month', startTime: daysFromNow(-30) });
+      const lastWeek = makeEvent({ id: 'last-week', startTime: daysFromNow(-7) });
+      const tomorrow = makeEvent({ id: 'tomorrow', startTime: daysFromNow(1) });
+      const nextMonth = makeEvent({ id: 'next-month', startTime: daysFromNow(30) });
+      const state = viewer({
+        rsvps: new Map([
+          ['last-month', 'going' as const],
+          ['last-week', 'going' as const],
+          ['tomorrow', 'going' as const],
+          ['next-month', 'going' as const],
+        ]),
+      });
+
+      const result = filterEvents(
+        [lastMonth, lastWeek, tomorrow, nextMonth],
+        withFilters(),
+        'going',
+        state,
+        NOW,
+      );
+
+      // Upcoming soonest-first, then past most-recent-first.
+      expect(result.map((e) => e.id)).toEqual([
+        'tomorrow',
+        'next-month',
+        'last-week',
+        'last-month',
+      ]);
+    });
+
+    it('"interested" splits the same way, and keeps ignoring the window', () => {
+      const yesterday = makeEvent({ id: 'yesterday', startTime: daysFromNow(-1) });
+      const faraway = makeEvent({ id: 'faraway', startTime: daysFromNow(120) });
+      const state = viewer({
+        rsvps: new Map([
+          ['yesterday', 'interested' as const],
+          ['faraway', 'interested' as const],
+        ]),
+      });
+
+      const result = filterEvents(
+        [yesterday, faraway],
+        withFilters({ when: 'next7' }),
+        'interested',
+        state,
+        NOW,
+      );
+
+      expect(result.map((e) => e.id)).toEqual(['faraway', 'yesterday']);
+    });
+
     it('"sport" takes the whole category, not one tag', () => {
       const rugby = makeEvent({ tags: [makeTag('wheelchair-rugby', 'sport')] });
       const kayak = makeEvent({ tags: [makeTag('kayaking', 'sport')] });
@@ -274,5 +330,22 @@ describe('the interested segment', () => {
     expect(
       filterEvents([nextYear], { ...EMPTY_EVENT_FILTERS, when: 'next7' }, 'interested', said, now),
     ).toHaveLength(1);
+  });
+});
+
+describe('isPastEvent', () => {
+  it('counts an event earlier today as still current', () => {
+    // The boundary is the start of today, not `now`: somebody checking at 2pm
+    // has not missed a thing that began at 1pm.
+    const oneThisAfternoon = makeEvent({ startTime: new Date(2026, 8, 5, 13, 0, 0).toISOString() });
+    expect(isPastEvent(oneThisAfternoon, NOW)).toBe(false);
+  });
+
+  it('counts yesterday as past', () => {
+    expect(isPastEvent(makeEvent({ startTime: daysFromNow(-1) }), NOW)).toBe(true);
+  });
+
+  it('counts tomorrow as not past', () => {
+    expect(isPastEvent(makeEvent({ startTime: daysFromNow(1) }), NOW)).toBe(false);
   });
 });

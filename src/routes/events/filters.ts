@@ -85,6 +85,20 @@ export function ascendingByDate(when: DateWindow): boolean {
   return when !== 'past';
 }
 
+/**
+ * Whether an event is over.
+ *
+ * The boundary is the start of today, not `now`, for the same reason the
+ * forward windows use it: somebody checking at 2pm has not missed a thing that
+ * began at 1pm, and an event should not slide into Past while it is still
+ * running. It is the same edge `dateWindowRange('past')` draws, read from there
+ * rather than restated, so the two cannot drift apart.
+ */
+export function isPastEvent(event: ClubEvent, now: Date = new Date()): boolean {
+  const range = dateWindowRange('past', now);
+  return range?.to !== undefined && event.startTime <= range.to;
+}
+
 function inDateWindow(event: ClubEvent, when: DateWindow, now: Date): boolean {
   const range = dateWindowRange(when, now);
   if (!range) return true;
@@ -174,7 +188,21 @@ export function filterEvents(
     return true;
   });
 
-  const ascending = isRsvpSegment(segment) ? true : ascendingByDate(filters.when);
+  // The RSVP segments run upcoming first, soonest at the top, and then what is
+  // already over, most recent first. They still ignore the date window — see
+  // above — but ignoring the window is not the same as pretending an event has
+  // not happened, and a flat ascending sort put last August above next week for
+  // ever. The page draws the Past heading at the join; `isPastEvent` decides it
+  // in both places.
+  if (isRsvpSegment(segment)) {
+    const upcoming = kept.filter((event) => !isPastEvent(event, now));
+    const past = kept.filter((event) => isPastEvent(event, now));
+    upcoming.sort((a, b) => a.startTime.localeCompare(b.startTime));
+    past.sort((a, b) => b.startTime.localeCompare(a.startTime));
+    return [...upcoming, ...past];
+  }
+
+  const ascending = ascendingByDate(filters.when);
   return kept.sort((a, b) =>
     ascending ? a.startTime.localeCompare(b.startTime) : b.startTime.localeCompare(a.startTime),
   );

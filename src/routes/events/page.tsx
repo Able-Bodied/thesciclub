@@ -1,5 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
@@ -12,6 +12,7 @@ import {
   citiesIn,
   filterEvents,
   formatsIn,
+  isPastEvent,
   organizationIdsIn,
   tagsIn,
 } from '@/routes/events/filters';
@@ -101,6 +102,15 @@ export default function EventsPage() {
     () => filterEvents(events, filters, segment, viewerState),
     [events, filters, segment, viewerState],
   );
+
+  // Where the Past heading goes, or -1 for a list with nothing past in it.
+  // Only the RSVP segments carry both halves; every other segment is bounded by
+  // the date window, so a past card there is the whole point of the window and
+  // needs no heading.
+  const firstPastIndex = useMemo(() => {
+    if (segment !== 'going' && segment !== 'interested') return -1;
+    return visible.findIndex((event) => isPastEvent(event));
+  }, [visible, segment]);
 
   // The sheet's options come from the events the segment and the date window
   // have already selected, not from the whole calendar: a chip offered while
@@ -208,24 +218,30 @@ export default function EventsPage() {
             </div>
           ) : (
             <>
-              {visible.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  status={viewer.rsvps.get(event.id) ?? null}
-                  attendees={attendeesByEvent.get(event.id) ?? []}
-                  organization={
-                    event.organizationId
-                      ? (organizationsById.get(event.organizationId) ?? null)
-                      : null
-                  }
-                  onOpen={() => {
-                    void navigate(`/events/${event.id}`, { state: { segment } });
-                  }}
-                  onRsvp={(next) => {
-                    onRsvp(event.id, next);
-                  }}
-                />
+              {visible.map((event, index) => (
+                <Fragment key={event.id}>
+                  {/* The join between what is coming and what is over, drawn
+                      only in the segments that list both. Without it the first
+                      past card looks like a mistake rather than the start of a
+                      record. */}
+                  {firstPastIndex === index ? <PastHeading /> : null}
+                  <EventCard
+                    event={event}
+                    status={viewer.rsvps.get(event.id) ?? null}
+                    attendees={attendeesByEvent.get(event.id) ?? []}
+                    organization={
+                      event.organizationId
+                        ? (organizationsById.get(event.organizationId) ?? null)
+                        : null
+                    }
+                    onOpen={() => {
+                      void navigate(`/events/${event.id}`, { state: { segment } });
+                    }}
+                    onRsvp={(next) => {
+                      onRsvp(event.id, next);
+                    }}
+                  />
+                </Fragment>
               ))}
               {visible.length === 0 ? <EmptyList segment={segment} /> : null}
             </>
@@ -263,6 +279,22 @@ export default function EventsPage() {
  * the other means the filters are too narrow. Telling somebody to widen filters
  * they never set is how an app teaches people to distrust it.
  */
+/**
+ * The divider between what a member is going to and what they already went to.
+ *
+ * A heading rather than a separate tab. The two halves answer one question —
+ * "what did I say yes to" — and splitting them across tabs would make the
+ * record of what somebody has actually attended the thing they have to go
+ * looking for.
+ */
+function PastHeading() {
+  return (
+    <h2 className="mt-2 mb-1 px-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+      Past
+    </h2>
+  );
+}
+
 function EmptyList({ segment }: { segment: EventsSegment }) {
   if (segment === 'going') {
     return (
