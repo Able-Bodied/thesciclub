@@ -71,9 +71,31 @@ describe('cadenceOf', () => {
     expect(cadenceOf(group([0, 30, 60, 90]))).toBe('Monthly');
   });
 
+  it('gives an alternating rhythm the same name at any length', () => {
+    // The bug a median hid: the middle of an alternating series is whichever
+    // value the parity lands on, so Staying Driven read "Twice a week" with
+    // eight gaps and "Repeats" with five. The same event, two answers.
+    expect(cadenceOf(group([0, 5, 7, 12, 14, 19]))).toBe('Twice a week');
+    expect(cadenceOf(group([0, 5, 7, 12, 14, 19, 21, 26, 28]))).toBe('Twice a week');
+  });
+
+  it('names a twice-weekly rhythm rather than shrugging at it', () => {
+    // The real shape of Staying Driven: Wednesdays and Mondays, so the gaps
+    // alternate 5, 2, 5, 2 and the median is 3.5 — past Daily and short of
+    // Weekly. It is the biggest series on the calendar, and "Repeats" told a
+    // member nothing about it.
+    expect(cadenceOf(group([0, 5, 7, 12, 14, 19]))).toBe('Twice a week');
+  });
+
+  it('will not name a rhythm from a single gap', () => {
+    // Two climbing meet-ups two days apart are not a daily class.
+    expect(cadenceOf(group([0, 2]))).toBeNull();
+    expect(cadenceOf(group([0, 7]))).toBeNull();
+  });
+
   it('says only "Repeats" when the rhythm is not a familiar one', () => {
     // Twice a year is real, and naming it would be inventing a word for it.
-    expect(cadenceOf(group([0, 180]))).toBe('Repeats');
+    expect(cadenceOf(group([0, 180, 360]))).toBe('Repeats');
   });
 
   it('has nothing to say about a single occurrence', () => {

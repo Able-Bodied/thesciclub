@@ -73,26 +73,45 @@ export function groupBySeries(events: ClubEvent[]): SeriesGroup[] {
 }
 
 /**
- * How often a group repeats, in the member's words, or null when it does not
- * repeat often enough to be worth naming.
+ * How often a group repeats, in the member's words, or null when there is not
+ * enough of it to say.
  *
- * Derived here and never stored. A cadence is a property of the occurrences
- * that happen to be in front of somebody — inside a seven-day window a weekly
- * series has one gap and a monthly one has none — so a stored answer would
- * disagree with the list it sits in.
+ * Derived here and never stored. A cadence is a property of the occurrences in
+ * front of somebody — inside a seven-day window a weekly series has one gap and
+ * a monthly one has none — so a stored answer would disagree with the list it
+ * sits in.
  *
- * The median gap, not the mean: holidays move a date and a skipped week
- * doubles one gap, which drags a mean into the next bucket and renames a
- * weekly class "fortnightly". One displaced occurrence should not rename
- * anything.
+ * ---------------------------------------------------------------------------
+ * The statistic is a mean with the largest gap dropped, and both halves matter
+ * ---------------------------------------------------------------------------
+ * A plain mean is wrong because a holiday skips a week and doubles one gap:
+ * [7, 14, 7, 7] averages 8.75 and renames a weekly class.
  *
- * Anything that does not land near a familiar rhythm gets no name rather than
- * a wrong one — "Repeats" is the honest answer for a group that meets twice a
- * year, and `null` lets the caller say only how many dates there are.
+ * A median is wrong in a way that took a failing test to see. Staying Driven
+ * runs Wednesdays and Mondays, so its gaps alternate 5, 2, 5, 2 — and the
+ * median of an alternating series is whichever value the middle lands on, so it
+ * answers 3.5 with eight gaps and 5 with five gaps. The same event changes
+ * rhythm depending on how many occurrences the window happens to hold.
+ *
+ * Dropping the single largest gap and averaging the rest survives both: the
+ * holiday is the outlier it removes, and an alternating pattern keeps its shape
+ * whatever the parity. [7, 14, 7, 7] gives 7, and 5, 2, 5, 2 gives 3.5 at any
+ * length.
+ *
+ * Two occurrences give one gap, and one gap is not a rhythm — it is a
+ * coincidence with a number attached. Two climbing meet-ups two days apart were
+ * being announced as "Daily". Three occurrences before anything is named.
+ *
+ * Anything not near a familiar rhythm gets "Repeats" rather than an invented
+ * word for it.
  */
 export function cadenceOf(group: SeriesGroup): string | null {
   const all = [group.lead, ...group.rest];
-  if (all.length < 2) return null;
+  // Two occurrences give one gap, and one gap is not a rhythm — it is a
+  // coincidence with a number attached. Two climbing meet-ups two days apart
+  // were being announced as "Daily", which is a claim the data does not make.
+  // Three occurrences, two gaps, before naming anything.
+  if (all.length < 3) return null;
 
   const days: number[] = [];
   for (let i = 1; i < all.length; i += 1) {
@@ -104,15 +123,19 @@ export function cadenceOf(group: SeriesGroup): string | null {
   if (days.length === 0) return null;
 
   days.sort((a, b) => a - b);
-  const middle = Math.floor(days.length / 2);
-  const median =
-    days.length % 2 === 0
-      ? ((days[middle - 1] ?? 0) + (days[middle] ?? 0)) / 2
-      : (days[middle] ?? 0);
+  // Drop the largest gap when there is more than one, so a single skipped week
+  // cannot rename the series. See the note above.
+  const kept = days.length > 1 ? days.slice(0, -1) : days;
+  const median = kept.reduce((total, gap) => total + gap, 0) / kept.length;
 
   // Generous bands, because a feed's times drift by an hour over a daylight
   // saving boundary and a holiday moves a date by a day or two.
-  if (median >= 0.5 && median <= 2.5) return 'Daily';
+  if (median >= 0.5 && median < 2.5) return 'Daily';
+  // Half a week. Staying Driven — the largest series on the calendar at 27
+  // occurrences — runs Wednesdays and Mondays, so its gaps alternate 5, 2, 5,
+  // 2 and the median lands at 3.5: past Daily, short of Weekly, and it read as
+  // the shrug that "Repeats" is. Twice a week is what it does.
+  if (median >= 2.5 && median <= 4.5) return 'Twice a week';
   if (median >= 5.5 && median <= 8.5) return 'Weekly';
   if (median >= 12 && median <= 16) return 'Fortnightly';
   if (median >= 26 && median <= 35) return 'Monthly';

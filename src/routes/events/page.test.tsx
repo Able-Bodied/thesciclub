@@ -242,3 +242,55 @@ describe('EventsPage', () => {
     expect(screen.getByText('relation "events" does not exist')).toBeInTheDocument();
   });
 });
+
+describe('a repeating event is one row until you open it', () => {
+  const weekly = () => [
+    makeEvent({ id: 'w1', title: 'Weekly Wednesdays', startTime: soon(1), seriesId: 'wed' }),
+    makeEvent({ id: 'w2', title: 'Weekly Wednesdays', startTime: soon(8), seriesId: 'wed' }),
+    makeEvent({ id: 'w3', title: 'Weekly Wednesdays', startTime: soon(15), seriesId: 'wed' }),
+    makeEvent({ id: 'solo', title: 'Handcycle ride', startTime: soon(2) }),
+  ];
+
+  it('shows the next occurrence and says how many more there are', () => {
+    state.events = weekly();
+    renderPage();
+    expect(screen.getAllByText('Weekly Wednesdays')).toHaveLength(1);
+    expect(screen.getByText(/2 more dates/)).toBeInTheDocument();
+  });
+
+  it('counts only what the current filters would show', () => {
+    // The whole point of counting from the filtered list: "2 more dates" has to
+    // mean two rows that opening it actually produces.
+    state.events = weekly();
+    renderPage();
+    expect(screen.queryByText(/more dates through/)).toBeInTheDocument();
+    expect(screen.queryByText(/3 more dates/)).not.toBeInTheDocument();
+  });
+
+  it('opens the other dates in place', async () => {
+    state.events = weekly();
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.getByRole('button', { expanded: true })).toBeInTheDocument();
+  });
+
+  it('leaves a one-off alone', () => {
+    state.events = weekly();
+    renderPage();
+    expect(screen.getByText('Handcycle ride')).toBeInTheDocument();
+  });
+
+  it('does not collapse the dates a member chose for themselves', async () => {
+    // "I'm going" is a list of particular dates. Collapsing the three Fridays
+    // somebody said yes to would hide the answer they came for.
+    state.events = weekly();
+    state.rsvps = new Map([
+      ['w1', 'going'],
+      ['w2', 'going'],
+    ]);
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: "I'm going" }));
+    expect(screen.getAllByText('Weekly Wednesdays')).toHaveLength(2);
+    expect(screen.queryByText(/more dates/)).not.toBeInTheDocument();
+  });
+});

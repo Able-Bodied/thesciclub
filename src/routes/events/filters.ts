@@ -150,7 +150,7 @@ export function isSport(event: ClubEvent): boolean {
  * out must not vanish because the window says "this week", and neither must
  * last spring's rugby practice.
  */
-function isRsvpSegment(segment: EventsSegment): boolean {
+export function isRsvpSegment(segment: EventsSegment): boolean {
   return segment === 'going' || segment === 'interested' || segment === 'been-to';
 }
 

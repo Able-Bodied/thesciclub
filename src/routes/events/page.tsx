@@ -13,11 +13,15 @@ import {
   filterEvents,
   formatsIn,
   isPastEvent,
+  isRsvpSegment,
   organizationIdsIn,
   tagsIn,
 } from '@/routes/events/filters';
 import { OrganizationList } from '@/routes/events/organization-list';
+import { SeriesFooter } from '@/routes/events/series-card';
+import { groupBySeries } from '@/routes/events/series-groups';
 import {
+  type ClubEvent,
   EMPTY_EVENT_FILTERS,
   EVENTS_SEGMENTS,
   type EventFilters,
@@ -102,6 +106,36 @@ export default function EventsPage() {
     () => filterEvents(events, filters, segment, viewerState),
     [events, filters, segment, viewerState],
   );
+
+  // Grouped only in the browsing segments. "I'm going", "Interested" and
+  // "Been to" are lists of particular dates a member chose, and collapsing the
+  // three Fridays they said yes to into one row would hide the answer they came
+  // for.
+  const grouped = useMemo(() => {
+    if (isRsvpSegment(segment)) {
+      return visible.map((event) => ({ lead: event, rest: [], seriesId: event.seriesId }));
+    }
+    return groupBySeries(visible);
+  }, [visible, segment]);
+
+  // Which series are open, by series id. Reset when the segment or the window
+  // changes: an expansion is about the list in front of you, and leaving it
+  // open across a filter change reopens a group whose dates are now different.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const filterKey = `${segment}|${filters.when}`;
+  const [lastFilterKey, setLastFilterKey] = useState(filterKey);
+  if (filterKey !== lastFilterKey) {
+    setLastFilterKey(filterKey);
+    setExpanded(new Set());
+  }
+
+  const toggleSeries = useCallback((seriesId: string) => {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(seriesId)) next.add(seriesId);
+      return next;
+    });
+  }, []);
 
   // The sheet's options come from the events the segment and the date window
   // have already selected, not from the whole calendar: a chip offered while
@@ -232,26 +266,60 @@ export default function EventsPage() {
             </div>
           ) : (
             <>
-              {visible.map((event) => (
-                <EventCard
-                  key={event.id}
-                  event={event}
-                  past={isPastEvent(event)}
-                  status={viewer.rsvps.get(event.id) ?? null}
-                  attendees={attendeesByEvent.get(event.id) ?? []}
-                  organization={
-                    event.organizationId
-                      ? (organizationsById.get(event.organizationId) ?? null)
-                      : null
-                  }
-                  onOpen={() => {
-                    void navigate(`/events/${event.id}`, { state: { segment } });
-                  }}
-                  onRsvp={(next) => {
-                    onRsvp(event.id, next);
-                  }}
-                />
-              ))}
+              {grouped.map((group) => {
+                const isOpen = group.seriesId !== null && expanded.has(group.seriesId);
+                const hasMore = group.rest.length > 0;
+                const card = (event: ClubEvent, asLine: boolean) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    past={!asLine && isPastEvent(event)}
+                    occurrence={asLine}
+                    attached={asLine}
+                    footer={
+                      !asLine && hasMore && group.seriesId ? (
+                        <SeriesFooter
+                          group={group}
+                          expanded={isOpen}
+                          onToggle={() => {
+                            if (group.seriesId) toggleSeries(group.seriesId);
+                          }}
+                        />
+                      ) : undefined
+                    }
+                    status={viewer.rsvps.get(event.id) ?? null}
+                    attendees={attendeesByEvent.get(event.id) ?? []}
+                    organization={
+                      event.organizationId
+                        ? (organizationsById.get(event.organizationId) ?? null)
+                        : null
+                    }
+                    onOpen={() => {
+                      void navigate(`/events/${event.id}`, { state: { segment } });
+                    }}
+                    onRsvp={(next) => {
+                      onRsvp(event.id, next);
+                    }}
+                  />
+                );
+
+                return (
+                  <div key={group.lead.id} className="mb-[11px]">
+                    {card(group.lead, false)}
+                    {/* The other dates as lines, the same shape a past event
+                        takes: the title and host are already above, so what is
+                        left to read is when. Each keeps its own RSVP through
+                        its own detail page. */}
+                    {isOpen ? (
+                      // Indented, so a bare date reads as another date of the
+                      // card above rather than as an event of its own.
+                      <div className="mt-1 pl-3">
+                        {group.rest.map((event) => card(event, true))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
               {visible.length === 0 ? <EmptyList segment={segment} /> : null}
             </>
           )}

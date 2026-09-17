@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { isOnline } from '@/routes/events/filters';
-import { dateTileParts, timeRange } from '@/routes/events/format';
+import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { placeLine } from '@/routes/events/place';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
@@ -48,6 +48,31 @@ export interface EventCardProps {
   onOpen: () => void;
   onRsvp: (next: RsvpStatus | null) => void;
   /**
+   * Drop the bottom margin, because something belongs directly under this card.
+   * Used for the occurrences of an expanded series, which read as one block.
+   */
+  attached?: boolean;
+  /**
+   * Drawn inside the card's border, under the buttons.
+   *
+   * The series line lives here rather than under the card. Sat outside, its
+   * own margin and the card's were within a pixel of each other, so the line
+   * floated exactly between two cards and belonged, visibly, to neither. A
+   * rule that says "this card repeats" has to be inside the card it is about.
+   */
+  footer?: React.ReactNode;
+  /**
+   * One more date of the series on the card above, rather than an event in its
+   * own right.
+   *
+   * Drops the title, the host and the mark, because all three are identical to
+   * the card this sits under — four rows of "The Lionheart Community's Weekl…"
+   * spent the whole line on the one thing the reader already knew, and
+   * truncated it. What is left is the only thing that differs between
+   * occurrences, which is when.
+   */
+  occurrence?: boolean;
+  /**
    * Draw this as a record of something that happened rather than as an offer.
    *
    * Set from the event's own date, not from which segment is showing, because
@@ -65,6 +90,9 @@ export function EventCard({
   onOpen,
   onRsvp,
   past = false,
+  attached = false,
+  footer,
+  occurrence = false,
 }: EventCardProps) {
   const tile = dateTileParts(event.startTime, event.timezone);
   const going = status === 'going';
@@ -89,9 +117,40 @@ export function EventCard({
   //
   // It stays a button to the detail page. That page still has the description
   // and the link, which is where somebody goes to remember what a thing was.
+  if (occurrence) {
+    return (
+      <div
+        className={cn(
+          'w-full rounded-[11px] border border-line bg-paper px-3 py-2',
+          attached ? 'mb-1' : 'mb-1.5',
+        )}
+      >
+        <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
+          <span className="block w-[3.25rem] flex-none rounded-[9px] bg-tint px-0 py-1 text-center">
+            <span className="block font-extrabold font-head text-[0.875rem] text-navy leading-[1.1]">
+              {tile.day}
+            </span>
+            <span className="block font-extrabold text-[0.5625rem] text-ink2 tracking-[0.08em]">
+              {tile.mon}
+            </span>
+          </span>
+          <span className="min-w-0 flex-1 truncate text-[0.8125rem] text-ink2 leading-[1.35]">
+            {shortWeekday(event.startTime, event.timezone)}
+            {whenLine ? ` · ${whenLine}` : ''}
+          </span>
+        </button>
+      </div>
+    );
+  }
+
   if (past) {
     return (
-      <div className="mb-1.5 w-full rounded-[13px] border border-line bg-paper px-3 py-2.5">
+      <div
+        className={cn(
+          'w-full rounded-[13px] border border-line bg-paper px-3 py-2.5',
+          attached ? 'mb-0' : 'mb-1.5',
+        )}
+      >
         <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
           <span className="block w-[3.25rem] flex-none rounded-[10px] bg-tint px-0 py-1 text-center">
             <span className="block font-extrabold font-head text-[0.9375rem] text-navy leading-[1.1]">
@@ -124,7 +183,12 @@ export function EventCard({
   }
 
   return (
-    <div className="relative mb-[11px] w-full rounded-[17px] border border-line bg-paper p-3.5">
+    <div
+      className={cn(
+        'relative w-full rounded-[17px] border border-line bg-paper p-3.5',
+        attached ? 'mb-0' : 'mb-[11px]',
+      )}
+    >
       <button
         type="button"
         onClick={onOpen}
@@ -234,6 +298,8 @@ export function EventCard({
           {going ? 'Going ✓' : 'Going'}
         </button>
       </div>
+
+      {footer ? <div className="mt-2.5 border-line border-t pt-1">{footer}</div> : null}
     </div>
   );
 }

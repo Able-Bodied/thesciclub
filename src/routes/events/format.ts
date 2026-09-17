@@ -84,3 +84,25 @@ export function longWhen(iso: string, timezone: string): string {
   const parts = partsIn(iso, timezone, { weekday: 'short', day: 'numeric', month: 'short' });
   return `${parts.weekday} ${parts.day} ${parts.month} · ${timeOfDay(iso, timezone)}`;
 }
+
+/**
+ * A date inside a sentence: "14 Oct".
+ *
+ * `dateTileParts` upper-cases its month for the date tile, where it is set in
+ * tracked-out small caps. The same string reads as shouting in prose, which is
+ * where this goes.
+ */
+export function shortDate(iso: string, timezone: string): string {
+  const parts = partsIn(iso, timezone, { day: 'numeric', month: 'short' });
+  return `${parts.day} ${parts.month}`;
+}
+
+/**
+ * A weekday inside a sentence: "Wed".
+ *
+ * `dateTileParts.dow` is upper-cased for the tile, where it is tracked-out
+ * small caps under the number. In a line of prose it reads as shouting.
+ */
+export function shortWeekday(iso: string, timezone: string): string {
+  return partsIn(iso, timezone, { weekday: 'short' }).weekday ?? '';
+}

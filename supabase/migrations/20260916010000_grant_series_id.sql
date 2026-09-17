@@ -1,0 +1,23 @@
+-- Let a member read which series an event belongs to.
+--
+-- 20260911180000 revokes `select` on `events` from anon and authenticated and
+-- re-grants a named list of columns, so that latitude and longitude cannot be
+-- read by asking for them. That is the right shape — a convention is not a
+-- boundary — but it has a cost that only shows up later: a column added after
+-- it is not in the list, and so is unreadable by everybody except the service
+-- role.
+--
+-- 20260913090000 added `events.series_id` and granted `select` on the new
+-- `event_series` table, which is the half that was visible at the time. The
+-- column on `events` was missed. Nothing noticed for three days because
+-- nothing read it: the grouping was written by the ingest, which uses the
+-- service role and bypasses column privileges entirely.
+--
+-- The first client read of it failed with `permission denied for table
+-- events` — the whole query, not the column, because a denied column fails the
+-- statement. So the symptom was the Events page refusing to load at all, which
+-- points nowhere near a grant.
+--
+-- Worth remembering as a rule rather than an incident: on this table, adding a
+-- column is two steps. The grant is the second one.
+grant select (series_id) on public.events to anon, authenticated;

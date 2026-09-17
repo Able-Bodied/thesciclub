@@ -186,3 +186,34 @@ describe('an event that is over', () => {
     expect(screen.getByRole('button', { name: /^going/i })).toBeInTheDocument();
   });
 });
+
+describe('one more date of a series', () => {
+  it('carries only what differs between occurrences', () => {
+    // The title, host and mark are on the card above, identical every time.
+    // Four rows repeating a truncated title spend the line on what the reader
+    // already knows.
+    renderCard({
+      occurrence: true,
+      event: makeEvent({
+        title: 'The Lionheart Community’s Weekly Wednesdays',
+        hostName: 'NorCal SCI',
+        startTime: '2026-09-23T22:00:00Z',
+      }),
+    });
+    expect(screen.queryByText(/Weekly Wednesdays/)).not.toBeInTheDocument();
+    expect(screen.queryByText('NorCal SCI')).not.toBeInTheDocument();
+    expect(screen.getByText(/Wed/)).toBeInTheDocument();
+  });
+
+  it('offers no RSVP of its own, and still opens its own page', () => {
+    const props = renderCard({ occurrence: true });
+    expect(screen.queryByRole('button', { name: /interested/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(props.onOpen).not.toHaveBeenCalled();
+  });
+
+  it('writes the weekday as prose, not as the tile’s small caps', () => {
+    renderCard({ occurrence: true, event: makeEvent({ startTime: '2026-09-23T22:00:00Z' }) });
+    expect(screen.queryByText(/WED ·/)).not.toBeInTheDocument();
+  });
+});
