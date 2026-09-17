@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, Loader2, Plus } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
@@ -133,21 +133,39 @@ export default function ProfileSurveyPage() {
   return (
     <div className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas lg:h-auto lg:min-h-dvh">
       <div className="flex-none px-[18px] pt-4">
-        <div className="flex items-center justify-between">
+        <div className="flex min-h-[30px] items-center justify-between gap-3">
+          {index > 0 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setIndex(index - 1);
+              }}
+              className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </button>
+          ) : (
+            <span />
+          )}
+          {/* The way out, on every screen and not only the first.
+              
+              Twelve screens with Back was the only exit, so somebody eight
+              questions in who wanted to stop had to walk back through all of
+              them. It commits first — `commit` past the last screen is the same
+              path Finish takes — so leaving keeps the answers on the screen
+              you are looking at, which pressing Back never did. */}
           <button
             type="button"
+            disabled={saving || loading}
             onClick={() => {
-              if (index === 0) void navigate('/me');
-              else setIndex(index - 1);
+              commit(SCREENS.length);
             }}
-            className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
+            className="-mr-1.5 inline-flex items-center gap-1 py-1 font-semibold text-[0.875rem] text-navy disabled:opacity-40"
           >
-            <ChevronLeft className="h-4 w-4" />
-            {index === 0 ? 'Me' : 'Back'}
+            Finish later
+            <ChevronRight className="h-4 w-4" />
           </button>
-          <span className="text-[0.78125rem] text-grey">
-            {index + 1} of {SCREENS.length} · {progress.percent}% complete
-          </span>
         </div>
         <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
           <div
@@ -155,6 +173,11 @@ export default function ProfileSurveyPage() {
             style={{ width: `${((index + 1) / SCREENS.length) * 100}%` }}
           />
         </div>
+        {/* Under the bar it describes, rather than beside the buttons, which
+            now hold the two ways out. */}
+        <p className="mt-1.5 text-right text-[0.78125rem] text-grey">
+          {index + 1} of {SCREENS.length} · {progress.percent}% complete
+        </p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">

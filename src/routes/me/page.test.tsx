@@ -14,6 +14,7 @@ const own = vi.hoisted(() => ({
 }));
 const rsvps = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const startTimes = vi.hoisted(() => ({ current: new Map<string, string>() }));
+const wroteVisibility = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 
 /** An ISO start time `days` from now. Negative is in the past. */
 function daysFromNow(days: number): string {
@@ -64,6 +65,8 @@ vi.mock('@/routes/profile/profile-api', () => ({
 vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
   ...(await importOriginal<typeof DetailsApi>()),
   loadDetails: () => Promise.resolve({ ok: true as const, details: details.current }),
+  setShowInBrowse: (...args: unknown[]) =>
+    wroteVisibility.calls.push(args) && Promise.resolve({ ok: true as const }),
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -110,6 +113,7 @@ beforeEach(() => {
   own.invitedBy = 'NorCal SCI';
   rsvps.current = new Map();
   startTimes.current = new Map();
+  wroteVisibility.calls = [];
   auth.signedOut = 0;
   auth.failWith = null;
   details.current = completeDetails;
@@ -204,6 +208,7 @@ describe('MePage', () => {
       // A number that guesses is worse than one that waits.
       rsvps.current = new Map([['orphan', 'going']]);
       startTimes.current = new Map();
+      wroteVisibility.calls = [];
       renderMe();
       expect(screen.getByRole('link', { name: /0\s*Going/ })).toBeInTheDocument();
     });
@@ -319,5 +324,37 @@ describe('what is still to fill in', () => {
     );
     expect(await screen.findByText('Your details')).toBeInTheDocument();
     expect(screen.queryByText(/Still to add/)).toBeNull();
+  });
+});
+
+describe('being findable', () => {
+  it('says plainly when a member is hidden, which nothing else on the app did', () => {
+    // Somebody who hid themselves months ago and wonders why nobody has been in
+    // touch had no way to find out that they did: it lived four fields down a
+    // form behind a Save.
+    details.current = { ...completeDetails, showInBrowse: false };
+    renderMe();
+    return screen.findByText(/hidden from the deck/i).then((el) => {
+      expect(el).toBeInTheDocument();
+    });
+  });
+
+  it('offers the switch on, so being hidden is reversible from here', async () => {
+    details.current = { ...completeDetails, showInBrowse: false };
+    renderMe();
+    const toggle = await screen.findByRole('switch', { name: /show me in the deck/i });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(toggle);
+    expect(wroteVisibility.calls.at(-1)?.[1]).toBe(true);
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('writes immediately rather than waiting for a Save that is not here', async () => {
+    details.current = { ...completeDetails, showInBrowse: true };
+    renderMe();
+    const toggle = await screen.findByRole('switch', { name: /show me in the deck/i });
+    await userEvent.click(toggle);
+    expect(wroteVisibility.calls).toHaveLength(1);
+    expect(wroteVisibility.calls[0]?.[1]).toBe(false);
   });
 });

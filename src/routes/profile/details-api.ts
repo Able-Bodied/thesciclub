@@ -127,6 +127,31 @@ export async function saveDetails(
 }
 
 /**
+ * Turn appearing in the deck on or off, and nothing else.
+ *
+ * Its own writer rather than a call to `saveDetails`, because the two are
+ * different kinds of thing. Your details is a form: you edit several fields and
+ * press Save, and until you do nothing has happened. Being findable is a
+ * switch, and a switch that needed a separate Save somewhere else would leave a
+ * member unsure whether they were hidden — which is the one question this
+ * control exists to answer.
+ *
+ * Writing only this column also means a member can hide from Me without the
+ * half-finished details form they may have open elsewhere being written over
+ * the top of their row.
+ */
+export async function setShowInBrowse(
+  userId: string,
+  showInBrowse: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase()
+    .from('members')
+    .update({ show_in_browse: showInBrowse })
+    .eq('id', userId);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
  * Replaces the profile photo. The file lands under the member's own id, which
  * is the only folder storage policy lets them write to.
  */

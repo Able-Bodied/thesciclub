@@ -6,6 +6,7 @@ import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
+import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { MeHero } from '@/routes/me/hero';
 import { MeStats } from '@/routes/me/stats';
 import { listInWords, loadDetails, missingDetails } from '@/routes/profile/details-api';
@@ -69,6 +70,9 @@ export default function MePage() {
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
+  // Null until the details load, so the switch is not drawn in the wrong
+  // position for a moment and then corrected under the reader's eye.
+  const [showInBrowse, setShowInBrowse] = useState<boolean | null>(null);
 
   // What the member has coming up, not what they have ever said yes to. These
   // two numbers are the whole of the row, and a count that keeps climbing as
@@ -100,7 +104,10 @@ export default function MePage() {
       if (result.ok) setPercent(progressOf(result.answers).percent);
     });
     void loadDetails().then((result) => {
-      if (result.ok) setMissing(missingDetails(result.details));
+      if (result.ok) {
+        setMissing(missingDetails(result.details));
+        setShowInBrowse(result.details.showInBrowse);
+      }
     });
   }, []);
 
@@ -217,6 +224,17 @@ export default function MePage() {
                 </span>
                 <ChevronRight className="h-5 w-5 flex-none text-grey" />
               </Link>
+            ) : null}
+
+            {/* Directly under "How you look to other members", which is the
+                question it is the other half of: this is whether they look at
+                all. */}
+            {userId && showInBrowse !== null ? (
+              <DeckVisibility
+                userId={userId}
+                showInBrowse={showInBrowse}
+                onChange={setShowInBrowse}
+              />
             ) : null}
 
             <SectionHeading>Standing</SectionHeading>
