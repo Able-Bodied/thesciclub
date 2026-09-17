@@ -99,15 +99,46 @@ describe('MemberCard', () => {
     expect(screen.queryByText('Mentor')).not.toBeInTheDocument();
   });
 
-  it('names the vouching organization, which is separate information from being a mentor', () => {
+  it('marks the vouching organization, which is separate information from being a mentor', () => {
     render(
       <MemberCard
         member={makeMember({ type: 'mentor', affiliations: ['NorCal SCI'] })}
         onOpen={() => undefined}
       />,
     );
-    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    // The mark is what is drawn; the name is there for a screen reader, since
+    // the badge itself is aria-hidden. Both are asserted so neither can go
+    // missing quietly.
     expect(screen.getByText('NS')).toBeInTheDocument();
+    expect(screen.getByText('NorCal SCI')).toHaveClass('sr-only');
+  });
+
+  it('shows every affiliation, not just the first', () => {
+    // The bug this pins: `affiliations[0]` meant one organization per card, and
+    // because NorCal SCI is first for every member in the directory, the whole
+    // deck showed the same organization and six others never appeared.
+    orgs.list = [norcal];
+    render(
+      <MemberCard
+        member={makeMember({ affiliations: ['NorCal SCI', 'Canine Companions'] })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('NCS')).toBeInTheDocument();
+    expect(screen.getByText('CC')).toBeInTheDocument();
+    expect(screen.getByText('NorCal SCI, Canine Companions')).toHaveClass('sr-only');
+  });
+
+  it('counts affiliations past the third rather than drawing them', () => {
+    render(
+      <MemberCard
+        member={makeMember({ affiliations: ['One Two', 'Three Four', 'Five Six', 'Seven Eight'] })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('+1')).toBeInTheDocument();
+    // The name still reaches a screen reader even when the mark is not drawn.
+    expect(screen.getByText(/Seven Eight/)).toHaveClass('sr-only');
   });
 
   it('shows an affiliation for a peer too — it is not a mentor-only badge', () => {
@@ -117,7 +148,8 @@ describe('MemberCard', () => {
         onOpen={() => undefined}
       />,
     );
-    expect(screen.getByText('ReCARES')).toBeInTheDocument();
+    expect(screen.getByText('ReCARES')).toHaveClass('sr-only');
+    expect(screen.getByText('REC')).toBeInTheDocument();
   });
 
   it('shows at most three topics', () => {
@@ -183,7 +215,7 @@ describe('the organization on a card', () => {
     );
     const logo = document.querySelector('img[src*="organizations/ncs.webp"]');
     expect(logo).not.toBeNull();
-    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.getByText('NorCal SCI')).toHaveClass('sr-only');
   });
 
   // Bob is affiliated with the Christopher Reeve Foundation, which the club
@@ -197,6 +229,6 @@ describe('the organization on a card', () => {
       />,
     );
     expect(document.querySelector('img[src*="organizations"]')).toBeNull();
-    expect(screen.getByText('Christopher Reeve Foundation')).toBeInTheDocument();
+    expect(screen.getByText('Christopher Reeve Foundation')).toHaveClass('sr-only');
   });
 });

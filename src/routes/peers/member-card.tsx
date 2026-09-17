@@ -55,6 +55,14 @@ export function summaryLine(member: BrowseMember): string {
   return [levelPart, member.age, member.city].filter(Boolean).join(' · ');
 }
 
+/**
+ * How many organization marks fit on a card before the row starts competing
+ * with the topic chips under it. Three covers the directory as it stands — the
+ * busiest member has three — and anything past that is counted rather than
+ * drawn, so a member who joins six does not push the chips off the card.
+ */
+const MAX_CARD_AFFILIATIONS = 3;
+
 /** An organization's badge letters, from its name, when we only have the name. */
 export function shortCodeFor(organizationName: string): string {
   const words = organizationName.split(/\s+/).filter(Boolean);
@@ -122,7 +130,14 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
   const photo = photoUrlFor(member.photoPath);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);
-  const verifier = member.affiliations[0] ?? null;
+  // Every affiliation, as a mark. It was `affiliations[0]` with its name
+  // spelled out beside it, which read as one organization per member and, in
+  // the live directory, as *the same* organization on every card: NorCal SCI is
+  // first for all 23 members who have one, so six other bodies never appeared
+  // in the deck at all. Marks are narrow enough to show all of them; the names
+  // are on the profile, which is where there is room to read them.
+  const affiliations = member.affiliations.slice(0, MAX_CARD_AFFILIATIONS);
+  const overflow = member.affiliations.length - affiliations.length;
 
   return (
     <button
@@ -172,21 +187,28 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       </span>
 
       <span className="absolute inset-x-0 bottom-0 block px-[18px] pb-5">
-        {verifier ? (
-          <span className="inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
+        {affiliations.length > 0 ? (
+          <span className="inline-flex items-center gap-[5px] rounded-full bg-white/95 px-[5px] py-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
             {/* The organization's own logo where the club has a row for it,
                 the short-code tile where it does not — several affiliations
                 on these rows are bodies the club has no organization for. */}
-            <OrganizationBadge
-              organization={organizationByName(organizations, verifier)}
-              hostName={verifier}
-              className="h-[22px] w-[22px] rounded-[7px] text-[0.53125rem]"
-            />
-            {verifier}
+            {affiliations.map((name) => (
+              <OrganizationBadge
+                key={name}
+                organization={organizationByName(organizations, name)}
+                hostName={name}
+                className="h-[22px] w-[22px] rounded-[7px] text-[0.53125rem]"
+              />
+            ))}
+            {overflow > 0 ? <span className="pr-1.5 pl-0.5">+{overflow}</span> : null}
+            {/* The badges are aria-hidden by contract — they are drawn beside
+                their own name everywhere else. Here there is no name to read,
+                so the row carries one. */}
+            <span className="sr-only">{member.affiliations.join(', ')}</span>
           </span>
         ) : null}
         {chips.length ? (
-          <span className={cn('flex flex-wrap gap-2', verifier ? 'mt-3' : 'mt-0')}>
+          <span className={cn('flex flex-wrap gap-2', affiliations.length > 0 ? 'mt-3' : 'mt-0')}>
             {chips.map((topic) => (
               <span
                 key={topic}
