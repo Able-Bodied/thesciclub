@@ -95,8 +95,18 @@ export function ascendingByDate(when: DateWindow): boolean {
  * rather than restated, so the two cannot drift apart.
  */
 export function isPastEvent(event: ClubEvent, now: Date = new Date()): boolean {
+  return isPastStartTime(event.startTime, now);
+}
+
+/**
+ * The same question asked of a bare timestamp, for callers that hold an RSVP
+ * rather than a whole event — Me counts what a member has coming up without
+ * loading the calendar to do it. One definition, so the counter on Me and the
+ * Past heading on Events can never disagree about where today begins.
+ */
+export function isPastStartTime(startTime: string, now: Date = new Date()): boolean {
   const range = dateWindowRange('past', now);
-  return range?.to !== undefined && event.startTime <= range.to;
+  return range?.to !== undefined && startTime <= range.to;
 }
 
 function inDateWindow(event: ClubEvent, when: DateWindow, now: Date): boolean {

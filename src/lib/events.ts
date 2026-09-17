@@ -228,10 +228,38 @@ export function useEvents(): EventsState {
 
 export interface ViewerState {
   rsvps: Map<string, RsvpStatus>;
+  /**
+   * Event id -> that event's start time, for the RSVPs above.
+   *
+   * Embedded in the same query rather than fetched separately, so a screen that
+   * needs to tell an RSVP that is still ahead from one that is behind — Me's
+   * counters — can do it without loading the whole calendar to find two dates.
+   */
+  startTimes: Map<string, string>;
   loading: boolean;
   error: string | null;
   /** Re-read after a write, so a second tab or a failed mutation cannot drift. */
   reload: () => void;
+}
+
+/** One row of the RSVP query, with the event's date embedded. */
+interface RsvpRow {
+  event_id: string;
+  status: RsvpStatus;
+  /**
+   * PostgREST returns an object for this embed, because an RSVP belongs to
+   * exactly one event — but the generated client types it as an array, the way
+   * it types every embed. Both shapes are accepted here rather than asserted
+   * away, so a change at either end surfaces as a missing date instead of as
+   * `undefined.start_time` at runtime.
+   */
+  events: { start_time: string } | { start_time: string }[] | null;
+}
+
+/** The embedded event's start time, whichever shape it arrived in. */
+function embeddedStartTime(row: RsvpRow): string | null {
+  const embedded = Array.isArray(row.events) ? row.events[0] : row.events;
+  return embedded?.start_time ?? null;
 }
 
 /**
@@ -243,6 +271,7 @@ export interface ViewerState {
  */
 export function useViewerEvents(memberId: string | null): ViewerState {
   const [rsvps, setRsvps] = useState<Map<string, RsvpStatus>>(new Map());
+  const [startTimes, setStartTimes] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -255,6 +284,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
       const aborted = () => signal.aborted;
       if (!memberId) {
         setRsvps(new Map());
+        setStartTimes(new Map());
         setLoading(false);
         return;
       }
@@ -262,7 +292,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
         const supabase = getSupabase();
         const mine = await supabase
           .from('event_rsvps')
-          .select('event_id, status')
+          .select('event_id, status, events(start_time)')
           .abortSignal(signal);
         if (aborted()) return;
         if (mine.error) {
@@ -271,14 +301,16 @@ export function useViewerEvents(memberId: string | null): ViewerState {
           return;
         }
 
-        setRsvps(
-          new Map(
-            (mine.data as { event_id: string; status: RsvpStatus }[]).map((row) => [
-              row.event_id,
-              row.status,
-            ]),
-          ),
-        );
+        const rows = mine.data as unknown as RsvpRow[];
+        setRsvps(new Map(rows.map((row) => [row.event_id, row.status])));
+        // A row whose event has gone is dropped rather than carried with a null
+        // date: an RSVP to an event that no longer exists is not something a
+        // counter should claim the member has coming up.
+        const dated = rows.flatMap((row) => {
+          const startTime = embeddedStartTime(row);
+          return startTime ? [[row.event_id, startTime] as const] : [];
+        });
+        setStartTimes(new Map(dated));
         setError(null);
         setLoading(false);
       } catch (e) {
@@ -302,7 +334,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
     void load(new AbortController().signal);
   }, [load]);
 
-  return { rsvps, loading, error, reload };
+  return { rsvps, startTimes, loading, error, reload };
 }
 
 /* --------------------------------------------------------------- mutations */

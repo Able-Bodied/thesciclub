@@ -13,6 +13,14 @@ const own = vi.hoisted(() => ({
   invitedBy: null as string | null,
 }));
 const rsvps = vi.hoisted(() => ({ current: new Map<string, string>() }));
+const startTimes = vi.hoisted(() => ({ current: new Map<string, string>() }));
+
+/** An ISO start time `days` from now. Negative is in the past. */
+function daysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
 
 const completeDetails: MemberDetails = {
   displayName: 'Dana',
@@ -40,6 +48,7 @@ vi.mock('@/lib/members', () => ({
 vi.mock('@/lib/events', () => ({
   useViewerEvents: () => ({
     rsvps: rsvps.current,
+    startTimes: startTimes.current,
     loading: false,
     error: null,
     reload: () => undefined,
@@ -100,6 +109,7 @@ beforeEach(() => {
   own.member = ownMember();
   own.invitedBy = 'NorCal SCI';
   rsvps.current = new Map();
+  startTimes.current = new Map();
   auth.signedOut = 0;
   auth.failWith = null;
   details.current = completeDetails;
@@ -135,9 +145,40 @@ describe('MePage', () => {
         ['b', 'going'],
         ['c', 'interested'],
       ]);
+      startTimes.current = new Map([
+        ['a', daysFromNow(3)],
+        ['b', daysFromNow(10)],
+        ['c', daysFromNow(5)],
+      ]);
       renderMe();
       expect(screen.getByRole('link', { name: /2\s*Going/ })).toBeInTheDocument();
       expect(screen.getByRole('link', { name: /1\s*Interested/ })).toBeInTheDocument();
+    });
+
+    it('count what is coming up, not what has already happened', () => {
+      // The counters answer "what have I got on". One that keeps climbing as
+      // events go by stops answering it.
+      rsvps.current = new Map([
+        ['past', 'going'],
+        ['soon', 'going'],
+        ['gone', 'interested'],
+      ]);
+      startTimes.current = new Map([
+        ['past', daysFromNow(-9)],
+        ['soon', daysFromNow(4)],
+        ['gone', daysFromNow(-2)],
+      ]);
+      renderMe();
+      expect(screen.getByRole('link', { name: /1\s*Going/ })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /0\s*Interested/ })).toBeInTheDocument();
+    });
+
+    it('does not count an RSVP whose event did not come back', () => {
+      // A number that guesses is worse than one that waits.
+      rsvps.current = new Map([['orphan', 'going']]);
+      startTimes.current = new Map();
+      renderMe();
+      expect(screen.getByRole('link', { name: /0\s*Going/ })).toBeInTheDocument();
     });
 
     it('show nothing about conversations or rooms, which are not built', () => {

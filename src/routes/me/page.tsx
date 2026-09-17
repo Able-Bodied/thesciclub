@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
 import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
+import { isPastStartTime } from '@/routes/events/filters';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { MeHero } from '@/routes/me/hero';
 import { MeStats } from '@/routes/me/stats';
 import { listInWords, loadDetails, missingDetails } from '@/routes/profile/details-api';
 import { loadAnswers } from '@/routes/profile/profile-api';
 import { progressOf } from '@/routes/profile/questions';
+import type { RsvpStatus } from '@/types/domain';
 
 /**
  * Me — who the club thinks you are, where you stand, and the way out.
@@ -68,9 +70,20 @@ export default function MePage() {
   const [percent, setPercent] = useState<number | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
 
-  const rsvps = [...viewer.rsvps.values()];
-  const going = rsvps.filter((status) => status === 'going').length;
-  const interested = rsvps.filter((status) => status === 'interested').length;
+  // What the member has coming up, not what they have ever said yes to. These
+  // two numbers are the whole of the row, and a count that keeps climbing as
+  // events go by stops answering "what have I got on" — which is the only
+  // question somebody reads them for. An RSVP whose date did not come back is
+  // not counted: a number that guesses is worse than one that waits.
+  const countUpcoming = (want: RsvpStatus) =>
+    [...viewer.rsvps.entries()].filter(([eventId, status]) => {
+      if (status !== want) return false;
+      const startTime = viewer.startTimes.get(eventId);
+      return startTime !== undefined && !isPastStartTime(startTime);
+    }).length;
+
+  const going = countUpcoming('going');
+  const interested = countUpcoming('interested');
 
   useEffect(() => {
     void loadAnswers().then((result) => {
