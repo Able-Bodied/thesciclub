@@ -363,7 +363,20 @@ files, most recently by reporting a restore as broken when it had worked.
   Worth keeping that way: `pnpm exec` runs the version the project pins, and a
   globally installed CLI drifts from it — `db push` writes to the live
   database, which is not where a version surprise belongs.
-- Local Supabase: `pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`.
+- Local Supabase: `pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`
+  is the light set and is enough for almost everything.
+
+  **`-x storage-api` is the one exclusion that will lie to you.** With storage
+  excluded, every storage call returns `name resolution failed` — uploads do not
+  happen and reads come back empty, with no error anywhere near the code that
+  cared. `pnpm check-photo-policy` reported two policy holes that did not exist
+  before this was understood; it now refuses to run rather than produce results.
+  **Anything touching photographs needs a plain `pnpm exec supabase start`.**
+
+  The CLI also remembers the last exclusion set: starting again without `-x`
+  does *not* add the missing services back. `pnpm exec supabase stop` first,
+  then start. The stop keeps a backup and the next start restores it, so local
+  data survives.
   After `pnpm exec supabase db reset`, run **`pnpm demo-member`** — a reset
   drops the auth schema, so the test account loses its member row and every
   sign-in lands back in onboarding.
@@ -563,10 +576,130 @@ reformats a file out from under a string-match patch made moments earlier.
 
 ---
 
-# Next up: the owner's call
+# Next up: Chat
 
-Nothing is queued. The app is live, the database is fully migrated, and the
-ingest is running current code.
+**The owner has decided to build it, on 2026-09-18.** Everything below is what a
+session starting cold needs. Read `CONTEXT.md` first anyway — the constraints
+below come from it and it is shorter than this file.
+
+## The decision that has just been reversed, and what survives it
+
+CONTEXT.md lists "Topic rooms / forum" under **Deliberately deferred**, with a
+real reason: *"a room of two dozen members is empty by construction. It arrives
+when there are enough members for a room to be worth opening."* The club has
+five non-seed members. That reason has not stopped being true — the owner has
+decided to build anyway, which is their call, and **CONTEXT.md should be
+updated when the work starts** rather than left contradicting the app, the way
+it was for the house rules.
+
+What does not change: **the placeholder pattern.** Home is still deferred, and
+`src/routes/home/page.tsx` must keep saying so. Do not let Chat drag Home in.
+
+The emptiness problem is a design input, not a blocker. A room with four posts
+looks abandoned; the mock hides this by being written. Worth deciding early
+whether rooms open one at a time, seeded by an administrator, or all twelve at
+once looking bare.
+
+## What the mock actually specifies
+
+`docs/index.html` is the reference — open it, do not work from this summary
+alone. `chatPage()` is at roughly line 1577, then `roomPage`, `topicRow`,
+`topicPage`, `fpost`. The data is in `ROOMS`, `GROUPS`, `DMS` around line 818.
+
+**Three kinds of thread, one screen.** Segments: All · Direct · Groups · Rooms.
+
+| kind | shape | in the mock |
+| --- | --- | --- |
+| **Direct** | two members, flat message list | 1 (`DMS`), from Kevin welcoming a new member |
+| **Group** | named, several members, flat message list | 2 (`GROUPS`) — "Rugby crew", "South Bay meet-ups" |
+| **Room** | open to every member, *threaded* | 12 (`ROOMS`), 27 topics between them |
+
+**Rooms are a forum, not a chat.** Room → list of topics → a topic's posts.
+Numbered posts, reply counts, view counts, sort by Activity / Replies / Views.
+The mock's own comment says the shape borrows from CareCure, "which organise SCI
+life by the problem rather than by the person". Direct and group threads are
+flat; rooms are the only threaded thing.
+
+**The twelve rooms**, grouped by a category that colours them — Body, Life, Kit:
+
+    Body   Bowel management · Bladder & catheters · Skin & pressure sores
+           Pain management · Aging with SCI
+    Life   Newly injured · Sex, dating & fertility · Work & school
+           Adaptive sport · Funding & benefits
+    Kit    Equipment & assistive tech · Driving & vehicles
+
+**Joining.** `S.joined` holds room ids. A room you have not joined shows a gold
+"Join" button in the composer slot and the topic composer says "Join to reply" —
+you can read everything and post nothing. Joined rooms carry a gold chip and
+offer "+ New topic".
+
+**Full history from the day you join** is stated twice on screen and is a real
+decision: "Open to every member, with the whole history from before you joined.
+Nothing here is public." Whatever schema gets written should make that the easy
+case rather than the exception.
+
+**ROOM_MAP** (near line 1041) maps topic regexes to rooms — "Continue in Bowel
+management" appears under a matching profile topic or Home question. It is the
+same shape as `src/routes/peers/topics.ts`, which already groups the free-text
+topics and would be the place to reuse rather than re-derive.
+
+## What the app already has that this should not reinvent
+
+- **`browse_members`** is the member list, and it excludes anybody with
+  `show_in_browse = false`. A chat surface naming members has to decide whether
+  a hidden member is messageable. They are still a member; they chose not to be
+  *found*. Probably: not listed as a person to start a conversation with, but
+  visible inside a thread they posted in.
+- **`RequireMember`** and `suspended-screen.tsx` already gate the shell. A
+  paused member should almost certainly read and not post — the pattern
+  `event_rsvps` uses, where active membership is required to write and not to
+  withdraw.
+- **`src/components/filter-sheet-shell.tsx`** is the shared sheet. The segment
+  pill row on Peers and Events is the same control twice; a third copy is the
+  thing to avoid.
+- **`member_strikes`** exists and "repeating outside a room what was said in it"
+  is one of the four things that ends a membership — it is already in the house
+  rules, and rooms are what it is about. Reporting a post is not in the mock and
+  is worth asking about before building.
+
+## The decisions worth settling before writing schema
+
+1. **Realtime or polling.** The local stack currently excludes `realtime`, and
+   nothing in the app uses it. A forum does not need it; direct messages feel
+   broken without it. That choice shapes the table design and the local start
+   command both.
+2. **What a room's "full history" means for RLS.** Every member reads every
+   post in every room is the simplest policy and matches the mock. Direct
+   messages are the opposite and need a participants table.
+3. **Deletion.** `event_rsvps` and `event_dismissals` cascade on member delete,
+   and `/admin`'s Remove panel names what goes. A removed member's *posts* are a
+   harder question than their RSVPs — a thread with holes in it is worse than
+   one with a removed name — and whatever is decided has to be said on that
+   panel, which currently promises everything goes.
+4. **Moderation.** There is none anywhere in the app. Strikes are issued by hand
+   from `/admin` and that may be enough to start.
+
+## How to work on it
+
+Read **"Conventions that are load-bearing"** above before the first commit. The
+ones that will bite on a feature this size:
+
+- **A view's own security check can break a caller who is not its audience.**
+- **A SQL probe run as the superuser proves nothing about RLS.** Every new
+  policy needs a probe in `supabase/tests/` run as a signed-in role, and every
+  expected refusal needs its own savepoint.
+- **Watch for tests that pass by not running.** Eight instances are recorded in
+  this file. Two of the most recent were a whole-module `vi.mock` hiding a
+  missing export, and a storage probe that could not reach storage.
+- **Look at what you changed.** `pnpm shoot <route>` — every layout problem in
+  this project was found by eye.
+
+---
+
+# Next up after Chat: the owner's call
+
+Chat is queued and has its own section above. The app is live, the database is
+fully migrated, and the ingest is running current code.
 
 **One question is open and it is not a coding one.** The 29 "Staying Driven
 Wheelchair Fitness" events have no format — NorCal SCI's own page never says
@@ -588,9 +721,11 @@ Things that are real, wanted, and nobody has asked for yet:
   29 grouped topics, capped at 24 by frequency, so a rare one-person topic
   cannot be *ticked*. Reachable by typing it, unreachable as a filter.
 
-**Do not build Home or Chat without asking.** Both are deliberately deferred in
-CONTEXT.md and both say so on screen. The mock renders them convincingly, which
-is the trap rather than the mandate.
+**Chat has been asked for — see "Next up: Chat" above.** Home has not.
+**Do not build Home without asking.** It is deliberately deferred in CONTEXT.md
+and says so on screen; the mock renders it convincingly, which is the trap
+rather than the mandate. Building Chat is not permission to drag Home in with
+it.
 
 ## What this session changed, in one place
 
@@ -1195,12 +1330,13 @@ answer months later has to walk to it. There is no overview of what they said,
 and Me shows only a percentage. Consider a review screen, or making the ring
 link to a list.
 
-## 5. Home and Chat are placeholders
+## 5. Home is a placeholder — and Chat was one until 2026-09-18
 
-Deliberate — see `CONTEXT.md`. They say plainly that they are not built
-rather than showing invented content. **Keep that.** Do not build the Home feed
-or topic rooms without asking; both are explicitly deferred and the reasoning
-is in CONTEXT.
+Home stays deferred, says plainly that it is not built rather than showing
+invented content, and **that is to be kept**. The reasoning is in CONTEXT.md.
+
+Chat was in the same position and the owner has since asked for it. See
+"Next up: Chat".
 
 ## 6. Messaging does not exist
 
