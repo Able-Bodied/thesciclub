@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import type * as DetailsApi from '@/routes/profile/details-api';
 import type { MemberDetails } from '@/routes/profile/details-api';
+import { applicableQuestions } from '@/routes/profile/questions';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const auth = vi.hoisted(() => ({ signedOut: 0, failWith: null as string | null }));
@@ -37,6 +38,10 @@ const completeDetails: MemberDetails = {
   declined: [],
 };
 const details = vi.hoisted(() => ({ current: null as unknown as MemberDetails }));
+const survey = vi.hoisted(() => ({
+  answers: {},
+  declined: new Set<string>(),
+}));
 
 vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({
@@ -57,8 +62,17 @@ vi.mock('@/lib/events', () => ({
   }),
 }));
 
+// Driven per-test, and `progressOf` is deliberately not stubbed: the page
+// should be running the real arithmetic, or this file would be asserting its
+// own. A complete profile is produced by declining every question, which is a
+// real way to reach 100 and needs no fixture of seventeen answers.
 vi.mock('@/routes/profile/profile-api', () => ({
-  loadAnswers: () => Promise.resolve({ ok: true as const, answers: { gender: 'Female' } }),
+  loadAnswers: () =>
+    Promise.resolve({
+      ok: true as const,
+      answers: survey.answers,
+      declined: survey.declined,
+    }),
 }));
 
 // Partial: `missingDetails` and `listInWords` are pure and the page should be
@@ -118,6 +132,8 @@ beforeEach(() => {
   auth.signedOut = 0;
   auth.failWith = null;
   details.current = completeDetails;
+  survey.answers = {};
+  survey.declined = new Set();
 });
 
 describe('MePage', () => {
@@ -280,6 +296,7 @@ describe('MePage', () => {
   });
 
   it('links to the survey and says how much of it is done', async () => {
+    survey.answers = { gender: 'Female' };
     renderMe();
     const link = screen.getByRole('link', { name: /Complete your profile/ });
     expect(link).toHaveAttribute('href', '/profile');
@@ -287,6 +304,32 @@ describe('MePage', () => {
       // One of seventeen applicable questions answered.
       expect(screen.getByText('6%')).toBeInTheDocument();
     });
+  });
+});
+
+describe('the survey card', () => {
+  // The owner asked for this: at 100 the ring and the number go, and the card
+  // is a statement. Nothing replaces the ring — not a tick, not a full circle.
+  it('drops the ring once the profile is complete', async () => {
+    survey.declined = new Set(applicableQuestions({}).map((q) => q.key));
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('Profile complete')).toBeInTheDocument();
+    expect(screen.queryByText('100%')).not.toBeInTheDocument();
+  });
+
+  it('shows the ring while there is progress left to make', async () => {
+    survey.answers = {};
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('0%')).toBeInTheDocument();
+    expect(screen.getByText('Complete your profile')).toBeInTheDocument();
   });
 });
 
@@ -310,27 +353,29 @@ describe('what is still to fill in', () => {
     expect(await screen.findByText('40%')).toBeInTheDocument();
   });
 
-  // The count it replaced could not say "finished" without saying 0, and a
-  // gold badge showing 0 reads as broken — so it vanished exactly when it had
-  // good news. This shows, and goes quiet instead.
-  it('still shows the badge at 100%, where the count used to disappear', async () => {
+  // The ring is progress, so it goes once there is no progress left to make.
+  // "100%" is never printed on either card — a progress indicator for a
+  // finished thing is just a shape, and the sentence beside it already says so.
+  it('drops the ring and the percentage once the details are done', async () => {
     details.current = { ...completeDetails };
     render(
       <MemoryRouter>
         <MePage />
       </MemoryRouter>,
     );
-    expect(await screen.findByText('100%')).toBeInTheDocument();
+    expect(await screen.findByText(/All filled in/)).toBeInTheDocument();
+    expect(screen.queryByText('100%')).not.toBeInTheDocument();
   });
 
-  it('counts a declined detail as done', async () => {
+  it('counts a declined detail as done, so declining finishes the card', async () => {
     details.current = { ...completeDetails, photoPath: null, declined: ['photo'] };
     render(
       <MemoryRouter>
         <MePage />
       </MemoryRouter>,
     );
-    expect(await screen.findByText('100%')).toBeInTheDocument();
+    expect(await screen.findByText(/All filled in/)).toBeInTheDocument();
+    expect(screen.queryByText('80%')).not.toBeInTheDocument();
   });
 
   // A badge saying 3 with nothing to act on is a nag, so it names them.

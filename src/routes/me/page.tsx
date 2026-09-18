@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
 import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
-import { cn } from '@/lib/utils';
 import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
@@ -195,7 +194,19 @@ export default function MePage() {
               to="/profile"
               className="flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
             >
-              <ProgressRing percent={percent ?? 0} />
+              {/* Gone once it is finished, at the owner's request, and it is
+                  the right thing to do: a ring at 100% is a progress indicator
+                  for a thing with no progress left to make, and the sentence
+                  beside it already says so in words. Nothing replaces it —
+                  not a tick, not a full circle — because the card is then a
+                  statement and a way in, which is what the row below it has
+                  always been.
+
+                  Nothing is drawn while it loads either, rather than a ring at
+                  0%. The card has two legitimate heights anyway now, so there
+                  is nothing to be gained by holding the space with a number
+                  that is briefly false. */}
+              {percent !== null && percent < 100 ? <ProgressRing percent={percent} /> : null}
               <span className="min-w-0 flex-1">
                 <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
                   {percent === 100 ? 'Profile complete' : 'Complete your profile'}
@@ -213,42 +224,35 @@ export default function MePage() {
               to="/profile/details"
               className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
             >
-              {/* A percentage, at the owner's request, and it reads better than
-                  the count it replaces for a reason worth keeping: a count
-                  answers "how much is missing", which is a question about the
-                  form, and a percentage answers "how far along am I", which is
-                  the question somebody actually has. A count also cannot say
-                  "finished" without saying 0, and a gold badge showing 0 reads
-                  as broken rather than as done — so the badge used to vanish at
-                  the finish line, exactly when it had good news.
+              {/* The same ring as the survey card above, at the owner's
+                  request, and it earns its place here for the same reason a
+                  count did not: a count answered "how much is missing", which
+                  is a question about the form, where a percentage answers "how
+                  far along am I", which is the question somebody has.
 
-                  It shows at every value now, including 100, and goes quiet
-                  rather than gold once there is nothing to come back for. What
-                  is still missing is named underneath either way: a badge with
-                  nothing to act on is a nag.
-
-                  Sized in em off its own digits. "100%" is four characters
-                  where "3" was one, and a fixed 34px box around text that grows
-                  with the text-size setting is the mistake this project has
-                  made three times. */}
-              {detailsDone !== null ? (
-                <span
-                  className={cn(
-                    'grid min-w-[3.2em] flex-none place-items-center rounded-full px-[0.45em] py-[0.35em] font-extrabold font-head text-[0.8125rem]',
-                    detailsDone === 100 ? 'bg-tint text-ink2' : 'bg-gold text-[#2A1E06]',
-                  )}
-                >
-                  {detailsDone}%
-                </span>
+                  Two cards, one treatment, one rule: the ring is progress, so
+                  it is gone once there is no progress left to make. Before
+                  this, these two rows disagreed about what "finished" looked
+                  like — the survey card lost its ring and the details card kept
+                  a badge — which made the pair read as two different kinds of
+                  thing rather than as the same question asked twice. */}
+              {detailsDone !== null && detailsDone < 100 ? (
+                <ProgressRing percent={detailsDone} />
               ) : null}
               <span className="min-w-0 flex-1">
                 <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
                   Your details
                 </span>
+                {/* The heading stays "Your details" at every value, unlike the
+                    survey card, which turns "Complete your profile" into
+                    "Profile complete". That one is a call to action becoming a
+                    statement; this one is the name of the page it opens, and
+                    renaming it would break the only thing connecting the card
+                    to the screen behind it. The state goes in the sentence. */}
                 <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
                   {missing.length > 0
                     ? `Still to add: ${listInWords(missing)}.`
-                    : 'Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.'}
+                    : 'All filled in. Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.'}
                 </span>
               </span>
               <ChevronRight className="h-5 w-5 flex-none text-grey" />
