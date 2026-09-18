@@ -36,12 +36,20 @@ carries the whole history — 212 commits went across in one fast-forward, clean
 because `origin/main` sat at `851fcb1`, an ancestor of the branch, with nothing
 on it that was not already here.
 
-**`Alfredx48/TheSciClub` (`personal`) is retired.** It was the home of record
-while `origin` was read-only, and for a few days it was production: Netlify
-built from it and the nightly ingest ran from it. Nothing is pushed there any
-more. It stays in the remote list because it is the one place the pre-handover
-history is certain to exist, and because a stale clone pointing at it is easier
-to recognise than one pointing at nothing.
+**`Alfredx48/TheSciClub` (`personal`) is retired and is no longer a remote.**
+It was the home of record while `origin` was read-only, and for a few days it
+was production: Netlify built from it and the nightly ingest ran from it. It was
+removed on 2026-09-18 once `origin` held everything — checked before removing,
+with `git rev-list --count origin/main..personal/main` returning 0, so nothing
+existed there that is not here. The repository itself still exists on GitHub
+with its Event ingest workflow disabled; it is simply not wired to anything.
+
+**There is one remote now and both branches track it.** That is worth stating
+because the failure it prevents is silent: a branch left tracking a retired
+remote makes a bare `git push` succeed against a repository nobody reads, and
+nothing anywhere reports it. Check with:
+
+    git config --get-regexp '^branch\..*\.remote'   # every line should say origin
 
 **The handover is complete and every part of it was verified the same day.**
 Four things had to move, and the first three are the ones that break *quietly*
@@ -136,12 +144,16 @@ that disagree can be told apart at a glance:
   the live calendar was grouped at the time: 124 events, 35 series. It grows —
   125 and 36 on 2026-09-18 — so count it rather than quoting this.
 
-**The code for every one of them reaches `personal` only, and the database
-changes are real and live.** That asymmetry is the whole point of this
-section: the hosted project is running schema that exists nowhere in
-`Able-Bodied/thesciclub`. Do not reset or roll the hosted database back to
-`origin/main`'s state expecting the app to work — which, since the 2026-09-18
-handover, is the branch head anyway. The nightly ingest runs that same `main`,
+**That asymmetry is gone, and this section is kept for the lesson rather than
+the warning.** While `origin` was read-only, the migrations reached `personal`
+only and the hosted project ran schema that existed nowhere in
+`Able-Bodied/thesciclub` — so rolling the database back to `origin/main` would
+have broken an app whose code was fine. Since the 2026-09-18 handover
+`origin/main` *is* the branch head, so the two agree.
+
+What survives is the habit: **the database and the repository are updated by
+different commands and can disagree without either looking wrong.** `supabase
+migration list` is the only thing that settles it. The nightly ingest runs that same `main`,
 so it executes against this schema *with* the code that understands it. See
 "The scraper runs itself, daily".
 
