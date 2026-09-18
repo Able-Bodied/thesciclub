@@ -24,28 +24,10 @@ import { cn } from '@/lib/utils';
  * button inside it — so "Reduce motion, On, pressed" rather than a bare "On"
  * that could belong to any of the three settings on this screen.
  */
-function Row({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  /**
-   * Only where the control does not already say it.
-   *
-   * Text size has none: the three buttons are drawn at the sizes they apply, so
-   * a paragraph saying it makes the words bigger is telling somebody what they
-   * are already looking at.
-   */
-  description?: string;
-  children: React.ReactNode;
-}) {
+function Row({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="border-line border-b py-4 last:border-b-0">
       <legend className="font-extrabold font-head text-[0.9375rem] text-ink">{title}</legend>
-      {description ? (
-        <p className="mt-1 text-[0.8rem] text-ink2 leading-[1.5]">{description}</p>
-      ) : null}
       <div className="mt-2.5">{children}</div>
     </fieldset>
   );
@@ -131,10 +113,7 @@ export function AccessibilitySettings() {
           </div>
         </Row>
 
-        {/* Kept, because it is the one thing here somebody would not predict:
-            you press On and nothing looks any different. Without the sentence
-            the setting reads as broken. */}
-        <Row title="Bigger tap targets" description="The hit area only — nothing looks different.">
+        <Row title="Bigger tap targets">
           <OnOff
             value={preferences.largeTargets}
             onChange={(next) => {
