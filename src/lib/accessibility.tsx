@@ -23,10 +23,15 @@ import { createContext, type ReactNode, useCallback, useContext, useEffect, useS
  * disabled professionals have spent years asking sites not to ship would be a
  * poor look and a worse product.
  *
- * What actually helps is dull and specific: correct semantics (the primitives
- * in src/components/ui/ are Radix, which gets keyboard and focus right),
- * targets big enough to hit, and a small number of real preferences. That is
- * what this file is.
+ * What actually helps is dull and specific: correct semantics, targets big
+ * enough to hit, and a small number of real preferences. That is what this file
+ * is.
+ *
+ * "Correct semantics" means hand-written here — a real `fieldset` with a
+ * `legend`, real buttons with real pressed states. An earlier version of this
+ * comment credited Radix primitives in src/components/ui/; that directory was
+ * never populated and there are no primitives, so the claim was resting on
+ * nothing. Every control in this app is its own.
  *
  * ---------------------------------------------------------------------------
  * Stored per device, not per member

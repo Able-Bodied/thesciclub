@@ -14,10 +14,14 @@
  *
  * The brand half of this file (--navy … --tint, --head, --body) is lifted
  * verbatim from the design mock in docs/index.html, hex for hex, so a screen
- * ported from the mock can keep its own values and still be on-system. The
- * shadcn half below maps those same colours onto the semantic names the
- * primitives in src/components/ui/ read, so a <Button> is navy without any
- * component knowing what navy is.
+ * ported from the mock can keep its own values and still be on-system.
+ *
+ * The shadcn half below maps those same colours onto shadcn's semantic names.
+ * **Nothing reads them.** The scaffold laid them down for generated components
+ * in src/components/ui/, that directory was never populated, and every control
+ * in this app is hand-written against the brand names directly. They are left
+ * because they cost nothing and because adding a shadcn component later would
+ * want them — not because a <Button> somewhere is quietly using them.
  *
  * Deliberately light-only for now. The mock has no dark palette, and a
  * half-guessed one is worse than none — see CONTEXT.md.
