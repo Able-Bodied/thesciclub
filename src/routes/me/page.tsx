@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
 import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
+import { cn } from '@/lib/utils';
 import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
@@ -12,7 +13,12 @@ import { MeHero } from '@/routes/me/hero';
 import { StandingCard } from '@/routes/me/standing';
 import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
 import { MeStats } from '@/routes/me/stats';
-import { listInWords, loadDetails, missingDetails } from '@/routes/profile/details-api';
+import {
+  detailsPercent,
+  listInWords,
+  loadDetails,
+  missingDetails,
+} from '@/routes/profile/details-api';
 import { loadAnswers } from '@/routes/profile/profile-api';
 import { progressOf } from '@/routes/profile/questions';
 import type { RsvpStatus } from '@/types/domain';
@@ -90,6 +96,9 @@ export default function MePage() {
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
   const [missing, setMissing] = useState<string[]>([]);
+  // Null until the details load, so the badge does not flash 0% at somebody
+  // whose profile is finished.
+  const [detailsDone, setDetailsDone] = useState<number | null>(null);
   // Null until the details load, so the switch is not drawn in the wrong
   // position for a moment and then corrected under the reader's eye.
   const [showInBrowse, setShowInBrowse] = useState<boolean | null>(null);
@@ -137,6 +146,7 @@ export default function MePage() {
     void loadDetails().then((result) => {
       if (result.ok) {
         setMissing(missingDetails(result.details));
+        setDetailsDone(detailsPercent(result.details));
         setShowInBrowse(result.details.showInBrowse);
       }
     });
@@ -203,15 +213,32 @@ export default function MePage() {
               to="/profile/details"
               className="mt-2.5 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
             >
-              {/* A count, because onboarding can now be finished after the
-                  birthday — so an empty photo or city is the ordinary state
-                  for a while rather than an oversight, and the number is how
-                  somebody knows there is anything to come back for. It names
-                  what is missing underneath rather than only counting: a
-                  badge saying 3 with nothing to act on is a nag. */}
-              {missing.length > 0 ? (
-                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-gold font-extrabold font-head text-[0.9375rem] text-[#2A1E06]">
-                  {missing.length}
+              {/* A percentage, at the owner's request, and it reads better than
+                  the count it replaces for a reason worth keeping: a count
+                  answers "how much is missing", which is a question about the
+                  form, and a percentage answers "how far along am I", which is
+                  the question somebody actually has. A count also cannot say
+                  "finished" without saying 0, and a gold badge showing 0 reads
+                  as broken rather than as done — so the badge used to vanish at
+                  the finish line, exactly when it had good news.
+
+                  It shows at every value now, including 100, and goes quiet
+                  rather than gold once there is nothing to come back for. What
+                  is still missing is named underneath either way: a badge with
+                  nothing to act on is a nag.
+
+                  Sized in em off its own digits. "100%" is four characters
+                  where "3" was one, and a fixed 34px box around text that grows
+                  with the text-size setting is the mistake this project has
+                  made three times. */}
+              {detailsDone !== null ? (
+                <span
+                  className={cn(
+                    'grid min-w-[3.2em] flex-none place-items-center rounded-full px-[0.45em] py-[0.35em] font-extrabold font-head text-[0.8125rem]',
+                    detailsDone === 100 ? 'bg-tint text-ink2' : 'bg-gold text-[#2A1E06]',
+                  )}
+                >
+                  {detailsDone}%
                 </span>
               ) : null}
               <span className="min-w-0 flex-1">
@@ -246,7 +273,7 @@ export default function MePage() {
               >
                 <span className="min-w-0 flex-1">
                   <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
-                    How you look to other members
+                    My profile view
                   </span>
                   <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
                     Your profile exactly as the club sees it. You are not in your own deck, so this
@@ -257,9 +284,9 @@ export default function MePage() {
               </Link>
             ) : null}
 
-            {/* Directly under "How you look to other members", which is the
-                question it is the other half of: this is whether they look at
-                all. */}
+            {/* Directly under "My profile view", which is the question it is
+                the other half of: that one is how you look to other members,
+                this one is whether they can look at all. */}
             {userId && showInBrowse !== null ? (
               <DeckVisibility
                 userId={userId}

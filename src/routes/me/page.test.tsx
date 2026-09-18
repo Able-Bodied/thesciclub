@@ -293,8 +293,8 @@ describe('MePage', () => {
 describe('what is still to fill in', () => {
   // Onboarding can be finished after the birthday now, so an empty photo or
   // city is the ordinary state for a while rather than an oversight. The
-  // count is how somebody knows there is anything to come back for.
-  it('counts the blanks on the details row', async () => {
+  // percentage is how somebody knows how far along they are.
+  it('reports how far along the details are', async () => {
     details.current = {
       ...completeDetails,
       photoPath: null,
@@ -306,7 +306,31 @@ describe('what is still to fill in', () => {
         <MePage />
       </MemoryRouter>,
     );
-    expect(await screen.findByText('3')).toBeInTheDocument();
+    // Two of the five given, three blank.
+    expect(await screen.findByText('40%')).toBeInTheDocument();
+  });
+
+  // The count it replaced could not say "finished" without saying 0, and a
+  // gold badge showing 0 reads as broken — so it vanished exactly when it had
+  // good news. This shows, and goes quiet instead.
+  it('still shows the badge at 100%, where the count used to disappear', async () => {
+    details.current = { ...completeDetails };
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('100%')).toBeInTheDocument();
+  });
+
+  it('counts a declined detail as done', async () => {
+    details.current = { ...completeDetails, photoPath: null, declined: ['photo'] };
+    render(
+      <MemoryRouter>
+        <MePage />
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('100%')).toBeInTheDocument();
   });
 
   // A badge saying 3 with nothing to act on is a nag, so it names them.
