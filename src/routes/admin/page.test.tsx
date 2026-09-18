@@ -449,6 +449,16 @@ describe('blocking a number', () => {
     });
   });
 
+  it('says the event history goes too, which is the part nobody expects', async () => {
+    // event_rsvps, event_dismissals and member_strikes all cascade on
+    // member_id. The panel used to name only the profile and the invite.
+    api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    expect(screen.getByText(/Everything they said they were going to/)).toBeInTheDocument();
+    expect(screen.getByText(/rejoining later starts them from nothing/)).toBeInTheDocument();
+  });
+
   it('asks for no reason until there is something to give one for', async () => {
     const user = userEvent.setup();
     renderAdmin();

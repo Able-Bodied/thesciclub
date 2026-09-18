@@ -701,9 +701,17 @@ function Row({
             onRemove(block, reason.trim() || null);
           }}
         >
+          {/* The cascade is named because it is the part nobody expects.
+              event_rsvps, event_dismissals and member_strikes are all
+              `on delete cascade` on member_id, so removing somebody takes their
+              whole record of what they went to — and rejoining on the same
+              number does not bring it back, because it is a new row. That was
+              found the way these things are: by removing an account to test the
+              button and watching Been to empty itself. */}
           <p>
-            Their profile is deleted and their invite is revoked. Their sign-in still exists but
-            shows them nothing.
+            Their profile is deleted and their invite is revoked. Everything they said they were
+            going to, and any strikes on their record, goes with it — rejoining later starts them
+            from nothing. Their sign-in still exists but shows them nothing.
           </p>
           {/* The one question worth asking at this moment, and the only thing
               separating this from a ban. Left unticked, the number is free
