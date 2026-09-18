@@ -27,16 +27,33 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 cord injury. Vite 8 / React 19 / TypeScript strict / Tailwind 4 / Supabase /
 Vitest, pnpm, Node 24.
 
-Branch `scaffold-and-peers-deck`, ~164 commits ahead of `origin/main`. The
-owner has read-only access to `Able-Bodied/thesciclub` and is waiting on write
-access, so **`origin` cannot be pushed to** — but there is a second remote,
-`personal` (`Alfredx48/TheSciClub`), and the branch is pushed there. Both its
-`main` and its `scaffold-and-peers-deck` sit at the branch head — check with
-`git ls-remote --heads personal` rather than trusting a sha written here.
+Branch `scaffold-and-peers-deck`. Work happens here and lands on `main` by
+push; do not commit to `main` directly.
 
-Say which `main` you mean. `origin/main` is at `851fcb1` and is nearly two
-hundred commits behind; `personal/main` is the branch head and is what the
-nightly ingest actually runs. Do not commit to either.
+**`Able-Bodied/thesciclub` (`origin`) is the home of record, as of 2026-09-18.**
+The owner got write access that day and moved everything to it. `origin/main`
+carries the whole history — 212 commits went across in one fast-forward, clean
+because `origin/main` sat at `851fcb1`, an ancestor of the branch, with nothing
+on it that was not already here.
+
+**`Alfredx48/TheSciClub` (`personal`) is retired.** It was the home of record
+while `origin` was read-only, and for a few days it was production: Netlify
+built from it and the nightly ingest ran from it. Nothing is pushed there any
+more. It stays in the remote list because it is the one place the pre-handover
+history is certain to exist, and because a stale clone pointing at it is easier
+to recognise than one pointing at nothing.
+
+Three things moved with the handover, and the first two break quietly if they
+are missed. See "Hosting on Netlify" and "The scraper runs itself, daily":
+
+| what | where it has to end up |
+| --- | --- |
+| Netlify's connected repository | repointed at `origin`, or production is frozen |
+| The two ingest secrets | set on `origin`, or the calendar goes stale |
+| The Event ingest workflow | enabled on `origin` only, disabled on `personal` |
+
+Check a sha with `git ls-remote --heads origin` rather than trusting one
+written here.
 
 **All three planned flows are built, and the app is live** at
 https://thesciclub.netlify.app/ — see "Hosting on Netlify". Peers (deck,
@@ -120,9 +137,10 @@ that disagree can be told apart at a glance:
 changes are real and live.** That asymmetry is the whole point of this
 section: the hosted project is running schema that exists nowhere in
 `Able-Bodied/thesciclub`. Do not reset or roll the hosted database back to
-`origin/main`'s state expecting the app to work. The nightly ingest now runs `personal/main`, which is the branch head, so
-it is executing against this schema *with* the code that understands it — that
-was not true until 2026-09-14. See "The scraper runs itself, daily".
+`origin/main`'s state expecting the app to work — which, since the 2026-09-18
+handover, is the branch head anyway. The nightly ingest runs that same `main`,
+so it executes against this schema *with* the code that understands it. See
+"The scraper runs itself, daily".
 
 One more migration has landed since the thirteen above:
 
@@ -1174,8 +1192,10 @@ running it by accident — see the bottom of this section.
 - A feed whose markup changed exits non-zero, so it shows up as a red run
   rather than as a calendar that quietly stopped growing.
 
-**The scheduled run executes `personal/main`, and since 2026-09-14 that is the
-branch head.** It is no longer running behind the code.
+**The scheduled run executes `origin/main`, which is the branch head.** It is
+not running behind the code. It ran from `personal/main` until the 2026-09-18
+handover; the paragraphs below were written then and the lesson in them is the
+part that still matters.
 
 This entry used to say the opposite, and the reason is worth keeping: the run
 of 2026-09-13 checked out `ae984c8`, which is *on this branch's history* —
@@ -1192,33 +1212,42 @@ Both are live now. Checked at the time of the push: 124 events, 35 series, and
 **zero rows with a null `series_id`** — nothing had drifted, so the push was
 preventive rather than a repair.
 
-The lesson generalises past this job. `personal/main` is a moving target that
-nothing automatically advances, and the gap is invisible from inside the repo —
+The lesson generalises past this job. `main` is a moving target that nothing
+automatically advances, and the gap is invisible from inside the repo —
 `git status` is clean and says nothing about it. **After landing work the
 ingest depends on (`jobs/`, `scripts/backfill-series.mjs`), push `main` too**,
 not only the branch:
 
-    git push personal scaffold-and-peers-deck && git push personal HEAD:main
+    git push origin scaffold-and-peers-deck && git push origin HEAD:main
 
-`git log --oneline personal/main..HEAD -- jobs/` is the one-line check for
+`git log --oneline origin/main..HEAD -- jobs/` is the one-line check for
 whether that is owed.
 
-**Right now it runs from `Alfredx48/TheSciClub`, and that is correct.** The
-owner does not have write access to `Able-Bodied/thesciclub` yet — see "What
-this is" — so their own private repo is where the branch lives and where the
-job has to run, with `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set as
-repository secrets on it. Both are set, and a real run has been through
-successfully — see the classifier section for what it changed.
+**It runs from `Able-Bodied/thesciclub`, and needs two repository secrets
+there** — `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, under Settings →
+Secrets and variables → Actions. Without them the job fails at the Ingest step,
+which is the safe failure: it cannot connect, so it writes nothing. It is also
+the *quiet* failure, because a calendar that stopped growing looks exactly like
+a calendar with nothing new in it. **If events stop appearing, check the
+secrets before suspecting a feed.**
 
-That means exactly one repository is writing to the live tables, which is the
-condition to preserve. GitHub schedules workflows from the default branch of
-**every** repo that has one, so the day the branch is pushed to
-`Able-Bodied/thesciclub` there will be two crons upserting the same
-`(feed_id, external_id)` rows on the same schedule. `concurrency` does not help:
-it serialises runs within one repository and knows nothing about the other.
+**Exactly one repository may write to the live tables, and that is the condition
+to preserve.** GitHub schedules workflows from the default branch of *every*
+repo that has one, so from the moment the branch existed on both, two crons were
+upserting the same `(feed_id, external_id)` rows on the same schedule.
+`concurrency` does not help: it serialises runs within one repository and knows
+nothing about the other.
 
-**So at handover, and not before:** disable the workflow on whichever repo
-stops being the home of record.
+The handover of 2026-09-18 is the moment that mattered, and it was done in this
+order for that reason:
+
+    # on the repo that stops being the home of record
+    gh workflow disable "Event ingest" --repo Alfredx48/TheSciClub
+
+Reversible with `gh workflow enable`. If the home of record ever moves again,
+disable before enabling elsewhere — an overlap of one night is two writers, and
+the symptom is not an error but a "N new or changed" count that stops meaning
+anything.
 
     gh workflow disable "Event ingest" --repo <the one that is now a mirror>
 
@@ -1404,14 +1433,26 @@ says whether it is Zoom or a gym. Do not add a rule to guess.
 
 # Hosting on Netlify — live
 
-**https://thesciclub.netlify.app/** — connected to `Alfredx48/TheSciClub` and
-building from `main`, so **every push to `personal/main` redeploys it**. There
-is nothing to run: pushing is the deploy. Confirmed working 2026-09-18.
+**https://thesciclub.netlify.app/** — pushing is the deploy; there is nothing
+to run.
+
+> **2026-09-18, mid-handover: which repo it builds from is being changed.**
+> Netlify was connected to `Alfredx48/TheSciClub`, building from `main`. The
+> owner has write access to `Able-Bodied/thesciclub` now and is moving
+> everything there, so **Netlify has to be repointed in its own UI** — Site
+> configuration → Build & deploy → Continuous deployment → link to a different
+> repository.
+>
+> **Until that is done, production is frozen.** Netlify only rebuilds when the
+> repository it is watching changes, and nobody is pushing to that repository
+> any more. The site keeps serving the last build; it does not break, it just
+> stops moving, and there is nothing in the app that would say so.
+>
+> Check which repo it is on before concluding a deploy is broken.
 
 Two consequences worth holding:
 
-- **`main` on the private repo is now production.** It was already what the
-  nightly ingest runs; it is also what the public URL serves. A push is not a
+- **Whichever `main` Netlify watches is production.** A push to it is not a
   backup any more.
 - Netlify does **not** rebuild when the hosted database changes, only when the
   repo does. A migration applied by hand shows up immediately, because the
@@ -1421,12 +1462,16 @@ Two consequences worth holding:
 www.thesciclub.com; Pages serves `docs/`, Netlify serves the built app from
 `dist/`, and nothing in this config touches `docs/`.
 
-**Pages is served by `Able-Bodied/thesciclub`, from `main` at `/docs`** — the
-org repo, the one with no write access. `Alfredx48/TheSciClub` has no Pages
-site at all. So pushing `personal/main` cannot change what is at
-www.thesciclub.com, and the mock can only be updated by somebody with write
-access to the club's repo. Worth knowing before editing `docs/index.html` and
-expecting the live page to follow.
+**Pages is served by `Able-Bodied/thesciclub`, from `main` at `/docs`.**
+`Alfredx48/TheSciClub` has no Pages site at all.
+
+Now that the app is on the same repo and the same branch, `docs/` and the app
+share a `main` — so **a push to `origin/main` rebuilds the mock as well as the
+app**. It is only ever a rebuild from the same bytes unless `docs/` itself
+changed, and `docs/` has not changed since the app work began: checked at the
+handover push, where `docs/CNAME` and `docs/index.html` were byte-identical
+blobs on both sides. If you do edit `docs/index.html`, www.thesciclub.com
+follows on the next push, which it did not used to.
 
 Its environment holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, set in
 Netlify's own UI. **Never set `SUPABASE_SERVICE_ROLE_KEY` there.** It bypasses
