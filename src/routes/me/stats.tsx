@@ -53,10 +53,15 @@ export function MeStats({ going, interested, beenTo }: MeStatsProps) {
     <div className="flex gap-2.5">
       <Stat value={going} label="Going" to="/events?segment=going" />
       <Stat value={interested} label="Interested" to="/events?segment=interested" />
-      {/* Only once there is one. A third counter reading zero on a new member's
-          first screen describes an empty past rather than a new membership, and
-          the other two already say what is ahead. */}
-      {beenTo > 0 ? <Stat value={beenTo} label="Been to" to="/events?segment=been-to" /> : null}
+      {/* Always, including at zero.
+
+          It used to hide until there was one, reasoning that "Been to 0" on a
+          new member's first screen describes an empty past rather than a new
+          membership. That reads well and was wrong in use: a counter that comes
+          and goes is indistinguishable from a counter that has broken, and the
+          owner twice reported the row as missing when it was doing exactly what
+          it was told. Going and Interested show zero without anybody minding. */}
+      <Stat value={beenTo} label="Been to" to="/events?segment=been-to" />
     </div>
   );
 }

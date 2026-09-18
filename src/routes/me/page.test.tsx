@@ -197,11 +197,14 @@ describe('MePage', () => {
       );
     });
 
-    it('hides "Been to" until there is one, so a new member sees no empty past', () => {
+    it('shows "Been to" even at zero, so the row never appears to lose a counter', () => {
+      // It used to hide until there was one. A counter that comes and goes is
+      // indistinguishable from one that has broken — reported as missing twice
+      // before that was understood.
       rsvps.current = new Map([['soon', 'going']]);
       startTimes.current = new Map([['soon', daysFromNow(4)]]);
       renderMe();
-      expect(screen.queryByText(/Been to/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /0\s*Been to/ })).toBeInTheDocument();
     });
 
     it('does not count an RSVP whose event did not come back', () => {
