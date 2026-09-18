@@ -41,27 +41,36 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 }
 /** A ring rather than a bar: it sits beside a line of text, not under one. */
 function ProgressRing({ percent }: { percent: number }) {
-  const radius = 18;
+  // r and the stroke decide how much room is left *inside* the ring, which is
+  // the number the label has to fit — not the width of the box. A thinner
+  // stroke at a wider radius buys that room without a bigger circle.
+  const radius = 19;
   const circumference = 2 * Math.PI * radius;
   return (
-    // Sized in `em` off its own label rather than in pixels, so the circle grows
-    // with the number inside it. At the largest text setting a fixed 46px ring
-    // held "13%" and clipped "100%" to "00%" — the one member it happened to
-    // was the one who had finished their profile.
-    <span className="relative grid h-[3.85em] w-[3.85em] flex-none place-items-center text-[0.75rem]">
+    // Sized in `em` off its own label, so the circle grows with the number
+    // inside it — and sized against the *interior* of the circle rather than
+    // the box around it, which is the mistake that left this broken after it
+    // was called fixed. At 3.85em the box was 46px and the label "100%" was
+    // 36px, so it "fitted"; but r=18 with a 4-unit stroke leaves 34px of
+    // interior, and 36 into 34 does not go. It clipped to "00%" at every text
+    // size, for the one member who had finished their profile.
+    //
+    // 4.7em with a thinner stroke leaves ~42px of interior against a 36px
+    // label. Measured, not eyeballed, at both text sizes.
+    <span className="relative grid h-[4.7em] w-[4.7em] flex-none place-items-center text-[0.75rem]">
       <svg
         viewBox="0 0 44 44"
-        className="-rotate-90 absolute h-[3.85em] w-[3.85em]"
+        className="-rotate-90 absolute h-[4.7em] w-[4.7em]"
         aria-hidden="true"
       >
-        <circle cx="22" cy="22" r={radius} fill="none" stroke="var(--tint)" strokeWidth="4" />
+        <circle cx="22" cy="22" r={radius} fill="none" stroke="var(--tint)" strokeWidth="3.4" />
         <circle
           cx="22"
           cy="22"
           r={radius}
           fill="none"
           stroke="var(--navy)"
-          strokeWidth="4"
+          strokeWidth="3.4"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - percent / 100)}
