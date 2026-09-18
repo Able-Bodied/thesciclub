@@ -491,8 +491,11 @@ Things that are real, wanted, and nobody has asked for yet:
 - **Series-level dismissal.** The ✕ was removed from event cards because hiding
   one Friday does nothing about next Friday. Now that series are grouped and
   collapsed, it finally has something to hang on.
-- **The Peers filter sheet has no search box.** 29 grouped topics, so a rare
-  one-person topic is unreachable.
+- **The Peers filter *sheet* still has no search box.** The deck itself does
+  now, and searching "SmartDrive" reaches anybody who mentioned it anywhere —
+  so this is smaller than it was. What is left is the sheet's own topic list:
+  29 grouped topics, capped at 24 by frequency, so a rare one-person topic
+  cannot be *ticked*. Reachable by typing it, unreachable as a filter.
 
 **Do not build Home or Chat without asking.** Both are deliberately deferred in
 CONTEXT.md and both say so on screen. The mock renders them convincingly, which
@@ -1114,10 +1117,11 @@ silently does nothing is worse than a sentence explaining where things stand.
 ## Smaller things noticed but not fixed
 
 - Peers filter sheet still caps topics at 24 by frequency and has no search
-  box. It matters much less than it did: `src/routes/peers/topics.ts` groups
-  the free text first, so the list is 29 entries rather than 61 and the ones
-  that narrow a deck are at the top. A rare one-person topic is still
-  unreachable.
+  box of its own. It matters much less than it did, twice over:
+  `src/routes/peers/topics.ts` groups the free text first, so the list is 29
+  entries rather than 61 with the ones that narrow a deck at the top — and the
+  deck now has a search box, which reads the topics among everything else. A
+  rare one-person topic can be found by typing it and still cannot be ticked.
 - The deck crops photos at a fixed `object-[50%_28%]`. It suits all 23 seeded
   photographs — verified, every face is in frame — but an uploaded photo with
   an unusual composition could crop badly. No fix needed yet; know it exists.
