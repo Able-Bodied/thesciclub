@@ -43,14 +43,17 @@ more. It stays in the remote list because it is the one place the pre-handover
 history is certain to exist, and because a stale clone pointing at it is easier
 to recognise than one pointing at nothing.
 
-Three things moved with the handover, and the first two break quietly if they
-are missed. See "Hosting on Netlify" and "The scraper runs itself, daily":
+**The handover is complete and every part of it was verified the same day.**
+Four things had to move, and the first three are the ones that break *quietly*
+— none of them raises an error when it is wrong, so each was checked by
+observing the thing itself rather than by assuming the setting took:
 
-| what | where it has to end up |
-| --- | --- |
-| Netlify's connected repository | repointed at `origin`, or production is frozen |
-| The two ingest secrets | set on `origin`, or the calendar goes stale |
-| The Event ingest workflow | enabled on `origin` only, disabled on `personal` |
+| what | state | how it was checked |
+| --- | --- | --- |
+| Netlify's connected repository | repointed at `origin` | the deployed bundle contains strings that exist only in the day's commits, and none of the copy removed that day |
+| The two ingest secrets on `origin` | set | a dry run reported "93 usable, 0 new or changed" — a comparison it can only make by reading the live database |
+| The Event ingest workflow | enabled on `origin`, `disabled_manually` on `personal` | `gh workflow list` on both |
+| GitHub Pages | untouched, still building | `status: built`, CNAME and source intact |
 
 Check a sha with `git ls-remote --heads origin` rather than trusting one
 written here.
@@ -63,7 +66,7 @@ NorCal SCI's and AdaptiveRecHub's live calendars. Also: admin tools, the invite
 system, an 18+ gate, a details editor, and a three-strike system behind Good
 standing.
 
-737 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+790 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `origin`, and everything is applied
@@ -383,9 +386,67 @@ files, most recently by reporting a restore as broken when it had worked.
 
 ---
 
+# What the 2026-09-18 session built
+
+Mostly the owner trimming what the previous day had added, plus the handover
+itself. In rough order:
+
+- **The strike limit's follow-through**: the ring on Me retires at 100% on both
+  profile cards rather than showing a full circle, and Your details gained the
+  same ring the survey card has. One rule, stated once: the ring is progress, so
+  it goes when there is no progress left.
+- **Invites are mentors-only.** A peer used to get a heading, a card and an icon
+  explaining a thing that would never happen to them. See the note below about
+  what that argument does *not* extend to.
+- **"Rather not say" on the onboarding injury step**, matching the survey's.
+- **A great deal of copy removed** from Me — the profile cards are names and
+  controls now, the visibility card is one word, and Display has no descriptions
+  at all. What survives is listed with its reason in the commits; the only line
+  left under a card in Your profile is the list of what is actually missing,
+  which is information rather than explanation.
+- **The house rules came off the Standing card**, behind a disclosure that opens
+  on hover, on focus and on tap. **This changed CONTEXT.md**, which had said
+  they must stay *visible*; it says *reachable* now, and the sentences move to
+  the terms of service when there is one.
+- **Bigger tap targets reached more than one button.** The setting worked and
+  did almost nothing: 106 controls under 44px across four screens, and exactly
+  one of them opted in. See "The setting that worked on one button" below.
+
+## The rule about hiding things, and where it stops
+
+Do not spend a card on something a member cannot do — that is why Invites is
+mentors-only and why Club tools is admin-only.
+
+It does **not** extend to things that are merely *absent*. Home and Chat still
+say plainly that they are not built, the official account still says messaging
+is not switched on, and an event still says its group chat is coming. A member
+who goes looking for a feature and finds nothing at all reads the app as broken
+rather than as unfinished, and CONTEXT.md defers both on purpose.
+
+## The setting that worked on one button
+
+`data-large-targets` grows a control's hit area by 10px through a pseudo
+element, without changing how it is drawn. Opting in is per control, by
+`data-target="small"`, and **there is nothing automatic about it** — for a long
+time only the Events filter button had the attribute, so the setting was real,
+measurable, and almost entirely useless.
+
+It now covers the shared components (`SmallButton`, `FilterChip`, `BackLink`),
+both filter buttons, the segment pills on both tabs, the Peers search clear, the
+visibility switch and the standing disclosure. Measured after: 24px of reach
+from centre against 15–18 with it off.
+
+**Add the attribute when you add a control under 44px.** The way to check is to
+walk the DOM of each screen for `getBoundingClientRect()` under 44 and list what
+lacks the attribute; that audit is what found the ninety-two on `/admin`.
+
+---
+
 # What the 2026-09-17 session built
 
-Seven things, all asked for by the owner in one go, all on `personal` and live.
+Seven things, all asked for by the owner in one go, all live. They were built
+against `personal`, which was the home of record at the time; they reached
+`Able-Bodied/thesciclub` with everything else at the 2026-09-18 handover.
 
 ## Three strikes is a limit, not a label
 
@@ -1223,13 +1284,27 @@ not only the branch:
 `git log --oneline origin/main..HEAD -- jobs/` is the one-line check for
 whether that is owed.
 
-**It runs from `Able-Bodied/thesciclub`, and needs two repository secrets
-there** — `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, under Settings →
-Secrets and variables → Actions. Without them the job fails at the Ingest step,
-which is the safe failure: it cannot connect, so it writes nothing. It is also
-the *quiet* failure, because a calendar that stopped growing looks exactly like
-a calendar with nothing new in it. **If events stop appearing, check the
-secrets before suspecting a feed.**
+**It runs from `Able-Bodied/thesciclub`.** Both repository secrets are set
+there — `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`, under Settings →
+Secrets and variables → Actions — and a dry run on 2026-09-18 came back green
+in 38 seconds: 93 events from NorCal SCI, 21 from Adaptive Rec Hub, 0 new or
+changed on either.
+
+**That "0 new or changed" is the proof the secrets work**, and it is worth
+knowing why: the job can only decide nothing has changed by reading the rows
+that are already there. A listing of secret *names* proves one exists, not that
+it is correct. Run `gh workflow run "Event ingest" --repo Able-Bodied/thesciclub
+-f dry_run=true` to repeat the check; it scrapes and prints and writes nothing.
+
+38 seconds is not too fast, which it looks like against the "up to 45 minutes"
+below. The 45 is Adaptive Rec Hub's ten-second crawl delay, and it only applies
+to *detail* pages — that run fetched 0 of 21 because none had changed. A cold
+run, or one after a real edit upstream, is the slow one.
+
+Without the secrets the job fails at the Ingest step. That is the safe failure —
+it cannot connect, so it writes nothing — and the *quiet* one, because a
+calendar that stopped growing looks exactly like a calendar with nothing new in
+it. **If events stop appearing, check the secrets before suspecting a feed.**
 
 **Exactly one repository may write to the live tables, and that is the condition
 to preserve.** GitHub schedules workflows from the default branch of *every*
@@ -1244,18 +1319,18 @@ order for that reason:
     # on the repo that stops being the home of record
     gh workflow disable "Event ingest" --repo Alfredx48/TheSciClub
 
-Reversible with `gh workflow enable`. If the home of record ever moves again,
-disable before enabling elsewhere — an overlap of one night is two writers, and
-the symptom is not an error but a "N new or changed" count that stops meaning
-anything.
+Reversible with `gh workflow enable`. Confirmed afterwards with
+`gh workflow list` on both repos: `active` on `Able-Bodied`, `disabled_manually`
+on `Alfredx48`.
 
-    gh workflow disable "Event ingest" --repo <the one that is now a mirror>
+**If the home of record ever moves again, disable before enabling elsewhere.**
+An overlap of a single night is two writers, and the symptom is not an error —
+it is the "N new or changed" count quietly ceasing to mean anything, which is
+the same line that took a fortnight to be recognised as broken the first time.
 
-An earlier draft of this section said to disable it on the personal repo
-immediately and never to add the secrets there. That was written on the
-assumption that the club's repo was already running the job. It is not running
-anywhere else, and a calendar nobody is refreshing is the failure this workflow
-exists to prevent.
+Note that enabling is not a step. GitHub registers a workflow and enables it the
+moment the file lands on a repository's default branch, so the *new* home needs
+nothing done to it; only the old one needs turning off.
 
 # The three RSVP segments, and Been to
 
@@ -1436,19 +1511,27 @@ says whether it is Zoom or a gym. Do not add a rule to guess.
 **https://thesciclub.netlify.app/** — pushing is the deploy; there is nothing
 to run.
 
-> **2026-09-18, mid-handover: which repo it builds from is being changed.**
-> Netlify was connected to `Alfredx48/TheSciClub`, building from `main`. The
-> owner has write access to `Able-Bodied/thesciclub` now and is moving
-> everything there, so **Netlify has to be repointed in its own UI** — Site
-> configuration → Build & deploy → Continuous deployment → link to a different
-> repository.
->
-> **Until that is done, production is frozen.** Netlify only rebuilds when the
-> repository it is watching changes, and nobody is pushing to that repository
-> any more. The site keeps serving the last build; it does not break, it just
-> stops moving, and there is nothing in the app that would say so.
->
-> Check which repo it is on before concluding a deploy is broken.
+**It builds from `Able-Bodied/thesciclub`, branch `main`**, repointed at the
+2026-09-18 handover and confirmed deploying from it the same day.
+
+Repointing is done in Netlify's own UI, not in this repo — Site configuration →
+Build & deploy → Continuous deployment → link to a different repository — and
+because `Able-Bodied` is an organization, the Netlify GitHub App needs access
+granted to the org before the repo appears in the picker.
+
+**The failure to watch for is silence.** Netlify rebuilds only when the
+repository *it is watching* changes. Point it at a repo nobody pushes to and
+production does not break, it stops moving: the site keeps serving the last
+build, and nothing in the app says so. **If a change does not appear live,
+check which repository Netlify is connected to before looking for a bug.**
+
+Verifying a deploy from outside Netlify, which is what was done here: fetch the
+site, read the bundle path out of `index.html`, and grep that bundle for a
+string only the new code contains — plus one the new code *removed*, because
+the second catches a stale build that happens to share a phrase with the new
+one. Watch for the hash changing under you mid-check; a bundle fetched by its
+old name after a deploy lands comes back as `index.html` through the SPA
+redirect, which looks like a broken asset and is not one.
 
 Two consequences worth holding:
 
