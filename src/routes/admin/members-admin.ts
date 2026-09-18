@@ -91,9 +91,33 @@ export async function setMemberStatus(
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+/**
+ * Clear a member's photo folder.
+ *
+ * `admin_delete_member` is a SQL function and cannot reach the storage API, so
+ * this is the half of a removal that has to happen in the client. Permitted by
+ * the policy added in 20260918000000; before it, an administrator could end a
+ * membership and not remove the picture, which stayed retrievable at a URL
+ * derived from the member's id because the bucket is public.
+ *
+ * Runs after the removal and never before, and its failure is not the caller's
+ * failure: the membership is the thing being ended, and a picture that will not
+ * delete must not make a successful removal report an error. It returns nothing
+ * for that reason.
+ */
+async function clearPhotoFolder(memberId: string): Promise<void> {
+  const supabase = getSupabase();
+  const listed = await supabase.storage.from('photos').list(memberId);
+  if (listed.error) return;
+  const paths = listed.data.map((o) => `${memberId}/${o.name}`);
+  if (paths.length > 0) await supabase.storage.from('photos').remove(paths);
+}
+
 export async function deleteMember(target: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_delete_member', { target });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (error) return { ok: false, error: error.message };
+  await clearPhotoFolder(target);
+  return { ok: true };
 }
 
 /* ----------------------------------------------------------------- invites */
@@ -366,12 +390,24 @@ export async function fetchBlockedNumbers(): Promise<BlockedNumber[]> {
 export async function blockNumber(
   phone: string,
   reason: string | null,
+  /**
+   * The member on that number, where there is one.
+   *
+   * Blocking deletes them as part of blocking, so their photograph has to go
+   * too — but the function takes a phone number and the storage folder is keyed
+   * by member id, so the caller passes the id it already has on the row. Absent
+   * for a number with nobody on it, which is the ordinary case for blocking an
+   * invite that was never used.
+   */
+  memberId?: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_block_number', {
     raw_phone: phone,
     block_reason: reason,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (error) return { ok: false, error: error.message };
+  if (memberId) await clearPhotoFolder(memberId);
+  return { ok: true };
 }
 
 export async function unblockNumber(phone: string): Promise<{ ok: boolean; error?: string }> {

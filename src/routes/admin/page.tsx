@@ -320,7 +320,9 @@ export default function AdminPage() {
                     // Blocking deletes the member as part of blocking, inside
                     // one function, so a dropped connection cannot leave the
                     // number blocked and the person still in the deck.
-                    act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
+                    act(m.id, () =>
+                      block ? blockNumber(m.phone, reason, m.id) : deleteMember(m.id),
+                    );
                   }}
                   onStrike={(reason) => {
                     act(
@@ -414,7 +416,9 @@ export default function AdminPage() {
                     // Blocking deletes the member as part of blocking, inside
                     // one function, so a dropped connection cannot leave the
                     // number blocked and the person still in the deck.
-                    act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
+                    act(m.id, () =>
+                      block ? blockNumber(m.phone, reason, m.id) : deleteMember(m.id),
+                    );
                   }}
                   onStrike={(reason) => {
                     act(
