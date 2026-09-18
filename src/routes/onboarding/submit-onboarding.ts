@@ -1,3 +1,4 @@
+import { preparePhoto } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 import { injuryDateOf, type OnboardingData } from '@/routes/onboarding/types';
 import { rangeForExact } from '@/types/domain';
@@ -40,11 +41,13 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
 
   let photoPath: string | null = null;
   if (data.photoFile) {
-    const ext = data.photoFile.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    // The same fitting the details form does, so a photograph added at signup
+    // and one added later are the same thing in storage. See src/lib/image.ts.
+    const { blob, ext } = await preparePhoto(data.photoFile);
     const path = `${user.id}/profile.${ext}`;
     const upload = await supabase.storage
       .from('photos')
-      .upload(path, data.photoFile, { upsert: true });
+      .upload(path, blob, { upsert: true, contentType: blob.type });
     // A photo that will not upload must not cost somebody their signup — it is
     // the one optional answer in the flow. Carry on without it.
     if (!upload.error) photoPath = path;

@@ -1,3 +1,4 @@
+import { preparePhoto } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
 
@@ -222,10 +223,15 @@ export async function savePhoto(
   file: File,
 ): Promise<{ ok: true; path: string } | { ok: false; error: string }> {
   const supabase = getSupabase();
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+  // Fitted and re-encoded before it goes anywhere — see src/lib/image.ts. What
+  // came off the phone was being served to every member: 7 megapixels and 2.6MB
+  // to fill, in one place, a 34 pixel square.
+  const { blob, ext } = await preparePhoto(file);
   const path = `${userId}/profile.${ext}`;
 
-  const upload = await supabase.storage.from('photos').upload(path, file, { upsert: true });
+  const upload = await supabase.storage
+    .from('photos')
+    .upload(path, blob, { upsert: true, contentType: blob.type });
   if (upload.error) return { ok: false, error: upload.error.message };
 
   const { error } = await supabase.from('members').update({ photo_path: path }).eq('id', userId);
