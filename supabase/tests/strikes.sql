@@ -136,4 +136,54 @@ savepoint peer_strikes;
 select public.admin_add_strike('cccccccc-2222-0000-0000-00000000000c', 'I do not like them');
 rollback to savepoint peer_strikes;
 
+-- ---------------------------------------------------------------------------
+-- The limit. 20260917000000.
+-- ---------------------------------------------------------------------------
+-- Struck is back to zero counting strikes by now: one was withdrawn at step 6
+-- and the other aged out at step 8. Both rows are still on the record, which
+-- is the point of starting from here rather than from a fresh member — the cap
+-- must count what counts, not what exists.
+
+\echo ''
+\echo '== 14. back as the administrator, and Struck counts none (expect t, then 0) =='
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-2222-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
+select public.is_admin() as admin;
+select public.active_strike_count('cccccccc-2222-0000-0000-00000000000c') as counting_now;
+select count(*) as rows_still_on_the_record from public.admin_strikes
+ where member_id = 'cccccccc-2222-0000-0000-00000000000c';
+
+\echo ''
+\echo '== 15. each strike reports the new count (expect 1, 2, 3) =='
+\echo '   /admin acts on this: the strike that returns strike_limit() is the one'
+\echo '   that opens the question of what happens to the membership. If this'
+\echo '   ever returns null, the page has stopped asking and nobody notices.'
+select public.admin_add_strike('cccccccc-2222-0000-0000-00000000000c', 'Sold supplements') as counting;
+select public.admin_add_strike('cccccccc-2222-0000-0000-00000000000c', 'Repeated a room') as counting;
+select public.admin_add_strike('cccccccc-2222-0000-0000-00000000000c', 'Medical advice as fact') as counting;
+
+\echo ''
+\echo '== 16. a fourth is refused (expect ERROR naming pause and remove) =='
+\echo '   This is the bug the migration exists for: five strikes could be given,'
+\echo '   which made "one more ends your membership" on the members card false.'
+savepoint fourth;
+select public.admin_add_strike('cccccccc-2222-0000-0000-00000000000c', 'And another');
+rollback to savepoint fourth;
+
+\echo ''
+\echo '== 17. withdrawing one makes room again (expect 2, then 3) =='
+\echo '   The cap counts, so undoing a mistake is not a permanent ceiling.'
+select public.admin_withdraw_strike(
+  (select id from public.admin_strikes
+    where member_id = 'cccccccc-2222-0000-0000-00000000000c' and withdrawn_at is null
+    order by issued_at desc limit 1),
+  'Wrong member — meant somebody else');
+select public.active_strike_count('cccccccc-2222-0000-0000-00000000000c') as counting_now;
+select public.admin_add_strike('cccccccc-2222-0000-0000-00000000000c', 'A real third') as counting;
+
+\echo ''
+\echo '== 18. the roster agrees with the cap (expect 3, and the limit is 3) =='
+select strikes from public.admin_members where id = 'cccccccc-2222-0000-0000-00000000000c';
+select public.strike_limit() as the_limit;
+
 rollback;
