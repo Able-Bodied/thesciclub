@@ -1,4 +1,6 @@
-# Handoff: polish pass
+# Handoff
+
+Last updated 2026-09-18.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -36,23 +38,44 @@ Say which `main` you mean. `origin/main` is at `851fcb1` and is nearly two
 hundred commits behind; `personal/main` is the branch head and is what the
 nightly ingest actually runs. Do not commit to either.
 
-**All three planned flows are built.** Peers (deck, profiles, filters),
-onboarding + the profile survey, and Events (list, detail, RSVPs,
-organizations) with 124 real events ingested from NorCal SCI's and
-AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
-gate, and a details editor.
+**All three planned flows are built, and the app is live** at
+https://thesciclub.netlify.app/ — see "Hosting on Netlify". Peers (deck,
+profiles, filters), onboarding + the profile survey, and Events (list, detail,
+RSVPs, organizations, series collapsing) with 125 real events ingested from
+NorCal SCI's and AdaptiveRecHub's live calendars. Also: admin tools, the invite
+system, an 18+ gate, a details editor, and a three-strike system behind Good
+standing.
 
-736 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+737 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
-## The hosted database is ahead of `main`, and thirteen migrations are live on it
+## The hosted database is ahead of `origin`, and everything is applied
 
 This is the thing most likely to catch somebody out, so it is first.
 
-`pnpm exec supabase db push` has been run against the hosted project
-(`erijdvqnxavwezsbbojv`). Everything in `supabase/migrations/` is applied there
-and locally — `pnpm exec supabase migration list` shows nothing pending. That
-includes thirteen migrations written after the branch was last summarised.
+**48 migrations, 0 pending.** Everything in `supabase/migrations/` is applied to
+the hosted project (`erijdvqnxavwezsbbojv`) and locally. Check rather than
+trust:
+
+    pnpm exec supabase migration list          # hosted
+    pnpm exec supabase migration up --local    # bring a local stack up
+
+The five from 2026-09-16, newest first, because they are the ones a fresh
+session will not have seen:
+
+- `20260916040000` — `member_strikes`, `admin_strikes`, `active_strike_count()`
+  and the two functions that issue and withdraw. See "Strikes".
+- `20260916030000` — an administrator is a mentor, by trigger.
+- `20260916020000` — an administrator's membership cannot be paused or removed
+  from the application.
+- `20260916010000` — `grant select (series_id) on events`. The column was added
+  on the 13th and never granted; the first client read of it failed the whole
+  query. See "Adding a column to `events` is two steps".
+- `20260916000000` — the Reeve Foundation's name made canonical in `members`
+  and `directory_seed`.
+
+Everything below about the earlier thirteen is still true and still worth
+reading for the reasoning; it is history now rather than news.
 The first three change how invites behave:
 
 - `20260912000000` — deleting a member revokes their invite.
@@ -80,7 +103,8 @@ that disagree can be told apart at a glance:
 - `20260913080000` — and may attach a directory claim while doing it.
   **Pushed.**
 - `20260913090000` — `event_series`, and `events.series_id`. **Pushed**, and
-  the live calendar is grouped: 124 events, 35 series.
+  the live calendar was grouped at the time: 124 events, 35 series. It grows —
+  125 and 36 on 2026-09-18 — so count it rather than quoting this.
 
 **The code for every one of them reaches `personal` only, and the database
 changes are real and live.** That asymmetry is the whole point of this
@@ -251,8 +275,18 @@ the fewest columns the screen needs.
 
 SQL run by hand against a local stack, each in one transaction that rolls
 back. They exist because policies and triggers are not covered by `pnpm test`
-at all, and six of this project's bugs were found by running a path rather
+at all, and several of this project's bugs were found by running a path rather
 than reading it.
+
+Two rules, both learned the hard way:
+
+- **Run them as a signed-in role**, not as the superuser — `postgres` is
+  BYPASSRLS, so every policy is inert and the file passes while proving nothing.
+- **Give every expected refusal its own savepoint.** Without one the first
+  error aborts the transaction and every step after it prints "current
+  transaction is aborted", which in a long log is indistinguishable from
+  passing. `admin-is-protected.sql` shipped with that fault and reported eleven
+  green steps having exercised one.
 
 | file | what it exercises |
 | --- | --- |
@@ -263,6 +297,8 @@ than reading it.
 | `claim-carries-profile.sql` | that claiming carries the whole profile and their own answers win |
 | `restore-directory.sql` | restoring the seeded directory without touching anybody real |
 | `admin-vouches-directly.sql` | an administrator inviting in their own name |
+| `admin-is-protected.sql` | that no administrator can be paused, removed, blocked or made a peer — and that an ordinary member still can be |
+| `strikes.sql` | the strike arithmetic (withdrawn and year-old ones leave the count, the rows stay) and the visibility (another member sees none of them) |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
@@ -319,28 +355,67 @@ files, most recently by reporting a restore as broken when it had worked.
 
 # Next up: the owner's call
 
-**Five things the owner reported on 2026-09-16 are fixed** — see "The owner's
-five, and what two of them turned out to be" below. Two of them were not what
-they looked like, which is the part worth reading before trusting a bug report
-from a screen rather than from a measurement.
+Nothing is queued. The app is live, the database is fully migrated, and the
+ingest is running current code.
 
-Nothing else is queued. The mentor invite screen that once stood here is built,
-and so is everything that came after it — see the sections below. Two
-decisions are genuinely open, and both are waiting on a person rather than on
-code:
+**One question is open and it is not a coding one.** The 29 "Staying Driven
+Wheelchair Fitness" events have no format — NorCal SCI's own page never says
+whether it is Zoom or a gym. It is one series, and collapsing the list means it
+now occupies one card rather than nine, so it is less visible and no less
+unanswered. **Ask NorCal SCI. Do not write a rule that guesses.**
 
-- ~~**What Events does with series.**~~ Decided and built: the list collapses,
-  and opening a series shows its other dates in place. See "Repeating events
-  collapse in the list". Series-level dismissal is still unbuilt, and now has
-  somewhere to hang — the ✕ was removed because hiding one Friday does nothing
-  about next Friday.
-- **The 29 events with no format.** They are one series — a quarter of the
-  calendar — and NorCal SCI's own page never says whether it is Zoom or a
-  gym. That is a question for NorCal SCI, not a rule to write.
+Things that are real, wanted, and nobody has asked for yet:
 
-After those, the list below still ranks: the survey being linear only
-(item 4), and hosting on Netlify, which is configured and waiting on somebody
-to connect the repo.
+- **The survey is linear only** (item 4 below). Twelve screens with Back and no
+  overview of what you said. There is a "Finish later" on every screen now, so
+  leaving is easy; changing one answer months later still means walking to it.
+- **Series-level dismissal.** The ✕ was removed from event cards because hiding
+  one Friday does nothing about next Friday. Now that series are grouped and
+  collapsed, it finally has something to hang on.
+- **The Peers filter sheet has no search box.** 29 grouped topics, so a rare
+  one-person topic is unreachable.
+
+**Do not build Home or Chat without asking.** Both are deliberately deferred in
+CONTEXT.md and both say so on screen. The mock renders them convincingly, which
+is the trap rather than the mandate.
+
+## What this session changed, in one place
+
+For a new session, so the diff does not have to be read:
+
+- **Events**: "I'm going" and "Interested" are upcoming-only; **Been to** is a
+  third pill beside them. Past events draw as a line rather than a card and
+  offer no RSVP, on the list and on the detail page. Repeating events collapse
+  to their next date with "Weekly · 8 more dates through 14 Oct", opening in
+  place. "Any time" starts at today.
+- **Me**: three counters, always, including at zero. Deck visibility moved here
+  from Your details and writes on the tap. Good standing is backed by strikes.
+- **Admin**: strikes can be given and withdrawn, with a reason required for
+  both. An administrator's row carries no controls at all. Removing somebody
+  now says that their event history goes with them.
+- **Everywhere**: buttons have hover states; boxes that hold text are sized in
+  `em` off that text.
+
+## Four traps this session walked into
+
+Each cost real time, and each is the kind that repeats:
+
+1. **A test that passes by not running, in a new shape.** The first
+   `admin-is-protected.sql` run reported eleven steps and had exercised one —
+   the first expected refusal aborted the transaction and the rest printed
+   "current transaction is aborted", which reads like passing. **Every expected
+   failure needs its own savepoint.**
+2. **Verifying the wrong number.** The profile ring was declared fixed after
+   measuring the label against the *box* (46px) when the constraint was the
+   circle's *interior* (34px). It stayed broken through a release and two bug
+   reports. **Measure the thing that actually constrains.**
+3. **`pnpm fix` silently voiding an edit.** A string-match patch that no longer
+   matched did nothing, and the sabotage check that was meant to prove a test
+   worked reported a pass. **Assert that every scripted replacement applied.**
+4. **Two RLS policies ORed.** `member_strikes` lets a member read their own
+   *and* an administrator read every one, so an unfiltered select showed an
+   administrator the whole club's strikes on their own card. **A policy written
+   to be generous to one audience is not a filter for another.**
 
 ---
 
@@ -1192,9 +1267,22 @@ thread.
 "Staying Driven Wheelchair Fitness", and NorCal SCI's own page for it never
 says whether it is Zoom or a gym. Do not add a rule to guess.
 
-# Hosting on Netlify
+# Hosting on Netlify — live
 
-`netlify.toml` is committed and ready. The mock stays on GitHub Pages at
+**https://thesciclub.netlify.app/** — connected to `Alfredx48/TheSciClub` and
+building from `main`, so **every push to `personal/main` redeploys it**. There
+is nothing to run: pushing is the deploy. Confirmed working 2026-09-18.
+
+Two consequences worth holding:
+
+- **`main` on the private repo is now production.** It was already what the
+  nightly ingest runs; it is also what the public URL serves. A push is not a
+  backup any more.
+- Netlify does **not** rebuild when the hosted database changes, only when the
+  repo does. A migration applied by hand shows up immediately, because the
+  browser talks to Supabase directly.
+
+`netlify.toml` is committed. The mock stays on GitHub Pages at
 www.thesciclub.com; Pages serves `docs/`, Netlify serves the built app from
 `dist/`, and nothing in this config touches `docs/`.
 
@@ -1205,16 +1293,31 @@ www.thesciclub.com, and the mock can only be updated by somebody with write
 access to the club's repo. Worth knowing before editing `docs/index.html` and
 expecting the live page to follow.
 
-To deploy: connect the repo in Netlify, and set two environment variables in
-its UI — `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, the same values as
-`.env.local`. **Never set `SUPABASE_SERVICE_ROLE_KEY` there.** It bypasses RLS,
-and anything prefixed `VITE_` is inlined into the browser bundle.
+Its environment holds `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, set in
+Netlify's own UI. **Never set `SUPABASE_SERVICE_ROLE_KEY` there.** It bypasses
+RLS, and anything prefixed `VITE_` is inlined into the browser bundle.
+
+If the anon key ever has to be re-entered, take it from the source of truth and
+not from a copy — the one in `.env.local` was four characters too long for a
+while and every browser request came back `401 Invalid API key`:
+
+    pnpm exec supabase projects api-keys --project-ref erijdvqnxavwezsbbojv
 
 The SPA redirect in the config is not optional: without it `/peers` works when
 you navigate to it and 404s when you reload or open a shared link, which is the
 confusing half of that bug.
 
-## Before sharing the URL
+## Real people have joined
+
+**Three, on 2026-09-18**: Ran, Ajay and Wojtek, on real phone numbers, through
+the real Twilio path. So the cautions below are no longer hypothetical — Twilio
+is demonstrably delivering, and there are now real phone numbers and injury
+details in the hosted database belonging to people who are not the owner.
+
+Five non-seed members in total: those three, Admin, and the owner's own account
+— which is on the test number `12222222222`, because the original on their real
+number was removed while testing the Remove button. That is worth knowing
+before reading anything into the roster.
 
 **The app being public is fine.** A stranger sees the welcome screen and cannot
 get further: `browse_members` requires an active member row, and creating one
