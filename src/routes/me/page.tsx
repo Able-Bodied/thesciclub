@@ -124,7 +124,10 @@ export default function MePage() {
 
   useEffect(() => {
     void loadAnswers().then((result) => {
-      if (result.ok) setPercent(progressOf(result.answers).percent);
+      // With the declines, so "rather not say" counts towards the ring the way
+      // an answer does. Without them somebody who has decided is shown an
+      // unfinished profile for ever — see 20260917030000.
+      if (result.ok) setPercent(progressOf(result.answers, result.declined).percent);
     });
     if (userId) {
       void loadMyStrikes(userId).then((result) => {

@@ -42,6 +42,7 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   state: 'CA',
   photoPath: null,
   showInBrowse: true,
+  declined: [],
   ...o,
 });
 

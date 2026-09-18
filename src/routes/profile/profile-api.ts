@@ -1,5 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
-import { type Answers, QUESTIONS } from '@/routes/profile/questions';
+import { type Answers, canDecline, QUESTIONS } from '@/routes/profile/questions';
 
 /**
  * Reading and writing the survey's answers.
@@ -15,14 +15,46 @@ import { type Answers, QUESTIONS } from '@/routes/profile/questions';
  * finishes twice.
  */
 
-/** The member columns the survey owns, derived from the questions themselves. */
-const COLUMNS = QUESTIONS.map((q) => q.column);
+/**
+ * The member columns the survey owns, derived from the questions themselves,
+ * plus `declined`.
+ *
+ * `declined` is not a question's column and never will be — it is the record of
+ * which questions somebody would rather not answer, for the survey and the
+ * details form both, so it is appended rather than derived.
+ */
+const COLUMNS = [...QUESTIONS.map((q) => q.column), 'declined'];
+
+/** What the row says somebody has declined, with anything unexpected dropped. */
+export function declinedFrom(row: Record<string, unknown>): Set<string> {
+  const value = row.declined;
+  if (!Array.isArray(value)) return new Set();
+  return new Set(value.filter((v): v is string => typeof v === 'string'));
+}
 
 export async function loadAnswers(): Promise<
-  { ok: true; answers: Answers } | { ok: false; error: string }
+  { ok: true; answers: Answers; declined: Set<string> } | { ok: false; error: string }
 > {
-  const result = await getSupabase().from('members').select(COLUMNS.join(', ')).maybeSingle();
-  if (result.error) return { ok: false, error: result.error.message };
+  // Asked for once with `declined` and once without.
+  //
+  // This project deploys the app ahead of its migrations often enough that it
+  // has its own conventions for it, and a select naming a column the database
+  // does not have fails the *whole query* — so a survey shipped an hour before
+  // 20260917030000 lands would not load at all, rather than loading without the
+  // one thing it cannot know yet. That is the same shape as the events page
+  // refusing to load over an ungranted `series_id`, which took three days to
+  // find because the error pointed nowhere near the cause.
+  let result = await getSupabase().from('members').select(COLUMNS.join(', ')).maybeSingle();
+  if (result.error) {
+    const withoutDeclined = await getSupabase()
+      .from('members')
+      .select(COLUMNS.filter((c) => c !== 'declined').join(', '))
+      .maybeSingle();
+    // Only the second failure is reported. If the fallback fails too, the
+    // problem is not the column and the first message is the misleading one.
+    if (withoutDeclined.error) return { ok: false, error: withoutDeclined.error.message };
+    result = withoutDeclined;
+  }
 
   const row = (result.data ?? {}) as Record<string, unknown>;
   const answers: Answers = {};
@@ -40,7 +72,27 @@ export async function loadAnswers(): Promise<
     // back in an unexpected shape should read as empty, not as "[object
     // Object]" sitting in somebody's profile.
   }
-  return { ok: true, answers };
+  return { ok: true, answers, declined: declinedFrom(row) };
+}
+
+/**
+ * Record or withdraw a decline.
+ *
+ * The whole array is written rather than an append, because PostgREST has no
+ * array-append and a read-modify-write of one member's own single row is not
+ * a contention problem — there is exactly one person who can write it.
+ *
+ * `canDecline` is checked before the write so the refusal is a sentence rather
+ * than a constraint violation, but it is not the enforcement: the database has
+ * `members_declined_excludes_required` and that is what actually holds.
+ */
+export async function saveDeclined(
+  userId: string,
+  declined: ReadonlySet<string>,
+): Promise<{ ok: boolean; error?: string }> {
+  const keys = [...declined].filter(canDecline);
+  const { error } = await getSupabase().from('members').update({ declined: keys }).eq('id', userId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 /**

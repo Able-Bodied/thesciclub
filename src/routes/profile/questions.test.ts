@@ -3,6 +3,7 @@ import {
   type Answers,
   advancesItself,
   applicableQuestions,
+  canDecline,
   isAnswered,
   progressOf,
   QUESTIONS,
@@ -150,5 +151,51 @@ describe('toggleMany', () => {
 
   it('still allows removing when at the cap', () => {
     expect(toggleMany(['a', 'b', 'c'], 'b', 3)).toEqual(['a', 'c']);
+  });
+});
+
+describe('declining a question', () => {
+  const q = (key: string) => {
+    const found = questionFor(key);
+    if (!found) throw new Error('missing');
+    return found;
+  };
+
+  // Skip leaves a null, which is honestly indistinguishable from "have not got
+  // to it yet". Declining is a decision. Collapsing the two would either nag
+  // the people who have decided or quietly finish a profile somebody meant to
+  // come back to.
+  it('counts as answered where a blank does not', () => {
+    expect(isAnswered(q('bio'), {})).toBe(false);
+    expect(isAnswered(q('bio'), {}, new Set(['bio']))).toBe(true);
+  });
+
+  it('does not answer a different question', () => {
+    expect(isAnswered(q('bio'), {}, new Set(['topics']))).toBe(false);
+  });
+
+  it('moves the percentage, which is the whole point', () => {
+    const blank = progressOf({});
+    const declined = progressOf({}, new Set(['bio']));
+    expect(declined.done).toBe(blank.done + 1);
+    expect(declined.percent).toBeGreaterThan(blank.percent);
+  });
+
+  it('can carry a profile to 100 without a single answer', () => {
+    // The case the owner asked for: somebody who would rather not give any of
+    // it should still be able to finish.
+    const everything = new Set(applicableQuestions({}).map((question) => question.key));
+    expect(progressOf({}, everything).percent).toBe(100);
+  });
+
+  // The database refuses these too — members_declined_excludes_required. The
+  // guard is here so the client does not offer a button the database would
+  // answer with a constraint violation.
+  it('is refused for the name and the birthday, under either spelling', () => {
+    expect(canDecline('displayName')).toBe(false);
+    expect(canDecline('name')).toBe(false);
+    expect(canDecline('birthDate')).toBe(false);
+    expect(canDecline('birthday')).toBe(false);
+    expect(canDecline('bio')).toBe(true);
   });
 });

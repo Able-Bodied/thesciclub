@@ -339,13 +339,49 @@ export function questionsOn(screen: Screen, answers: Answers): Question[] {
     .filter((q) => !q.onlyIf || q.onlyIf(answers));
 }
 
-export function isAnswered(question: Question, answers: Answers): boolean {
+/**
+ * Things nobody may decline.
+ *
+ * A row cannot exist without a name, and the 18+ trigger cannot do its job
+ * without a birthday. Mirrored by the `members_declined_excludes_required`
+ * check in 20260917030000 — the database refuses these whatever the client
+ * does, and this list is here so the client does not offer a button the
+ * database will answer with a constraint violation.
+ *
+ * Both spellings of each, because the survey and the details form name them
+ * differently and this guard should not depend on which one asked.
+ */
+export const UNDECLINABLE = ['displayName', 'name', 'birthDate', 'birthday'] as const;
+
+export function canDecline(key: string): boolean {
+  return !(UNDECLINABLE as readonly string[]).includes(key);
+}
+
+/**
+ * Whether a question has been dealt with — answered, or declined.
+ *
+ * Declining is an answer, and that is the whole of what 20260917030000 adds.
+ * "Skip this one" leaves a null, which is honestly indistinguishable from
+ * "have not got to it yet" and is counted as undone; "Prefer not to say" is a
+ * decision, and a profile made of decisions is finished. Without the second,
+ * somebody who is never going to put a photograph up is shown an unfinished
+ * profile for ever with no way to say otherwise.
+ */
+export function isAnswered(
+  question: Question,
+  answers: Answers,
+  declined: ReadonlySet<string> = EMPTY_DECLINED,
+): boolean {
+  if (declined.has(question.key)) return true;
   const value = answers[question.key];
   if (value === null || value === undefined) return false;
   if (Array.isArray(value)) return value.length > 0;
   if (typeof value === 'boolean') return true;
   return value.trim() !== '';
 }
+
+/** Shared so the default argument does not allocate a Set per call. */
+const EMPTY_DECLINED: ReadonlySet<string> = new Set();
 
 /**
  * A screen of nothing but single-choice questions advances itself once they are
@@ -370,9 +406,12 @@ export interface Progress {
   percent: number;
 }
 
-export function progressOf(answers: Answers): Progress {
+export function progressOf(
+  answers: Answers,
+  declined: ReadonlySet<string> = EMPTY_DECLINED,
+): Progress {
   const applicable = applicableQuestions(answers);
-  const done = applicable.filter((q) => isAnswered(q, answers)).length;
+  const done = applicable.filter((q) => isAnswered(q, answers, declined)).length;
   return {
     done,
     total: applicable.length,

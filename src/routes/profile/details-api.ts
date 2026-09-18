@@ -24,10 +24,47 @@ export interface MemberDetails {
   state: string;
   photoPath: string | null;
   showInBrowse: boolean;
+  /**
+   * Things this member has said they would rather not give — see
+   * 20260917030000. Shared with the survey, which writes the same column, so
+   * this is the whole set and not only the five below.
+   */
+  declined: string[];
+}
+
+/**
+ * The five details the ring counts, and the key each is declined under.
+ *
+ * A list rather than five `if`s so the labels the screen shows, the keys the
+ * database stores and the things `missingDetails` counts are one thing. They
+ * disagreed once already — `state` became nullable for onboarding and nothing
+ * told Me about it.
+ *
+ * The name and the birthday are deliberately absent. They are not counted as
+ * missing (a row cannot exist without them) and they cannot be declined, so
+ * there is nothing for them to be doing in this list.
+ */
+export const DECLINABLE_DETAILS = [
+  { key: 'photo', label: 'a photo' },
+  { key: 'exactLevel', label: 'your injury level' },
+  { key: 'injuryDate', label: 'when you were injured' },
+  { key: 'city', label: 'your city' },
+  { key: 'state', label: 'your state' },
+] as const;
+
+export type DetailKey = (typeof DECLINABLE_DETAILS)[number]['key'];
+
+/** Whether the details form has an answer for one of the five. */
+export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean {
+  if (key === 'photo') return Boolean(details.photoPath);
+  if (key === 'exactLevel') return Boolean(details.exactLevel);
+  if (key === 'injuryDate') return Boolean(details.injuryDate);
+  if (key === 'city') return Boolean(details.city);
+  return Boolean(details.state);
 }
 
 const COLUMNS =
-  'display_name, birth_date, exact_level, completeness, injury_date, injury_date_precision, city, state, photo_path, show_in_browse';
+  'display_name, birth_date, exact_level, completeness, injury_date, injury_date_precision, city, state, photo_path, show_in_browse, declined';
 
 /* The client types individually selected columns as `any`, so each one is
  * narrowed on the way out rather than cast wholesale. A column that comes back
@@ -49,17 +86,35 @@ const asNullableText = (v: unknown): string | null => (typeof v === 'string' ? v
  * would be counting a fact as a gap. Name and birthday are not counted
  * either — a row cannot exist without them.
  *
+ * A declined detail is not counted for the same reason 'Do not know' is not.
+ * "I would rather not say where I live" is a decision, and a screen that keeps
+ * listing it as missing is arguing with somebody who has already answered.
+ *
  * Returns the labels rather than a number so that the count and the sentence
  * naming what is missing can never disagree.
  */
 export function missingDetails(details: MemberDetails): string[] {
-  const missing: string[] = [];
-  if (!details.photoPath) missing.push('a photo');
-  if (!details.exactLevel) missing.push('your injury level');
-  if (!details.injuryDate) missing.push('when you were injured');
-  if (!details.city) missing.push('your city');
-  if (!details.state) missing.push('your state');
-  return missing;
+  const declined = new Set(details.declined);
+  return DECLINABLE_DETAILS.filter(
+    ({ key }) => !declined.has(key) && !detailIsFilled(details, key),
+  ).map(({ label }) => label);
+}
+
+/**
+ * How much of the details form is dealt with, as a percentage.
+ *
+ * The same arithmetic progressOf() does over the survey, over the five above:
+ * filled or declined counts, blank does not. Me showed a count of what was
+ * left, which answers "how much is missing" and not "how far along am I" — and
+ * a count cannot say "finished" without also saying zero, which reads like a
+ * broken badge rather than a finished profile.
+ */
+export function detailsPercent(details: MemberDetails): number {
+  const declined = new Set(details.declined);
+  const done = DECLINABLE_DETAILS.filter(
+    ({ key }) => declined.has(key) || detailIsFilled(details, key),
+  ).length;
+  return Math.round((done / DECLINABLE_DETAILS.length) * 100);
 }
 
 /** "a photo, your city and your state" — an English list, not a comma dump. */
@@ -89,6 +144,9 @@ export async function loadDetails(): Promise<
       state: asText(row.state),
       photoPath: asNullableText(row.photo_path),
       showInBrowse: row.show_in_browse !== false,
+      declined: Array.isArray(row.declined)
+        ? row.declined.filter((v): v is string => typeof v === 'string')
+        : [],
     },
   };
 }

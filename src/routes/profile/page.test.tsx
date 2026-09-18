@@ -9,12 +9,21 @@ const account = vi.hoisted(() => ({ current: null as Account | null }));
 const api = vi.hoisted(() => ({
   answers: {},
   saves: [] as { keys: string[]; answers: Answers }[],
+  declined: new Set<string>(),
+  declineSaves: [] as string[][],
   failWith: null as string | null,
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
 vi.mock('@/routes/profile/profile-api', () => ({
-  loadAnswers: () => Promise.resolve({ ok: true as const, answers: api.answers }),
+  loadAnswers: () =>
+    Promise.resolve({ ok: true as const, answers: api.answers, declined: api.declined }),
+  saveDeclined: (_userId: string, declined: ReadonlySet<string>) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.declined = new Set(declined);
+    api.declineSaves.push([...api.declined]);
+    return Promise.resolve({ ok: true });
+  },
   saveAnswers: (_userId: string, keys: string[], answers: Answers) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
     api.saves.push({ keys, answers });
@@ -48,6 +57,8 @@ beforeEach(() => {
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Nicole' };
   api.answers = {};
   api.saves = [];
+  api.declined = new Set();
+  api.declineSaves = [];
   api.failWith = null;
 });
 

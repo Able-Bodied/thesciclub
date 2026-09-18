@@ -34,6 +34,7 @@ const completeDetails: MemberDetails = {
   state: 'CA',
   photoPath: 'u1/profile.jpg',
   showInBrowse: true,
+  declined: [],
 };
 const details = vi.hoisted(() => ({ current: null as unknown as MemberDetails }));
 

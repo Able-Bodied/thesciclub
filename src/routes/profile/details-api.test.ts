@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { listInWords, type MemberDetails, missingDetails } from '@/routes/profile/details-api';
+import {
+  detailsPercent,
+  listInWords,
+  type MemberDetails,
+  missingDetails,
+} from '@/routes/profile/details-api';
 
 const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   displayName: 'Dana',
@@ -12,6 +17,7 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   state: 'CA',
   photoPath: 'u1/profile.jpg',
   showInBrowse: true,
+  declined: [],
   ...o,
 });
 
@@ -62,5 +68,43 @@ describe('listing them in words', () => {
 
   it('is empty when nothing is missing', () => {
     expect(listInWords([])).toBe('');
+  });
+});
+
+describe('declining a detail', () => {
+  it('stops counting it as missing', () => {
+    const bare = details({ photoPath: null, city: null });
+    expect(missingDetails(bare)).toContain('a photo');
+    expect(missingDetails({ ...bare, declined: ['photo'] })).not.toContain('a photo');
+    expect(missingDetails({ ...bare, declined: ['photo'] })).toContain('your city');
+  });
+
+  it('counts towards the percentage the way an answer does', () => {
+    const bare = details({ photoPath: null, exactLevel: null, injuryDate: null, city: null });
+    const before = detailsPercent(bare);
+    expect(detailsPercent({ ...bare, declined: ['photo'] })).toBeGreaterThan(before);
+  });
+
+  it('reaches 100 when everything is either given or declined', () => {
+    // The case the owner asked for. Somebody who will never put a photograph
+    // up should not be shown an unfinished profile for ever.
+    const bare = details({ photoPath: null, exactLevel: null, injuryDate: null, city: null });
+    const allDeclined = {
+      ...bare,
+      declined: ['photo', 'exactLevel', 'injuryDate', 'city', 'state'],
+    };
+    expect(detailsPercent(allDeclined)).toBe(100);
+    expect(missingDetails(allDeclined)).toEqual([]);
+  });
+
+  it('is 100 for a profile that is simply filled in', () => {
+    expect(detailsPercent(details())).toBe(100);
+  });
+
+  // A stale key from a question the form no longer asks should sit there
+  // harmlessly rather than counting as progress on something else.
+  it('ignores a key that is not one of the five', () => {
+    const bare = details({ photoPath: null });
+    expect(detailsPercent({ ...bare, declined: ['somethingElse'] })).toBe(detailsPercent(bare));
   });
 });

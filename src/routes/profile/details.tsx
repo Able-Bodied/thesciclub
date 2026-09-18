@@ -6,12 +6,14 @@ import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injur
 import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import {
+  type DetailKey,
   loadDetails,
   type MemberDetails,
   removePhoto,
   saveDetails,
   savePhoto,
 } from '@/routes/profile/details-api';
+import { saveDeclined } from '@/routes/profile/profile-api';
 import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
 
 /**
@@ -47,6 +49,28 @@ export default function ProfileDetailsPage() {
 
   function set(patch: Partial<MemberDetails>) {
     setDetails((d) => (d ? { ...d, ...patch } : d));
+  }
+
+  /**
+   * Written on the tap, not on Save.
+   *
+   * The same reasoning `show_in_browse` carries a few lines down in
+   * details-api: the survey writes this column too, and saving the whole array
+   * from a form opened beforehand would put back a decline the survey had since
+   * withdrawn. Writing only the change, immediately, cannot do that — and a
+   * decline is a switch rather than a field you edit and commit.
+   */
+  function toggleDecline(key: DetailKey) {
+    if (!details || !account.userId) return;
+    const before = details.declined;
+    const next = before.includes(key) ? before.filter((k) => k !== key) : [...before, key];
+    set({ declined: next });
+    void saveDeclined(account.userId, new Set(next)).then((result) => {
+      if (result.ok) return;
+      // Put it back, or Me shows a percentage this page cannot account for.
+      set({ declined: before });
+      setError(result.error ?? 'Could not save that.');
+    });
   }
 
   function submit() {
@@ -125,7 +149,13 @@ export default function ProfileDetailsPage() {
           <p className="py-10 text-center text-[0.875rem] text-ink2">{error}</p>
         ) : (
           <>
-            <Field label="Photo">
+            <Field
+              label="Photo"
+              declined={details.declined.includes('photo')}
+              onToggleDecline={() => {
+                toggleDecline('photo');
+              }}
+            >
               <div className="flex items-center gap-3.5">
                 <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-navy border-dashed bg-paper">
                   {photo ? (
@@ -195,7 +225,14 @@ export default function ProfileDetailsPage() {
               ) : null}
             </Field>
 
-            <Field label="Level of injury" htmlFor="d-level">
+            <Field
+              label="Level of injury"
+              htmlFor="d-level"
+              declined={details.declined.includes('exactLevel')}
+              onToggleDecline={() => {
+                toggleDecline('exactLevel');
+              }}
+            >
               <Select
                 id="d-level"
                 value={details.exactLevel ?? ''}
@@ -233,7 +270,14 @@ export default function ProfileDetailsPage() {
               </div>
             </Field>
 
-            <Field label="When were you injured?" htmlFor="d-injury">
+            <Field
+              label="When were you injured?"
+              htmlFor="d-injury"
+              declined={details.declined.includes('injuryDate')}
+              onToggleDecline={() => {
+                toggleDecline('injuryDate');
+              }}
+            >
               <Input
                 id="d-injury"
                 type="date"
@@ -254,7 +298,14 @@ export default function ProfileDetailsPage() {
               ) : null}
             </Field>
 
-            <Field label="State" htmlFor="d-state">
+            <Field
+              label="State"
+              htmlFor="d-state"
+              declined={details.declined.includes('state')}
+              onToggleDecline={() => {
+                toggleDecline('state');
+              }}
+            >
               <Select
                 id="d-state"
                 value={details.state}
@@ -270,7 +321,14 @@ export default function ProfileDetailsPage() {
               </Select>
             </Field>
 
-            <Field label="City or town" htmlFor="d-city">
+            <Field
+              label="City or town"
+              htmlFor="d-city"
+              declined={details.declined.includes('city')}
+              onToggleDecline={() => {
+                toggleDecline('city');
+              }}
+            >
               <Input
                 id="d-city"
                 value={details.city ?? ''}
@@ -301,24 +359,58 @@ export default function ProfileDetailsPage() {
   );
 }
 
+/**
+ * A labelled field, with an optional "Rather not say".
+ *
+ * The toggle is offered on the five the ring counts and on nothing else. Name
+ * and birthday have none, because the database refuses to record a decline for
+ * them — a row cannot exist without a name and the 18+ trigger cannot do its
+ * job without a birthday — and offering a control the database would reject is
+ * worse than not offering one.
+ *
+ * The control below stays editable when declined. Somebody who changes their
+ * mind should be able to just fill it in, and the decline lifts when they do.
+ */
 function Field({
   label,
   htmlFor,
+  declined,
+  onToggleDecline,
   children,
 }: {
   label: string;
   htmlFor?: string;
+  /** Absent where the field cannot be declined at all. */
+  declined?: boolean;
+  onToggleDecline?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="mt-4 first:mt-0">
-      {htmlFor ? (
-        <label htmlFor={htmlFor} className="block font-bold text-[0.8125rem] text-ink">
-          {label}
-        </label>
-      ) : (
-        <span className="block font-bold text-[0.8125rem] text-ink">{label}</span>
-      )}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+        {htmlFor ? (
+          <label htmlFor={htmlFor} className="font-bold text-[0.8125rem] text-ink">
+            {label}
+          </label>
+        ) : (
+          <span className="font-bold text-[0.8125rem] text-ink">{label}</span>
+        )}
+        {onToggleDecline ? (
+          <button
+            type="button"
+            onClick={onToggleDecline}
+            aria-pressed={declined === true}
+            className={cn(
+              'rounded-full px-2 py-0.5 font-semibold text-[0.75rem] transition-colors',
+              declined
+                ? 'bg-tint text-navy hover:bg-line'
+                : 'text-grey hover:bg-tint hover:text-ink2',
+            )}
+          >
+            {declined ? 'Rather not say ✓' : 'Rather not say'}
+          </button>
+        ) : null}
+      </div>
       <div className="mt-1.5">{children}</div>
     </div>
   );

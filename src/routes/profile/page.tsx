@@ -3,11 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { cn } from '@/lib/utils';
-import { loadAnswers, saveAnswers } from '@/routes/profile/profile-api';
+import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
 import {
   type Answer,
   type Answers,
   advancesItself,
+  canDecline,
   isAnswered,
   progressOf,
   type Question,
@@ -34,6 +35,10 @@ export default function ProfileSurveyPage() {
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
+  // Loaded and written alongside the answers, because declining is an answer —
+  // see 20260917030000. Held as a Set because every use of it is a membership
+  // test and the array is only the shape the database stores.
+  const [declined, setDeclined] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +46,10 @@ export default function ProfileSurveyPage() {
   useEffect(() => {
     if (account.status !== 'member') return;
     void loadAnswers().then((result) => {
-      if (result.ok) setAnswers(result.answers);
-      else setError(result.error);
+      if (result.ok) {
+        setAnswers(result.answers);
+        setDeclined(result.declined);
+      } else setError(result.error);
       setLoading(false);
     });
   }, [account.status]);
@@ -77,6 +84,52 @@ export default function ProfileSurveyPage() {
   );
 
   /**
+   * Record that this screen's questions are ones they would rather not answer,
+   * and move on.
+   *
+   * Pressed again on a screen already declined, it takes the decline back
+   * rather than doing nothing — somebody who changes their mind should not
+   * have to guess that the only way out is to type an answer. The whole set is
+   * written because that is the shape the column holds; see saveDeclined.
+   */
+  const decline = useCallback(() => {
+    if (!screen || !account.userId) return;
+    const keys = questionsOn(screen, answers)
+      .map((q) => q.key)
+      .filter(canDecline);
+    if (keys.length === 0) return;
+
+    const undoing = keys.every((k) => declined.has(k));
+    const next = new Set(declined);
+    for (const key of keys) {
+      if (undoing) next.delete(key);
+      else next.add(key);
+    }
+    setDeclined(next);
+
+    setSaving(true);
+    saveDeclined(account.userId, next)
+      .then((result) => {
+        if (!result.ok) {
+          // Put it back. A decline that silently failed would show a finished
+          // ring on Me and an unfinished one on the next load.
+          setDeclined(declined);
+          setError(result.error ?? 'Could not save that.');
+          return;
+        }
+        setError(null);
+        if (!undoing) commit(index + 1);
+      })
+      .catch((e: unknown) => {
+        setDeclined(declined);
+        setError(e instanceof Error ? e.message : 'Could not save that.');
+      })
+      .finally(() => {
+        setSaving(false);
+      });
+  }, [screen, account.userId, answers, declined, index, commit]);
+
+  /**
    * Whether the screen we are on was already complete when we arrived on it.
    *
    * This is what stops auto-advance from being a trap. A screen of
@@ -94,8 +147,10 @@ export default function ProfileSurveyPage() {
     if (!screen || loading) return;
     if (arrivedAt.current === index) return;
     arrivedAt.current = index;
-    completeOnArrival.current = questionsOn(screen, answers).every((q) => isAnswered(q, answers));
-  }, [screen, index, answers, loading]);
+    completeOnArrival.current = questionsOn(screen, answers).every((q) =>
+      isAnswered(q, answers, declined),
+    );
+  }, [screen, index, answers, declined, loading]);
 
   // A screen with nothing left to decide moves on by itself — but only if the
   // person decided it here, not if it was already done before they arrived.
@@ -106,21 +161,23 @@ export default function ProfileSurveyPage() {
     if (!advancesItself(screen, answers)) return;
     const questions = questionsOn(screen, answers);
     if (questions.length === 0) return;
-    if (!questions.every((q) => isAnswered(q, answers))) return;
+    if (!questions.every((q) => isAnswered(q, answers, declined))) return;
     const timer = setTimeout(() => {
       commit(index + 1);
     }, 260);
     return () => {
       clearTimeout(timer);
     };
-  }, [screen, answers, loading, saving, index, commit]);
+  }, [screen, answers, declined, loading, saving, index, commit]);
 
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
   if (account.status !== 'member') return <Navigate to="/join" replace />;
   if (!screen) return <Navigate to="/me" replace />;
 
   const questions = questionsOn(screen, answers);
-  const progress = progressOf(answers);
+  const progress = progressOf(answers, declined);
+  const declinable = questions.filter((q) => canDecline(q.key));
+  const alreadyDeclined = declinable.length > 0 && declinable.every((q) => declined.has(q.key));
 
   function set(key: string, value: Answer) {
     setAnswers((a) => ({ ...a, [key]: value }));
@@ -226,18 +283,49 @@ export default function ProfileSurveyPage() {
             'Continue'
           )}
         </button>
-        {/* Every question is skippable. The deck works on a half-filled profile,
-            and a form that will not let you past is one you abandon. */}
-        <button
-          type="button"
-          disabled={saving || loading}
-          onClick={() => {
-            commit(index + 1);
-          }}
-          className="mt-1 flex min-h-[38px] w-full items-center justify-center rounded-[13px] font-bold text-[0.84375rem] text-grey transition-colors hover:bg-tint hover:text-ink2"
-        >
-          Skip this one
-        </button>
+        {/* Two different things, and the difference is the point.
+
+            Skip leaves the answer blank, which is honestly indistinguishable
+            from "have not got to it yet" — so the ring keeps counting it as
+            undone and the profile stays unfinished, which is right for
+            somebody who means to come back.
+
+            Prefer not to say is a decision, and the ring counts it. Without it
+            somebody who is never going to answer this one is shown an
+            unfinished profile for ever with no way to say otherwise, which is
+            what the owner asked for. Collapsing the two would either nag the
+            people who have decided or quietly finish a profile somebody meant
+            to return to. */}
+        <div className="mt-1 flex flex-wrap gap-1">
+          <button
+            type="button"
+            disabled={saving || loading}
+            onClick={() => {
+              commit(index + 1);
+            }}
+            className="flex min-h-[38px] flex-1 basis-[9rem] items-center justify-center rounded-[13px] font-bold text-[0.84375rem] text-grey transition-colors hover:bg-tint hover:text-ink2"
+          >
+            Skip this one
+          </button>
+          {declinable.length > 0 ? (
+            <button
+              type="button"
+              disabled={saving || loading}
+              onClick={() => {
+                decline();
+              }}
+              aria-pressed={alreadyDeclined}
+              className={cn(
+                'flex min-h-[38px] flex-1 basis-[9rem] items-center justify-center rounded-[13px] font-bold text-[0.84375rem] transition-colors',
+                alreadyDeclined
+                  ? 'bg-tint text-ink2 hover:bg-line'
+                  : 'text-grey hover:bg-tint hover:text-ink2',
+              )}
+            >
+              {alreadyDeclined ? 'Rather not say ✓' : 'Rather not say'}
+            </button>
+          ) : null}
+        </div>
       </footer>
     </div>
   );
