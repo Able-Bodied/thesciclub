@@ -89,7 +89,7 @@ export function DeckVisibility({
           </p>
           <p className="mt-0.5 text-[0.78125rem] text-ink2 leading-[1.45]">
             {showInBrowse
-              ? 'Other members can find you in Peers. Turn this off and they cannot — you can still browse.'
+              ? 'Other members can find you in Peers. You can still browse either way.'
               : 'No other member can find you in Peers. You can still browse, and events still work.'}
           </p>
         </div>

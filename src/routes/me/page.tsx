@@ -214,7 +214,7 @@ export default function MePage() {
                 <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
                   {percent === 100
                     ? 'You are searchable on every field members filter by.'
-                    : 'The more of it you fill in, the better the club can put you next to the right people.'}
+                    : 'The more you fill in, the better the club can match you.'}
                 </span>
               </span>
               <ChevronRight className="h-5 w-5 flex-none text-grey" />
@@ -252,7 +252,7 @@ export default function MePage() {
                 <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
                   {missing.length > 0
                     ? `Still to add: ${listInWords(missing)}.`
-                    : 'All filled in. Name, photo, birthday, injury and where you live — fix anything onboarding got wrong.'}
+                    : 'All filled in. Fix anything onboarding got wrong.'}
                 </span>
               </span>
               <ChevronRight className="h-5 w-5 flex-none text-grey" />
@@ -280,8 +280,7 @@ export default function MePage() {
                     My profile view
                   </span>
                   <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                    Your profile exactly as the club sees it. You are not in your own deck, so this
-                    is the only way to it.
+                    Your profile exactly as the club sees it.
                   </span>
                 </span>
                 <ChevronRight className="h-5 w-5 flex-none text-grey" />
@@ -335,8 +334,7 @@ export default function MePage() {
                         You can invite people
                       </span>
                       <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                        As a mentor you can put {MENTOR_ALLOWANCE} numbers on the club's list. They
-                        join by verifying that number.
+                        As a mentor you can put {MENTOR_ALLOWANCE} numbers on the club's list.
                       </span>
                     </span>
                   </div>
@@ -391,7 +389,7 @@ export default function MePage() {
           {busy ? 'Signing out…' : 'Sign out'}
         </button>
         <p className="mt-2 text-center text-[0.75rem] text-grey leading-[1.45]">
-          Your profile stays. Signing back in needs a code sent to your number.
+          Your profile stays. Signing back in needs a code.
         </p>
       </div>
     </div>

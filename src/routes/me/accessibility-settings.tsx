@@ -30,13 +30,22 @@ function Row({
   children,
 }: {
   title: string;
-  description: string;
+  /**
+   * Only where the control does not already say it.
+   *
+   * Text size has none: the three buttons are drawn at the sizes they apply, so
+   * a paragraph saying it makes the words bigger is telling somebody what they
+   * are already looking at.
+   */
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
     <fieldset className="border-line border-b py-4 last:border-b-0">
       <legend className="font-extrabold font-head text-[0.9375rem] text-ink">{title}</legend>
-      <p className="mt-1 text-[0.8rem] text-ink2 leading-[1.5]">{description}</p>
+      {description ? (
+        <p className="mt-1 text-[0.8rem] text-ink2 leading-[1.5]">{description}</p>
+      ) : null}
       <div className="mt-2.5">{children}</div>
     </fieldset>
   );
@@ -90,14 +99,11 @@ export function AccessibilitySettings() {
         Display
       </h2>
       <p className="mb-1 text-[0.78125rem] text-grey leading-[1.5]">
-        Saved on this device, so a phone and a desktop can be set differently.
+        Saved on this device, not on your account.
       </p>
 
       <div className="rounded-[17px] border border-line bg-paper px-3.5">
-        <Row
-          title="Text size"
-          description="Makes the words bigger, and the buttons around them with it. Starts from your browser’s own text setting."
-        >
+        <Row title="Text size">
           <div className="flex flex-wrap gap-2">
             {TEXT_SIZES.map((size: TextSize) => (
               <button
@@ -125,10 +131,10 @@ export function AccessibilitySettings() {
           </div>
         </Row>
 
-        <Row
-          title="Bigger tap targets"
-          description="Grows the hit area of small controls, like the filter button, without changing how they look."
-        >
+        {/* Kept, because it is the one thing here somebody would not predict:
+            you press On and nothing looks any different. Without the sentence
+            the setting reads as broken. */}
+        <Row title="Bigger tap targets" description="The hit area only — nothing looks different.">
           <OnOff
             value={preferences.largeTargets}
             onChange={(next) => {
