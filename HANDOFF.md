@@ -726,8 +726,11 @@ what changed and, more usefully, what was looked at and deliberately left.
   A review of this screen first called the space wasted; that was a screenshot
   read at the wrong scale, and widening the row would have cost exactly the
   people the measure protects.
-- **The house-rules sentence under Good standing.** CONTEXT.md asks that losing
-  membership stay visible in the product rather than behind a terms link.
+- ~~**The house-rules sentence under Good standing.**~~ Removed 2026-09-18 at
+  the owner's request — the card says where you stand, and the four things that
+  end a membership sit behind "What can end a membership", which opens on hover,
+  on focus and on tap. CONTEXT.md now says *reachable* rather than *visible*,
+  and the sentences move to the terms of service when there is one.
 - **Two links on an event detail.** The description's own "REGISTER HERE" and
   the "Details on their site" button go to different places, and the button
   already says "Register" when there is a registration URL.

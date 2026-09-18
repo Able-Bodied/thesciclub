@@ -36,8 +36,13 @@ So membership is granted by a person, not claimed by a form:
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
   fact, or repeating outside a room what was said in it — any of those end it.
 
-That last point is load-bearing and must stay visible in the product, not buried in a terms page.
-A club where membership cannot be lost is not a club.
+That last point is load-bearing and must stay reachable in the product. A club where membership
+cannot be lost is not a club.
+
+It no longer has to be *printed* on the Standing card, which is what this said until 2026-09-18.
+The owner's call: the card says where a member stands, and the four things above go in the terms
+of service when there is one to link to. Until then they are one control away, on the card, opening
+on hover, on focus and on tap — reachable is the requirement, not permanently on screen.
 
 ## Vocabulary
 

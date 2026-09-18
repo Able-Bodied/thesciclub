@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { StandingCard, standingFor } from '@/routes/me/standing';
 import type { MyStrike } from '@/routes/me/standing-api';
@@ -22,10 +23,13 @@ function monthsAgo(months: number): string {
 }
 
 describe('what the card says', () => {
-  it('reads Good standing when there is nothing against you', () => {
+  it('reads Good standing when there is nothing against you, and says no more', () => {
+    // The card says where you stand. What can end a membership is behind the
+    // disclosure below it, at the owner's request, until there is a terms page
+    // to link to.
     render(<StandingCard invitedBy="NorCal SCI" strikes={[]} />);
     expect(screen.getByText('Good standing')).toBeInTheDocument();
-    expect(screen.getByText(/Membership can be lost/)).toBeInTheDocument();
+    expect(screen.queryByText(/Selling to members/)).not.toBeInTheDocument();
   });
 
   it('names the reason, not just the count', () => {
@@ -92,5 +96,31 @@ describe('standingFor', () => {
     expect(standingFor(2).title).toBe('Two strikes');
     expect(standingFor(3).title).toMatch(/under review/i);
     expect(standingFor(9).title).toMatch(/under review/i);
+  });
+});
+
+describe('what can end a membership', () => {
+  // Asked for as a hover. Built as hover plus focus plus tap, because
+  // hover-only would put it out of reach of most of this club: a head pointer
+  // can hover, a switch cannot, and a phone has none at all.
+  it('opens on a pointer', async () => {
+    render(<StandingCard invitedBy={null} strikes={[]} />);
+    await userEvent.hover(screen.getByRole('button', { name: /what can end a membership/i }));
+    expect(screen.getByText(/Selling to members/)).toBeInTheDocument();
+  });
+
+  it('opens on keyboard focus, which a switch can reach', async () => {
+    render(<StandingCard invitedBy={null} strikes={[]} />);
+    await userEvent.tab();
+    expect(screen.getByRole('button', { name: /what can end a membership/i })).toHaveFocus();
+    expect(screen.getByText(/Selling to members/)).toBeInTheDocument();
+  });
+
+  it('opens on a tap, where there is no hover at all', async () => {
+    render(<StandingCard invitedBy={null} strikes={[]} />);
+    const trigger = screen.getByRole('button', { name: /what can end a membership/i });
+    await userEvent.click(trigger);
+    expect(screen.getByText(/Selling to members/)).toBeInTheDocument();
+    expect(trigger).toHaveAttribute('aria-expanded', 'true');
   });
 });

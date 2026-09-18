@@ -260,12 +260,13 @@ describe('MePage', () => {
     expect(screen.getByRole('link', { name: /Your invites/ })).toHaveAttribute('href', '/invites');
   });
 
-  it('states the rule about losing membership, rather than linking away to it', () => {
-    // CONTEXT.md asks that this stay visible in the product, and there is no
-    // house-rules page for a link to point at.
+  it('keeps what can end a membership reachable, without printing it', () => {
+    // The owner took the paragraph off the card: it says where you stand, and
+    // the four things that end a membership go in the terms of service when
+    // there is one. Reachable is still the requirement — see CONTEXT.md.
     renderMe();
-    expect(screen.getByText(/Membership can be lost/)).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /house rules/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Selling to members/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /what can end a membership/i })).toBeInTheDocument();
   });
 
   it('signs out', async () => {
