@@ -304,37 +304,56 @@ export default function MePage() {
           </div>
 
           <div>
-            <SectionHeading>Invites</SectionHeading>
-            <div className="rounded-[17px] border border-line bg-paper p-3.5">
-              <div className="flex items-start gap-2.5">
-                <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-navy">
-                  <Mail className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
-                    {member?.type === 'mentor' ? 'You can invite people' : 'Members cannot invite'}
-                  </span>
-                  <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                    {member?.type === 'mentor'
-                      ? `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club's list. They join by verifying that number.`
-                      : "Only a member organization or a peer mentor can put a number on the club's list. It is what keeps the club closed."}
-                  </span>
-                </span>
-              </div>
+            {/* Mentors only, at the owner's request, and the reasoning
+                generalises: do not give a member a card about something they
+                cannot do.
+             *
+             * This one used to render for everybody in two variants — "You can
+             * invite people" with a way in, or "Members cannot invite" with a
+             * paragraph explaining the rule. The second was a section heading,
+             * a bordered card and an icon spent on telling most of the club
+             * about a thing that was never going to happen to them, on the one
+             * screen that is supposed to be about them.
+             *
+             * Note what is *not* being removed by the same argument. Home and
+             * Chat still say plainly that they are not built, and the official
+             * account still says messaging does not exist. Those are different:
+             * a member looking for a feature that is coming needs to find out
+             * where it stands, and silence there reads as a broken app rather
+             * than as a deferred one. The rule is about permission, not about
+             * absence — see CONTEXT.md, which defers both deliberately. */}
+            {member?.type === 'mentor' ? (
+              <>
+                <SectionHeading>Invites</SectionHeading>
+                <div className="rounded-[17px] border border-line bg-paper p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-navy">
+                      <Mail className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
+                        You can invite people
+                      </span>
+                      <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
+                        As a mentor you can put {MENTOR_ALLOWANCE} numbers on the club's list. They
+                        join by verifying that number.
+                      </span>
+                    </span>
+                  </div>
 
-              {/* The card stated the allowance and then offered no way to
-                  spend it — /admin was the only invite surface and an
-                  ordinary mentor cannot reach it. */}
-              {member?.type === 'mentor' ? (
-                <Link
-                  to="/invites"
-                  className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-[11px] border-[1.6px] border-navy font-bold font-head text-[0.875rem] text-navy"
-                >
-                  Your invites
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              ) : null}
-            </div>
+                  {/* The card stated the allowance and then offered no way to
+                      spend it — /admin was the only invite surface and an
+                      ordinary mentor cannot reach it. */}
+                  <Link
+                    to="/invites"
+                    className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-[11px] border-[1.6px] border-navy font-bold font-head text-[0.875rem] text-navy"
+                  >
+                    Your invites
+                    <ChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </>
+            ) : null}
 
             {/* Its own heading. It sat directly under the Invites card with
                 nothing between them, so the club's admin tools read as part of

@@ -243,15 +243,21 @@ describe('MePage', () => {
     });
   });
 
-  it('tells a peer they cannot invite, and why', () => {
+  // The whole section, not just the button. A peer used to get a heading, a
+  // bordered card and an icon spent on telling them about a thing that was
+  // never going to happen to them, on the one screen that is about them.
+  it('says nothing about invites to somebody who cannot send one', () => {
     renderMe();
-    expect(screen.getByText('Members cannot invite')).toBeInTheDocument();
+    expect(screen.queryByText('Invites')).not.toBeInTheDocument();
+    expect(screen.queryByText(/cannot invite/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Your invites/ })).not.toBeInTheDocument();
   });
 
-  it('tells a mentor they can', () => {
+  it('tells a mentor they can, and offers the way in', () => {
     own.member = ownMember({ type: 'mentor' });
     renderMe();
     expect(screen.getByText('You can invite people')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Your invites/ })).toHaveAttribute('href', '/invites');
   });
 
   it('states the rule about losing membership, rather than linking away to it', () => {
