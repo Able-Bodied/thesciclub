@@ -29,7 +29,8 @@ Branch `scaffold-and-peers-deck`, ~164 commits ahead of `origin/main`. The
 owner has read-only access to `Able-Bodied/thesciclub` and is waiting on write
 access, so **`origin` cannot be pushed to** — but there is a second remote,
 `personal` (`Alfredx48/TheSciClub`), and the branch is pushed there. Both its
-`main` and its `scaffold-and-peers-deck` sit at `a830353`, the branch head.
+`main` and its `scaffold-and-peers-deck` sit at the branch head — check with
+`git ls-remote --heads personal` rather than trusting a sha written here.
 
 Say which `main` you mean. `origin/main` is at `851fcb1` and is nearly two
 hundred commits behind; `personal/main` is the branch head and is what the
@@ -41,7 +42,7 @@ organizations) with 124 real events ingested from NorCal SCI's and
 AdaptiveRecHub's live calendars. Also: admin tools, the invite system, an 18+
 gate, and a details editor.
 
-676 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
+736 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
 ## The hosted database is ahead of `main`, and thirteen migrations are live on it
