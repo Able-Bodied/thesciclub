@@ -28,6 +28,7 @@ import {
   withdrawnNumbers,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { STRIKE_LIMIT } from '@/routes/me/standing-api';
 
 /**
  * The roster, for an administrator.
@@ -52,6 +53,11 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Whose membership is waiting on an answer, by member id. Set by the strike
+  // that reaches the limit and cleared by whatever the administrator chooses,
+  // "Not now" included — it is a question asked at the moment it is owed, not
+  // a state the row is stuck in.
+  const [deciding, setDeciding] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [memberResult, inviteResult, blockedRows, strikeResult] = await Promise.all([
@@ -91,7 +97,16 @@ export default function AdminPage() {
    * connection would leave the row spinning with no error shown. Everything is
    * caught here instead, including a thrown one.
    */
-  function act(id: string, run: () => Promise<{ ok: boolean; error?: string }>) {
+  function act<T extends { ok: boolean; error?: string }>(
+    id: string,
+    run: () => Promise<T>,
+    /**
+     * Run after the roster has been reloaded, and only where the action
+     * worked. After, so that anything it opens is looking at the counts the
+     * action produced rather than the ones from before it.
+     */
+    after?: (result: T) => void,
+  ) {
     setBusyId(id);
     run()
       .then(async (result) => {
@@ -101,6 +116,7 @@ export default function AdminPage() {
         }
         setError(null);
         await load();
+        after?.(result);
       })
       .catch((e: unknown) => {
         setError(e instanceof Error ? e.message : 'That did not work.');
@@ -305,11 +321,25 @@ export default function AdminPage() {
                     act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
                   }}
                   onStrike={(reason) => {
-                    act(m.id, () => addStrike(m.id, reason));
+                    act(
+                      m.id,
+                      () => addStrike(m.id, reason),
+                      // The strike that reaches the limit is the last one
+                      // there is, so it is also the moment the membership
+                      // itself has to be answered for. Asked here rather than
+                      // left for somebody to notice a red count later.
+                      (result) => {
+                        if ((result.strikes ?? 0) >= STRIKE_LIMIT) setDeciding(m.id);
+                      },
+                    );
                   }}
                   strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
                   onWithdrawStrike={(id, reason) => {
                     act(m.id, () => withdrawStrike(id, reason));
+                  }}
+                  deciding={deciding === m.id}
+                  onCloseDecision={() => {
+                    setDeciding(null);
                   }}
                 />
               ))}
@@ -385,11 +415,25 @@ export default function AdminPage() {
                     act(m.id, () => (block ? blockNumber(m.phone, reason) : deleteMember(m.id)));
                   }}
                   onStrike={(reason) => {
-                    act(m.id, () => addStrike(m.id, reason));
+                    act(
+                      m.id,
+                      () => addStrike(m.id, reason),
+                      // The strike that reaches the limit is the last one
+                      // there is, so it is also the moment the membership
+                      // itself has to be answered for. Asked here rather than
+                      // left for somebody to notice a red count later.
+                      (result) => {
+                        if ((result.strikes ?? 0) >= STRIKE_LIMIT) setDeciding(m.id);
+                      },
+                    );
                   }}
                   strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
                   onWithdrawStrike={(id, reason) => {
                     act(m.id, () => withdrawStrike(id, reason));
+                  }}
+                  deciding={deciding === m.id}
+                  onCloseDecision={() => {
+                    setDeciding(null);
                   }}
                 />
               ))}
@@ -441,6 +485,8 @@ function Row({
   onStrike,
   strikes,
   onWithdrawStrike,
+  deciding,
+  onCloseDecision,
 }: {
   member: AdminMember;
   busy: boolean;
@@ -454,6 +500,9 @@ function Row({
   /** This member's strikes that still count. Withdrawn and expired ones are not here. */
   strikes: Strike[];
   onWithdrawStrike: (id: string, reason: string) => void;
+  /** Whether the strike just issued was the last one, and the membership is owed an answer. */
+  deciding: boolean;
+  onCloseDecision: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [block, setBlock] = useState(false);
@@ -466,6 +515,10 @@ function Row({
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [withdrawReason, setWithdrawReason] = useState('');
   const [listingStrikes, setListingStrikes] = useState(false);
+  // The database refuses a fourth (20260917000000), so the button that would
+  // ask for one is not offered. The count beside the name is already saying
+  // why, in red, and it opens the list where the sentence about it lives.
+  const atLimit = member.strikes >= STRIKE_LIMIT;
 
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
@@ -543,13 +596,15 @@ function Row({
                   actually sees. The column still stores 'suspended'; renaming a
                   check constraint and the rows under it is churn for a word
                   nobody outside the schema reads. */}
-              <SmallButton
-                onClick={() => {
-                  setStriking(true);
-                }}
-              >
-                Strike
-              </SmallButton>
+              {atLimit ? null : (
+                <SmallButton
+                  onClick={() => {
+                    setStriking(true);
+                  }}
+                >
+                  Strike
+                </SmallButton>
+              )}
               {member.status === 'active' ? (
                 <SmallButton onClick={onPause}>Pause</SmallButton>
               ) : (
@@ -567,6 +622,59 @@ function Row({
           )}
         </span>
       )}
+
+      {deciding ? (
+        /* The question the third strike asks, at the moment it asks it.
+           
+           Nothing in the database ends a membership — see the header of
+           20260916040000, which is unchanged: removing cascades through
+           event_rsvps and event_dismissals and would silently destroy a
+           member's whole "Been to" record, and the club's shape is that
+           membership is taken by a person who can be asked why. So this is a
+           prompt and not a consequence, and "Not now" is one of the answers.
+           
+           What it fixes is the gap between a limit and a decision. The count
+           went red on the roster and then waited for somebody to notice it,
+           which is exactly the shape of thing that does not get noticed. */
+        <Panel
+          title={`${member.displayName} is on ${STRIKE_LIMIT} strikes.`}
+          buttons={
+            <>
+              <PanelButton
+                onClick={() => {
+                  onCloseDecision();
+                  onPause();
+                }}
+              >
+                Pause their membership
+              </PanelButton>
+              <PanelButton
+                destructive
+                onClick={() => {
+                  // Straight into the panel Remove already opens, rather than
+                  // a second one asking the same things: the cascade warning
+                  // and the "block this number too" tick are the whole of what
+                  // removing needs to ask, and a ban is that tick.
+                  onCloseDecision();
+                  setConfirming(true);
+                }}
+              >
+                Remove them from the club
+              </PanelButton>
+              <PanelButton onClick={onCloseDecision}>Not now</PanelButton>
+            </>
+          }
+        >
+          <p>
+            That is the last strike there is — no more can be given. Nothing has happened to their
+            membership; that is yours to decide.
+          </p>
+          <p className="mt-1.5">
+            Pausing keeps their profile and their record of what they have been to, and is undone
+            with Resume. Removing deletes both, and can also block the number.
+          </p>
+        </Panel>
+      ) : null}
 
       {listingStrikes && strikes.length > 0 ? (
         <div className="mt-2 w-full rounded-[12px] border border-line bg-canvas p-3">
@@ -604,6 +712,9 @@ function Row({
               a button beside it would be offering nothing. */}
           <p className="mt-2.5 text-[0.75rem] text-grey leading-[1.5]">
             Withdrawing keeps the strike on the record and stops it counting.
+            {atLimit
+              ? ' They are at the limit — no more can be given. Pause or remove them, or withdraw one.'
+              : ''}
           </p>
         </div>
       ) : null}
@@ -782,27 +893,74 @@ function ConfirmPanel({
   onConfirm: () => void;
 }) {
   return (
+    <Panel
+      title={title}
+      buttons={
+        <>
+          <PanelButton onClick={onCancel}>Cancel</PanelButton>
+          <PanelButton destructive disabled={confirmDisabled} onClick={onConfirm}>
+            {confirmLabel}
+          </PanelButton>
+        </>
+      }
+    >
+      {children}
+    </Panel>
+  );
+}
+
+/**
+ * The shell both in-row panels share.
+ *
+ * Separated from ConfirmPanel when the third strike gained a panel that asks
+ * which of two things to do rather than whether to do one — Pause, Remove and
+ * Not now do not fit a confirm and a cancel. The shell is the part that has to
+ * stay identical: same width, same tint, same place in the row, so a panel that
+ * opens under a name always looks like the same kind of thing.
+ */
+function Panel({
+  title,
+  children,
+  buttons,
+}: {
+  title: string;
+  children: React.ReactNode;
+  buttons: React.ReactNode;
+}) {
+  return (
     <div className="mt-2 w-full rounded-[12px] border border-destructive/30 bg-destructive/5 p-3">
       <p className="font-extrabold font-head text-[0.84375rem] text-ink">{title}</p>
       <div className="mt-1.5 text-[0.78125rem] text-ink2 leading-[1.5]">{children}</div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="min-h-[38px] rounded-full bg-tint px-3.5 font-semibold text-[0.78125rem] text-navy transition-colors hover:bg-line"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={confirmDisabled}
-          className="min-h-[38px] rounded-full bg-destructive px-3.5 font-bold font-head text-[0.78125rem] text-white transition-colors hover:bg-destructive/85 disabled:opacity-40 disabled:hover:bg-destructive"
-        >
-          {confirmLabel}
-        </button>
-      </div>
+      <div className="mt-3 flex flex-wrap gap-2">{buttons}</div>
     </div>
+  );
+}
+
+function PanelButton({
+  children,
+  destructive = false,
+  disabled = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  destructive?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'min-h-[38px] rounded-full px-3.5 text-[0.78125rem] transition-colors',
+        destructive
+          ? 'bg-destructive font-bold font-head text-white hover:bg-destructive/85 disabled:opacity-40 disabled:hover:bg-destructive'
+          : 'bg-tint font-semibold text-navy hover:bg-line disabled:opacity-40 disabled:hover:bg-tint',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

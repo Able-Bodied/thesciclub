@@ -529,15 +529,33 @@ export async function fetchStrikes(): Promise<
   return { ok: true, strikes: (result.data as StrikeRow[]).map(toStrike) };
 }
 
+/**
+ * Give somebody a strike, and report how many now count.
+ *
+ * The count comes back from `admin_add_strike` rather than being worked out
+ * here, because /admin acts on it: the strike that reaches `strike_limit()` is
+ * the one that opens the question of what happens to the membership. Counting
+ * on this side would be a second implementation of `active_strike_count()`,
+ * free to drift from the one the database refuses a fourth strike on.
+ *
+ * `strikes` is undefined on a database that predates 20260917000000, where the
+ * function returned void. Nothing is offered on that reading — an absent count
+ * is not a third strike.
+ */
 export async function addStrike(
   target: string,
   reason: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await getSupabase().rpc('admin_add_strike', {
+): Promise<{ ok: boolean; error?: string; strikes?: number }> {
+  // Not destructured: the client types rpc data as `any`, and taking it out
+  // by name would spread that through the return. A number is what this
+  // function gives back; anything else is a database that does not report it.
+  const result = await getSupabase().rpc('admin_add_strike', {
     target,
     strike_reason: reason,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  if (result.error) return { ok: false, error: result.error.message };
+  const count: unknown = result.data;
+  return typeof count === 'number' ? { ok: true, strikes: count } : { ok: true };
 }
 
 export async function withdrawStrike(

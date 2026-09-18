@@ -64,6 +64,16 @@ export async function loadMyStrikes(
 export const STRIKE_MONTHS = 12;
 
 /**
+ * How many strikes a membership survives. Mirrors `strike_limit()`.
+ *
+ * The database refuses a fourth — see 20260917000000 — so this is not the
+ * client's own rule about when to stop offering the button. It is the same
+ * number said on this side, so the card can read "one more" at two without
+ * counting to three by hand.
+ */
+export const STRIKE_LIMIT = 3;
+
+/**
  * Whether a strike still counts towards three.
  *
  * The same two conditions `active_strike_count()` applies, restated here
