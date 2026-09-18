@@ -234,9 +234,33 @@ export async function savePhoto(
     .upload(path, blob, { upsert: true, contentType: blob.type });
   if (upload.error) return { ok: false, error: upload.error.message };
 
+  await removeOtherPhotos(userId, path);
+
   const { error } = await supabase.from('members').update({ photo_path: path }).eq('id', userId);
   if (error) return { ok: false, error: error.message };
   return { ok: true, path };
+}
+
+/**
+ * Delete every other object in this member's photo folder.
+ *
+ * The path is `<id>/profile.<ext>`, so changing the *type* of your photograph
+ * writes a new object and leaves the old one behind for ever — the row moves,
+ * the file does not, and a public bucket keeps serving it. Found on the live
+ * bucket: one member had both `profile.jpg` and `profile.jpeg`, 718KB of it
+ * unreferenced by anything.
+ *
+ * Runs after the upload, never before: a failure here costs some bytes, and a
+ * failure the other way round costs the photograph. It is deliberately not
+ * awaited into the result for the same reason — a member whose new picture is
+ * stored should not see an error because the old one would not delete.
+ */
+async function removeOtherPhotos(userId: string, keep: string): Promise<void> {
+  const supabase = getSupabase();
+  const listed = await supabase.storage.from('photos').list(userId);
+  if (listed.error) return;
+  const stale = listed.data.map((o) => `${userId}/${o.name}`).filter((full) => full !== keep);
+  if (stale.length > 0) await supabase.storage.from('photos').remove(stale);
 }
 
 export async function removePhoto(userId: string): Promise<{ ok: boolean; error?: string }> {
