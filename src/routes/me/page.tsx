@@ -384,9 +384,6 @@ export default function MePage() {
           <LogOut className="h-4 w-4" />
           {busy ? 'Signing out…' : 'Sign out'}
         </button>
-        <p className="mt-2 text-center text-[0.75rem] text-grey leading-[1.45]">
-          Your profile stays. Signing back in needs a code.
-        </p>
       </div>
     </div>
   );

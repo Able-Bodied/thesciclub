@@ -76,13 +76,12 @@ export function AccessibilitySettings() {
     <section aria-labelledby="display-settings-heading" className="mt-6">
       <h2
         id="display-settings-heading"
-        className="mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+        // mb-2.5, matching the other section headings on Me. It was mb-1
+        // because a paragraph sat under it and carried the rest of the gap.
+        className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
         Display
       </h2>
-      <p className="mb-1 text-[0.78125rem] text-grey leading-[1.5]">
-        Saved on this device, not on your account.
-      </p>
 
       <div className="rounded-[17px] border border-line bg-paper px-3.5">
         <Row title="Text size">

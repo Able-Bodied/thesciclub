@@ -277,11 +277,6 @@ describe('MePage', () => {
     });
   });
 
-  it('says what signing out does and does not do', () => {
-    renderMe();
-    expect(screen.getByText(/Your profile stays/)).toBeInTheDocument();
-  });
-
   it('surfaces a failure rather than pretending it worked', async () => {
     auth.failWith = 'network is unreachable';
     renderMe();
