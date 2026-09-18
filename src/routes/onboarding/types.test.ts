@@ -3,8 +3,10 @@ import {
   INITIAL_ONBOARDING_DATA as base,
   canAdvance,
   injuryDateOf,
+  injuryStepDeclined,
   type OnboardingData,
   stepNumber,
+  withInjuryDeclined,
 } from '@/routes/onboarding/types';
 
 const data = (o: Partial<OnboardingData> = {}): OnboardingData => ({ ...base, ...o });
@@ -104,5 +106,43 @@ describe('stepNumber', () => {
   it('does not number the conditional steps', () => {
     expect(stepNumber('claim')).toBeNull();
     expect(stepNumber('phone')).toBeNull();
+  });
+});
+
+describe('declining the injury step', () => {
+  // Until now the only way past a question somebody did not want to answer was
+  // "Finish later", which abandons the rest of the wizard — a much bigger thing
+  // than declining one page. Declining is an answer here as it is in the
+  // survey, so the step is satisfied by either.
+  it('lets somebody past without a level or a date', () => {
+    expect(canAdvance('injury', data())).toBe(false);
+    expect(canAdvance('injury', data({ declined: ['exactLevel', 'injuryDate'] }))).toBe(true);
+  });
+
+  it('is not satisfied by declining only half of it', () => {
+    expect(canAdvance('injury', data({ declined: ['exactLevel'] }))).toBe(false);
+    expect(canAdvance('injury', data({ declined: ['exactLevel'], injuryYear: '2013' }))).toBe(true);
+  });
+
+  it('reports whether the whole step is declined', () => {
+    expect(injuryStepDeclined(data())).toBe(false);
+    expect(injuryStepDeclined(data({ declined: ['exactLevel'] }))).toBe(false);
+    expect(injuryStepDeclined(data({ declined: ['exactLevel', 'injuryDate'] }))).toBe(true);
+  });
+
+  it('takes the decline back when pressed again, and leaves others alone', () => {
+    const declined = data({ declined: ['photo', 'exactLevel', 'injuryDate'] });
+    expect(withInjuryDeclined(declined, false)).toEqual(['photo']);
+  });
+
+  it('does not record the same key twice', () => {
+    const already = data({ declined: ['exactLevel'] });
+    expect(withInjuryDeclined(already, true)).toEqual(['exactLevel', 'injuryDate']);
+  });
+
+  // 'Do not know' is already on the completeness list as a real answer, and the
+  // same reasoning that keeps it out of missingDetails keeps it out of here.
+  it('says nothing about completeness', () => {
+    expect(withInjuryDeclined(data(), true)).not.toContain('completeness');
   });
 });

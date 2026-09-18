@@ -6,7 +6,9 @@ import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injur
 import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import {
+  DECLINABLE_DETAILS,
   type DetailKey,
+  detailIsFilled,
   loadDetails,
   type MemberDetails,
   removePhoto,
@@ -49,6 +51,37 @@ export default function ProfileDetailsPage() {
 
   function set(patch: Partial<MemberDetails>) {
     setDetails((d) => (d ? { ...d, ...patch } : d));
+    liftDeclineFor(patch);
+  }
+
+  /**
+   * Filling in a declined field takes the decline back.
+   *
+   * Somebody who changes their mind should be able to just answer, without
+   * having to notice that a toggle above is still on — and a field holding "San
+   * Jose" beside a lit "Rather not say" is the app contradicting itself about
+   * what it was told. The Field comment below promised this before anything
+   * did it.
+   *
+   * Persisted immediately, like the toggle, because a decline is not part of
+   * the form's Save. One write: the first keystroke clears it, and after that
+   * there is no decline left to match.
+   */
+  function liftDeclineFor(patch: Partial<MemberDetails>) {
+    if (!details || !account.userId) return;
+    const after = { ...details, ...patch };
+    const lifted = DECLINABLE_DETAILS.filter(
+      ({ key }) => details.declined.includes(key) && detailIsFilled(after, key),
+    ).map(({ key }) => key as string);
+    if (lifted.length === 0) return;
+
+    const next = details.declined.filter((key) => !lifted.includes(key));
+    setDetails((d) => (d ? { ...d, declined: next } : d));
+    void saveDeclined(account.userId, new Set(next)).then((result) => {
+      if (result.ok) return;
+      setDetails((d) => (d ? { ...d, declined: details.declined } : d));
+      setError(result.error ?? 'Could not save that.');
+    });
   }
 
   /**
@@ -368,8 +401,9 @@ export default function ProfileDetailsPage() {
  * job without a birthday — and offering a control the database would reject is
  * worse than not offering one.
  *
- * The control below stays editable when declined. Somebody who changes their
- * mind should be able to just fill it in, and the decline lifts when they do.
+ * The control below stays editable when declined, and filling it in lifts the
+ * decline — see `liftDeclineFor`. Somebody who changes their mind should be
+ * able to just answer.
  */
 function Field({
   label,

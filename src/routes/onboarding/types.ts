@@ -27,6 +27,15 @@ export interface OnboardingData {
   zip: string;
   photoFile: File | null;
   photoPreviewUrl: string | null;
+  /**
+   * Things the person said they would rather not give, keyed the way
+   * `DECLINABLE_DETAILS` keys them — see 20260917030000.
+   *
+   * Collected here rather than written as it happens because the member row
+   * does not exist yet: onboarding assembles the whole thing and inserts it
+   * once, so a decline is another answer to carry to the insert.
+   */
+  declined: string[];
 }
 
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
@@ -44,6 +53,7 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   zip: '',
   photoFile: null,
   photoPreviewUrl: null,
+  declined: [],
 };
 
 /**
@@ -107,7 +117,14 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
       // refuses anybody younger, so the form must not let them get that far.
       return isAdult(data.birthDate);
     case 'injury':
-      return data.exactLevel !== null && injuryDateOf(data) !== null;
+      // Declining is an answer here exactly as it is in the survey, so the
+      // step is satisfied by either. Without this the only way past a question
+      // somebody does not want to answer was "Finish later", which abandons
+      // the rest of the wizard — a much bigger thing than declining one page.
+      return (
+        (data.exactLevel !== null || data.declined.includes('exactLevel')) &&
+        (injuryDateOf(data) !== null || data.declined.includes('injuryDate'))
+      );
     case 'city':
       // A state is the coarsest thing we always want. City can be blank —
       // "somewhere else" is a real answer.
@@ -138,4 +155,32 @@ export interface ClaimableProfile {
   exactLevel: ExactLevel | null;
   completeness: Completeness;
   affiliations: string[];
+}
+
+/**
+ * What the injury step asks that can be declined.
+ *
+ * Not `completeness`: 'Do not know' is already on that list as a real answer,
+ * and the same reasoning that keeps it out of `missingDetails` keeps it out of
+ * here — an honest answer is not a gap, and offering to decline it twice would
+ * be offering the same thing under two names.
+ */
+export const INJURY_STEP_DECLINABLE = ['exactLevel', 'injuryDate'] as const;
+
+/** Whether the injury step has already been declined, in whole. */
+export function injuryStepDeclined(data: OnboardingData): boolean {
+  return INJURY_STEP_DECLINABLE.every((key) => data.declined.includes(key));
+}
+
+/**
+ * Toggle the injury step's decline.
+ *
+ * Pressed again it takes the decline back, the same way the survey's does:
+ * somebody who changes their mind should not have to guess that the only way
+ * out is to answer.
+ */
+export function withInjuryDeclined(data: OnboardingData, declined: boolean): string[] {
+  const keys: string[] = [...INJURY_STEP_DECLINABLE];
+  if (!declined) return data.declined.filter((k) => !keys.includes(k));
+  return [...data.declined.filter((k) => !keys.includes(k)), ...keys];
 }

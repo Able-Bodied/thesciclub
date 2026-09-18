@@ -22,9 +22,11 @@ import {
   COUNTED_STEPS,
   canAdvance,
   INITIAL_ONBOARDING_DATA,
+  injuryStepDeclined,
   type OnboardingData,
   type Step,
   stepNumber,
+  withInjuryDeclined,
 } from '@/routes/onboarding/types';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
 
@@ -318,6 +320,28 @@ export default function OnboardingPage() {
               skipping with nothing in it would write a row the database
               refuses, and the refusal would arrive as a sentence about a
               trigger. */}
+          {/* "Rather not say" on the injury step, at the owner's request, and
+              the same thing the survey offers on every screen: a decline is an
+              answer, and a profile made of decisions is finished.
+           *
+           * It is not "Finish later" and the two have to stay apart. Finish
+           * later abandons the whole of the rest of the wizard; this answers
+           * this one page and goes on to the next, which until now was not
+           * possible at all — somebody who did not want to give their level had
+           * to leave the flow to get past it.
+           *
+           * It declines the level and the date together, the way the survey
+           * declines a screen. Complete-or-incomplete is not included: 'Do not
+           * know' is already on that list as a real answer. */}
+          {step === 'injury' ? (
+            <LinkButton
+              onClick={() => {
+                set({ declined: withInjuryDeclined(data, !injuryStepDeclined(data)) });
+              }}
+            >
+              {injuryStepDeclined(data) ? 'Rather not say ✓' : 'Rather not say'}
+            </LinkButton>
+          ) : null}
           {SKIPPABLE.includes(step) && (step !== 'birthday' || ready) ? (
             <LinkButton
               onClick={() => {

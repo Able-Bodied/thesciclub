@@ -68,6 +68,12 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     // place, and two people who skipped it are not from the same one.
     state: data.state.trim() || null,
     photo_path: photoPath,
+    // Carried from the wizard rather than written as it happened: the row does
+    // not exist until this insert, so a decline collected on the injury step
+    // has nowhere to go until now. The database refuses the name and the
+    // birthday here (members_declined_excludes_required) and neither can be
+    // declined in the flow, so nothing filters them out on the way.
+    declined: data.declined,
   });
 
   if (error) return { ok: false, error: error.message };

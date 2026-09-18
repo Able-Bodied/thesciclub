@@ -3,17 +3,25 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
+import type * as DetailsApi from '@/routes/profile/details-api';
 import type { MemberDetails } from '@/routes/profile/details-api';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const api = vi.hoisted(() => ({
   details: null as MemberDetails | null,
   saves: [] as { details: MemberDetails; levelRange: string }[],
+  declineSaves: [] as string[][],
   failWith: null as string | null,
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
-vi.mock('@/routes/profile/details-api', () => ({
+// Partial. `DECLINABLE_DETAILS`, `detailIsFilled`, `missingDetails` and the
+// rest are pure and the page should be running the real ones — and a whole
+// module replacement here reported "10 passed" while throwing seven unhandled
+// errors, because the page reached for an export the mock did not have. The
+// summary line said nothing; only the exit code did.
+vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof DetailsApi>()),
   loadDetails: () =>
     Promise.resolve(
       api.details
@@ -27,6 +35,13 @@ vi.mock('@/routes/profile/details-api', () => ({
   },
   savePhoto: () => Promise.resolve({ ok: true as const, path: 'u1/profile.jpg' }),
   removePhoto: () => Promise.resolve({ ok: true }),
+}));
+
+vi.mock('@/routes/profile/profile-api', () => ({
+  saveDeclined: (_id: string, declined: ReadonlySet<string>) => {
+    api.declineSaves.push([...declined]);
+    return Promise.resolve({ ok: true });
+  },
 }));
 
 const { default: ProfileDetailsPage } = await import('@/routes/profile/details');
@@ -62,6 +77,7 @@ beforeEach(() => {
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Nicole' };
   api.details = details();
   api.saves = [];
+  api.declineSaves = [];
   api.failWith = null;
 });
 
@@ -144,5 +160,61 @@ describe('Your details', () => {
     await screen.findByText('permission denied');
     expect(screen.queryByText('The Me tab')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
+  });
+});
+
+describe('declining a detail', () => {
+  it('offers Rather not say on the five the ring counts, and on nothing else', async () => {
+    render(
+      <MemoryRouter initialEntries={['/profile/details']}>
+        <Routes>
+          <Route path="/profile/details" element={<ProfileDetailsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('Name');
+    // Five: photo, level, when injured, state, city. Not the name, not the
+    // birthday — the database refuses a decline for either, so offering one
+    // would be offering a button it would answer with a constraint violation.
+    expect(screen.getAllByRole('button', { name: /Rather not say/ })).toHaveLength(5);
+  });
+
+  it('records the decline on the tap, not on Save', async () => {
+    render(
+      <MemoryRouter initialEntries={['/profile/details']}>
+        <Routes>
+          <Route path="/profile/details" element={<ProfileDetailsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByLabelText('City or town');
+    const buttons = screen.getAllByRole('button', { name: /Rather not say/ });
+    // The last of the five is the city, which is the last field on the form.
+    const city = buttons[buttons.length - 1];
+    if (!city) throw new Error('no decline button');
+    await userEvent.click(city);
+    await waitFor(() => {
+      expect(api.declineSaves).toEqual([['city']]);
+    });
+    expect(api.saves).toEqual([]);
+  });
+
+  // The Field comment promised this before anything did it: a field holding
+  // "San Jose" beside a lit "Rather not say" is the app contradicting itself
+  // about what it was told.
+  it('lifts the decline when the field is filled in', async () => {
+    api.details = details({ city: null, declined: ['city'] });
+    render(
+      <MemoryRouter initialEntries={['/profile/details']}>
+        <Routes>
+          <Route path="/profile/details" element={<ProfileDetailsPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    const city = await screen.findByLabelText('City or town');
+    await userEvent.type(city, 'Aptos');
+    await waitFor(() => {
+      expect(api.declineSaves).toEqual([[]]);
+    });
   });
 });
