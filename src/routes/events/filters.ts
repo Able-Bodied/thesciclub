@@ -27,6 +27,7 @@ import type {
   EventFormat,
   EventsSegment,
   EventTag,
+  Organization,
 } from '@/types/domain';
 
 /** What the viewer has already said about these events. */
@@ -318,4 +319,38 @@ export function tagsIn(events: ClubEvent[]): EventTag[] {
 /** The organization ids hosting any of these events, for the "Hosted by" group. */
 export function organizationIdsIn(events: ClubEvent[]): Set<string> {
   return new Set(events.flatMap((event) => (event.organizationId ? [event.organizationId] : [])));
+}
+
+/* ------------------------------------------------- the ones you follow */
+
+/**
+ * Which of these organizations the viewer follows.
+ *
+ * Given the organizations *hosting something in the current list*, not all 23 —
+ * which is the whole point of taking them as an argument rather than reading
+ * the directory. 18 of the 23 run nothing at all, so a "ones you follow" filter
+ * built from the directory could select five bodies with no events between them
+ * and show an empty list, which reads as a broken filter rather than as an
+ * honest answer about a calendar.
+ */
+export function followedHostIds(
+  organizations: Organization[],
+  following: ReadonlySet<string>,
+): string[] {
+  return organizations.filter((o) => following.has(o.id)).map((o) => o.id);
+}
+
+/**
+ * Whether the host filter is currently set to exactly these ids.
+ *
+ * Set equality rather than "contains", because the chip is a toggle and has to
+ * know whether pressing it again should clear. An empty `ids` is never a match:
+ * a viewer who follows nothing that is hosting is not "showing the ones they
+ * follow", they have no filter on at all, and lighting the chip up would say
+ * the list had been narrowed when it had not.
+ */
+export function selectsExactly(selected: readonly string[], ids: readonly string[]): boolean {
+  if (ids.length === 0 || selected.length !== ids.length) return false;
+  const chosen = new Set(selected);
+  return ids.every((id) => chosen.has(id));
 }

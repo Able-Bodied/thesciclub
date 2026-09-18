@@ -2,9 +2,11 @@ import { ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useEvents } from '@/lib/events';
 import { useBrowseMembers } from '@/lib/members';
+import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { photoUrlFor } from '@/lib/photos';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
@@ -24,6 +26,7 @@ export default function OrganizationDetailPage() {
   const location = useLocation();
   const back = backToEvents(location);
   const { byId, loading } = useOrganizations();
+  const follows = useOrganizationFollows();
   const { events } = useEvents();
   const { members } = useBrowseMembers();
 
@@ -83,6 +86,19 @@ export default function OrganizationDetailPage() {
               </span>
             </span>
           </div>
+
+          {/* Under the name rather than beside it. At 430px a button on the
+              same row as a 21px organization name leaves the name about nine
+              characters, and "Christopher & Dana Reeve Foundation" is one of
+              six rows here. */}
+          <FollowButton
+            onNavy
+            following={follows.following.has(organization.id)}
+            onToggle={() => {
+              follows.toggle(organization.id);
+            }}
+            className="mt-3"
+          />
 
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {organization.tags.map((tag) => (

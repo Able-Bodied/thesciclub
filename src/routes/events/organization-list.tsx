@@ -1,3 +1,4 @@
+import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { ClubEvent, Organization } from '@/types/domain';
 
@@ -46,39 +47,61 @@ export function byCalendarActivity(
     (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.name.localeCompare(b.name);
 }
 
+/**
+ * The card is a div and the name is the button, which it was not before.
+ *
+ * The whole row used to be one `<button>`, and Follow cannot live inside one —
+ * a button inside a button is invalid HTML, and browsers resolve it by
+ * discarding the inner one, so the follow would have been a dead region that
+ * opened the organization instead. The opening control is now the badge, the
+ * name and the line under it, which is everything somebody aims at anyway.
+ */
 function OrganizationRow({
   organization,
   eventCount,
+  following,
+  onToggleFollow,
   onOpen,
 }: {
   organization: Organization;
   eventCount: number;
+  following: boolean;
+  onToggleFollow: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => {
-        onOpen(organization.id);
-      }}
-      className="mb-[11px] block w-full rounded-[17px] border border-line bg-paper p-3.5 text-left"
-    >
+    <div className="mb-[11px] w-full rounded-[17px] border border-line bg-paper p-3.5">
       <div className="flex items-center gap-3">
-        <OrganizationBadge
-          organization={organization}
-          size="lg"
-          className="h-[52px] w-[52px] rounded-[16px] text-[0.875rem]"
+        <button
+          type="button"
+          onClick={() => {
+            onOpen(organization.id);
+          }}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <OrganizationBadge
+            organization={organization}
+            size="lg"
+            className="h-[52px] w-[52px] rounded-[16px] text-[0.875rem]"
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.2] tracking-[-0.01em]">
+              {organization.name}
+            </span>
+            <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
+              {[organization.city, eventCount > 0 ? `${eventCount} on the calendar` : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          </span>
+        </button>
+        <FollowButton
+          following={following}
+          onToggle={() => {
+            onToggleFollow(organization.id);
+          }}
+          className="flex-none"
         />
-        <span className="min-w-0 flex-1">
-          <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.2] tracking-[-0.01em]">
-            {organization.name}
-          </span>
-          <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
-            {[organization.city, eventCount > 0 ? `${eventCount} on the calendar` : null]
-              .filter(Boolean)
-              .join(' · ')}
-          </span>
-        </span>
       </div>
       {organization.canInvite ? (
         <div className="mt-2.5 flex flex-wrap gap-1.5">
@@ -87,18 +110,22 @@ function OrganizationRow({
           </span>
         </div>
       ) : null}
-    </button>
+    </div>
   );
 }
 
 export function OrganizationList({
   organizations,
   events,
+  following,
+  onToggleFollow,
   onOpen,
 }: {
   organizations: Organization[];
   /** Used only to count what each organization is running. */
   events: ClubEvent[];
+  following: Set<string>;
+  onToggleFollow: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
   const counts = new Map<string, number>();
@@ -114,6 +141,8 @@ export function OrganizationList({
           key={organization.id}
           organization={organization}
           eventCount={counts.get(organization.id) ?? 0}
+          following={following.has(organization.id)}
+          onToggleFollow={onToggleFollow}
           onOpen={onOpen}
         />
       ))}

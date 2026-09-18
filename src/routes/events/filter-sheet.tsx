@@ -1,5 +1,5 @@
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
-import { toggleFilter } from '@/routes/events/filters';
+import { followedHostIds, selectsExactly, toggleFilter } from '@/routes/events/filters';
 import {
   DATE_WINDOW_LABELS,
   DATE_WINDOWS,
@@ -36,6 +36,8 @@ export interface EventFilterSheetProps {
   formats: EventFormat[];
   cities: string[];
   organizations: Organization[];
+  /** Organization ids the viewer follows. Used for the "Ones you follow" chip. */
+  following: ReadonlySet<string>;
   filters: EventFilters;
   matchCount: number;
   activeCount: number;
@@ -49,6 +51,7 @@ export function EventFilterSheet({
   formats,
   cities,
   organizations,
+  following,
   filters,
   matchCount,
   activeCount,
@@ -56,6 +59,11 @@ export function EventFilterSheet({
   onClear,
   onClose,
 }: EventFilterSheetProps) {
+  // Only the ones actually hosting something here. Following a body that runs
+  // nothing is a reasonable thing to do and a useless thing to filter on.
+  const followedHosts = followedHostIds(organizations, following);
+  const showingFollowed = selectsExactly(filters.organizations, followedHosts);
+
   const byCategory = new Map<string, { name: string; tags: EventTag[] }>();
   for (const tag of tags) {
     const bucket = byCategory.get(tag.categorySlug);
@@ -123,6 +131,25 @@ export function EventFilterSheet({
 
         {organizations.length > 0 ? (
           <FilterGroup title="Hosted by">
+            {/* First in the group, and only when it would do something. This is
+                what following an organization buys: one tap for "the calendar I
+                actually care about", instead of finding five names among the
+                hosts every time. It sets the ordinary host filter rather than
+                being a filter of its own, so the chips below stay in agreement
+                with it and pressing one of them afterwards just narrows or
+                widens the set in the usual way. */}
+            {followedHosts.length > 0 ? (
+              <FilterChip
+                label="Ones you follow"
+                on={showingFollowed}
+                onClick={() => {
+                  onChange({
+                    ...filters,
+                    organizations: showingFollowed ? [] : followedHosts,
+                  });
+                }}
+              />
+            ) : null}
             {organizations.map((organization) => (
               <FilterChip
                 key={organization.id}

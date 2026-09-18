@@ -3,14 +3,29 @@ import {
   activeFilterCount,
   dateWindowRange,
   filterEvents,
+  followedHostIds,
   isOnline,
   isPastEvent,
   isSport,
+  selectsExactly,
   toggleFilter,
   type ViewerEventState,
 } from '@/routes/events/filters';
 import { makeEvent, makeTag } from '@/test/factory';
-import { EMPTY_EVENT_FILTERS, type EventFilters } from '@/types/domain';
+import { EMPTY_EVENT_FILTERS, type EventFilters, type Organization } from '@/types/domain';
+
+function organization(id: string, name = id): Organization {
+  return {
+    id,
+    shortCode: id.toUpperCase(),
+    name,
+    city: 'San Jose',
+    description: '',
+    tags: [],
+    canInvite: false,
+    logoPath: null,
+  };
+}
 
 /** Mid-afternoon on Saturday 5 September 2026, local time. */
 const NOW = new Date(2026, 8, 5, 14, 0, 0);
@@ -385,5 +400,43 @@ describe('isPastEvent', () => {
 
   it('counts tomorrow as not past', () => {
     expect(isPastEvent(makeEvent({ startTime: daysFromNow(1) }), NOW)).toBe(false);
+  });
+});
+
+describe('the organizations you follow', () => {
+  const hosting = [organization('ncs', 'NorCal SCI'), organization('arh', 'Adaptive Rec Hub')];
+
+  it('keeps only the ones that are hosting something here', () => {
+    // The argument is the organizations hosting in the current list, not the
+    // directory. 18 of the 23 run nothing, so a chip built from the directory
+    // could select five bodies with no events between them and show an empty
+    // list — which reads as a broken filter rather than an honest answer.
+    const following = new Set(['ncs', 'reeve', 'high-fives']);
+    expect(followedHostIds(hosting, following)).toEqual(['ncs']);
+  });
+
+  it('is empty when none of what they follow is hosting', () => {
+    expect(followedHostIds(hosting, new Set(['reeve']))).toEqual([]);
+  });
+
+  it('is empty when they follow nothing', () => {
+    expect(followedHostIds(hosting, new Set())).toEqual([]);
+  });
+});
+
+describe('whether the host filter is set to exactly a given set', () => {
+  it('matches the same ids in a different order', () => {
+    expect(selectsExactly(['b', 'a'], ['a', 'b'])).toBe(true);
+  });
+
+  it('does not match a superset or a subset', () => {
+    expect(selectsExactly(['a', 'b', 'c'], ['a', 'b'])).toBe(false);
+    expect(selectsExactly(['a'], ['a', 'b'])).toBe(false);
+  });
+
+  // The chip lighting up would say the list had been narrowed when it has not,
+  // and pressing it would then clear a filter that was never applied.
+  it('never matches an empty set, even against an empty selection', () => {
+    expect(selectsExactly([], [])).toBe(false);
   });
 });

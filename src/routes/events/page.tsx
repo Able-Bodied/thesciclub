@@ -2,6 +2,7 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
@@ -83,6 +84,7 @@ export default function EventsPage() {
   const { events, loading, error } = useEvents();
   const { byEvent: attendeesByEvent } = useAttendeesByEvent();
   const { organizations, byId: organizationsById } = useOrganizations();
+  const follows = useOrganizationFollows();
   const viewer = useViewerEvents(memberId);
 
   // The segment lives in the URL, not in component state. Opening an
@@ -241,6 +243,8 @@ export default function EventsPage() {
             <OrganizationList
               organizations={organizations}
               events={events}
+              following={follows.following}
+              onToggleFollow={follows.toggle}
               onOpen={(id) => {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
@@ -320,6 +324,7 @@ export default function EventsPage() {
           formats={formatsIn(inSegment)}
           cities={citiesIn(inSegment)}
           organizations={hostingOrganizations}
+          following={follows.following}
           filters={filters}
           matchCount={visible.length}
           activeCount={filterCount}
