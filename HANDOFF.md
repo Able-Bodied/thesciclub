@@ -786,6 +786,15 @@ Four decisions worth keeping:
   automatic removal would silently destroy a member's whole "Been to" record —
   and the club's shape is that membership is taken by a person, who can be
   asked why.
+- **Three is a limit, and it asks a question** — 20260917000000. Until then a
+  fourth, fifth and sixth strike all went in, which made "One more ends your
+  membership" on the members own card false on the one screen where losing
+  membership is meant to be visible. `admin_add_strike` refuses past
+  `strike_limit()` now and returns the new count, and the strike that reaches
+  the limit opens a panel on `/admin` offering Pause, Remove, or Not now.
+  Remove goes into the panel Remove already opens, so a ban is still the tick
+  on that panel and not a fourth button. Still a person deciding: "Not now" is
+  one of the answers and the panel says nothing has happened yet.
 - **A strike is withdrawn, never edited or deleted.** The case that matters is
   an administrator striking the wrong person: that should leave evidence of the
   correction, not of nothing having happened.
