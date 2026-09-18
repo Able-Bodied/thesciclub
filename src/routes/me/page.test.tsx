@@ -338,7 +338,7 @@ describe('being findable', () => {
     // form behind a Save.
     details.current = { ...completeDetails, showInBrowse: false };
     renderMe();
-    return screen.findByText(/hidden from the deck/i).then((el) => {
+    return screen.findByText(/hidden from other members/i).then((el) => {
       expect(el).toBeInTheDocument();
     });
   });
@@ -346,7 +346,7 @@ describe('being findable', () => {
   it('offers the switch on, so being hidden is reversible from here', async () => {
     details.current = { ...completeDetails, showInBrowse: false };
     renderMe();
-    const toggle = await screen.findByRole('switch', { name: /show me in the deck/i });
+    const toggle = await screen.findByRole('switch', { name: /change your visibility/i });
     expect(toggle).toHaveAttribute('aria-checked', 'false');
     await userEvent.click(toggle);
     expect(wroteVisibility.calls.at(-1)?.[1]).toBe(true);
@@ -356,7 +356,7 @@ describe('being findable', () => {
   it('writes immediately rather than waiting for a Save that is not here', async () => {
     details.current = { ...completeDetails, showInBrowse: true };
     renderMe();
-    const toggle = await screen.findByRole('switch', { name: /show me in the deck/i });
+    const toggle = await screen.findByRole('switch', { name: /change your visibility/i });
     await userEvent.click(toggle);
     expect(wroteVisibility.calls).toHaveLength(1);
     expect(wroteVisibility.calls[0]?.[1]).toBe(false);

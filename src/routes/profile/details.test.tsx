@@ -117,7 +117,7 @@ describe('Your details', () => {
     // a form field, so it moved to Me and this page does not offer it twice.
     renderDetails();
     await screen.findByLabelText('Name');
-    expect(screen.queryByText(/Show me in the deck/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/visible to other members/i)).not.toBeInTheDocument();
   });
 
   it('surfaces a save failure rather than claiming it saved', async () => {

@@ -28,6 +28,17 @@ import { setShowInBrowse } from '@/routes/profile/details-api';
  * Hidden is stated loudly. Being invisible is a thing a member chose, but it is
  * also the explanation for an empty inbox, and a quiet grey row would not
  * reach somebody who has forgotten.
+ *
+ * ---------------------------------------------------------------------------
+ * Visibility, not "the deck"
+ * ---------------------------------------------------------------------------
+ * The owner's wording. "Show me in the deck" named an internal word for the
+ * grid of cards on Peers — the app says "Peers" everywhere a member can see,
+ * and "deck" appears nowhere on screen except here. Framed as visibility it
+ * also says the right thing about what is at stake: not where a card is drawn,
+ * but whether another member can find you at all.
+ *
+ * Both states still lead with what is true, which is the part worth keeping.
  */
 export function DeckVisibility({
   userId,
@@ -72,7 +83,9 @@ export function DeckVisibility({
         {showInBrowse ? null : <EyeOff className="h-5 w-5 flex-none text-gold-dp" />}
         <div className="min-w-0 flex-1">
           <p className="font-extrabold font-head text-[0.96875rem] text-ink">
-            {showInBrowse ? 'Show me in the deck' : 'You are hidden from the deck'}
+            {showInBrowse
+              ? 'You are visible to other members'
+              : 'You are hidden from other members'}
           </p>
           <p className="mt-0.5 text-[0.78125rem] text-ink2 leading-[1.45]">
             {showInBrowse
@@ -84,7 +97,7 @@ export function DeckVisibility({
           type="button"
           role="switch"
           aria-checked={showInBrowse}
-          aria-label="Show me in the deck"
+          aria-label="Change your visibility"
           disabled={busy}
           onClick={toggle}
           className={cn(
