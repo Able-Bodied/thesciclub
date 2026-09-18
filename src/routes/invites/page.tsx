@@ -17,7 +17,7 @@ import {
 } from '@/routes/invites/mentor-invites';
 
 /**
- * A mentor's two invites.
+ * A mentor's invites.
  *
  * CONTEXT.md has promised since the beginning that a mentor can put two
  * numbers on the club's list, and the database has enforced exactly two since
@@ -124,7 +124,7 @@ export default function InvitesPage() {
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
             {left === 0
-              ? `Both of your ${MENTOR_ALLOWANCE} invites are in use.`
+              ? `All ${MENTOR_ALLOWANCE} of your invites are in use.`
               : `${left} of your ${MENTOR_ALLOWANCE} invites ${left === 1 ? 'is' : 'are'} free.`}
           </p>
         </div>

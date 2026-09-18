@@ -2,16 +2,16 @@ import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * A mentor's own two invites.
+ * A mentor's own invites.
  *
  * Unlike the administrator's tools next door, none of this goes through an
  * `admin_*` function. A mentor reads, issues and withdraws their own invites
  * against the `invites` table directly, because three policies already say
  * exactly that much and nothing more:
  *
- *   mentors can see invites they sent        (select, own rows only)
- *   mentors can invite up to two people      (insert, capped at two live)
- *   mentors can revoke their own pending     (update, pending rows only)
+ *   mentors can see invites they sent          (select, own rows only)
+ *   mentors can invite within their allowance  (insert, capped at MENTOR_ALLOWANCE live)
+ *   mentors can revoke their own pending       (update, pending rows only)
  *
  * So there is no select filter on `invited_by_member_id` below and no
  * ownership check before withdrawing. Adding either would read as the
@@ -36,8 +36,15 @@ interface MentorInviteRow {
   created_at: string;
 }
 
-/** What CONTEXT.md promises a mentor, and what the insert policy enforces. */
-export const MENTOR_ALLOWANCE = 2;
+/**
+ * What CONTEXT.md promises a mentor, and what the insert policy enforces.
+ *
+ * Mirrors `mentor_invite_limit()`. The database is the cap — this number is
+ * here so the screen can say how many are free without asking, and the two are
+ * one migration apart on purpose: raise it there and here together, or a mentor
+ * reads "3 of your 10 are free" and is refused on the next one.
+ */
+export const MENTOR_ALLOWANCE = 10;
 
 export async function fetchMyInvites(): Promise<
   { ok: true; invites: MentorInvite[] } | { ok: false; error: string }
@@ -142,6 +149,6 @@ export function canWithdraw(invite: MentorInvite): boolean {
  */
 export function describeFailure(code: string | undefined, message: string): string {
   if (code === '23505') return 'That number is already on the club’s list.';
-  if (code === '42501') return 'You have used both of your invites.';
+  if (code === '42501') return `You have used all ${MENTOR_ALLOWANCE} of your invites.`;
   return message;
 }

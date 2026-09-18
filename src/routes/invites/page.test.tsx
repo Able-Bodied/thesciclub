@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import type * as MentorInvites from '@/routes/invites/mentor-invites';
-import type { MentorInvite } from '@/routes/invites/mentor-invites';
+import { MENTOR_ALLOWANCE, type MentorInvite } from '@/routes/invites/mentor-invites';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const own = vi.hoisted(() => ({ type: 'mentor', loading: false }));
@@ -103,27 +103,49 @@ describe('getting back out', () => {
   });
 });
 
+/** The sentence the header prints when nothing is spent. */
+const allFree = new RegExp(`${MENTOR_ALLOWANCE} of your ${MENTOR_ALLOWANCE} invites are free`);
+
+/** Enough consumed invites to fill the allowance exactly. */
+const aFullAllowance = () =>
+  Array.from({ length: MENTOR_ALLOWANCE }, (_, i) =>
+    invite({ id: `i${i}`, status: 'consumed' as const }),
+  );
+
 describe('the allowance on screen', () => {
-  it('says both are free before a mentor has added anybody', async () => {
+  it('says they are all free before a mentor has added anybody', async () => {
     renderInvites();
-    expect(await screen.findByText(/2 of your 2 invites are free/)).toBeInTheDocument();
+    expect(await screen.findByText(allFree)).toBeInTheDocument();
     expect(screen.getByText('You have not added anybody yet.')).toBeInTheDocument();
   });
 
   // The counting rule that matters: somebody who joined is still spending the
-  // slot. A screen that freed it on arrival would offer a third invite and the
-  // insert policy would refuse it with no explanation the member could act on.
+  // slot. A screen that freed it on arrival would offer one more than the
+  // allowance and the insert policy would refuse it with no explanation the
+  // member could act on.
   it('counts a member who has joined against the allowance', async () => {
-    api.invites = [invite({ id: 'i1', status: 'consumed' }), invite({ id: 'i2' })];
+    api.invites = [invite({ id: 'joined', status: 'consumed' }), invite({ id: 'waiting' })];
     renderInvites();
-    expect(await screen.findByText(/Both of your 2 invites are in use/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        new RegExp(`${MENTOR_ALLOWANCE - 2} of your ${MENTOR_ALLOWANCE} invites are free`),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('closes the form and says so once every slot is spent', async () => {
+    api.invites = aFullAllowance();
+    renderInvites();
+    expect(
+      await screen.findByText(new RegExp(`All ${MENTOR_ALLOWANCE} of your invites are in use`)),
+    ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('(408) 555-0112')).toBeDisabled();
   });
 
   it('frees the slot again once an invite is withdrawn', async () => {
     api.invites = [invite({ status: 'revoked' })];
     renderInvites();
-    expect(await screen.findByText(/2 of your 2 invites are free/)).toBeInTheDocument();
+    expect(await screen.findByText(allFree)).toBeInTheDocument();
   });
 });
 
@@ -131,7 +153,7 @@ describe('adding a number', () => {
   it('sends the number and the mentor’s own id, and clears the form', async () => {
     const user = userEvent.setup();
     renderInvites();
-    await screen.findByText(/2 of your 2 invites are free/);
+    await screen.findByText(allFree);
 
     await user.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await user.type(screen.getByPlaceholderText('Met at rugby practice'), 'Rugby');
@@ -146,7 +168,7 @@ describe('adding a number', () => {
   it('will not submit half a phone number', async () => {
     const user = userEvent.setup();
     renderInvites();
-    await screen.findByText(/2 of your 2 invites are free/);
+    await screen.findByText(allFree);
 
     await user.type(screen.getByPlaceholderText('(408) 555-0112'), '408555');
     expect(screen.getByRole('button', { name: 'Add to the list' })).toBeDisabled();
@@ -160,7 +182,7 @@ describe('adding a number', () => {
     const user = userEvent.setup();
     api.failWith = 'That number is already on the club’s list.';
     renderInvites();
-    await screen.findByText(/2 of your 2 invites are free/);
+    await screen.findByText(allFree);
 
     await user.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await user.click(screen.getByRole('button', { name: 'Add to the list' }));

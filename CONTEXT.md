@@ -31,7 +31,7 @@ registration form do not produce a community; they produce a directory of abando
 So membership is granted by a person, not claimed by a form:
 
 - A **member organization** (NorCal SCI, SCVMC SCI Peer Support) adds numbers.
-- A **peer mentor** can add two.
+- A **peer mentor** can add ten.
 - The QR code gets somebody the app. It does not get them in. Somebody still has to add the number.
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
   fact, or repeating outside a room what was said in it — any of those end it.
@@ -70,7 +70,7 @@ silently disabling a button.
 - **Newly injured members.** Want answers and someone who has been there. Hardest to reach, and
   the reason mentors surface first.
 - **Experienced members.** Years in, often the best answer to somebody else's worst week.
-- **Mentors.** Trained, vouched for, and able to bring two more people in.
+- **Mentors.** Trained, vouched for, and able to bring ten more people in.
 - **Organizations.** Bring their people, run the events, and are the primary way anyone gets in.
 
 ## What actually works

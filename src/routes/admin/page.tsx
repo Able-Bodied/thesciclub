@@ -28,6 +28,7 @@ import {
   withdrawnNumbers,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
 
 /**
@@ -571,7 +572,10 @@ function Row({
           !member.isSeed &&
           !member.isAdmin &&
           (member.type === 'mentor' || member.invitesUsed > 0) ? (
-            <> · {member.invitesUsed} of 2 invites used</>
+            <>
+              {' '}
+              · {member.invitesUsed} of {MENTOR_ALLOWANCE} invites used
+            </>
           ) : null}
         </span>
       </span>

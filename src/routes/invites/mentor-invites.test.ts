@@ -4,6 +4,7 @@ import {
   describeFailure,
   inviteState,
   liveCount,
+  MENTOR_ALLOWANCE,
   type MentorInvite,
   slotsLeft,
 } from '@/routes/invites/mentor-invites';
@@ -21,20 +22,28 @@ describe('the allowance', () => {
   // The counting rule is the database's, in live_invite_count(): pending and
   // consumed both spend a slot. If this drifts from the SQL the screen offers
   // a slot the insert policy then refuses, which is the confusing failure.
+  // Written against MENTOR_ALLOWANCE rather than the figure, because these
+  // tests were pinned to 2 and every one of them failed when the owner raised
+  // it to 10 — which taught nothing about the counting rule, only that a
+  // number had moved. What matters is the arithmetic; the figure is the
+  // database's to say.
   it('spends a slot on somebody who has joined, not just on one still waiting', () => {
-    expect(liveCount([invite({ status: 'pending' }), invite({ status: 'consumed' })])).toBe(2);
-    expect(slotsLeft([invite({ status: 'pending' }), invite({ status: 'consumed' })])).toBe(0);
+    const invites = [invite({ status: 'pending' }), invite({ status: 'consumed' })];
+    expect(liveCount(invites)).toBe(2);
+    expect(slotsLeft(invites)).toBe(MENTOR_ALLOWANCE - 2);
   });
 
   it('gives the slot back when an invite is withdrawn', () => {
     const invites = [invite({ status: 'revoked' }), invite({ status: 'pending' })];
     expect(liveCount(invites)).toBe(1);
-    expect(slotsLeft(invites)).toBe(1);
+    expect(slotsLeft(invites)).toBe(MENTOR_ALLOWANCE - 1);
   });
 
   it('never reports more than the allowance, however many rows there are', () => {
-    expect(slotsLeft([])).toBe(2);
-    expect(slotsLeft(Array.from({ length: 5 }, () => invite({ status: 'consumed' })))).toBe(0);
+    expect(slotsLeft([])).toBe(MENTOR_ALLOWANCE);
+    expect(
+      slotsLeft(Array.from({ length: MENTOR_ALLOWANCE + 3 }, () => invite({ status: 'consumed' }))),
+    ).toBe(0);
   });
 });
 
@@ -68,7 +77,7 @@ describe('explaining a refusal', () => {
 
   it('names the allowance when the policy refuses', () => {
     expect(describeFailure('42501', 'new row violates row-level security policy')).toMatch(
-      /used both of your invites/,
+      new RegExp(`used all ${MENTOR_ALLOWANCE} of your invites`),
     );
   });
 

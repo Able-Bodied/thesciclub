@@ -5,6 +5,7 @@ import { signOut, useAccount } from '@/lib/account';
 import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
+import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { MeHero } from '@/routes/me/hero';
@@ -281,7 +282,7 @@ export default function MePage() {
                   </span>
                   <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
                     {member?.type === 'mentor'
-                      ? "As a mentor you can put two numbers on the club's list. They join by verifying that number."
+                      ? `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club's list. They join by verifying that number.`
                       : "Only a member organization or a peer mentor can put a number on the club's list. It is what keeps the club closed."}
                   </span>
                 </span>

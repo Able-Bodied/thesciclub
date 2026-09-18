@@ -1,8 +1,9 @@
 -- ============================================================================
--- Can a mentor actually issue their two invites? Run as a mentor, under RLS.
+-- Can a mentor actually issue their invites? Run as a mentor, under RLS.
 -- ============================================================================
--- CONTEXT.md promises a mentor can put two numbers on the club's list, and
--- three policies on `invites` say they can. Nothing had ever run them. The
+-- CONTEXT.md promises a mentor can put a fixed number of numbers on the club's
+-- list — ten, since 20260917010000, and two before that — and three policies on
+-- `invites` say they can. Nothing had ever run them. The
 -- other probe in this directory, invite-lifecycle.sql, connects as the
 -- superuser — which is BYPASSRLS, so every policy in it is inert. It exercises
 -- the constraints and the triggers and says nothing at all about who may write.
@@ -34,6 +35,13 @@
 -- role that cannot write at all. Step 0 prints current_user for the same
 -- reason: if this file ever runs as the superuser again, every refusal below
 -- turns into a pass and the whole probe becomes worthless.
+--
+-- Nothing here writes the allowance as a figure. Step 2b fills whatever is left
+-- of it from mentor_invite_limit(), so raising the limit does not turn "the
+-- next one is refused" into a step that quietly passes because there was room
+-- all along. That is exactly what happened when the owner raised it to ten: the
+-- old step 4 inserted a third invite and succeeded, and the refusal it was
+-- named for never ran.
 -- ============================================================================
 
 \set ON_ERROR_STOP off
@@ -84,20 +92,30 @@ insert into public.invites (phone_raw, invited_by_member_id, note)
 values ('408 555 0113', 'aaaaaaaa-0000-0000-0000-000000000001', 'second');
 
 \echo ''
-\echo '== 3. the allowance is spent (expect 2) =='
-select public.live_invite_count(auth.uid()) as live_count;
+\echo '== 2b. fill whatever is left of the allowance =='
+\echo '   Generated rather than written out, so this step stays honest whatever'
+\echo '   mentor_invite_limit() says. Numbers from 14085559000 up, well clear of'
+\echo '   the fixed ones the later steps name.'
+insert into public.invites (phone_raw, invited_by_member_id, note)
+select '1408555' || (9000 + n)::text, 'aaaaaaaa-0000-0000-0000-000000000001', 'filler'
+  from generate_series(1, public.mentor_invite_limit() - 2) as n;
 
 \echo ''
-\echo '== 4. the third is refused (expect: new row violates row-level security) =='
-savepoint third;
+\echo '== 3. the allowance is spent (expect the two to match) =='
+select public.live_invite_count(auth.uid()) as live_count, public.mentor_invite_limit() as the_limit;
+
+\echo ''
+\echo '== 4. one past the allowance is refused (expect: new row violates row-level security) =='
+savepoint one_too_many;
 insert into public.invites (phone_raw, invited_by_member_id)
 values ('4085550114', 'aaaaaaaa-0000-0000-0000-000000000001');
-rollback to savepoint third;
+rollback to savepoint one_too_many;
 
 \echo ''
-\echo '== 5. they see their own two invites, and only those (expect 2 rows) =='
+\echo '== 5. they see their own invites, and only those (expect the limit) =='
 \echo '   14085550001 is Mentor B''s and must not appear.'
-select phone, status, note from public.invites order by phone;
+select count(*) as mine from public.invites;
+select phone, status, note from public.invites where note is distinct from 'filler' order by phone;
 
 \echo ''
 \echo '== 6. an invite cannot carry a claim on a seeded profile =='
@@ -129,8 +147,8 @@ update public.invites set status = 'revoked', revoked_at = now()
  where phone = '14085550113' and status = 'pending';
 
 \echo ''
-\echo '== 10. and returns the slot (expect 1) =='
-select public.live_invite_count(auth.uid()) as live_count;
+\echo '== 10. and returns the slot (expect one under the limit) =='
+select public.live_invite_count(auth.uid()) as live_count, public.mentor_invite_limit() as the_limit;
 
 \echo ''
 \echo '== 11. so a fresh invite fits again (expect INSERT 0 1) =='
@@ -142,8 +160,8 @@ values ('4085550116', 'aaaaaaaa-0000-0000-0000-000000000001');
 \echo '== 12. a revoked invite cannot be brought back to life (expect UPDATE 0) =='
 \echo '   This is the way round the cap, if there is one: withdraw an invite,'
 \echo '   spend the freed slot, then flip the withdrawn row back to pending and'
-\echo '   hold three. The update policy only sees pending rows, so the revoked'
-\echo '   one is not theirs to touch.'
+\echo '   hold one more than the limit. The update policy only sees pending rows,'
+\echo '   so the revoked one is not theirs to touch.'
 savepoint resurrect;
 update public.invites set status = 'pending', revoked_at = null
  where phone = '14085550113';
