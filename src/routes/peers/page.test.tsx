@@ -78,6 +78,60 @@ describe('PeersPage', () => {
     expect(screen.getByText('2 of 2 members')).toBeInTheDocument();
   });
 
+  it('narrows the deck as somebody types', async () => {
+    renderPage();
+    await userEvent.type(screen.getByRole('searchbox'), 'Todd');
+    expect(screen.getByText('Todd')).toBeInTheDocument();
+    expect(screen.queryByText('Nicole')).not.toBeInTheDocument();
+    expect(screen.getByText('1 of 3 members')).toBeInTheDocument();
+  });
+
+  // matchesSearch has read across the bio, the topics and the rest since the
+  // deck was built. Nothing could reach it: the page had a chip to clear a
+  // search and no way to start one, so the whole of it was unreachable code.
+  it('searches past the name, into what somebody can be asked about', async () => {
+    state.current = {
+      members: [
+        makeMember({ id: '1', displayName: 'Nicole', topics: ['SmartDrive'] }),
+        makeMember({ id: '2', displayName: 'Todd' }),
+      ],
+      loading: false,
+      error: null,
+      signedOut: false,
+    };
+    renderPage();
+    await userEvent.type(screen.getByRole('searchbox'), 'smartdrive');
+    expect(screen.getByText('Nicole')).toBeInTheDocument();
+    expect(screen.queryByText('Todd')).not.toBeInTheDocument();
+  });
+
+  it('searches within the segment rather than across it', async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Mentors' }));
+    await userEvent.type(screen.getByRole('searchbox'), 'Nicole');
+    expect(screen.queryByText('Nicole')).not.toBeInTheDocument();
+    expect(screen.getByText('0 of 2 members')).toBeInTheDocument();
+  });
+
+  it('clears the search from the box', async () => {
+    renderPage();
+    const box = screen.getByRole('searchbox');
+    await userEvent.type(box, 'Todd');
+    await userEvent.click(screen.getByRole('button', { name: 'Clear the search' }));
+    expect(box).toHaveValue('');
+    expect(screen.getByText('Nicole')).toBeInTheDocument();
+  });
+
+  // Sending somebody into the filter sheet to loosen filters they never set is
+  // the wrong advice when it is three words in the search box holding the deck
+  // shut.
+  it('names the search, not the filters, when the search is what emptied the deck', async () => {
+    renderPage();
+    await userEvent.type(screen.getByRole('searchbox'), 'nobody at all');
+    expect(screen.getByText(/clear the search/i)).toBeInTheDocument();
+    expect(screen.queryByText(/widening the filters/i)).not.toBeInTheDocument();
+  });
+
   it('tells a signed-out visitor the club is members only, not "permission denied"', () => {
     state.current = { members: [], loading: false, error: null, signedOut: true };
     renderPage();

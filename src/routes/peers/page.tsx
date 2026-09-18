@@ -1,4 +1,4 @@
-import { SlidersHorizontal, X } from 'lucide-react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBrowseMembers } from '@/lib/members';
@@ -111,6 +111,57 @@ export default function PeersPage() {
           </button>
         </div>
 
+        {/* Under the filter control, above the segments, because that is the
+            order the three narrow in: a name or a word first, then which slice
+            of the club, then the sheet.
+
+            The search itself is not new — `matchesSearch` has read across name,
+            place, level, topics, interests and the free-text bio since the deck
+            was built, and the page has always had a chip to *clear* a search.
+            There was simply nothing that could set one, so the whole of it was
+            unreachable. The chip is gone with this: an input that holds the
+            words and carries its own ✕ says everything the chip said, in the
+            place somebody looks to change it. */}
+        <div className="mx-auto w-full max-w-[1100px] pt-2.5">
+          <div className="relative">
+            <Search
+              className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-[16px] w-[16px] text-grey"
+              strokeWidth={2}
+            />
+            <input
+              type="search"
+              value={filters.search}
+              onChange={(e) => {
+                setFilters((f) => ({ ...f, search: e.target.value }));
+              }}
+              // Named for what it searches, not "Search". The field reads the
+              // bio and the topics as well as the name, and somebody who
+              // assumes it only matches names will not type "SmartDrive".
+              aria-label="Search members by name, place, level or what they can be asked about"
+              placeholder="Search members"
+              // The webkit cancel button is suppressed because `type="search"`
+              // draws one of its own, and with the ✕ below there were two
+              // clears side by side. `type` stays `search` rather than `text`:
+              // it is what gives the field the searchbox role and the right
+              // keyboard, and a screenshot is the only thing that would ever
+              // have shown the duplicate.
+              className="min-h-[40px] w-full rounded-full border-[1.6px] border-line bg-canvas py-2 pr-9 pl-9 text-[0.875rem] text-ink outline-none transition-colors placeholder:text-grey focus:border-navy [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {filters.search ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilters((f) => ({ ...f, search: '' }));
+                }}
+                aria-label="Clear the search"
+                className="-translate-y-1/2 absolute top-1/2 right-2 grid h-[26px] w-[26px] place-items-center rounded-full text-grey transition-colors hover:bg-tint hover:text-ink"
+              >
+                <X className="h-[15px] w-[15px]" />
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         <div className="mx-auto flex w-full max-w-[1100px] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
           {SEGMENTS.map(([value, label]) => (
             <button
@@ -140,21 +191,6 @@ export default function PeersPage() {
         onTouchEnd={onTouchEnd}
         className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6"
       >
-        {filters.search ? (
-          <div className="mb-2.5">
-            <button
-              type="button"
-              onClick={() => {
-                setFilters((f) => ({ ...f, search: '' }));
-              }}
-              className="inline-flex items-center gap-1.5 rounded-full bg-navy px-2.5 py-1.5 font-semibold text-[0.7375rem] text-white"
-            >
-              “{filters.search}”
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        ) : null}
-
         {loading ? (
           <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading members…</p>
         ) : signedOut ? (
@@ -196,10 +232,17 @@ export default function PeersPage() {
               </div>
             </div>
             {visible.length === 0 ? (
+              /* The advice names the lever that is actually holding the deck
+                 shut. "Try widening the filters" was the only line here, and it
+                 sends somebody into the sheet to loosen filters they may not
+                 have set — the deck is far more often empty because of three
+                 words in the search box. */
               <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
                 Nobody matches that yet.
                 <br />
-                Try widening the filters.
+                {filters.search
+                  ? 'Try fewer words, or clear the search.'
+                  : 'Try widening the filters.'}
               </p>
             ) : null}
           </>
