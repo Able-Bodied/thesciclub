@@ -164,6 +164,7 @@ export function FilterChip({
       type="button"
       aria-pressed={on}
       onClick={onClick}
+      data-target="small"
       className={cn(
         // Comfortably past the 24px WCAG minimum without turning the sheet into
         // a page of buttons.

@@ -218,6 +218,7 @@ export default function EventsPage() {
                 setSegment(value);
               }}
               aria-pressed={segment === value}
+              data-target="small"
               className={cn(
                 'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] transition-colors',
                 segment === value

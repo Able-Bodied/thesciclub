@@ -91,6 +91,7 @@ export function DeckVisibility({
           role="switch"
           aria-checked={showInBrowse}
           aria-label="Change your visibility"
+          data-target="small"
           disabled={busy}
           onClick={toggle}
           className={cn(

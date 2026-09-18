@@ -164,6 +164,7 @@ export default function AdminPage() {
                   setTab(value);
                 }}
                 aria-pressed={tab === value}
+                data-target="small"
                 className={cn(
                   'rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
                   tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
@@ -1002,6 +1003,9 @@ function SmallButton({
   return (
     <button
       type="button"
+      // 30px tall, and there are ninety-two of them on /admin. The single
+      // biggest concentration of small controls in the app.
+      data-target="small"
       {...props}
       className={cn(
         'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[0.75rem] transition-colors',

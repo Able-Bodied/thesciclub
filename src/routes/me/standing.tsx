@@ -190,6 +190,7 @@ function HouseRules() {
         onBlur={() => {
           if (!pinned.current) setOpen(false);
         }}
+        data-target="small"
         className="rounded font-semibold text-[0.78125rem] text-navy underline decoration-navy/30 underline-offset-2 transition-colors hover:decoration-navy"
       >
         What can end a membership

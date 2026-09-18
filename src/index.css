@@ -218,9 +218,19 @@
 /*
  * WCAG 2.2 puts the minimum target at 24px and the enhanced level at 44px.
  * Everything primary here already clears 44. This raises the small secondary
- * controls — the dismiss ✕, the filter button — for somebody driving a pointer
- * with their head or a mouth stick, where a 28px circle is a genuinely hard
- * thing to land on.
+ * controls — the filter buttons, the segment pills, the clear ✕ on the Peers
+ * search, the visibility switch, and every button on an /admin row — for
+ * somebody driving a pointer with their head or a mouth stick, where a 30px
+ * control is a genuinely hard thing to land on.
+ *
+ * Opting in is per control, by `data-target="small"`, and for a long time
+ * exactly one control in the app had it: the Events filter button. The setting
+ * worked — measured, the hit area goes 38px to 48px — and did almost nothing,
+ * because the ninety-two buttons on /admin, the pills on both tabs and the
+ * 26px clear ✕ were all missed. An earlier draft of this comment also named
+ * "the dismiss ✕", which was removed from event cards when series grouping
+ * landed. **Add the attribute when you add a control under 44px**; there is
+ * nothing automatic about it.
  *
  * It grows the hit area without growing the drawn control, using a pseudo
  * element, so the layout does not reflow and the design does not turn into a

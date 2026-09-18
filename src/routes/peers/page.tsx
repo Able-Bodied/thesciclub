@@ -102,6 +102,9 @@ export default function PeersPage() {
               setSheetOpen(true);
             }}
             aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
+            // 34px, four smaller than the Events one that already had this and
+            // the one control the setting was written for. It was missed.
+            data-target="small"
             className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
           >
             <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
@@ -154,6 +157,8 @@ export default function PeersPage() {
                   setFilters((f) => ({ ...f, search: '' }));
                 }}
                 aria-label="Clear the search"
+                // 26px. The smallest control in the app.
+                data-target="small"
                 className="-translate-y-1/2 absolute top-1/2 right-2 grid h-[26px] w-[26px] place-items-center rounded-full text-grey transition-colors hover:bg-tint hover:text-ink"
               >
                 <X className="h-[15px] w-[15px]" />
@@ -171,6 +176,7 @@ export default function PeersPage() {
                 setSegment(value);
               }}
               aria-pressed={segment === value}
+              data-target="small"
               className={cn(
                 'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem]',
                 'transition-colors',
