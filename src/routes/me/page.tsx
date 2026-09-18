@@ -211,11 +211,6 @@ export default function MePage() {
                 <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
                   {percent === 100 ? 'Profile complete' : 'Complete your profile'}
                 </span>
-                <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                  {percent === 100
-                    ? 'You are searchable on every field members filter by.'
-                    : 'The more you fill in, the better the club can match you.'}
-                </span>
               </span>
               <ChevronRight className="h-5 w-5 flex-none text-grey" />
             </Link>
@@ -243,17 +238,21 @@ export default function MePage() {
                 <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
                   Your details
                 </span>
-                {/* The heading stays "Your details" at every value, unlike the
+                {/* The one line left under a card in this section, and it is
+                    not an explanation — it is the list of what is actually
+                    missing, which is the only thing here somebody can act on.
+                    It goes when there is nothing left to name, so a finished
+                    card is a name and a chevron like the rest.
+
+                    The heading stays "Your details" at every value, unlike the
                     survey card, which turns "Complete your profile" into
                     "Profile complete". That one is a call to action becoming a
-                    statement; this one is the name of the page it opens, and
-                    renaming it would break the only thing connecting the card
-                    to the screen behind it. The state goes in the sentence. */}
-                <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                  {missing.length > 0
-                    ? `Still to add: ${listInWords(missing)}.`
-                    : 'All filled in. Fix anything onboarding got wrong.'}
-                </span>
+                    statement; this one is the name of the page it opens. */}
+                {missing.length > 0 ? (
+                  <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
+                    Still to add: {listInWords(missing)}.
+                  </span>
+                ) : null}
               </span>
               <ChevronRight className="h-5 w-5 flex-none text-grey" />
             </Link>
@@ -278,9 +277,6 @@ export default function MePage() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-extrabold font-head text-[0.96875rem] text-ink">
                     My profile view
-                  </span>
-                  <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                    Your profile exactly as the club sees it.
                   </span>
                 </span>
                 <ChevronRight className="h-5 w-5 flex-none text-grey" />

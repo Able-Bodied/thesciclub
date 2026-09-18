@@ -370,7 +370,10 @@ describe('what is still to fill in', () => {
         <MePage />
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/All filled in/)).toBeInTheDocument();
+    // Nothing under the card at all once it is done: no ring, no percentage,
+    // no sentence. A name and a chevron, like the two beside it.
+    await screen.findByText('Your details');
+    expect(screen.queryByText(/Still to add/)).not.toBeInTheDocument();
     expect(screen.queryByText('100%')).not.toBeInTheDocument();
   });
 
@@ -381,7 +384,8 @@ describe('what is still to fill in', () => {
         <MePage />
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/All filled in/)).toBeInTheDocument();
+    await screen.findByText('Your details');
+    expect(screen.queryByText(/Still to add/)).not.toBeInTheDocument();
     expect(screen.queryByText('80%')).not.toBeInTheDocument();
   });
 
@@ -412,9 +416,11 @@ describe('being findable', () => {
     // Somebody who hid themselves months ago and wonders why nobody has been in
     // touch had no way to find out that they did: it lived four fields down a
     // form behind a Save.
+    // One word now, at the owner's request. The loudness moved to the gold
+    // border and the struck-through eye rather than to a sentence.
     details.current = { ...completeDetails, showInBrowse: false };
     renderMe();
-    return screen.findByText(/hidden from other members/i).then((el) => {
+    return screen.findByText('Hidden').then((el) => {
       expect(el).toBeInTheDocument();
     });
   });

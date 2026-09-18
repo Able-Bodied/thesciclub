@@ -83,14 +83,7 @@ export function DeckVisibility({
         {showInBrowse ? null : <EyeOff className="h-5 w-5 flex-none text-gold-dp" />}
         <div className="min-w-0 flex-1">
           <p className="font-extrabold font-head text-[0.96875rem] text-ink">
-            {showInBrowse
-              ? 'You are visible to other members'
-              : 'You are hidden from other members'}
-          </p>
-          <p className="mt-0.5 text-[0.78125rem] text-ink2 leading-[1.45]">
-            {showInBrowse
-              ? 'Other members can find you in Peers. You can still browse either way.'
-              : 'No other member can find you in Peers. You can still browse, and events still work.'}
+            {showInBrowse ? 'Visible' : 'Hidden'}
           </p>
         </div>
         <button
