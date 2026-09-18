@@ -126,7 +126,15 @@ export const SELF_CARE = [
   'Dictation software',
   'Vehicle modifications',
   'Wheelchair assist devices',
-  'Something else',
+  // No 'Something else'. The list carried one until the owner pointed out that
+  // "Add your own" already does that job, and better: it takes the words rather
+  // than recording only that there were some. "Something else" was the
+  // languages list's 'Other' in a different coat — an answer nobody can be
+  // searched by, on the field members search hardest.
+  //
+  // Nothing needs migrating. Nobody had it saved, live or locally, and a saved
+  // answer missing from the options renders as one of the member's own anyway —
+  // which is what happened to the people who had picked 'Other' for a language.
 ] as const;
 
 export const QUESTIONS: Question[] = [

@@ -480,10 +480,11 @@ function QuestionBlock({
               );
             })}
 
-            {/* "Add your own", not "Something else" — the self-care list has
-                an option literally called "Something else", and two controls
-                with one name on the same screen is a coin toss for anybody
-                reading it out. */}
+            {/* "Add your own" rather than "Something else". The self-care list
+                used to carry an option by that name, and two controls with one
+                name on a screen is a coin toss for anybody reading it out; the
+                option is gone now, and this is still the better name — it says
+                what pressing it does rather than naming the gap it fills. */}
             {question.allowOther && !otherOpen && !atCap ? (
               <button
                 type="button"

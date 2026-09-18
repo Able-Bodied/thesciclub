@@ -278,6 +278,36 @@ describe('the profile survey', () => {
       );
     });
 
+    /** Self-care is the tenth screen, so it has to be walked to. */
+    async function goToSelfCare() {
+      renderSurvey();
+      await screen.findByRole('button', { name: 'Skip this one' });
+      await skip(9);
+      await screen.findByText(/self-care devices/i);
+    }
+
+    // The same removal, for the same reason, on the list members search
+    // hardest. "Add your own" takes the words; "Something else" recorded only
+    // that there were some.
+    it('offers no "Something else" on self-care, where Add your own already is', async () => {
+      await goToSelfCare();
+      expect(screen.queryByRole('button', { name: 'Something else' })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add your own' })).toBeInTheDocument();
+    });
+
+    it('keeps a self-care answer that is no longer on the list', async () => {
+      // Nobody had this saved when it was removed — checked against the live
+      // project and the local stack — but the guarantee is the thing being
+      // tested, not the count on the day.
+      api.answers = { selfCare: ['Colostomy', 'Something else'] };
+      await goToSelfCare();
+
+      expect(await screen.findByRole('button', { name: 'Something else' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
     it('suggests a language rather than "in your own words"', async () => {
       renderSurvey();
       await screen.findByRole('button', { name: 'Skip this one' });
