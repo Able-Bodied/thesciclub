@@ -53,15 +53,25 @@ do not commit with either failing.**
 
 This is the thing most likely to catch somebody out, so it is first.
 
-**48 migrations, 0 pending.** Everything in `supabase/migrations/` is applied to
+**52 migrations, 0 pending.** Everything in `supabase/migrations/` is applied to
 the hosted project (`erijdvqnxavwezsbbojv`) and locally. Check rather than
 trust:
 
     pnpm exec supabase migration list          # hosted
     pnpm exec supabase migration up --local    # bring a local stack up
 
-The five from 2026-09-16, newest first, because they are the ones a fresh
+The four from 2026-09-17, newest first, because they are the ones a fresh
 session will not have seen:
+
+- `20260917030000` — `members.declined`, and a check constraint refusing the
+  name and the birthday. See "Prefer not to say".
+- `20260917020000` — `organization_follows`. See "Following an organization".
+- `20260917010000` — `mentor_invite_limit()`, ten rather than two, and the
+  insert policy recreated under a name with no number in it.
+- `20260917000000` — `strike_limit()`, `admin_add_strike` refusing a fourth and
+  returning the new count. See "Strikes".
+
+And the five from 2026-09-16, newest first:
 
 - `20260916040000` — `member_strikes`, `admin_strikes`, `active_strike_count()`
   and the two functions that issue and withdraw. See "Strikes".
@@ -298,7 +308,9 @@ Two rules, both learned the hard way:
 | `restore-directory.sql` | restoring the seeded directory without touching anybody real |
 | `admin-vouches-directly.sql` | an administrator inviting in their own name |
 | `admin-is-protected.sql` | that no administrator can be paused, removed, blocked or made a peer — and that an ordinary member still can be |
-| `strikes.sql` | the strike arithmetic (withdrawn and year-old ones leave the count, the rows stay) and the visibility (another member sees none of them) |
+| `strikes.sql` | the strike arithmetic (withdrawn and year-old ones leave the count, the rows stay), the cap at three, and the visibility (another member sees none of them) |
+| `organization-follows.sql` | that a member can follow, and that nobody sees anybody else's — step 6 is the one that matters |
+| `declined.sql` | that "rather not say" is recorded, and that the name and the birthday cannot be |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
@@ -350,6 +362,113 @@ files, most recently by reporting a restore as broken when it had worked.
   project pins 6.0.3.
 - No host `psql`; use
   `docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine psql …`.
+
+---
+
+# What the 2026-09-17 session built
+
+Seven things, all asked for by the owner in one go, all on `personal` and live.
+
+## Three strikes is a limit, not a label
+
+20260917000000. A fourth, fifth and sixth strike all used to go in, which made
+"One more ends your membership" false on the members own card. `admin_add_strike`
+refuses past `strike_limit()` now and returns the new count, and the strike that
+reaches the limit opens a panel on `/admin` offering Pause, Remove, or Not now.
+Still a person deciding — nothing in the database ends a membership.
+
+## A mentor gets ten invites
+
+20260917010000. `mentor_invite_limit()`, mirrored by `MENTOR_ALLOWANCE`.
+
+**The policy was renamed, and that mattered.** It was "mentors can invite up to
+two people"; a renamed policy is a *new* policy, so the old name is dropped
+explicitly. Leaving it would have meant two insert policies ORed with the old
+cap as the generous half.
+
+`supabase/tests/mentor-invites.sql` had a step that started passing by not
+running the moment the limit went up — "the third is refused" inserted a third
+invite and succeeded. It fills the allowance from `mentor_invite_limit()` now
+and tries one past it. **If you change a limit, look at what its test actually
+exercises afterwards.**
+
+## Following an organization
+
+20260917020000. `organization_follows`, shaped after `event_dismissals`: the
+row's existence is the whole fact, unfollowing is a delete, and the compound
+primary key makes following idempotent.
+
+**There is no follower count and no "members who follow this", deliberately.**
+Who a member follows is a statement about them they did not make to the room.
+The select policy is the whole protection — there is no view to hide behind. If
+a count is ever wanted it is a `security definer` function, not a loosening of
+that policy.
+
+The payoff, so it is not a dead button: **"Ones you follow"** leads the Hosted
+by group in the events filter sheet and sets the ordinary host filter. It is
+built from the organizations *hosting something in the current list*, never the
+directory — 18 of the 23 run nothing, and a directory-built chip would select
+five bodies with no events and show an empty list.
+
+The directory row had to stop being a single `<button>` for this. A button
+inside a button is invalid HTML; browsers discard the inner one, so Follow would
+have been a dead region that opened the organization instead.
+
+## Peers has a search box
+
+The search itself was already there and unreachable. `matchesSearch` has read
+across name, place, level, topics, interests and the bio since the deck was
+built, and the page had a chip to *clear* a search with nothing that could start
+one. This is the missing input.
+
+Two things found by looking rather than by a test: `type="search"` draws its own
+clear button, so there were two ✕ side by side; and the empty-state advice said
+"try widening the filters" when it is far more often three words in the search
+box holding the deck shut.
+
+## Prefer not to say
+
+20260917030000. `members.declined`, one array for the survey and the details
+form both.
+
+**Skip and decline are different and both stay.** Skip leaves a null, which is
+honestly indistinguishable from "have not got to it yet" and is counted as
+undone. "Rather not say" is a decision and counts as answered. Collapsing them
+would either nag the people who have decided or quietly finish a profile
+somebody meant to come back to.
+
+The name and the birthday cannot be declined — a check constraint, under both
+spellings each, because the survey and the details form name them differently.
+
+The details form writes a decline **on the tap, not on Save**, for the reason
+`show_in_browse` already does: the survey writes this column too.
+
+`loadAnswers` asks twice, with the column and without, because a select naming a
+column the database does not have fails the whole query — the same shape as the
+events page refusing to load over an ungranted `series_id`.
+
+## Three wordings on Me
+
+- The visibility switch says visibility, not "the deck". "Deck" appeared nowhere
+  else on screen; the app says "Peers".
+- "How you look to other members" is **"My profile view"**.
+- Your details carries a **percentage**, not a count of what is missing. A count
+  cannot say "finished" without saying 0, and a gold badge showing 0 reads as
+  broken — it used to vanish exactly when it had good news.
+
+## The trap this session kept walking into
+
+**`textSize: 'largest'` is not a value.** The scale is `normal`/`large`/`larger`
+and `parsePreferences` silently drops anything else, so a screenshot script
+asking for 'largest' runs at the *default* size and proves nothing. One overflow
+sweep was reported as "checked at the largest setting" on that basis and had to
+be redone. **Print `document.documentElement.dataset.textSize` at the top of any
+such script**, which is now what they do.
+
+The other two, both already in this file and both hit again: an expected refusal
+without its own savepoint aborts the transaction so every later step prints
+"current transaction is aborted" and reads like a pass; and `pnpm fix`
+reformats a file out from under a string-match patch made moments earlier.
 
 ---
 
