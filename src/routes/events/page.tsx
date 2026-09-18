@@ -1,6 +1,6 @@
-import { ChevronLeft, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
@@ -63,6 +63,13 @@ const SEGMENTS: [EventsSegment, string][] = [
   ['upcoming', 'Upcoming'],
   ['going', "I'm going"],
   ['interested', 'Interested'],
+  /* Been to was unlisted for a while, reached only from the counter on Me —
+     the /invites and /admin pattern, to keep this row from growing. The owner
+     wanted the three RSVP answers side by side instead, which is a fair read:
+     "what am I going to / weighing up / have I been to" is one question asked
+     three ways, and splitting the third onto another screen made it the one
+     you had to already know about. */
+  ['been-to', 'Been to'],
   ['sport', 'Adaptive sport'],
   ['online', 'Online'],
   ['orgs', 'Organizations'],
@@ -174,14 +181,13 @@ export default function EventsPage() {
   const showingList = segment !== 'orgs';
   // Reached from Me and nowhere else, so it gets its own title and a way back
   // rather than an unlit chip row somebody cannot tell they are inside.
-  const isRecord = segment === 'been-to';
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
           <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
-            {isRecord ? 'Been to' : 'Events'}
+            Events
           </h1>
           {showingList ? (
             <button
@@ -201,27 +207,7 @@ export default function EventsPage() {
           ) : null}
         </div>
 
-        {/* A Link, not navigate(-1): this screen has one entrance, and history
-            leaves the app on a refresh while the label still says Me. Same
-            reasoning as /invites and /admin. */}
-        {isRecord ? (
-          <div className="mx-auto w-full max-w-[var(--events-measure)] pb-3">
-            <Link
-              to="/me"
-              className="inline-flex min-h-[38px] items-center gap-1 font-semibold text-[0.84375rem] text-navy"
-            >
-              <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
-              Me
-            </Link>
-          </div>
-        ) : null}
-
-        <div
-          className={cn(
-            'mx-auto flex w-full max-w-[var(--events-measure)] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]',
-            isRecord && 'hidden',
-          )}
-        >
+        <div className="mx-auto flex w-full max-w-[var(--events-measure)] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
           {SEGMENTS.map(([value, label]) => (
             <button
               key={value}

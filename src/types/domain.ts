@@ -485,11 +485,14 @@ export interface EventAttendee {
 
 /** The segment pills across the top of the Events tab, from the mock's `evPage()`. */
 /**
- * Every segment the URL will accept. The chip row is a separate list in
- * events/page.tsx, and deliberately shorter: `been-to` is reachable and
- * linkable but has no pill, the same way /invites and /admin are real routes
- * with no tab. It is reached from Me, which is where the rest of what the club
- * knows about you already lives.
+ * Every segment the URL will accept.
+ *
+ * The chip row in events/page.tsx is a separate list, and was deliberately
+ * shorter for a while — `been-to` had no pill and was reached only from the
+ * counter on Me. That made the third of three related answers the one a member
+ * had to already know about, so it is a pill like the other two now. The two
+ * lists still differ in principle: a segment can be linkable without being
+ * offered.
  */
 export const EVENTS_SEGMENTS = [
   'upcoming',

@@ -1017,6 +1017,30 @@ assumption that the club's repo was already running the job. It is not running
 anywhere else, and a calendar nobody is refreshing is the failure this workflow
 exists to prevent.
 
+# The three RSVP segments, and Been to
+
+"I'm going" and "Interested" are **upcoming-only**. They carried their past
+occurrences under a Past heading for a day, and the heading was the tell: a list
+whose name is future tense should not need a sign inside it saying half of it is
+not. That half is `been-to`, which lists what you said yes to and has happened,
+newest first, as compact lines.
+
+`been-to` was **unlisted at first** — no pill, reached only from the counter on
+Me, the /invites and /admin shape — to keep the pill row from growing. That was
+wrong, and the owner said so twice before it was understood. "What am I going to
+/ weighing up / have I been to" is one question asked three ways, and putting
+the third on another screen made it the one a member had to already know about.
+It is a pill beside the other two now, and the counter on Me still links to it.
+
+`EVENTS_SEGMENTS` and the chip row in events/page.tsx are still separate lists,
+because a segment can be linkable without being offered — there is just nothing
+using that now.
+
+Also: **"Any time" starts at today.** It had no bound at either end and the
+browsing segments sort ascending, so the widest view of the calendar opened on
+the oldest row in the database. Looking backwards is what the `past` window is
+for.
+
 # Repeating events collapse in the list
 
 Done. A series is one card — the next occurrence, with its own Interested and
