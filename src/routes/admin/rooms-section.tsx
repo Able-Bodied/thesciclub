@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
-import { roomsByCategory, setRoomOpen, useChatRooms } from '@/lib/chat/rooms';
+import { Link } from 'react-router-dom';
+import { roomsByCategory, setRoomOpen, useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,15 @@ import { cn } from '@/lib/utils';
  * The refusal shown is the database's own sentence. `admin_set_room_open`
  * checks `is_admin()` itself — this component is the client asking, and
  * nothing here is the permission check.
+ *
+ * ---------------------------------------------------------------------------
+ * The room's name is a link, and that is the point of the whole panel
+ * ---------------------------------------------------------------------------
+ * An administrator can read and post in a closed room — see chat_can_post_in —
+ * and that exemption exists so a room has something in it before a member is
+ * let into it. Without a way in from here, the exemption is a policy nobody
+ * can use. The topic count beside it is what tells them whether the seeding is
+ * done.
  */
 
 const CATEGORY_DOT: Record<RoomCategory, string> = {
@@ -40,6 +50,7 @@ const CATEGORY_DOT: Record<RoomCategory, string> = {
 
 export function RoomsSection() {
   const { rooms, loading, error, reload } = useChatRooms();
+  const { stats, reload: reloadStats } = useRoomStats();
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -59,6 +70,10 @@ export function RoomsSection() {
         if (result.ok) {
           setFailure(null);
           reload();
+          // A closed room is outside chat_room_stats' own gate for everybody
+          // but an administrator, and its counts are gone from the answer the
+          // moment it shuts. Re-read both, or the row keeps a stale count.
+          reloadStats();
           return;
         }
         setFailure(result.error);
@@ -108,7 +123,7 @@ export function RoomsSection() {
                 key={room.id}
                 className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
               >
-                <span className="min-w-0 flex-1 basis-[11rem]">
+                <Link to={`/chat/rooms/${room.id}`} className="min-w-0 flex-1 basis-[11rem]">
                   <span className="flex items-center gap-[7px]">
                     {/* Decorative: the category is written out beside it. */}
                     <span
@@ -118,12 +133,12 @@ export function RoomsSection() {
                         CATEGORY_DOT[category],
                       )}
                     />
-                    <span className="font-extrabold font-head text-[0.90625rem] text-ink">
+                    <span className="font-extrabold font-head text-[0.90625rem] text-ink underline decoration-line underline-offset-2">
                       {room.name}
                     </span>
                   </span>
                   <span className="mt-0.5 block text-[0.75rem] text-grey">
-                    {category} ·{' '}
+                    {category} · {topicsIn(stats.get(room.id)?.topicCount)} ·{' '}
                     {room.openedAt
                       ? `open since ${new Date(room.openedAt).toLocaleDateString(undefined, {
                           day: 'numeric',
@@ -132,7 +147,7 @@ export function RoomsSection() {
                         })}`
                       : 'nobody can see this room yet'}
                   </span>
-                </span>
+                </Link>
                 {busyId === room.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-grey" />
                 ) : (
@@ -154,13 +169,22 @@ export function RoomsSection() {
         )}
       </div>
 
-      {/* Goes when there is a room page to link to. Seeding a closed room is
-          the reason an administrator can see one at all, and right now there
-          is nothing to seed it with. */}
       <p className="mt-2 text-[0.75rem] text-grey leading-[1.45]">
-        Topics and posts are being built. There is nothing to put in a room yet, so opening one
-        shows members its description and no more.
+        Open a room's name to read it and to start a topic in it. You can post in a closed room, so
+        that there is something there before anybody is let in.
       </p>
     </>
   );
+}
+
+/**
+ * "no topics" · "1 topic" · "4 topics".
+ *
+ * Undefined means the counts have not arrived, not that there are none, so it
+ * reads as the honest blank rather than as zero.
+ */
+function topicsIn(count: number | undefined): string {
+  if (count === undefined) return 'counting topics…';
+  if (count === 0) return 'no topics yet';
+  return `${count} ${count === 1 ? 'topic' : 'topics'}`;
 }
