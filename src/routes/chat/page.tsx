@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react';
 import { SegmentPills } from '@/components/segment-pills';
-import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
+import { roomsByCategory, useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
 import type { ChatSegment } from '@/lib/chat/types';
 import { RoomCard, RoomCategoryLabel } from '@/routes/chat/room-card';
 
 /**
  * Chat — direct messages, event groups, and topic rooms.
  *
- * **Being built, from 2026-09-18.** The discussion rooms are the first part of
- * it to be real. Direct messages and groups are not built, and this screen says
- * so in the segment where they would be rather than showing an empty list that
- * could be read as "you have no messages" — the two are different facts and
- * only one of them is true.
+ * **Being built, from 2026-09-18.** The discussion rooms are real: a card opens
+ * the room, and the room's topics can be read, started and replied to. Direct
+ * messages and groups are not built, and this screen says so in the segment
+ * where they would be rather than showing an empty list that could be read as
+ * "you have no messages" — the two are different facts and only one of them is
+ * true.
  *
  * ---------------------------------------------------------------------------
  * Why the rooms list is usually empty, and why that is right
@@ -42,6 +43,8 @@ const SEGMENTS: [ChatSegment, string][] = [
 export default function ChatPage() {
   const [segment, setSegment] = useState<ChatSegment>('all');
   const { rooms, loading, error } = useChatRooms();
+  const { stats } = useRoomStats();
+  const membership = useRoomMembership();
 
   const grouped = useMemo(() => roomsByCategory(rooms), [rooms]);
 
@@ -98,23 +101,19 @@ export default function ChatPage() {
                   They open one at a time, as there are members to fill them.
                 </p>
               ) : (
-                <>
-                  {grouped.map(([category, inCategory]) => (
-                    <section key={category}>
-                      <RoomCategoryLabel category={category} />
-                      {inCategory.map((room) => (
-                        <RoomCard key={room.id} room={room} />
-                      ))}
-                    </section>
-                  ))}
-                  {/* Under the cards, not over them: it is a note about what
-                      the cards cannot do yet, and it stops being true — and
-                      goes — when topics and posts land. */}
-                  <p className="mt-3 text-[0.78125rem] text-grey leading-[1.45]">
-                    Reading and writing topics is being built. A room shows what it is for until
-                    then.
-                  </p>
-                </>
+                grouped.map(([category, inCategory]) => (
+                  <section key={category}>
+                    <RoomCategoryLabel category={category} />
+                    {inCategory.map((room) => (
+                      <RoomCard
+                        key={room.id}
+                        room={room}
+                        stats={stats.get(room.id)}
+                        joined={membership.joined.has(room.id)}
+                      />
+                    ))}
+                  </section>
+                ))
               )}
             </>
           ) : null}

@@ -3,24 +3,27 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ChatRooms from '@/lib/chat/rooms';
-import type { ChatRoom } from '@/lib/chat/types';
+import type { ChatRoom, RoomStats } from '@/lib/chat/types';
 import ChatPage from '@/routes/chat/page';
 
 /**
  * What this screen must not do is as important as what it does: it must not
  * show an empty conversation list that reads as "you have no messages" when
- * the truth is that messages are not built, and it must not show a room card
- * that looks tappable before there is a room to open.
+ * the truth is that messages are not built, and it must not report an empty
+ * room as three zeros.
  *
- * `useChatRooms` is stubbed and `roomsByCategory` deliberately is not — the
- * grouping and ordering on screen is the real function's, so this file cannot
- * assert its own arithmetic. Its own tests are in src/lib/chat/rooms.test.ts.
+ * The hooks that read the database are stubbed and `roomsByCategory`
+ * deliberately is not — the grouping and ordering on screen is the real
+ * function's, so this file cannot assert its own arithmetic. Its own tests are
+ * in src/lib/chat/rooms.test.ts.
  */
 
 const db = vi.hoisted(() => ({
   rooms: [] as ChatRoom[],
   loading: false,
   error: null as string | null,
+  stats: new Map<string, RoomStats>(),
+  joined: new Set<string>(),
 }));
 
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
@@ -30,6 +33,13 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
     loading: db.loading,
     error: db.error,
     reload: () => undefined,
+  }),
+  useRoomStats: () => ({ stats: db.stats, loading: false, reload: () => undefined }),
+  useRoomMembership: () => ({
+    joined: db.joined,
+    loading: false,
+    error: null,
+    toggle: () => undefined,
   }),
 }));
 
@@ -55,6 +65,8 @@ beforeEach(() => {
   db.rooms = [];
   db.loading = false;
   db.error = null;
+  db.stats = new Map();
+  db.joined = new Set();
 });
 
 describe('the chat screen', () => {
@@ -108,17 +120,41 @@ describe('the chat screen', () => {
     expect(screen.getByText('Bowel management')).toBeInTheDocument();
   });
 
-  // Topics and posts are the next thing built. A card that looks like it opens
-  // something and does not is the failure CONTEXT.md keeps Home a placeholder
-  // to avoid, so the card is not a control and the screen says why.
-  it('does not pretend a room can be opened yet', () => {
+  it('opens the room', () => {
     db.rooms = [room({ id: 'bowel' })];
     renderPage();
-    const card = screen.getByText('Bowel management').closest('article');
-    if (!card) throw new Error('the room is not drawn as a card');
-    expect(within(card).queryByRole('button')).toBeNull();
-    expect(within(card).queryByRole('link')).toBeNull();
-    expect(screen.getByText(/Reading and writing topics is being built/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Bowel management/ })).toHaveAttribute(
+      'href',
+      '/chat/rooms/bowel',
+    );
+    // The note that stood here while there was nothing behind the card.
+    expect(screen.queryByText(/being built/)).toBeNull();
+  });
+
+  // Three zeros read as a room that failed rather than one that has not
+  // started, and they would be the first thing a member saw on the day the
+  // first room opened.
+  it('says a room is empty in words rather than in zeros', () => {
+    db.rooms = [room({ id: 'bowel' })];
+    db.stats = new Map([['bowel', { topicCount: 0, postCount: 0, memberCount: 0 }]]);
+    renderPage();
+    expect(screen.getByText('Nothing has been asked here yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/0 topics/)).toBeNull();
+  });
+
+  it('counts what is in a room once there is something in it', () => {
+    db.rooms = [room({ id: 'bowel' })];
+    db.stats = new Map([['bowel', { topicCount: 1, postCount: 4, memberCount: 2 }]]);
+    renderPage();
+    expect(screen.getByText('1 topic · 4 posts · 2 members')).toBeInTheDocument();
+  });
+
+  it('marks the rooms the viewer is in', () => {
+    db.rooms = [room({ id: 'bowel' })];
+    db.joined = new Set(['bowel']);
+    renderPage();
+    const card = screen.getByRole('link', { name: /Bowel management/ });
+    expect(within(card).getByText('Joined')).toBeInTheDocument();
   });
 
   // Only an administrator is ever given a closed room to draw — the select

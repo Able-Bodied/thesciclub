@@ -3,7 +3,10 @@ import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider } from '@/lib/accessibility';
 import AdminPage from '@/routes/admin/page';
+import NewTopicPage from '@/routes/chat/new-topic';
 import ChatPage from '@/routes/chat/page';
+import RoomPage from '@/routes/chat/room-page';
+import TopicPage from '@/routes/chat/topic-page';
 import DevLoginPage from '@/routes/dev-login/page';
 import EventDetailPage from '@/routes/events/event-detail';
 import OrganizationDetailPage from '@/routes/events/organization-detail';
@@ -46,6 +49,11 @@ function AppShell() {
         <Route path="/peers" element={<PeersPage />} />
         <Route path="/peers/:id" element={<MemberDetailPage />} />
         <Route path="/chat" element={<ChatPage />} />
+        {/* A room's slug is in the URL — /chat/rooms/bowel — which is why
+            chat_rooms.id is a slug and not a uuid. */}
+        <Route path="/chat/rooms/:roomId" element={<RoomPage />} />
+        <Route path="/chat/rooms/:roomId/new" element={<NewTopicPage />} />
+        <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />

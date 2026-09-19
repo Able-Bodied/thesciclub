@@ -1,4 +1,5 @@
-import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
+import { Link } from 'react-router-dom';
+import type { ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/types';
 
 /**
  * One discussion room, in the list.
@@ -10,10 +11,18 @@ import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
  * the word, because a member who cannot tell #1A3E70 from #2F6B57 should lose
  * nothing.
  *
- * Deliberately not a button yet. Topics and posts are the next thing built,
- * and a card that looks tappable and does nothing is the failure CONTEXT.md
- * keeps Home a placeholder to avoid. It becomes a link to /chat/rooms/:id when
- * there is a room page to link to.
+ * A link to /chat/rooms/:id since the room page landed. It was deliberately
+ * not a control while there was nothing behind it — a card that looks tappable
+ * and does nothing is the failure CONTEXT.md keeps Home a placeholder to avoid.
+ *
+ * ---------------------------------------------------------------------------
+ * A room with nothing in it says so in words
+ * ---------------------------------------------------------------------------
+ * The stats line is the mock's "N topics · N posts · N members", and it is left
+ * off entirely when the room has no topics. "0 topics · 0 posts · 0 members" is
+ * the invented-content rule broken in the other direction: three zeros read as
+ * a room that failed rather than as one that has not started, and they are the
+ * first thing a member would see on the day the first room opens.
  *
  * ---------------------------------------------------------------------------
  * The Closed chip is for an audience of one kind of person
@@ -46,11 +55,20 @@ export function RoomCategoryLabel({ category }: { category: RoomCategory }) {
   );
 }
 
-export function RoomCard({ room }: { room: ChatRoom }) {
+export function RoomCard({
+  room,
+  stats,
+  joined,
+}: {
+  room: ChatRoom;
+  stats: RoomStats | undefined;
+  joined: boolean;
+}) {
   const style = CATEGORY_STYLE[room.category];
   const closed = room.openedAt === null;
   return (
-    <article
+    <Link
+      to={`/chat/rooms/${room.id}`}
       className={`mb-2.5 flex items-start gap-[11px] rounded-[6px_17px_17px_6px] border border-line border-l-4 bg-paper p-3.5 ${style.border}`}
     >
       {/* The glyph carries nothing the name does not — hidden rather than
@@ -68,6 +86,11 @@ export function RoomCard({ room }: { room: ChatRoom }) {
             two lines and took its own pill background with it. */}
         <span className="flex flex-wrap items-baseline gap-x-[7px] gap-y-1">
           <span className="font-extrabold font-head text-[0.9375rem] text-ink">{room.name}</span>
+          {joined ? (
+            <span className="whitespace-nowrap rounded-full bg-gold px-2 py-[2px] font-semibold text-[#2A1E06] text-[0.6875rem]">
+              Joined
+            </span>
+          ) : null}
           {closed ? (
             <span className="whitespace-nowrap rounded-full bg-tint px-2 py-[2px] font-semibold text-[0.6875rem] text-ink2">
               Closed
@@ -77,15 +100,27 @@ export function RoomCard({ room }: { room: ChatRoom }) {
         <span className="mt-[3px] block text-[0.78125rem] text-ink2 leading-[1.45]">
           {room.description}
         </span>
+        {stats && stats.topicCount > 0 ? (
+          <span className="mt-1.5 block font-semibold text-[0.75rem] text-navy leading-[1.45]">
+            {stats.topicCount} {stats.topicCount === 1 ? 'topic' : 'topics'} · {stats.postCount}{' '}
+            {stats.postCount === 1 ? 'post' : 'posts'} · {stats.memberCount}{' '}
+            {stats.memberCount === 1 ? 'member' : 'members'}
+          </span>
+        ) : (
+          <span className="mt-1.5 block text-[0.75rem] text-grey leading-[1.45]">
+            Nothing has been asked here yet.
+          </span>
+        )}
+
         {/* The chip is short enough to scan; this is what it means. Both are
             drawn, because "Closed" alone invites the reading that the room is
             finished rather than not yet started. */}
         {closed ? (
-          <span className="mt-1.5 block text-[0.75rem] text-grey leading-[1.45]">
+          <span className="mt-1 block text-[0.75rem] text-grey leading-[1.45]">
             No member can see this room yet.
           </span>
         ) : null}
       </span>
-    </article>
+    </Link>
   );
 }

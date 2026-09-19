@@ -1,0 +1,191 @@
+import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { BackLink } from '@/components/back-link';
+import { useAccount } from '@/lib/account';
+import { useChatAuthors } from '@/lib/chat/authors';
+import { useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
+import { chatTimeLong } from '@/lib/chat/time';
+import { firstUnreadIndex, removePost, sendPost, useTopicPosts } from '@/lib/chat/topics';
+import { Composer } from '@/routes/chat/composer';
+import { Post } from '@/routes/chat/post';
+
+/**
+ * One topic: the question, every reply, and the box to add to it.
+ *
+ * ---------------------------------------------------------------------------
+ * Enter breaks a line here, and does not send
+ * ---------------------------------------------------------------------------
+ * The opposite of a direct thread. A post in a room is paragraphs, and a member
+ * dictating one will pause — a send bound to Enter would cut the answer in
+ * half and publish the first sentence. Only the button sends.
+ *
+ * ---------------------------------------------------------------------------
+ * Opening at the first unread post
+ * ---------------------------------------------------------------------------
+ * A topic somebody has read half of opens at the half they have not. A topic
+ * they have never opened starts at the top, because for them the first unread
+ * post *is* the question. The read row is fetched before this visit overwrites
+ * it — see useTopicPosts — and the scroll happens once, on the first load, so
+ * that a reply arriving later does not throw the reader back up the page.
+ *
+ * ---------------------------------------------------------------------------
+ * Numbering
+ * ---------------------------------------------------------------------------
+ * "3/11" counts every row, removed ones included. That is why removal is soft:
+ * a post that vanished would renumber the rest for everybody reading, and every
+ * "as somebody said in 4" above it would be wrong.
+ */
+export default function TopicPage() {
+  const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
+  const account = useAccount();
+  const { rooms } = useChatRooms();
+  const membership = useRoomMembership();
+  const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [removalFailure, setRemovalFailure] = useState<string | null>(null);
+
+  const authors = useChatAuthors([topic?.authorId ?? null, ...posts.map((post) => post.authorId)]);
+  const room = rooms.find((r) => r.id === roomId) ?? null;
+  const closed = room?.openedAt === null;
+  const canPost = account.isAdmin || (room !== null && !closed && membership.joined.has(room.id));
+
+  // Where the reader had got to, captured on the first load and not recomputed:
+  // once they are reading, the page must stay where they put it.
+  const scrolled = useRef(false);
+  const list = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (loading || scrolled.current || posts.length === 0) return;
+    scrolled.current = true;
+    const index = firstUnreadIndex(posts, lastReadAt);
+    if (index === 0) return;
+    const element = list.current?.children.item(index);
+    element?.scrollIntoView({ block: 'start' });
+  }, [loading, posts, lastReadAt]);
+
+  function remove(postId: string) {
+    setRemovingId(postId);
+    setRemovalFailure(null);
+    void removePost(postId)
+      .then((result) => {
+        if (!result.ok) {
+          setRemovalFailure(result.error);
+          return;
+        }
+        reload();
+      })
+      .catch((e: unknown) => {
+        setRemovalFailure(e instanceof Error ? e.message : 'That did not work.');
+      })
+      .finally(() => {
+        setRemovingId(null);
+      });
+  }
+
+  if (loading) {
+    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
+  }
+
+  if (error || !topic) {
+    return (
+      <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
+        <div className="mx-auto w-full max-w-[720px]">
+          <BackLink to={room ? `/chat/rooms/${room.id}` : '/chat'} label={room?.name ?? 'Chat'} />
+          <p className="mt-6 text-[0.875rem] text-ink2 leading-relaxed">
+            This topic cannot be shown.
+          </p>
+          {error ? (
+            <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  const starter = topic.authorId ? authors.get(topic.authorId) : null;
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <header className="flex-none border-line border-b bg-paper px-[18px] pt-3 pb-3">
+        <div className="mx-auto w-full max-w-[720px]">
+          <BackLink to={room ? `/chat/rooms/${room.id}` : '/chat'} label={room?.name ?? 'Chat'} />
+          <h1 className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3]">
+            {topic.title}
+          </h1>
+          <p className="mt-1.5 text-[0.78125rem] text-grey leading-[1.45]">
+            {topic.replyCount} {topic.replyCount === 1 ? 'reply' : 'replies'} · {topic.viewCount}{' '}
+            {topic.viewCount === 1 ? 'view' : 'views'} · started by{' '}
+            {starter ? starter.displayName : topic.authorId ? '…' : 'a former member'} on{' '}
+            {chatTimeLong(topic.createdAt)}
+          </p>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-[18px] md:px-6">
+        <div className="mx-auto w-full max-w-[720px]" ref={list}>
+          {removalFailure ? (
+            <p className="mb-2.5 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+              {removalFailure}
+            </p>
+          ) : null}
+          {posts.map((post, index) => (
+            <Post
+              key={post.id}
+              post={post}
+              author={post.authorId ? (authors.get(post.authorId) ?? null) : null}
+              number={index + 1}
+              total={posts.length}
+              // An administrator can remove anybody's; everybody else only
+              // their own. chat_remove_post decides — this only asks.
+              canRemove={account.isAdmin || post.authorId === account.userId}
+              onRemove={() => {
+                remove(post.id);
+              }}
+              removing={removingId === post.id}
+            />
+          ))}
+        </div>
+      </div>
+
+      {canPost ? (
+        <Composer
+          placeholder="Reply to this topic"
+          sendLabel="Post this reply"
+          // Enter breaks a line. Only the button sends — see the header.
+          sendOnEnter={false}
+          onSend={async (body) => {
+            if (!account.userId) return 'You are signed out.';
+            const result = await sendPost(topic.id, account.userId, body);
+            if (!result.ok) return result.error;
+            reload();
+            return null;
+          }}
+        />
+      ) : closed ? (
+        <div className="flex-none border-line border-t bg-paper px-3.5 py-3">
+          <p className="mx-auto w-full max-w-[720px] text-center text-[0.78125rem] text-grey leading-[1.45]">
+            This room is closed. No member can see it yet.
+          </p>
+        </div>
+      ) : (
+        <div className="flex-none border-line border-t bg-paper px-3.5 py-2.5">
+          <div className="mx-auto w-full max-w-[720px]">
+            <button
+              type="button"
+              onClick={() => {
+                if (room) membership.toggle(room.id);
+              }}
+              className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi"
+            >
+              Join {room?.name ?? 'this room'} to reply
+            </button>
+            {membership.error ? (
+              <p className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]">
+                {membership.error}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
