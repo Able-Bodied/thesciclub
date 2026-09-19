@@ -262,7 +262,16 @@ export function useTopicPosts(
       }
 
       const found = (topics.data ?? []).find((row) => row.id === topicId) ?? null;
-      setTopic(found ? toTopic(found) : null);
+      // The counts were read a moment before this visit was recorded, so a
+      // first-time reader would be looking at a topic that says "0 views".
+      // Marking read below inserts exactly one row when there was none, so
+      // adding one here is the count after this visit rather than a guess.
+      const seenBefore = reads.data !== null;
+      setTopic(
+        found
+          ? { ...toTopic(found), viewCount: Number(found.view_count) + (seenBefore ? 0 : 1) }
+          : null,
+      );
       setPosts((postRows.data ?? []).map(toPost));
       setLastReadAt(reads.data?.last_read_at ?? null);
       setError(null);

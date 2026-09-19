@@ -38,7 +38,7 @@ import { Post } from '@/routes/chat/post';
 export default function TopicPage() {
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
   const account = useAccount();
-  const { rooms } = useChatRooms();
+  const { rooms, loading: roomsLoading } = useChatRooms();
   const membership = useRoomMembership();
   const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
   const [removingId, setRemovingId] = useState<string | null>(null);
@@ -81,7 +81,7 @@ export default function TopicPage() {
       });
   }
 
-  if (loading) {
+  if (loading || roomsLoading) {
     return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
   }
 
@@ -117,6 +117,16 @@ export default function TopicPage() {
             {starter ? starter.displayName : topic.authorId ? '…' : 'a former member'} on{' '}
             {chatTimeLong(topic.createdAt)}
           </p>
+          {/* An administrator seeding a room reaches this screen with a
+              working composer and no other sign that nobody can read what
+              they are writing. The room page says the same thing; forgetting
+              it one screen deeper is how somebody wonders why there is no
+              answer. */}
+          {closed ? (
+            <p className="mt-2 rounded-[11px] bg-tint px-3 py-2 text-[0.78125rem] text-ink2 leading-[1.45]">
+              This room is closed. No member can see this topic yet.
+            </p>
+          ) : null}
         </div>
       </header>
 

@@ -109,11 +109,16 @@ export default function RoomPage() {
               <p className="mt-[3px] text-[0.78125rem] text-ink2 leading-[1.45]">
                 {room.description}
               </p>
-              {count ? (
+              {/* Left off entirely until there is something to count, for the
+                  reason room-card.tsx gives: three zeros read as a room that
+                  failed rather than as one that has not started. And "open to
+                  all" is not a promise to make about a closed room, which is
+                  open to nobody — the banner below says so instead. */}
+              {count && count.topicCount > 0 ? (
                 <p className="mt-[5px] font-semibold text-[0.78125rem] text-navy">
                   {count.topicCount} {count.topicCount === 1 ? 'topic' : 'topics'} ·{' '}
-                  {count.memberCount} {count.memberCount === 1 ? 'member' : 'members'} · open to
-                  all, full history
+                  {count.memberCount} {count.memberCount === 1 ? 'member' : 'members'}
+                  {closed ? '' : ' · open to all, full history'}
                 </p>
               ) : null}
             </span>
