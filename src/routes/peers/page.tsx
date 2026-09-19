@@ -1,9 +1,9 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { SegmentPills } from '@/components/segment-pills';
 import { useBrowseMembers } from '@/lib/members';
 import { useSession } from '@/lib/session';
-import { cn } from '@/lib/utils';
 import { FilterSheet } from '@/routes/peers/filter-sheet';
 import {
   activeFilterCount,
@@ -167,28 +167,12 @@ export default function PeersPage() {
           </div>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[1100px] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
-          {SEGMENTS.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setSegment(value);
-              }}
-              aria-pressed={segment === value}
-              data-target="small"
-              className={cn(
-                'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem]',
-                'transition-colors',
-                segment === value
-                  ? 'bg-navy text-white hover:bg-navy-hi'
-                  : 'bg-tint text-ink2 hover:bg-line',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentPills
+          segments={SEGMENTS}
+          value={segment}
+          onChange={setSegment}
+          className="max-w-[1100px]"
+        />
       </header>
 
       <div

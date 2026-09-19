@@ -1,11 +1,11 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { SegmentPills } from '@/components/segment-pills';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
-import { cn } from '@/lib/utils';
 import { EventCard } from '@/routes/events/event-card';
 import { EventFilterSheet } from '@/routes/events/filter-sheet';
 import {
@@ -209,27 +209,12 @@ export default function EventsPage() {
           ) : null}
         </div>
 
-        <div className="mx-auto flex w-full max-w-[var(--events-measure)] gap-[7px] overflow-x-auto py-[11px] [scrollbar-width:none]">
-          {SEGMENTS.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                setSegment(value);
-              }}
-              aria-pressed={segment === value}
-              data-target="small"
-              className={cn(
-                'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] transition-colors',
-                segment === value
-                  ? 'bg-navy text-white hover:bg-navy-hi'
-                  : 'bg-tint text-ink2 hover:bg-line',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentPills
+          segments={SEGMENTS}
+          value={segment}
+          onChange={setSegment}
+          className="max-w-[var(--events-measure)]"
+        />
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
