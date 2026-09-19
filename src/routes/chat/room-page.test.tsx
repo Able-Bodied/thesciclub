@@ -31,6 +31,13 @@ vi.mock('@/lib/account', () => ({
   }),
 }));
 
+// Stubbed, and it has to be: `.env.local` points at the hosted project, so an
+// unmocked subscription in a test opens a websocket to production. What the
+// hook does is its own concern — the screen's job here is to hand it a refetch.
+vi.mock('@/lib/chat/realtime', () => ({
+  useRealtimeRows: () => undefined,
+}));
+
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
   ...(await importOriginal<typeof ChatRooms>()),
   useChatRooms: () => ({ rooms: db.rooms, loading: false, error: null, reload: () => undefined }),

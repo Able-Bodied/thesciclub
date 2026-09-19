@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
@@ -53,9 +54,24 @@ export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
-  const { topics, loading: topicsLoading, error } = useRoomTopics(roomId);
+  const { topics, loading: topicsLoading, error, reload } = useRoomTopics(roomId);
   const membership = useRoomMembership();
-  const { stats } = useRoomStats();
+  const { stats, reload: reloadStats } = useRoomStats();
+
+  // Watching chat_topics catches both halves of what this screen shows: a new
+  // topic is an INSERT, and a reply to an existing one is an UPDATE, because
+  // the chat_posts trigger moves last_post_at and reply_count on the topic row.
+  // One subscription rather than a second on chat_posts, which cannot be
+  // filtered by room anyway.
+  useRealtimeRows({
+    table: 'chat_topics',
+    filter: roomId ? `room_id=eq.${roomId}` : undefined,
+    onChange: () => {
+      reload();
+      reloadStats();
+    },
+    enabled: Boolean(roomId),
+  });
   const [sort, setSort] = useState<RoomSort>('activity');
 
   const room = rooms.find((r) => r.id === roomId) ?? null;

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
 import { chatTimeLong } from '@/lib/chat/time';
 import { firstUnreadIndex, removePost, sendPost, useTopicPosts } from '@/lib/chat/topics';
@@ -43,6 +44,17 @@ export default function TopicPage() {
   const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
+
+  // Live. A reply from somebody else appears without the reader doing
+  // anything, and a removal arrives as an UPDATE and redraws as the sentence
+  // that replaces it. The scroll is not affected: it happens once, on the
+  // first load, so a reply landing does not throw the reader up the page.
+  useRealtimeRows({
+    table: 'chat_posts',
+    filter: topicId ? `topic_id=eq.${topicId}` : undefined,
+    onChange: reload,
+    enabled: Boolean(topicId),
+  });
 
   const authors = useChatAuthors([topic?.authorId ?? null, ...posts.map((post) => post.authorId)]);
   const room = rooms.find((r) => r.id === roomId) ?? null;

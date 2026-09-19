@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +39,13 @@ export function AppNav() {
   // Reading a conversation happens on a screen that is not this one, so the
   // hook listens for `unreadChanged()` rather than this refetching on every
   // navigation. See src/lib/chat/unread.ts.
-  const { count } = useUnreadThreads();
+  const { count, reload } = useUnreadThreads();
+
+  // The bar is mounted on every screen, which makes it the right place for the
+  // one subscription that has to survive navigation: somebody writing to you
+  // while you are reading an event. Unfiltered and scoped by RLS to the
+  // conversations this member is in.
+  useRealtimeRows({ table: 'chat_messages', onChange: reload });
 
   // Bottom bar on a phone, top bar on a desktop.
   //
@@ -71,6 +78,11 @@ export function AppNav() {
             <NavLink
               key={to}
               to={to}
+              // The dot is decorative, so without this the tab is called "Chat"
+              // and what it is telling somebody is told only in navy. The label
+              // starts with the visible word, so what is said and what is shown
+              // still agree.
+              aria-label={to === '/chat' && count > 0 ? 'Chat, something new' : undefined}
               className={({ isActive }) =>
                 cn(
                   'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
@@ -97,12 +109,7 @@ export function AppNav() {
                       />
                     ) : null}
                   </span>
-                  <span>
-                    {label}
-                    {to === '/chat' && count > 0 ? (
-                      <span className="sr-only">, something new</span>
-                    ) : null}
-                  </span>
+                  <span>{label}</span>
                 </>
               )}
             </NavLink>

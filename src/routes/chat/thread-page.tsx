@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
 import { Composer } from '@/routes/chat/composer';
 import { MessageBubble } from '@/routes/chat/message-bubble';
@@ -40,7 +41,18 @@ import { MessageBubble } from '@/routes/chat/message-bubble';
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
   const account = useAccount();
-  const { thread, messages, loading, error, send, remove } = useThreadMessages(threadId);
+  const { thread, messages, loading, error, reload, send, remove } = useThreadMessages(threadId);
+
+  // Live. The reload also re-marks the thread read, which is right: the reader
+  // is looking at it. Removal arrives here as an UPDATE, so a message taken
+  // back turns into "Removed by…" under somebody who is mid-conversation
+  // rather than staying on their screen.
+  useRealtimeRows({
+    table: 'chat_messages',
+    filter: threadId ? `thread_id=eq.${threadId}` : undefined,
+    onChange: reload,
+    enabled: Boolean(threadId),
+  });
 
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);

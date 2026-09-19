@@ -282,9 +282,12 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
 
       const found = (threads.data ?? []).find((row) => row.id === threadId) ?? null;
       setThread(found ? toThread(found) : null);
-      // Replaces rather than merges, so a pending bubble that has already been
-      // confirmed cannot appear twice.
-      setMessages((messageRows.data ?? []).map(toMessage));
+      // The database's rows replace what was on screen — a confirmed bubble
+      // cannot appear twice — but a bubble still in flight is kept. Realtime
+      // means a reload can land in the middle of a send, and the words somebody
+      // is waiting on must not blink out and back.
+      const fresh = (messageRows.data ?? []).map(toMessage);
+      setMessages((current) => [...fresh, ...current.filter((message) => message.pending)]);
       setError(null);
       setLoading(false);
 
@@ -347,9 +350,16 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
         return result.error;
       }
       const saved = result.value;
-      setMessages((current) =>
-        current.map((message) => (message.id === pendingId ? saved : message)),
-      );
+      setMessages((current) => {
+        // The ordinary case: swap the pending bubble for the row the database
+        // made. The other one is a reload having already brought that row in
+        // and taken the pending bubble with it, in which case there is nothing
+        // to do and nothing to duplicate.
+        if (current.some((message) => message.id === pendingId)) {
+          return current.map((message) => (message.id === pendingId ? saved : message));
+        }
+        return current.some((message) => message.id === saved.id) ? current : [...current, saved];
+      });
       return null;
     },
     [threadId, memberId],

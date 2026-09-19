@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useRealtimeRows } from '@/lib/chat/realtime';
 import { roomsByCategory, useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatAuthor, ChatSegment, ChatThread } from '@/lib/chat/types';
@@ -47,9 +48,22 @@ export default function ChatPage() {
   const [segment, setSegment] = useState<ChatSegment>('all');
   const account = useAccount();
   const { rooms, loading, error } = useChatRooms();
-  const { stats } = useRoomStats();
+  const { stats, reload: reloadStats } = useRoomStats();
   const membership = useRoomMembership();
-  const { threads, loading: threadsLoading, error: threadsError } = useMyThreads();
+  const {
+    threads,
+    loading: threadsLoading,
+    error: threadsError,
+    reload: reloadThreads,
+  } = useMyThreads();
+
+  // Two unfiltered subscriptions, both scoped by RLS to what this member can
+  // already see: every message in a conversation they are in, and every topic
+  // in a room they can read. Unfiltered is the point — the list is about all of
+  // them at once, and a subscription per row would be a socket per
+  // conversation.
+  useRealtimeRows({ table: 'chat_messages', onChange: reloadThreads });
+  useRealtimeRows({ table: 'chat_topics', onChange: reloadStats });
 
   const grouped = useMemo(() => roomsByCategory(rooms), [rooms]);
 
