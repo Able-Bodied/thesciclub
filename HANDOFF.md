@@ -367,8 +367,23 @@ files, most recently by reporting a restore as broken when it had worked.
   Worth keeping that way: `pnpm exec` runs the version the project pins, and a
   globally installed CLI drifts from it — `db push` writes to the live
   database, which is not where a version surprise belongs.
-- Local Supabase: `pnpm exec supabase start -x realtime,storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`
+- Local Supabase: `pnpm exec supabase start -x storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`
   is the light set and is enough for almost everything.
+
+  **`realtime` came out of that exclusion list when Chat landed.** Chat
+  subscribes to `chat_messages`, `chat_posts`, `chat_topics` and `chat_threads`,
+  and with the service excluded every subscription connects, reports SUBSCRIBED
+  and delivers nothing — which looks exactly like a chat that nobody is writing
+  to. The CLI also remembers the last exclusion set, so adding it back needs
+  `pnpm exec supabase stop` first; starting again without `-x` does not restore
+  anything.
+
+  `pnpm realtime-check` is the only thing that says delivery works: two
+  browsers, two test numbers, a message into an open conversation and a dot onto
+  somebody else's tab bar. Unit tests mock the channel and prove neither. It
+  needs both test numbers to have member rows — `pnpm demo-member`, then again
+  with `DEMO_PHONE=12222222222 DEMO_OTP=222222` — and a dev server pointed at
+  the local stack, per the note further down about `.env.local`.
 
   **`-x storage-api` is the one exclusion that will lie to you.** With storage
   excluded, every storage call returns `name resolution failed` — uploads do not
