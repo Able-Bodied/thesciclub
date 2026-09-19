@@ -347,6 +347,7 @@ Two rules, both learned the hard way:
 | `chat-authors.sql` | that a member can put a name to a post by anybody — hidden, suspended or removed — and that a session without a member row can put a name to nobody |
 | `chat-rooms.sql` | that a closed discussion room is invisible to a member and visible to an administrator, that only an administrator can open one, and that a member cannot reach the table around the function |
 | `chat-posts.sql` | that an un-joined member reads a room's whole history and cannot write in it, that a suspended one reads and does not write, that an administrator seeds a closed room, that an author and an administrator can remove a post and a third member cannot, and that nobody sees which rooms another member joined or which topics they have read |
+| `chat-direct.sql` | that a third member sees nothing of a conversation — not the thread, not its roster, not a word of it, and nor does an administrator — that opening the same one twice from either end returns the same thread, that a hidden or suspended member cannot be found to start one while a conversation that already exists still opens, and that a member cannot reach the thread tables around the functions |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
