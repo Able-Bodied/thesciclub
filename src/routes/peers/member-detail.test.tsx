@@ -9,6 +9,12 @@ vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
 }));
 
+// Somebody is always signed in here. The Message button is not drawn without a
+// viewer — and not drawn on the viewer's own card, which is its own test below.
+vi.mock('@/lib/account', () => ({
+  useAccount: () => ({ status: 'member', userId: 'me', isAdmin: false, displayName: 'Alex' }),
+}));
+
 const { default: MemberDetailPage, childrenLabel } = await import('@/routes/peers/member-detail');
 
 const ok = (member: ReturnType<typeof makeMember>): MemberState => ({
@@ -139,6 +145,23 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByText(/NorCal SCI mentor directory/)).not.toBeInTheDocument();
   });
 
+  // The panel at the foot says the club never shows a phone number, an address
+  // or an email. This button is what makes that a promise rather than a limit.
+  it('offers a message as the one action on somebody else’s card', () => {
+    state.current = ok(makeMember({ id: 'jan', displayName: 'Jan' }));
+    renderDetail();
+    expect(screen.getByRole('button', { name: 'Message Jan' })).toBeInTheDocument();
+  });
+
+  it('does not offer a conversation with yourself', () => {
+    // Me links here, so a member reaches their own card. chat_open_direct
+    // refuses a conversation with yourself in a sentence, and a button whose
+    // only outcome is that sentence should not be on the screen.
+    state.current = ok(makeMember({ id: 'me', displayName: 'Alex' }));
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /^Message/ })).not.toBeInTheDocument();
+  });
+
   it('promises no contact details to everybody, seeded or not', () => {
     state.current = ok(makeMember({ isSeed: false }));
     renderDetail();
@@ -179,11 +202,13 @@ describe('the official account profile', () => {
     expect(screen.queryByText('Happy to talk about')).not.toBeInTheDocument();
   });
 
-  it('says plainly that messaging is not on yet, rather than offering a dead button', () => {
+  // It said "messaging is not switched on yet" until Chat was built. Leaving
+  // that up beside a working Chat tab would have been the more confusing lie.
+  it('offers the same Message button every other profile has', () => {
     state.current = ok(makeMember({ isAdmin: true }));
     renderDetail();
-    expect(screen.getByText(/Messaging is not switched on yet/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /message/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Message the club' })).toBeInTheDocument();
+    expect(screen.queryByText(/not switched on/)).not.toBeInTheDocument();
   });
 
   it('repeats the rule that membership can be lost', () => {

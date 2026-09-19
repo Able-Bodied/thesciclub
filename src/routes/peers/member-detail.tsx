@@ -1,6 +1,9 @@
 import { ChevronLeft } from 'lucide-react';
+import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark, ClubWordmark } from '@/components/club-mark';
+import { useAccount } from '@/lib/account';
+import { openDirect } from '@/lib/chat/threads';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
@@ -56,6 +59,64 @@ export function childrenLabel(
 export function backFrom(state: unknown): string {
   const from = (state as { from?: unknown } | null)?.from;
   return from === 'me' ? 'Me' : 'Peers';
+}
+
+/**
+ * Message, and where it goes.
+ *
+ * `chat_open_direct` returns the conversation these two already have or makes
+ * it, so this is safe to press twice — `direct_key` is unique and the function
+ * re-selects rather than racing. Nothing is created client-side and no id is
+ * derived here.
+ *
+ * Not drawn on your own card, which Me links to. A conversation with yourself
+ * is refused by the database in a sentence, and a button whose only outcome is
+ * that sentence should not be on the screen.
+ *
+ * A refusal is printed under the button rather than swallowed. The one that
+ * will actually happen is a suspended member, who reads and does not write.
+ */
+function MessageButton({ memberId, name }: { memberId: string; name: string }) {
+  const account = useAccount();
+  const navigate = useNavigate();
+  const [opening, setOpening] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  if (!account.userId || account.userId === memberId) return null;
+
+  return (
+    <div className="mt-3">
+      <button
+        type="button"
+        disabled={opening}
+        onClick={() => {
+          setOpening(true);
+          setFailure(null);
+          void openDirect(memberId)
+            .then((result) => {
+              if (!result.ok) {
+                setFailure(result.error);
+                setOpening(false);
+                return;
+              }
+              void navigate(`/chat/t/${result.value}`);
+            })
+            .catch((e: unknown) => {
+              setFailure(e instanceof Error ? e.message : 'That did not work.');
+              setOpening(false);
+            });
+        }}
+        className="flex min-h-[44px] w-full max-w-[20rem] items-center justify-center rounded-[13px] bg-navy px-4 font-bold font-head text-[0.9375rem] text-white transition-opacity disabled:opacity-50"
+      >
+        {opening ? 'Opening…' : `Message ${name}`}
+      </button>
+      {failure ? (
+        <p className="mt-2 max-w-[20rem] text-[0.78125rem] text-destructive leading-[1.45]">
+          {failure}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 /** A labelled row in the details card, skipped entirely when empty. */
@@ -246,6 +307,8 @@ export default function MemberDetailPage() {
             <p className="mt-1 text-[0.875rem] text-ink2">{summaryLine(member)}</p>
             {injury ? <p className="mt-0.5 text-[0.78125rem] text-grey">{injury}</p> : null}
 
+            <MessageButton memberId={member.id} name={member.displayName} />
+
             {member.topics.length ? (
               <Section title="Happy to talk about">
                 <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">
@@ -361,9 +424,10 @@ function Centered({ children }: { children: React.ReactNode }) {
  * empty would make the account look like an abandoned profile rather than the
  * one that answers you, so this says what the account is instead.
  *
- * There is deliberately no message button. Messaging is not built, and an
- * official account whose contact button silently does nothing is worse than one
- * that tells you plainly where things stand.
+ * The Message button is the same one every other profile has, and it opens the
+ * same kind of conversation. It said "messaging is not switched on yet" until
+ * Chat was built; leaving that sentence up beside a working Chat tab would have
+ * been the more confusing of the two lies.
  */
 function OfficialProfile({
   member,
@@ -436,9 +500,10 @@ function OfficialProfile({
 
         <Section title="Getting in touch">
           <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
-            Messaging is not switched on yet. When it is, this is the account to write to — until
-            then, whoever invited you is the fastest route to an answer.
+            Write here and it reaches whoever is administering the club. Nothing you send is visible
+            to any other member.
           </p>
+          <MessageButton memberId={member.id} name="the club" />
         </Section>
 
         <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
