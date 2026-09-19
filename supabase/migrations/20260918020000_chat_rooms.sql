@@ -41,7 +41,12 @@
 --
 -- The icons are text glyphs, not emoji, and they are decorative: the room's
 -- name is printed beside every one of them. Nothing depends on a particular
--- font having them.
+-- font having them — but one of the mock's did not have one. `⛭` (U+26ED, gear
+-- without hub) on Driving & vehicles drew as a tofu box in the screenshot,
+-- because the fallback font has no glyph for it, and a missing-character box
+-- beside every other room's icon reads as a broken screen rather than as a
+-- decoration. It is `◉` here instead: the same Geometric Shapes block as ◍, ◌,
+-- ◐ and ◎, all of which drew, and it reads as a wheel.
 --
 -- ---------------------------------------------------------------------------
 -- Who may read the list, and who may change it
@@ -155,7 +160,7 @@ insert into public.chat_rooms (id, name, description, category, icon, sort_order
    'Kit', '⚙', 11),
   ('driving', 'Driving & vehicles',
    'Hand controls, evaluations, funding, transfers, and loading the chair without taking it apart.',
-   'Kit', '⛭', 12)
+   'Kit', '◉', 12)
 on conflict (id) do nothing;
 
 -- ------------------------------------------------------- opening and closing
