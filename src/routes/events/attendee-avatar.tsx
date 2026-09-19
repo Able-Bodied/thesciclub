@@ -1,15 +1,14 @@
-import { photoUrlFor } from '@/lib/photos';
+import { MemberAvatar } from '@/components/member-avatar';
 import { cn } from '@/lib/utils';
-import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 import type { EventAttendee } from '@/types/domain';
 
 /**
  * One attendee's avatar, matching `.av.sm` in docs/index.html.
  *
  * Shared by the card's overlapping row and the detail page's Going list, so the
- * same person is the same square in both places. It reuses the Peers deck's
- * gradient and initials rather than defining a second palette — a member whose
- * tile is purple on their profile should not be green on an event.
+ * same person is the same square in both places. The square itself is
+ * `components/member-avatar.tsx`, which the Peers deck and Chat also draw — a
+ * member whose tile is purple on their profile should not be green on an event.
  */
 export function AttendeeAvatar({
   attendee,
@@ -18,31 +17,14 @@ export function AttendeeAvatar({
   attendee: EventAttendee;
   className?: string;
 }) {
-  const photo = photoUrlFor(attendee.photoPath);
-  const [from, to] = gradientFor(attendee.memberId);
-
   return (
-    <span
-      className={cn(
-        'relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] font-extrabold font-head text-[0.8125rem] text-white',
-        className,
-      )}
-      style={{ background: `linear-gradient(140deg, ${from}, ${to})` }}
-    >
-      {photo ? (
-        <img
-          src={photo}
-          // Empty alt, not the member's name: the name is already the next
-          // element in the row, and a screen reader that reads both says it
-          // twice. A decorative alt is the correct answer for an image whose
-          // caption is beside it.
-          alt={attendee.photoAlt ?? ''}
-          className="absolute inset-0 h-full w-full object-cover object-[50%_32%]"
-        />
-      ) : (
-        initialsOf(attendee.displayName)
-      )}
-    </span>
+    <MemberAvatar
+      id={attendee.memberId}
+      displayName={attendee.displayName}
+      photoPath={attendee.photoPath}
+      photoAlt={attendee.photoAlt}
+      className={className}
+    />
   );
 }
 
