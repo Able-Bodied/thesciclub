@@ -154,10 +154,18 @@ describe('the chat screen', () => {
     renderPage();
     const row = screen.getByRole('link', { name: /Jan/ });
     expect(row).toHaveAttribute('href', '/chat/t/th1');
-    expect(within(row).getByText(/Jan: The seat took three fittings/)).toBeInTheDocument();
+    // Not "Jan: …" — the row is already titled Jan, and saying it twice spends
+    // a third of the line on nothing.
+    expect(within(row).getByText('The seat took three fittings.')).toBeInTheDocument();
   });
 
-  it('says who wrote the last message, and "You" when it was the viewer', () => {
+  it('names the speaker in a group, where the row is not already titled with it', () => {
+    db.threads = [thread({ id: 'g1', kind: 'group', name: 'Saturday ride', otherMemberId: null })];
+    renderPage();
+    expect(screen.getByText('Jan: The seat took three fittings.')).toBeInTheDocument();
+  });
+
+  it('says "You" when the last word was the viewer’s', () => {
     db.threads = [thread({ id: 'th1', lastAuthorId: 'me', lastBody: 'Thank you.' })];
     renderPage();
     expect(screen.getByText('You: Thank you.')).toBeInTheDocument();

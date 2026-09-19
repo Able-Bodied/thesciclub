@@ -198,13 +198,22 @@ describe('a conversation', () => {
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
   });
 
-  it('lets an administrator remove anybody’s', async () => {
+  // Unlike a topic. An administrator is in a conversation as a member of it,
+  // and one they could reach as an administrator would not be private —
+  // moderating that happens by an id somebody hands them, not on a screen.
+  it('offers an administrator no more than anybody else here', () => {
     db.isAdmin = true;
     db.messages = [message({ id: 'm1' })];
     renderThread();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+  });
+
+  it('removes the viewer’s own message', async () => {
+    db.messages = [message({ id: 'm2', authorId: 'me' })];
+    renderThread();
     await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
     await waitFor(() => {
-      expect(db.removed).toEqual(['m1']);
+      expect(db.removed).toEqual(['m2']);
     });
   });
 

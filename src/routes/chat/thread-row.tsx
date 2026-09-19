@@ -15,12 +15,17 @@ import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
  * is `aria-hidden` — a screen reader reads the link once, by its words.
  *
  * ---------------------------------------------------------------------------
- * The last line is what was said, and who said it
+ * The last line is what was said, and who said it only where that is news
  * ---------------------------------------------------------------------------
  * "You: " in front of the reader's own, which is the one thing that tells a
- * glance whether the ball is in their court. It is truncated to one line: this
- * is a list, and a row that grows with the length of the last message makes the
- * list a different shape every time somebody speaks.
+ * glance whether the ball is in their court. Nothing in front of the other
+ * member's in a direct conversation — the row is already titled with their
+ * name, and "Nicole / Nicole: Three! Who did the fitting" spends a third of the
+ * line saying it twice. In a group the name is news and is printed.
+ *
+ * It is truncated to one line: this is a list, and a row that grows with the
+ * length of the last message makes the list a different shape every time
+ * somebody speaks.
  *
  * A removed message reads "Message removed" rather than showing the blank the
  * database left, and a thread with nothing in it says so — not an empty line
@@ -42,11 +47,18 @@ export function ThreadRow({
   const title = threadTitle(thread, other?.displayName ?? null);
   const mine = thread.lastAuthorId !== null && thread.lastAuthorId === viewerId;
 
+  // Who spoke, where that is not already the title of the row. See the header.
+  const who = mine
+    ? 'You: '
+    : thread.kind === 'group'
+      ? `${lastAuthor?.displayName ?? 'Former member'}: `
+      : '';
+
   const last = thread.lastRemoved
     ? 'Message removed'
     : thread.lastBody === null
       ? 'Nothing said yet'
-      : `${mine ? 'You' : (lastAuthor?.displayName ?? 'Former member')}: ${thread.lastBody}`;
+      : `${who}${thread.lastBody}`;
 
   return (
     <Link

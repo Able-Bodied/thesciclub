@@ -172,7 +172,11 @@ export default function ThreadPage() {
 
       <div ref={scroller} className="relative flex-1 overflow-y-auto px-4 pt-3 pb-2 md:px-6">
         <div
-          className="mx-auto w-full max-w-[720px]"
+          // Pushed to the bottom rather than stacked from the top: a
+          // conversation with three messages in it belongs above the composer
+          // where the next one will appear, not floating under the header with
+          // a screen of nothing below it.
+          className="mx-auto flex min-h-full w-full max-w-[720px] flex-col justify-end"
           // The list of what has been said, announced as it grows. Polite, not
           // assertive: a message is not an alert and must not cut across
           // whatever the reader is in the middle of.
@@ -201,7 +205,12 @@ export default function ThreadPage() {
                 mine={message.authorId === account.userId}
                 // An administrator can remove anybody's; everybody else only
                 // their own. chat_remove_message decides — this only asks.
-                canRemove={account.isAdmin || message.authorId === account.userId}
+                // Own messages only, even for an administrator. They are in
+                // this conversation as a member of it — a private thread they
+                // could reach as an administrator would not be private — and
+                // moderating one they are not in happens by an id somebody
+                // hands them, which is not a screen. See 20260918100000.
+                canRemove={message.authorId === account.userId}
                 onRemove={() => {
                   removeMessage(message.id);
                 }}
