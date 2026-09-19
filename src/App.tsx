@@ -6,6 +6,7 @@ import AdminPage from '@/routes/admin/page';
 import NewTopicPage from '@/routes/chat/new-topic';
 import ChatPage from '@/routes/chat/page';
 import RoomPage from '@/routes/chat/room-page';
+import ThreadPage from '@/routes/chat/thread-page';
 import TopicPage from '@/routes/chat/topic-page';
 import DevLoginPage from '@/routes/dev-login/page';
 import EventDetailPage from '@/routes/events/event-detail';
@@ -54,6 +55,10 @@ function AppShell() {
         <Route path="/chat/rooms/:roomId" element={<RoomPage />} />
         <Route path="/chat/rooms/:roomId/new" element={<NewTopicPage />} />
         <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
+        {/* /chat/t/:threadId and not /chat/threads/:id — a conversation's URL
+            is pasted and typed far more than a room's, and the thread id is a
+            uuid that is long enough on its own. */}
+        <Route path="/chat/t/:threadId" element={<ThreadPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
