@@ -30,3 +30,12 @@ export interface ChatRoom {
    */
   openedAt: string | null;
 }
+
+/**
+ * The segments across the top of /chat, in the order they are drawn.
+ *
+ * The mock's, from `chatPage()`. `all` is first and is the default: it is the
+ * one that answers "what is there", and the other three are narrowings of it.
+ */
+export const CHAT_SEGMENTS = ['all', 'direct', 'groups', 'rooms'] as const;
+export type ChatSegment = (typeof CHAT_SEGMENTS)[number];
