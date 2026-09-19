@@ -28,6 +28,7 @@ import {
   withdrawnNumbers,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { RoomsSection } from '@/routes/admin/rooms-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
 
@@ -49,7 +50,7 @@ export default function AdminPage() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
-  const [tab, setTab] = useState<'members' | 'invites'>('members');
+  const [tab, setTab] = useState<'members' | 'invites' | 'rooms'>('members');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -156,7 +157,7 @@ export default function AdminPage() {
             {pending.length === 1 ? '' : 's'} waiting
           </p>
           <div className="mt-3 flex gap-[7px]">
-            {(['members', 'invites'] as const).map((value) => (
+            {(['members', 'invites', 'rooms'] as const).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -196,6 +197,8 @@ export default function AdminPage() {
           <p className="py-10 text-center text-[0.875rem] text-grey">Loading the roster…</p>
         ) : (
           <div className="mx-auto w-full max-w-[760px]">
+            {tab === 'rooms' ? <RoomsSection /> : null}
+
             {tab === 'invites' ? (
               <>
                 <Section title="Add to the list" subtitle="Nobody can join without a number on it.">
