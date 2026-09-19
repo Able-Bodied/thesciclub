@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import type { ChatMessage, ChatThread } from '@/lib/chat/types';
+import { unreadChanged } from '@/lib/chat/unread';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -288,8 +289,14 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
       setLoading(false);
 
       // After the read, not before, and silent on failure: the conversation is
-      // on screen and unread is a convenience.
-      if (found) void supabase.rpc('chat_mark_thread_read', { thread: threadId });
+      // on screen and unread is a convenience. The dot in the tab bar is told
+      // either way — it is about to be wrong, and it is not on this screen to
+      // notice.
+      if (found) {
+        void supabase.rpc('chat_mark_thread_read', { thread: threadId }).then(() => {
+          unreadChanged();
+        });
+      }
     } catch (e) {
       if (aborted()) return;
       setError(e instanceof Error ? e.message : 'Could not load the conversation.');

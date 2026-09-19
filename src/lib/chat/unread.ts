@@ -17,16 +17,41 @@ import { getSupabase } from '@/lib/supabase';
  * list with nothing bold in it.
  *
  * ---------------------------------------------------------------------------
- * It refetches on focus, and that is the whole of its liveness for now
+ * What makes it re-ask
  * ---------------------------------------------------------------------------
- * Realtime lands in the next phase and will drive this from the wire. Until
- * then the honest behaviour is to re-ask when the window comes back — somebody
- * returning to the tab is the moment a stale dot is most visible — and to
- * re-ask when the route changes, which the caller does by remounting.
+ * Two things, and neither is a timer. Polling a database every thirty seconds
+ * for a dot is a cost every member on a phone pays for something they notice
+ * once.
+ *
+ *  - The window regaining focus. Coming back to the tab is when a stale dot is
+ *    most visible.
+ *  - `unreadChanged()`, which Chat calls when it has just done something that
+ *    changes the answer — reading a conversation is the one that matters, and
+ *    it happens on a screen that is not this one. A notifier rather than a
+ *    refetch on every navigation: the dot then moves exactly when the fact
+ *    moves, instead of on every tap anywhere in the app.
+ *
+ * Realtime lands in the next phase and will add the third: somebody else
+ * writing to you while you are looking at something else.
  *
  * A failure leaves the count at zero and says nothing. The dot is a hint; an
  * error message in the tab bar is not.
  */
+
+/**
+ * Everything currently drawing the dot.
+ *
+ * Module-level, because the thing that changes the answer (opening a
+ * conversation) and the thing that draws it (the tab bar) are on opposite sides
+ * of the tree, and threading a callback between them would mean the shell
+ * holding a conversation's state.
+ */
+const listeners = new Set<() => void>();
+
+/** Tell the dot that the answer has changed. Called by threads.ts. */
+export function unreadChanged(): void {
+  for (const listener of listeners) listener();
+}
 
 export interface UnreadState {
   /** Conversations with something new. Zero is drawn as no dot at all. */
@@ -65,16 +90,14 @@ export function useUnreadThreads(): UnreadState {
   useEffect(() => {
     void load();
 
-    // Not an interval. Polling a database every thirty seconds for a dot is a
-    // cost paid by every member on a phone for something they notice once; the
-    // moment that matters is coming back to the window, and realtime takes the
-    // rest in the next phase.
-    const onFocus = () => {
+    const again = () => {
       void load();
     };
-    window.addEventListener('focus', onFocus);
+    listeners.add(again);
+    window.addEventListener('focus', again);
     return () => {
-      window.removeEventListener('focus', onFocus);
+      listeners.delete(again);
+      window.removeEventListener('focus', again);
     };
   }, [load]);
 

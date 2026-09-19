@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
+import { useUnreadThreads } from '@/lib/chat/unread';
 import { cn } from '@/lib/utils';
 
 /**
@@ -10,14 +11,19 @@ import { cn } from '@/lib/utils';
  * position once they land.
  *
  * ---------------------------------------------------------------------------
- * Chat is not raised
+ * Chat is still not raised, and now carries a dot
  * ---------------------------------------------------------------------------
- * The mock gives the middle tab a badge behind its icon and this bar carried
- * it for a while. It was removed: the badge is the strongest mark in the nav,
- * and it sat on the one tab that does nothing yet — so the bar pointed hardest
- * at the only place with nothing to find. The mock drew a finished app.
+ * The mock gives the middle tab a badge behind its icon and this bar carried it
+ * for a while. It was removed because the badge is the strongest mark in the
+ * nav and it sat on the one tab that did nothing — the bar pointed hardest at
+ * the only place with nothing to find.
  *
- * It should come back with Chat itself, not before it.
+ * Chat is real now, and the raised tab still does not come back. A permanent
+ * badge says "this is the important one" on every screen forever; a dot says
+ * "somebody has written to you", which is a fact, and it disappears when it
+ * stops being true. A count is not drawn: three unread conversations and one
+ * are the same instruction, and the number would be the loudest thing in the
+ * bar.
  */
 
 const TABS = [
@@ -29,6 +35,11 @@ const TABS = [
 ] as const;
 
 export function AppNav() {
+  // Reading a conversation happens on a screen that is not this one, so the
+  // hook listens for `unreadChanged()` rather than this refetching on every
+  // navigation. See src/lib/chat/unread.ts.
+  const { count } = useUnreadThreads();
+
   // Bottom bar on a phone, top bar on a desktop.
   //
   // The five items still stay together rather than stretching: five tabs spread
@@ -75,10 +86,23 @@ export function AppNav() {
                 <>
                   {/* Every item gets the same row height, so the five labels
                       sit on one line. */}
-                  <span className="grid h-7 w-7 place-items-center rounded-[10px]">
+                  <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
                     <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
+                    {to === '/chat' && count > 0 ? (
+                      // Ringed in the bar's own colour so it reads as a dot on
+                      // the icon rather than as part of it.
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-navy ring-2 ring-paper"
+                      />
+                    ) : null}
                   </span>
-                  <span>{label}</span>
+                  <span>
+                    {label}
+                    {to === '/chat' && count > 0 ? (
+                      <span className="sr-only">, something new</span>
+                    ) : null}
+                  </span>
                 </>
               )}
             </NavLink>
