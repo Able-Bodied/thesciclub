@@ -392,6 +392,26 @@ files, most recently by reporting a restore as broken when it had worked.
   whatever the owner has open. Screenshots:
   `SHOOT_BASE=http://localhost:5180 pnpm shoot /peers --both` — `pnpm shoot`
   defaults to 5181, so it nearly always needs SHOOT_BASE.
+
+  **`.env.local` points at the hosted project, so the dev server — and
+  therefore `pnpm shoot` — talks to production.** A migration applied only to
+  the local stack is invisible to it, and what comes back is
+  `Could not find the table '…' in the schema cache`, which reads like a broken
+  query rather than like the wrong database. To look at local work, override
+  the two variables in the environment; Vite lets a real env var beat
+  `.env.local`:
+
+  ```
+  VITE_SUPABASE_URL=http://127.0.0.1:54321 \
+  VITE_SUPABASE_ANON_KEY=$(pnpm exec supabase status -o json |
+    python3 -c 'import json,sys; print(json.load(sys.stdin)["PUBLISHABLE_KEY"])') \
+  ./node_modules/.bin/vite --port 5183 --strictPort
+  ```
+
+  A freshly applied migration also needs PostgREST's schema cache reloading
+  before the first read — `notify pgrst, 'reload schema';` — and after a
+  `db reset`, `pnpm demo-member` makes `11111111111` an ordinary member called
+  Alex rather than the administrator it is on the hosted project.
 - Sharing the dev server through a tunnel: ngrok and cloudflared hostnames are
   in `server.allowedHosts` in vite.config.ts. Vite refuses a Host header it does
   not recognise, and that check is load-bearing — it is what stops a page
