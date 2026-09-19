@@ -16,6 +16,7 @@
     "check": "biome ci . && eslint . --max-warnings 0 && tsc -b --noEmit",
     "fix": "eslint . --fix && biome check --write .",
     "shoot": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/shoot.mjs",
+    "realtime-check": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/realtime-check.mjs",
     "demo-member": "node scripts/demo-member.mjs",
     "backfill-series": "node scripts/backfill-series.mjs",
     "logos": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/logos.mjs",
