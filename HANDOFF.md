@@ -344,6 +344,7 @@ Two rules, both learned the hard way:
 | `strikes.sql` | the strike arithmetic (withdrawn and year-old ones leave the count, the rows stay), the cap at three, and the visibility (another member sees none of them) |
 | `organization-follows.sql` | that a member can follow, and that nobody sees anybody else's — step 6 is the one that matters |
 | `declined.sql` | that "rather not say" is recorded, and that the name and the birthday cannot be |
+| `chat-authors.sql` | that a member can put a name to a post by anybody — hidden, suspended or removed — and that a session without a member row can put a name to nobody |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
