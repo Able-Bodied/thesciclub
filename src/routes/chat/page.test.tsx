@@ -3,19 +3,20 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ChatRooms from '@/lib/chat/rooms';
-import type { ChatRoom, RoomStats } from '@/lib/chat/types';
+import type * as Threads from '@/lib/chat/threads';
+import type { ChatAuthor, ChatRoom, ChatThread, RoomStats } from '@/lib/chat/types';
 import ChatPage from '@/routes/chat/page';
 
 /**
  * What this screen must not do is as important as what it does: it must not
- * show an empty conversation list that reads as "you have no messages" when
- * the truth is that messages are not built, and it must not report an empty
- * room as three zeros.
+ * report an empty room as three zeros, and it must not let "no conversations
+ * yet" and "groups are not built" turn into the same blank space — a member
+ * can do something about the first and nothing about the second.
  *
- * The hooks that read the database are stubbed and `roomsByCategory`
- * deliberately is not — the grouping and ordering on screen is the real
- * function's, so this file cannot assert its own arithmetic. Its own tests are
- * in src/lib/chat/rooms.test.ts.
+ * The hooks that read the database are stubbed and `roomsByCategory` and
+ * `threadTitle` deliberately are not — the grouping on screen is the real
+ * function's, so this file cannot assert its own arithmetic. Their own tests
+ * are in src/lib/chat/rooms.test.ts and threads.test.ts.
  */
 
 const db = vi.hoisted(() => ({
@@ -24,6 +25,28 @@ const db = vi.hoisted(() => ({
   error: null as string | null,
   stats: new Map<string, RoomStats>(),
   joined: new Set<string>(),
+  threads: [] as ChatThread[],
+  threadsLoading: false,
+  threadsError: null as string | null,
+  authors: new Map<string, ChatAuthor>(),
+}));
+
+vi.mock('@/lib/account', () => ({
+  useAccount: () => ({ status: 'member', userId: 'me', isAdmin: false, displayName: 'Alex' }),
+}));
+
+vi.mock('@/lib/chat/threads', async (importOriginal) => ({
+  ...(await importOriginal<typeof Threads>()),
+  useMyThreads: () => ({
+    threads: db.threads,
+    loading: db.threadsLoading,
+    error: db.threadsError,
+    reload: () => undefined,
+  }),
+}));
+
+vi.mock('@/lib/chat/authors', () => ({
+  useChatAuthors: () => db.authors,
 }));
 
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
@@ -42,6 +65,33 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
     toggle: () => undefined,
   }),
 }));
+
+const thread = (o: Partial<ChatThread> & { id: string }): ChatThread => ({
+  kind: 'direct',
+  name: null,
+  eventId: null,
+  createdAt: '2026-09-18T09:00:00Z',
+  lastMessageAt: '2026-09-18T10:00:00Z',
+  memberCount: 2,
+  otherMemberId: 'jan',
+  lastBody: 'The seat took three fittings.',
+  lastAuthorId: 'jan',
+  lastAt: '2026-09-18T10:00:00Z',
+  lastRemoved: false,
+  unread: false,
+  ...o,
+});
+
+const author = (o: Partial<ChatAuthor> & { id: string }): ChatAuthor => ({
+  displayName: 'Jan',
+  photoPath: null,
+  photoAlt: null,
+  avatarColor: null,
+  level: 'T4 complete',
+  isAdmin: false,
+  hasProfile: true,
+  ...o,
+});
 
 const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   name: 'Bowel management',
@@ -67,6 +117,10 @@ beforeEach(() => {
   db.error = null;
   db.stats = new Map();
   db.joined = new Set();
+  db.threads = [];
+  db.threadsLoading = false;
+  db.threadsError = null;
+  db.authors = new Map([['jan', author({ id: 'jan' })]]);
 });
 
 describe('the chat screen', () => {
@@ -78,17 +132,57 @@ describe('the chat screen', () => {
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 
-  it('says direct messages and groups are not built, rather than showing them empty', () => {
+  // Two different blanks, and only one of them is something the member can do
+  // anything about. A member with no conversations is told where to start; a
+  // member with no groups is told groups do not exist yet.
+  it('points somebody with no conversations at a profile, and says groups are not built', () => {
     renderPage();
-    expect(screen.getByText(/Direct messages and groups are not built yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No conversations yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Message a member from their profile/)).toBeInTheDocument();
+    expect(screen.getByText('Groups are not built yet.')).toBeInTheDocument();
   });
 
-  it('names only the one that is missing when a segment is chosen', async () => {
+  it('does not offer the empty-conversations line under Groups', async () => {
     renderPage();
-    await userEvent.click(screen.getByRole('button', { name: 'Direct' }));
-    expect(screen.getByText('Direct messages are not built yet.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Groups' }));
     expect(screen.getByText('Groups are not built yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/No conversations yet/)).toBeNull();
+  });
+
+  it('opens a conversation, named by the other member', () => {
+    db.threads = [thread({ id: 'th1' })];
+    renderPage();
+    const row = screen.getByRole('link', { name: /Jan/ });
+    expect(row).toHaveAttribute('href', '/chat/t/th1');
+    expect(within(row).getByText(/Jan: The seat took three fittings/)).toBeInTheDocument();
+  });
+
+  it('says who wrote the last message, and "You" when it was the viewer', () => {
+    db.threads = [thread({ id: 'th1', lastAuthorId: 'me', lastBody: 'Thank you.' })];
+    renderPage();
+    expect(screen.getByText('You: Thank you.')).toBeInTheDocument();
+  });
+
+  // The blank the database left is not shown. "Message removed" is the fact.
+  it('says a removed last message was removed rather than showing the blank', () => {
+    db.threads = [thread({ id: 'th1', lastBody: '', lastRemoved: true })];
+    renderPage();
+    expect(screen.getByText('Message removed')).toBeInTheDocument();
+  });
+
+  it('marks a conversation with something new in it', () => {
+    db.threads = [thread({ id: 'th1', unread: true })];
+    renderPage();
+    // The dot is decorative; the word beside it is what a screen reader gets.
+    expect(screen.getByRole('link', { name: /new/ })).toBeInTheDocument();
+  });
+
+  it('keeps conversations out of the Rooms segment', async () => {
+    db.threads = [thread({ id: 'th1' })];
+    db.rooms = [room({ id: 'bowel' })];
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Rooms' }));
+    expect(screen.queryByRole('link', { name: /Jan/ })).toBeNull();
   });
 
   // The rooms are all seeded closed, so this is the ordinary first sight of
@@ -179,6 +273,7 @@ describe('the chat screen', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Rooms' }));
     expect(screen.getByText('Bowel management')).toBeInTheDocument();
     expect(screen.queryByText(/are not built yet/)).toBeNull();
+    expect(screen.queryByText(/No conversations yet/)).toBeNull();
   });
 
   it('shows the database’s own sentence when the read fails', async () => {
