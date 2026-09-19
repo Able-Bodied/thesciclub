@@ -80,30 +80,40 @@ silently disabling a button.
 
 ## What actually works
 
-Three surfaces are real. Everything else is deliberately not built yet.
+Three surfaces are real, a fourth is being built, and everything else is deliberately not yet.
 
 | Surface | State | Notes |
 | --- | --- | --- |
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. |
 | **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
+| **Chat** | Being built | DMs, event groups, topic rooms. Started 2026-09-18. |
 | Home | Placeholder | The mixed feed. Needs four content types and a moderation story. |
-| Chat | Placeholder | DMs, event groups, topic rooms. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that
-looks finished and does nothing gets demoed, believed, and then explained.
+looks finished and does nothing gets demoed, believed, and then explained. **That rule still
+governs Home**, and Chat being built is not a reason to relax it — a half-built Chat should say
+what it cannot do rather than imply it can.
 
 ## Deliberately deferred
 
 Real, wanted, and explicitly not now. If a task seems to need one of these, say so rather than
 quietly scoping it in.
 
-- **Topic rooms / forum.** Wanted eventually, and the reason to build it is not to depend on
-  CareCure. But a room of two dozen members is empty by construction. It arrives when there are
-  enough members for a room to be worth opening.
 - **The Home feed.** Questions, photo posts, comments, member suggestions.
 - **Mentor badging** (e.g. "Craig-certified").
 - **Coordinator tooling**, classifieds, equipment exchange, AI-assisted matching.
+
+**Topic rooms were on this list until 2026-09-18** and the owner has decided to build them. The
+objection that kept them here has not stopped being true, so it is recorded rather than deleted:
+**a room of two dozen members is empty by construction.** The club has five members who are not
+seeded directory rows. A room with four posts in it looks abandoned, and the mock's rooms read well
+because they were written rather than lived.
+
+That is a design constraint on the build, not a reason to refuse it. It points at opening rooms one
+at a time rather than twelve at once, and at an administrator having something to seed a room with
+before it is shown to anyone. The reason to build at all is unchanged and good: the club should not
+have to depend on CareCure.
 
 ## What is public, and what is not
 
@@ -113,7 +123,7 @@ Two tiers, and the line sits between content and people.
 | --- | --- |
 | Events, including online ones | Every member profile |
 | Organization pages | Photos, names, bios, topics, levels |
-| Marketing pages | Messages and rosters |
+| Marketing pages | Messages, rooms and rosters |
 
 Events are the public shopfront: they are already public on the organizations' own calendars, they
 are genuinely useful to somebody without an account, and somebody searching "adaptive handcycling

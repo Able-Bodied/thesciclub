@@ -7,10 +7,12 @@ import { Link } from 'react-router-dom';
  * Two, where the mock has three
  * ---------------------------------------------------------------------------
  * The mock's row reads CONVERSATIONS / ROOMS / MEETING UP, from `S.dms.length`,
- * `S.joined.length` and `S.new.going.length`. Two of those three describe
- * features that do not exist: messaging is not built, and topic rooms are
- * deliberately deferred until there are enough members for a room not to be
- * empty by construction (CONTEXT.md).
+ * `S.joined.length` and `S.new.going.length`. Two of those three described
+ * features that did not exist when this was written: messaging and topic rooms.
+ *
+ * Chat is being built from 2026-09-18, so those two numbers become real at some
+ * point — and this row is where they go. **Add them when they can be counted,
+ * not when the tables exist.** The reasoning below is what should decide it:
  *
  * Rendering them would put two invented numbers on the one screen whose job is
  * to tell a member what the club actually knows about them. A zero would be no
