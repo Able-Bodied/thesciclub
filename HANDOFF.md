@@ -345,6 +345,7 @@ Two rules, both learned the hard way:
 | `organization-follows.sql` | that a member can follow, and that nobody sees anybody else's — step 6 is the one that matters |
 | `declined.sql` | that "rather not say" is recorded, and that the name and the birthday cannot be |
 | `chat-authors.sql` | that a member can put a name to a post by anybody — hidden, suspended or removed — and that a session without a member row can put a name to nobody |
+| `chat-rooms.sql` | that a closed discussion room is invisible to a member and visible to an administrator, that only an administrator can open one, and that a member cannot reach the table around the function |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
