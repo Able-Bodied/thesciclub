@@ -45,7 +45,10 @@ export function TopicRow({
       </span>
 
       <span className="mt-2.5 flex items-center gap-2.5">
-        <span className="flex flex-none">
+        {/* Decorative. The faces answer "is this a conversation or one person
+            asking" at a glance and nothing else; their initials read as a run
+            of stray letters in the middle of the row's label. */}
+        <span aria-hidden="true" className="flex flex-none">
           {faces.map((id, index) => {
             const author = authors.get(id);
             return (

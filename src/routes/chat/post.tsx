@@ -46,33 +46,39 @@ export function Post({
   return (
     <article className="mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]">
       <div className="flex items-center gap-2.5">
-        {author ? (
-          author.hasProfile ? (
-            <Link to={`/peers/${author.id}`} className="flex-none">
-              <MemberAvatar
-                id={author.id}
-                displayName={author.displayName}
-                photoPath={author.photoPath}
-                photoAlt={author.photoAlt}
-              />
-            </Link>
-          ) : (
-            // Named, not linked: /peers/:id will not show them, and a link to a
-            // page that says "no such member" is worse than plain text.
+        {/* Decorative: the name is the next thing in the row, and the link to
+            the profile is on the name. An avatar that is its own link has no
+            words in it to be the link's name — a screen reader reaches it and
+            says "link, N". */}
+        <span aria-hidden="true" className="flex-none">
+          {author ? (
             <MemberAvatar
               id={author.id}
               displayName={author.displayName}
               photoPath={author.photoPath}
               photoAlt={author.photoAlt}
             />
-          )
-        ) : (
-          <FormerMemberAvatar />
-        )}
+          ) : (
+            <FormerMemberAvatar />
+          )}
+        </span>
 
         <span className="min-w-0 flex-1">
           <span className="block font-extrabold font-head text-[0.875rem] text-ink">
-            {author ? author.displayName : 'Former member'}
+            {author ? (
+              author.hasProfile ? (
+                <Link to={`/peers/${author.id}`} className="underline-offset-2 hover:underline">
+                  {author.displayName}
+                </Link>
+              ) : (
+                // Named, not linked: /peers/:id will not show them, and a link
+                // to a page that says "no such member" is worse than plain
+                // text.
+                author.displayName
+              )
+            ) : (
+              'Former member'
+            )}
             {author?.level ? (
               <span className="ml-[7px] font-semibold text-[0.78125rem] text-grey">
                 {author.level}
