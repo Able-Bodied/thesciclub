@@ -107,3 +107,66 @@ export interface ChatPost {
   /** Which sentence the reader gets: by its author, or by an administrator. */
   removedByAdmin: boolean;
 }
+
+/**
+ * The two kinds of thread, which share a table and a screen.
+ *
+ * A direct thread is a pair and is named by whoever you are talking to; a group
+ * has a name somebody chose. `chat_threads.kind` is checked against exactly
+ * these. Groups are written in Phase 5 — nothing in this build creates one —
+ * and are carried here because the list and the thread screen draw both.
+ */
+export const THREAD_KINDS = ['direct', 'group'] as const;
+export type ThreadKind = (typeof THREAD_KINDS)[number];
+
+/**
+ * One conversation as the list sees it, from `chat_my_threads`.
+ *
+ * It carries its last message rather than the client fetching one per row: the
+ * list is a phone screen on hospital wifi, and four queries a row is how a
+ * conversation list becomes a loading screen.
+ */
+export interface ChatThread {
+  id: string;
+  kind: ThreadKind;
+  /** Groups only. A direct thread is named by the other member. */
+  name: string | null;
+  /** The event a group chat belongs to, where it has one. */
+  eventId: string | null;
+  createdAt: string;
+  lastMessageAt: string;
+  memberCount: number;
+  /**
+   * The other member of a direct thread.
+   *
+   * Null for a group, and null for a direct thread whose other half has left
+   * the club — the roster row goes with the member, so the absence is the fact
+   * and the screen draws "Former member".
+   */
+  otherMemberId: string | null;
+  /** Null when nothing has been said yet; blank when the last one was removed. */
+  lastBody: string | null;
+  lastAuthorId: string | null;
+  lastAt: string | null;
+  lastRemoved: boolean;
+  /** Somebody else's words, newer than you last looked. Not "last_at moved". */
+  unread: boolean;
+}
+
+/** One message in a thread. */
+export interface ChatMessage {
+  id: string;
+  threadId: string;
+  /** Null when the member who wrote it has been removed from the club. */
+  authorId: string | null;
+  /** Empty once the message is removed — the database blanks the column. */
+  body: string;
+  createdAt: string;
+  removedAt: string | null;
+  removedByAdmin: boolean;
+  /**
+   * True while this is a bubble the reader has sent and the database has not
+   * confirmed. Never set on a row that came back from a read.
+   */
+  pending?: boolean;
+}
