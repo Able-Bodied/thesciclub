@@ -20,6 +20,7 @@ import ChatPage from '@/routes/chat/page';
  */
 
 const db = vi.hoisted(() => ({
+  subscribed: [] as string[],
   rooms: [] as ChatRoom[],
   loading: false,
   error: null as string | null,
@@ -53,7 +54,9 @@ vi.mock('@/lib/chat/authors', () => ({
 // unmocked subscription in a test opens a websocket to production. What the
 // hook does is its own concern — the screen's job here is to hand it a refetch.
 vi.mock('@/lib/chat/realtime', () => ({
-  useRealtimeRows: () => undefined,
+  useRealtimeRows: ({ table }: { table: string }) => {
+    db.subscribed.push(table);
+  },
 }));
 
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
@@ -129,6 +132,7 @@ beforeEach(() => {
   db.threadsLoading = false;
   db.threadsError = null;
   db.authors = new Map([['jan', author({ id: 'jan' })]]);
+  db.subscribed = [];
 });
 
 describe('the chat screen', () => {
@@ -253,6 +257,16 @@ describe('the chat screen', () => {
     renderPage();
     await userEvent.click(screen.getByRole('button', { name: 'Rooms' }));
     expect(screen.getByRole('link', { name: 'Start a room' })).toBeInTheDocument();
+  });
+
+  // A room a member starts has to reach everybody else's list without them
+  // reloading, which is the reason chat_rooms is in the realtime publication
+  // at all. The conversations and the topic counts were already live.
+  it('listens for rooms as well as messages and topics', () => {
+    renderPage();
+    expect(db.subscribed).toContain('chat_rooms');
+    expect(db.subscribed).toContain('chat_messages');
+    expect(db.subscribed).toContain('chat_topics');
   });
 
   it('names who started a member room, and nobody on a seeded one', () => {

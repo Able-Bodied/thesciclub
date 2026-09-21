@@ -69,7 +69,7 @@ export default function ChatPage() {
     [setSearchParams],
   );
   const account = useAccount();
-  const { rooms, loading, error } = useChatRooms();
+  const { rooms, loading, error, reload: reloadRooms } = useChatRooms();
   const { stats, reload: reloadStats } = useRoomStats();
   const membership = useRoomMembership();
   const {
@@ -86,6 +86,17 @@ export default function ChatPage() {
   // conversation.
   useRealtimeRows({ table: 'chat_messages', onChange: reloadThreads });
   useRealtimeRows({ table: 'chat_topics', onChange: reloadStats });
+  // And the rooms themselves, since a member can start one. A room appearing on
+  // everybody's list the moment it is started is the point of letting members
+  // start them, and chat_rooms carries nothing private — the select policy is
+  // unchanged, so a closed room still never reaches a member.
+  useRealtimeRows({
+    table: 'chat_rooms',
+    onChange: () => {
+      reloadRooms();
+      reloadStats();
+    },
+  });
 
   const grouped = useMemo(() => roomsByCategory(rooms), [rooms]);
 
