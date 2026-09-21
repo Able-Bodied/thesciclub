@@ -124,6 +124,15 @@ at a time rather than twelve at once, and at an administrator having something t
 before it is shown to anyone. The reason to build at all is unchanged and good: the club should not
 have to depend on CareCure.
 
+From 2026-09-20 the twelve are starters rather than the limit: **any member can start a room**, and
+the argument is the one the club is built on — everybody inside has been vouched for by a person.
+A member with a problem nobody anticipated should not have to wait for an administrator to have
+thought of it first. The emptiness objection is answered by the shape of the flow rather than by a
+rule, because no rule makes anybody write: **a room cannot be born empty.** Starting one asks for
+its first topic in the same form, and the two are written together or not at all. Nobody renames or
+deletes a room afterwards, not even the member who started it — what people write in a room is
+theirs. An administrator can close it, which is the whole moderation lever and was already there.
+
 ## What is public, and what is not
 
 Two tiers, and the line sits between content and people.
