@@ -21,7 +21,8 @@
     "backfill-series": "node scripts/backfill-series.mjs",
     "logos": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/logos.mjs",
     "reprocess-photos": "node scripts/reprocess-photos.mjs",
-    "check-photo-policy": "node scripts/check-photo-policy.mjs"
+    "check-photo-policy": "node scripts/check-photo-policy.mjs",
+    "check-chat-photo-policy": "node scripts/check-chat-photo-policy.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
