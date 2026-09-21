@@ -110,9 +110,9 @@ const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   ...o,
 });
 
-function renderPage() {
+function renderPage(entry = '/chat') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <ChatPage />
     </MemoryRouter>,
   );
@@ -202,6 +202,23 @@ describe('the chat screen', () => {
     renderPage();
     // The dot is decorative; the word beside it is what a screen reader gets.
     expect(screen.getByRole('link', { name: /new/ })).toBeInTheDocument();
+  });
+
+  // The segment is in the URL, not in component state. Me's ROOMS counter
+  // links straight at it, and a member who opens a room and presses back has
+  // to land back on Rooms rather than on All.
+  it('opens on the segment the link asked for', () => {
+    db.threads = [thread({ id: 'th1' })];
+    db.rooms = [room({ id: 'bowel' })];
+    renderPage('/chat?segment=rooms');
+    expect(screen.getByRole('button', { name: 'Rooms' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('link', { name: /Jan/ })).toBeNull();
+  });
+
+  it('ignores a segment it does not have', () => {
+    db.threads = [thread({ id: 'th1' })];
+    renderPage('/chat?segment=nonsense');
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('keeps conversations out of the Rooms segment', async () => {

@@ -1,12 +1,17 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { roomsByCategory, useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
-import type { ChatAuthor, ChatSegment, ChatThread } from '@/lib/chat/types';
+import {
+  CHAT_SEGMENTS,
+  type ChatAuthor,
+  type ChatSegment,
+  type ChatThread,
+} from '@/lib/chat/types';
 import { RoomCard, RoomCategoryLabel } from '@/routes/chat/room-card';
 import { ThreadRow } from '@/routes/chat/thread-row';
 
@@ -45,7 +50,24 @@ const SEGMENTS: [ChatSegment, string][] = [
 ];
 
 export default function ChatPage() {
-  const [segment, setSegment] = useState<ChatSegment>('all');
+  // The segment lives in the URL rather than in component state, for the
+  // reason /events found first: opening a room and pressing back landed on
+  // All, because the state died with the unmounted page, and a back arrow that
+  // does not go back is worse than no back arrow. It is also what lets Me's
+  // ROOMS counter point at the rooms rather than at the top of the screen.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromUrl = searchParams.get('segment');
+  const segment: ChatSegment = CHAT_SEGMENTS.includes(fromUrl as ChatSegment)
+    ? (fromUrl as ChatSegment)
+    : 'all';
+  const setSegment = useCallback(
+    (next: ChatSegment) => {
+      // Replace rather than push: four pills are a filter, and tapping through
+      // them should not mean four presses of back to leave the screen.
+      setSearchParams(next === 'all' ? {} : { segment: next }, { replace: true });
+    },
+    [setSearchParams],
+  );
   const account = useAccount();
   const { rooms, loading, error } = useChatRooms();
   const { stats, reload: reloadStats } = useRoomStats();
