@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
+import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
@@ -301,7 +302,20 @@ export default function ThreadPage() {
           sendLabel="Send this message"
           // Enter sends here — see the header.
           sendOnEnter
-          onSend={send}
+          onSend={async (body, files) => {
+            // Files first, under this thread's folder, which is what the read
+            // policy checks; then the row that names them. A refused row takes
+            // its files back out — see attachments.ts.
+            let paths: string[] = [];
+            if (files.length > 0) {
+              const up = await uploadAttachments(files, attachmentFolder('thread', thread.id));
+              if (!up.ok) return up.error;
+              paths = up.value;
+            }
+            const problem = await send(body, paths);
+            if (problem) void deleteAttachments(paths);
+            return problem;
+          }}
         />
       )}
 

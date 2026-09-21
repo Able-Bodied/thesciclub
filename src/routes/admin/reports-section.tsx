@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { deleteAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { resolveReport } from '@/lib/chat/reports';
 import { removeMessage } from '@/lib/chat/threads';
@@ -7,6 +8,7 @@ import { chatTimeLong } from '@/lib/chat/time';
 import { removePost } from '@/lib/chat/topics';
 import type { ChatAuthor, ChatReport } from '@/lib/chat/types';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
+import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 
 /**
  * What members have handed over, for an administrator.
@@ -115,6 +117,10 @@ export function ReportsSection({
           setFailure(result.error);
           return;
         }
+        // The row is blanked by the function; the files go through the
+        // storage API, which an administrator can reach for exactly these
+        // because the report names them — see 20260918200000.
+        if (report.attachments.length > 0) void deleteAttachments(report.attachments);
         // Re-read, so the row stops offering to remove what is already gone.
         reload();
       })
@@ -430,11 +436,38 @@ function MemberName({
   );
 }
 
-/** What the reporter saw, kept whatever has happened to the original since. */
+/**
+ * What the reporter saw, kept whatever has happened to the original since.
+ *
+ * The words are a copy. The photographs are not — no SQL can copy a file — so
+ * they are the originals, readable here only because the report names them
+ * (20260918200000), and gone from here if the sender has since deleted them.
+ * The sentence under the grid says which of those it is, so an empty space is
+ * never read as "there were no photographs".
+ */
 function Snapshot({ report }: { report: ChatReport }) {
   return (
-    <p className="mt-1.5 whitespace-pre-line border-line border-l-2 pl-2.5 text-[0.8125rem] text-ink leading-[1.5]">
-      {report.bodySnapshot}
-    </p>
+    <div className="mt-1.5 border-line border-l-2 pl-2.5">
+      {report.bodySnapshot ? (
+        <p className="whitespace-pre-line text-[0.8125rem] text-ink leading-[1.5]">
+          {report.bodySnapshot}
+        </p>
+      ) : null}
+      {report.attachments.length > 0 ? (
+        <div className="max-w-[20rem]">
+          <AttachmentGrid
+            paths={report.attachments}
+            from={report.reportedAuthorName ?? 'a former member'}
+          />
+          <p className="mt-1 text-[0.71875rem] text-grey leading-[1.45]">
+            {report.attachments.length === 1
+              ? 'One photograph'
+              : `${report.attachments.length} photographs`}{' '}
+            were reported with it. Photographs are not copied: one that is missing here has since
+            been deleted by whoever sent it.
+          </p>
+        </div>
+      ) : null}
+    </div>
   );
 }

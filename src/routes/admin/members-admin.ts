@@ -113,6 +113,11 @@ async function clearPhotoFolder(memberId: string): Promise<void> {
   if (paths.length > 0) await supabase.storage.from('photos').remove(paths);
 }
 
+// Not the photographs they put in chat. Those stay with their words — see
+// 20260918200000 — and an administrator could not delete them anyway: the
+// storage API deletes only what the caller can select, and a picture in a
+// conversation an administrator is not in is not selectable by them, on
+// purpose.
 export async function deleteMember(target: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_delete_member', { target });
   if (error) return { ok: false, error: error.message };

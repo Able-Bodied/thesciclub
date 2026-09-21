@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { deleteAttachments } from '@/lib/chat/attachments';
 import type { ChatMessage, ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
 import { getSupabase } from '@/lib/supabase';
@@ -94,12 +95,14 @@ interface MessageRow {
   thread_id: string;
   author_id: string | null;
   body: string;
+  attachments: string[] | null;
   created_at: string;
   removed_at: string | null;
   removed_by_admin: boolean;
 }
 
-const MESSAGE_COLUMNS = 'id, thread_id, author_id, body, created_at, removed_at, removed_by_admin';
+const MESSAGE_COLUMNS =
+  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin';
 
 function toMessage(row: MessageRow): ChatMessage {
   return {
@@ -107,6 +110,7 @@ function toMessage(row: MessageRow): ChatMessage {
     threadId: row.thread_id,
     authorId: row.author_id,
     body: row.body,
+    attachments: row.attachments ?? [],
     createdAt: row.created_at,
     removedAt: row.removed_at,
     removedByAdmin: row.removed_by_admin,
@@ -220,7 +224,8 @@ export interface ThreadMessagesState {
   error: string | null;
   reload: () => void;
   /** Append a bubble, write it, and take it back out if it is refused. */
-  send: (body: string) => Promise<string | null>;
+  /** Words, and the paths of photographs already uploaded under this thread. */
+  send: (body: string, attachments?: string[]) => Promise<string | null>;
   /** Remove a message: the reader's own, or anybody's for an administrator. */
   remove: (messageId: string) => Promise<string | null>;
 }
@@ -319,7 +324,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
   }, [load]);
 
   const send = useCallback(
-    async (body: string): Promise<string | null> => {
+    async (body: string, attachments: string[] = []): Promise<string | null> => {
       if (!threadId) return 'This conversation is gone.';
       if (!memberId) return 'You are signed out.';
 
@@ -332,6 +337,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           threadId,
           authorId: memberId,
           body,
+          attachments,
           // The reader's own clock, and only ever used to draw this bubble for
           // the second it exists. The row that replaces it carries the
           // server's, which is the one everything is ordered and compared by.
@@ -342,7 +348,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
         },
       ]);
 
-      const result = await sendMessage(threadId, memberId, body);
+      const result = await sendMessage(threadId, memberId, body, attachments);
       if (!result.ok) {
         // The undo. A bubble that stays on screen having never been saved is
         // the one thing this must not do.
@@ -368,13 +374,21 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
   const remove = useCallback(async (messageId: string): Promise<string | null> => {
     const result = await removeMessage(messageId);
     if (!result.ok) return result.error;
+    // The row is blanked by the function; the files go through the storage
+    // API, which no SQL can reach — see 20260918200000. Best effort, after
+    // the fact that matters has already happened.
+    setMessages((current) => {
+      const target = current.find((message) => message.id === messageId);
+      if (target && target.attachments.length > 0) void deleteAttachments(target.attachments);
+      return current;
+    });
     // Not optimistic. Removal is rare, deliberate and irreversible, and the
     // sentence that replaces the body — by its author, or by an administrator —
     // is derived by the database rather than guessed here.
     setMessages((current) =>
       current.map((message) =>
         message.id === messageId
-          ? { ...message, body: '', removedAt: new Date().toISOString() }
+          ? { ...message, body: '', attachments: [], removedAt: new Date().toISOString() }
           : message,
       ),
     );
@@ -406,13 +420,14 @@ export async function sendMessage(
   threadId: string,
   authorId: string,
   body: string,
+  attachments: string[] = [],
 ): Promise<ChatWriteResult<ChatMessage>> {
   const { data, error } = (await getSupabase()
     .from('chat_messages')
-    // Exactly the three columns insert is granted on. created_at, removed_at
+    // Exactly the four columns insert is granted on. created_at, removed_at
     // and removed_by_admin belong to the database — see 20260918070000 — and
     // naming one here would fail with `permission denied for column`.
-    .insert({ thread_id: threadId, author_id: authorId, body })
+    .insert({ thread_id: threadId, author_id: authorId, body, attachments })
     .select(MESSAGE_COLUMNS)
     .single()) as Result<MessageRow>;
   if (error) return { ok: false, error: error.message };

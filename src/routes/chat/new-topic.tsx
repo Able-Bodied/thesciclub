@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
+import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
  * Starting a topic: a title and the first post itself.
@@ -38,6 +40,7 @@ export default function NewTopicPage() {
   const { rooms, loading } = useChatRooms();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -64,7 +67,20 @@ export default function NewTopicPage() {
     if (!ready || saving || !room) return;
     setSaving(true);
     setFailure(null);
-    void createTopic(room.id, title.trim(), body.trim())
+    const roomId = room.id;
+    void (async () => {
+      // Files first, under the room's folder, then the topic that names them
+      // on its first post. A refused topic takes its files back out.
+      let paths: string[] = [];
+      if (files.length > 0) {
+        const up = await uploadAttachments(files, attachmentFolder('room', roomId));
+        if (!up.ok) return up;
+        paths = up.value;
+      }
+      const result = await createTopic(roomId, title.trim(), body.trim(), paths);
+      if (!result.ok) void deleteAttachments(paths);
+      return result;
+    })()
       .then((result) => {
         if (!result.ok) {
           setFailure(result.error);
@@ -138,6 +154,20 @@ export default function NewTopicPage() {
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
           className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
         />
+
+        {/* Up to four, with the first post. The words stay required — a topic
+            is a line in a list and a picture is not a title — so a photograph
+            comes with the post rather than instead of it. */}
+        <div className="mt-3">
+          <PhotoStrip
+            files={files}
+            disabled={saving}
+            onRemove={(index) => {
+              setFiles((current) => current.filter((_, i) => i !== index));
+            }}
+          />
+          <PhotoPicker files={files} onChange={setFiles} disabled={saving} />
+        </div>
 
         <button
           type="button"

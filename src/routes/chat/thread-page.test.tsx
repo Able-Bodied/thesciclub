@@ -114,6 +114,7 @@ const message = (o: Partial<ChatMessage> & { id: string }): ChatMessage => ({
   body: 'Something.',
   createdAt: '2026-09-18T10:00:00Z',
   removedAt: null,
+  attachments: [],
   removedByAdmin: false,
   ...o,
 });

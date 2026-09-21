@@ -52,6 +52,7 @@ const report = (o: Partial<ChatReport> & { id: string }): ChatReport => ({
   postId: null,
   messageId: 'm1',
   bodySnapshot: 'Buy my miracle supplement, cash only.',
+  attachments: [],
   writtenAt: '2026-09-18T10:00:00Z',
   place: 'A direct conversation',
   topicId: null,

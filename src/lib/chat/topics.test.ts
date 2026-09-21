@@ -26,6 +26,7 @@ const post = (o: Partial<ChatPost> & { id: string }): ChatPost => ({
   body: 'Something.',
   createdAt: '2026-09-01T10:00:00Z',
   removedAt: null,
+  attachments: [],
   removedByAdmin: false,
   ...o,
 });

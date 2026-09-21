@@ -71,10 +71,14 @@ interface PostRow {
   topic_id: string;
   author_id: string | null;
   body: string;
+  attachments: string[] | null;
   created_at: string;
   removed_at: string | null;
   removed_by_admin: boolean;
 }
+
+const POST_COLUMNS =
+  'id, topic_id, author_id, body, attachments, created_at, removed_at, removed_by_admin';
 
 function toPost(row: PostRow): ChatPost {
   return {
@@ -82,6 +86,7 @@ function toPost(row: PostRow): ChatPost {
     topicId: row.topic_id,
     authorId: row.author_id,
     body: row.body,
+    attachments: row.attachments ?? [],
     createdAt: row.created_at,
     removedAt: row.removed_at,
     removedByAdmin: row.removed_by_admin,
@@ -236,7 +241,7 @@ export function useTopicPosts(
         supabase.rpc('chat_topics_for', { room: roomId }).abortSignal(controller.signal),
         supabase
           .from('chat_posts')
-          .select('id, topic_id, author_id, body, created_at, removed_at, removed_by_admin')
+          .select(POST_COLUMNS)
           .eq('topic_id', topicId)
           .order('created_at')
           .abortSignal(controller.signal),
@@ -314,11 +319,13 @@ export async function createTopic(
   roomId: string,
   title: string,
   body: string,
+  attachments: string[] = [],
 ): Promise<ChatWriteResult<string>> {
   const { data, error } = (await getSupabase().rpc('chat_create_topic', {
     room: roomId,
     title,
     body,
+    attachments,
   })) as Result<string>;
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: 'The topic was not created.' };
@@ -330,11 +337,12 @@ export async function sendPost(
   topicId: string,
   authorId: string,
   body: string,
+  attachments: string[] = [],
 ): Promise<ChatWriteResult<ChatPost>> {
   const { data, error } = (await getSupabase()
     .from('chat_posts')
-    .insert({ topic_id: topicId, author_id: authorId, body })
-    .select('id, topic_id, author_id, body, created_at, removed_at, removed_by_admin')
+    .insert({ topic_id: topicId, author_id: authorId, body, attachments })
+    .select(POST_COLUMNS)
     .single()) as Result<PostRow>;
   if (error) return { ok: false, error: error.message };
   if (!data) return { ok: false, error: 'The post was not saved.' };

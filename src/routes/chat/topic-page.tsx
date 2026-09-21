@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
+import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
@@ -96,12 +97,16 @@ export default function TopicPage() {
   function remove(postId: string) {
     setRemovingId(postId);
     setRemovalFailure(null);
+    // Captured before the row is blanked: the function empties the list, and
+    // the files go through the storage API afterwards — see 20260918200000.
+    const files = posts.find((post) => post.id === postId)?.attachments ?? [];
     void removePost(postId)
       .then((result) => {
         if (!result.ok) {
           setRemovalFailure(result.error);
           return;
         }
+        if (files.length > 0) void deleteAttachments(files);
         reload();
       })
       .catch((e: unknown) => {
@@ -202,10 +207,23 @@ export default function TopicPage() {
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.
           sendOnEnter={false}
-          onSend={async (body) => {
+          onSend={async (body, files) => {
             if (!account.userId) return 'You are signed out.';
-            const result = await sendPost(topic.id, account.userId, body);
-            if (!result.ok) return result.error;
+            if (!room) return 'There is no such room.';
+            // Files first, under the room's folder, which is what the read
+            // policy checks; then the row that names them. A refused row
+            // takes its files back out — see attachments.ts.
+            let paths: string[] = [];
+            if (files.length > 0) {
+              const up = await uploadAttachments(files, attachmentFolder('room', room.id));
+              if (!up.ok) return up.error;
+              paths = up.value;
+            }
+            const result = await sendPost(topic.id, account.userId, body, paths);
+            if (!result.ok) {
+              void deleteAttachments(paths);
+              return result.error;
+            }
             reload();
             return null;
           }}

@@ -130,6 +130,8 @@ export interface ChatPost {
   authorId: string | null;
   /** Empty once the post is removed — the database blanks the column. */
   body: string;
+  /** Paths in the private `chat` bucket, at most four. Empty once removed. */
+  attachments: string[];
   createdAt: string;
   removedAt: string | null;
   /** Which sentence the reader gets: by its author, or by an administrator. */
@@ -189,6 +191,8 @@ export interface ChatMessage {
   authorId: string | null;
   /** Empty once the message is removed — the database blanks the column. */
   body: string;
+  /** Paths in the private `chat` bucket, at most four. Empty once removed. */
+  attachments: string[];
   createdAt: string;
   removedAt: string | null;
   removedByAdmin: boolean;
@@ -226,6 +230,13 @@ export interface ChatReport {
   messageId: string | null;
   /** What the reporter saw, copied when they reported it. */
   bodySnapshot: string;
+  /**
+   * The reported message's photographs, by path. An administrator can read
+   * exactly these because they are named on a report — 20260918200000. Not a
+   * copy: if the sender deletes the file afterwards the path is all that is
+   * left, and the panel says so.
+   */
+  attachments: string[];
   /** When it was written, which is rarely when it was reported. */
   writtenAt: string;
   /** "Bowel management › …", a group's name, or "A direct conversation". */

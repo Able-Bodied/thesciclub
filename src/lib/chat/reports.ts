@@ -193,6 +193,7 @@ interface ReportRow {
   post_id: string | null;
   message_id: string | null;
   body_snapshot: string;
+  attachments: string[] | null;
   written_at: string;
   place: string;
   topic_id: string | null;
@@ -291,6 +292,7 @@ function toReport(row: ReportRow): ChatReport {
     postId: row.post_id,
     messageId: row.message_id,
     bodySnapshot: row.body_snapshot,
+    attachments: row.attachments ?? [],
     writtenAt: row.written_at,
     place: row.place,
     topicId: row.topic_id,

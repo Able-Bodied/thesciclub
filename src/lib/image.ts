@@ -102,7 +102,11 @@ function originalExtension(file: File): string {
  * file that is not really an image. The caller cannot tell the difference and
  * does not need to; `ext` says which happened.
  */
-export async function preparePhoto(file: File): Promise<PreparedPhoto> {
+export async function preparePhoto(
+  file: File,
+  /** The long edge to fit to. Profiles use the default; chat photographs ask for more. */
+  max: number = MAX_PHOTO_EDGE,
+): Promise<PreparedPhoto> {
   const fallback: PreparedPhoto = { blob: file, ext: originalExtension(file) };
   if (typeof createImageBitmap !== 'function') return fallback;
 
@@ -113,7 +117,7 @@ export async function preparePhoto(file: File): Promise<PreparedPhoto> {
     // would leave every one of these photographs on its side.
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
 
-    const { width, height } = fittedSize(bitmap.width, bitmap.height);
+    const { width, height } = fittedSize(bitmap.width, bitmap.height, max);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;

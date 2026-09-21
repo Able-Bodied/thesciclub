@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
+import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 
 /**
  * One message, from the mock's `msgBubble()`.
@@ -92,8 +93,13 @@ export function MessageBubble({
           {removed ? (
             <span className="text-white/70 italic">{gone}</span>
           ) : (
-            // whitespace-pre-line, so the line breaks somebody typed survive.
-            <span className="whitespace-pre-line">{message.body}</span>
+            <>
+              {/* whitespace-pre-line, so the line breaks somebody typed survive. */}
+              {message.body ? <span className="whitespace-pre-line">{message.body}</span> : null}
+              {message.attachments.length > 0 ? (
+                <AttachmentGrid paths={message.attachments} from="you" />
+              ) : null}
+            </>
           )}
         </div>
         <p className="mt-1 font-semibold text-[0.71875rem] text-grey">
@@ -152,7 +158,15 @@ export function MessageBubble({
           {removed ? (
             <span className="text-grey italic">{gone}</span>
           ) : (
-            <span className="whitespace-pre-line">{message.body}</span>
+            <>
+              {message.body ? <span className="whitespace-pre-line">{message.body}</span> : null}
+              {message.attachments.length > 0 ? (
+                <AttachmentGrid
+                  paths={message.attachments}
+                  from={author?.displayName ?? 'a former member'}
+                />
+              ) : null}
+            </>
           )}
         </div>
         {removed ? null : canRemove ? (

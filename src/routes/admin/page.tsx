@@ -903,8 +903,8 @@ function Row({
               chat-member-removed.sql is the proof of both halves. */}
           <p className="mt-2">
             What they wrote in the discussion rooms and in conversations stays where it is, without
-            their name on it. Nobody else's copy of a conversation is deleted by somebody leaving
-            it.
+            their name on it, and so do the photographs they sent. Nobody else's copy of a
+            conversation is deleted by somebody leaving it.
           </p>
           {/* The one question worth asking at this moment, and the only thing
               separating this from a ban. Left unticked, the number is free

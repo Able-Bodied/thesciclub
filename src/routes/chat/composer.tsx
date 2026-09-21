@@ -1,5 +1,6 @@
 import { SendHorizontal } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
  * The box at the foot of a topic or a thread.
@@ -59,6 +60,17 @@ import { useEffect, useRef, useState } from 'react';
  * The draft survives a failure. Losing four paragraphs to a dropped connection
  * is the one thing this control must never do, so the text is only cleared
  * after the write comes back.
+ *
+ * ---------------------------------------------------------------------------
+ * Photographs, since 2026-09-21
+ * ---------------------------------------------------------------------------
+ * A message may carry up to four, chosen with the button on the left and
+ * shown in a strip above the box until Send. Words are optional once there is
+ * a photograph — the row's own check says words *or* a picture. What is
+ * chosen is handed to `onSend` as files; the caller uploads them, because the
+ * folder they go in is the caller's to know (the thread's, the room's), and
+ * the composer stays ignorant of storage. The strip survives a failure the
+ * same way the words do.
  */
 /** About six lines. Mirrored by `max-h-[150px]` on the textarea below. */
 const MAX_HEIGHT = 150;
@@ -94,11 +106,12 @@ export function Composer({
   /** What the send button says to a screen reader. */
   sendLabel: string;
   /** Resolves to null on success, or to a sentence to show. */
-  onSend: (body: string) => Promise<string | null>;
+  onSend: (body: string, files: File[]) => Promise<string | null>;
   sendOnEnter?: boolean;
   maxLength?: number;
 }) {
   const [draft, setDraft] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
@@ -115,16 +128,17 @@ export function Composer({
 
   function send() {
     const body = draft.trim();
-    if (!body || sending) return;
+    if ((!body && files.length === 0) || sending) return;
     setSending(true);
     setFailure(null);
-    void onSend(body)
+    void onSend(body, files)
       .then((problem) => {
         if (problem) {
           setFailure(problem);
           return;
         }
         setDraft('');
+        setFiles([]);
         // The box shrinks back only once the words have actually gone.
         requestAnimationFrame(resize);
       })
@@ -140,7 +154,17 @@ export function Composer({
           {failure} Your words are still here.
         </p>
       ) : null}
+      <div className="mx-auto w-full max-w-[720px]">
+        <PhotoStrip
+          files={files}
+          disabled={sending}
+          onRemove={(index) => {
+            setFiles((current) => current.filter((_, i) => i !== index));
+          }}
+        />
+      </div>
       <div className="mx-auto flex w-full max-w-[720px] items-end gap-[9px]">
+        <PhotoPicker files={files} onChange={setFiles} disabled={sending} compact />
         <textarea
           ref={box}
           value={draft}
@@ -164,7 +188,7 @@ export function Composer({
         <button
           type="button"
           onClick={send}
-          disabled={!draft.trim() || sending}
+          disabled={(!draft.trim() && files.length === 0) || sending}
           aria-label={sendLabel}
           // 44px, and never data-target="small": this is the control the whole
           // screen exists for.
