@@ -77,19 +77,56 @@ standing.
 790 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
 do not commit with either failing.**
 
-## The hosted database is ahead of `origin`, and everything is applied
+## 70 migrations, and the seventeen Chat ones are not on the hosted project yet
 
-This is the thing most likely to catch somebody out, so it is first.
+This is the thing most likely to catch somebody out, so it is first. **It is
+also the one line in this file that changed direction on 2026-09-20**: for
+weeks the hosted database was ahead of `origin` and everything was applied.
+It is the other way round now.
 
-**52 migrations, 0 pending.** Everything in `supabase/migrations/` is applied to
-the hosted project (`erijdvqnxavwezsbbojv`) and locally. Check rather than
-trust:
+**70 migrations in `supabase/migrations/`. 53 applied to the hosted project
+(`erijdvqnxavwezsbbojv`), 17 pending.** The seventeen are the whole of Chat,
+`20260918010000` through `20260918170000`. They are applied locally and
+nowhere else. Check rather than trust — a blank `Remote` column is a pending
+migration:
 
     pnpm exec supabase migration list          # hosted
     pnpm exec supabase migration up --local    # bring a local stack up
 
-The four from 2026-09-17, newest first, because they are the ones a fresh
-session will not have seen:
+`pnpm exec supabase db push` is what sends them and **the owner is asked
+first**, every time: it writes to the live database that real members are in.
+Never `config push` — see Environment for why that one is dangerous in a
+different way.
+
+Until that push the hosted project has no chat tables at all, so **every chat
+read from a deployed build fails**. Netlify builds from `main`. That makes the
+order matter: push the migrations, then merge. Merging first ships a Chat tab
+to live members with nothing behind it.
+
+The seventeen, in the order they must apply — each header says why, and the
+"What Chat is" section below says what the member sees:
+
+| | |
+| --- | --- |
+| `…010000` | `is_active_member`, `is_member`, `chat_authors` — one name for a post by anybody, including somebody hidden or removed |
+| `…020000` | `chat_rooms`, the twelve seeded closed, `admin_set_room_open` |
+| `…030000` | `chat_room_members` — joining, a roster nobody else can read, and the two gates `chat_room_is_readable` / `chat_can_post_in` |
+| `…040000` | `chat_topics`, `chat_posts`, `chat_create_topic`, `chat_bump_topic` |
+| `…050000` | `chat_topic_reads`, `chat_mark_topic_read`, `chat_topics_for`, `chat_room_stats` |
+| `…060000` | `chat_remove_post`, `chat_removed_bodies` |
+| `…070000` | `chat_threads`, `chat_thread_members`, `chat_messages`, `is_thread_member` |
+| `…080000` | `chat_open_direct` — one conversation per pair, from either end, over `direct_key` (defined in `…070000`) |
+| `…090000` | `chat_my_threads`, `chat_unread_count`, `chat_mark_thread_read` |
+| `…100000` | `chat_remove_message` |
+| `…110000` | column-level insert grants on `chat_topics` and `chat_posts` |
+| `…120000` | `chat_messages`, `chat_posts`, `chat_topics`, `chat_threads` into the realtime publication — `chat_thread_members` deliberately not |
+| `…130000` | `chat_create_group`, `chat_add_to_group`, `chat_group_cap`, `chat_is_findable` — and `chat_open_direct` replaced to call the last of them |
+| `…140000` | `chat_join_event_group` |
+| `…150000` | `chat_reports`, `chat_report_post`, `chat_report_message` |
+| `…160000` | `admin_chat_reports`, `admin_resolve_chat_report` |
+| `…170000` | `chat_create_room` — `created_by`, `unique (lower(name))`, a room born with its first topic, and `chat_rooms` into the publication |
+
+The four from 2026-09-17, newest first:
 
 - `20260917030000` — `members.declined`, and a check constraint refusing the
   name and the birthday. See "Prefer not to say".
