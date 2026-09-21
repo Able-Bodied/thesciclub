@@ -10,9 +10,17 @@ import { RoomsSection } from '@/routes/admin/rooms-section';
  * `roomsByCategory` is left real — it is what decides the order of the twelve
  * rows, and a stub of it would let this file assert its own ordering.
  * `useChatRooms` and `setRoomOpen` are the network calls and are stubbed.
+ *
+ * So is `useChatAuthors`, which the row reaches for to name whoever started a
+ * member room. Every hook a screen touches is stubbed and not only the ones
+ * that happen to be exercised: src/test/setup.ts throws on a request now, so an
+ * unstubbed one is a failure rather than a quiet read of the hosted project,
+ * and the failure would land on whoever next wrote a fixture with a starter
+ * in it.
  */
 
 const api = vi.hoisted(() => ({
+  authors: new Map<string, { displayName: string }>(),
   rooms: [] as ChatRoom[],
   loading: false,
   error: null as string | null,
@@ -21,6 +29,10 @@ const api = vi.hoisted(() => ({
   failWith: null as string | null,
   stats: new Map<string, RoomStats>(),
   statReloads: 0,
+}));
+
+vi.mock('@/lib/chat/authors', () => ({
+  useChatAuthors: () => api.authors,
 }));
 
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
@@ -77,6 +89,7 @@ beforeEach(() => {
   api.failWith = null;
   api.stats = new Map();
   api.statReloads = 0;
+  api.authors = new Map();
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
@@ -202,5 +215,58 @@ describe('the rooms section on /admin', () => {
       .getAllByText(/Bowel management|Newly injured|Equipment & assistive tech/)
       .map((n) => n.textContent);
     expect(names).toEqual(['Bowel management', 'Newly injured', 'Equipment & assistive tech']);
+  });
+});
+
+describe('a room a member started', () => {
+  it('names the starter, and offers Close rather than Open', () => {
+    api.authors = new Map([['ada', { displayName: 'Ada A' }]]);
+    api.rooms = [
+      room({
+        id: 'shoulder-pain-1a2b',
+        name: 'Shoulder pain',
+        sortOrder: 1000,
+        openedAt: '2026-09-20T10:00:00Z',
+        createdBy: 'ada',
+      }),
+    ];
+    render(
+      <MemoryRouter>
+        <RoomsSection />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/started by Ada A/)).toBeInTheDocument();
+    // Open from birth: there is nobody standing by to open a member room.
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+
+  // The room outlived them, which is a fact about the room. Dropping the line
+  // would make it look like one of the seeded twelve.
+  it('says a former member where the starter has left the club', () => {
+    api.rooms = [
+      room({
+        id: 'shoulder-pain-1a2b',
+        name: 'Shoulder pain',
+        sortOrder: 1000,
+        openedAt: '2026-09-20T10:00:00Z',
+        createdBy: 'gone',
+      }),
+    ];
+    render(
+      <MemoryRouter>
+        <RoomsSection />
+      </MemoryRouter>,
+    );
+    expect(screen.getByText(/started by a former member/)).toBeInTheDocument();
+  });
+
+  it('says nothing about a starter on one of the seeded twelve', () => {
+    api.rooms = [room({ id: 'bowel', openedAt: '2026-09-18T10:00:00Z' })];
+    render(
+      <MemoryRouter>
+        <RoomsSection />
+      </MemoryRouter>,
+    );
+    expect(screen.queryByText(/started by/)).not.toBeInTheDocument();
   });
 });

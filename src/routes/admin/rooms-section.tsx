@@ -1,12 +1,14 @@
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useChatAuthors } from '@/lib/chat/authors';
 import { roomsByCategory, setRoomOpen, useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
+import { SmallButton } from '@/routes/admin/controls';
 
 /**
- * The twelve discussion rooms, for an administrator.
+ * The discussion rooms, for an administrator.
  *
  * ---------------------------------------------------------------------------
  * Why this control exists at all
@@ -33,6 +35,16 @@ import { cn } from '@/lib/utils';
  * nothing here is the permission check.
  *
  * ---------------------------------------------------------------------------
+ * Rooms members started are in the same list
+ * ---------------------------------------------------------------------------
+ * From 2026-09-20 any member can start a room, and one is open from the moment
+ * it exists — there is nobody standing by to open it, and it is born with a
+ * topic in it. So the switch on those rows is a Close and not an Open, and the
+ * row names whoever started it. They are not a separate panel: an
+ * administrator moderating rooms is doing one job, and splitting the list by
+ * who happened to create a room would make them look in two places for it.
+ *
+ * ---------------------------------------------------------------------------
  * The room's name is a link, and that is the point of the whole panel
  * ---------------------------------------------------------------------------
  * An administrator can read and post in a closed room — see chat_can_post_in —
@@ -51,6 +63,7 @@ const CATEGORY_DOT: Record<RoomCategory, string> = {
 export function RoomsSection() {
   const { rooms, loading, error, reload } = useChatRooms();
   const { stats, reload: reloadStats } = useRoomStats();
+  const starters = useChatAuthors(rooms.map((room) => room.createdBy));
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -97,8 +110,9 @@ export function RoomsSection() {
         </span>
       </div>
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
-        Open one at a time, as there are members to fill it. A closed room does not exist as far as
-        a member is concerned.
+        Open the seeded ones a few at a time, as there are members to fill them. A closed room does
+        not exist as far as a member is concerned. A room a member started is open already — closing
+        it is the whole of what anybody can do to it, and nobody can rename or delete one.
       </p>
 
       {failure ? (
@@ -146,22 +160,21 @@ export function RoomsSection() {
                           year: 'numeric',
                         })}`
                       : 'nobody can see this room yet'}
+                    {room.createdBy
+                      ? ` · started by ${starters.get(room.createdBy)?.displayName ?? 'a former member'}`
+                      : ''}
                   </span>
                 </Link>
                 {busyId === room.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-grey" />
                 ) : (
-                  <button
-                    type="button"
+                  <SmallButton
                     onClick={() => {
                       toggle(room);
                     }}
-                    // 30px tall, like every other control on this screen.
-                    data-target="small"
-                    className="whitespace-nowrap rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-navy transition-colors hover:bg-line"
                   >
                     {room.openedAt ? 'Close' : 'Open'}
-                  </button>
+                  </SmallButton>
                 )}
               </div>
             )),
