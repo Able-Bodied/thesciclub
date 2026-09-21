@@ -16,6 +16,10 @@ const own = vi.hoisted(() => ({
 const rsvps = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const startTimes = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const wroteVisibility = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+const chat = vi.hoisted(() => ({
+  threads: [] as { id: string }[],
+  joined: new Set<string>(),
+}));
 
 /** An ISO start time `days` from now. Negative is in the past. */
 function daysFromNow(days: number): string {
@@ -49,6 +53,27 @@ vi.mock('@/lib/members', () => ({
     invitedBy: own.invitedBy,
     loading: false,
     error: null,
+  }),
+}));
+
+// Stubbed, and they have to be: `.env.local` points at the hosted project, so
+// an unmocked read in a test talks to production. What the hooks do is their
+// own concern — this screen's job is to count what they return.
+vi.mock('@/lib/chat/threads', () => ({
+  useMyThreads: () => ({
+    threads: chat.threads,
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
+}));
+
+vi.mock('@/lib/chat/rooms', () => ({
+  useRoomMembership: () => ({
+    joined: chat.joined,
+    loading: false,
+    error: null,
+    toggle: () => undefined,
   }),
 }));
 
@@ -134,6 +159,8 @@ beforeEach(() => {
   details.current = completeDetails;
   survey.answers = {};
   survey.declined = new Set();
+  chat.threads = [];
+  chat.joined = new Set();
 });
 
 describe('MePage', () => {
@@ -233,13 +260,40 @@ describe('MePage', () => {
       expect(screen.getByRole('link', { name: /0\s*Going/ })).toBeInTheDocument();
     });
 
-    it('show nothing about conversations or rooms, which are not built', () => {
-      // The mock's row has three counters and two of them describe features
-      // that do not exist. A zero would read as a failing product rather than
-      // an unshipped one.
+    // These two said nothing at all until Chat shipped, because the mock's
+    // numbers described features that did not exist. They can be counted now,
+    // which is the rule this row has always been held to.
+    it('counts the conversations and the rooms, and points each at its segment', () => {
+      chat.threads = [{ id: 't1' }, { id: 't2' }];
+      chat.joined = new Set(['bowel', 'sport', 'work']);
       renderMe();
-      expect(screen.queryByText(/Conversations/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/Rooms/i)).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /2\s*Conversations/ })).toHaveAttribute(
+        'href',
+        '/chat',
+      );
+      expect(screen.getByRole('link', { name: /3\s*Rooms/ })).toHaveAttribute(
+        'href',
+        '/chat?segment=rooms',
+      );
+    });
+
+    // Same argument as "Been to" above, which the owner twice reported as
+    // broken when it hid itself: a counter that comes and goes is
+    // indistinguishable from one that has failed. Nought conversations is a
+    // true thing about a new membership.
+    it('shows both at zero rather than hiding them', () => {
+      renderMe();
+      expect(screen.getByRole('link', { name: /0\s*Conversations/ })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /0\s*Rooms/ })).toBeInTheDocument();
+    });
+
+    // A group is a conversation: /chat lists both under the same rows and the
+    // Direct and Groups pills are narrowings of that one list. Counting only
+    // the direct ones here would disagree with the screen the number links to.
+    it('counts a group as a conversation, the way the list does', () => {
+      chat.threads = [{ id: 'd1' }, { id: 'g1' }];
+      renderMe();
+      expect(screen.getByRole('link', { name: /2\s*Conversations/ })).toBeInTheDocument();
     });
   });
 
