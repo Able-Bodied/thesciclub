@@ -122,7 +122,7 @@ Merging first ships a Chat tab to live members with nothing behind it.
 The seventeen, in the order they must apply — each header says why, and the
 "What Chat is" section below says what the member sees:
 
-| | |
+| migration | what it adds |
 | --- | --- |
 | `…010000` | `is_active_member`, `is_member`, `chat_authors` — one name for a post by anybody, including somebody hidden or removed |
 | `…020000` | `chat_rooms`, the twelve seeded closed, `admin_set_room_open` |
