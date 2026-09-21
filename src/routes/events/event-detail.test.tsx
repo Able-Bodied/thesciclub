@@ -2,6 +2,8 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as ChatGroups from '@/lib/chat/groups';
+import type * as Threads from '@/lib/chat/threads';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -14,6 +16,8 @@ const state = vi.hoisted(() => ({
   error: null as string | null,
   setRsvp: vi.fn(),
   reload: vi.fn(),
+  threads: [] as { id: string; eventId: string | null }[],
+  joinEventGroup: vi.fn(),
 }));
 
 vi.mock('@/lib/events', () => ({
@@ -40,6 +44,21 @@ vi.mock('@/lib/organizations', () => ({
 
 vi.mock('@/lib/session', () => ({
   useSession: () => ({ status: 'signed-in', userId: 'me' }),
+}));
+
+// The group-chat card reads the viewer's own conversations to know whether they
+// are already in the group — three of the five things it can say depend on it.
+// Narrowly mocked: `threads.ts` also exports the pure `threadTitle`, and a
+// whole-module stub of it is exactly the shape that lets a test assert its own
+// wording.
+vi.mock('@/lib/chat/threads', async (importOriginal) => ({
+  ...(await importOriginal<typeof Threads>()),
+  useMyThreads: () => ({ threads: state.threads, loading: false, error: null, reload: vi.fn() }),
+}));
+
+vi.mock('@/lib/chat/groups', async (importOriginal) => ({
+  ...(await importOriginal<typeof ChatGroups>()),
+  joinEventGroup: (...args: unknown[]) => state.joinEventGroup(...args) as unknown,
 }));
 
 const { default: EventDetailPage } = await import('@/routes/events/event-detail');
@@ -98,6 +117,8 @@ beforeEach(() => {
   state.error = null;
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
+  state.threads = [];
+  state.joinEventGroup = vi.fn().mockResolvedValue({ ok: true, value: 'th-ev' });
 });
 
 describe('EventDetailPage', () => {
@@ -146,19 +167,69 @@ describe('EventDetailPage', () => {
     });
   });
 
-  describe('messaging is not built, and the page says so', () => {
-    it('does not offer a group chat button', () => {
-      state.rsvps = new Map([['rugby', 'going']]);
-      renderDetail();
-      // The mock has one here. A button that does nothing gets demoed,
-      // believed, and then explained.
-      expect(screen.queryByRole('button', { name: /group chat/i })).not.toBeInTheDocument();
-      expect(screen.getByText(/not built yet/)).toBeInTheDocument();
+  describe('the group chat', () => {
+    // Upcoming, so the RSVP is still a live question. The fixture's own start
+    // time is in the past.
+    beforeEach(() => {
+      state.events = [makeEvent({ id: 'rugby', startTime: aheadByDays(21) })];
+      state.threads = [];
+      state.joinEventGroup = vi.fn().mockResolvedValue({ ok: true, value: 'th-ev' });
     });
 
-    it('says nothing about a group chat to somebody who is not going', () => {
+    it('lets somebody going join it', async () => {
+      state.rsvps = new Map([['rugby', 'going']]);
       renderDetail();
-      expect(screen.queryByText(/not built yet/)).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Join the group chat' }));
+      expect(state.joinEventGroup).toHaveBeenCalledWith('rugby');
+    });
+
+    it('says Open, not Join, once they are in it', () => {
+      state.rsvps = new Map([['rugby', 'going']]);
+      state.threads = [{ id: 'th-ev', eventId: 'rugby' }];
+      renderDetail();
+      expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
+    });
+
+    it('tells somebody who is not going what going would get them', () => {
+      renderDetail();
+      expect(screen.queryByRole('button', { name: /group chat/i })).not.toBeInTheDocument();
+      expect(screen.getByText(/There is a group chat for everyone who is/)).toBeInTheDocument();
+    });
+
+    it('surfaces a refusal instead of navigating', async () => {
+      state.rsvps = new Map([['rugby', 'going']]);
+      state.joinEventGroup = vi
+        .fn()
+        .mockResolvedValue({ ok: false, error: 'The group chat is for everybody going.' });
+      renderDetail();
+      await userEvent.click(screen.getByRole('button', { name: 'Join the group chat' }));
+      expect(await screen.findByText('The group chat is for everybody going.')).toBeInTheDocument();
+    });
+
+    describe('once the event is over', () => {
+      beforeEach(() => {
+        state.events = [makeEvent({ id: 'rugby', startTime: '2020-03-04T18:00:00Z' })];
+      });
+
+      it('takes no new joins, and says why rather than offering a button', () => {
+        state.rsvps = new Map([['rugby', 'going']]);
+        renderDetail();
+        expect(screen.queryByRole('button', { name: /group chat/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/stays open to whoever was already in it/)).toBeInTheDocument();
+      });
+
+      it('still opens for somebody who was in it', () => {
+        state.threads = [{ id: 'th-ev', eventId: 'rugby' }];
+        renderDetail();
+        expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
+      });
+
+      it('says nothing at all to somebody who was never in it', () => {
+        // No action and no fact worth the space, on a page somebody is reading
+        // for the description.
+        renderDetail();
+        expect(screen.queryByText(/group chat/i)).not.toBeInTheDocument();
+      });
     });
   });
 

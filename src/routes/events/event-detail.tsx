@@ -7,6 +7,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
@@ -19,11 +20,10 @@ import type { EventAttendee, RsvpStatus } from '@/types/domain';
  * the what and the two RSVP buttons, then the description, who is going, and
  * who is hosting.
  *
- * The group chat card the mock shows is deliberately not here. Messaging is not
- * built (CONTEXT.md), and the convention in this codebase is that a
- * surface says so plainly rather than showing a button that does nothing — so
- * the place where a group chat would go says what it would be and that it does
- * not exist yet.
+ * The group chat card the mock shows is real as of Phase 5 of Chat, and is
+ * `EventGroupCard` — rendered only for a signed-in member, because an event
+ * page is public and the card reads the viewer's own conversations to know
+ * whether they are already in the group.
  */
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -216,12 +216,11 @@ export default function EventDetailPage() {
           </a>
         ) : null}
 
-        {/* Where the mock puts a group chat. Messaging is not built, and a
-            button that does nothing gets demoed, believed, and then explained. */}
-        {going ? (
-          <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
-            There will be a group chat for everyone going to this. It is not built yet.
-          </p>
+        {/* Where the mock puts a group chat, and now what it puts there.
+            Members only: the read behind it is the viewer's own conversation
+            list, and an event page is the one surface that is public. */}
+        {memberId ? (
+          <EventGroupCard eventId={event.id} going={going} past={isPastEvent(event)} />
         ) : null}
 
         <AttendeeSection
