@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
@@ -48,9 +48,24 @@ const api = vi.hoisted(() => ({
    * count is not a third strike.
    */
   reportsStrikeCount: true,
+  /** Open reports, for the count in the Reports tab's label. */
+  openReports: 0,
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
+// Stubbed because the page reads it for the tab's label on every render, and
+// an unmocked hook in a test talks to the hosted project — the Phase 6 lesson,
+// which is about reads and not only about sockets. What the panel itself does
+// is tested in reports-section.test.tsx.
+vi.mock('@/lib/chat/reports', () => ({
+  useAdminReports: () => ({
+    reports: [],
+    openCount: api.openReports,
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
+}));
 // Partial: the network calls are stubbed, but `inviteState` is a pure
 // formatter and the page should be rendering the real one — a stub of it would
 // let this file assert whatever wording it liked.
@@ -172,6 +187,7 @@ beforeEach(() => {
   api.restores = 0;
   api.restoredCount = 4;
   api.failWith = null;
+  api.openReports = 0;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   // vi.spyOn on an already-spied method hands back the *existing* spy, so
   // without this the call history survives from one test to the next and
@@ -1122,5 +1138,20 @@ describe('withdrawing a strike', () => {
     await userEvent.click(await screen.findByRole('button', { name: '2 strikes' }));
     expect(screen.getByText('Sold supplements')).toBeInTheDocument();
     expect(screen.queryByText('Repeated a room')).not.toBeInTheDocument();
+  });
+});
+
+describe('the Reports tab', () => {
+  it('carries the number waiting, and no number when nothing is', async () => {
+    renderAdmin();
+    await screen.findByRole('button', { name: 'reports' });
+
+    cleanup();
+    api.openReports = 2;
+    renderAdmin();
+    // The count is in the tab's own label, because a complaint waiting unseen
+    // behind a tab that looks like every other tab is what it is there to
+    // prevent.
+    expect(await screen.findByRole('button', { name: 'reports 2' })).toBeInTheDocument();
   });
 });

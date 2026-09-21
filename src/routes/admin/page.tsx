@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
+import { useAdminReports } from '@/lib/chat/reports';
 import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { InviteForm } from '@/routes/admin/invite-form';
@@ -29,6 +30,7 @@ import {
   withdrawnNumbers,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { ReportsSection } from '@/routes/admin/reports-section';
 import { RoomsSection } from '@/routes/admin/rooms-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
@@ -51,7 +53,12 @@ export default function AdminPage() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
-  const [tab, setTab] = useState<'members' | 'invites' | 'rooms'>('members');
+  const [tab, setTab] = useState<'members' | 'invites' | 'rooms' | 'reports'>('members');
+  // Read here rather than inside the panel, because the tab's own label
+  // carries the open count and has to know it before anybody opens the panel.
+  // A complaint waiting unseen behind a tab that looks like every other tab is
+  // the failure this number exists to prevent.
+  const reports = useAdminReports();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,6 +98,27 @@ export default function AdminPage() {
   // Not the permission check — the database refuses either way. This is so an
   // ordinary member sees the club rather than an empty admin screen.
   if (!account.isAdmin) return <Navigate to="/peers" replace />;
+
+  /**
+   * Takes an administrator from a report to the row where they can act on the
+   * person who wrote it.
+   *
+   * A navigation and not an action: the strike, the pause and the removal all
+   * live on that row, beside the member's other strikes and their status, and
+   * a second strike control on a screen showing one message out of context is
+   * how somebody gets struck for a sentence rather than for what they have
+   * been doing.
+   *
+   * The scroll waits a frame because the Members panel has not been rendered
+   * at the moment the tab changes, so the row it is looking for does not exist
+   * yet.
+   */
+  function goToMember(memberId: string) {
+    setTab('members');
+    requestAnimationFrame(() => {
+      document.getElementById(`member-${memberId}`)?.scrollIntoView({ block: 'center' });
+    });
+  }
 
   /**
    * Runs one administrative action and returns nothing.
@@ -158,7 +186,7 @@ export default function AdminPage() {
             {pending.length === 1 ? '' : 's'} waiting
           </p>
           <div className="mt-3 flex gap-[7px]">
-            {(['members', 'invites', 'rooms'] as const).map((value) => (
+            {(['members', 'invites', 'rooms', 'reports'] as const).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -173,6 +201,9 @@ export default function AdminPage() {
                 )}
               >
                 {value}
+                {/* A count of zero is not drawn — the rule the room cards and
+                    the nav dot already follow. */}
+                {value === 'reports' && reports.openCount > 0 ? ` ${reports.openCount}` : ''}
               </button>
             ))}
           </div>
@@ -199,6 +230,16 @@ export default function AdminPage() {
         ) : (
           <div className="mx-auto w-full max-w-[760px]">
             {tab === 'rooms' ? <RoomsSection /> : null}
+
+            {tab === 'reports' ? (
+              <ReportsSection
+                reports={reports.reports}
+                loading={reports.loading}
+                error={reports.error}
+                reload={reports.reload}
+                onGoToMember={goToMember}
+              />
+            ) : null}
 
             {tab === 'invites' ? (
               <>
@@ -531,7 +572,12 @@ function Row({
   const atLimit = member.strikes >= STRIKE_LIMIT;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
+    <div
+      // What "Go to <name>" on a report scrolls to. scroll-mt keeps the row
+      // clear of the sticky header it would otherwise land under.
+      id={`member-${member.id}`}
+      className="flex scroll-mt-4 flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
+    >
       {/* A basis rather than a bare flex-1. With only `flex-1` this column
           shrank towards nothing to keep three buttons on one line, so at the
           largest text setting the phone and city wrapped into a four-character
