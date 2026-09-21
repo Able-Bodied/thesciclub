@@ -162,6 +162,35 @@ await as(ADMIN).storage.from('chat').remove([path]);
 check('an administrator cannot delete what they cannot read', await exists(), true);
 await root.storage.from('chat').remove([path]);
 
+// Once reported, nobody deletes it — not the sender, not an administrator.
+// The gap this closes: send a picture, wait to be reported, take the message
+// back, and the report would have held the words and an empty space.
+await as(SENDER).storage.from('chat').upload(path, WEBP, { contentType: 'image/webp' });
+const sent = await root
+  .from('chat_messages')
+  .insert({ thread_id: dm, author_id: SENDER, body: 'Look', attachments: [path] })
+  .select('id')
+  .single();
+if (sent.error) {
+  console.error(`Could not write the message: ${sent.error.message}`);
+  process.exit(1);
+}
+const reported = await as(RECEIVER).rpc('chat_report_message', {
+  message: sent.data.id,
+  report_note: 'The picture.',
+});
+if (reported.error) {
+  console.error(`Could not report it: ${reported.error.message}`);
+  process.exit(1);
+}
+await as(SENDER).storage.from('chat').remove([path]);
+check('*** the sender cannot delete a photograph once it is reported ***', await exists(), true);
+await as(ADMIN).storage.from('chat').remove([path]);
+check('nor can an administrator, so the record stays whole', await exists(), true);
+check('and the administrator can read it, because the report names it', await canRead(ADMIN), true);
+await root.from('chat_reports').delete().eq('message_id', sent.data.id);
+await root.storage.from('chat').remove([path]);
+
 // Tidy up: the conversation, its roster and the members. Files are gone.
 await root.from('chat_threads').delete().eq('id', dm);
 await root.from('members').delete().in('id', ids);

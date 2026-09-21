@@ -75,23 +75,23 @@ system, an 18+ gate, a details editor, and a three-strike system behind Good
 standing.
 
 **Chat is the fourth and is built but not deployed** — conversations, groups,
-rooms, reporting, rooms a member starts, and photographs. Its twenty migrations are not
+rooms, reporting, rooms a member starts, and photographs. Its twenty-one migrations are not
 on the hosted project, which is why the section below about that comes before
 anything else. See "What Chat is".
 
 1,047 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 73 migrations, and the twenty Chat ones are not on the hosted project yet
+## 74 migrations, and the twenty-one Chat ones are not on the hosted project yet
 
 This is the thing most likely to catch somebody out, so it is first. **It is
 also the one line in this file that changed direction on 2026-09-20**: for
 weeks the hosted database was ahead of `origin` and everything was applied.
 It is the other way round now.
 
-**73 migrations in `supabase/migrations/`. 53 applied to the hosted project
-(`erijdvqnxavwezsbbojv`), 20 pending.** The twenty are the whole of Chat,
-`20260918010000` through `20260918200000`. They are applied locally and
+**74 migrations in `supabase/migrations/`. 53 applied to the hosted project
+(`erijdvqnxavwezsbbojv`), 21 pending.** The twenty-one are the whole of Chat,
+`20260918010000` through `20260918210000`. They are applied locally and
 nowhere else. Check rather than trust — a blank `Remote` column is a pending
 migration:
 
@@ -119,7 +119,7 @@ order matter, and it is three steps rather than two:
 
 Merging first ships a Chat tab to live members with nothing behind it.
 
-The twenty, in the order they must apply — each header says why, and the
+The twenty-one, in the order they must apply — each header says why, and the
 "What Chat is" section below says what the member sees:
 
 | migration | what it adds |
@@ -144,6 +144,7 @@ The twenty, in the order they must apply — each header says why, and the
 | `…180000` | Mind, Family and Places join Body, Life and Kit — the constraint and `chat_create_room`'s check both; the client's `ROOM_CATEGORIES` is the third copy |
 | `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
 | `…200000` | photographs: `attachments text[]` on messages, posts, removed bodies and reports; the **private** `chat` bucket (2MB, three image types) and its three storage policies behind `chat_file_is_readable` / `_writable` / `_reported`; `chat_create_topic` takes a fourth argument; removal blanks the list |
+| `…210000` | a photograph named on a report cannot be deleted by anybody — `chat_file_is_on_a_report()` in the delete policy. The owner spotted the gap the day photographs shipped: take the message back and the report kept the words and an empty space |
 
 The four from 2026-09-17, newest first:
 
@@ -808,7 +809,12 @@ Four more from 2026-09-21, after the owner used the build:
     photographs stay the way their words do; and a *reported* picture becomes
     readable to administrators because the report names its path — one
     photograph, handed over by somebody who could see it, the same shape as a
-    reported sentence, except that it is the original and not a copy. Files:
+    reported sentence, except that it is the original and not a copy. **So a
+    reported picture cannot be deleted by anybody** (`…210000`): the owner
+    saw the same day that otherwise a sender could wait to be reported and
+    take the message back, leaving the report with words and an empty space.
+    Deleting *before* anybody reports still works, as it always has for the
+    words — there is nothing to report once it is gone. Files:
     `src/lib/chat/attachments.ts`, `routes/chat/attachment-grid.tsx`,
     `routes/chat/photo-picker.tsx`; `scripts/check-chat-photo-policy.mjs` is
     the through-the-API proof and `chat-attachments.sql` the SQL half.
@@ -927,7 +933,7 @@ decision with a number in it, and not one to guess now.
 
 # Next up: the owner's call
 
-Chat is built and has its own section above; **its twenty migrations still
+Chat is built and has its own section above; **its twenty-one migrations still
 have to be pushed, and that is the owner's word to give.** The app is live and
 the ingest is running current code.
 

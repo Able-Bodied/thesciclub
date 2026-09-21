@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { deleteAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { resolveReport } from '@/lib/chat/reports';
 import { removeMessage } from '@/lib/chat/threads';
@@ -117,10 +116,10 @@ export function ReportsSection({
           setFailure(result.error);
           return;
         }
-        // The row is blanked by the function; the files go through the
-        // storage API, which an administrator can reach for exactly these
-        // because the report names them — see 20260918200000.
-        if (report.attachments.length > 0) void deleteAttachments(report.attachments);
+        // The row is blanked by the function. Its photographs are not
+        // deleted — nothing named on a report can be, by anybody, so that the
+        // Settled list stays a record of what was decided about. See
+        // 20260918210000.
         // Re-read, so the row stops offering to remove what is already gone.
         reload();
       })
@@ -441,9 +440,9 @@ function MemberName({
  *
  * The words are a copy. The photographs are not — no SQL can copy a file — so
  * they are the originals, readable here only because the report names them
- * (20260918200000), and gone from here if the sender has since deleted them.
- * The sentence under the grid says which of those it is, so an empty space is
- * never read as "there were no photographs".
+ * (20260918200000). They cannot be deleted once named, by the sender or by an
+ * administrator (20260918210000), so taking the message back leaves the
+ * evidence where it is. The sentence under the grid says so.
  */
 function Snapshot({ report }: { report: ChatReport }) {
   return (
@@ -461,10 +460,10 @@ function Snapshot({ report }: { report: ChatReport }) {
           />
           <p className="mt-1 text-[0.71875rem] text-grey leading-[1.45]">
             {report.attachments.length === 1
-              ? 'One photograph'
-              : `${report.attachments.length} photographs`}{' '}
-            were reported with it. Photographs are not copied: one that is missing here has since
-            been deleted by whoever sent it.
+              ? 'One photograph was'
+              : `${report.attachments.length} photographs were`}{' '}
+            reported with it, and kept: a reported photograph cannot be deleted, even by whoever
+            sent it.
           </p>
         </div>
       ) : null}
