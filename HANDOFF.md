@@ -931,6 +931,89 @@ decision with a number in it, and not one to guess now.
 
 ---
 
+# Next up: errors that read as sentences
+
+**The owner's next job, decided 2026-09-21.** Too many refusals reach a member
+as the database's own words — `new row for relation "chat_messages" violates
+check constraint "chat_messages_check"`, `permission denied for column
+created_at`, `Could not find the function public.chat_my_threads without
+parameters in the schema cache` — and a member who reads one of those reads
+the app as broken rather than as having said no.
+
+## The shape of it, counted
+
+- **69 places** hand `error.message` / `failure.message` straight to the
+  screen (`grep -rn "error\.message\|failure\.message" src`). **53** of them
+  are the write and read helpers in `src/lib/` and `src/routes/*/…-api.ts`
+  returning `{ ok: false, error: error.message }` — which is where the fix
+  goes, because that is the last place the error still carries its **`code`**
+  (the SQLSTATE, or a `PGRST…` code). Once it is a string the code is gone.
+- **30** `{failure}` / `{error}` renders in `src/routes`, and **41** hand-written
+  fallbacks ("Could not load…", "That did not work.") for when there is no
+  message at all. Those are fine; they are what the raw ones should become.
+- **Two translators already exist and are the pattern**:
+  `describeFailure(code, message)` in `src/routes/invites/mentor-invites.ts`,
+  keyed on SQLSTATE (23505 → "That number is already on the club's list",
+  42501 → "You have used all N of your invites"), and `describeUploadFailure`
+  in `src/lib/chat/attachments.ts`, keyed on the storage API's wording. Two
+  local ones are the sign that one shared one is owed.
+
+## Two kinds of message, and only one needs translating
+
+**Ours.** 159 `raise exception '…'` sentences across the migrations, every one
+already prose — "Only an active member can start a room.", "Fill your last
+room before starting another. Shoulder pain has nothing in it yet.", "You
+cannot report your own message. Remove it instead." **These must pass
+through untouched**; they are the good case, and a translator that flattens
+them into "Something went wrong" would be a regression. 57 carry an errcode
+(30 × `P0002`, 21 × `42501`, 6 × `22023`); **102 carry none and arrive as
+`P0001`**, which is the plpgsql default. So `P0001` means "one of ours".
+
+**The database's and PostgREST's.** These are the ones to catch, by code:
+
+| code | what happened | what the member should read |
+| --- | --- | --- |
+| `23514` | a check constraint — too long, empty, five photographs, a bad category | depends on the screen; the constraint name in the message says which (`chat_messages_attachments_check`) |
+| `23505` | unique — a room name taken, a number already listed | "already there" in the screen's own words; the invites screen shows how |
+| `42501` with `row-level security` in the message | an insert/update policy refused — paused, not joined, room closed | "You cannot do that here" — **but** `42501` is *also* the code our own `raise … using errcode = '42501'` sentences carry, so key on the phrase, not the code alone |
+| `42501` with `permission denied for column` | the client named a column insert is not granted on — a bug, not a member's doing | generic, and loud in the console |
+| `PGRST116` | `.single()` on zero or many rows | "not there any more" |
+| `PGRST202` / `PGRST205` / `42883` / `42P01` / `42703` | schema drift — the client is ahead of the database (or behind), which is exactly the state this file's first section warns about | "The club is being updated. Try again in a minute." — never the raw text, which names tables |
+| `TypeError: Failed to fetch`, `AbortError` | no network, or the tab left | "You are offline" / nothing |
+| storage `mime type … not supported`, `exceeded the maximum allowed size` | the bucket refused a file | attachments.ts already does these |
+| auth: `Invalid login credentials`, `Token has expired`, `over_email_send_rate_limit` | sign-in | onboarding has its own sentences; check they cover the OTP paths |
+
+## The shape of the fix
+
+One function, `describeError(error, context?)` in `src/lib/describe-error.ts`,
+called at the 53 sites **before** the error becomes a string, with a `context`
+that says what was being attempted so the sentence can ("Your reply was not
+posted." rather than "Error"). Pass-through for `P0001`/`P0002`/`22023` and
+for a `42501` whose message does not mention row-level security; the table
+above for the rest; a generic sentence plus `console.error(raw)` for anything
+unknown, so the raw text is not lost, only not shown. Unit-test it with the
+**real strings** — copy them out of the probe logs in `supabase/tests/` and out
+of a browser console, not from memory; three of the four in the first
+paragraph of this section were checked against a live refusal.
+
+Three traps, all already recorded elsewhere in this file and all live here:
+
+- **The same action fails two different ways.** Invites: the cap and the
+  unique index refuse the same insert with different codes, so "refused"
+  cannot be read as one thing — see "The invite system". Chat has the same
+  shape in several places (a topic in a closed room: policy *or* our own
+  sentence, depending on the path).
+- **Onboarding's birthday.** A row the 18+ trigger refuses "reaches the member
+  as a sentence about a trigger" — that is the oldest instance of this bug
+  and is in "Onboarding is two required questions, then a door".
+- **The no-network guard.** Tests cannot reach a database, so a test of the
+  translator is a test of strings. That is fine for a pure function; it is
+  not a proof that the sites call it. Sabotage once: make it return a marker
+  and watch a screen test show the marker.
+
+Do not touch the migrations for this. The sentences in them are right; the
+work is on the client, in one file plus 53 one-line call sites.
+
 # Next up: the owner's call
 
 Chat is built and has its own section above; **its twenty-one migrations still
@@ -957,7 +1040,8 @@ Things that are real, wanted, and nobody has asked for yet:
   29 grouped topics, capped at 24 by frequency, so a rare one-person topic
   cannot be *ticked*. Reachable by typing it, unreachable as a filter.
 
-**Chat is done — see "What Chat is" above.** Home has not been asked for.
+**Chat is done — see "What Chat is" above, and the error-message job is the
+section before this one.** Home has not been asked for.
 **Do not build Home without asking.** It is deliberately deferred in CONTEXT.md
 and says so on screen; the mock renders it convincingly, which is the trap
 rather than the mandate. Chat shipping is not permission to drag Home in
