@@ -232,6 +232,27 @@ export default function MemberDetailPage() {
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto w-full max-w-[62rem] lg:px-4 lg:pt-3">
+        {/* Above the photograph, not on it (owner, 2026-09-21): the way back on
+            the left and, for a mentor, a gold chip on the right — the deck's
+            own colour for the word. Nothing sits on the picture but the name. */}
+        <div className="flex items-center justify-between px-4 pt-3 pb-2.5 lg:px-0 lg:pt-0">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate(-1);
+            }}
+            className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-navy"
+            data-target="small"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {backFrom(location.state)}
+          </button>
+          {member.type === 'mentor' ? (
+            <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
+              Peer mentor
+            </span>
+          ) : null}
+        </div>
         {/*
          * From `lg` the picture is floated, not a column: the profile runs
          * beside it and then takes the whole width once it is past the bottom
@@ -249,7 +270,10 @@ export default function MemberDetailPage() {
         <div className="lg:block">
           <div className="lg:float-left lg:mr-8 lg:mb-3 lg:w-[20rem] lg:overflow-hidden lg:rounded-[26px] lg:shadow-[0_10px_26px_rgba(10,20,35,.18)]">
             {/* The mock's `phero`: the photograph as a 300px hero with the
-             * name over its foot, edge to edge on a phone.
+             * name over its foot, edge to edge on a phone. The mock also puts
+             * the back button and a badge with an organization mark on the
+             * picture; the owner moved both above it and dropped the mark. */}
+            {/*
              *
              * It used to be the whole photograph, uncropped, with the name
              * underneath, on the argument that a profile is where somebody
@@ -294,25 +318,7 @@ export default function MemberDetailPage() {
                 aria-hidden="true"
                 className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0),rgba(10,29,54,0.8)_60%,#102a4c)]"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate(-1);
-                }}
-                className="absolute top-[18px] left-4 z-[2] inline-flex min-h-[36px] items-center gap-0.5 rounded-full bg-[#0A1D36]/60 py-[7px] pr-3.5 pl-2.5 font-bold text-[0.875rem] text-white backdrop-blur-[4px] transition-colors hover:bg-[#0A1D36]/80"
-                data-target="small"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                {backFrom(location.state)}
-              </button>
               <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
-                {/* The mock's badge without its organization mark: the owner
-                    took that out. Who vouched is under "Also a member of". */}
-                {member.type === 'mentor' ? (
-                  <span className="mb-2.5 inline-flex items-center rounded-full bg-white/95 px-3 py-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
-                    Peer mentor
-                  </span>
-                ) : null}
                 <h1 className="font-extrabold font-head text-[1.875rem] text-white leading-tight tracking-[-0.02em]">
                   {member.displayName}
                 </h1>
