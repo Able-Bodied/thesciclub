@@ -15,6 +15,32 @@ vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'member', userId: 'me', isAdmin: false, displayName: 'Alex' }),
 }));
 
+// Stubbed, and it has to be: `.env.local` points at the hosted project, so an
+// unmocked read in a test talks to production. `roomsForTopics` is deliberately
+// not stubbed — the mapping on screen is the real one, and its own tests are in
+// src/routes/chat/room-map.test.ts.
+const chatRooms = vi.hoisted(() => ({ rooms: [] as unknown[] }));
+vi.mock('@/lib/chat/rooms', () => ({
+  useChatRooms: () => ({
+    rooms: chatRooms.rooms,
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
+}));
+
+function room(id: string, name: string, openedAt: string | null) {
+  return {
+    id,
+    name,
+    description: `What ${name} is for.`,
+    category: 'Body' as const,
+    icon: '◍',
+    sortOrder: 1,
+    openedAt,
+  };
+}
+
 const { default: MemberDetailPage, childrenLabel } = await import('@/routes/peers/member-detail');
 
 const ok = (member: ReturnType<typeof makeMember>): MemberState => ({
@@ -37,6 +63,7 @@ function renderDetail() {
 
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
+  chatRooms.rooms = [];
 });
 
 describe('childrenLabel', () => {
@@ -231,5 +258,55 @@ describe('the official account profile', () => {
     expect(screen.getByText('Invites')).toBeInTheDocument();
     expect(screen.getByText('The house rules')).toBeInTheDocument();
     expect(screen.getByText(/Reports come here and are read by a person/)).toBeInTheDocument();
+  });
+});
+
+describe('the rooms a member’s topics already live in', () => {
+  it('offers the room a topic points at', () => {
+    chatRooms.rooms = [room('bowel', 'Bowel management', '2026-09-18T10:00:00Z')];
+    state.current = ok(makeMember({ topics: ['Bowel programme'] }));
+    renderDetail();
+    expect(screen.getByRole('link', { name: /Continue in Bowel management/ })).toHaveAttribute(
+      'href',
+      '/chat/rooms/bowel',
+    );
+  });
+
+  // The select policy hides a closed room from a member, so this filter is for
+  // the other reader: an administrator gets all twelve and must not be offered
+  // a door no member can follow them through.
+  it('says nothing about a room that is not open', () => {
+    chatRooms.rooms = [room('bowel', 'Bowel management', null)];
+    state.current = ok(makeMember({ topics: ['Bowel programme'] }));
+    renderDetail();
+    expect(screen.queryByText(/Continue in/)).not.toBeInTheDocument();
+  });
+
+  // Two topics naming one room is one conversation named twice.
+  it('names a room once however many topics point at it', () => {
+    chatRooms.rooms = [room('bowel', 'Bowel management', '2026-09-18T10:00:00Z')];
+    state.current = ok(makeMember({ topics: ['Bowel programme', 'Travelling with a colostomy'] }));
+    renderDetail();
+    expect(screen.getAllByRole('link', { name: /Continue in/ })).toHaveLength(1);
+  });
+
+  // No "no rooms match" sentence: the reader did not ask a question, so there
+  // is nothing to answer.
+  it('draws nothing at all when no topic reaches an open room', () => {
+    chatRooms.rooms = [room('bowel', 'Bowel management', '2026-09-18T10:00:00Z')];
+    state.current = ok(makeMember({ topics: ['Canine Companions'] }));
+    renderDetail();
+    expect(screen.getByText('Happy to talk about')).toBeInTheDocument();
+    expect(screen.queryByText(/Continue in/)).not.toBeInTheDocument();
+  });
+
+  // It is the second door, not a replacement for the first. Some questions are
+  // for one person.
+  it('does not take the place of the Message button', () => {
+    chatRooms.rooms = [room('bowel', 'Bowel management', '2026-09-18T10:00:00Z')];
+    state.current = ok(makeMember({ displayName: 'Nicole', topics: ['Bowel programme'] }));
+    renderDetail();
+    expect(screen.getByRole('button', { name: 'Message Nicole' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Continue in/ })).toBeInTheDocument();
   });
 });

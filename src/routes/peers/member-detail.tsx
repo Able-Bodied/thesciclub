@@ -8,6 +8,7 @@ import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { photoUrlFor } from '@/lib/photos';
+import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import type { BeforeAfter, BrowseMember } from '@/types/domain';
@@ -315,6 +316,11 @@ export default function MemberDetailPage() {
                   What {member.displayName} offered to be asked about.
                 </p>
                 <Chips items={member.topics} tone="solid" />
+                {/* Under the chips, not instead of them: the chips are what
+                    this member said, and the room is where the club is already
+                    saying it. Draws nothing unless a topic reaches a room that
+                    is open, which for most of this club's life is nothing. */}
+                <ContinueInRooms topics={member.topics} />
               </Section>
             ) : null}
 
