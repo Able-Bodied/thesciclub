@@ -280,7 +280,16 @@ function ReportRow({
 
       {settling ? (
         <div className="mt-1">
-          <ReasonField id={`settle-${report.id}`} value={said} onChange={setSaid} />
+          {/* Not "reason": what is being asked for is what was done about it,
+              and it is what the next administrator to look at this person
+              reads. "Resolved" on its own is refused by the database. */}
+          <ReasonField
+            id={`settle-${report.id}`}
+            value={said}
+            onChange={setSaid}
+            label="What was decided (only administrators see this)"
+            placeholder="Removed it and spoke to them"
+          />
           <div className="mt-2 flex gap-1.5">
             {/* Required, and the button says so by being unavailable until
                 there is a sentence. The database refuses a blank one either

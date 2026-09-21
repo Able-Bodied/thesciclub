@@ -14,18 +14,23 @@ export function ReasonField({
   id,
   value,
   onChange,
+  label = 'Reason (only administrators see this)',
+  placeholder = 'Harassing members',
 }: {
   id: string;
   value: string;
   onChange: (value: string) => void;
+  /** Overridden where "reason" is the wrong word for what is being asked. */
+  label?: string;
+  placeholder?: string;
 }) {
   return (
     <label htmlFor={id} className="mt-2.5 block font-bold text-[0.75rem] text-ink">
-      Reason (only administrators see this)
+      {label}
       <input
         id={id}
         value={value}
-        placeholder="Harassing members"
+        placeholder={placeholder}
         onChange={(e) => {
           onChange(e.target.value);
         }}

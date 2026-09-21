@@ -185,7 +185,13 @@ export default function AdminPage() {
             {real.length} joined · {seeded.length} from the directory · {pending.length} invite
             {pending.length === 1 ? '' : 's'} waiting
           </p>
-          <div className="mt-3 flex gap-[7px]">
+          {/* Wrapping, since Reports made a fourth. Three pills fitted 430px at
+              every text size and four do not: at `larger` the row ran off the
+              screen and took the heading with it, because a flex row that
+              cannot fit does not scroll, it stretches the page. A second row of
+              pills is the honest answer. Found in a screenshot, as every layout
+              problem in this project has been. */}
+          <div className="mt-3 flex flex-wrap gap-[7px]">
             {(['members', 'invites', 'rooms', 'reports'] as const).map((value) => (
               <button
                 key={value}
@@ -196,7 +202,7 @@ export default function AdminPage() {
                 aria-pressed={tab === value}
                 data-target="small"
                 className={cn(
-                  'rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
+                  'whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
                   tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
                 )}
               >

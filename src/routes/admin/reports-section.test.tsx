@@ -176,7 +176,7 @@ describe('the reports panel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Settle it' }));
     const settle = screen.getByRole('button', { name: 'Settle it' });
     expect(settle).toBeDisabled();
-    await userEvent.type(screen.getByLabelText(/Reason/), 'Removed it and spoke to Bo.');
+    await userEvent.type(screen.getByLabelText(/What was decided/), 'Removed it and spoke to Bo.');
     await userEvent.click(settle);
     await waitFor(() => {
       expect(api.resolved).toEqual([['r1', 'Removed it and spoke to Bo.']]);
