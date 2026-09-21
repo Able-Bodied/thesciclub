@@ -170,3 +170,47 @@ export interface ChatMessage {
    */
   pending?: boolean;
 }
+
+/**
+ * One report, as `admin_chat_reports` returns it.
+ *
+ * Only an administrator ever holds one of these. A member's own reports are
+ * three ids and nothing else — see `useMyReports` — because the snapshot is
+ * somebody else's words held outside the conversation they were said in, and
+ * one copy of those on the reporter's screen is enough.
+ *
+ * There is no thread id here and there must never be one. A post carries
+ * `topicId` and `roomId` because a room is readable by every member including
+ * an administrator; a message carries no way back at all, which is what makes
+ * "private even from administrators" still true after somebody reports one.
+ */
+export interface ChatReport {
+  id: string;
+  kind: 'post' | 'message';
+  /** Null once the reported row itself is gone. The snapshot outlives it. */
+  postId: string | null;
+  messageId: string | null;
+  /** What the reporter saw, copied when they reported it. */
+  bodySnapshot: string;
+  /** When it was written, which is rarely when it was reported. */
+  writtenAt: string;
+  /** "Bowel management › …", a group's name, or "A direct conversation". */
+  place: string;
+  topicId: string | null;
+  roomId: string | null;
+  note: string | null;
+  createdAt: string;
+  /** Null for somebody who has since been removed from the club. */
+  reporterId: string | null;
+  reporterName: string | null;
+  reportedAuthorId: string | null;
+  reportedAuthorName: string | null;
+  /** How many members reported this same post or message. Never fewer than 1. */
+  reportCount: number;
+  /** Whether the post or message has since been taken down, or deleted. */
+  alreadyRemoved: boolean;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolvedByName: string | null;
+  resolution: string | null;
+}
