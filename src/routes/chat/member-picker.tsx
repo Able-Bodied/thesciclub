@@ -23,9 +23,9 @@ import { useBrowseMembers } from '@/lib/members';
  * ---------------------------------------------------------------------------
  * It narrows the list that is already on screen by name, on the client, with no
  * request behind it. Chat has no search and this is not one arriving by the
- * side door: a box that quietly asks the server something is the control
- * CHAT-PLAN.md rules out, and this one cannot find anybody who is not already
- * drawn below it.
+ * side door: a box that quietly asks the server something is the control the
+ * build deliberately left out (see "Not in this build" in HANDOFF.md), and
+ * this one cannot find anybody who is not already drawn below it.
  *
  * The rows are checkboxes rather than buttons with a tick drawn on them. A
  * member using a switch or a head pointer gets the platform's own control, its

@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
  * ---------------------------------------------------------------------------
  * A sibling of FilterSheetShell, not a use of it
  * ---------------------------------------------------------------------------
- * CHAT-PLAN.md offered the shell "if it fits". It does not: its footer is
+ * The build plan offered the shell "if it fits". It does not: its footer is
  * Clear and Apply over a live count, and its whole model is that the filters
  * have already taken effect by the time it closes. This one has a Send and a
  * Cancel, and nothing has happened until Send. Bending the shell to hold both

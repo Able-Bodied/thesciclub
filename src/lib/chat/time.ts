@@ -19,9 +19,9 @@
  * CI, which is the kind of test this project has been bitten by.
  *
  * ---------------------------------------------------------------------------
- * The shape, and why it is not the plan's
+ * The shape
  * ---------------------------------------------------------------------------
- * CHAT-PLAN.md wrote the clock as "09:30". It is "9:30am" here, which is what
+ * The build plan wrote the clock as "09:30". It is "9:30am" here, which is what
  * `timeOfDay` in events/format.ts already produces and therefore what every
  * time in this app already looks like. Two clock formats in one product is a
  * worse outcome than either of them.
