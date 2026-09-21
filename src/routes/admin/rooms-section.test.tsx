@@ -54,6 +54,7 @@ const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   icon: '◍',
   sortOrder: 1,
   openedAt: null,
+  createdBy: null,
   ...o,
 });
 

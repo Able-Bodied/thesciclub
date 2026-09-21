@@ -74,6 +74,7 @@ const room = (o: Partial<ChatRoom> = {}): ChatRoom => ({
   icon: '◍',
   sortOrder: 1,
   openedAt: '2026-09-01T10:00:00Z',
+  createdBy: null,
   ...o,
 });
 

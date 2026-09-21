@@ -19,16 +19,36 @@ export interface ChatRoom {
   name: string;
   description: string;
   category: RoomCategory;
-  /** A decorative text glyph. The room's name is always printed beside it. */
-  icon: string;
+  /**
+   * A decorative text glyph, or null for a room a member started.
+   *
+   * The room's name is always printed beside it, so a null one costs nothing
+   * but a letter tile — the same one a null author gets. There is deliberately
+   * no icon picker: each seeded glyph had to be checked in a screenshot, and ⛭
+   * drew as a tofu box, which is not a problem to hand to somebody who came
+   * here to ask about their shoulder.
+   */
+  icon: string | null;
   sortOrder: number;
   /**
    * When an administrator opened the room, or null while it is closed.
    *
    * A member never sees a closed room at all — the select policy excludes it,
    * so a null here means the reader is an administrator looking at /admin.
+   *
+   * A room a member started is open from the moment it exists: there is nobody
+   * standing by to open it, and it is born with a topic in it.
    */
   openedAt: string | null;
+  /**
+   * The member who started it, or null for the seeded twelve.
+   *
+   * Also null once that member has left the club — the room stays and the name
+   * goes, like every other thing they wrote. The card says "Started by a former
+   * member" rather than dropping the line, because a room with a starter and a
+   * room without one are different kinds of room.
+   */
+  createdBy: string | null;
 }
 
 /**

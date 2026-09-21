@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import type { ChatWriteResult } from '@/lib/chat/threads';
 import {
   type ChatRoom,
   ROOM_CATEGORIES,
@@ -30,9 +31,10 @@ interface ChatRoomRow {
   name: string;
   description: string;
   category: string;
-  icon: string;
+  icon: string | null;
   sort_order: number;
   opened_at: string | null;
+  created_by: string | null;
 }
 
 function toRoom(row: ChatRoomRow): ChatRoom {
@@ -49,6 +51,7 @@ function toRoom(row: ChatRoomRow): ChatRoom {
     icon: row.icon,
     sortOrder: row.sort_order,
     openedAt: row.opened_at,
+    createdBy: row.created_by,
   };
 }
 
@@ -106,7 +109,7 @@ export function useChatRooms(): ChatRoomsState {
     try {
       const { data, error: failure } = await getSupabase()
         .from('chat_rooms')
-        .select('id, name, description, category, icon, sort_order, opened_at')
+        .select('id, name, description, category, icon, sort_order, opened_at, created_by')
         .order('sort_order')
         .abortSignal(controller.signal);
       if (aborted()) return;
@@ -162,6 +165,160 @@ export async function setRoomOpen(
   });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
+}
+
+/**
+ * Starting a room, and the four rules a member meets on the way in.
+ *
+ * ---------------------------------------------------------------------------
+ * The room and its first topic are one form and one call
+ * ---------------------------------------------------------------------------
+ * `chat_create_room` takes both because a room cannot be born empty —
+ * CONTEXT.md's objection to topic rooms is that a room of two dozen members is
+ * empty by construction, and the answer is the shape of the flow rather than a
+ * rule. There is no `createRoom(name)` here to reach for later.
+ *
+ * The bounds below are the function's, repeated so the screen can say what is
+ * wrong before the round trip rather than after it. They are the only thing in
+ * this file that is a second copy of a database rule, and they are the cheap
+ * half: the database still decides, and its sentence is what a refusal shows.
+ */
+export const ROOM_NAME_MIN = 3;
+export const ROOM_NAME_MAX = 40;
+export const ROOM_DESCRIPTION_MIN = 10;
+export const ROOM_DESCRIPTION_MAX = 200;
+
+/**
+ * A room's name with its whitespace collapsed, the way the database stores it.
+ *
+ * `chat_create_room` does this before it checks `lower(name)` against the
+ * unique index, so "Shoulder  pain" and "Shoulder pain" are one name. Mirrored
+ * here only to find the room a member has just been refused for — never to
+ * decide anything, which the database does.
+ */
+export function normalizeRoomName(name: string): string {
+  return name.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * What is wrong with a room somebody is part-way through describing, or null.
+ *
+ * Pure, and the sentence is the one the screen shows under the disabled
+ * button, so the two cannot disagree about why. It says what to do next rather
+ * than which field failed, and it asks for them in the order the form does, so
+ * somebody filling it in top to bottom is never told about a field they have
+ * not reached.
+ */
+export function roomProblem(
+  name: string,
+  description: string,
+  topicTitle: string,
+  topicBody: string,
+): string | null {
+  const cleanName = normalizeRoomName(name);
+  if (cleanName.length === 0) return 'Give the room a name.';
+  if (cleanName.length < ROOM_NAME_MIN) {
+    return `A room's name is at least ${ROOM_NAME_MIN} characters.`;
+  }
+  if (cleanName.length > ROOM_NAME_MAX) {
+    return `A room's name is ${ROOM_NAME_MAX} characters or fewer.`;
+  }
+  const cleanDescription = description.trim();
+  if (cleanDescription.length === 0) return 'Say what the room is for.';
+  if (cleanDescription.length < ROOM_DESCRIPTION_MIN) {
+    return `Say a little more about what the room is for — at least ${ROOM_DESCRIPTION_MIN} characters.`;
+  }
+  if (cleanDescription.length > ROOM_DESCRIPTION_MAX) {
+    return `The description is ${ROOM_DESCRIPTION_MAX} characters or fewer.`;
+  }
+  if (topicTitle.trim().length === 0) return 'Give the first topic a title.';
+  if (topicBody.trim().length === 0) return 'Write the first topic.';
+  return null;
+}
+
+/**
+ * Rooms whose name contains what somebody is typing.
+ *
+ * The most likely outcome of a new-room impulse is a room that already exists,
+ * and finding it is a better result than making a twin — so this runs under
+ * the name field as it is typed. Two characters before it says anything, since
+ * one letter matches most of the twelve and a list that is always there is not
+ * a suggestion.
+ *
+ * It searches what the viewer can already see, which for a member is the open
+ * rooms. A closed room cannot be offered as an alternative, because they
+ * cannot read it; the database still refuses the duplicate name.
+ */
+export function roomsMatching(rooms: ChatRoom[], name: string, limit = 5): ChatRoom[] {
+  const needle = normalizeRoomName(name).toLowerCase();
+  if (needle.length < 2) return [];
+  return rooms
+    .filter((room) => room.name.toLowerCase().includes(needle))
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .slice(0, limit);
+}
+
+/**
+ * The room a member has been told already has this name, if they can see it.
+ *
+ * Used to put a link under the refusal. Null where the clash is with a closed
+ * room: the database knows about it and refuses, and the member cannot read it,
+ * so the sentence stands on its own without a link that would go nowhere.
+ */
+export function roomNamed(rooms: ChatRoom[], name: string): ChatRoom | null {
+  const wanted = normalizeRoomName(name).toLowerCase();
+  return rooms.find((room) => room.name.toLowerCase() === wanted) ?? null;
+}
+
+/**
+ * The room of the viewer's own that has nothing in it yet.
+ *
+ * The other half of "fill your last room before starting another": the
+ * database refuses in a sentence, and this finds the room that sentence is
+ * about so the member can be sent to it. Derived from what is already on the
+ * screen rather than parsed out of the message — a message is prose and a link
+ * should not depend on its wording.
+ */
+export function roomToFill(
+  rooms: ChatRoom[],
+  stats: Map<string, RoomStats>,
+  memberId: string | null,
+): ChatRoom | null {
+  if (!memberId) return null;
+  return (
+    rooms.find((room) => room.createdBy === memberId && stats.get(room.id)?.topicCount === 0) ??
+    null
+  );
+}
+
+/**
+ * Start a room and its first topic.
+ *
+ * Returns the new room's id, which is a slug of the name plus four random
+ * characters. The database makes it, not this: the id is in the URL forever
+ * and two members typing the same name a second apart must not race for it.
+ */
+export async function createRoom(
+  name: string,
+  description: string,
+  category: RoomCategory,
+  topicTitle: string,
+  topicBody: string,
+): Promise<ChatWriteResult<string>> {
+  const { data, error } = (await getSupabase().rpc('chat_create_room', {
+    // Prefixed, every one of them: inside plpgsql a parameter with a column's
+    // name is ambiguous against that column, and this function writes name,
+    // description and category. PostgREST sends arguments by name, so these
+    // are the names. See 20260918170000.
+    room_name: name.trim(),
+    room_description: description.trim(),
+    room_category: category,
+    topic_title: topicTitle.trim(),
+    topic_body: topicBody.trim(),
+  })) as { data: string | null; error: { message: string } | null };
+  if (error) return { ok: false, error: error.message };
+  if (!data) return { ok: false, error: 'The room was not started.' };
+  return { ok: true, value: data };
 }
 
 /**

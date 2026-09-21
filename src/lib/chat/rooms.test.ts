@@ -1,7 +1,17 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { roomsByCategory, setRoomOpen, useChatRooms } from '@/lib/chat/rooms';
-import type { ChatRoom } from '@/lib/chat/types';
+import {
+  createRoom,
+  normalizeRoomName,
+  roomNamed,
+  roomProblem,
+  roomsByCategory,
+  roomsMatching,
+  roomToFill,
+  setRoomOpen,
+  useChatRooms,
+} from '@/lib/chat/rooms';
+import type { ChatRoom, RoomStats } from '@/lib/chat/types';
 
 /**
  * Only `@/lib/supabase` is stubbed — the module under test is the real one.
@@ -14,6 +24,7 @@ const db = vi.hoisted(() => ({
   rows: [] as Record<string, unknown>[],
   error: null as { message: string } | null,
   rpcCalls: [] as [string, Record<string, unknown>][],
+  rpcData: null as string | null,
   rpcError: null as { message: string } | null,
 }));
 
@@ -28,7 +39,7 @@ vi.mock('@/lib/supabase', () => ({
     }),
     rpc: (name: string, args: Record<string, unknown>) => {
       db.rpcCalls.push([name, args]);
-      return Promise.resolve({ error: db.rpcError });
+      return Promise.resolve({ data: db.rpcData, error: db.rpcError });
     },
   }),
 }));
@@ -40,6 +51,7 @@ const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   icon: '◍',
   sortOrder: 1,
   openedAt: null,
+  createdBy: null,
   ...o,
 });
 
@@ -47,6 +59,7 @@ beforeEach(() => {
   db.rows = [];
   db.error = null;
   db.rpcCalls = [];
+  db.rpcData = null;
   db.rpcError = null;
 });
 
@@ -154,5 +167,167 @@ describe('opening and closing a room', () => {
       ok: false,
       error: 'Only an administrator can open or close a room.',
     });
+  });
+});
+
+describe('a name the database would call the same name', () => {
+  // The database collapses whitespace before it checks lower(name) against the
+  // unique index — found by running the probe, which walked "SHOULDER   pain"
+  // straight past a lowercase-only comparison.
+  it.each([
+    ['Shoulder pain', 'Shoulder pain'],
+    ['  Shoulder pain  ', 'Shoulder pain'],
+    ['SHOULDER   pain', 'SHOULDER pain'],
+    ['Shoulder\tpain', 'Shoulder pain'],
+  ])('%s becomes %s', (given, expected) => {
+    expect(normalizeRoomName(given)).toBe(expected);
+  });
+});
+
+describe('what is missing from a room somebody is describing', () => {
+  const full = (o: Partial<Record<'n' | 'd' | 't' | 'b', string>> = {}) =>
+    roomProblem(
+      o.n ?? 'Shoulder pain',
+      o.d ?? 'Overuse, transfers, and what helped.',
+      o.t ?? 'Twenty years of pushing',
+      o.b ?? 'What did you change first?',
+    );
+
+  it('says nothing when all five are there', () => {
+    expect(full()).toBeNull();
+  });
+
+  // Top to bottom: somebody filling the form in order is never told about a
+  // field they have not reached yet.
+  it('asks for the fields in the order the form does', () => {
+    expect(full({ n: '', d: '', t: '', b: '' })).toBe('Give the room a name.');
+    expect(full({ d: '', t: '', b: '' })).toBe('Say what the room is for.');
+    expect(full({ t: '', b: '' })).toBe('Give the first topic a title.');
+    expect(full({ b: '' })).toBe('Write the first topic.');
+  });
+
+  it('counts a name the way the database will', () => {
+    expect(full({ n: ' a  ' })).toContain('at least 3');
+    expect(full({ n: 'x'.repeat(41) })).toContain('40 characters or fewer');
+    // Three characters once the spaces are collapsed, and therefore fine.
+    expect(full({ n: 'a  bc' })).toBeNull();
+  });
+
+  it('will not take a description too short to say anything', () => {
+    expect(full({ d: 'Shoulders' })).toContain('at least 10');
+    expect(full({ d: 'x'.repeat(201) })).toContain('200 characters or fewer');
+  });
+
+  it('treats whitespace as empty', () => {
+    expect(full({ b: '   \n  ' })).toBe('Write the first topic.');
+  });
+});
+
+describe('the rooms that already exist under that name', () => {
+  const rooms = [
+    room({ id: 'bowel', name: 'Bowel management', sortOrder: 1 }),
+    room({ id: 'bladder', name: 'Bladder & catheters', sortOrder: 2 }),
+    room({ id: 'pain-1a2b', name: 'Shoulder pain', sortOrder: 1000, createdBy: 'ada' }),
+  ];
+
+  // One letter matches most of the twelve, and a list that is always there is
+  // not a suggestion.
+  it('says nothing until there are two characters', () => {
+    expect(roomsMatching(rooms, 'b')).toEqual([]);
+    expect(roomsMatching(rooms, ' b ')).toEqual([]);
+    expect(roomsMatching(rooms, 'bl').map((r) => r.id)).toEqual(['bladder']);
+  });
+
+  it('matches anywhere in the name, ignoring case', () => {
+    expect(roomsMatching(rooms, 'PAIN').map((r) => r.id)).toEqual(['pain-1a2b']);
+    expect(roomsMatching(rooms, 'bl').map((r) => r.id)).toEqual(['bladder']);
+  });
+
+  it('keeps the seeded rooms above the member-started ones', () => {
+    expect(roomsMatching(rooms, 'er').map((r) => r.id)).toEqual(['bladder', 'pain-1a2b']);
+  });
+
+  it('caps the list', () => {
+    expect(roomsMatching(rooms, 'er', 1).map((r) => r.id)).toEqual(['bladder']);
+  });
+
+  it('finds the exact clash the database refused, whatever was typed', () => {
+    expect(roomNamed(rooms, '  SHOULDER   pain ')?.id).toBe('pain-1a2b');
+    // A clash with a closed room: the member cannot see it, so there is no
+    // link to offer and the refusal stands on its own sentence.
+    expect(roomNamed(rooms, 'Skin & pressure sores')).toBeNull();
+  });
+});
+
+describe('the room a member has to fill first', () => {
+  const rooms = [
+    room({ id: 'bowel', name: 'Bowel management' }),
+    room({ id: 'mine-1', name: 'Mine, empty', createdBy: 'ada' }),
+    room({ id: 'mine-2', name: 'Mine, filled', createdBy: 'ada' }),
+    room({ id: 'theirs', name: 'Theirs, empty', createdBy: 'bo' }),
+  ];
+  const stats = new Map<string, RoomStats>([
+    ['bowel', { topicCount: 0, postCount: 0, memberCount: 0 }],
+    ['mine-1', { topicCount: 0, postCount: 0, memberCount: 1 }],
+    ['mine-2', { topicCount: 3, postCount: 9, memberCount: 2 }],
+    ['theirs', { topicCount: 0, postCount: 0, memberCount: 1 }],
+  ]);
+
+  it('is theirs, empty, and nobody else’s', () => {
+    expect(roomToFill(rooms, stats, 'ada')?.id).toBe('mine-1');
+    expect(roomToFill(rooms, stats, 'bo')?.id).toBe('theirs');
+  });
+
+  // Counts that have not arrived are not zero. Linking a member to a room they
+  // have already filled would contradict the sentence above the link.
+  it('offers nothing while the counts are missing', () => {
+    expect(roomToFill(rooms, new Map(), 'ada')).toBeNull();
+  });
+
+  it('offers nothing to somebody signed out', () => {
+    expect(roomToFill(rooms, stats, null)).toBeNull();
+  });
+});
+
+describe('starting a room', () => {
+  it('sends all five fields trimmed, under the names the function has', () => {
+    db.rpcData = 'shoulder-pain-1a2b';
+    return createRoom(
+      '  Shoulder pain ',
+      ' Overuse and transfers. ',
+      'Body',
+      ' Twenty years ',
+      ' What did you change? ',
+    ).then((result) => {
+      expect(result).toEqual({ ok: true, value: 'shoulder-pain-1a2b' });
+      expect(db.rpcCalls).toEqual([
+        [
+          'chat_create_room',
+          {
+            room_name: 'Shoulder pain',
+            room_description: 'Overuse and transfers.',
+            room_category: 'Body',
+            topic_title: 'Twenty years',
+            topic_body: 'What did you change?',
+          },
+        ],
+      ]);
+    });
+  });
+
+  // The database's own sentence, unrewritten: it names the room that already
+  // has the name, or the one waiting to be filled, and the screen turns that
+  // name into a link.
+  it('passes a refusal through unrewritten', async () => {
+    db.rpcError = { message: 'There is already a room called Shoulder pain.' };
+    expect(await createRoom('Shoulder pain', 'x'.repeat(20), 'Body', 't', 'b')).toEqual({
+      ok: false,
+      error: 'There is already a room called Shoulder pain.',
+    });
+  });
+
+  it('does not report success without an id to go to', async () => {
+    const result = await createRoom('Shoulder pain', 'x'.repeat(20), 'Body', 't', 'b');
+    expect(result.ok).toBe(false);
   });
 });

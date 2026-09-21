@@ -130,6 +130,7 @@ beforeEach(() => {
       description: 'x',
       category: 'Body',
       icon: '◍',
+      createdBy: null,
       sortOrder: 1,
       openedAt: '2026-09-01T10:00:00Z',
     },
