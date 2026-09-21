@@ -348,6 +348,7 @@ Two rules, both learned the hard way:
 | `chat-rooms.sql` | that a closed discussion room is invisible to a member and visible to an administrator, that only an administrator can open one, and that a member cannot reach the table around the function |
 | `chat-posts.sql` | that an un-joined member reads a room's whole history and cannot write in it, that a suspended one reads and does not write, that an administrator seeds a closed room, that an author and an administrator can remove a post and a third member cannot, and that nobody sees which rooms another member joined or which topics they have read |
 | `chat-direct.sql` | that a third member sees nothing of a conversation — not the thread, not its roster, not a word of it, and nor does an administrator — that opening the same one twice from either end returns the same thread, that a hidden or suspended member cannot be found to start one while a conversation that already exists still opens, and that a member cannot reach the thread tables around the functions |
+| `chat-groups.sql` | that somebody outside a group cannot add to it, that leaving one stops every read including the words written while they were in it, that an RSVP of Interested does not open the event's group chat, that a group has an order and a cap, and that an event's group takes no members by hand |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
