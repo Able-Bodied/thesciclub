@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-20.
+Last updated 2026-09-21.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -79,7 +79,7 @@ rooms, reporting, and rooms a member starts. Its nineteen migrations are not
 on the hosted project, which is why the section below about that comes before
 anything else. See "What Chat is".
 
-1,039 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
+1,047 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 72 migrations, and the nineteen Chat ones are not on the hosted project yet
@@ -694,12 +694,14 @@ reformats a file out from under a string-match patch made moments earlier.
 
 # What Chat is
 
-Built 2026-09-18 to 2026-09-20, in nine phases, from `CHAT-PLAN.md` — which is
-still in the repository at the time of writing and should be deleted once this
-section is trusted. **Three source comments cite it by name** and want
-rewording when it goes: `src/routes/chat/member-picker.tsx`,
-`src/lib/chat/time.ts`, `src/routes/chat/report-sheet.tsx`, each recording a
-place where the plan was wrong and the code is right.
+Built 2026-09-18 to 2026-09-21, in nine phases, from a plan file that was
+never committed and was deleted on 2026-09-21 once this section held
+everything in it that was still true. The plan was wrong in a dozen places
+and the code is right; where that mattered, the migration header or the
+component's own comment says so. Six migration headers still call it
+`CHAT-PLAN.md` by name — those files were applied before it went and a
+migration is not edited after it has run, comments included. There is nothing
+to go back to and nothing to trust over this file and the migrations.
 
 **The migrations are not on the hosted project.** See the second section of
 this file before deploying anything.
@@ -720,6 +722,19 @@ open one.
 reply counts, a sort bar, and the whole history from before you joined —
 joining a room is about writing in it, not reading it. Direct and group threads
 are flat message lists.
+
+**Rooms sit under six headings** — Body · Mind · Life · Family · Kit · Places,
+in that order, from `ROOM_CATEGORIES`. The mock's three held the seeded twelve;
+Mind, Family and Places arrived on 2026-09-21 once members could start rooms
+(`20260918180000`). Whoever starts a room picks its heading and nobody changes
+it afterwards. Three copies of the list: the constraint, `chat_create_room`'s
+own check, and the client's constant, and a change is all three.
+
+**An administrator does not have to join a room** to start a topic or post in
+it — `chat_can_post_in` short-circuits on `is_admin()`. Raised on 2026-09-21
+and kept on purpose. The consequence is that an administrator never sees the
+Join / Joined state, so a room they started looks unjoined to them when it is
+not; ordinary members see the chip.
 
 **An administrator is not in a conversation.** They cannot read a thread they
 are not on the roster of, and this is deliberate and load-bearing: it is why
@@ -755,6 +770,26 @@ Remove on the reader's own messages only, unlike a topic.
    attachments, search (the mock has a search box in the header — it is
    deliberately absent), member-to-member blocking, push notifications,
    anonymous posting, and any way to remove somebody else from a thread.
+
+Three more from 2026-09-21, after the owner used the build:
+
+8. **A reported direct message is not removed from `/admin`.** Removing a post
+   or a group message protects everybody else who can see it; removing a direct
+   message protects nobody who has not already read it. The remedy is on the
+   member's row. `chat_reports.context_kind` (room / group / direct) is written
+   at report time so the panel can still tell once the message is gone, and the
+   row says why there is no button. Both names on a report link to the person:
+   the profile when they have one, their `/admin` row when they are hidden from
+   Peers.
+9. **Me counts events and not Chat.** The Chat tab is one tap away with an
+   unread dot; a count of it on Me is a number about a screen the member can
+   already see. `src/routes/me/stats.tsx` says so, so the mock does not argue
+   the tiles back in.
+10. **The composer is a textarea, and on Windows it grew a scrollbar.** The
+    auto-grow set the height to `scrollHeight` on a `border-box` element, so
+    the border's 3px of overflow drew a ▲▼ scrollbar inside a one-line box —
+    on Windows only, which is why no Linux screenshot caught it. Fixed by
+    measuring the border; the header of `composer.tsx` explains it.
 
 ## The screens
 
@@ -852,7 +887,7 @@ Each of these was found by running something, not by reading it.
   which is the opposite of `events/format.ts` and right for the same reason
   that one is.
 
-## One question for the owner
+## The rule that cannot fire, and the owner's answer
 
 **"Fill your last room before starting another" is not a rate limit**, and the
 plan called it one. A room is born with its first topic and nothing in this
@@ -860,8 +895,11 @@ build deletes a topic — no delete policy, no delete grant, and removing a
 member nulls an author rather than dropping the row. So the rule cannot fire
 today; it is a latch for the day something does delete one, and the probe has
 to empty a room as the superuser to reach it. Somebody who writes a real topic
-each time can start as many rooms as they like. If that ever needs a cap it is
-a separate decision with a number in it.
+each time can start as many rooms as they like.
+
+**The owner's answer, 2026-09-21: leave it.** With a vetted membership of this
+size the cap is the close switch on `/admin`; if it is ever abused, that is a
+decision with a number in it, and not one to guess now.
 
 ---
 
