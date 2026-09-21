@@ -52,6 +52,12 @@ values
 -- means something in the steps below.
 update public.chat_rooms set opened_at = now() where id = 'bowel';
 
+-- Any member rooms a developer has started by hand go first, inside the
+-- transaction that rolls back. Names are unique, and the steps below start
+-- rooms with ordinary names — "Shoulder pain", "Sailing" — so without this the
+-- probe fails on its own realism the second time somebody uses the app locally.
+delete from public.chat_rooms where created_by is not null;
+
 \set QUIET off
 \echo ''
 \echo '== 0. we are a signed-in ordinary member, not the superuser =='
