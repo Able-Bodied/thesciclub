@@ -5,7 +5,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 
 /**
- * Starting a topic: a title and the question itself.
+ * Starting a topic: a title and the first post itself.
  *
  * ---------------------------------------------------------------------------
  * Two fields, and the second one is the post
@@ -13,8 +13,15 @@ import { createTopic } from '@/lib/chat/topics';
  * `chat_create_topic` writes the topic and its first post in one transaction,
  * so what is typed below the title is an ordinary post and can be removed like
  * any other. The screen says so in as many words, because a form with a
- * "title" and a "body" reads like a document and this is a question somebody
- * is asking a room.
+ * "title" and a "body" reads like a document and this is somebody putting
+ * something to a room.
+ *
+ * Which is not always a question, and the copy used to assume it was (owner,
+ * 2026-09-20). A tip, a rolling list, or what happened to somebody are all
+ * topics — the mock's own Funding room opens with "Rolling list. Post the
+ * grant…" — and a screen that asks "what are you asking?" quietly turns a room
+ * into a help desk and makes the person with an answer feel out of place in
+ * it.
  *
  * ---------------------------------------------------------------------------
  * The draft survives a refusal
@@ -98,7 +105,7 @@ export default function NewTopicPage() {
           htmlFor="topic-title"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          What are you asking?
+          What is it about?
         </label>
         <input
           id="topic-title"
@@ -128,7 +135,7 @@ export default function NewTopicPage() {
           onChange={(event) => {
             setBody(event.target.value);
           }}
-          placeholder="What you have tried, what you are unsure about, and what would help."
+          placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
           className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
         />
 
