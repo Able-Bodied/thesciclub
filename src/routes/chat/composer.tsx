@@ -16,6 +16,29 @@ import { useEffect, useRef, useState } from 'react';
  * So it grows with what is typed, up to a point, and then scrolls.
  *
  * ---------------------------------------------------------------------------
+ * Why the height is scrollHeight *plus the border*, and why you cannot see it
+ * ---------------------------------------------------------------------------
+ * `scrollHeight` measures the content box. Tailwind's preflight makes every
+ * element `border-box`, so a height of `scrollHeight` is short by the two
+ * 1.6px borders — the content no longer fits the box it was just measured for,
+ * the textarea decides it is overflowing, and a one-line composer gets a
+ * scrollbar in it.
+ *
+ * **It only shows on Windows**, which is why this note exists rather than a
+ * one-word comment. macOS and iOS draw overlay scrollbars that take no space
+ * and fade out, so the box looks perfect on the machine most of this was
+ * looked at on. Windows and most Linux desktops draw a real one, and 3.2px of
+ * missing height is enough to summon it.
+ *
+ * `overflowY` is managed here for the same reason. It is `hidden` while the
+ * box is still growing — there is nothing to scroll to, so a scrollbar there
+ * is only a scrollbar — and `auto` once the box is at its maximum and the
+ * words really do run past it. It is also set to `hidden` *before* measuring,
+ * because a scrollbar that is already showing narrows the box, changes where
+ * the text wraps, and inflates the `scrollHeight` the next height is computed
+ * from.
+ *
+ * ---------------------------------------------------------------------------
  * Enter means different things in the two places
  * ---------------------------------------------------------------------------
  * `sendOnEnter` is true in a direct thread, where messages are short and Enter
@@ -27,6 +50,27 @@ import { useEffect, useRef, useState } from 'react';
  * is the one thing this control must never do, so the text is only cleared
  * after the write comes back.
  */
+/** About six lines. Mirrored by `max-h-[150px]` on the textarea below. */
+const MAX_HEIGHT = 150;
+
+/**
+ * Grow the box to fit what is in it, up to MAX_HEIGHT.
+ *
+ * Measured from the element rather than counted from the text: a wrapped line
+ * and a typed one are the same height, and only the browser knows where the
+ * wrap fell. See the note above about the border and about Windows — the two
+ * lines that look redundant are the ones that matter.
+ */
+function fitToContent(element: HTMLTextAreaElement) {
+  element.style.overflowY = 'hidden';
+  element.style.height = 'auto';
+  // offsetHeight - clientHeight is the two vertical borders. A vertical
+  // scrollbar takes width, not height, so it cannot get into this number.
+  const wanted = element.scrollHeight + (element.offsetHeight - element.clientHeight);
+  element.style.height = `${Math.min(wanted, MAX_HEIGHT)}px`;
+  element.style.overflowY = wanted > MAX_HEIGHT ? 'auto' : 'hidden';
+}
+
 export function Composer({
   placeholder,
   sendLabel,
@@ -47,21 +91,14 @@ export function Composer({
   const [failure, setFailure] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
 
-  // Grow to fit, up to about six lines. Measured from the element rather than
-  // counted from the text: a wrapped line and a typed one are the same height
-  // and only the browser knows where the wrap fell.
   useEffect(() => {
     const element = box.current;
-    if (!element) return;
-    element.style.height = 'auto';
-    element.style.height = `${Math.min(element.scrollHeight, 150)}px`;
+    if (element) fitToContent(element);
   }, []);
 
   function resize() {
     const element = box.current;
-    if (!element) return;
-    element.style.height = 'auto';
-    element.style.height = `${Math.min(element.scrollHeight, 150)}px`;
+    if (element) fitToContent(element);
   }
 
   function send() {
