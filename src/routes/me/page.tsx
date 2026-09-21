@@ -2,8 +2,6 @@ import { ChevronRight, LogOut, Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
-import { useRoomMembership } from '@/lib/chat/rooms';
-import { useMyThreads } from '@/lib/chat/threads';
 import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
@@ -132,18 +130,6 @@ export default function MePage() {
     return startTime !== undefined && isPastStartTime(startTime);
   }).length;
 
-  // The other two counters, from the two things Chat can actually count: the
-  // conversations this member is in and the rooms they joined. Both hooks are
-  // the ones /chat itself uses, so there is no second definition of either
-  // number.
-  //
-  // Nothing waits on them. They read zero for a moment and then say what is
-  // true, which is what Going and Interested have always done; holding the
-  // whole row back for a count that is usually small and usually zero would
-  // trade a correct flicker for an empty space.
-  const { threads } = useMyThreads();
-  const { joined } = useRoomMembership();
-
   useEffect(() => {
     void loadAnswers().then((result) => {
       // With the declines, so "rather not say" counts towards the ring the way
@@ -196,13 +182,7 @@ export default function MePage() {
       )}
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 py-4">
-        <MeStats
-          going={going}
-          interested={interested}
-          beenTo={beenTo}
-          conversations={threads.length}
-          rooms={joined.size}
-        />
+        <MeStats going={going} interested={interested} beenTo={beenTo} />
 
         {/* Two columns on a wide screen. Each card stands alone, so reading
             order across columns costs nothing and the page stops being a
@@ -330,16 +310,13 @@ export default function MePage() {
              * about a thing that was never going to happen to them, on the one
              * screen that is supposed to be about them.
              *
-             * Note what is *not* being removed by the same argument. Home still
-             * says plainly that it is not built. That is different: a member
-             * looking for a feature that is coming needs to find out where it
-             * stands, and silence there reads as a broken app rather than as a
-             * deferred one. The rule is about permission, not about absence —
-             * see CONTEXT.md, which defers Home deliberately.
-             *
-             * Chat and the official account were named here too until Chat
-             * shipped. The counters above are real numbers now, and a member
-             * profile has a Message button on it. */}
+             * Note what is *not* being removed by the same argument. Home and
+             * Chat still say plainly that they are not built, and the official
+             * account still says messaging does not exist. Those are different:
+             * a member looking for a feature that is coming needs to find out
+             * where it stands, and silence there reads as a broken app rather
+             * than as a deferred one. The rule is about permission, not about
+             * absence — see CONTEXT.md, which defers both deliberately. */}
             {member?.type === 'mentor' ? (
               <>
                 <SectionHeading>Invites</SectionHeading>

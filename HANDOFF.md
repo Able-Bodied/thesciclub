@@ -761,9 +761,11 @@ Remove on the reader's own messages only, unlike a topic.
 `src/routes/chat/`: `/chat`, `/chat/rooms/new`, `/chat/rooms/:roomId`,
 `…/new`, `…/topics/:topicId`, `/chat/t/:threadId`, `…/members`,
 `/chat/new-group`. Plus the Message button on a profile, the group card on an
-event, the dot on the Chat tab, the five-counter row on Me, "Continue in
-<room>" under a profile's topics, and a fourth **Reports** tab on `/admin`
-beside Rooms.
+event, the dot on the Chat tab, "Continue in <room>" under a profile's
+topics, and a fourth **Reports** tab on `/admin` beside Rooms. (Me's counter
+row does *not* count conversations or rooms — it did for a day, and the owner
+took the two tiles out on 2026-09-21 because the Chat tab is one tap away and
+already carries an unread dot. src/routes/me/stats.tsx says so.)
 
 `src/lib/chat/`: `types`, `rooms`, `topics`, `threads`, `groups`, `reports`,
 `authors`, `unread`, `realtime`, `time`, and `routes/chat/room-map.ts`.
