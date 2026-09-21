@@ -12,3 +12,44 @@ import { afterEach } from 'vitest';
  * passes dishonest ones.
  */
 afterEach(cleanup);
+
+/**
+ * No test may reach the network.
+ *
+ * Three times while Chat was built, a screen test called an unstubbed
+ * `@/lib/chat` hook, the hook called the real Supabase client, and the client
+ * talked to the **hosted project** — because `.env.local` points there and
+ * Vitest loads it like any other Vite process. Every one of those tests was
+ * green: the read succeeded against production data, or failed slowly and was
+ * swallowed by the hook's error path. The fix each time was one more `vi.mock`,
+ * which fixes the test somebody noticed and not the class of fault.
+ *
+ * So the guard is here instead, once, for every test file. `fetch` and
+ * `WebSocket` throw with the URL in the message, so a test that reaches for the
+ * network fails on its first request and says where it was going. The cure is
+ * always the same: stub the hook the screen actually calls.
+ *
+ * If a test ever has a legitimate reason to serve a request, it stubs `fetch`
+ * itself with `vi.stubGlobal` — which is a decision in the file that needs it,
+ * visible in review, rather than a door left open for everybody.
+ */
+function requestTarget(input: unknown): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.href;
+  if (input && typeof input === 'object' && 'url' in input) return String(input.url);
+  return String(input);
+}
+
+globalThis.fetch = (input: RequestInfo | URL) => {
+  throw new Error(
+    `Tests must not use the network: fetch(${requestTarget(input)}). ` +
+      'Stub the hook or module that made this request.',
+  );
+};
+
+globalThis.WebSocket = function BlockedWebSocket(url: string | URL) {
+  throw new Error(
+    `Tests must not use the network: WebSocket(${requestTarget(url)}). ` +
+      'Stub the hook or module that opened this socket.',
+  );
+} as unknown as typeof WebSocket;
