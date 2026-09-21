@@ -181,23 +181,25 @@ rollback to savepoint admin_outsider;
 
 \echo ''
 \echo '== 6. the person it was sent to can report it =='
-\echo '   expect: no error, then: message | A direct conversation | the words.'
-\echo '   "A direct conversation" is all the place says. A pair has no name and'
-\echo '   is not given one.'
+\echo '   expect: no error, then: message | direct | A direct conversation | the'
+\echo '   words. "A direct conversation" is all the place says. A pair has no'
+\echo '   name and is not given one. context_kind says direct, which is what'
+\echo '   takes the Remove control off the administrators'' panel — the remedy'
+\echo '   for a direct message is on the member''s row.'
 set local request.jwt.claims = '{"sub":"aaaaaaaa-7777-0000-0000-000000000001","role":"authenticated"}';
 select public.chat_report_message(:'nasty', 'This is what I meant.');
 reset role;
-select kind, place, body_snapshot, note from public.chat_reports where message_id = :'nasty';
+select kind, context_kind, place, body_snapshot, note from public.chat_reports where message_id = :'nasty';
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"aaaaaaaa-7777-0000-0000-000000000001","role":"authenticated"}';
 
 \echo ''
 \echo '== 6a. a group''s message is placed by the group''s name =='
-\echo '   expect: Saturday ride. A group has a name somebody chose and it is'
-\echo '   not private from the people in it.'
+\echo '   expect: Saturday ride | group. A group has a name somebody chose and'
+\echo '   it is not private from the people in it.'
 select public.chat_report_message(:'in_group', null);
 reset role;
-select place from public.chat_reports where message_id = :'in_group';
+select place, context_kind from public.chat_reports where message_id = :'in_group';
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"aaaaaaaa-7777-0000-0000-000000000001","role":"authenticated"}';
 

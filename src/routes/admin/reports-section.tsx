@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useChatAuthors } from '@/lib/chat/authors';
 import { resolveReport } from '@/lib/chat/reports';
 import { removeMessage } from '@/lib/chat/threads';
 import { chatTimeLong } from '@/lib/chat/time';
 import { removePost } from '@/lib/chat/topics';
-import type { ChatReport } from '@/lib/chat/types';
+import type { ChatAuthor, ChatReport } from '@/lib/chat/types';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 
 /**
@@ -42,6 +43,29 @@ import { ReasonField, SmallButton } from '@/routes/admin/controls';
  * information, not a threshold.
  *
  * ---------------------------------------------------------------------------
+ * Remove is not offered for a direct message
+ * ---------------------------------------------------------------------------
+ * The owner's call, 2026-09-21. Removing a post from a room or a message from
+ * a group protects everybody else who can see it. Removing a message from a
+ * direct conversation protects nobody: the reporter has already read it and
+ * the sender wrote it. The remedy for a bad direct message is on the member's
+ * row — a strike, a pause, or removal from the club — and the report keeps the
+ * copy whatever happens, so nothing is lost by not offering the button. The
+ * row says so in a sentence rather than leaving a gap where a control would
+ * be. `contextKind` is recorded when the report is filed, so this still holds
+ * once the original message is gone.
+ *
+ * ---------------------------------------------------------------------------
+ * The two names are links
+ * ---------------------------------------------------------------------------
+ * Who reported and who was reported both open somewhere: the profile, when
+ * that member has one, so an administrator can see who is talking about what
+ * with one tap; otherwise their row on this screen, which is where somebody
+ * hidden from Peers can still be found — /peers/:id is built on
+ * browse_members and does not know they exist. A former member is a word, not
+ * a link. Which of the two a name gets comes from chat_authors.has_profile.
+ *
+ * ---------------------------------------------------------------------------
  * Resolved reports collapse, and are not deleted
  * ---------------------------------------------------------------------------
  * The next administrator to look at somebody needs to know what was decided
@@ -64,6 +88,9 @@ export function ReportsSection({
 }) {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  // For has_profile only — the names themselves come with the report, so a
+  // former member is still named after chat_authors has stopped knowing them.
+  const authors = useChatAuthors(reports.flatMap((r) => [r.reporterId, r.reportedAuthorId]));
 
   const open = reports.filter((r) => r.resolvedAt === null);
   const closed = reports.filter((r) => r.resolvedAt !== null);
@@ -136,6 +163,7 @@ export function ReportsSection({
             <ReportRow
               key={report.id}
               report={report}
+              authors={authors}
               busy={busyId === report.id}
               onRemove={() => {
                 removeReported(report);
@@ -160,7 +188,7 @@ export function ReportsSection({
           <div className="overflow-hidden rounded-[14px] border border-line bg-paper">
             {closed.map((report) => (
               <div key={report.id} className="border-line border-b p-3 last:border-b-0">
-                <Where report={report} />
+                <Where report={report} authors={authors} onGoToMember={onGoToMember} />
                 <Snapshot report={report} />
                 <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
                   {report.resolvedByName ?? 'A former member'} settled this
@@ -178,6 +206,7 @@ export function ReportsSection({
 
 function ReportRow({
   report,
+  authors,
   busy,
   onRemove,
   onGoToMember,
@@ -185,6 +214,7 @@ function ReportRow({
   onFailure,
 }: {
   report: ChatReport;
+  authors: Map<string, ChatAuthor>;
   busy: boolean;
   onRemove: () => void;
   onGoToMember: (memberId: string) => void;
@@ -224,11 +254,19 @@ function ReportRow({
 
   return (
     <div className="border-line border-b p-3 last:border-b-0">
-      <Where report={report} />
+      <Where report={report} authors={authors} onGoToMember={onGoToMember} />
       <Snapshot report={report} />
 
       <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-        Reported by {report.reporterName ?? 'a former member'} on {chatTimeLong(report.createdAt)}
+        Reported by{' '}
+        <MemberName
+          id={report.reporterId}
+          name={report.reporterName}
+          gone="a former member"
+          authors={authors}
+          onGoToMember={onGoToMember}
+        />{' '}
+        on {chatTimeLong(report.createdAt)}
         {/* Only past one. "1 member reported this" is a sentence saying what
             the row already says. */}
         {report.reportCount > 1 ? ` · ${report.reportCount} members reported this` : ''}
@@ -237,8 +275,15 @@ function ReportRow({
         <p className="mt-1.5 text-[0.8125rem] text-ink2 leading-[1.5]">“{report.note}”</p>
       ) : null}
 
+      {report.contextKind === 'direct' ? (
+        <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
+          A direct message is not removed from here: it protects nobody who has not already read it.
+          What to do about it is on their row.
+        </p>
+      ) : null}
+
       <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {report.alreadyRemoved ? (
+        {report.contextKind === 'direct' ? null : report.alreadyRemoved ? (
           <span className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-grey">
             Already removed
           </span>
@@ -312,15 +357,76 @@ function ReportRow({
   );
 }
 
-/** Where it was said, who said it and when — in words, never as a link. */
-function Where({ report }: { report: ChatReport }) {
+/**
+ * Where it was said, who said it and when. The name is a link to the person;
+ * the place is words, never a link — see the header.
+ */
+function Where({
+  report,
+  authors,
+  onGoToMember,
+}: {
+  report: ChatReport;
+  authors: Map<string, ChatAuthor>;
+  onGoToMember: (memberId: string) => void;
+}) {
   return (
     <p className="font-extrabold font-head text-[0.90625rem] text-ink leading-[1.35]">
-      {report.reportedAuthorName ?? 'Former member'}
+      <MemberName
+        id={report.reportedAuthorId}
+        name={report.reportedAuthorName}
+        gone="Former member"
+        authors={authors}
+        onGoToMember={onGoToMember}
+      />
       <span className="ml-2 font-semibold text-[0.75rem] text-grey">
         {report.place} · {chatTimeLong(report.writtenAt)}
       </span>
     </p>
+  );
+}
+
+/**
+ * A member's name, as a way to them: their profile when they have one, their
+ * row on this screen when they are hidden from Peers, and a plain word once
+ * they have left the club. `authors` may not have arrived yet, in which case
+ * the row is the safe destination — it exists for every member.
+ */
+function MemberName({
+  id,
+  name,
+  gone,
+  authors,
+  onGoToMember,
+}: {
+  id: string | null;
+  name: string | null;
+  /** What to print when there is nobody left to name. */
+  gone: string;
+  authors: Map<string, ChatAuthor>;
+  onGoToMember: (memberId: string) => void;
+}) {
+  if (!id) return <>{name ?? gone}</>;
+  const label = name ?? gone;
+  const style = 'underline decoration-line underline-offset-2 transition-colors hover:text-navy';
+  if (authors.get(id)?.hasProfile) {
+    return (
+      <Link to={`/peers/${id}`} data-target="small" className={style}>
+        {label}
+      </Link>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-target="small"
+      className={style}
+      onClick={() => {
+        onGoToMember(id);
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

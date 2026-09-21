@@ -75,23 +75,23 @@ system, an 18+ gate, a details editor, and a three-strike system behind Good
 standing.
 
 **Chat is the fourth and is built but not deployed** — conversations, groups,
-rooms, reporting, and rooms a member starts. Its seventeen migrations are not
+rooms, reporting, and rooms a member starts. Its nineteen migrations are not
 on the hosted project, which is why the section below about that comes before
 anything else. See "What Chat is".
 
 1,039 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 70 migrations, and the seventeen Chat ones are not on the hosted project yet
+## 72 migrations, and the nineteen Chat ones are not on the hosted project yet
 
 This is the thing most likely to catch somebody out, so it is first. **It is
 also the one line in this file that changed direction on 2026-09-20**: for
 weeks the hosted database was ahead of `origin` and everything was applied.
 It is the other way round now.
 
-**70 migrations in `supabase/migrations/`. 53 applied to the hosted project
-(`erijdvqnxavwezsbbojv`), 17 pending.** The seventeen are the whole of Chat,
-`20260918010000` through `20260918170000`. They are applied locally and
+**72 migrations in `supabase/migrations/`. 53 applied to the hosted project
+(`erijdvqnxavwezsbbojv`), 19 pending.** The nineteen are the whole of Chat,
+`20260918010000` through `20260918190000`. They are applied locally and
 nowhere else. Check rather than trust — a blank `Remote` column is a pending
 migration:
 
@@ -119,7 +119,7 @@ order matter, and it is three steps rather than two:
 
 Merging first ships a Chat tab to live members with nothing behind it.
 
-The seventeen, in the order they must apply — each header says why, and the
+The nineteen, in the order they must apply — each header says why, and the
 "What Chat is" section below says what the member sees:
 
 | migration | what it adds |
@@ -141,6 +141,8 @@ The seventeen, in the order they must apply — each header says why, and the
 | `…150000` | `chat_reports`, `chat_report_post`, `chat_report_message` |
 | `…160000` | `admin_chat_reports`, `admin_resolve_chat_report` |
 | `…170000` | `chat_create_room` — `created_by`, `unique (lower(name))`, a room born with its first topic, and `chat_rooms` into the publication |
+| `…180000` | Mind, Family and Places join Body, Life and Kit — the constraint and `chat_create_room`'s check both; the client's `ROOM_CATEGORIES` is the third copy |
+| `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
 
 The four from 2026-09-17, newest first:
 
@@ -863,7 +865,7 @@ a separate decision with a number in it.
 
 # Next up: the owner's call
 
-Chat is built and has its own section above; **its seventeen migrations still
+Chat is built and has its own section above; **its nineteen migrations still
 have to be pushed, and that is the owner's word to give.** The app is live and
 the ingest is running current code.
 

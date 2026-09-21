@@ -25,6 +25,13 @@ vi.mock('@/lib/chat/reports', () => ({
   },
 }));
 
+// has_profile only. The panel takes both names from the report itself; this
+// decides whether a name opens the profile or the member's row.
+const authorsById = vi.hoisted(() => new Map<string, { hasProfile: boolean }>());
+vi.mock('@/lib/chat/authors', () => ({
+  useChatAuthors: () => authorsById,
+}));
+
 vi.mock('@/lib/chat/topics', () => ({
   removePost: (id: string) => {
     api.removedPosts.push(id);
@@ -41,6 +48,7 @@ vi.mock('@/lib/chat/threads', () => ({
 
 const report = (o: Partial<ChatReport> & { id: string }): ChatReport => ({
   kind: 'message',
+  contextKind: 'direct',
   postId: null,
   messageId: 'm1',
   bodySnapshot: 'Buy my miracle supplement, cash only.',
@@ -92,6 +100,9 @@ beforeEach(() => {
   api.failWith = null;
   went.length = 0;
   reloads = 0;
+  authorsById.clear();
+  authorsById.set('ada', { hasProfile: true });
+  authorsById.set('bo', { hasProfile: true });
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
@@ -101,7 +112,9 @@ describe('the reports panel', () => {
     expect(screen.getByText('Buy my miracle supplement, cash only.')).toBeInTheDocument();
     expect(screen.getByText(/A direct conversation/)).toBeInTheDocument();
     expect(screen.getByText('Bo')).toBeInTheDocument();
-    expect(screen.getByText(/Reported by Ada/)).toBeInTheDocument();
+    // The name is its own element now that it is a link, so the sentence is
+    // read as a whole rather than as one text node.
+    expect(screen.getByText('Ada').closest('p')).toHaveTextContent(/Reported by Ada on/);
     expect(screen.getByText(/He keeps doing it/)).toBeInTheDocument();
   });
 
@@ -145,8 +158,10 @@ describe('the reports panel', () => {
     expect(went).toEqual(['bo']);
   });
 
-  it('removes the reported message by its id, after confirming', async () => {
-    renderSection([report({ id: 'r1', messageId: 'm7' })]);
+  it('removes a group message by its id, after confirming', async () => {
+    renderSection([
+      report({ id: 'r1', messageId: 'm7', contextKind: 'group', place: 'Saturday ride' }),
+    ]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove the message' }));
     expect(confirmSpy).toHaveBeenCalled();
     await waitFor(() => {
@@ -156,8 +171,52 @@ describe('the reports panel', () => {
     expect(reloads).toBe(1);
   });
 
+  // The owner's call: removing a direct message protects nobody who has not
+  // already read it, and the remedy is on the member's row. The row says so
+  // rather than leaving a gap where a control would be.
+  it('offers no Remove for a direct message, and says why', () => {
+    renderSection([report({ id: 'r1' })]);
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+    expect(screen.queryByText('Already removed')).toBeNull();
+    expect(screen.getByText(/A direct message is not removed from here/)).toBeInTheDocument();
+    // The other controls are still there.
+    expect(screen.getByRole('button', { name: 'Go to Bo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settle it' })).toBeInTheDocument();
+  });
+
+  it('says nothing about direct messages on a group or room report', () => {
+    renderSection([report({ id: 'r1', contextKind: 'group', place: 'Saturday ride' })]);
+    expect(screen.queryByText(/A direct message is not removed from here/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove the message' })).toBeInTheDocument();
+  });
+
+  it('links both names to their profiles when they have one', () => {
+    renderSection([report({ id: 'r1' })]);
+    expect(screen.getByRole('link', { name: 'Bo' })).toHaveAttribute('href', '/peers/bo');
+    expect(screen.getByRole('link', { name: 'Ada' })).toHaveAttribute('href', '/peers/ada');
+  });
+
+  // /peers/:id is built on browse_members, which does not know a hidden member
+  // exists. Their row on this screen does.
+  it('sends a name to the member row instead when they are hidden from Peers', async () => {
+    authorsById.set('bo', { hasProfile: false });
+    renderSection([report({ id: 'r1' })]);
+    expect(screen.queryByRole('link', { name: 'Bo' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Bo' }));
+    expect(went).toEqual(['bo']);
+  });
+
   it('removes a reported post through the post function, not the message one', async () => {
-    renderSection([report({ id: 'r1', kind: 'post', postId: 'p7', messageId: null })]);
+    renderSection([
+      report({
+        id: 'r1',
+        kind: 'post',
+        contextKind: 'room',
+        postId: 'p7',
+        messageId: null,
+        place: 'Bowel management › What fits in a rucksack',
+      }),
+    ]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove the post' }));
     await waitFor(() => {
       expect(api.removedPosts).toEqual(['p7']);
@@ -166,7 +225,7 @@ describe('the reports panel', () => {
   });
 
   it('says so rather than offering to remove something already gone', () => {
-    renderSection([report({ id: 'r1', alreadyRemoved: true })]);
+    renderSection([report({ id: 'r1', contextKind: 'group', alreadyRemoved: true })]);
     expect(screen.getByText('Already removed')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
   });
@@ -212,7 +271,13 @@ describe('the reports panel', () => {
 
   it('names somebody who has since left the club rather than printing nothing', () => {
     renderSection([
-      report({ id: 'r1', reportedAuthorId: null, reportedAuthorName: null, reporterName: null }),
+      report({
+        id: 'r1',
+        reportedAuthorId: null,
+        reportedAuthorName: null,
+        reporterId: null,
+        reporterName: null,
+      }),
     ]);
     expect(screen.getByText('Former member')).toBeInTheDocument();
     expect(screen.getByText(/Reported by a former member/)).toBeInTheDocument();

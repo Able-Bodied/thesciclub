@@ -189,6 +189,7 @@ export function useMyReports(): MyReportsState {
 interface ReportRow {
   id: string;
   kind: string;
+  context_kind: string;
   post_id: string | null;
   message_id: string | null;
   body_snapshot: string;
@@ -283,6 +284,10 @@ function toReport(row: ReportRow): ChatReport {
   return {
     id: row.id,
     kind: row.kind === 'post' ? 'post' : 'message',
+    // 'direct' is the value that takes a control away, so an unknown one —
+    // a database ahead of or behind this file — errs towards offering it.
+    contextKind:
+      row.context_kind === 'direct' ? 'direct' : row.context_kind === 'group' ? 'group' : 'room',
     postId: row.post_id,
     messageId: row.message_id,
     bodySnapshot: row.body_snapshot,

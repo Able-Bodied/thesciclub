@@ -215,6 +215,12 @@ export interface ChatMessage {
 export interface ChatReport {
   id: string;
   kind: 'post' | 'message';
+  /**
+   * Where it was said. Recorded when the report was filed, so it is still
+   * known once the original is gone. The panel offers Remove for a room or a
+   * group and not for a direct conversation — see reports-section.tsx.
+   */
+  contextKind: 'room' | 'group' | 'direct';
   /** Null once the reported row itself is gone. The snapshot outlives it. */
   postId: string | null;
   messageId: string | null;
