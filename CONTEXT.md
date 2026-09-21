@@ -44,6 +44,15 @@ The owner's call: the card says where a member stands, and the four things above
 of service when there is one to link to. Until then they are one control away, on the card, opening
 on hover, on focus and on tap — reachable is the requirement, not permanently on screen.
 
+Losing a membership has to be actionable too, and from 2026-09-20 it is. Direct and group conversations are
+private even from administrators: nobody can read a thread they are not in, by design. That left
+harassment in a direct message — one of the four things above — witnessed only by the person it
+happened to. So a member can **report a single message, or a single post**, and that one message
+alone is disclosed: its words, who wrote it, when, and where in words ("a direct conversation").
+Not the thread, not what was said before or after it, and no way back into the conversation from
+the administrators' screen. The copy of the words is taken at the moment it is reported, so
+deleting what you sent is not a way out of it. The person reported is not told.
+
 ## Vocabulary
 
 Use these words exactly. Do not invent synonyms.

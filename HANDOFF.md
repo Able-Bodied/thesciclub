@@ -350,6 +350,7 @@ Two rules, both learned the hard way:
 | `chat-direct.sql` | that a third member sees nothing of a conversation — not the thread, not its roster, not a word of it, and nor does an administrator — that opening the same one twice from either end returns the same thread, that a hidden or suspended member cannot be found to start one while a conversation that already exists still opens, and that a member cannot reach the thread tables around the functions |
 | `chat-groups.sql` | that somebody outside a group cannot add to it, that leaving one stops every read including the words written while they were in it, that an RSVP of Interested does not open the event's group chat, that a group has an order and a cap, and that an event's group takes no members by hand |
 | `chat-member-removed.sql` | that ending a membership is not blocked by anything Chat added, that what they wrote in rooms and conversations stays without their name, that what they joined and read goes with them, and that the other half of a direct conversation can still read it |
+| `chat-reports.sql` | that a member outside a conversation cannot report a message in it, that the reporter reads back three columns and not the snapshot, that the administrators' answer carries no thread id, that a second report is one row, that the snapshot survives the author taking the message back, and that somebody paused can still say what was done to them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
