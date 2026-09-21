@@ -292,14 +292,16 @@ the fewest columns the screen needs.
   This has bitten repeatedly.
 - Comments explain *why*. Several decisions here look wrong without their
   reason attached.
-- **Watch for tests that pass by not running.** Six times now: a silent RLS
+- **Watch for tests that pass by not running.** Seven shapes now: a silent RLS
   no-op, a subquery that returned nothing, Testing Library renders leaking
   between tests, an assertion matching the prose that promised the thing rather
   than the thing, a `vi.mock` of a whole module that would have stubbed the
   pure function under test and let the test assert its own wording, and a test
   named for one case whose fixture put it in another — "offers no revoke on an
   invite somebody already used", with no holder set, was exercising the
-  orphaned invite instead.
+  orphaned invite instead. The seventh is a screen test whose unstubbed hook
+  read the hosted project and passed on production data — the last bullet in
+  this list is the guard that now stops it.
 - **A SQL probe run as the superuser proves nothing about RLS.** `postgres`
   is BYPASSRLS, so every policy is inert and a file full of passing steps says
   only that the constraints and triggers hold. To test a policy, switch to the
@@ -313,6 +315,16 @@ the fewest columns the screen needs.
   Every layout problem in this project was found by eye, never by a test — and
   two were introduced by "fixes" that looked right in isolation. Check a
   component in its row, not cropped to itself.
+- **No test may reach the network, and `src/test/setup.ts` enforces it.**
+  `fetch` and `WebSocket` throw with the URL in the message. This exists
+  because `.env.local` points at the *hosted* project and Vitest loads it like
+  any other Vite process, so a screen test calling an unstubbed hook read
+  production and went green. That happened three times while Chat was built and
+  the fix each time was one more `vi.mock`, which fixes the test somebody
+  noticed rather than the class. **When a screen gains a hook, its test stubs
+  that hook** — the failure now names the URL and the module to stub, rather
+  than passing. A test that genuinely needs to serve a request stubs `fetch`
+  itself with `vi.stubGlobal`, in the file that needs it.
 
 ## The probes in `supabase/tests/`
 
