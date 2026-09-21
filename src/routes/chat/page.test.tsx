@@ -9,9 +9,9 @@ import ChatPage from '@/routes/chat/page';
 
 /**
  * What this screen must not do is as important as what it does: it must not
- * report an empty room as three zeros, and it must not let "no conversations
- * yet" and "groups are not built" turn into the same blank space — a member
- * can do something about the first and nothing about the second.
+ * report an empty room as three zeros, and it must not leave an empty segment
+ * as blank space — every blank here says where to go next, and where to go is
+ * different in each segment.
  *
  * The hooks that read the database are stubbed and `roomsByCategory` and
  * `threadTitle` deliberately are not — the grouping on screen is the real
@@ -139,21 +139,33 @@ describe('the chat screen', () => {
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 
-  // Two different blanks, and only one of them is something the member can do
-  // anything about. A member with no conversations is told where to start; a
-  // member with no groups is told groups do not exist yet.
-  it('points somebody with no conversations at a profile, and says groups are not built', () => {
+  // Two different blanks with two different ways out. A direct conversation
+  // starts from somebody's profile and a group starts here, so neither empty
+  // state is a dead end and neither points at the other one's door.
+  it('points somebody with no conversations at a profile, and at the group control', () => {
     renderPage();
     expect(screen.getByText(/No conversations yet/)).toBeInTheDocument();
     expect(screen.getByText(/Message a member from their profile/)).toBeInTheDocument();
-    expect(screen.getByText('Groups are not built yet.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Start a group' })).toHaveAttribute(
+      'href',
+      '/chat/new-group',
+    );
   });
 
-  it('does not offer the empty-conversations line under Groups', async () => {
+  it('says "no groups" under Groups, not "no conversations"', async () => {
     renderPage();
     await userEvent.click(screen.getByRole('button', { name: 'Groups' }));
-    expect(screen.getByText('Groups are not built yet.')).toBeInTheDocument();
+    expect(screen.getByText(/No groups yet/)).toBeInTheDocument();
     expect(screen.queryByText(/No conversations yet/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'Start a group' })).toBeInTheDocument();
+  });
+
+  // The rooms segment is not about conversations at all, so the one control
+  // that makes one has no business being there.
+  it('offers no group control under Rooms', async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Rooms' }));
+    expect(screen.queryByRole('link', { name: 'Start a group' })).toBeNull();
   });
 
   it('opens a conversation, named by the other member', () => {

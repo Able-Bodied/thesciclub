@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -29,6 +29,13 @@ import { MessageBubble } from '@/routes/chat/message-bubble';
  * something, and yanking them away mid-sentence is worse than making them tap a
  * pill to come back. `shouldFollowScroll` is where the threshold lives and is
  * tested in threads.test.ts.
+ *
+ * ---------------------------------------------------------------------------
+ * A group's header is a link, a pair's is not
+ * ---------------------------------------------------------------------------
+ * "N members" opens the members screen, where adding and leaving live. A direct
+ * conversation has nothing behind its subtitle — the other member's level is a
+ * fact about them, and their profile is the button already on the right.
  *
  * ---------------------------------------------------------------------------
  * Talking to somebody who has left
@@ -150,7 +157,9 @@ export default function ThreadPage() {
           <div className="mt-1 flex items-center gap-2.5">
             {/* Decorative: the name is beside it, and Profile is the link. */}
             <span aria-hidden="true" className="flex-none">
-              {other ? (
+              {thread.kind === 'group' ? (
+                <GroupAvatar />
+              ) : other ? (
                 <MemberAvatar
                   id={other.id}
                   displayName={other.displayName}
@@ -163,11 +172,17 @@ export default function ThreadPage() {
             </span>
             <div className="min-w-0 flex-1">
               <h1 className="truncate font-extrabold font-head text-[1rem] text-ink">{title}</h1>
-              <p className="truncate text-[0.78125rem] text-grey">
-                {thread.kind === 'group'
-                  ? `${thread.memberCount} ${thread.memberCount === 1 ? 'member' : 'members'}`
-                  : (other?.level ?? '')}
-              </p>
+              {thread.kind === 'group' ? (
+                <Link
+                  to={`/chat/t/${thread.id}/members`}
+                  data-target="small"
+                  className="block truncate text-[0.78125rem] text-navy underline"
+                >
+                  {thread.memberCount} {thread.memberCount === 1 ? 'member' : 'members'}
+                </Link>
+              ) : (
+                <p className="truncate text-[0.78125rem] text-grey">{other?.level ?? ''}</p>
+              )}
             </div>
             {other?.hasProfile ? (
               <Link

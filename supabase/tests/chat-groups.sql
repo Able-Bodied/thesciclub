@@ -86,6 +86,18 @@ select t.kind, t.name,
   from public.chat_threads t where t.id = :'grp';
 
 \echo ''
+\echo '== 1a. the roster has an order, and the member who made it is first =='
+\echo '   expect: 3 distinct joined_at values and Ada at the top. joined_at'
+\echo '   defaults to now(), which is the transaction''s start, so left to the'
+\echo '   default every row of a new group would share a timestamp and "oldest'
+\echo '   first" would be no order at all — two reads could list the same'
+\echo '   members differently.'
+select count(distinct m.joined_at) as distinct_times,
+       (array_agg(m.member_id order by m.joined_at, m.member_id))[1]
+         = 'aaaaaaaa-5555-0000-0000-000000000001' as maker_is_first
+  from public.chat_thread_members m where m.thread_id = :'grp';
+
+\echo ''
 \echo '== 1b. the caller''s own id and a duplicate are dropped, not refused =='
 \echo '   expect: 3 on the roster again. A picker that sends somebody twice, or'
 \echo '   sends you yourself, is a client bug — making a member redo their list'

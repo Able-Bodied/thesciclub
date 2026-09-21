@@ -3,6 +3,8 @@ import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider } from '@/lib/accessibility';
 import AdminPage from '@/routes/admin/page';
+import GroupMembersPage from '@/routes/chat/group-members';
+import NewGroupPage from '@/routes/chat/new-group';
 import NewTopicPage from '@/routes/chat/new-topic';
 import ChatPage from '@/routes/chat/page';
 import RoomPage from '@/routes/chat/room-page';
@@ -59,6 +61,11 @@ function AppShell() {
             is pasted and typed far more than a room's, and the thread id is a
             uuid that is long enough on its own. */}
         <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+        {/* Who is in a group, adding to it and leaving it. A screen rather
+            than a panel on the conversation: all three are things somebody
+            does once, and none of them belongs beside a composer. */}
+        <Route path="/chat/t/:threadId/members" element={<GroupMembersPage />} />
+        <Route path="/chat/new-group" element={<NewGroupPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { threadTitle } from '@/lib/chat/threads';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
@@ -66,7 +66,12 @@ export function ThreadRow({
       className="flex min-h-[64px] w-full items-center gap-3 border-line border-b py-3 last:border-b-0"
     >
       <span aria-hidden="true" className="flex-none">
-        {other ? (
+        {/* A group gets the mock's tinted tile, not a face and not the
+            former-member square: three people have no one face, and the
+            neutral tile already means "nobody" in this list. */}
+        {thread.kind === 'group' ? (
+          <GroupAvatar />
+        ) : other ? (
           <MemberAvatar
             id={other.id}
             displayName={other.displayName}

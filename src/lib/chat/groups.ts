@@ -175,8 +175,12 @@ export function useThreadRoster(threadId: string | undefined): ThreadRosterState
         .select('member_id, joined_at')
         .eq('thread_id', threadId)
         // Oldest first, so the people who were there at the start are at the
-        // top and somebody added this morning is not.
+        // top and somebody added this morning is not. The id breaks a tie:
+        // two rows written in one transaction can share a timestamp, and a
+        // roster that lists the same four people in a different order on every
+        // read is a list nobody can scan.
         .order('joined_at')
+        .order('member_id')
         .abortSignal(controller.signal)) as Result<{ member_id: string }[]>;
       if (aborted()) return;
       if (failure) {

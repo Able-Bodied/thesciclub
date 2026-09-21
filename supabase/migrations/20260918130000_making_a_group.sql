@@ -202,10 +202,21 @@ begin
   values ('group', clean_name, me)
   returning id into new_thread;
 
-  -- `others` is distinct and excludes the caller, so appending them cannot
+  -- The caller first, then everybody they named, and `joined_at` written per
+  -- row rather than left to default.
+  --
+  -- The default is now(), which is the *transaction's* start, so every roster
+  -- row of a new group would carry the same timestamp to the microsecond and
+  -- "oldest membership first" would be no order at all — two reads of the same
+  -- group could list its members differently. The same trap, and the same fix,
+  -- as chat_messages.created_at in 20260918070000.
+  --
+  -- `others` is distinct and excludes the caller, so prepending them cannot
   -- collide with the primary key.
-  insert into public.chat_thread_members (thread_id, member_id)
-  select new_thread, member from unnest(array_append(others, me)) as member;
+  insert into public.chat_thread_members (thread_id, member_id, joined_at)
+  select new_thread, member, clock_timestamp()
+    from unnest(array_prepend(me, others)) with ordinality as t(member, n)
+   order by t.n;
 
   return new_thread;
 end;

@@ -245,9 +245,23 @@ describe('a conversation', () => {
     db.authors = new Map();
     renderThread();
     expect(screen.getByRole('heading', { name: 'Saturday ride' })).toBeInTheDocument();
-    expect(screen.getByText('6 members')).toBeInTheDocument();
+    // The count is the way in to adding and leaving, so it is a link and not a
+    // line of grey text.
+    expect(screen.getByRole('link', { name: '6 members' })).toHaveAttribute(
+      'href',
+      '/chat/t/th1/members',
+    );
     // A group is not a pair, so nobody has left it and the composer stays.
     expect(screen.getByRole('button', { name: 'Send this message' })).toBeInTheDocument();
+  });
+
+  it('has nothing behind the subtitle of a conversation between two people', () => {
+    // A member's level is a fact about them, not a door; their profile is the
+    // button already on the right of the header.
+    db.thread = thread();
+    renderThread();
+    expect(screen.queryByRole('link', { name: /members/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Profile' })).toBeInTheDocument();
   });
 
   it('says a conversation cannot be shown rather than printing nothing', () => {

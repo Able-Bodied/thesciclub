@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -13,10 +14,9 @@ import { ThreadRow } from '@/routes/chat/thread-row';
  * Chat — direct messages, event groups, and topic rooms.
  *
  * **Being built, from 2026-09-18.** The discussion rooms are real, and so are
- * direct conversations: a card opens a room, a row opens a conversation.
- * Groups are not built, and this screen says so in the segment where they would
- * be rather than showing an empty list that could be read as "you are in no
- * groups" — the two are different facts and only one of them is true.
+ * the conversations: a card opens a room, a row opens a conversation or a
+ * group. What is not in this build — search, editing, blocking, attachments —
+ * is absent rather than drawn and inert.
  *
  * ---------------------------------------------------------------------------
  * Why the rooms list is usually empty, and why that is right
@@ -164,15 +164,16 @@ export default function ChatPage() {
 /**
  * The conversations, and what is honestly said where there are none.
  *
- * Three different blanks, and they are three different facts:
+ * An empty list is never left as blank space. Every one of these says where to
+ * go next, because "no conversations" with no way out of it is a dead end on
+ * the one screen that is about reaching people — and the way out is different
+ * in each segment:
  *
- *  - Groups are **not built**. The word is "not built" and never "none yet",
- *    because a member with no groups and a member whose groups cannot be shown
- *    would otherwise see the same blank space and only one of them can do
- *    anything about it.
- *  - Direct has nothing in it: there is somewhere to go from here, and the
- *    empty state says where, because "no conversations" with no way out of it
- *    is a dead end on the one screen that is about reaching people.
+ *  - Direct: a conversation starts from somebody's profile, so that is what it
+ *    says. There is no member picker here, deliberately; a direct message is a
+ *    thing you send to a person you were just reading about.
+ *  - Groups: a group starts here, so the control is here.
+ *  - All: both, with the group control below the list.
  *  - A failure says so and shows the database's sentence.
  */
 function Conversations({
@@ -221,27 +222,45 @@ function Conversations({
             />
           ))}
         </div>
-      ) : segment === 'groups' ? null : (
+      ) : (
         <p className="py-8 text-center text-[0.875rem] text-grey leading-relaxed">
-          No conversations yet.
-          <br />
-          Message a member from their profile.
+          {segment === 'groups' ? (
+            <>
+              No groups yet.
+              <br />
+              Start one below, or open the group chat for an event you are going to.
+            </>
+          ) : (
+            <>
+              No conversations yet.
+              <br />
+              Message a member from their profile.
+            </>
+          )}
         </p>
       )}
 
-      {segment === 'groups' || segment === 'all' ? <GroupsNotBuilt /> : null}
+      {segment === 'groups' || segment === 'all' ? <NewGroupLink /> : null}
     </>
   );
 }
 
-/** Groups are the one part of Chat that is still a promise. Say it plainly. */
-function GroupsNotBuilt() {
+/**
+ * The way into a group, and the one control on this screen that makes
+ * something.
+ *
+ * A link and not a button: it goes to a page, it is worth opening in a new tab,
+ * and a member who long-presses it gets the browser's own menu rather than
+ * nothing. Full width and 48px tall, because it is the primary action of a
+ * segment that is otherwise a list.
+ */
+function NewGroupLink() {
   return (
-    <div className="mt-3 rounded-[14px] border border-line bg-paper px-3.5 py-3">
-      <p className="text-[0.875rem] text-ink2 leading-relaxed">Groups are not built yet.</p>
-      <p className="mt-1 text-[0.78125rem] text-grey leading-relaxed">
-        They are next — a group for everybody going to an event, and groups members make themselves.
-      </p>
-    </div>
+    <Link
+      to="/chat/new-group"
+      className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy border-dashed font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint"
+    >
+      Start a group
+    </Link>
   );
 }

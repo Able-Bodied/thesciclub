@@ -79,3 +79,31 @@ export function FormerMemberAvatar({ className }: { className?: string | undefin
     </span>
   );
 }
+
+/**
+ * The tile for a group, where a direct conversation would draw a face.
+ *
+ * Not a stack of the members' faces: the roster changes, a group of eleven has
+ * no four representative people in it, and the list would redraw itself every
+ * time somebody joined. Not initials either — "SR" for "Saturday ride" is two
+ * letters that look like a member. So it is the mock's `.roomico`, the same
+ * tinted square the discussion rooms use, with a glyph that is decorative and
+ * a name printed beside it.
+ *
+ * It lives here rather than in a file of its own because this is the one tile
+ * file: the alternative is a fourth 34px square drawn somewhere else, which is
+ * how somebody ends up purple on their profile and green on an event.
+ */
+export function GroupAvatar({ className }: { className?: string | undefined }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-[1.0625rem] text-navy leading-none',
+        className,
+      )}
+    >
+      ◎
+    </span>
+  );
+}
