@@ -1229,6 +1229,14 @@ member can feel.
   are `flow-root` so they narrow beside the picture rather than sliding under
   it. Checked against a tall portrait.
 
+  **On a phone the profile is the mock's hero now** (owner, 2026-09-21): the
+  photograph cropped to a fixed 300px with the name, "Peer mentor" and the
+  summary over its foot, then a navy band with one gold Message button. Fixed
+  pixels and not `vh`, because most members open this in a browser where the
+  URL bar takes its cut first. The mock's organization mark in the badge and
+  its "Ask <name>" button are both left out on purpose. The picture used to be
+  shown whole; the header of `member-detail.tsx` records the change.
+
 **Events**
 
 - There is an Interested segment. It ignores the date window for the same

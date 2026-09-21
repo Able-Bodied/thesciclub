@@ -21,8 +21,9 @@ import type { BeforeAfter, BrowseMember } from '@/types/domain';
  * detail. Sections render only when there is something in them, so a sparse
  * profile reads as short rather than as broken.
  *
- * There is no contact action yet. Messaging is not built, and a button that
- * opens nothing is worse than no button.
+ * The one action is Message. The mock also has "Ask <name>", which was never
+ * built and which the owner does not want; a control that opens nothing is
+ * worse than no control.
  */
 
 /**
@@ -77,7 +78,16 @@ export function backFrom(state: unknown): string {
  * A refusal is printed under the button rather than swallowed. The one that
  * will actually happen is a suspended member, who reads and does not write.
  */
-function MessageButton({ memberId, name }: { memberId: string; name: string }) {
+function MessageButton({
+  memberId,
+  name,
+  onDark = false,
+}: {
+  memberId: string;
+  name: string;
+  /** Inside the navy band under a hero, where destructive red would not read. */
+  onDark?: boolean;
+}) {
   const account = useAccount();
   const navigate = useNavigate();
   const [opening, setOpening] = useState(false);
@@ -86,7 +96,7 @@ function MessageButton({ memberId, name }: { memberId: string; name: string }) {
   if (!account.userId || account.userId === memberId) return null;
 
   return (
-    <div className="mt-3">
+    <div className={onDark ? '' : 'mt-3 max-w-[20rem]'}>
       <button
         type="button"
         disabled={opening}
@@ -107,12 +117,16 @@ function MessageButton({ memberId, name }: { memberId: string; name: string }) {
               setOpening(false);
             });
         }}
-        className="flex min-h-[44px] w-full max-w-[20rem] items-center justify-center rounded-[13px] bg-navy px-4 font-bold font-head text-[0.9375rem] text-white transition-opacity disabled:opacity-50"
+        // The mock's `btn gold`. Gold is the club's one accent and this is the
+        // one action on the page.
+        className="flex min-h-[46px] w-full items-center justify-center rounded-[13px] bg-gold px-4 font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-50"
       >
         {opening ? 'Opening…' : `Message ${name}`}
       </button>
       {failure ? (
-        <p className="mt-2 max-w-[20rem] text-[0.78125rem] text-destructive leading-[1.45]">
+        <p
+          className={`mt-2 text-[0.78125rem] leading-[1.45] ${onDark ? 'text-white/90' : 'text-destructive'}`}
+        >
           {failure}
         </p>
       ) : null}
@@ -183,6 +197,7 @@ export default function MemberDetailPage() {
   // Before the early returns: hooks cannot run conditionally, and every
   // branch below this either renders the profile or does not need the list.
   const { organizations } = useOrganizations();
+  const account = useAccount();
 
   if (loading) {
     return <Centered>Loading…</Centered>;
@@ -212,28 +227,11 @@ export default function MemberDetailPage() {
   const photo = photoUrlFor(member.photoPath);
   const verifier = member.affiliations[0] ?? null;
   const injury = injuryLine(member);
+  const canMessage = account.userId !== null && account.userId !== member.id;
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-[62rem] px-4 pt-3">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() => {
-              void navigate(-1);
-            }}
-            className="-ml-1.5 inline-flex items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-navy"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {backFrom(location.state)}
-          </button>
-          {member.type === 'mentor' ? (
-            <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
-              Mentor
-            </span>
-          ) : null}
-        </div>
-
+      <div className="mx-auto w-full max-w-[62rem] lg:px-4 lg:pt-3">
         {/*
          * From `lg` the picture is floated, not a column: the profile runs
          * beside it and then takes the whole width once it is past the bottom
@@ -249,67 +247,99 @@ export default function MemberDetailPage() {
          * spends the space underneath on the profile instead of on nothing.
          */}
         <div className="lg:block">
-          <div className="lg:float-left lg:mr-8 lg:mb-3 lg:w-[20rem]">
-            {/* The whole photograph, not a crop of it.
+          <div className="lg:float-left lg:mr-8 lg:mb-3 lg:w-[20rem] lg:overflow-hidden lg:rounded-[26px] lg:shadow-[0_10px_26px_rgba(10,20,35,.18)]">
+            {/* The mock's `phero`: the photograph as a 300px hero with the
+             * name over its foot, edge to edge on a phone.
              *
-             * The deck crops to a tall card because it is a deck — the frame is
-             * fixed and the face has to be in it. A profile is where somebody
-             * actually looks at the person, so the picture they chose is shown
-             * entire.
+             * It used to be the whole photograph, uncropped, with the name
+             * underneath, on the argument that a profile is where somebody
+             * actually looks at the person. The owner asked for the mock's
+             * shape instead (2026-09-21), and the deck already crops these to a
+             * tall card, so a crop is nothing a member has not already seen.
+             * The face is kept by `object-position` at 26% from the top — the
+             * deck uses 28% — which is where a portrait's face sits.
              *
-             * The frame takes the photograph's shape rather than the other way
-             * round. These come from a directory and are every aspect ratio there
-             * is; forcing them into one leaves a landscape shot floating in a
-             * portrait box with a third of the card empty. Height is capped so a
-             * very tall picture cannot push the name off the screen. */}
-            {photo ? (
-              <div
-                // Left edge aligned with the name and every section under it. Centred,
-                // the picture floated away from its own text.
-                className="relative mt-2 w-fit max-w-full overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)]"
-                style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+             * 300px and not a share of the viewport. Most members open this in
+             * a browser, where the URL bar takes its cut of the height before
+             * the page gets any; a `vh` hero is either too tall there or too
+             * short in the installed app. A fixed height leaves the name and
+             * the button on the first screen in both.
+             *
+             * From `lg` it is the 20rem picture the float always had, 4:5
+             * rather than 300px, with the same overlay — one DOM for every
+             * width rather than a hidden twin of the name. */}
+            <div
+              className="relative h-[300px] overflow-hidden lg:aspect-[4/5] lg:h-auto"
+              style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 grid place-items-center font-extrabold font-head text-[6.5rem] text-white opacity-[0.13]"
               >
+                {initialsOf(member.displayName)}
+              </span>
+              {photo ? (
                 <img
                   src={photo}
                   alt=""
-                  className="block h-auto max-h-[56vh] w-auto max-w-full"
+                  className="absolute inset-0 h-full w-full object-cover object-[50%_26%]"
                   onError={(e) => {
                     e.currentTarget.remove();
                   }}
                 />
-              </div>
-            ) : (
-              <div
-                className="relative mt-2 grid aspect-[4/5] w-full place-items-center overflow-hidden rounded-[26px] shadow-[0_10px_26px_rgba(10,20,35,.18)] sm:aspect-[3/2]"
-                style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
+              ) : null}
+              {/* The mock's scrim: clear at the top, navy at the foot, so the
+                  name reads on a light photograph and on the gradient alike. */}
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0),rgba(10,29,54,0.8)_60%,#102a4c)]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  void navigate(-1);
+                }}
+                className="absolute top-[18px] left-4 z-[2] inline-flex min-h-[36px] items-center gap-0.5 rounded-full bg-[#0A1D36]/60 py-[7px] pr-3.5 pl-2.5 font-bold text-[0.875rem] text-white backdrop-blur-[4px] transition-colors hover:bg-[#0A1D36]/80"
+                data-target="small"
               >
-                <span
-                  aria-hidden="true"
-                  className="font-extrabold font-head text-[5rem] text-white opacity-[0.13]"
-                >
-                  {initialsOf(member.displayName)}
-                </span>
+                <ChevronLeft className="h-4 w-4" />
+                {backFrom(location.state)}
+              </button>
+              <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
+                {/* The mock's badge without its organization mark: the owner
+                    took that out. Who vouched is under "Also a member of". */}
+                {member.type === 'mentor' ? (
+                  <span className="mb-2.5 inline-flex items-center rounded-full bg-white/95 px-3 py-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
+                    Peer mentor
+                  </span>
+                ) : null}
+                <h1 className="font-extrabold font-head text-[1.875rem] text-white leading-tight tracking-[-0.02em]">
+                  {member.displayName}
+                </h1>
+                <p className="mt-1 text-[0.875rem] text-[#D3DFEE]">{summaryLine(member)}</p>
+                {injury ? (
+                  <p className="mt-0.5 text-[0.78125rem] text-[#B9CADF]">{injury}</p>
+                ) : null}
               </div>
-            )}
+            </div>
 
-            {/* Name and summary sit under the picture rather than over it. With the
-             * photograph uncropped its bottom edge is wherever it falls, so text
-             * laid on top would land on a face as often as on background. */}
+            {/* The mock's navy band under the hero, holding one gold button.
+                The mock has two — Message and Ask — and Ask is not built and
+                was not wanted; a two-up grid with one button in it is a hole,
+                so the one it has takes the width. Not drawn at all on your own
+                card, where there is nothing to press. */}
+            {canMessage ? (
+              <div className="bg-navy px-[18px] pt-3.5 pb-4">
+                <MessageButton memberId={member.id} name={member.displayName} onDark />
+              </div>
+            ) : null}
           </div>
 
           {/* `contents` at lg so the sections below become siblings of the
               floated picture and flow past it one at a time. Wrapped in a box
               of their own they would all sit beside it or all below it, which
               is the grid this replaced. */}
-          <div className="min-w-0 lg:contents">
-            <h1 className="mt-3.5 font-extrabold font-head text-[1.75rem] text-ink leading-tight tracking-[-0.02em] lg:mt-0">
-              {member.displayName}
-            </h1>
-            <p className="mt-1 text-[0.875rem] text-ink2">{summaryLine(member)}</p>
-            {injury ? <p className="mt-0.5 text-[0.78125rem] text-grey">{injury}</p> : null}
-
-            <MessageButton memberId={member.id} name={member.displayName} />
-
+          <div className="min-w-0 px-4 lg:contents">
             {member.topics.length ? (
               <Section title="Happy to talk about">
                 <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">

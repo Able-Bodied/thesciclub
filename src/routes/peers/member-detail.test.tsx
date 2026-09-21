@@ -106,7 +106,7 @@ describe('MemberDetailPage', () => {
   it('flags a mentor', () => {
     state.current = ok(makeMember({ type: 'mentor' }));
     renderDetail();
-    expect(screen.getByText('Mentor')).toBeInTheDocument();
+    expect(screen.getByText('Peer mentor')).toBeInTheDocument();
   });
 
   it('omits a section entirely when there is nothing in it', () => {
