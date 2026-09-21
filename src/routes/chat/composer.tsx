@@ -20,15 +20,25 @@ import { useEffect, useRef, useState } from 'react';
  * ---------------------------------------------------------------------------
  * `scrollHeight` measures the content box. Tailwind's preflight makes every
  * element `border-box`, so a height of `scrollHeight` is short by the two
- * 1.6px borders — the content no longer fits the box it was just measured for,
- * the textarea decides it is overflowing, and a one-line composer gets a
- * scrollbar in it.
+ * borders — the content no longer fits the box it was just measured for, the
+ * textarea decides it is overflowing, and a one-line composer gets a scrollbar
+ * in it. Measured in Chromium on the empty composer: the old line gave
+ * `height: 44px` with `clientHeight` 42 against `scrollHeight` 44, overflowing
+ * by exactly the border; the current one gives 46px, 44 against 44, and no
+ * scrollbar.
+ *
+ * **The border is measured, not counted.** It is declared `border-[1.6px]` and
+ * the browser reports a *used* width of 1px a side here, so 2px rather than
+ * the 3.2px the stylesheet implies — and that rounding moves with the device
+ * pixel ratio and the zoom. `offsetHeight - clientHeight` asks the browser the
+ * same question the browser asks itself when it decides whether to draw a
+ * scrollbar, which is the only number that can be right at every zoom.
  *
  * **It only shows on Windows**, which is why this note exists rather than a
  * one-word comment. macOS and iOS draw overlay scrollbars that take no space
  * and fade out, so the box looks perfect on the machine most of this was
- * looked at on. Windows and most Linux desktops draw a real one, and 3.2px of
- * missing height is enough to summon it.
+ * looked at on. Windows and most Linux desktops draw a real one, and two
+ * missing pixels are enough to summon it.
  *
  * `overflowY` is managed here for the same reason. It is `hidden` while the
  * box is still growing — there is nothing to scroll to, so a scrollbar there
@@ -64,8 +74,10 @@ const MAX_HEIGHT = 150;
 function fitToContent(element: HTMLTextAreaElement) {
   element.style.overflowY = 'hidden';
   element.style.height = 'auto';
-  // offsetHeight - clientHeight is the two vertical borders. A vertical
-  // scrollbar takes width, not height, so it cannot get into this number.
+  // offsetHeight - clientHeight is the two vertical borders, as the browser
+  // actually used them. A vertical scrollbar takes width, not height, so it
+  // cannot get into this number — and overflowY is hidden above, so a bar left
+  // over from the last call cannot have narrowed the box and moved the wrap.
   const wanted = element.scrollHeight + (element.offsetHeight - element.clientHeight);
   element.style.height = `${Math.min(wanted, MAX_HEIGHT)}px`;
   element.style.overflowY = wanted > MAX_HEIGHT ? 'auto' : 'hidden';
