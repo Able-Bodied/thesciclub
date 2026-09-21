@@ -75,23 +75,23 @@ system, an 18+ gate, a details editor, and a three-strike system behind Good
 standing.
 
 **Chat is the fourth and is built but not deployed** — conversations, groups,
-rooms, reporting, and rooms a member starts. Its nineteen migrations are not
+rooms, reporting, rooms a member starts, and photographs. Its twenty migrations are not
 on the hosted project, which is why the section below about that comes before
 anything else. See "What Chat is".
 
 1,047 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 72 migrations, and the nineteen Chat ones are not on the hosted project yet
+## 73 migrations, and the twenty Chat ones are not on the hosted project yet
 
 This is the thing most likely to catch somebody out, so it is first. **It is
 also the one line in this file that changed direction on 2026-09-20**: for
 weeks the hosted database was ahead of `origin` and everything was applied.
 It is the other way round now.
 
-**72 migrations in `supabase/migrations/`. 53 applied to the hosted project
-(`erijdvqnxavwezsbbojv`), 19 pending.** The nineteen are the whole of Chat,
-`20260918010000` through `20260918190000`. They are applied locally and
+**73 migrations in `supabase/migrations/`. 53 applied to the hosted project
+(`erijdvqnxavwezsbbojv`), 20 pending.** The twenty are the whole of Chat,
+`20260918010000` through `20260918200000`. They are applied locally and
 nowhere else. Check rather than trust — a blank `Remote` column is a pending
 migration:
 
@@ -119,7 +119,7 @@ order matter, and it is three steps rather than two:
 
 Merging first ships a Chat tab to live members with nothing behind it.
 
-The nineteen, in the order they must apply — each header says why, and the
+The twenty, in the order they must apply — each header says why, and the
 "What Chat is" section below says what the member sees:
 
 | migration | what it adds |
@@ -143,6 +143,7 @@ The nineteen, in the order they must apply — each header says why, and the
 | `…170000` | `chat_create_room` — `created_by`, `unique (lower(name))`, a room born with its first topic, and `chat_rooms` into the publication |
 | `…180000` | Mind, Family and Places join Body, Life and Kit — the constraint and `chat_create_room`'s check both; the client's `ROOM_CATEGORIES` is the third copy |
 | `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
+| `…200000` | photographs: `attachments text[]` on messages, posts, removed bodies and reports; the **private** `chat` bucket (2MB, three image types) and its three storage policies behind `chat_file_is_readable` / `_writable` / `_reported`; `chat_create_topic` takes a fourth argument; removal blanks the list |
 
 The four from 2026-09-17, newest first:
 
@@ -418,6 +419,7 @@ Two rules, both learned the hard way:
 | `chat-groups.sql` | that somebody outside a group cannot add to it, that leaving one stops every read including the words written while they were in it, that an RSVP of Interested does not open the event's group chat, that a group has an order and a cap, and that an event's group takes no members by hand |
 | `chat-member-removed.sql` | that ending a membership is not blocked by anything Chat added, that what they wrote in rooms and conversations stays without their name, that what they joined and read goes with them, and that the other half of a direct conversation can still read it |
 | `chat-reports.sql` | that a member outside a conversation cannot report a message in it, that the reporter reads back three columns and not the snapshot, that the administrators' answer carries no thread id, that a second report is one row, that the snapshot survives the author taking the message back, and that somebody paused can still say what was done to them |
+| `chat-attachments.sql` | photographs: the row limits (four, words *or* a picture, paths under the row's own folder) and the `chat` bucket's read policy as members — step 6 (an outsider cannot read a conversation's picture) and 9a (an administrator reads a reported picture and not its neighbour) are the ones that matter. Uploads and deletes cannot be tested from SQL; `pnpm check-chat-photo-policy` does those through the API |
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
@@ -439,8 +441,10 @@ files, most recently by reporting a restore as broken when it had worked.
   Worth keeping that way: `pnpm exec` runs the version the project pins, and a
   globally installed CLI drifts from it — `db push` writes to the live
   database, which is not where a version surprise belongs.
-- Local Supabase: `pnpm exec supabase start -x storage-api,imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`
-  is the light set and is enough for almost everything.
+- Local Supabase: `pnpm exec supabase start -x imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor`
+  is the light set. It used to exclude `storage-api` too; since chat carries
+  photographs (2026-09-21) storage is part of the ordinary run, not the
+  exception, and the exclusion below is kept only as the warning it is.
 
   **`realtime` came out of that exclusion list when Chat landed.** Chat
   subscribes to `chat_messages`, `chat_posts`, `chat_topics` and `chat_threads`,
@@ -771,7 +775,7 @@ Remove on the reader's own messages only, unlike a topic.
    deliberately absent), member-to-member blocking, push notifications,
    anonymous posting, and any way to remove somebody else from a thread.
 
-Three more from 2026-09-21, after the owner used the build:
+Four more from 2026-09-21, after the owner used the build:
 
 8. **A reported direct message is not removed from `/admin`.** Removing a post
    or a group message protects everybody else who can see it; removing a direct
@@ -790,6 +794,24 @@ Three more from 2026-09-21, after the owner used the build:
     the border's 3px of overflow drew a ▲▼ scrollbar inside a one-line box —
     on Windows only, which is why no Linux screenshot caught it. Fixed by
     measuring the border; the header of `composer.tsx` explains it.
+11. **Photographs in chat, and not video** (2026-09-21). Up to four on a
+    message, a reply or a topic's first post, shrunk on the phone to 1,600px
+    webp through `preparePhoto`, anything over 10MB refused before it is read.
+    Video is out on cost: a phone cannot shrink one, and egress bills per view.
+    **The bucket is private and that is the whole design**: a picture in a
+    direct conversation is readable by its two members and nobody else,
+    including an administrator, through the same `is_thread_member` gate the
+    words are behind; a room's pictures are readable by whoever can read the
+    room. Consequences worth knowing before anybody "fixes" them: an
+    administrator cannot delete a picture they cannot read (the storage API
+    deletes only what the caller can select), so a removed member's
+    photographs stay the way their words do; and a *reported* picture becomes
+    readable to administrators because the report names its path — one
+    photograph, handed over by somebody who could see it, the same shape as a
+    reported sentence, except that it is the original and not a copy. Files:
+    `src/lib/chat/attachments.ts`, `routes/chat/attachment-grid.tsx`,
+    `routes/chat/photo-picker.tsx`; `scripts/check-chat-photo-policy.mjs` is
+    the through-the-API proof and `chat-attachments.sql` the SQL half.
 
 ## The screens
 
@@ -905,7 +927,7 @@ decision with a number in it, and not one to guess now.
 
 # Next up: the owner's call
 
-Chat is built and has its own section above; **its nineteen migrations still
+Chat is built and has its own section above; **its twenty migrations still
 have to be pushed, and that is the owner's word to give.** The app is live and
 the ingest is running current code.
 
