@@ -42,8 +42,11 @@ import { roomsForTopics } from '@/routes/chat/room-map';
 
 const ICON_COLOUR: Record<RoomCategory, string> = {
   Body: 'text-room-body',
+  Mind: 'text-room-mind',
   Life: 'text-room-life',
+  Family: 'text-room-family',
   Kit: 'text-room-kit',
+  Places: 'text-room-places',
 };
 
 export function ContinueInRooms({ topics }: { topics: readonly string[] }) {

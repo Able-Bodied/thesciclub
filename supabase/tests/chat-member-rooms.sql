@@ -185,14 +185,33 @@ select public.chat_create_room('Paused persons club', 'Should not exist at all.'
 rollback to savepoint suspended;
 
 \echo ''
-\echo '== 9. a category that is not one of the three is refused =='
+\echo '== 9. a category that is not one of the six is refused =='
 \echo '   expect: ERROR. The column check would catch it too; the function says'
-\echo '   which three rather than quoting the constraint.'
+\echo '   which six rather than quoting the constraint.'
 set local request.jwt.claims = '{"sub":"aaaaaaaa-8888-0000-0000-000000000001","role":"authenticated"}';
 savepoint bad_category;
-select public.chat_create_room('Somewhere else', 'A room outside the three.', 'Admin',
+select public.chat_create_room('Somewhere else', 'A room outside the six.', 'Admin',
                                'Hello', 'Hello.');
 rollback to savepoint bad_category;
+
+\echo ''
+\echo '== 9a. the three categories added on 2026-09-21 are accepted =='
+\echo '   expect: no error and three rows — Mind, Family, Places. Mental health'
+\echo '   and living independently were the two profile topics with no room to'
+\echo '   go to; these are the headings a member starts those rooms under.'
+select public.chat_create_room('Grief and the first year', 'The part nobody photographs.', 'Mind',
+                               'The first anniversary', 'How did you get through it?');
+select public.chat_create_room('Parenting from a chair', 'Kids, partners, and the people who help.', 'Family',
+                               'School run', 'What works for pick-up?');
+select public.chat_create_room('Airports that work', 'Which ones have a lift that lifts.', 'Places',
+                               'SFO', 'Terminal 2 is fine. Terminal 1 is not.');
+reset role;
+select category, name from public.chat_rooms
+ where created_by = 'aaaaaaaa-8888-0000-0000-000000000001'
+   and category in ('Mind', 'Family', 'Places')
+ order by sort_order;
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-8888-0000-0000-000000000001","role":"authenticated"}';
 
 \echo ''
 \echo '== 10. a name or a description that is too short or too long is refused =='

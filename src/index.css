@@ -62,21 +62,26 @@
 
   /* ------------------------------------------------- discussion rooms */
   /*
-   * The three categories the twelve rooms fall into, from the mock's CATCOL.
-   * A room is drawn with its category's colour on its label, its left border
-   * and its icon, so the three have to be tellable apart *and* readable as
-   * text on both grounds a room card is ever drawn on — --paper for the card
-   * and --canvas for the page behind it. theme-contrast.test.ts holds them to
-   * both; --room-life on --canvas is the tightest at 4.81:1, which is why the
-   * category label is not drawn any smaller than it is.
+   * The categories a room falls into. Body, Life and Kit are from the mock's
+   * CATCOL; Mind, Family and Places were added on 2026-09-21 once members
+   * could start rooms (see src/lib/chat/types.ts). A room is drawn with its
+   * category's colour on its label, its left border and its icon, so the six
+   * have to be tellable apart *and* readable as text on both grounds a room
+   * card is ever drawn on — --paper for the card and --canvas for the page
+   * behind it. theme-contrast.test.ts holds them to both; --room-life on
+   * --canvas is the tightest at 4.81:1, which is why the category label is not
+   * drawn any smaller than it is.
    *
-   * Body is --navy-hi's hex and Kit is new. They are separate tokens rather
-   * than aliases because what they mean is "the Body rooms", not "the hover
-   * navy" — the day one moves, the other should not.
+   * Body is --navy-hi's hex. They are separate tokens rather than aliases
+   * because what they mean is "the Body rooms", not "the hover navy" — the
+   * day one moves, the other should not.
    */
   --room-body: #1a3e70;
+  --room-mind: #5b3d8f;
   --room-life: #8a6712;
+  --room-family: #8f3a5c;
   --room-kit: #2f6b57;
+  --room-places: #1f6b82;
 
   /* --------------------------------------------------------- measures */
   /*
@@ -132,8 +137,11 @@
   --color-line: var(--line);
   --color-tint: var(--tint);
   --color-room-body: var(--room-body);
+  --color-room-mind: var(--room-mind);
   --color-room-life: var(--room-life);
+  --color-room-family: var(--room-family);
   --color-room-kit: var(--room-kit);
+  --color-room-places: var(--room-places);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);

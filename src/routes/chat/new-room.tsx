@@ -177,18 +177,23 @@ export default function NewRoomPage() {
           </div>
         ) : null}
 
-        {/* A paragraph and not a label: the control it introduces is three
+        {/* A paragraph and not a label: the control it introduces is six
             aria-pressed buttons rather than one field, which is the same shape
             the sort bar on a room page has. */}
         <p className="mt-4 font-bold font-head text-[0.8125rem] text-ink">
           Which part of life is it about?
         </p>
+        {/* Wrapped, not scrolled. The pill row scrolls sideways elsewhere
+            because a segment row is one line by design; here six choices at
+            430px would put two of them off the edge with nothing to say so,
+            and a heading somebody cannot see is one they cannot pick. */}
         <SegmentPills<RoomCategory | ''>
           segments={ROOM_CATEGORIES.map((c) => [c, c] as const)}
           value={category ?? ''}
           onChange={(next) => {
             setCategory(next === '' ? null : next);
           }}
+          className="flex-wrap"
         />
 
         <label

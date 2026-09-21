@@ -64,19 +64,28 @@ beforeEach(() => {
 });
 
 describe('grouping rooms into categories', () => {
-  // The seed puts Body at 1-5, Life at 6-10 and Kit at 11-12 precisely so that
-  // one column carries both orders. If that stops being true the categories
-  // come out in whatever order the rows arrive in, which is the kind of drift
-  // nobody notices in a screenshot.
-  it('orders the categories by the lowest sort_order in each', () => {
+  // The order is ROOM_CATEGORIES', not the rooms'. A category that holds only
+  // member rooms — every member room is sort_order 1000 and up — would
+  // otherwise land wherever its first room happened to fall, so the headings
+  // could come out in a different order for two members looking at the same
+  // rooms, which is the kind of drift nobody notices in a screenshot.
+  it('orders the categories as ROOM_CATEGORIES does, whatever the rooms say', () => {
     const grouped = roomsByCategory([
       room({ id: 'equip', category: 'Kit', sortOrder: 11 }),
+      room({ id: 'grief', category: 'Mind', sortOrder: 1002 }),
       room({ id: 'newsci', category: 'Life', sortOrder: 6 }),
       room({ id: 'bowel', category: 'Body', sortOrder: 1 }),
       room({ id: 'driving', category: 'Kit', sortOrder: 12 }),
+      room({ id: 'airports', category: 'Places', sortOrder: 1001 }),
       room({ id: 'aging', category: 'Body', sortOrder: 5 }),
     ]);
-    expect(grouped.map(([category]) => category)).toEqual(['Body', 'Life', 'Kit']);
+    expect(grouped.map(([category]) => category)).toEqual([
+      'Body',
+      'Mind',
+      'Life',
+      'Kit',
+      'Places',
+    ]);
   });
 
   it('orders the rooms inside a category by sort_order', () => {

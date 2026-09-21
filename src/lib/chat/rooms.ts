@@ -42,8 +42,8 @@ function toRoom(row: ChatRoomRow): ChatRoom {
     id: row.id,
     name: row.name,
     description: row.description,
-    // The column is checked against exactly these three, so an unknown value
-    // means the check was changed without this being. Body is the least
+    // The column is checked against exactly ROOM_CATEGORIES, so an unknown
+    // value means the check was changed without this being. Body is the least
     // surprising thing to draw rather than a crash.
     category: (ROOM_CATEGORIES as readonly string[]).includes(row.category)
       ? (row.category as RoomCategory)
@@ -56,13 +56,16 @@ function toRoom(row: ChatRoomRow): ChatRoom {
 }
 
 /**
- * Rooms grouped into the categories, in `sort_order`.
+ * Rooms grouped into the categories, in `sort_order` within each.
  *
- * The categories come out in the order of the lowest `sort_order` in each,
- * which is how the seed encodes Body · Life · Kit without a second column that
- * could disagree with the first. A category with no rooms in it is left out
- * rather than drawn as an empty heading — which is the ordinary case for a
- * member, who sees only the rooms an administrator has opened.
+ * The categories come out in ROOM_CATEGORIES' order. They used to come out in
+ * the order of the lowest `sort_order` in each, which the seed happened to
+ * encode for Body · Life · Kit — and which put a category with only member
+ * rooms in it (every member room is 1000 and up) wherever its first room fell,
+ * so Mind could land after Places on one member's screen and before it on
+ * another's. A category with no rooms in it is left out rather than drawn as
+ * an empty heading — which is the ordinary case for a member, who sees only
+ * the rooms an administrator has opened.
  *
  * Pure, so it is tested without a database.
  */
@@ -74,9 +77,10 @@ export function roomsByCategory(rooms: ChatRoom[]): [RoomCategory, ChatRoom[]][]
     if (existing) existing.push(room);
     else grouped.set(room.category, [room]);
   }
-  // Map preserves insertion order and `sorted` is in sort_order, so the first
-  // room of each category arrived in the order the categories should be drawn.
-  return [...grouped];
+  return ROOM_CATEGORIES.flatMap((category) => {
+    const inCategory = grouped.get(category);
+    return inCategory ? [[category, inCategory] as [RoomCategory, ChatRoom[]]] : [];
+  });
 }
 
 export interface ChatRoomsState {
@@ -224,7 +228,7 @@ export function roomProblem(
   if (cleanName.length > ROOM_NAME_MAX) {
     return `A room's name is ${ROOM_NAME_MAX} characters or fewer.`;
   }
-  // Nothing is picked to begin with. A default would be one of the three
+  // Nothing is picked to begin with. A default would be one of the six
   // quietly chosen for somebody, and a room filed under the wrong one is not
   // something they can put right afterwards — nobody edits a room.
   if (category === null) return 'Say which part of life the room is about.';

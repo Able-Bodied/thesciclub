@@ -72,17 +72,23 @@ describe('palette contrast', () => {
     // chosen by eye is exactly where a palette quietly drops under AA.
     ['white on --navy-hi (a primary under the pointer)', 'paper', 'navy-hi'],
     ['--navy on --line (a tint button under the pointer)', 'navy', 'line'],
-    // The three discussion-room categories, on both grounds a room card is
+    // The six discussion-room categories, on both grounds a room card is
     // drawn on: --paper for the card itself and --canvas for the page behind
     // it, where the category label sits. --room-life is the tight one — 5.21:1
     // on paper and 4.81:1 on canvas — and it is the same hex that was already
     // caught once at 4.47:1 against --gold-lt.
     ['--room-body on --paper (a Body room card)', 'room-body', 'paper'],
     ['--room-body on --canvas (the Body category label)', 'room-body', 'canvas'],
+    ['--room-mind on --paper (a Mind room card)', 'room-mind', 'paper'],
+    ['--room-mind on --canvas (the Mind category label)', 'room-mind', 'canvas'],
     ['--room-life on --paper (a Life room card)', 'room-life', 'paper'],
     ['--room-life on --canvas (the Life category label)', 'room-life', 'canvas'],
+    ['--room-family on --paper (a Family room card)', 'room-family', 'paper'],
+    ['--room-family on --canvas (the Family category label)', 'room-family', 'canvas'],
     ['--room-kit on --paper (a Kit room card)', 'room-kit', 'paper'],
     ['--room-kit on --canvas (the Kit category label)', 'room-kit', 'canvas'],
+    ['--room-places on --paper (a Places room card)', 'room-places', 'paper'],
+    ['--room-places on --canvas (the Places category label)', 'room-places', 'canvas'],
   ])('%s clears AA', (_label, fg, bg) => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(AA);
   });

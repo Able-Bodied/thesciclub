@@ -115,7 +115,7 @@ describe('starting a room', () => {
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('What is the room for?'), 'Shoulder pain');
     // No category is picked to begin with — a default would be one of the
-    // three quietly chosen for somebody, and nobody edits a room afterwards.
+    // six quietly chosen for somebody, and nobody edits a room afterwards.
     expect(screen.getByText('Say which part of life the room is about.')).toBeInTheDocument();
     expect(submit).toBeDisabled();
   });

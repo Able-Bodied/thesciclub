@@ -7,10 +7,18 @@
  */
 
 /**
- * The three groupings the twelve discussion rooms fall into, in the order they
- * are drawn. `chat_rooms.category` is checked against exactly these.
+ * The groupings a discussion room falls into, in the order they are drawn.
+ * `chat_rooms.category` is checked against exactly these, and
+ * `chat_create_room` refuses anything else by name.
+ *
+ * Body, Life and Kit are the mock's and hold the seeded twelve. Mind, Family
+ * and Places were added on 2026-09-21 once members could start rooms: three
+ * headings sized for twelve rooms the club wrote itself were a short list to
+ * pick from for a room about grief, about parenting from a chair, or about
+ * which airports have a working lift. What each is for is in
+ * 20260918180000's header.
  */
-export const ROOM_CATEGORIES = ['Body', 'Life', 'Kit'] as const;
+export const ROOM_CATEGORIES = ['Body', 'Mind', 'Life', 'Family', 'Kit', 'Places'] as const;
 export type RoomCategory = (typeof ROOM_CATEGORIES)[number];
 
 export interface ChatRoom {

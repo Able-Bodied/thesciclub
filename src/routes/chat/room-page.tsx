@@ -47,8 +47,11 @@ const SORT_LABELS: Record<RoomSort, string> = {
 
 const CATEGORY_ICON: Record<RoomCategory, string> = {
   Body: 'text-room-body',
+  Mind: 'text-room-mind',
   Life: 'text-room-life',
+  Family: 'text-room-family',
   Kit: 'text-room-kit',
+  Places: 'text-room-places',
 };
 
 export default function RoomPage() {

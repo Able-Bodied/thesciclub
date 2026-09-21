@@ -56,8 +56,11 @@ import { SmallButton } from '@/routes/admin/controls';
 
 const CATEGORY_DOT: Record<RoomCategory, string> = {
   Body: 'bg-room-body',
+  Mind: 'bg-room-mind',
   Life: 'bg-room-life',
+  Family: 'bg-room-family',
   Kit: 'bg-room-kit',
+  Places: 'bg-room-places',
 };
 
 export function RoomsSection() {

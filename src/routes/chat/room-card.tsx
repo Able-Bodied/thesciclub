@@ -53,8 +53,11 @@ import type { ChatAuthor, ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/t
 
 const CATEGORY_STYLE: Record<RoomCategory, { border: string; icon: string; label: string }> = {
   Body: { border: 'border-l-room-body', icon: 'text-room-body', label: 'bg-room-body' },
+  Mind: { border: 'border-l-room-mind', icon: 'text-room-mind', label: 'bg-room-mind' },
   Life: { border: 'border-l-room-life', icon: 'text-room-life', label: 'bg-room-life' },
+  Family: { border: 'border-l-room-family', icon: 'text-room-family', label: 'bg-room-family' },
   Kit: { border: 'border-l-room-kit', icon: 'text-room-kit', label: 'bg-room-kit' },
+  Places: { border: 'border-l-room-places', icon: 'text-room-places', label: 'bg-room-places' },
 };
 
 export function RoomCategoryLabel({ category }: { category: RoomCategory }) {
