@@ -89,20 +89,22 @@ silently disabling a button.
 
 ## What actually works
 
-Three surfaces are real, a fourth is being built, and everything else is deliberately not yet.
+Four surfaces are real, and everything else is deliberately not yet.
 
 | Surface | State | Notes |
 | --- | --- | --- |
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. |
 | **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
-| **Chat** | Being built | DMs, event groups, topic rooms. Started 2026-09-18. |
+| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. No editing, no attachments, no search, no member-to-member blocking, no push notifications, no anonymous posting. |
 | Home | Placeholder | The mixed feed. Needs four content types and a moderation story. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that
 looks finished and does nothing gets demoed, believed, and then explained. **That rule still
-governs Home**, and Chat being built is not a reason to relax it — a half-built Chat should say
-what it cannot do rather than imply it can.
+governs Home**, and it governed Chat the whole way through — which is why Chat draws no control for the
+things it does not do. There is no search box (the mock has one), no attachment button, no way to edit a
+message and no block. A member who looks for one of those finds nothing at all, which reads as unfinished;
+a control that does nothing reads as broken.
 
 ## Deliberately deferred
 
