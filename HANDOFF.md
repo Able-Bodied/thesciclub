@@ -540,11 +540,16 @@ itself. In rough order:
 Do not spend a card on something a member cannot do — that is why Invites is
 mentors-only and why Club tools is admin-only.
 
-It does **not** extend to things that are merely *absent*. Home and Chat still
-say plainly that they are not built, the official account still says messaging
-is not switched on, and an event still says its group chat is coming. A member
-who goes looking for a feature and finds nothing at all reads the app as broken
-rather than as unfinished, and CONTEXT.md defers both on purpose.
+It does **not** extend to things that are merely *absent*. Home still says
+plainly that it is not built. A member who goes looking for a feature and finds
+nothing at all reads the app as broken rather than as unfinished, and
+CONTEXT.md defers it on purpose.
+
+**The three other examples this paragraph used are spent** — Chat said the same
+of itself, the official account said messaging was not switched on, and an
+event said its group chat was coming. All three are real now. **The rule is
+not spent**: what Chat does not do — editing, attachments, search, blocking —
+it draws no control for at all, rather than a greyed-out one.
 
 ## The setting that worked on one button
 
