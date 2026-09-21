@@ -105,8 +105,19 @@ different way.
 
 Until that push the hosted project has no chat tables at all, so **every chat
 read from a deployed build fails**. Netlify builds from `main`. That makes the
-order matter: push the migrations, then merge. Merging first ships a Chat tab
-to live members with nothing behind it.
+order matter, and it is three steps rather than two:
+
+1. `pnpm exec supabase db push` — with the owner's word, and never
+   `config push` alongside it.
+2. **Confirm Realtime is enabled on the hosted project, in the dashboard.** It
+   is on by default and the migration adds the tables to
+   `supabase_realtime`, but a publication with the service switched off is the
+   exact failure Environment describes below: every subscription connects,
+   reports SUBSCRIBED and delivers nothing, which looks like a chat nobody is
+   writing to. Look at the setting; do not assume it.
+3. Merge to `main` and let Netlify build.
+
+Merging first ships a Chat tab to live members with nothing behind it.
 
 The seventeen, in the order they must apply — each header says why, and the
 "What Chat is" section below says what the member sees:
