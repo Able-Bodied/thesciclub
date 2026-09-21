@@ -98,6 +98,9 @@ export default function ChatPage() {
   const authors = useChatAuthors(
     threads.flatMap((thread) => [thread.otherMemberId, thread.lastAuthorId]),
   );
+  // Who started the member rooms. The seeded twelve have no starter, so on the
+  // ordinary day this asks for nothing.
+  const roomStarters = useChatAuthors(rooms.map((room) => room.createdBy));
 
   const showRooms = segment === 'all' || segment === 'rooms';
   const showConversations = segment !== 'rooms';
@@ -158,7 +161,7 @@ export default function ChatPage() {
                 <p className="py-10 text-center text-[0.875rem] text-grey leading-relaxed">
                   No rooms are open yet.
                   <br />
-                  They open one at a time, as there are members to fill them.
+                  The seeded ones open a few at a time, and anybody can start one.
                 </p>
               ) : (
                 grouped.map(([category, inCategory]) => (
@@ -168,6 +171,7 @@ export default function ChatPage() {
                       <RoomCard
                         key={room.id}
                         room={room}
+                        starter={room.createdBy ? (roomStarters.get(room.createdBy) ?? null) : null}
                         stats={stats.get(room.id)}
                         joined={membership.joined.has(room.id)}
                       />
@@ -175,6 +179,8 @@ export default function ChatPage() {
                   </section>
                 ))
               )}
+
+              {loading || error ? null : <NewRoomLink />}
             </>
           ) : null}
         </div>
@@ -264,6 +270,27 @@ function Conversations({
 
       {segment === 'groups' || segment === 'all' ? <NewGroupLink /> : null}
     </>
+  );
+}
+
+/**
+ * The way into a room somebody starts themselves.
+ *
+ * Present for every member and not only when the list is empty. The twelve
+ * seeded rooms are starters, not the limit — the owner's decision on
+ * 2026-09-20 — and a control that only appears when there is nothing else on
+ * the screen reads as an apology for the emptiness rather than as an offer.
+ *
+ * The same dashed link as Start a group, for the same reasons.
+ */
+function NewRoomLink() {
+  return (
+    <Link
+      to="/chat/rooms/new"
+      className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy border-dashed font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint"
+    >
+      Start a room
+    </Link>
   );
 }
 

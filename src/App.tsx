@@ -5,6 +5,7 @@ import { AccessibilityProvider } from '@/lib/accessibility';
 import AdminPage from '@/routes/admin/page';
 import GroupMembersPage from '@/routes/chat/group-members';
 import NewGroupPage from '@/routes/chat/new-group';
+import NewRoomPage from '@/routes/chat/new-room';
 import NewTopicPage from '@/routes/chat/new-topic';
 import ChatPage from '@/routes/chat/page';
 import RoomPage from '@/routes/chat/room-page';
@@ -53,7 +54,12 @@ function AppShell() {
         <Route path="/peers/:id" element={<MemberDetailPage />} />
         <Route path="/chat" element={<ChatPage />} />
         {/* A room's slug is in the URL — /chat/rooms/bowel — which is why
-            chat_rooms.id is a slug and not a uuid. */}
+            chat_rooms.id is a slug and not a uuid. /new sits above :roomId for
+            a reader's sake; React Router ranks a static segment above a dynamic
+            one either way, and no room can be called "new" — the seeded twelve
+            are fixed and a member room's id always carries a four-character
+            suffix. */}
+        <Route path="/chat/rooms/new" element={<NewRoomPage />} />
         <Route path="/chat/rooms/:roomId" element={<RoomPage />} />
         <Route path="/chat/rooms/:roomId/new" element={<NewTopicPage />} />
         <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -232,11 +232,57 @@ describe('the chat screen', () => {
 
   // The rooms are all seeded closed, so this is the ordinary first sight of
   // the screen. It explains the policy rather than apologising for a lack of
-  // content — the rooms are not missing, they have not been opened.
-  it('explains that rooms open one at a time when none is open', () => {
+  // content — the rooms are not missing, they have not been opened — and it
+  // says the other half now that a member can start one.
+  it('explains that rooms open a few at a time, and that anybody can start one', () => {
     renderPage();
     expect(screen.getByText(/No rooms are open yet/)).toBeInTheDocument();
-    expect(screen.getByText(/as there are members to fill them/)).toBeInTheDocument();
+    expect(screen.getByText(/anybody can start one/)).toBeInTheDocument();
+  });
+
+  // Present whether or not there are rooms. A control that only appears when
+  // the screen is empty reads as an apology for the emptiness.
+  it('offers Start a room with rooms on the screen and without', async () => {
+    renderPage();
+    expect(screen.getByRole('link', { name: 'Start a room' })).toHaveAttribute(
+      'href',
+      '/chat/rooms/new',
+    );
+    cleanup();
+    db.rooms = [room({ id: 'bowel' })];
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Rooms' }));
+    expect(screen.getByRole('link', { name: 'Start a room' })).toBeInTheDocument();
+  });
+
+  it('names who started a member room, and nobody on a seeded one', () => {
+    db.authors = new Map([
+      [
+        'ada',
+        {
+          id: 'ada',
+          displayName: 'Ada A',
+          photoPath: null,
+          photoAlt: null,
+          avatarColor: null,
+          level: null,
+          isAdmin: false,
+          hasProfile: true,
+        },
+      ],
+    ]);
+    db.rooms = [
+      room({ id: 'bowel' }),
+      room({
+        id: 'shoulder-pain-1a2b',
+        name: 'Shoulder pain',
+        sortOrder: 1000,
+        createdBy: 'ada',
+      }),
+    ];
+    renderPage();
+    expect(screen.getByText('Started by Ada A')).toBeInTheDocument();
+    expect(screen.queryByText(/Started by a former member/)).toBeNull();
   });
 
   it('keeps the mock’s promise about history and privacy', () => {

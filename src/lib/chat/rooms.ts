@@ -211,6 +211,7 @@ export function normalizeRoomName(name: string): string {
  */
 export function roomProblem(
   name: string,
+  category: RoomCategory | null,
   description: string,
   topicTitle: string,
   topicBody: string,
@@ -223,6 +224,10 @@ export function roomProblem(
   if (cleanName.length > ROOM_NAME_MAX) {
     return `A room's name is ${ROOM_NAME_MAX} characters or fewer.`;
   }
+  // Nothing is picked to begin with. A default would be one of the three
+  // quietly chosen for somebody, and a room filed under the wrong one is not
+  // something they can put right afterwards — nobody edits a room.
+  if (category === null) return 'Say which part of life the room is about.';
   const cleanDescription = description.trim();
   if (cleanDescription.length === 0) return 'Say what the room is for.';
   if (cleanDescription.length < ROOM_DESCRIPTION_MIN) {

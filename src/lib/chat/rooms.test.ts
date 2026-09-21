@@ -185,9 +185,10 @@ describe('a name the database would call the same name', () => {
 });
 
 describe('what is missing from a room somebody is describing', () => {
-  const full = (o: Partial<Record<'n' | 'd' | 't' | 'b', string>> = {}) =>
+  const full = (o: Partial<Record<'n' | 'd' | 't' | 'b', string>> & { c?: null } = {}) =>
     roomProblem(
       o.n ?? 'Shoulder pain',
+      'c' in o ? null : 'Body',
       o.d ?? 'Overuse, transfers, and what helped.',
       o.t ?? 'Twenty years of pushing',
       o.b ?? 'What did you change first?',
@@ -200,7 +201,10 @@ describe('what is missing from a room somebody is describing', () => {
   // Top to bottom: somebody filling the form in order is never told about a
   // field they have not reached yet.
   it('asks for the fields in the order the form does', () => {
-    expect(full({ n: '', d: '', t: '', b: '' })).toBe('Give the room a name.');
+    expect(full({ n: '', c: null, d: '', t: '', b: '' })).toBe('Give the room a name.');
+    expect(full({ c: null, d: '', t: '', b: '' })).toBe(
+      'Say which part of life the room is about.',
+    );
     expect(full({ d: '', t: '', b: '' })).toBe('Say what the room is for.');
     expect(full({ t: '', b: '' })).toBe('Give the first topic a title.');
     expect(full({ b: '' })).toBe('Write the first topic.');
