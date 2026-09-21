@@ -469,13 +469,30 @@ describe('blocking a number', () => {
   });
 
   it('says the event history goes too, which is the part nobody expects', async () => {
-    // event_rsvps, event_dismissals and member_strikes all cascade on
-    // member_id. The panel used to name only the profile and the invite.
+    // event_rsvps, event_dismissals, organization_follows and member_strikes
+    // all cascade on member_id. The panel used to name only the profile and
+    // the invite.
     api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
     renderAdmin();
     await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
     expect(screen.getByText(/Everything they said they were going to/)).toBeInTheDocument();
+    expect(screen.getByText(/the organizations they follow/)).toBeInTheDocument();
     expect(screen.getByText(/rejoining later starts them from nothing/)).toBeInTheDocument();
+  });
+
+  it('says what they wrote does not go, which is the opposite surprise', async () => {
+    // Every author column in Chat is `on delete set null`, so a removed
+    // member's posts and messages keep their words and lose their name —
+    // chat-member-removed.sql proves it. An administrator who has just read
+    // the paragraph above would otherwise expect a room's history to leave
+    // with whoever wrote it.
+    api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    expect(
+      screen.getByText(/What they wrote in the discussion rooms and in conversations stays/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/without their name on it/)).toBeInTheDocument();
   });
 
   it('asks for no reason until there is something to give one for', async () => {

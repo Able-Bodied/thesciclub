@@ -825,16 +825,33 @@ function Row({
           }}
         >
           {/* The cascade is named because it is the part nobody expects.
-              event_rsvps, event_dismissals and member_strikes are all
-              `on delete cascade` on member_id, so removing somebody takes their
-              whole record of what they went to — and rejoining on the same
-              number does not bring it back, because it is a new row. That was
-              found the way these things are: by removing an account to test the
-              button and watching Been to empty itself. */}
+              event_rsvps, event_dismissals, organization_follows and
+              member_strikes are all `on delete cascade` on member_id, so
+              removing somebody takes their whole record of what they went to
+              and who they followed — and rejoining on the same number does not
+              bring it back, because it is a new row. That was found the way
+              these things are: by removing an account to test the button and
+              watching Been to empty itself. */}
           <p>
             Their profile is deleted and their invite is revoked. Everything they said they were
-            going to, and any strikes on their record, goes with it — rejoining later starts them
-            from nothing. Their sign-in still exists but shows them nothing.
+            going to, the organizations they follow and any strikes on their record go with it —
+            rejoining later starts them from nothing. Their sign-in still exists but shows them
+            nothing.
+          </p>
+          {/* And the half that does not go, which is the owner's decision of
+              2026-09-18 and the opposite of what the paragraph above trains an
+              administrator to expect. Every author column in Chat is
+              `on delete set null`, so a post keeps its words and its place in
+              the numbering and loses its name. Said here because this is the
+              moment somebody is deciding, and finding out afterwards that a
+              removed member's words are still in a room reads as a bug rather
+              than as a choice.
+
+              chat-member-removed.sql is the proof of both halves. */}
+          <p className="mt-2">
+            What they wrote in the discussion rooms and in conversations stays where it is, without
+            their name on it. Nobody else's copy of a conversation is deleted by somebody leaving
+            it.
           </p>
           {/* The one question worth asking at this moment, and the only thing
               separating this from a ban. Left unticked, the number is free
