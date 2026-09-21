@@ -36,6 +36,19 @@ import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
  *
  * A null author is somebody who has left the club. Their words stay and their
  * name does not.
+ *
+ * ---------------------------------------------------------------------------
+ * Remove on your own, Report on theirs
+ * ---------------------------------------------------------------------------
+ * Never both, and never neither. Your own bubble carries Remove; somebody
+ * else's carries Report, which hands that one message and nothing else in the
+ * conversation to the administrators. An administrator in a conversation is a
+ * member of it and gets the same two — the thread screen has never offered
+ * them anybody else's Remove, because a private thread they could moderate
+ * from the inside would not be private.
+ *
+ * A visible control, not a long-press and not a swipe. Members here drive with
+ * limited hand function, a mouth stick or a head pointer.
  */
 export function MessageBubble({
   message,
@@ -44,6 +57,9 @@ export function MessageBubble({
   canRemove,
   onRemove,
   removing,
+  canReport,
+  reported,
+  onReport,
 }: {
   message: ChatMessage;
   /** Null for a removed member, and also while the name is still loading. */
@@ -52,6 +68,11 @@ export function MessageBubble({
   canRemove: boolean;
   onRemove: () => void;
   removing: boolean;
+  /** Somebody else's message. Never true on the reader's own. */
+  canReport: boolean;
+  /** Already handed over. The control stays, and says so, and does nothing. */
+  reported: boolean;
+  onReport: () => void;
 }) {
   const removed = message.removedAt !== null;
   // Two sentences and not one: somebody thinking better of what they said and
@@ -134,7 +155,7 @@ export function MessageBubble({
             <span className="whitespace-pre-line">{message.body}</span>
           )}
         </div>
-        {canRemove && !removed ? (
+        {removed ? null : canRemove ? (
           <button
             type="button"
             onClick={onRemove}
@@ -144,6 +165,21 @@ export function MessageBubble({
           >
             {removing ? 'Removing…' : 'Remove'}
           </button>
+        ) : canReport ? (
+          reported ? (
+            // Not a disabled button. A disabled control is read out as one and
+            // invites a second try; this is a statement of what has happened.
+            <p className="mt-0.5 font-semibold text-[0.71875rem] text-grey">Reported</p>
+          ) : (
+            <button
+              type="button"
+              onClick={onReport}
+              data-target="small"
+              className="mt-0.5 font-semibold text-[0.71875rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
+            >
+              Report
+            </button>
+          )
         ) : null}
       </div>
     </div>

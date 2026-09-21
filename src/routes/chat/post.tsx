@@ -22,6 +22,19 @@ import type { ChatAuthor, ChatPost } from '@/lib/chat/types';
  * A null author is somebody who has left the club. Their words stay and their
  * name does not, which is the owner's decision. There is nothing to link to and
  * nothing to make initials from, so the tile is the neutral one.
+ *
+ * ---------------------------------------------------------------------------
+ * One control in one slot: Remove, or Report, or nothing
+ * ---------------------------------------------------------------------------
+ * Report sits exactly where Remove sits, and never beside it. The reader can
+ * take back what they wrote; on somebody else's post they can hand it to the
+ * administrators. An administrator gets Remove on everything, which is the
+ * stronger of the two — offering them Report as well would be offering them a
+ * complaint addressed to themselves.
+ *
+ * It is a visible control and not a long-press or a swipe. Members here drive
+ * with limited hand function, a mouth stick or a head pointer, and a gesture
+ * that has to be held or dragged is a control some of them do not have.
  */
 export function Post({
   post,
@@ -31,6 +44,9 @@ export function Post({
   canRemove,
   onRemove,
   removing,
+  canReport,
+  reported,
+  onReport,
 }: {
   post: ChatPost;
   /** Null for a removed member, and also while the name is still loading. */
@@ -40,6 +56,11 @@ export function Post({
   canRemove: boolean;
   onRemove: () => void;
   removing: boolean;
+  /** Somebody else's post, which this reader cannot remove. */
+  canReport: boolean;
+  /** Already handed over. The control stays, and says so, and does nothing. */
+  reported: boolean;
+  onReport: () => void;
 }) {
   const removed = post.removedAt !== null;
 
@@ -106,7 +127,7 @@ export function Post({
         </p>
       )}
 
-      {canRemove && !removed ? (
+      {removed ? null : canRemove ? (
         <button
           type="button"
           onClick={onRemove}
@@ -116,6 +137,21 @@ export function Post({
         >
           {removing ? 'Removing…' : 'Remove'}
         </button>
+      ) : canReport ? (
+        reported ? (
+          // Not a disabled button. A disabled control is read out as one and
+          // invites a second try; this is a statement of what has happened.
+          <p className="mt-2 font-semibold text-[0.75rem] text-grey">Reported</p>
+        ) : (
+          <button
+            type="button"
+            onClick={onReport}
+            data-target="small"
+            className="mt-2 font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
+          >
+            Report
+          </button>
+        )
       ) : null}
     </article>
   );

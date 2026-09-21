@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Reports from '@/lib/chat/reports';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatMessage, ChatThread } from '@/lib/chat/types';
 import ThreadPage from '@/routes/chat/thread-page';
@@ -26,6 +27,9 @@ const db = vi.hoisted(() => ({
   sent: [] as string[],
   sendFailure: null as string | null,
   removed: [] as string[],
+  reportedMessages: new Set<string>(),
+  reports: [] as [string, string][],
+  reportFails: null as string | null,
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -65,6 +69,26 @@ vi.mock('@/lib/chat/threads', async (importOriginal) => ({
 
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () => db.authors,
+}));
+
+// Stubbed for the same reason as realtime, and the reason is not the socket:
+// `.env.local` points at the hosted project, so an unmocked *read* in a test
+// talks to production too. reportPreamble is left real — it is the promise the
+// sheet makes, and a stub of it would let this file assert its own wording.
+vi.mock('@/lib/chat/reports', async (importOriginal) => ({
+  ...(await importOriginal<typeof Reports>()),
+  useMyReports: () => ({
+    postIds: new Set<string>(),
+    messageIds: db.reportedMessages,
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
+  reportMessage: (id: string, note: string) => {
+    if (db.reportFails) return Promise.resolve({ ok: false as const, error: db.reportFails });
+    db.reports.push([id, note]);
+    return Promise.resolve({ ok: true as const, value: null });
+  },
 }));
 
 const thread = (o: Partial<ChatThread> = {}): ChatThread => ({
@@ -125,6 +149,9 @@ beforeEach(() => {
   db.sent = [];
   db.sendFailure = null;
   db.removed = [];
+  db.reportedMessages = new Set();
+  db.reports = [];
+  db.reportFails = null;
 });
 
 describe('a conversation', () => {
@@ -268,5 +295,72 @@ describe('a conversation', () => {
     db.thread = null;
     renderThread();
     expect(screen.getByText('This conversation cannot be shown.')).toBeInTheDocument();
+  });
+});
+
+describe('reporting a message', () => {
+  it('offers Report on theirs and Remove on yours, never both', () => {
+    db.messages = [message({ id: 'm1' }), message({ id: 'm2', authorId: 'me' })];
+    renderThread();
+    expect(screen.getByRole('button', { name: 'Report' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
+  it('offers an administrator the same two, because they are in this conversation as a member', () => {
+    // Unlike a topic. The thread screen has never offered an administrator
+    // anybody else's Remove — a private thread they could moderate from the
+    // inside would not be private — so Report is what they have here too.
+    db.isAdmin = true;
+    db.messages = [message({ id: 'm1' })];
+    renderThread();
+    expect(screen.getByRole('button', { name: 'Report' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+  });
+
+  it("offers nothing on a former member's message", () => {
+    db.messages = [message({ id: 'm1', authorId: null })];
+    renderThread();
+    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
+  });
+
+  it('promises that nothing else in the conversation goes with it', async () => {
+    db.messages = [message({ id: 'm1' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    const sheet = screen.getByRole('dialog', { name: 'Report this message' });
+    // The sentence a room's post does not get, and the whole point of the
+    // feature: an administrator is handed one message and no way back in.
+    expect(within(sheet).getByText(/Nothing else in this conversation does/)).toBeInTheDocument();
+    expect(db.reports).toEqual([]);
+  });
+
+  it('sends the message id and the note, and closes once it has worked', async () => {
+    db.messages = [message({ id: 'm1' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.type(screen.getByLabelText('Anything to add'), 'He will not stop.');
+    await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
+    await waitFor(() => {
+      expect(db.reports).toEqual([['m1', 'He will not stop.']]);
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('sends without a note, because demanding one is a toll', async () => {
+    db.messages = [message({ id: 'm1' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
+    await waitFor(() => {
+      expect(db.reports).toEqual([['m1', '']]);
+    });
+  });
+
+  it('says Reported on one already handed over', () => {
+    db.messages = [message({ id: 'm1' })];
+    db.reportedMessages = new Set(['m1']);
+    renderThread();
+    expect(screen.getByText('Reported')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Report/ })).toBeNull();
   });
 });

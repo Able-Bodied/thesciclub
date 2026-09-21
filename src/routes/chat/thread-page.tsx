@@ -5,9 +5,11 @@ import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/memb
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
+import { reportMessage, useMyReports } from '@/lib/chat/reports';
 import { shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
 import { Composer } from '@/routes/chat/composer';
 import { MessageBubble } from '@/routes/chat/message-bubble';
+import { ReportSheet } from '@/routes/chat/report-sheet';
 
 /**
  * One conversation: the bubbles, and the box to add to it.
@@ -44,6 +46,16 @@ import { MessageBubble } from '@/routes/chat/message-bubble';
  * readable — their words stay, anonymised, which is the owner's decision — and
  * loses its composer, because there is nobody to send to. It says so rather
  * than presenting a box that would fail.
+ *
+ * ---------------------------------------------------------------------------
+ * Reporting is the one way anything said here reaches an administrator
+ * ---------------------------------------------------------------------------
+ * They are not in this conversation and cannot read it, which is right and is
+ * what makes harassment in a direct message otherwise unactionable: the person
+ * it happened to is the only witness. Report on somebody else's bubble hands
+ * over that one message, its author and its time, and nothing else — not the
+ * thread, not the message before it, not the reply. The sheet says so before
+ * anything is sent.
  */
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
@@ -64,6 +76,9 @@ export default function ThreadPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
   const [behind, setBehind] = useState(false);
+  const reports = useMyReports();
+  /** Which message the sheet is open over, or null. One at a time. */
+  const [reportingId, setReportingId] = useState<string | null>(null);
 
   const authors = useChatAuthors([
     thread?.otherMemberId ?? null,
@@ -242,6 +257,17 @@ export default function ThreadPage() {
                   removeMessage(message.id);
                 }}
                 removing={removingId === message.id}
+                // Somebody else's, and not a former member's: a report names
+                // who wrote it, and they have already left the club.
+                canReport={
+                  message.authorId !== null &&
+                  message.authorId !== account.userId &&
+                  !message.pending
+                }
+                reported={reports.messageIds.has(message.id)}
+                onReport={() => {
+                  setReportingId(message.id);
+                }}
               />
             ))
           )}
@@ -278,6 +304,23 @@ export default function ThreadPage() {
           onSend={send}
         />
       )}
+
+      {reportingId ? (
+        <ReportSheet
+          kind="message"
+          onCancel={() => {
+            setReportingId(null);
+          }}
+          onSend={async (note) => {
+            const result = await reportMessage(reportingId, note);
+            if (!result.ok) return result.error;
+            // Read back what the database holds rather than assuming it took.
+            reports.reload();
+            setReportingId(null);
+            return null;
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -4,11 +4,13 @@ import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
+import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
 import { chatTimeLong } from '@/lib/chat/time';
 import { firstUnreadIndex, removePost, sendPost, useTopicPosts } from '@/lib/chat/topics';
 import { Composer } from '@/routes/chat/composer';
 import { Post } from '@/routes/chat/post';
+import { ReportSheet } from '@/routes/chat/report-sheet';
 
 /**
  * One topic: the question, every reply, and the box to add to it.
@@ -35,6 +37,18 @@ import { Post } from '@/routes/chat/post';
  * "3/11" counts every row, removed ones included. That is why removal is soft:
  * a post that vanished would renumber the rest for everybody reading, and every
  * "as somebody said in 4" above it would be wrong.
+ *
+ * ---------------------------------------------------------------------------
+ * Reporting
+ * ---------------------------------------------------------------------------
+ * Whoever can remove a post does not get offered Report on it — an
+ * administrator can take it down, and an author's own post is theirs. So the
+ * control is drawn on exactly the posts the reader can neither remove nor has
+ * written, and the sheet says what it will disclose before it discloses it.
+ *
+ * A former member's post is not reportable from here. A report names who wrote
+ * it, and they have already left the club, which is the furthest a report
+ * could go.
  */
 export default function TopicPage() {
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
@@ -44,6 +58,11 @@ export default function TopicPage() {
   const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
+  const reports = useMyReports();
+  // Which post the sheet is open over, or null. One at a time, and the id
+  // rather than a boolean so that the sheet cannot outlive the post it is
+  // about when a removal arrives over the wire mid-decision.
+  const [reportingId, setReportingId] = useState<string | null>(null);
 
   // Live. A reply from somebody else appears without the reader doing
   // anything, and a removal arrives as an UPDATE and redraws as the sentence
@@ -163,6 +182,15 @@ export default function TopicPage() {
                 remove(post.id);
               }}
               removing={removingId === post.id}
+              // Exactly the posts the reader can neither remove nor wrote,
+              // and not a former member's — see the header.
+              canReport={
+                !account.isAdmin && post.authorId !== null && post.authorId !== account.userId
+              }
+              reported={reports.postIds.has(post.id)}
+              onReport={() => {
+                setReportingId(post.id);
+              }}
             />
           ))}
         </div>
@@ -208,6 +236,25 @@ export default function TopicPage() {
           </div>
         </div>
       )}
+
+      {reportingId ? (
+        <ReportSheet
+          kind="post"
+          onCancel={() => {
+            setReportingId(null);
+          }}
+          onSend={async (note) => {
+            const result = await reportPost(reportingId, note);
+            if (!result.ok) return result.error;
+            // Read back what the database actually holds rather than assuming
+            // it took: the control that says "Reported" should be reporting a
+            // row, not an optimistic guess.
+            reports.reload();
+            setReportingId(null);
+            return null;
+          }}
+        />
+      ) : null}
     </div>
   );
 }

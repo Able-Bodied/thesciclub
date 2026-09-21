@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Reports from '@/lib/chat/reports';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Topics from '@/lib/chat/topics';
 import type { ChatAuthor, ChatPost, ChatRoom, ChatTopic } from '@/lib/chat/types';
@@ -17,6 +18,9 @@ const db = vi.hoisted(() => ({
   removed: [] as string[],
   sent: [] as string[],
   sendFails: null as string | null,
+  reportedPosts: new Set<string>(),
+  reports: [] as [string, string][],
+  reportFails: null as string | null,
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -64,6 +68,27 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
 
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () => db.authors,
+}));
+
+// Stubbed for the same reason as realtime, and the reason is not the socket:
+// `.env.local` points at the hosted project, so an unmocked *read* in a test
+// talks to production too. Phase 6 found two screens doing exactly that.
+// reportPreamble is deliberately left real — it is the sentence under test in
+// the sheet, and a stub of it would let this file assert its own wording.
+vi.mock('@/lib/chat/reports', async (importOriginal) => ({
+  ...(await importOriginal<typeof Reports>()),
+  useMyReports: () => ({
+    postIds: db.reportedPosts,
+    messageIds: new Set<string>(),
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
+  reportPost: (id: string, note: string) => {
+    if (db.reportFails) return Promise.resolve({ ok: false as const, error: db.reportFails });
+    db.reports.push([id, note]);
+    return Promise.resolve({ ok: true as const, value: null });
+  },
 }));
 
 const author = (o: Partial<ChatAuthor> & { id: string }): ChatAuthor => ({
@@ -128,6 +153,9 @@ beforeEach(() => {
   db.removed = [];
   db.sent = [];
   db.sendFails = null;
+  db.reportedPosts = new Set();
+  db.reports = [];
+  db.reportFails = null;
 });
 
 describe('a topic', () => {
@@ -252,5 +280,83 @@ describe('a topic', () => {
     db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
     renderTopic();
     expect(screen.getByText(/No member can see this topic yet/)).toBeInTheDocument();
+  });
+});
+
+describe('reporting a post', () => {
+  it("offers Report on somebody else's post and Remove on your own", () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
+    renderTopic();
+    // Two posts and two controls between them, not four: the reader can take
+    // back what they wrote, and hand over what somebody else did, and neither
+    // post offers both.
+    expect(screen.getAllByRole('button', { name: 'Report' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
+  });
+
+  it('offers an administrator Remove instead, not a complaint to themselves', () => {
+    db.isAdmin = true;
+    renderTopic();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
+  });
+
+  it("offers nothing on a former member's post", () => {
+    // A report names who wrote it, and they have already left the club.
+    db.posts = [post({ id: '1', authorId: null })];
+    renderTopic();
+    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+  });
+
+  it('says what will be disclosed before anything is sent', async () => {
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    const sheet = screen.getByRole('dialog', { name: 'Report this post' });
+    // The promise, and the fact that it has not happened yet.
+    expect(
+      within(sheet).getByText(/go to the club's administrators, with your name/),
+    ).toBeInTheDocument();
+    expect(within(sheet).getByText(/The person is not told/)).toBeInTheDocument();
+    expect(db.reports).toEqual([]);
+  });
+
+  it('sends the note with the report, and can be backed out of', async () => {
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(db.reports).toEqual([]);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.type(screen.getByLabelText('Anything to add'), 'Selling supplements.');
+    await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
+    await waitFor(() => {
+      expect(db.reports).toEqual([['1', 'Selling supplements.']]);
+    });
+    // The sheet goes once it has worked, and not before.
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps the sheet and the words when the report is refused', async () => {
+    db.reportFails = 'new row violates row-level security policy';
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    const note = screen.getByLabelText('Anything to add');
+    await userEvent.type(note, 'What happened.');
+    await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
+    await waitFor(() => {
+      expect(screen.getByText(/row-level security policy/)).toBeInTheDocument();
+    });
+    expect(note).toHaveValue('What happened.');
+    expect(screen.getByRole('dialog', { name: 'Report this post' })).toBeInTheDocument();
+  });
+
+  it('says Reported, inertly, on something already handed over', () => {
+    db.reportedPosts = new Set(['1']);
+    renderTopic();
+    expect(screen.getByText('Reported')).toBeInTheDocument();
+    // Not a disabled button: a disabled control reads out as one and invites a
+    // second try.
+    expect(screen.queryByRole('button', { name: /Report/ })).toBeNull();
   });
 });
