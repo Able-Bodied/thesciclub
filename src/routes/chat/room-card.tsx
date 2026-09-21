@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/types';
+import type { ChatAuthor, ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/types';
 
 /**
  * One discussion room, in the list.
@@ -34,6 +34,21 @@ import type { ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/types';
  * gets all twelve cards here, and without the chip they would have no way to
  * tell which of them a member can actually see. Found by looking at the
  * screenshot as an administrator, not by reading the policy.
+ *
+ * ---------------------------------------------------------------------------
+ * A room somebody started
+ * ---------------------------------------------------------------------------
+ * The seeded twelve came with the club and say nothing about who put them
+ * there. A room a member started says so, because the two are different kinds
+ * of room: one is a subject the club decided to have, the other is somebody
+ * asking for a place to put a problem. "Started by a former member" rather than
+ * nothing once they have left — the room outlived them, which is a fact about
+ * the room.
+ *
+ * Their tile is the first letter of the room's name instead of a glyph. There
+ * is no icon picker: every seeded glyph had to be checked in a screenshot and
+ * one of them drew as a tofu box, which is not a problem to hand to somebody
+ * who came here to ask about their shoulder.
  */
 
 const CATEGORY_STYLE: Record<RoomCategory, { border: string; icon: string; label: string }> = {
@@ -57,10 +72,14 @@ export function RoomCategoryLabel({ category }: { category: RoomCategory }) {
 
 export function RoomCard({
   room,
+  starter,
   stats,
   joined,
 }: {
   room: ChatRoom;
+  /** Who started it, for a member room. Null for the seeded twelve, for a
+      starter who has left the club, and while the name is still loading. */
+  starter?: ChatAuthor | null;
   stats: RoomStats | undefined;
   joined: boolean;
 }) {
@@ -78,7 +97,7 @@ export function RoomCard({
         aria-hidden="true"
         className={`grid h-[2.4em] w-[2.4em] flex-none place-items-center rounded-[12px] bg-tint text-[1.125rem] leading-none ${style.icon}`}
       >
-        {room.icon}
+        {room.icon ?? roomInitial(room.name)}
       </span>
       <span className="min-w-0 flex-1">
         {/* Name and chip on one wrapping row rather than the chip inline in
@@ -112,6 +131,12 @@ export function RoomCard({
           </span>
         )}
 
+        {room.createdBy ? (
+          <span className="mt-1 block text-[0.75rem] text-grey leading-[1.45]">
+            Started by {starter?.displayName ?? 'a former member'}
+          </span>
+        ) : null}
+
         {/* The chip is short enough to scan; this is what it means. Both are
             drawn, because "Closed" alone invites the reading that the room is
             finished rather than not yet started. */}
@@ -123,4 +148,15 @@ export function RoomCard({
       </span>
     </Link>
   );
+}
+
+/**
+ * The letter on a member room's tile.
+ *
+ * Decorative, like the glyphs — the room's name is printed beside it — so a
+ * name with no letter in it falls back to the same neutral dash a removed
+ * member's avatar uses rather than drawing an empty square.
+ */
+export function roomInitial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || '—';
 }

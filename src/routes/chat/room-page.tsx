@@ -8,6 +8,7 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
+import { roomInitial } from '@/routes/chat/room-card';
 import { TopicRow } from '@/routes/chat/topic-row';
 
 /**
@@ -76,8 +77,13 @@ export default function RoomPage() {
 
   const room = rooms.find((r) => r.id === roomId) ?? null;
   const sorted = useMemo(() => sortTopics(topics, sort), [topics, sort]);
-  // Every face on every row, asked for once.
-  const authors = useChatAuthors(topics.flatMap((topic) => topic.participantIds));
+  // Every face on every row, asked for once — and whoever started the room,
+  // where a member did. The seeded twelve add nothing to this list.
+  const authors = useChatAuthors([
+    ...topics.flatMap((topic) => topic.participantIds),
+    room?.createdBy ?? null,
+  ]);
+  const starter = room?.createdBy ? (authors.get(room.createdBy) ?? null) : null;
 
   if (roomsLoading) {
     return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
@@ -116,7 +122,7 @@ export default function RoomPage() {
               aria-hidden="true"
               className={`grid h-[2.4em] w-[2.4em] flex-none place-items-center rounded-[12px] bg-tint text-[1.125rem] leading-none ${CATEGORY_ICON[room.category]}`}
             >
-              {room.icon}
+              {room.icon ?? roomInitial(room.name)}
             </span>
             <span className="min-w-0 flex-1">
               <h1 className="font-extrabold font-head text-[1.125rem] text-ink leading-[1.25]">
@@ -125,6 +131,13 @@ export default function RoomPage() {
               <p className="mt-[3px] text-[0.78125rem] text-ink2 leading-[1.45]">
                 {room.description}
               </p>
+              {/* Only for a room a member started. The seeded twelve came with
+                  the club and have nobody to name. */}
+              {room.createdBy ? (
+                <p className="mt-[3px] text-[0.75rem] text-grey leading-[1.45]">
+                  Started by {starter?.displayName ?? 'a former member'}
+                </p>
+              ) : null}
               {/* Left off entirely until there is something to count, for the
                   reason room-card.tsx gives: three zeros read as a room that
                   failed rather than as one that has not started. And "open to
