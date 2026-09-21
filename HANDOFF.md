@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-18.
+Last updated 2026-09-20.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -66,7 +66,7 @@ observing the thing itself rather than by assuming the setting took:
 Check a sha with `git ls-remote --heads origin` rather than trusting one
 written here.
 
-**All three planned flows are built, and the app is live** at
+**All four surfaces are built, and the app is live** at
 https://thesciclub.netlify.app/ — see "Hosting on Netlify". Peers (deck,
 profiles, filters), onboarding + the profile survey, and Events (list, detail,
 RSVPs, organizations, series collapsing) with 125 real events ingested from
@@ -74,8 +74,13 @@ NorCal SCI's and AdaptiveRecHub's live calendars. Also: admin tools, the invite
 system, an 18+ gate, a details editor, and a three-strike system behind Good
 standing.
 
-790 tests pass. `pnpm check` and `pnpm build` are clean. **Keep them that way —
-do not commit with either failing.**
+**Chat is the fourth and is built but not deployed** — conversations, groups,
+rooms, reporting, and rooms a member starts. Its seventeen migrations are not
+on the hosted project, which is why the section below about that comes before
+anything else. See "What Chat is".
+
+1,039 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
+them that way — do not commit with either failing.**
 
 ## 70 migrations, and the seventeen Chat ones are not on the hosted project yet
 
@@ -669,130 +674,182 @@ reformats a file out from under a string-match patch made moments earlier.
 
 ---
 
-# Next up: Chat
+# What Chat is
 
-**The owner has decided to build it, on 2026-09-18.** Everything below is what a
-session starting cold needs. Read `CONTEXT.md` first anyway — the constraints
-below come from it and it is shorter than this file.
+Built 2026-09-18 to 2026-09-20, in nine phases, from `CHAT-PLAN.md` — which is
+still in the repository at the time of writing and should be deleted once this
+section is trusted. **Three source comments cite it by name** and want
+rewording when it goes: `src/routes/chat/member-picker.tsx`,
+`src/lib/chat/time.ts`, `src/routes/chat/report-sheet.tsx`, each recording a
+place where the plan was wrong and the code is right.
 
-## The decision that has just been reversed, and what survives it
+**The migrations are not on the hosted project.** See the second section of
+this file before deploying anything.
 
-CONTEXT.md lists "Topic rooms / forum" under **Deliberately deferred**, with a
-real reason: *"a room of two dozen members is empty by construction. It arrives
-when there are enough members for a room to be worth opening."* The club has
-five non-seed members. That reason has not stopped being true — the owner has
-decided to build anyway, which is their call, and **CONTEXT.md should be
-updated when the work starts** rather than left contradicting the app, the way
-it was for the house rules.
+## The three kinds of thread, and what separates them
 
-What does not change: **the placeholder pattern.** Home is still deferred, and
-`src/routes/home/page.tsx` must keep saying so. Do not let Chat drag Home in.
+`/chat` has four segments — All · Direct · Groups · Rooms — and the segment is
+in the URL (`/chat?segment=rooms`), the way `/events` does it, so a link can
+open one.
 
-The emptiness problem is a design input, not a blocker. A room with four posts
-looks abandoned; the mock hides this by being written. Worth deciding early
-whether rooms open one at a time, seeded by an administrator, or all twelve at
-once looking bare.
+| kind | who is in it | shape | privacy |
+| --- | --- | --- | --- |
+| **Direct** | two members | flat | nobody else, **including an administrator** |
+| **Group** | up to 50, or an event's attendees | flat | members of it only |
+| **Room** | every member | topics, then numbered posts | open to the club, never public |
 
-## What the mock actually specifies
+**A room is a forum and the other two are chats.** Room → topics → posts, with
+reply counts, a sort bar, and the whole history from before you joined —
+joining a room is about writing in it, not reading it. Direct and group threads
+are flat message lists.
 
-`docs/index.html` is the reference — open it, do not work from this summary
-alone. `chatPage()` is at roughly line 1577, then `roomPage`, `topicRow`,
-`topicPage`, `fpost`. The data is in `ROOMS`, `GROUPS`, `DMS` around line 818.
+**An administrator is not in a conversation.** They cannot read a thread they
+are not on the roster of, and this is deliberate and load-bearing: it is why
+reporting exists at all. The one thing they can do from outside is
+`chat_remove_message` by an id somebody hands them. So the thread screen offers
+Remove on the reader's own messages only, unlike a topic.
 
-**Three kinds of thread, one screen.** Segments: All · Direct · Groups · Rooms.
+## Seven decisions the owner made, and what each one costs
 
-| kind | shape | in the mock |
-| --- | --- | --- |
-| **Direct** | two members, flat message list | 1 (`DMS`), from Kevin welcoming a new member |
-| **Group** | named, several members, flat message list | 2 (`GROUPS`) — "Rugby crew", "South Bay meet-ups" |
-| **Room** | open to every member, *threaded* | 12 (`ROOMS`), 27 topics between them |
+1. **Realtime everywhere**, not polling — `postgres_changes` on `chat_messages`,
+   `chat_posts`, `chat_topics`, `chat_threads` and `chat_rooms`. The cost is
+   that the local stack must run `realtime`; see Environment, which no longer
+   excludes it.
+2. **Rooms open one at a time.** The twelve seeded rooms are born closed and an
+   administrator opens each from `/admin`. A member never sees a closed one; an
+   administrator sees all twelve and can post in a closed room to seed it, with
+   the card saying "No member can see this room yet". This is the answer to
+   CONTEXT.md's emptiness objection, which has not stopped being true.
+3. **Any member can start a room** (2026-09-20, the last thing built). The
+   twelve are starters rather than the limit.
+4. **A removed member's words stay, anonymised.** Their posts and messages keep
+   their text and lose their name — "Former member". What they joined and what
+   they read goes with them. `/admin`'s Remove panel says so; it used to promise
+   everything went.
+5. **Reporting, added mid-build** because decision 3 in the table above left
+   harassment in a direct message witnessed only by the person it happened to.
+   One post or one message, and nothing else about the conversation.
+6. **Soft delete only.** An author removes their own post or message, an
+   administrator removes anybody's; the row stays so numbering and replies hold,
+   and the body moves to `chat_removed_bodies` — RLS on, no policy, no grant to
+   anybody, not even an administrator through the client.
+7. **Not in this build, and no control is drawn for any of them**: editing,
+   attachments, search (the mock has a search box in the header — it is
+   deliberately absent), member-to-member blocking, push notifications,
+   anonymous posting, and any way to remove somebody else from a thread.
 
-**Rooms are a forum, not a chat.** Room → list of topics → a topic's posts.
-Numbered posts, reply counts, view counts, sort by Activity / Replies / Views.
-The mock's own comment says the shape borrows from CareCure, "which organise SCI
-life by the problem rather than by the person". Direct and group threads are
-flat; rooms are the only threaded thing.
+## The screens
 
-**The twelve rooms**, grouped by a category that colours them — Body, Life, Kit:
+`src/routes/chat/`: `/chat`, `/chat/rooms/new`, `/chat/rooms/:roomId`,
+`…/new`, `…/topics/:topicId`, `/chat/t/:threadId`, `…/members`,
+`/chat/new-group`. Plus the Message button on a profile, the group card on an
+event, the dot on the Chat tab, the five-counter row on Me, "Continue in
+<room>" under a profile's topics, and a fourth **Reports** tab on `/admin`
+beside Rooms.
 
-    Body   Bowel management · Bladder & catheters · Skin & pressure sores
-           Pain management · Aging with SCI
-    Life   Newly injured · Sex, dating & fertility · Work & school
-           Adaptive sport · Funding & benefits
-    Kit    Equipment & assistive tech · Driving & vehicles
+`src/lib/chat/`: `types`, `rooms`, `topics`, `threads`, `groups`, `reports`,
+`authors`, `unread`, `realtime`, `time`, and `routes/chat/room-map.ts`.
 
-**Joining.** `S.joined` holds room ids. A room you have not joined shows a gold
-"Join" button in the composer slot and the topic composer says "Join to reply" —
-you can read everything and post nothing. Joined rooms carry a gold chip and
-offer "+ New topic".
+## What will bite the next person
 
-**Full history from the day you join** is stated twice on screen and is a real
-decision: "Open to every member, with the whole history from before you joined.
-Nothing here is public." Whatever schema gets written should make that the easy
-case rather than the exception.
+Each of these was found by running something, not by reading it.
 
-**ROOM_MAP** (near line 1041) maps topic regexes to rooms — "Continue in Bowel
-management" appears under a matching profile topic or Home question. It is the
-same shape as `src/routes/peers/topics.ts`, which already groups the free-text
-topics and would be the place to reuse rather than re-derive.
+- **A `security definer` function has RLS off inside it, so it must check
+  visibility itself.** The first draft of `chat_topics_for` leaned on the
+  `chat_rooms` select policy through a subquery — correct inside a *policy*,
+  where RLS applies to the tables the policy names, and meaningless inside a
+  definer function, where the same expression quietly means "a room that
+  exists". `chat_room_is_readable`, `chat_can_post_in` and `is_thread_member`
+  are the three gates; call one. `chat_my_threads` is the exception and only
+  because it is `security invoker`.
+- **Insert is granted column by column, never on the table.** A whole-table
+  grant lets a member choose `created_at` — a message dated next year sits at
+  the top of both lists forever — and `reply_count`, `last_post_at`,
+  `removed_at`. **RLS cannot take any of those back**: it is a predicate over
+  the finished row and every one of those rows passes it. The consequence is
+  that an insert must name exactly the granted columns or fail with
+  `permission denied for column`, which is the right failure and a loud one.
+- **`now()` is the transaction's start, so two rows written together share it.**
+  `chat_messages.created_at`, `chat_mark_thread_read` and every roster row
+  `chat_create_group` writes use `clock_timestamp()` instead. Without it "the
+  last message" is whichever row the planner returns first, and a new group's
+  "oldest membership first" is no order at all — two reads listed the same four
+  people differently. **Anything later that writes several rows in one
+  transaction and then orders by their timestamp has this bug until it does the
+  same.**
+- **A parameter named after a column is ambiguous inside plpgsql.** Three times:
+  `admin_set_room_open(is_open)`, `chat_create_group(group_name, member_ids)`,
+  `chat_report_post(report_note)` / `admin_resolve_chat_report(report_resolution)`.
+  PostgREST sends arguments by name, so the client spells these out.
+- **`unread` is not "newer than I last looked".** By that rule a thread goes
+  bold the moment *you* speak in it. It is: a message newer than you last
+  looked **that somebody else wrote**, defined once in `chat_my_threads` and
+  built on by `chat_unread_count`.
+- **A new table is not live until it is in the publication, and
+  `chat_thread_members` is deliberately out of it.** A roster on the wire is the
+  membership list that `20260918030000` spends a paragraph keeping private.
+  Somebody added to a group finds out on their next list read.
+- **`unique (lower(name))` did not stop "SHOULDER   pain" beside "Shoulder
+  pain"** — the extra spaces make a different string. Whitespace is collapsed
+  before storing, in `chat_create_room` and mirrored by `normalizeRoomName`.
+- **A volatile function in a `where` clause runs after the select policy's
+  barrier qual.** `where t.id = chat_join_event_group(…)` returned nothing: the
+  policy filtered the rows before the function created the one being looked
+  for. Call it into a `\gset` variable first.
+- **"Exactly one of `post_id` and `message_id`" cannot be a check constraint.**
+  Every FK on `chat_reports` is SET NULL, so deleting a post nulls the report's
+  `post_id` — and a check demanding one be set would refuse that update and
+  block the delete. `kind` is the discriminator instead. Anything later that
+  keeps a snapshot of a row it does not own has this shape.
+- **A count of zero is not drawn**, anywhere: no "0 topics · 0 posts", no empty
+  nav badge. Found in a screenshot.
+- **An avatar is never its own link.** A link whose only content is an image or
+  two initials has no accessible name — a screen reader reaches it and says
+  "link, N". The profile link goes on the name and the tile beside it is
+  `aria-hidden`.
+- **`pnpm shoot` cannot see below the fold.** The shell is `h-dvh` with an inner
+  scroller, so `--full` captures one viewport. The new-room form and the Start a
+  room button are both under it, and a one-off Playwright script that scrolls
+  the inner container was needed to look at them. If anything touches
+  `shoot.mjs`, a `--scroll` flag is the thing to add.
 
-## What the app already has that this should not reinvent
+## Components that must not be written twice
 
-- **`browse_members`** is the member list, and it excludes anybody with
-  `show_in_browse = false`. A chat surface naming members has to decide whether
-  a hidden member is messageable. They are still a member; they chose not to be
-  *found*. Probably: not listed as a person to start a conversation with, but
-  visible inside a thread they posted in.
-- **`RequireMember`** and `suspended-screen.tsx` already gate the shell. A
-  paused member should almost certainly read and not post — the pattern
-  `event_rsvps` uses, where active membership is required to write and not to
-  withdraw.
-- **`src/components/filter-sheet-shell.tsx`** is the shared sheet. The segment
-  pill row on Peers and Events is the same control twice; a third copy is the
-  thing to avoid.
-- **`member_strikes`** exists and "repeating outside a room what was said in it"
-  is one of the four things that ends a membership — it is already in the house
-  rules, and rooms are what it is about. Reporting a post is not in the mock and
-  is worth asking about before building.
+- **`src/components/member-avatar.tsx`** — `MemberAvatar`,
+  `FormerMemberAvatar`, `GroupAvatar`, and `AttendeeAvatar` as a wrapper. Four
+  things in one file; do not add a fifth elsewhere. A null author's tile is a
+  dash, a member room's is the first letter of its name.
+- **`SegmentPills`** — the segment row on Peers, Events and Chat, and the room
+  sort bar. Not a fourth kind of pill.
+- **`src/routes/chat/composer.tsx`** — takes `sendOnEnter`, true in a thread and
+  false in a topic.
+- **`src/routes/chat/report-sheet.tsx`** — the sheet to copy where
+  `FilterSheetShell` does not fit, which is anywhere the footer is the moment
+  something happens rather than Clear and Apply over filters already applied.
+- **`SmallButton` and `ReasonField`** live in `src/routes/admin/controls.tsx`.
+- **`src/lib/chat/time.ts`** — today `9:30am`, last six days `Mon`, older
+  `12 Sep`, another year `12 Sep 2025`. The viewer's zone, not the writer's,
+  which is the opposite of `events/format.ts` and right for the same reason
+  that one is.
 
-## The decisions worth settling before writing schema
+## One question for the owner
 
-1. **Realtime or polling.** The local stack currently excludes `realtime`, and
-   nothing in the app uses it. A forum does not need it; direct messages feel
-   broken without it. That choice shapes the table design and the local start
-   command both.
-2. **What a room's "full history" means for RLS.** Every member reads every
-   post in every room is the simplest policy and matches the mock. Direct
-   messages are the opposite and need a participants table.
-3. **Deletion.** `event_rsvps` and `event_dismissals` cascade on member delete,
-   and `/admin`'s Remove panel names what goes. A removed member's *posts* are a
-   harder question than their RSVPs — a thread with holes in it is worse than
-   one with a removed name — and whatever is decided has to be said on that
-   panel, which currently promises everything goes.
-4. **Moderation.** There is none anywhere in the app. Strikes are issued by hand
-   from `/admin` and that may be enough to start.
-
-## How to work on it
-
-Read **"Conventions that are load-bearing"** above before the first commit. The
-ones that will bite on a feature this size:
-
-- **A view's own security check can break a caller who is not its audience.**
-- **A SQL probe run as the superuser proves nothing about RLS.** Every new
-  policy needs a probe in `supabase/tests/` run as a signed-in role, and every
-  expected refusal needs its own savepoint.
-- **Watch for tests that pass by not running.** Eight instances are recorded in
-  this file. Two of the most recent were a whole-module `vi.mock` hiding a
-  missing export, and a storage probe that could not reach storage.
-- **Look at what you changed.** `pnpm shoot <route>` — every layout problem in
-  this project was found by eye.
+**"Fill your last room before starting another" is not a rate limit**, and the
+plan called it one. A room is born with its first topic and nothing in this
+build deletes a topic — no delete policy, no delete grant, and removing a
+member nulls an author rather than dropping the row. So the rule cannot fire
+today; it is a latch for the day something does delete one, and the probe has
+to empty a room as the superuser to reach it. Somebody who writes a real topic
+each time can start as many rooms as they like. If that ever needs a cap it is
+a separate decision with a number in it.
 
 ---
 
-# Next up after Chat: the owner's call
+# Next up: the owner's call
 
-Chat is queued and has its own section above. The app is live, the database is
-fully migrated, and the ingest is running current code.
+Chat is built and has its own section above; **its seventeen migrations still
+have to be pushed, and that is the owner's word to give.** The app is live and
+the ingest is running current code.
 
 **One question is open and it is not a coding one.** The 29 "Staying Driven
 Wheelchair Fitness" events have no format — NorCal SCI's own page never says
@@ -814,11 +871,11 @@ Things that are real, wanted, and nobody has asked for yet:
   29 grouped topics, capped at 24 by frequency, so a rare one-person topic
   cannot be *ticked*. Reachable by typing it, unreachable as a filter.
 
-**Chat has been asked for — see "Next up: Chat" above.** Home has not.
+**Chat is done — see "What Chat is" above.** Home has not been asked for.
 **Do not build Home without asking.** It is deliberately deferred in CONTEXT.md
 and says so on screen; the mock renders it convincingly, which is the trap
-rather than the mandate. Building Chat is not permission to drag Home in with
-it.
+rather than the mandate. Chat shipping is not permission to drag Home in
+behind it.
 
 ## What this session changed, in one place
 
@@ -1428,14 +1485,20 @@ link to a list.
 Home stays deferred, says plainly that it is not built rather than showing
 invented content, and **that is to be kept**. The reasoning is in CONTEXT.md.
 
-Chat was in the same position and the owner has since asked for it. See
-"Next up: Chat".
+Chat was in the same position until 2026-09-18 and is built now. See
+"What Chat is". Home is the only placeholder left.
 
-## 6. Messaging does not exist
+## 6. ~~Messaging does not exist~~ — built
 
-Several surfaces say so in words rather than offering dead buttons — the
-official account profile in particular. **Keep that pattern.** A button that
-silently does nothing is worse than a sentence explaining where things stand.
+It does now: direct conversations, groups and rooms. The official account's
+"messaging is not switched on yet" sentence is gone and a Message button stands
+where it was; an event's "group chat is coming" card is a real group.
+
+**The pattern those sentences came from is still the rule**, and Chat kept it
+for the things it does not do. A surface says so in words rather than offering
+a dead button. A button that silently does nothing is worse than a sentence
+explaining where things stand — which is why Chat has no search box, no
+attachment control and no way to edit a message, rather than greyed-out ones.
 
 ## Smaller things noticed but not fixed
 
