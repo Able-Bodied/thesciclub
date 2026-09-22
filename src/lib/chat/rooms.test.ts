@@ -12,6 +12,7 @@ import {
   useChatRooms,
 } from '@/lib/chat/rooms';
 import type { ChatRoom, RoomStats } from '@/lib/chat/types';
+import { UPDATING_FAILURE } from '@/lib/describe-error';
 
 /**
  * Only `@/lib/supabase` is stubbed — the module under test is the real one.
@@ -22,7 +23,7 @@ import type { ChatRoom, RoomStats } from '@/lib/chat/types';
 
 const db = vi.hoisted(() => ({
   rows: [] as Record<string, unknown>[],
-  error: null as { message: string } | null,
+  error: null as { code?: string; message: string } | null,
   rpcCalls: [] as [string, Record<string, unknown>][],
   rpcData: null as string | null,
   rpcError: null as { message: string } | null,
@@ -151,14 +152,19 @@ describe('reading the rooms', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('reports the database refusal verbatim and shows no rooms', async () => {
-    db.error = { message: 'relation "public.chat_rooms" does not exist' };
+  // A database that predates the table is schema drift, and a member should
+  // read that the club is being updated — never the relation's name.
+  it('reports the database refusal as a sentence and shows no rooms', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    db.error = { code: '42P01', message: 'relation "public.chat_rooms" does not exist' };
     const { result } = renderHook(() => useChatRooms());
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
     expect(result.current.rooms).toEqual([]);
-    expect(result.current.error).toBe('relation "public.chat_rooms" does not exist');
+    expect(result.current.error).toBe(UPDATING_FAILURE);
+    expect(consoleError).toHaveBeenCalledWith(db.error);
+    consoleError.mockRestore();
   });
 });
 

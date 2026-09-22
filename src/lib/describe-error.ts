@@ -170,6 +170,19 @@ export function describeError(error: Failure, context?: string | ErrorContext): 
   return message;
 }
 
+/**
+ * The same, for whatever a `catch` caught. supabase-js returns its failures
+ * rather than throwing, so what lands here is a `TypeError` from fetch, an
+ * `AbortError`, or something that is not an `Error` at all.
+ */
+export function describeThrown(thrown: unknown, context?: string | ErrorContext): string {
+  if (thrown instanceof Error) return describeError(thrown, context);
+  return unknown(
+    { message: String(thrown) },
+    typeof context === 'string' ? { attempt: context } : (context ?? {}),
+  );
+}
+
 function checkConstraint(message: string, ctx: ErrorContext): string {
   const name = CHECK.exec(message)?.[1];
   const own = name ? ctx.constraints?.[name] : undefined;

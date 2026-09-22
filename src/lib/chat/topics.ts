@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -34,7 +36,7 @@ import { getSupabase } from '@/lib/supabase';
  */
 interface Result<T> {
   data: T | null;
-  error: { message: string } | null;
+  error: Failure | null;
 }
 
 interface TopicRow {
@@ -156,7 +158,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
       if (aborted()) return;
       if (failure) {
         setTopics([]);
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load the topics.'));
         setLoading(false);
         return;
       }
@@ -166,7 +168,7 @@ export function useRoomTopics(roomId: string | undefined): RoomTopicsState {
     } catch (e) {
       if (aborted()) return;
       setTopics([]);
-      setError(e instanceof Error ? e.message : 'Could not load the topics.');
+      setError(describeThrown(e, 'Could not load the topics.'));
       setLoading(false);
     }
   }, [roomId]);
@@ -261,7 +263,7 @@ export function useTopicPosts(
 
       const failure = topics.error ?? postRows.error;
       if (failure) {
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load the topic.'));
         setLoading(false);
         return;
       }
@@ -288,7 +290,7 @@ export function useTopicPosts(
       if (found) void supabase.rpc('chat_mark_topic_read', { topic: topicId });
     } catch (e) {
       if (aborted()) return;
-      setError(e instanceof Error ? e.message : 'Could not load the topic.');
+      setError(describeThrown(e, 'Could not load the topic.'));
       setLoading(false);
     }
   }, [roomId, topicId, memberId]);
@@ -327,10 +329,37 @@ export async function createTopic(
     body,
     attachments,
   })) as Result<string>;
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'The topic was not created.',
+        constraints: {
+          chat_topics_title_check: 'A title is up to 140 characters.',
+          chat_posts_check:
+            'A topic needs some words or a photograph, and at most 4,000 characters.',
+          chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
+        },
+      }),
+    };
+  }
   if (!data) return { ok: false, error: 'The topic was not created.' };
   return { ok: true, value: data };
 }
+
+/**
+ * What the row can be refused for, in the composer's words. The policy is
+ * the membership, the room and whether the topic is still open; the two
+ * constraints are the row's own shape, which the composer already stops.
+ */
+const POST_REFUSALS = {
+  attempt: 'Your reply was not posted.',
+  refused: 'You cannot post in this room.',
+  constraints: {
+    chat_posts_check: 'A reply needs some words or a photograph, and at most 4,000 characters.',
+    chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
+  },
+};
 
 /** Post a reply. The insert policy is what decides; this only asks. */
 export async function sendPost(
@@ -344,7 +373,7 @@ export async function sendPost(
     .insert({ topic_id: topicId, author_id: authorId, body, attachments })
     .select(POST_COLUMNS)
     .single()) as Result<PostRow>;
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, POST_REFUSALS) };
   if (!data) return { ok: false, error: 'The post was not saved.' };
   return { ok: true, value: toPost(data) };
 }
@@ -355,6 +384,6 @@ export async function sendPost(
  */
 export async function removePost(postId: string): Promise<ChatWriteResult<null>> {
   const { error } = await getSupabase().rpc('chat_remove_post', { post: postId });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'The post was not removed.') };
   return { ok: true, value: null };
 }

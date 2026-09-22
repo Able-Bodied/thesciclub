@@ -7,6 +7,7 @@ import {
   type RoomCategory,
   type RoomStats,
 } from '@/lib/chat/types';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -121,7 +122,7 @@ export function useChatRooms(): ChatRoomsState {
         // A database that predates 20260918020000 has no such table, and the
         // screen should lose its rooms rather than its page.
         setRooms([]);
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load the rooms.'));
         setLoading(false);
         return;
       }
@@ -131,7 +132,7 @@ export function useChatRooms(): ChatRoomsState {
     } catch (e) {
       if (aborted()) return;
       setRooms([]);
-      setError(e instanceof Error ? e.message : 'Could not load the rooms.');
+      setError(describeThrown(e, 'Could not load the rooms.'));
       setLoading(false);
     }
   }, []);
@@ -167,7 +168,7 @@ export async function setRoomOpen(
     room: roomId,
     is_open: open,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'The room was not changed.') };
   return { ok: true };
 }
 
@@ -324,8 +325,22 @@ export async function createRoom(
     room_category: category,
     topic_title: topicTitle.trim(),
     topic_body: topicBody.trim(),
-  })) as { data: string | null; error: { message: string } | null };
-  if (error) return { ok: false, error: error.message };
+  })) as { data: string | null; error: Failure | null };
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'The room was not started.',
+        // The function checks the name itself and says so in a sentence; the
+        // index is behind it for two members starting the same room at once.
+        duplicate: 'There is already a room with that name.',
+        constraints: {
+          chat_topics_title_check: 'The first topic needs a title of up to 140 characters.',
+          chat_posts_check: 'The first post needs some words, and at most 4,000 characters.',
+        },
+      }),
+    };
+  }
   if (!data) return { ok: false, error: 'The room was not started.' };
   return { ok: true, value: data };
 }
@@ -388,7 +403,7 @@ export function useRoomMembership(): RoomMembershipState {
         // A database that predates 20260918030000 has no such table, and a
         // screen that reads this should lose a button rather than a page.
         setJoined(new Set());
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load which rooms you are in.'));
         setLoading(false);
         return;
       }
@@ -443,11 +458,21 @@ export function useRoomMembership(): RoomMembershipState {
             return;
           }
           undo();
-          setError(failure.message);
+          setError(
+            describeError(
+              failure,
+              wasJoined ? 'You are still in the room.' : 'You did not join the room.',
+            ),
+          );
         })
         .catch((e: unknown) => {
           undo();
-          setError(e instanceof Error ? e.message : 'That did not work.');
+          setError(
+            describeThrown(
+              e,
+              wasJoined ? 'You are still in the room.' : 'You did not join the room.',
+            ),
+          );
         });
     },
     [memberId, joined],

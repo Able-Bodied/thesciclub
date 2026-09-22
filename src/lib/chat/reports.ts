@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import type { ChatWriteResult } from '@/lib/chat/threads';
 import type { ChatReport } from '@/lib/chat/types';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -31,7 +32,7 @@ import { getSupabase } from '@/lib/supabase';
 
 interface Result<T> {
   data: T | null;
-  error: { message: string } | null;
+  error: Failure | null;
 }
 
 /**
@@ -73,6 +74,17 @@ export function reportPreamble(kind: 'post' | 'message'): string {
   return "This message, who wrote it and when go to the club's administrators, with your name. Nothing else in this conversation does. The person is not told.";
 }
 
+/**
+ * The function refuses in its own sentences — your own message, one you
+ * cannot see — and those pass through. What is left is the row: one report
+ * per member per post (the unique index) and the note's length.
+ */
+const REPORT_REFUSALS = {
+  attempt: 'Your report was not sent.',
+  duplicate: 'You have already reported that.',
+  constraints: { chat_reports_note_check: 'A note is up to 500 characters.' },
+};
+
 /** Hand one room post over. The database decides; this only asks. */
 export async function reportPost(postId: string, note: string): Promise<ChatWriteResult<null>> {
   const { error } = await getSupabase().rpc('chat_report_post', {
@@ -83,7 +95,7 @@ export async function reportPost(postId: string, note: string): Promise<ChatWrit
     // name. See 20260918150000.
     report_note: note.trim(),
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, REPORT_REFUSALS) };
   return { ok: true, value: null };
 }
 
@@ -96,7 +108,7 @@ export async function reportMessage(
     message: messageId,
     report_note: note.trim(),
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, REPORT_REFUSALS) };
   return { ok: true, value: null };
 }
 
@@ -154,7 +166,7 @@ export function useMyReports(): MyReportsState {
       if (failure) {
         setPostIds(new Set());
         setMessageIds(new Set());
-        setError(failure.message);
+        setError(describeError(failure, 'Could not read what you have reported.'));
         setLoading(false);
         return;
       }
@@ -167,7 +179,7 @@ export function useMyReports(): MyReportsState {
       setLoading(false);
     } catch (e) {
       if (aborted()) return;
-      setError(e instanceof Error ? e.message : 'Could not read what you have reported.');
+      setError(describeThrown(e, 'Could not read what you have reported.'));
       setLoading(false);
     }
   }, [memberId]);
@@ -251,7 +263,7 @@ export function useAdminReports(): AdminReportsState {
       >;
       if (failure) {
         setReports([]);
-        setError(failure.message);
+        setError(describeError(failure, 'Could not read the reports.'));
         setLoading(false);
         return;
       }
@@ -259,7 +271,7 @@ export function useAdminReports(): AdminReportsState {
       setError(null);
       setLoading(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read the reports.');
+      setError(describeThrown(e, 'Could not read the reports.'));
       setLoading(false);
     }
   }, [admin]);
@@ -329,6 +341,14 @@ export async function resolveReport(
     // column on the table the function writes.
     report_resolution: resolution.trim(),
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'The report was not resolved.',
+        constraints: { chat_reports_resolution_check: 'A resolution is up to 500 characters.' },
+      }),
+    };
+  }
   return { ok: true, value: null };
 }

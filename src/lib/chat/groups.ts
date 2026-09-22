@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatWriteResult } from '@/lib/chat/threads';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -38,7 +39,7 @@ import { getSupabase } from '@/lib/supabase';
 
 interface Result<T> {
   data: T | null;
-  error: { message: string } | null;
+  error: Failure | null;
 }
 
 /**
@@ -87,7 +88,15 @@ export async function createGroup(
     group_name: name.trim(),
     member_ids: memberIds,
   })) as Result<string>;
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'The group was not started.',
+        constraints: { chat_threads_name_check: 'A group needs a name of up to 60 characters.' },
+      }),
+    };
+  }
   if (!data) return { ok: false, error: 'The group was not started.' };
   return { ok: true, value: data };
 }
@@ -101,7 +110,7 @@ export async function addToGroup(
     thread: threadId,
     new_member: memberId,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'They were not added.') };
   return { ok: true, value: null };
 }
 
@@ -123,7 +132,7 @@ export async function leaveGroup(
     .delete()
     .eq('thread_id', threadId)
     .eq('member_id', memberId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'You are still in the group.') };
   return { ok: true, value: null };
 }
 
@@ -138,7 +147,7 @@ export async function joinEventGroup(eventId: string): Promise<ChatWriteResult<s
   const { data, error } = (await getSupabase().rpc('chat_join_event_group', {
     event: eventId,
   })) as Result<string>;
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'The group chat was not opened.') };
   if (!data) return { ok: false, error: 'The group chat was not opened.' };
   return { ok: true, value: data };
 }
@@ -185,7 +194,7 @@ export function useThreadRoster(threadId: string | undefined): ThreadRosterState
       if (aborted()) return;
       if (failure) {
         setMemberIds([]);
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load who is in this group.'));
         setLoading(false);
         return;
       }
@@ -195,7 +204,7 @@ export function useThreadRoster(threadId: string | undefined): ThreadRosterState
     } catch (e) {
       if (aborted()) return;
       setMemberIds([]);
-      setError(e instanceof Error ? e.message : 'Could not load who is in this group.');
+      setError(describeThrown(e, 'Could not load who is in this group.'));
       setLoading(false);
     }
   }, [threadId]);

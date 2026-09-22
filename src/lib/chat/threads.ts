@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
-import { deleteAttachments } from '@/lib/chat/attachments';
+import { deleteAttachments, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import type { ChatMessage, ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -49,7 +50,7 @@ import { getSupabase } from '@/lib/supabase';
  */
 interface Result<T> {
   data: T | null;
-  error: { message: string } | null;
+  error: Failure | null;
 }
 
 interface ThreadRow {
@@ -187,7 +188,7 @@ export function useMyThreads(): MyThreadsState {
         // A database that predates 20260918090000 has no such function, and the
         // screen should lose its list rather than its page.
         setThreads([]);
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load your conversations.'));
         setLoading(false);
         return;
       }
@@ -197,7 +198,7 @@ export function useMyThreads(): MyThreadsState {
     } catch (e) {
       if (aborted()) return;
       setThreads([]);
-      setError(e instanceof Error ? e.message : 'Could not load your conversations.');
+      setError(describeThrown(e, 'Could not load your conversations.'));
       setLoading(false);
     }
   }, []);
@@ -280,7 +281,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
 
       const failure = threads.error ?? messageRows.error;
       if (failure) {
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load the conversation.'));
         setLoading(false);
         return;
       }
@@ -307,7 +308,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
       }
     } catch (e) {
       if (aborted()) return;
-      setError(e instanceof Error ? e.message : 'Could not load the conversation.');
+      setError(describeThrown(e, 'Could not load the conversation.'));
       setLoading(false);
     }
   }, [threadId]);
@@ -410,10 +411,26 @@ export async function openDirect(memberId: string): Promise<ChatWriteResult<stri
   const { data, error } = (await getSupabase().rpc('chat_open_direct', {
     other: memberId,
   })) as Result<string>;
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'The conversation was not opened.') };
   if (!data) return { ok: false, error: 'The conversation was not opened.' };
   return { ok: true, value: data };
 }
+
+/**
+ * What the row can be refused for, in the composer's words. The policy is
+ * the membership and the thread; the two constraints are the row's own shape.
+ * The composer stops the length and the count before sending, so reaching
+ * either here means a second tab or an older build got past it.
+ */
+const MESSAGE_REFUSALS = {
+  attempt: 'Your message was not sent.',
+  refused: 'You cannot write in this conversation.',
+  constraints: {
+    chat_messages_check:
+      'A message needs some words or a photograph, and at most 4,000 characters.',
+    chat_messages_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one message.`,
+  },
+};
 
 /** Say something. The insert policy is what decides; this only asks. */
 export async function sendMessage(
@@ -430,7 +447,7 @@ export async function sendMessage(
     .insert({ thread_id: threadId, author_id: authorId, body, attachments })
     .select(MESSAGE_COLUMNS)
     .single()) as Result<MessageRow>;
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, MESSAGE_REFUSALS) };
   if (!data) return { ok: false, error: 'The message was not sent.' };
   return { ok: true, value: toMessage(data) };
 }
@@ -441,6 +458,6 @@ export async function sendMessage(
  */
 export async function removeMessage(messageId: string): Promise<ChatWriteResult<null>> {
   const { error } = await getSupabase().rpc('chat_remove_message', { message: messageId });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'The message was not removed.') };
   return { ok: true, value: null };
 }
