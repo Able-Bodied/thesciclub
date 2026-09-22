@@ -86,10 +86,9 @@ describe('PeersPage', () => {
     expect(screen.getByText('1 of 3 members')).toBeInTheDocument();
   });
 
-  // matchesSearch has read across the bio, the topics and the rest since the
-  // deck was built. Nothing could reach it: the page had a chip to clear a
-  // search and no way to start one, so the whole of it was unreachable code.
-  it('searches past the name, into what somebody can be asked about', async () => {
+  // Names only, from the first letter: the deck has to move on the first
+  // keystroke, and place, level and topics are the filter sheet's job.
+  it('narrows the deck by name as you type', async () => {
     state.current = {
       members: [
         makeMember({ id: '1', displayName: 'Nicole', topics: ['SmartDrive'] }),
@@ -100,7 +99,7 @@ describe('PeersPage', () => {
       signedOut: false,
     };
     renderPage();
-    await userEvent.type(screen.getByRole('searchbox'), 'smartdrive');
+    await userEvent.type(screen.getByRole('searchbox'), 'n');
     expect(screen.getByText('Nicole')).toBeInTheDocument();
     expect(screen.queryByText('Todd')).not.toBeInTheDocument();
   });

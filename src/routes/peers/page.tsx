@@ -140,11 +140,11 @@ export default function PeersPage() {
               onChange={(e) => {
                 setFilters((f) => ({ ...f, search: e.target.value }));
               }}
-              // Named for what it searches, not "Search". The field reads the
-              // bio and the topics as well as the name, and somebody who
-              // assumes it only matches names will not type "SmartDrive".
-              aria-label="Search members by name, place, level or what they can be asked about"
-              placeholder="Search members"
+              // Names only; place, level and topics are the filter's. Said in
+              // the placeholder so nobody types "SmartDrive" here and reads
+              // an empty deck as nobody having mentioned it.
+              aria-label="Search members by name"
+              placeholder="Search by name"
               // The webkit cancel button is suppressed because `type="search"`
               // draws one of its own, and with the ✕ below there were two
               // clears side by side. `type` stays `search` rather than `text`:

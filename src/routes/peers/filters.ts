@@ -7,16 +7,12 @@
  *
  * The filters are the ones members actually reach for in an SCI community:
  * region of injury, city, and the topics somebody is willing to be asked about.
- * Search is deliberately broad — it reads across name, place, level, topics,
- * interests and the free-text bio, because somebody searching "SmartDrive" or
- * "Mitrofanoff" is looking for a person who mentioned it anywhere, not for a
- * field we decided in advance was the searchable one.
- *
- * Broad, but it matches the *start of a word*, and for the first two letters
- * only the start of a name. Typed one letter at a time, "a" is somewhere in
- * every bio, so a substring search left the deck exactly as it was and the
- * box looked broken (owner, 2026-09-21). "A" now shows the members whose
- * name starts with A, and the deck moves on the first keystroke.
+ * Search is names only (owner, 2026-09-21). It used to read across place,
+ * level, topics, interests and the bio as well, on the argument that somebody
+ * typing "SmartDrive" wants whoever mentioned it anywhere — but typed one
+ * letter at a time, "a" is somewhere in every bio, the deck never moved, and
+ * the box looked broken. Place, level and topics are what the filter sheet
+ * is for; the box finds a person by name and moves on the first keystroke.
  */
 
 import { canonicalTopicsOf } from '@/routes/peers/topics';
@@ -40,9 +36,6 @@ export function toggleFilter<K extends 'regions' | 'cities' | 'topics'>(
   return { ...filters, [key]: next };
 }
 
-/** How many letters before the search reads past the name. */
-const BROAD_FROM = 3;
-
 /** Whether `q` begins a word somewhere in `text`. Both already lowercased. */
 function beginsAWord(text: string, q: string): boolean {
   let at = text.indexOf(q);
@@ -53,31 +46,11 @@ function beginsAWord(text: string, q: string): boolean {
   return false;
 }
 
+/** The start of any word of the name: "an" finds Mary Ann, "ry" finds nobody. */
 function matchesSearch(member: BrowseMember, search: string): boolean {
   const q = search.trim().toLowerCase();
   if (!q) return true;
-  if (beginsAWord(member.displayName.toLowerCase(), q)) return true;
-  if (q.length < BROAD_FROM) return false;
-  const haystack = [
-    member.displayName,
-    member.city,
-    member.state,
-    member.levelRange,
-    member.exactLevel,
-    member.completeness,
-    member.fieldOfWork,
-    member.education,
-    member.bio,
-    member.detail,
-    ...member.topics,
-    ...member.interests,
-    ...member.selfCare,
-    ...member.affiliations,
-  ]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-  return beginsAWord(haystack, q);
+  return beginsAWord(member.displayName.toLowerCase(), q);
 }
 
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {

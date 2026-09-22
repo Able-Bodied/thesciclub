@@ -133,46 +133,39 @@ describe('search', () => {
   const deck = [
     makeMember({ displayName: 'Nicole', bio: 'Mostly manual chair; SmartDrive to travel.' }),
     makeMember({ displayName: 'Vicki', selfCare: ['Colostomy'], bio: 'Power chair.' }),
+    makeMember({ displayName: 'Ajay', city: 'San Jose' }),
+    makeMember({ displayName: 'Mary Ann', topics: ['Adaptive sport'] }),
   ];
+  const names = (search: string) =>
+    filterMembers(deck, { ...none, search }, 'everyone').map((m) => m.displayName);
 
-  it('finds a term in the free-text bio, not just in indexed fields', () => {
-    expect(filterMembers(deck, { ...none, search: 'smartdrive' }, 'everyone')).toHaveLength(1);
-  });
-
-  it('searches self-care, which is what people actually look for', () => {
-    const found = filterMembers(deck, { ...none, search: 'colostomy' }, 'everyone');
-    expect(found.map((m) => m.displayName)).toEqual(['Vicki']);
-  });
-
-  it('is case insensitive and ignores surrounding whitespace', () => {
-    expect(filterMembers(deck, { ...none, search: '  NICOLE ' }, 'everyone')).toHaveLength(1);
-  });
-
-  it('an empty search matches everyone', () => {
-    expect(filterMembers(deck, { ...none, search: '   ' }, 'everyone')).toHaveLength(2);
-  });
-
-  // The first keystroke has to move the deck. "a" is in every bio, so as a
-  // substring it matched everyone and the box looked broken.
-  it('one or two letters match only the start of a name', () => {
-    const wide = [
-      ...deck,
-      makeMember({ displayName: 'Ajay', bio: 'Nothing about chairs.' }),
-      makeMember({ displayName: 'Mary Ann', bio: 'Also nothing.' }),
-    ];
-    const names = (search: string) =>
-      filterMembers(wide, { ...none, search }, 'everyone').map((m) => m.displayName);
+  // The first keystroke has to move the deck: "a" is somewhere in every bio,
+  // so a search across everything left all of them in place and looked broken.
+  it('matches the start of a name, from the first letter', () => {
     expect(names('a')).toEqual(['Ajay', 'Mary Ann']);
     expect(names('an')).toEqual(['Mary Ann']);
     expect(names('v')).toEqual(['Vicki']);
-    // Two letters that begin no name find nobody, even though "po" is in "Power".
-    expect(names('po')).toEqual([]);
   });
 
-  it('matches the start of a word, not the middle of one', () => {
-    expect(filterMembers(deck, { ...none, search: 'smart' }, 'everyone')).toHaveLength(1);
-    expect(filterMembers(deck, { ...none, search: 'drive' }, 'everyone')).toHaveLength(0);
-    expect(filterMembers(deck, { ...none, search: 'power chair' }, 'everyone')).toHaveLength(1);
+  it('matches the start of a word of the name, not the middle of one', () => {
+    expect(names('ry')).toEqual([]);
+  });
+
+  // Place, level, topics and the bio are the filter sheet's job. The box
+  // reading them too is what made it look as if it did nothing.
+  it('reads the name only, not the bio, self-care, city or topics', () => {
+    expect(names('smartdrive')).toEqual([]);
+    expect(names('colostomy')).toEqual([]);
+    expect(names('san jose')).toEqual([]);
+    expect(names('adaptive')).toEqual([]);
+  });
+
+  it('is case insensitive and ignores surrounding whitespace', () => {
+    expect(names('  NICOLE ')).toEqual(['Nicole']);
+  });
+
+  it('an empty search matches everyone', () => {
+    expect(names('   ')).toHaveLength(4);
   });
 });
 
