@@ -11,6 +11,12 @@
  * interests and the free-text bio, because somebody searching "SmartDrive" or
  * "Mitrofanoff" is looking for a person who mentioned it anywhere, not for a
  * field we decided in advance was the searchable one.
+ *
+ * Broad, but it matches the *start of a word*, and for the first two letters
+ * only the start of a name. Typed one letter at a time, "a" is somewhere in
+ * every bio, so a substring search left the deck exactly as it was and the
+ * box looked broken (owner, 2026-09-21). "A" now shows the members whose
+ * name starts with A, and the deck moves on the first keystroke.
  */
 
 import { canonicalTopicsOf } from '@/routes/peers/topics';
@@ -34,9 +40,24 @@ export function toggleFilter<K extends 'regions' | 'cities' | 'topics'>(
   return { ...filters, [key]: next };
 }
 
+/** How many letters before the search reads past the name. */
+const BROAD_FROM = 3;
+
+/** Whether `q` begins a word somewhere in `text`. Both already lowercased. */
+function beginsAWord(text: string, q: string): boolean {
+  let at = text.indexOf(q);
+  while (at !== -1) {
+    if (at === 0 || !/[\p{L}\p{N}]/u.test(text[at - 1] ?? '')) return true;
+    at = text.indexOf(q, at + 1);
+  }
+  return false;
+}
+
 function matchesSearch(member: BrowseMember, search: string): boolean {
   const q = search.trim().toLowerCase();
   if (!q) return true;
+  if (beginsAWord(member.displayName.toLowerCase(), q)) return true;
+  if (q.length < BROAD_FROM) return false;
   const haystack = [
     member.displayName,
     member.city,
@@ -56,7 +77,7 @@ function matchesSearch(member: BrowseMember, search: string): boolean {
     .filter(Boolean)
     .join(' ')
     .toLowerCase();
-  return haystack.includes(q);
+  return beginsAWord(haystack, q);
 }
 
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {

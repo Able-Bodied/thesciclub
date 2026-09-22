@@ -151,6 +151,29 @@ describe('search', () => {
   it('an empty search matches everyone', () => {
     expect(filterMembers(deck, { ...none, search: '   ' }, 'everyone')).toHaveLength(2);
   });
+
+  // The first keystroke has to move the deck. "a" is in every bio, so as a
+  // substring it matched everyone and the box looked broken.
+  it('one or two letters match only the start of a name', () => {
+    const wide = [
+      ...deck,
+      makeMember({ displayName: 'Ajay', bio: 'Nothing about chairs.' }),
+      makeMember({ displayName: 'Mary Ann', bio: 'Also nothing.' }),
+    ];
+    const names = (search: string) =>
+      filterMembers(wide, { ...none, search }, 'everyone').map((m) => m.displayName);
+    expect(names('a')).toEqual(['Ajay', 'Mary Ann']);
+    expect(names('an')).toEqual(['Mary Ann']);
+    expect(names('v')).toEqual(['Vicki']);
+    // Two letters that begin no name find nobody, even though "po" is in "Power".
+    expect(names('po')).toEqual([]);
+  });
+
+  it('matches the start of a word, not the middle of one', () => {
+    expect(filterMembers(deck, { ...none, search: 'smart' }, 'everyone')).toHaveLength(1);
+    expect(filterMembers(deck, { ...none, search: 'drive' }, 'everyone')).toHaveLength(0);
+    expect(filterMembers(deck, { ...none, search: 'power chair' }, 'everyone')).toHaveLength(1);
+  });
 });
 
 describe('toggleFilter', () => {
