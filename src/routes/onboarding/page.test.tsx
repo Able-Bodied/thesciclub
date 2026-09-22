@@ -201,12 +201,16 @@ describe('joining', () => {
     expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
   });
 
-  it('surfaces a verification failure instead of advancing', async () => {
+  // GoTrue's wording for a wrong or stale code, verbatim. A person reads a
+  // sentence about the code, not one about a token.
+  it('surfaces a verification failure as a sentence instead of advancing', async () => {
     calls.verifyError = 'Token has expired or is invalid';
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByText('Token has expired or is invalid')).toBeInTheDocument();
+    expect(
+      await screen.findByText('That code is not right, or it has expired. Ask for a new one.'),
+    ).toBeInTheDocument();
     expect(screen.getByPlaceholderText('000000')).toBeInTheDocument();
   });
 

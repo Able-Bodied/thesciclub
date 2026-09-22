@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
+import { describeError } from '@/lib/describe-error';
 import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
@@ -105,7 +106,7 @@ export default function OnboardingPage() {
     const { error: otpError } = await getSupabase().auth.signInWithOtp({ phone });
     setBusy(false);
     if (otpError) {
-      setError(otpError.message);
+      setError(describeError(otpError, 'The code was not sent.'));
       return;
     }
     setStep('code');
@@ -129,7 +130,7 @@ export default function OnboardingPage() {
     });
     if (verifyError) {
       setBusy(false);
-      setError(verifyError.message);
+      setError(describeError(verifyError, 'That code was not accepted.'));
       return;
     }
 
@@ -149,7 +150,7 @@ export default function OnboardingPage() {
     const statusResult = await supabase.rpc('my_invite_status').single();
     setBusy(false);
     if (statusResult.error) {
-      setError(statusResult.error.message);
+      setError(describeError(statusResult.error, 'Could not check whether you are on the list.'));
       return;
     }
 
