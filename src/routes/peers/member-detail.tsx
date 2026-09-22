@@ -148,12 +148,18 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <>
+    // `flow-root`, so the heading and what is under it move past the floated
+    // picture together. As loose siblings, a heading whose line landed in the
+    // float's last few pixels sat beside the photograph while its chips, a
+    // block, dropped below it at full width — "Interests" in one column and
+    // Cycling · Volunteering in the other. One block is placed beside the
+    // float or below it, never both.
+    <div className="flow-root">
       <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title}
       </h2>
       {children}
-    </>
+    </div>
   );
 }
 
