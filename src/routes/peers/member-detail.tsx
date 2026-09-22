@@ -432,7 +432,7 @@ export default function MemberDetailPage() {
             </Section>
 
             {verifier ? (
-              <Section title="Also a member of">
+              <Section title="Member of">
                 {member.affiliations.map((org) => (
                   <div
                     key={org}
