@@ -143,7 +143,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
     <button
       type="button"
       onClick={onOpen}
-      className="relative block h-[424px] w-full overflow-hidden rounded-[26px] text-left shadow-[0_10px_26px_rgba(10,20,35,.18)]"
+      className="relative block h-[400px] w-full overflow-hidden rounded-[26px] text-left shadow-[0_10px_26px_rgba(10,20,35,.18)]"
       style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
     >
       {/* The initials sit behind the photo, so a photo that fails to load

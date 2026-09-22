@@ -125,8 +125,11 @@ export default function PeersPage() {
             unreachable. The chip is gone with this: an input that holds the
             words and carries its own ✕ says everything the chip said, in the
             place somebody looks to change it. */}
+        {/* Full width on a phone; on a wider shell the field is capped and
+            centred, because a search box the width of three cards reads as a
+            banner rather than as somewhere to type. */}
         <div className="mx-auto w-full max-w-[1100px] pt-2.5">
-          <div className="relative">
+          <div className="relative mx-auto md:max-w-[520px]">
             <Search
               className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-[16px] w-[16px] text-grey"
               strokeWidth={2}
@@ -209,7 +212,11 @@ export default function PeersPage() {
               {/* The columns follow the shell, not the viewport. At `sm` the deck went
                   two-up while the shell was still capped at 480px, so two cards shared
                   a phone-width column and every name wrapped. */}
-              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 xl:grid-cols-3">
+              {/* Above `md` the columns fill by width rather than by breakpoint:
+                  as many 300px cards as fit. Fixed counts left a ~1000px window
+                  with two cards nearly 500px wide each, which is a poster, not
+                  a deck. */}
+              <div className="grid grid-cols-1 gap-3.5 md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
                 {visible.map((member) => (
                   <MemberCard
                     key={member.id}
