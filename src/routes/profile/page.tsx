@@ -189,7 +189,7 @@ export default function ProfileSurveyPage() {
   // measured pixels of empty canvas between the last answer and Continue, and
   // this flow asks twelve questions in a row.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas lg:h-auto lg:min-h-dvh">
+    <main className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas lg:h-auto lg:min-h-dvh">
       <div className="flex-none px-[18px] pt-4">
         <div className="flex min-h-[30px] items-center justify-between gap-3">
           {index > 0 ? (
@@ -328,7 +328,7 @@ export default function ProfileSurveyPage() {
           ) : null}
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
 

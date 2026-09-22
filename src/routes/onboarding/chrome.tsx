@@ -37,55 +37,57 @@ export function StepFrame({
      * of eight screens. It also tells a phone keyboard to show Go rather than a
      * newline, which is the same fix in a different place.
      */
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-      className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas"
-    >
-      {stepNumber === null ? (
-        <div className="h-11 flex-none" />
-      ) : (
-        <div className="flex-none px-[18px] pt-4">
-          <div className="flex items-center justify-between">
-            <span className="font-bold text-[0.78125rem] text-navy tracking-wide">
-              THE SCI CLUB
-            </span>
-            <span className="text-[0.78125rem] text-grey">
-              Step {stepNumber} of {totalSteps}
-            </span>
-          </div>
-          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
-            <div
-              className="h-full rounded-full bg-navy transition-[width] duration-300"
-              style={{ width: `${(stepNumber / totalSteps) * 100}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="flex-1 overflow-y-auto px-[18px] pb-3">
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="-ml-1.5 mt-2 inline-flex items-center gap-0.5 py-2 font-semibold text-[0.875rem] text-navy"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </button>
+    <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        {stepNumber === null ? (
+          <div className="h-11 flex-none" />
         ) : (
-          <div className="h-4" />
+          <div className="flex-none px-[18px] pt-4">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-[0.78125rem] text-navy tracking-wide">
+                THE SCI CLUB
+              </span>
+              <span className="text-[0.78125rem] text-grey">
+                Step {stepNumber} of {totalSteps}
+              </span>
+            </div>
+            <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
+              <div
+                className="h-full rounded-full bg-navy transition-[width] duration-300"
+                style={{ width: `${(stepNumber / totalSteps) * 100}%` }}
+              />
+            </div>
+          </div>
         )}
-        {children}
-        <div className="h-4" />
-      </div>
 
-      <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
-        {footer}
-      </footer>
-    </form>
+        <div className="flex-1 overflow-y-auto px-[18px] pb-3">
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="-ml-1.5 mt-2 inline-flex items-center gap-0.5 py-2 font-semibold text-[0.875rem] text-navy"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back
+            </button>
+          ) : (
+            <div className="h-4" />
+          )}
+          {children}
+          <div className="h-4" />
+        </div>
+
+        <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
+          {footer}
+        </footer>
+      </form>
+    </main>
   );
 }
 

@@ -33,7 +33,7 @@ export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
   const vouchers = organizations.filter((organization) => organization.canInvite);
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+    <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="flex-1 overflow-y-auto px-[18px] pt-12">
         <div className="grid h-14 w-14 place-items-center rounded-[18px] bg-gold-lt text-gold-dp">
           <ShieldCheck className="h-6 w-6" />
@@ -93,6 +93,6 @@ export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
           Try another number
         </button>
       </footer>
-    </div>
+    </main>
   );
 }

@@ -9,7 +9,7 @@ import { ClubMark } from '@/components/club-mark';
  */
 export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSignIn: () => void }) {
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+    <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="flex flex-1 flex-col justify-center overflow-y-auto px-[22px] py-8">
         <div className="flex justify-center">
           <ClubMark size={126} />
@@ -51,6 +51,6 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
           Members only. Nothing inside the club is public.
         </p>
       </footer>
-    </div>
+    </main>
   );
 }

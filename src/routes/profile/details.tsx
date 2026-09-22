@@ -153,243 +153,245 @@ export default function ProfileDetailsPage() {
   return (
     // A form, so Enter saves — the same as onboarding. Somebody who learns the
     // key works there will try it here.
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (!saving && !loading && details && isAdult(details.birthDate)) submit();
-      }}
-      className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas"
-    >
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-4 pb-3">
-        <button
-          type="button"
-          onClick={() => {
-            void navigate('/me');
-          }}
-          className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Me
-        </button>
-        <h1 className="mt-1 font-extrabold font-head text-[1.4375rem] text-ink tracking-[-0.02em]">
-          Your details
-        </h1>
-      </header>
+    <main className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!saving && !loading && details && isAdult(details.birthDate)) submit();
+        }}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        <header className="flex-none border-line border-b bg-paper px-[18px] pt-4 pb-3">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate('/me');
+            }}
+            className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Me
+          </button>
+          <h1 className="mt-1 font-extrabold font-head text-[1.4375rem] text-ink tracking-[-0.02em]">
+            Your details
+          </h1>
+        </header>
 
-      <div className="flex-1 overflow-y-auto px-[18px] py-4">
-        {loading ? (
-          <p className="py-10 text-center text-[0.875rem] text-grey">Loading…</p>
-        ) : !details ? (
-          <p className="py-10 text-center text-[0.875rem] text-ink2">{error}</p>
-        ) : (
-          <>
-            <Field
-              label="Photo"
-              declined={details.declined.includes('photo')}
-              onToggleDecline={() => {
-                toggleDecline('photo');
-              }}
-            >
-              <div className="flex items-center gap-3.5">
-                <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-navy border-dashed bg-paper">
-                  {photo ? (
-                    <img src={photo} alt="" className="h-full w-full object-cover" />
+        <div className="flex-1 overflow-y-auto px-[18px] py-4">
+          {loading ? (
+            <p className="py-10 text-center text-[0.875rem] text-grey">Loading…</p>
+          ) : !details ? (
+            <p className="py-10 text-center text-[0.875rem] text-ink2">{error}</p>
+          ) : (
+            <>
+              <Field
+                label="Photo"
+                declined={details.declined.includes('photo')}
+                onToggleDecline={() => {
+                  toggleDecline('photo');
+                }}
+              >
+                <div className="flex items-center gap-3.5">
+                  <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-navy border-dashed bg-paper">
+                    {photo ? (
+                      <img src={photo} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="font-extrabold font-head text-[1.5rem] text-navy">+</span>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) onPhoto(file);
+                      }}
+                    />
+                  </label>
+                  {details.photoPath ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!account.userId) return;
+                        void removePhoto(account.userId).then(() => {
+                          set({ photoPath: null });
+                        });
+                      }}
+                      className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
+                    >
+                      Remove
+                    </button>
                   ) : (
-                    <span className="font-extrabold font-head text-[1.5rem] text-navy">+</span>
+                    <span className="text-[0.78125rem] text-grey leading-[1.45]">
+                      Without one, your card is made from your initials.
+                    </span>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) onPhoto(file);
-                    }}
-                  />
-                </label>
-                {details.photoPath ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!account.userId) return;
-                      void removePhoto(account.userId).then(() => {
-                        set({ photoPath: null });
-                      });
-                    }}
-                    className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
-                  >
-                    Remove
-                  </button>
-                ) : (
-                  <span className="text-[0.78125rem] text-grey leading-[1.45]">
-                    Without one, your card is made from your initials.
-                  </span>
-                )}
-              </div>
-            </Field>
+                </div>
+              </Field>
 
-            <Field label="Name" htmlFor="d-name">
-              <Input
-                id="d-name"
-                value={details.displayName}
-                onChange={(v) => {
-                  set({ displayName: v });
-                }}
-              />
-            </Field>
+              <Field label="Name" htmlFor="d-name">
+                <Input
+                  id="d-name"
+                  value={details.displayName}
+                  onChange={(v) => {
+                    set({ displayName: v });
+                  }}
+                />
+              </Field>
 
-            <Field label="Birthday" htmlFor="d-birthday">
-              <Input
-                id="d-birthday"
-                type="date"
-                max={latestAdultBirthDate()}
-                value={details.birthDate}
-                onChange={(v) => {
-                  set({ birthDate: v });
-                }}
-              />
-              {!isAdult(details.birthDate) ? (
-                <p className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
-                  The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than that.
-                </p>
-              ) : age !== null ? (
-                <p className="mt-1.5 text-[0.75rem] text-grey">
-                  Members see {age}, never the date itself.
-                </p>
-              ) : null}
-            </Field>
+              <Field label="Birthday" htmlFor="d-birthday">
+                <Input
+                  id="d-birthday"
+                  type="date"
+                  max={latestAdultBirthDate()}
+                  value={details.birthDate}
+                  onChange={(v) => {
+                    set({ birthDate: v });
+                  }}
+                />
+                {!isAdult(details.birthDate) ? (
+                  <p className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
+                    The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than that.
+                  </p>
+                ) : age !== null ? (
+                  <p className="mt-1.5 text-[0.75rem] text-grey">
+                    Members see {age}, never the date itself.
+                  </p>
+                ) : null}
+              </Field>
 
-            <Field
-              label="Level of injury"
-              htmlFor="d-level"
-              declined={details.declined.includes('exactLevel')}
-              onToggleDecline={() => {
-                toggleDecline('exactLevel');
-              }}
-            >
-              <Select
-                id="d-level"
-                value={details.exactLevel ?? ''}
-                onChange={(v) => {
-                  set({ exactLevel: (v || null) as MemberDetails['exactLevel'] });
+              <Field
+                label="Level of injury"
+                htmlFor="d-level"
+                declined={details.declined.includes('exactLevel')}
+                onToggleDecline={() => {
+                  toggleDecline('exactLevel');
                 }}
               >
-                <option value="">Not set</option>
-                {EXACT_LEVELS.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-              </Select>
-              {details.exactLevel && details.exactLevel !== 'Do not know' ? (
-                <p className="mt-1.5 text-[0.75rem] text-grey">
-                  Browsed under {rangeForExact(details.exactLevel)}.
-                </p>
-              ) : null}
-            </Field>
+                <Select
+                  id="d-level"
+                  value={details.exactLevel ?? ''}
+                  onChange={(v) => {
+                    set({ exactLevel: (v || null) as MemberDetails['exactLevel'] });
+                  }}
+                >
+                  <option value="">Not set</option>
+                  {EXACT_LEVELS.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </Select>
+                {details.exactLevel && details.exactLevel !== 'Do not know' ? (
+                  <p className="mt-1.5 text-[0.75rem] text-grey">
+                    Browsed under {rangeForExact(details.exactLevel)}.
+                  </p>
+                ) : null}
+              </Field>
 
-            <Field label="Complete or incomplete">
-              <div className="flex flex-wrap gap-2">
-                {COMPLETENESS.map((c) => (
-                  <Chip
-                    key={c}
-                    selected={details.completeness === c}
-                    onClick={() => {
-                      set({ completeness: c });
-                    }}
-                  >
-                    {c}
-                  </Chip>
-                ))}
-              </div>
-            </Field>
+              <Field label="Complete or incomplete">
+                <div className="flex flex-wrap gap-2">
+                  {COMPLETENESS.map((c) => (
+                    <Chip
+                      key={c}
+                      selected={details.completeness === c}
+                      onClick={() => {
+                        set({ completeness: c });
+                      }}
+                    >
+                      {c}
+                    </Chip>
+                  ))}
+                </div>
+              </Field>
 
-            <Field
-              label="When were you injured?"
-              htmlFor="d-injury"
-              declined={details.declined.includes('injuryDate')}
-              onToggleDecline={() => {
-                toggleDecline('injuryDate');
-              }}
-            >
-              <Input
-                id="d-injury"
-                type="date"
-                value={details.injuryDate ?? ''}
-                onChange={(v) => {
-                  set({
-                    injuryDate: v || null,
-                    // Editing here gives a full date, so the precision follows.
-                    injuryDatePrecision: v ? 'day' : null,
-                  });
-                }}
-              />
-              {details.injuryDatePrecision === 'year' && details.injuryDate ? (
-                <p className="mt-1.5 text-[0.75rem] text-grey">
-                  You gave {details.injuryDate.slice(0, 4)} only. Changing this records an exact
-                  date.
-                </p>
-              ) : null}
-            </Field>
-
-            <Field
-              label="State"
-              htmlFor="d-state"
-              declined={details.declined.includes('state')}
-              onToggleDecline={() => {
-                toggleDecline('state');
-              }}
-            >
-              <Select
-                id="d-state"
-                value={details.state}
-                onChange={(v) => {
-                  set({ state: v });
+              <Field
+                label="When were you injured?"
+                htmlFor="d-injury"
+                declined={details.declined.includes('injuryDate')}
+                onToggleDecline={() => {
+                  toggleDecline('injuryDate');
                 }}
               >
-                {US_STATES.map(([code, name]) => (
-                  <option key={code} value={code}>
-                    {name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+                <Input
+                  id="d-injury"
+                  type="date"
+                  value={details.injuryDate ?? ''}
+                  onChange={(v) => {
+                    set({
+                      injuryDate: v || null,
+                      // Editing here gives a full date, so the precision follows.
+                      injuryDatePrecision: v ? 'day' : null,
+                    });
+                  }}
+                />
+                {details.injuryDatePrecision === 'year' && details.injuryDate ? (
+                  <p className="mt-1.5 text-[0.75rem] text-grey">
+                    You gave {details.injuryDate.slice(0, 4)} only. Changing this records an exact
+                    date.
+                  </p>
+                ) : null}
+              </Field>
 
-            <Field
-              label="City or town"
-              htmlFor="d-city"
-              declined={details.declined.includes('city')}
-              onToggleDecline={() => {
-                toggleDecline('city');
-              }}
-            >
-              <Input
-                id="d-city"
-                value={details.city ?? ''}
-                onChange={(v) => {
-                  set({ city: v });
+              <Field
+                label="State"
+                htmlFor="d-state"
+                declined={details.declined.includes('state')}
+                onToggleDecline={() => {
+                  toggleDecline('state');
                 }}
-              />
-            </Field>
+              >
+                <Select
+                  id="d-state"
+                  value={details.state}
+                  onChange={(v) => {
+                    set({ state: v });
+                  }}
+                >
+                  {US_STATES.map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
 
-            <div className="h-4" />
-          </>
-        )}
-      </div>
+              <Field
+                label="City or town"
+                htmlFor="d-city"
+                declined={details.declined.includes('city')}
+                onToggleDecline={() => {
+                  toggleDecline('city');
+                }}
+              >
+                <Input
+                  id="d-city"
+                  value={details.city ?? ''}
+                  onChange={(v) => {
+                    set({ city: v });
+                  }}
+                />
+              </Field>
 
-      <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
-        {error && details ? (
-          <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
-        ) : null}
-        <button
-          type="submit"
-          disabled={saving || loading || !details || !isAdult(details.birthDate)}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-navy-hi disabled:opacity-40 disabled:hover:bg-navy"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
-        </button>
-      </footer>
-    </form>
+              <div className="h-4" />
+            </>
+          )}
+        </div>
+
+        <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
+          {error && details ? (
+            <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={saving || loading || !details || !isAdult(details.birthDate)}
+            className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-navy-hi disabled:opacity-40 disabled:hover:bg-navy"
+          >
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
+          </button>
+        </footer>
+      </form>
+    </main>
   );
 }
 
