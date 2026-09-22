@@ -183,6 +183,32 @@ describe('the chat screen', () => {
     expect(within(row).getByText('The seat took three fittings.')).toBeInTheDocument();
   });
 
+  // Tapping Message on a profile makes the thread before anything is said in
+  // it. Until somebody says something, the other person is not "in your
+  // chats"; tapping Message again reopens the same thread.
+  it('leaves out a conversation nobody has spoken in', () => {
+    db.threads = [thread({ id: 'th1', lastBody: null, lastAuthorId: null, lastAt: null })];
+    renderPage();
+    expect(screen.queryByRole('link', { name: /Jan/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/No conversations yet/)).toBeInTheDocument();
+  });
+
+  it('lists a group from the moment it is made, spoken in or not', () => {
+    db.threads = [
+      thread({
+        id: 'g1',
+        kind: 'group',
+        name: 'Saturday ride',
+        otherMemberId: null,
+        lastBody: null,
+        lastAuthorId: null,
+        lastAt: null,
+      }),
+    ];
+    renderPage();
+    expect(screen.getByRole('link', { name: /Saturday ride/ })).toBeInTheDocument();
+  });
+
   it('names the speaker in a group, where the row is not already titled with it', () => {
     db.threads = [thread({ id: 'g1', kind: 'group', name: 'Saturday ride', otherMemberId: null })];
     renderPage();

@@ -102,8 +102,17 @@ export default function ChatPage() {
 
   // Direct conversations and groups share a table and a row, and the segments
   // are the two halves of it. `all` is both.
+  //
+  // A direct conversation nobody has spoken in is not listed — the owner's
+  // call, 2026-09-21: tapping Message on a profile and leaving without a word
+  // must not put that person in the list. The row is still in the database,
+  // and `chat_open_direct` re-selects it by direct_key, so tapping Message
+  // again lands in the same thread. A group is listed from the moment it is
+  // made: somebody named it and chose who is in it, which is already a thing.
   const conversations = threads.filter(
-    (thread) => segment === 'all' || thread.kind === (segment === 'direct' ? 'direct' : 'group'),
+    (thread) =>
+      (segment === 'all' || thread.kind === (segment === 'direct' ? 'direct' : 'group')) &&
+      (thread.kind !== 'direct' || thread.lastAt !== null),
   );
 
   const authors = useChatAuthors(
