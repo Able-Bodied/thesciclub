@@ -931,88 +931,92 @@ decision with a number in it, and not one to guess now.
 
 ---
 
-# Next up: errors that read as sentences
+# Errors read as sentences now — built 2026-09-21
 
-**The owner's next job, decided 2026-09-21.** Too many refusals reach a member
-as the database's own words — `new row for relation "chat_messages" violates
-check constraint "chat_messages_check"`, `permission denied for column
-created_at`, `Could not find the function public.chat_my_threads without
-parameters in the schema cache` — and a member who reads one of those reads
-the app as broken rather than as having said no.
+**Done.** Refusals used to reach a member as the database's own words —
+`new row for relation "chat_messages" violates check constraint
+"chat_messages_check"`, `Could not find the function public.chat_my_threads
+without parameters in the schema cache` — and a member who read one of those
+read the app as broken rather than as having said no. Now every read hook and
+write helper hands the **error object** to `describeError(error, context)` in
+`src/lib/describe-error.ts` before it becomes a string, because that is the
+last place it still carries its `code`. 53 helper sites, 21 route-level
+`catch` blocks, and onboarding's three sign-in paths. The only raw text left
+on a screen is `/dev-login`, deliberately — it is a developer's screen.
 
-## The shape of it, counted
+## How it sorts
 
-- **69 places** hand `error.message` / `failure.message` straight to the
-  screen (`grep -rn "error\.message\|failure\.message" src`). **53** of them
-  are the write and read helpers in `src/lib/` and `src/routes/*/…-api.ts`
-  returning `{ ok: false, error: error.message }` — which is where the fix
-  goes, because that is the last place the error still carries its **`code`**
-  (the SQLSTATE, or a `PGRST…` code). Once it is a string the code is gone.
-- **30** `{failure}` / `{error}` renders in `src/routes`, and **41** hand-written
-  fallbacks ("Could not load…", "That did not work.") for when there is no
-  message at all. Those are fine; they are what the raw ones should become.
-- **Two translators already exist and are the pattern**:
-  `describeFailure(code, message)` in `src/routes/invites/mentor-invites.ts`,
-  keyed on SQLSTATE (23505 → "That number is already on the club's list",
-  42501 → "You have used all N of your invites"), and `describeUploadFailure`
-  in `src/lib/chat/attachments.ts`, keyed on the storage API's wording. Two
-  local ones are the sign that one shared one is owed.
+- **Ours pass through untouched.** `P0001` (plpgsql's default — 102 of the
+  159 raises), `P0002`, `22023`, and a `42501` whose message does *not* say
+  "row-level security" ("Not an administrator"). The 18+ trigger's sentence
+  reaches the join screen as it is.
+- **The database's and PostgREST's are sorted by code**: a policy (`42501` +
+  "row-level security") → the screen's `refused` sentence or "You cannot do
+  that here."; a check constraint (`23514`) → the screen's sentence for that
+  constraint **by name** (`constraints: { chat_posts_attachments_check: … }`)
+  or a general one; the unique index (`23505`) → `duplicate`; `PGRST116` and
+  `23503` → `missing`; schema drift (`PGRST202`/`PGRST205`/`42883`/`42P01`/
+  `42703`) → "The club is being updated. Try again in a minute." with the raw
+  body in the console; a missing grant (`42501` + "permission denied for
+  table/column/function") → generic, loud in the console, because it is a bug.
+- **Storage** ("mime type … is not supported", "exceeded the maximum allowed
+  size") and **GoTrue** (`otp_expired` / "Token has expired or is invalid",
+  `over_sms_send_rate_limit`) are keyed on their own codes and wording; they
+  carry no SQLSTATE.
+- **Offline** — supabase-js hands back `{ code: '', message: 'TypeError:
+  Failed to fetch' }` rather than throwing; a `catch` sees the bare TypeError.
+  Both read "You are offline."
+- **Unknown code** → "Something went wrong. Try again in a minute." plus
+  `console.error(raw)`. **No code and no recognisable phrase** → passed
+  through, since PostgREST always sends a code and a bare message is a
+  sentence somebody wrote (a test fixture's, usually).
 
-## Two kinds of message, and only one needs translating
+`context` is either the attempt sentence ("Your reply was not posted.") or
+`{ attempt, refused, duplicate, missing, constraints }`. The attempt leads the
+translated sentence and is dropped when the message is one of ours, which is
+already whole. `describeThrown(e, context)` is the same for a `catch`.
 
-**Ours.** 159 `raise exception '…'` sentences across the migrations, every one
-already prose — "Only an active member can start a room.", "Fill your last
-room before starting another. Shoulder pain has nothing in it yet.", "You
-cannot report your own message. Remove it instead." **These must pass
-through untouched**; they are the good case, and a translator that flattens
-them into "Something went wrong" would be a regression. 57 carry an errcode
-(30 × `P0002`, 21 × `42501`, 6 × `22023`); **102 carry none and arrive as
-`P0001`**, which is the plpgsql default. So `P0001` means "one of ours".
+## What the strings are, and where they came from
 
-**The database's and PostgREST's.** These are the ones to catch, by code:
+Every string in `describe-error.test.ts` was provoked on the local stack and
+copied out — PostgREST bodies with curl and a minted JWT, the psql ones as
+`set local role authenticated`. Two things that would have been wrong from
+memory: naming `created_at` in an insert through PostgREST says `permission
+denied for **table** chat_messages`, not `for column` (psql says column; the
+regex takes both); and `PGRST116`'s message is "Cannot coerce the result to a
+single JSON object", with the row count in `details`.
 
-| code | what happened | what the member should read |
-| --- | --- | --- |
-| `23514` | a check constraint — too long, empty, five photographs, a bad category | depends on the screen; the constraint name in the message says which (`chat_messages_attachments_check`) |
-| `23505` | unique — a room name taken, a number already listed | "already there" in the screen's own words; the invites screen shows how |
-| `42501` with `row-level security` in the message | an insert/update policy refused — paused, not joined, room closed | "You cannot do that here" — **but** `42501` is *also* the code our own `raise … using errcode = '42501'` sentences carry, so key on the phrase, not the code alone |
-| `42501` with `permission denied for column` | the client named a column insert is not granted on — a bug, not a member's doing | generic, and loud in the console |
-| `PGRST116` | `.single()` on zero or many rows | "not there any more" |
-| `PGRST202` / `PGRST205` / `42883` / `42P01` / `42703` | schema drift — the client is ahead of the database (or behind), which is exactly the state this file's first section warns about | "The club is being updated. Try again in a minute." — never the raw text, which names tables |
-| `TypeError: Failed to fetch`, `AbortError` | no network, or the tab left | "You are offline" / nothing |
-| storage `mime type … not supported`, `exceeded the maximum allowed size` | the bucket refused a file | attachments.ts already does these |
-| auth: `Invalid login credentials`, `Token has expired`, `over_email_send_rate_limit` | sign-in | onboarding has its own sentences; check they cover the OTP paths |
+## The proof it is wired, not only written
 
-## The shape of the fix
+A pure function's test is a test of strings. The wiring was checked twice:
 
-One function, `describeError(error, context?)` in `src/lib/describe-error.ts`,
-called at the 53 sites **before** the error becomes a string, with a `context`
-that says what was being attempted so the sentence can ("Your reply was not
-posted." rather than "Error"). Pass-through for `P0001`/`P0002`/`22023` and
-for a `42501` whose message does not mention row-level security; the table
-above for the rest; a generic sentence plus `console.error(raw)` for anything
-unknown, so the raw text is not lost, only not shown. Unit-test it with the
-**real strings** — copy them out of the probe logs in `supabase/tests/` and out
-of a browser console, not from memory; three of the four in the first
-paragraph of this section were checked against a live refusal.
+- **Sabotage.** `describeError` made to return a marker: the onboarding screen
+  test failed with the marker in the rendered DOM, and the rooms hook and two
+  write helpers with it. Restored before the commit.
+- **Live**, against the local stack with the dev server on 5183: a wrong OTP
+  reads "That code is not right, or it has expired. Ask for a new one." on the
+  real join screen; `chat_my_threads` renamed for a minute put "The club is
+  being updated." under the conversations list with the `PGRST202` body in
+  the console. The function was renamed back and checked.
 
-Three traps, all already recorded elsewhere in this file and all live here:
+## What is left, and the traps
 
-- **The same action fails two different ways.** Invites: the cap and the
-  unique index refuse the same insert with different codes, so "refused"
-  cannot be read as one thing — see "The invite system". Chat has the same
-  shape in several places (a topic in a closed room: policy *or* our own
-  sentence, depending on the path).
-- **Onboarding's birthday.** A row the 18+ trigger refuses "reaches the member
-  as a sentence about a trigger" — that is the oldest instance of this bug
-  and is in "Onboarding is two required questions, then a door".
-- **The no-network guard.** Tests cannot reach a database, so a test of the
-  translator is a test of strings. That is fine for a pure function; it is
-  not a proof that the sites call it. Sabotage once: make it return a marker
-  and watch a screen test show the marker.
-
-Do not touch the migrations for this. The sentences in them are right; the
-work is on the client, in one file plus 53 one-line call sites.
+- **The two local translators are gone.** `describeFailure` in
+  mentor-invites keeps its name and its two sentences but takes the error
+  object and delegates; `describeUploadFailure` in attachments went, its
+  wording now in the shared one.
+- **A screen that learns a new constraint names it.** The general sentence
+  for `23514` ("Something in it is not allowed: too long, blank, or too many
+  of one thing.") is honest but vague; the constraint name in the message
+  says which, and the fix is one line in that helper's `constraints`.
+  `pg_constraint` on the local stack lists them all.
+- **The same action still fails two ways** — that is what the `refused` /
+  `duplicate` split is for. A room's `chat_create_room` says "There is already
+  a room called X" itself (P0001) and the index behind it is only for two
+  members racing; both are named in `createRoom`.
+- **Tests that mock an error with no code** get phrase-sorting: `{ message:
+  'relation "…" does not exist' }` reads as drift. Give a fixture a `code`
+  when the test is about the code.
 
 # Next up: the owner's call
 
@@ -1407,9 +1411,10 @@ Three things it turned up that were not obvious from reading the policies:
 - **The same action fails two different ways.** With the allowance full, a
   number already on the list is refused by the *cap* and never reaches
   `invites_live_phone_idx`. So "refused" cannot be read as "that number is
-  taken" — `describeFailure` in `src/routes/invites/mentor-invites.ts` keys on
-  the SQLSTATE, and the wrong sentence would appear exactly when a mentor was
-  already confused.
+  taken" — `describeFailure` in `src/routes/invites/mentor-invites.ts` gives
+  `describeError` a sentence for each (the policy and the unique index are
+  different codes), and the wrong sentence would appear exactly when a mentor
+  was already confused.
 - **A revoked invite cannot be brought back to pending**, which is the one way
   round the cap worth checking — withdraw, spend the freed slot, then
   resurrect the withdrawn row and hold three. The update policy only matches
