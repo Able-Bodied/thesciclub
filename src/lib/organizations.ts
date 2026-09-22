@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 import type { Organization } from '@/types/domain';
 
@@ -100,7 +101,12 @@ export function useOrganizations(): OrganizationsState {
           .abortSignal(signal);
         if (aborted()) return;
         if (error) {
-          setState({ organizations: [], byId: new Map(), loading: false, error: error.message });
+          setState({
+            organizations: [],
+            byId: new Map(),
+            loading: false,
+            error: describeError(error, 'Could not load organizations.'),
+          });
           return;
         }
         const organizations = (data as OrganizationRow[]).map(toOrganization);
@@ -116,7 +122,7 @@ export function useOrganizations(): OrganizationsState {
           organizations: [],
           byId: new Map(),
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load organizations.',
+          error: describeThrown(e, 'Could not load organizations.'),
         });
       }
     }

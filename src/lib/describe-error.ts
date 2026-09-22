@@ -43,8 +43,8 @@
 export interface Failure {
   message: string;
   /** A SQLSTATE or `PGRST…` string; a `DOMException` carries a legacy number here, which says nothing. */
-  code?: string | number | null;
-  name?: string;
+  code?: string | number | null | undefined;
+  name?: string | undefined;
 }
 
 /**

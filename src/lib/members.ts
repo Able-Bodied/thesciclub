@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 import type { BrowseMember, MemberType } from '@/types/domain';
 
@@ -148,7 +149,12 @@ export function useBrowseMembers(): MembersState {
           .abortSignal(signal);
         if (aborted()) return;
         if (error) {
-          setState({ members: [], loading: false, error: error.message, signedOut: false });
+          setState({
+            members: [],
+            loading: false,
+            error: describeError(error, 'Could not load members.'),
+            signedOut: false,
+          });
           return;
         }
         setState({
@@ -162,7 +168,7 @@ export function useBrowseMembers(): MembersState {
         setState({
           members: [],
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load members.',
+          error: describeThrown(e, 'Could not load members.'),
           signedOut: false,
         });
       }
@@ -241,7 +247,7 @@ export function useBrowseMember(id: string | undefined): MemberState {
           setState({
             member: null,
             loading: false,
-            error: result.error.message,
+            error: describeError(result.error, 'Could not load this member.'),
             signedOut: false,
             notFound: false,
           });
@@ -260,7 +266,7 @@ export function useBrowseMember(id: string | undefined): MemberState {
         setState({
           member: null,
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load this member.',
+          error: describeThrown(e, 'Could not load this member.'),
           signedOut: false,
           notFound: false,
         });
@@ -351,7 +357,12 @@ export function useOwnMember(userId: string | null): OwnMemberState {
         if (aborted()) return;
 
         if (own.error) {
-          setState({ member: null, invitedBy: null, loading: false, error: own.error.message });
+          setState({
+            member: null,
+            invitedBy: null,
+            loading: false,
+            error: describeError(own.error, 'Could not load your profile.'),
+          });
           return;
         }
         const row = own.data as Record<string, unknown> | null;
@@ -385,7 +396,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
           member: null,
           invitedBy: null,
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load your profile.',
+          error: describeThrown(e, 'Could not load your profile.'),
         });
       }
     }

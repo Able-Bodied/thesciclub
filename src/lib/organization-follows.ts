@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -68,7 +69,7 @@ export function useOrganizationFollows(): FollowsState {
         // A database that predates 20260917020000 has no such table, and the
         // screens that read this should lose a button rather than a page.
         setFollowing(new Set());
-        setError(failure.message);
+        setError(describeError(failure, 'Could not load who you follow.'));
         setLoading(false);
         return;
       }
@@ -127,11 +128,21 @@ export function useOrganizationFollows(): FollowsState {
             return;
           }
           undo();
-          setError(failure.message);
+          setError(
+            describeError(
+              failure,
+              wasFollowing ? 'You still follow them.' : 'You are not following them yet.',
+            ),
+          );
         })
         .catch((e: unknown) => {
           undo();
-          setError(e instanceof Error ? e.message : 'That did not work.');
+          setError(
+            describeThrown(
+              e,
+              wasFollowing ? 'You still follow them.' : 'You are not following them yet.',
+            ),
+          );
         });
     },
     [memberId, following],

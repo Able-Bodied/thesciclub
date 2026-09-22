@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 import type { ClubEvent, EventAttendee, EventTag, RsvpStatus } from '@/types/domain';
 
@@ -187,7 +188,11 @@ export function useEvents(): EventsState {
 
         const failure = [events, links, tags, counts, feeds].find((result) => result.error);
         if (failure?.error) {
-          setState({ events: [], loading: false, error: failure.error.message });
+          setState({
+            events: [],
+            loading: false,
+            error: describeError(failure.error, 'Could not load events.'),
+          });
           return;
         }
 
@@ -212,7 +217,7 @@ export function useEvents(): EventsState {
         setState({
           events: [],
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load events.',
+          error: describeThrown(e, 'Could not load events.'),
         });
       }
     }
@@ -298,7 +303,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
           .abortSignal(signal);
         if (aborted()) return;
         if (mine.error) {
-          setError(mine.error.message);
+          setError(describeError(mine.error, 'Could not load your events.'));
           setLoading(false);
           return;
         }
@@ -317,7 +322,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
         setLoading(false);
       } catch (e) {
         if (aborted()) return;
-        setError(e instanceof Error ? e.message : 'Could not load your events.');
+        setError(describeThrown(e, 'Could not load your events.'));
         setLoading(false);
       }
     },
@@ -357,6 +362,13 @@ export interface WriteResult {
  * unique constraint: changing your mind is an update of one row, never a second
  * row that the counts would then double.
  */
+/** The policy is the membership: a paused member's RSVP is refused, not lost. */
+const RSVP_REFUSAL = {
+  attempt: 'Your answer was not saved.',
+  refused: 'Only an active member can answer.',
+  missing: 'That event is not there any more.',
+};
+
 export async function setRsvp(
   eventId: string,
   memberId: string,
@@ -370,7 +382,7 @@ export async function setRsvp(
         .delete()
         .eq('event_id', eventId)
         .eq('member_id', memberId);
-      return error ? { ok: false, error: error.message } : { ok: true };
+      return error ? { ok: false, error: describeError(error, RSVP_REFUSAL) } : { ok: true };
     }
     const { error } = await supabase
       .from('event_rsvps')
@@ -378,9 +390,9 @@ export async function setRsvp(
         { event_id: eventId, member_id: memberId, status },
         { onConflict: 'event_id,member_id' },
       );
-    return error ? { ok: false, error: error.message } : { ok: true };
+    return error ? { ok: false, error: describeError(error, RSVP_REFUSAL) } : { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Could not save that.' };
+    return { ok: false, error: describeThrown(e, RSVP_REFUSAL) };
   }
 }
 
@@ -457,7 +469,11 @@ export function useEventAttendees(eventId: string | undefined): AttendeesState {
           .abortSignal(signal);
         if (aborted()) return;
         if (error) {
-          setState({ attendees: [], loading: false, error: error.message });
+          setState({
+            attendees: [],
+            loading: false,
+            error: describeError(error, 'Could not load who is going.'),
+          });
           return;
         }
         setState({
@@ -470,7 +486,7 @@ export function useEventAttendees(eventId: string | undefined): AttendeesState {
         setState({
           attendees: [],
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load who is going.',
+          error: describeThrown(e, 'Could not load who is going.'),
         });
       }
     }
@@ -527,7 +543,11 @@ export function useAttendeesByEvent(): AttendeesByEventState {
           .abortSignal(signal);
         if (aborted()) return;
         if (error) {
-          setState({ byEvent: new Map(), loading: false, error: error.message });
+          setState({
+            byEvent: new Map(),
+            loading: false,
+            error: describeError(error, 'Could not load who is going.'),
+          });
           return;
         }
 
@@ -544,7 +564,7 @@ export function useAttendeesByEvent(): AttendeesByEventState {
         setState({
           byEvent: new Map(),
           loading: false,
-          error: e instanceof Error ? e.message : 'Could not load who is going.',
+          error: describeThrown(e, 'Could not load who is going.'),
         });
       }
     }

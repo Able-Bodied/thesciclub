@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -124,5 +125,7 @@ export function useAccount(): Account {
  */
 export async function signOut(): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().auth.signOut();
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'You are still signed in.') }
+    : { ok: true };
 }
