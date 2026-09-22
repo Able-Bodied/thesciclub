@@ -238,17 +238,23 @@ export default function MemberDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto w-full max-w-[62rem] lg:px-4 lg:pt-3">
-        {/* Above the photograph, not on it (owner, 2026-09-21): the way back on
-            the left and, for a mentor, a gold chip on the right — the deck's
-            own colour for the word. Nothing sits on the picture but the name. */}
-        <div className="flex items-center justify-between px-4 pt-3 pb-2.5 lg:px-0 lg:pt-0">
+      <div className="relative mx-auto w-full max-w-[62rem] lg:px-4 lg:pt-3">
+        {/* The way back on the left and, for a mentor, a gold chip on the
+            right — the deck's own colour for the word.
+
+            On a phone the row lies over the top of the photograph (owner,
+            2026-09-21, reversing the morning's "above it, not on it"): the
+            strip it took above the picture was 58px of nothing, and the
+            picture is the point of this screen. White, over a scrim, so it
+            reads on a bright sky. From `lg` the picture is a floated card and
+            the row goes back above everything, in navy on the canvas. */}
+        <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pt-3 lg:static lg:px-0 lg:pt-0 lg:pb-2.5">
           <button
             type="button"
             onClick={() => {
               void navigate(-1);
             }}
-            className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-navy"
+            className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] lg:text-navy lg:drop-shadow-none"
             data-target="small"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -290,17 +296,19 @@ export default function MemberDetailPage() {
              * The face is kept by `object-position` at 26% from the top — the
              * deck uses 28% — which is where a portrait's face sits.
              *
-             * 300px and not a share of the viewport. Most members open this in
+             * 350px and not a share of the viewport. Most members open this in
              * a browser, where the URL bar takes its cut of the height before
              * the page gets any; a `vh` hero is either too tall there or too
              * short in the installed app. A fixed height leaves the name and
-             * the button on the first screen in both.
+             * the button on the first screen in both. It was 300 with a 58px
+             * row above it; the row now lies on the picture, and the picture
+             * has the room it took.
              *
              * From `lg` it is the 20rem picture the float always had, 4:5
              * rather than 300px, with the same overlay — one DOM for every
              * width rather than a hidden twin of the name. */}
             <div
-              className="relative h-[300px] overflow-hidden lg:aspect-[4/5] lg:h-auto"
+              className="relative h-[350px] overflow-hidden lg:aspect-[4/5] lg:h-auto"
               style={{ background: `linear-gradient(150deg, ${from}, ${to})` }}
             >
               <span
@@ -319,6 +327,13 @@ export default function MemberDetailPage() {
                   }}
                 />
               ) : null}
+              {/* A short scrim at the top for the back button and the chip
+                  that lie on the picture on a phone; gone from `lg`, where
+                  they are above it. */}
+              <span
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-[90px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0.55),rgba(10,29,54,0))] lg:hidden"
+              />
               {/* The mock's scrim: clear at the top, navy at the foot, so the
                   name reads on a light photograph and on the gradient alike. */}
               <span
