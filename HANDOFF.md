@@ -837,6 +837,19 @@ already carries an unread dot. src/routes/me/stats.tsx says so.)
 
 Each of these was found by running something, not by reading it.
 
+- **An `upsert` is `on conflict do update`, and `do update` needs an update
+  grant.** Joining a room was refused for every non-admin member with
+  `permission denied for table chat_room_members` — found by the owner on a
+  second account on 2026-09-21, after the translator turned it into "Something
+  went wrong". 20260918030000 grants `select, insert, delete` and is right to;
+  the client's `upsert(row, { onConflict })` was what wanted `update`. The fix
+  is `ignoreDuplicates: true`, which is `on conflict do nothing`, needs only
+  insert, and still absorbs a double tap. `organization_follows` has the same
+  upsert and only *works* because that table still carries Supabase's default
+  privileges (update included); it now uses `ignoreDuplicates` too, so
+  tightening its grants will not break following. Nobody noticed on the
+  hosted project because the Chat migrations are not on it yet. Rule: a row
+  a member only ever inserts or deletes is never upserted with `do update`.
 - **A `security definer` function has RLS off inside it, so it must check
   visibility itself.** The first draft of `chat_topics_for` leaned on the
   `chat_rooms` select policy through a subquery — correct inside a *policy*,

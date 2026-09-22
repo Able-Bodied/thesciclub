@@ -444,12 +444,18 @@ export function useRoomMembership(): RoomMembershipState {
             .delete()
             .eq('member_id', memberId)
             .eq('room_id', roomId)
-        : // The compound primary key makes this idempotent, which matters
-          // because the button can be pressed twice before the first write
-          // lands.
+        : // `ignoreDuplicates` is load-bearing. It makes this `on conflict do
+          // nothing`, so the button can be pressed twice before the first
+          // write lands; without it PostgREST sends `on conflict do update`,
+          // and 20260918030000 grants insert and delete but not update — so
+          // every join was refused with `permission denied for table`. The
+          // grant is right; a member never changes a membership row.
           getSupabase()
             .from('chat_room_members')
-            .upsert({ room_id: roomId, member_id: memberId }, { onConflict: 'room_id,member_id' });
+            .upsert(
+              { room_id: roomId, member_id: memberId },
+              { onConflict: 'room_id,member_id', ignoreDuplicates: true },
+            );
 
       void Promise.resolve(write)
         .then(({ error: failure }) => {

@@ -116,9 +116,13 @@ export function useOrganizationFollows(): FollowsState {
             .eq('organization_id', organizationId)
         : getSupabase()
             .from('organization_follows')
+            // `ignoreDuplicates` for the reason rooms.ts gives: the row is
+            // only ever inserted or deleted, and `on conflict do update` needs
+            // an update grant this table only has by default — which the next
+            // migration to tighten its grants would silently take away.
             .upsert(
               { member_id: memberId, organization_id: organizationId },
-              { onConflict: 'member_id,organization_id' },
+              { onConflict: 'member_id,organization_id', ignoreDuplicates: true },
             );
 
       void Promise.resolve(write)
