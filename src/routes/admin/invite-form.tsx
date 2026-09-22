@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { describeThrown } from '@/lib/describe-error';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import {
   type ClaimableProfile,
@@ -66,7 +67,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
         onCreated();
       })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'Could not add that number.');
+        setError(describeThrown(e, 'Could not add that number.'));
       })
       .finally(() => {
         setBusy(false);

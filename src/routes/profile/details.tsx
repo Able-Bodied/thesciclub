@@ -2,6 +2,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
+import { describeThrown } from '@/lib/describe-error';
 import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
 import { photoUrlFor } from '@/lib/photos';
 import { cn } from '@/lib/utils';
@@ -123,7 +124,7 @@ export default function ProfileDetailsPage() {
         void navigate('/me');
       })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'Could not save that.');
+        setError(describeThrown(e, 'Could not save that.'));
       })
       .finally(() => {
         setSaving(false);
@@ -139,7 +140,7 @@ export default function ProfileDetailsPage() {
         else setError(result.error);
       })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'Could not upload that photo.');
+        setError(describeThrown(e, 'Could not upload that photo.'));
       })
       .finally(() => {
         setSaving(false);

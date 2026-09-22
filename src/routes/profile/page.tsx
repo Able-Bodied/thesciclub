@@ -2,6 +2,7 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
+import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
 import {
@@ -74,7 +75,7 @@ export default function ProfileSurveyPage() {
           setIndex(next);
         })
         .catch((e: unknown) => {
-          setError(e instanceof Error ? e.message : 'Could not save that.');
+          setError(describeThrown(e, 'Could not save that.'));
         })
         .finally(() => {
           setSaving(false);
@@ -122,7 +123,7 @@ export default function ProfileSurveyPage() {
       })
       .catch((e: unknown) => {
         setDeclined(declined);
-        setError(e instanceof Error ? e.message : 'Could not save that.');
+        setError(describeThrown(e, 'Could not save that.'));
       })
       .finally(() => {
         setSaving(false);

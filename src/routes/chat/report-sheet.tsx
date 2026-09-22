@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { REPORT_NOTE_MAX, reportNoteProblem, reportPreamble } from '@/lib/chat/reports';
+import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 
 /**
@@ -78,7 +79,7 @@ export function ReportSheet({
         if (said) setFailure(said);
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setSending(false);

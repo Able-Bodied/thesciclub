@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { createGroup, GROUP_NAME_MAX, groupProblem } from '@/lib/chat/groups';
+import { describeThrown } from '@/lib/describe-error';
 import { MemberPicker } from '@/routes/chat/member-picker';
 
 /**
@@ -64,7 +65,7 @@ export default function NewGroupPage() {
         void navigate(`/chat/t/${result.value}`, { replace: true });
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setSaving(false);

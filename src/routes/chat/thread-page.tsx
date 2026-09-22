@@ -8,6 +8,7 @@ import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
 import { shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
+import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
 import { MessageBubble } from '@/routes/chat/message-bubble';
 import { ReportSheet } from '@/routes/chat/report-sheet';
@@ -138,7 +139,7 @@ export default function ThreadPage() {
         if (problem) setRemovalFailure(problem);
       })
       .catch((e: unknown) => {
-        setRemovalFailure(e instanceof Error ? e.message : 'That did not work.');
+        setRemovalFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setRemovingId(null);

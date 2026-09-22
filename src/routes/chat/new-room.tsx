@@ -15,6 +15,7 @@ import {
   useRoomStats,
 } from '@/lib/chat/rooms';
 import { type ChatRoom, ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
+import { describeThrown } from '@/lib/describe-error';
 
 /**
  * Starting a room: five fields, and the reason the last two are there.
@@ -100,7 +101,7 @@ export default function NewRoomPage() {
         void navigate(`/chat/rooms/${result.value}`, { replace: true });
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setSaving(false);

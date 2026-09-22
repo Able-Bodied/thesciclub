@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
+import { describeThrown } from '@/lib/describe-error';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
@@ -91,7 +92,7 @@ export default function NewTopicPage() {
         void navigate(`/chat/rooms/${room.id}/topics/${result.value}`, { replace: true });
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setSaving(false);

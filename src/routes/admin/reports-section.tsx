@@ -6,6 +6,7 @@ import { removeMessage } from '@/lib/chat/threads';
 import { chatTimeLong } from '@/lib/chat/time';
 import { removePost } from '@/lib/chat/topics';
 import type { ChatAuthor, ChatReport } from '@/lib/chat/types';
+import { describeThrown } from '@/lib/describe-error';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 
@@ -124,7 +125,7 @@ export function ReportsSection({
         reload();
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setBusyId(null);
@@ -250,7 +251,7 @@ function ReportRow({
         onResolved();
       })
       .catch((e: unknown) => {
-        onFailure(e instanceof Error ? e.message : 'That did not work.');
+        onFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setSaving(false);

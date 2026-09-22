@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { joinEventGroup } from '@/lib/chat/groups';
 import { useMyThreads } from '@/lib/chat/threads';
+import { describeThrown } from '@/lib/describe-error';
 
 /**
  * The group chat for one event, on the event's own page.
@@ -60,7 +61,7 @@ export function EventGroupCard({
         void navigate(`/chat/t/${result.value}`);
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
         setOpening(false);
       });
   }

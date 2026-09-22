@@ -2,6 +2,7 @@ import { ChevronRight, LogOut, Mail } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
+import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
 import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
@@ -161,7 +162,7 @@ export default function MePage() {
         if (!result.ok) setError(result.error ?? 'Could not sign out.');
       })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'Could not sign out.');
+        setError(describeThrown(e, 'Could not sign out.'));
       })
       .finally(() => {
         setBusy(false);

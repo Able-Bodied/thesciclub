@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { roomsByCategory, setRoomOpen, useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
+import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 import { SmallButton } from '@/routes/admin/controls';
 
@@ -95,7 +96,7 @@ export function RoomsSection() {
         setFailure(result.error);
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setBusyId(null);

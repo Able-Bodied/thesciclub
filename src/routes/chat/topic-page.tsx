@@ -9,6 +9,7 @@ import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
 import { chatTimeLong } from '@/lib/chat/time';
 import { firstUnreadIndex, removePost, sendPost, useTopicPosts } from '@/lib/chat/topics';
+import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
 import { Post } from '@/routes/chat/post';
 import { ReportSheet } from '@/routes/chat/report-sheet';
@@ -110,7 +111,7 @@ export default function TopicPage() {
         reload();
       })
       .catch((e: unknown) => {
-        setRemovalFailure(e instanceof Error ? e.message : 'That did not work.');
+        setRemovalFailure(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setRemovingId(null);

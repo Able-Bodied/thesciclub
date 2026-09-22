@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
+import { describeThrown } from '@/lib/describe-error';
 import { useOwnMember } from '@/lib/members';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import {
@@ -88,7 +89,7 @@ export default function InvitesPage() {
         await load();
       })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'That did not work.');
+        setError(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setBusyId(null);

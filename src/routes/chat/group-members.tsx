@@ -6,6 +6,7 @@ import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { addToGroup, leaveGroup, useThreadRoster } from '@/lib/chat/groups';
 import { useMyThreads } from '@/lib/chat/threads';
+import { describeThrown } from '@/lib/describe-error';
 import { MemberPicker } from '@/routes/chat/member-picker';
 
 /**
@@ -109,7 +110,7 @@ export default function GroupMembersPage() {
         void navigate('/chat', { replace: true });
       })
       .catch((e: unknown) => {
-        setFailure(e instanceof Error ? e.message : 'That did not work.');
+        setFailure(describeThrown(e, 'That did not work.'));
         setLeaving(false);
       });
   }

@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { useAdminReports } from '@/lib/chat/reports';
+import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { InviteForm } from '@/routes/admin/invite-form';
@@ -150,7 +151,7 @@ export default function AdminPage() {
         after?.(result);
       })
       .catch((e: unknown) => {
-        setError(e instanceof Error ? e.message : 'That did not work.');
+        setError(describeThrown(e, 'That did not work.'));
       })
       .finally(() => {
         setBusyId(null);
@@ -437,7 +438,7 @@ export default function AdminPage() {
                         await load();
                       })
                       .catch((e: unknown) => {
-                        setError(e instanceof Error ? e.message : 'That did not work.');
+                        setError(describeThrown(e, 'That did not work.'));
                       })
                       .finally(() => {
                         setBusyId(null);

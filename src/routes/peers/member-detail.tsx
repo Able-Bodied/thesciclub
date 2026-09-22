@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark, ClubWordmark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
+import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
@@ -113,7 +114,7 @@ function MessageButton({
               void navigate(`/chat/t/${result.value}`);
             })
             .catch((e: unknown) => {
-              setFailure(e instanceof Error ? e.message : 'That did not work.');
+              setFailure(describeThrown(e, 'That did not work.'));
               setOpening(false);
             });
         }}
