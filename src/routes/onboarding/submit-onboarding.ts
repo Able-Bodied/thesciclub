@@ -1,3 +1,4 @@
+import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 import { injuryDateOf, type OnboardingData } from '@/routes/onboarding/types';
@@ -79,6 +80,17 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     declined: data.declined,
   });
 
-  if (error) return { ok: false, error: error.message };
+  // The 18+ trigger and the name check are the two refusals a person can
+  // cause from here, and the trigger already speaks in a sentence.
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'Your profile was not saved.',
+        duplicate: 'There is already a member on this number.',
+        constraints: { members_display_name_check: 'A name cannot be blank.' },
+      }),
+    };
+  }
   return { ok: true };
 }

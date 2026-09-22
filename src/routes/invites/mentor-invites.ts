@@ -1,3 +1,4 @@
+import { describeError, type Failure } from '@/lib/describe-error';
 import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
 
@@ -53,7 +54,8 @@ export async function fetchMyInvites(): Promise<
     .from('invites')
     .select('id, phone, status, note, created_at')
     .order('created_at', { ascending: false });
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not load your invites.') };
   return {
     ok: true,
     invites: (result.data as MentorInviteRow[]).map((row) => ({
@@ -78,7 +80,7 @@ export async function createMyInvite(input: {
       invited_by_member_id: input.memberId,
       note: input.note,
     });
-  return error ? { ok: false, error: describeFailure(error.code, error.message) } : { ok: true };
+  return error ? { ok: false, error: describeFailure(error) } : { ok: true };
 }
 
 /**
@@ -91,7 +93,9 @@ export async function withdrawMyInvite(id: string): Promise<{ ok: boolean; error
     .from('invites')
     .update({ status: 'revoked', revoked_at: new Date().toISOString() })
     .eq('id', id);
-  return error ? { ok: false, error: describeFailure(error.code, error.message) } : { ok: true };
+  return error
+    ? { ok: false, error: describeFailure(error, 'The invite was not withdrawn.') }
+    : { ok: true };
 }
 
 /* ------------------------------------------------------------ pure helpers */
@@ -131,7 +135,8 @@ export function canWithdraw(invite: MentorInvite): boolean {
 }
 
 /**
- * Turning the database's refusal into a sentence.
+ * Turning the database's refusal into a sentence — describeError with this
+ * screen's words for the two refusals it owns.
  *
  * The same action fails two different ways and the codes are the only honest
  * way to tell them apart, which supabase/tests/mentor-invites.sql demonstrates
@@ -147,8 +152,10 @@ export function canWithdraw(invite: MentorInvite): boolean {
  * 42501 is the insert policy. At this point that means the allowance, since
  * the form supplies the mentor's own id and never a claim.
  */
-export function describeFailure(code: string | undefined, message: string): string {
-  if (code === '23505') return 'That number is already on the club’s list.';
-  if (code === '42501') return `You have used all ${MENTOR_ALLOWANCE} of your invites.`;
-  return message;
+export function describeFailure(error: Failure, attempt = 'The invite was not added.'): string {
+  return describeError(error, {
+    attempt,
+    duplicate: 'That number is already on the club’s list.',
+    refused: `You have used all ${MENTOR_ALLOWANCE} of your invites.`,
+  });
 }

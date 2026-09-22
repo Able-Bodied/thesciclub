@@ -1,3 +1,4 @@
+import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -75,7 +76,8 @@ export async function fetchAdminMembers(): Promise<
     .from('admin_members')
     .select('*')
     .order('created_at', { ascending: false });
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not load the members.') };
   return { ok: true, members: (result.data as AdminMemberRow[]).map(toAdminMember) };
 }
 
@@ -88,7 +90,9 @@ export async function setMemberStatus(
     target,
     new_status: status,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'Their standing was not changed.') }
+    : { ok: true };
 }
 
 /**
@@ -120,7 +124,7 @@ async function clearPhotoFolder(memberId: string): Promise<void> {
 // purpose.
 export async function deleteMember(target: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_delete_member', { target });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'They were not removed.') };
   await clearPhotoFolder(target);
   return { ok: true };
 }
@@ -203,7 +207,8 @@ export async function fetchInvites(): Promise<
     .from('admin_invites')
     .select('*')
     .order('created_at', { ascending: false });
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not load the invites.') };
   return {
     ok: true,
     invites: (result.data as AdminInviteRow[]).map((row) => ({
@@ -249,6 +254,16 @@ export async function fetchClaimableProfiles(): Promise<ClaimableProfile[]> {
   ).map((m) => ({ id: m.id, displayName: m.display_name, city: m.city, state: m.state }));
 }
 
+/**
+ * admin_create_invite refuses in its own sentences — a blocked number, an
+ * organization that cannot invite — and those pass through. The unique index
+ * is behind it for a number already on the list.
+ */
+const INVITE_REFUSAL = {
+  attempt: 'The invite was not added.',
+  duplicate: 'That number is already on the club’s list.',
+};
+
 export async function createInvite(input: {
   phone: string;
   /** Null when the administrator is vouching in their own name. */
@@ -262,12 +277,14 @@ export async function createInvite(input: {
     claim_member: input.claimMemberId,
     invite_note: input.note,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error ? { ok: false, error: describeError(error, INVITE_REFUSAL) } : { ok: true };
 }
 
 export async function revokeInvite(target: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_revoke_invite', { target });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'The invite was not withdrawn.') }
+    : { ok: true };
 }
 
 export async function setMemberType(
@@ -278,7 +295,9 @@ export async function setMemberType(
     target,
     new_type: type,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'Their role was not changed.') }
+    : { ok: true };
 }
 
 /**
@@ -336,7 +355,8 @@ export async function restoreDirectory(): Promise<
   { ok: true; restored: number } | { ok: false; error: string }
 > {
   const result = await getSupabase().rpc('admin_restore_directory');
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'The directory was not restored.') };
   // Cast rather than destructure: the client types rpc data as `any`, and
   // this count is rendered straight at the administrator.
   return { ok: true, restored: (result.data as number | null) ?? 0 };
@@ -410,14 +430,16 @@ export async function blockNumber(
     raw_phone: phone,
     block_reason: reason,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, 'The number was not blocked.') };
   if (memberId) await clearPhotoFolder(memberId);
   return { ok: true };
 }
 
 export async function unblockNumber(phone: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_unblock_number', { raw_phone: phone });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'The number was not unblocked.') }
+    : { ok: true };
 }
 
 /**
@@ -566,7 +588,8 @@ export async function fetchStrikes(): Promise<
     .from('admin_strikes')
     .select('*')
     .order('issued_at', { ascending: false });
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not load the strikes.') };
   return { ok: true, strikes: (result.data as StrikeRow[]).map(toStrike) };
 }
 
@@ -594,7 +617,8 @@ export async function addStrike(
     target,
     strike_reason: reason,
   });
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'The strike was not added.') };
   const count: unknown = result.data;
   return typeof count === 'number' ? { ok: true, strikes: count } : { ok: true };
 }
@@ -607,5 +631,7 @@ export async function withdrawStrike(
     strike,
     withdraw_reason: reason,
   });
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'The strike was not withdrawn.') }
+    : { ok: true };
 }

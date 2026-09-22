@@ -1,3 +1,4 @@
+import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
@@ -128,7 +129,8 @@ export async function loadDetails(): Promise<
   { ok: true; details: MemberDetails } | { ok: false; error: string }
 > {
   const result = await getSupabase().from('members').select(COLUMNS).maybeSingle();
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not load your details.') };
   if (!result.data) return { ok: false, error: 'Your profile could not be found.' };
 
   const row = result.data as Record<string, unknown>;
@@ -156,6 +158,25 @@ function trimmedOrNull(value: string | null): string | null {
   const trimmed = value?.trim() ?? '';
   return trimmed === '' ? null : trimmed;
 }
+
+/**
+ * What the row can refuse, in the form's words. The form offers only values
+ * from these lists, so a constraint here means an older build; the trigger's
+ * own sentence about being 18 passes through as it is.
+ */
+const DETAILS_REFUSAL = {
+  attempt: 'Your details were not saved.',
+  refused: 'Only an active member can change their details.',
+  constraints: {
+    members_display_name_check: 'A name cannot be blank.',
+    members_injury_date_precision_paired: 'An injury date needs to say how exact it is.',
+  },
+};
+
+const PHOTO_REFUSAL = {
+  attempt: 'The photograph was not saved.',
+  refused: 'You cannot change this photograph.',
+};
 
 export async function saveDetails(
   userId: string,
@@ -186,7 +207,7 @@ export async function saveDetails(
       // `MemberDetails` because Me reads it through `loadDetails`.
     })
     .eq('id', userId);
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error ? { ok: false, error: describeError(error, DETAILS_REFUSAL) } : { ok: true };
 }
 
 /**
@@ -211,7 +232,7 @@ export async function setShowInBrowse(
     .from('members')
     .update({ show_in_browse: showInBrowse })
     .eq('id', userId);
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error ? { ok: false, error: describeError(error, 'That was not changed.') } : { ok: true };
 }
 
 /**
@@ -232,12 +253,12 @@ export async function savePhoto(
   const upload = await supabase.storage
     .from('photos')
     .upload(path, blob, { upsert: true, contentType: blob.type });
-  if (upload.error) return { ok: false, error: upload.error.message };
+  if (upload.error) return { ok: false, error: describeError(upload.error, PHOTO_REFUSAL) };
 
   await removeOtherPhotos(userId, path);
 
   const { error } = await supabase.from('members').update({ photo_path: path }).eq('id', userId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: describeError(error, PHOTO_REFUSAL) };
   return { ok: true, path };
 }
 
@@ -268,5 +289,7 @@ export async function removePhoto(userId: string): Promise<{ ok: boolean; error?
     .from('members')
     .update({ photo_path: null })
     .eq('id', userId);
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'The photograph was not removed.') }
+    : { ok: true };
 }

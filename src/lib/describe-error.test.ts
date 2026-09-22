@@ -245,6 +245,39 @@ describe('the network', () => {
   });
 });
 
+describe('the photo bucket', () => {
+  // storage-js: a StorageApiError with a status and no SQLSTATE. These two
+  // are what the bucket's allowed types and size limit produce.
+  it('a file that is not a photograph', () => {
+    expect(
+      describeError(
+        { name: 'StorageApiError', message: 'mime type text/plain is not supported' },
+        'The photograph did not upload.',
+      ),
+    ).toBe(
+      'The photograph did not upload. That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
+    );
+  });
+
+  it('a file over the bucket limit', () => {
+    expect(
+      describeError({
+        name: 'StorageApiError',
+        message: 'The object exceeded the maximum allowed size',
+      }),
+    ).toMatch(/too large after shrinking/);
+  });
+
+  it('a policy on the object row', () => {
+    expect(
+      describeError(
+        { name: 'StorageApiError', message: 'new row violates row-level security policy' },
+        { refused: 'You cannot add a photograph here.' },
+      ),
+    ).toBe('You cannot add a photograph here.');
+  });
+});
+
 describe('signing in', () => {
   it('a wrong or stale code, by code and by wording', () => {
     expect(

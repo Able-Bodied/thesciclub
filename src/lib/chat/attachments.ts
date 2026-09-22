@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 
@@ -80,6 +81,16 @@ export function attachmentFolder(kind: 'thread' | 'room', id: string): string {
 }
 
 /**
+ * The bucket's own sentences — about mime types and sizes — are translated by
+ * describeError; the one this screen owns is the policy's, which here means
+ * the member is not in the thread or the room.
+ */
+const UPLOAD_REFUSAL = {
+  attempt: 'The photograph did not upload.',
+  refused: 'You cannot add a photograph here.',
+};
+
+/**
  * Shrink and upload each file, in order. All or nothing: a failure part-way
  * removes what has already gone up and reports the failure.
  */
@@ -95,25 +106,11 @@ export async function uploadAttachments(
     const { error } = await storage.upload(path, blob, { contentType: blob.type, upsert: false });
     if (error) {
       await deleteAttachments(uploaded);
-      return { ok: false, error: describeUploadFailure(error.message) };
+      return { ok: false, error: describeError(error, UPLOAD_REFUSAL) };
     }
     uploaded.push(path);
   }
   return { ok: true, value: uploaded };
-}
-
-/** Storage's sentences are about buckets and mime types; a member's are not. */
-function describeUploadFailure(message: string): string {
-  if (/mime type|not supported/i.test(message)) {
-    return 'That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.';
-  }
-  if (/exceeded|too large|size/i.test(message)) {
-    return 'That photograph is still too large after shrinking. Try a smaller one.';
-  }
-  if (/row-level security|policy|violates/i.test(message)) {
-    return 'You cannot add a photograph here.';
-  }
-  return `The photograph did not upload: ${message}`;
 }
 
 /** Best effort, and silent: the caller has already said what mattered. */

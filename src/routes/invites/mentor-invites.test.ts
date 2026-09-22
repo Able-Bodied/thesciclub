@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
+import { GENERIC_FAILURE } from '@/lib/describe-error';
 import {
   canWithdraw,
   describeFailure,
@@ -69,22 +70,49 @@ describe('explaining a refusal', () => {
   // one you get depends on the allowance — see steps 12 and 13 of
   // supabase/tests/mentor-invites.sql. Reading either as the other tells a
   // mentor something false.
+  let consoleError: MockInstance<typeof console.error>;
+  beforeEach(() => {
+    consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  });
+  afterEach(() => {
+    consoleError.mockRestore();
+  });
+
   it('names the number, not the allowance, when the number is taken', () => {
-    expect(describeFailure('23505', 'duplicate key value violates unique constraint')).toMatch(
-      /already on the club’s list/,
-    );
+    expect(
+      describeFailure({
+        code: '23505',
+        message: 'duplicate key value violates unique constraint "invites_live_phone_idx"',
+      }),
+    ).toMatch(/already on the club’s list/);
   });
 
   it('names the allowance when the policy refuses', () => {
-    expect(describeFailure('42501', 'new row violates row-level security policy')).toMatch(
-      new RegExp(`used all ${MENTOR_ALLOWANCE} of your invites`),
-    );
+    expect(
+      describeFailure({
+        code: '42501',
+        message: 'new row violates row-level security policy for table "invites"',
+      }),
+    ).toMatch(new RegExp(`used all ${MENTOR_ALLOWANCE} of your invites`));
   });
 
-  // Anything else is a failure nobody predicted. Inventing a friendly sentence
-  // for it would hide the only information there is.
-  it('passes an unrecognised failure through in the database’s own words', () => {
-    expect(describeFailure('08006', 'connection failure')).toBe('connection failure');
-    expect(describeFailure(undefined, 'network error')).toBe('network error');
+  // The database's own sentence — "An invite must come from a member
+  // organization or a mentor" — is the good case and must survive.
+  it('passes one of our own sentences through', () => {
+    expect(
+      describeFailure({
+        code: 'P0001',
+        message: 'An invite must come from a member organization or a mentor',
+      }),
+    ).toBe('An invite must come from a member organization or a mentor');
+  });
+
+  // Anything else is a failure nobody predicted. The raw text goes to the
+  // console, where it is information, rather than to a mentor, where it is
+  // not.
+  it('reports an unrecognised failure generically and keeps the raw text in the console', () => {
+    const error = { code: '08006', message: 'connection failure' };
+    expect(describeFailure(error)).toBe(`The invite was not added. ${GENERIC_FAILURE}`);
+    expect(consoleError).toHaveBeenCalledWith(error);
   });
 });

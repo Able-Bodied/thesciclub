@@ -84,6 +84,23 @@ const OFFLINE =
   /Failed to fetch|NetworkError|Load failed|network request failed|ERR_INTERNET_DISCONNECTED/i;
 const ABORTED = /^AbortError\b|user aborted a request|signal is aborted/i;
 
+/**
+ * Storage's refusals carry no SQLSTATE, only an HTTP status and a sentence
+ * about buckets and mime types. These are the two a bucket's own limits
+ * produce; a policy refusing the object row says "row-level security" like
+ * any other and is caught below with them.
+ */
+const STORAGE: [RegExp, string][] = [
+  [
+    /mime type .* is not supported/i,
+    'That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
+  ],
+  [
+    /exceeded the maximum allowed size|too large/i,
+    'That photograph is still too large after shrinking. Try a smaller one.',
+  ],
+];
+
 /** GoTrue's codes and, for the versions that send only a message, its wording. */
 const AUTH: [RegExp, string][] = [
   [
@@ -152,6 +169,10 @@ export function describeError(error: Failure, context?: string | ErrorContext): 
   }
 
   if (code) return unknown(error, ctx);
+
+  for (const [pattern, sentence] of STORAGE) {
+    if (pattern.test(message)) return lead(ctx.attempt, sentence);
+  }
 
   // No code at all. The database's wording is still recognisable, and a test
   // fixture or a thrown Error is the usual source; sort by phrase.

@@ -1,3 +1,4 @@
+import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -47,7 +48,8 @@ export async function loadMyStrikes(
     .select('id, reason, issued_at, withdrawn_at, withdrawn_reason')
     .eq('member_id', memberId)
     .order('issued_at', { ascending: false });
-  if (result.error) return { ok: false, error: result.error.message };
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not load your standing.') };
   return {
     ok: true,
     strikes: (result.data as MyStrikeRow[]).map((row) => ({

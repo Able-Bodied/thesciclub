@@ -1,3 +1,4 @@
+import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 import { type Answers, canDecline, QUESTIONS } from '@/routes/profile/questions';
 
@@ -52,7 +53,12 @@ export async function loadAnswers(): Promise<
       .maybeSingle();
     // Only the second failure is reported. If the fallback fails too, the
     // problem is not the column and the first message is the misleading one.
-    if (withoutDeclined.error) return { ok: false, error: withoutDeclined.error.message };
+    if (withoutDeclined.error) {
+      return {
+        ok: false,
+        error: describeError(withoutDeclined.error, 'Could not load your answers.'),
+      };
+    }
     result = withoutDeclined;
   }
 
@@ -86,13 +92,27 @@ export async function loadAnswers(): Promise<
  * than a constraint violation, but it is not the enforcement: the database has
  * `members_declined_excludes_required` and that is what actually holds.
  */
+/**
+ * The constraints on members are the survey's own answer lists, which the
+ * form only offers from; reaching one means an older build offered a value
+ * the database has since dropped.
+ */
+const ANSWER_REFUSAL = {
+  attempt: 'Your answer was not saved.',
+  refused: 'Only an active member can change their answers.',
+  constraints: {
+    members_interests_check: 'Up to three interests.',
+    members_declined_excludes_required: 'Your name and birthday cannot be left blank.',
+  },
+};
+
 export async function saveDeclined(
   userId: string,
   declined: ReadonlySet<string>,
 ): Promise<{ ok: boolean; error?: string }> {
   const keys = [...declined].filter(canDecline);
   const { error } = await getSupabase().from('members').update({ declined: keys }).eq('id', userId);
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error ? { ok: false, error: describeError(error, ANSWER_REFUSAL) } : { ok: true };
 }
 
 /**
@@ -119,5 +139,5 @@ export async function saveAnswers(
   if (Object.keys(patch).length === 0) return { ok: true };
 
   const { error } = await getSupabase().from('members').update(patch).eq('id', userId);
-  return error ? { ok: false, error: error.message } : { ok: true };
+  return error ? { ok: false, error: describeError(error, ANSWER_REFUSAL) } : { ok: true };
 }
