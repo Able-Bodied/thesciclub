@@ -201,6 +201,53 @@ select public.chat_create_room('Shoulder pain nine', 'Overuse, and what helped.'
                                'First', 'First post.') is not null as room_made;
 
 \echo ''
+\echo '== 12a. a new room gets photographs on its first post afterwards =='
+\echo '   expect: a room id, then 2. The folder cannot exist before the room, so'
+\echo '   the files go up second and chat_add_first_post_photographs names them.'
+select public.chat_create_room('Shoulder pain ten', 'Overuse, and what helped.', 'Body',
+                               'First', 'First post.') as new_room \gset
+\echo :new_room
+reset role;
+-- The two files Ada uploaded after the room came back, as the API would put them.
+insert into storage.objects (bucket_id, name, owner_id, metadata)
+values
+  ('chat', 'rooms/' || :'new_room' || '/one.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}'),
+  ('chat', 'rooms/' || :'new_room' || '/two.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}'),
+  ('chat', 'rooms/' || :'new_room' || '/bos.webp', 'bbbbbbbb-9999-0000-0000-000000000002', '{"size": 1}');
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-9999-0000-0000-000000000001","role":"authenticated"}';
+
+\echo '   12b. somebody else''s file is refused (expect: ERROR, have not been uploaded)'
+savepoint not_hers;
+select public.chat_add_first_post_photographs(:'new_room',
+  array['rooms/' || :'new_room' || '/one.webp', 'rooms/' || :'new_room' || '/bos.webp']);
+rollback to savepoint not_hers;
+
+\echo '   12c. a file in another room''s folder is refused (expect: ERROR, not in this room)'
+savepoint elsewhere;
+select public.chat_add_first_post_photographs(:'new_room', array['rooms/bowel/open.webp']);
+rollback to savepoint elsewhere;
+
+\echo '   12d. somebody who did not start the room is refused (expect: ERROR, Only the member who started)'
+set local request.jwt.claims = '{"sub":"bbbbbbbb-9999-0000-0000-000000000002","role":"authenticated"}';
+savepoint not_starter;
+select public.chat_add_first_post_photographs(:'new_room', array['rooms/' || :'new_room' || '/bos.webp']);
+rollback to savepoint not_starter;
+set local request.jwt.claims = '{"sub":"aaaaaaaa-9999-0000-0000-000000000001","role":"authenticated"}';
+
+\echo '   12e. the starter''s own two go on (expect: 2)'
+select public.chat_add_first_post_photographs(:'new_room',
+  array['rooms/' || :'new_room' || '/one.webp', 'rooms/' || :'new_room' || '/two.webp']);
+select cardinality(p.attachments) as on_the_first_post
+from public.chat_posts p join public.chat_topics t on t.id = p.topic_id
+where t.room_id = :'new_room';
+
+\echo '   12f. and not a second time (expect: ERROR, already has its photographs)'
+savepoint twice;
+select public.chat_add_first_post_photographs(:'new_room', array['rooms/' || :'new_room' || '/one.webp']);
+rollback to savepoint twice;
+
+\echo ''
 \echo '== 13. the bucket is private and sized =='
 \echo '   expect: f | 2097152 | {image/webp,image/jpeg,image/png}'
 reset role;
