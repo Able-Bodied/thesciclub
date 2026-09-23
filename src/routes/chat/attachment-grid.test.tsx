@@ -75,4 +75,45 @@ describe('the photographs on a message', () => {
     await user.click(ways().backdrop);
     expect(screen.queryByRole('img', { name: /from Bo/ })).toBeNull();
   });
+
+  // Four photographs of a set-up, opened one at a time: closing and reopening
+  // each from the chat was the way through them, and it was a long way.
+  it('steps to the next and the previous photograph without closing', async () => {
+    const user = userEvent.setup();
+    render(<AttachmentGrid paths={['threads/t/a.webp', 'threads/t/b.webp']} from="Bo" />);
+    await user.click(screen.getByRole('button', { name: 'Photograph 1 of 2 from Bo. Open it.' }));
+    expect(screen.getByRole('img', { name: 'Photograph 1 of 2 from Bo' })).toBeInTheDocument();
+    // At the start there is no previous, and the control says so rather than vanishing.
+    expect(screen.getByRole('button', { name: 'Previous photograph' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Next photograph' }));
+    expect(screen.getByRole('img', { name: 'Photograph 2 of 2 from Bo' })).toHaveAttribute(
+      'src',
+      'https://signed/b',
+    );
+    expect(screen.getByRole('button', { name: 'Next photograph' })).toBeDisabled();
+
+    // The arrow keys do the same.
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByRole('img', { name: 'Photograph 1 of 2 from Bo' })).toBeInTheDocument();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('img', { name: 'Photograph 2 of 2 from Bo' })).toBeInTheDocument();
+    // And past the end, nothing happens.
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('img', { name: 'Photograph 2 of 2 from Bo' })).toBeInTheDocument();
+  });
+
+  it('offers no stepping on a single photograph', async () => {
+    const user = userEvent.setup();
+    render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" />);
+    await user.click(screen.getByRole('button', { name: /Open it/ }));
+    expect(screen.queryByRole('button', { name: 'Next photograph' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Previous photograph' })).toBeNull();
+  });
+
+  it('draws a photograph as itself, with no box behind it', () => {
+    render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" />);
+    const tile = screen.getByRole('button', { name: /Open it/ });
+    expect(tile.className).not.toMatch(/bg-/);
+  });
 });
