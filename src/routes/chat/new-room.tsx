@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
+import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import {
+  addFirstPostPhotographs,
   createRoom,
   ROOM_DESCRIPTION_MAX,
   ROOM_NAME_MAX,
@@ -16,6 +18,7 @@ import {
 } from '@/lib/chat/rooms';
 import { type ChatRoom, ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
  * Starting a room: five fields, and the reason the last two are there.
@@ -71,8 +74,15 @@ export default function NewRoomPage() {
   const [description, setDescription] = useState('');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  /**
+   * The room that was started when its photographs then failed. The room is
+   * real and this form must not start a second one, so the form gives way to
+   * a sentence and a link into it.
+   */
+  const [startedWithout, setStartedWithout] = useState<{ id: string; why: string } | null>(null);
 
   const problem = roomProblem(name, category, description, title, body);
   const suggestions = roomsMatching(rooms, name);
@@ -88,10 +98,33 @@ export default function NewRoomPage() {
     if (problem || saving || !category) return;
     setSaving(true);
     setFailure(null);
-    void createRoom(name, description, category, title, body)
+    void (async (): Promise<
+      { ok: true; value: string; without: string | null } | { ok: false; error: string }
+    > => {
+      const made = await createRoom(name, description, category, title, body);
+      if (!made.ok) return made;
+      // The other way round from a new topic: the room's folder is named after
+      // an id the database has only just made, so the files go up second and
+      // chat_add_first_post_photographs names them on the post. If either
+      // step fails the room still exists — say so, rather than start another.
+      if (files.length > 0) {
+        const up = await uploadAttachments(files, attachmentFolder('room', made.value));
+        if (!up.ok) return { ok: true, value: made.value, without: up.error };
+        const added = await addFirstPostPhotographs(made.value, up.value);
+        if (!added.ok) {
+          void deleteAttachments(up.value);
+          return { ok: true, value: made.value, without: added.error };
+        }
+      }
+      return { ok: true, value: made.value, without: null };
+    })()
       .then((result) => {
         if (!result.ok) {
           setFailure(result.error);
+          return;
+        }
+        if (result.without) {
+          setStartedWithout({ id: result.value, why: result.without });
           return;
         }
         // Straight into the room, replacing this screen: coming back to a
@@ -121,6 +154,22 @@ export default function NewRoomPage() {
           then on. Nothing here is public. Nobody can rename or delete a room afterwards, including
           you — what people write in it is theirs.
         </p>
+
+        {startedWithout ? (
+          <div className="mt-3 rounded-[11px] border border-gold/60 bg-gold-lt px-3 py-2.5">
+            <p className="text-[0.8125rem] text-ink leading-[1.45]">
+              The room was started, but without its photographs. {startedWithout.why} You can add
+              them in a reply.
+            </p>
+            <Link
+              to={`/chat/rooms/${startedWithout.id}`}
+              replace
+              className="mt-1.5 inline-block font-bold text-[0.8125rem] text-navy underline underline-offset-2"
+            >
+              Open {name.trim()}
+            </Link>
+          </div>
+        ) : null}
 
         {failure ? (
           <div className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5">
@@ -260,10 +309,22 @@ export default function NewRoomPage() {
           className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
         />
 
+        {/* Under the first post, as on a new topic: the photographs go on it. */}
+        <div className="mt-3">
+          <PhotoStrip
+            files={files}
+            disabled={saving}
+            onRemove={(index) => {
+              setFiles((current) => current.filter((_, i) => i !== index));
+            }}
+          />
+          <PhotoPicker files={files} onChange={setFiles} disabled={saving} />
+        </div>
+
         <button
           type="button"
           onClick={submit}
-          disabled={Boolean(problem) || saving}
+          disabled={Boolean(problem) || saving || startedWithout !== null}
           className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
         >
           {saving ? 'Starting…' : 'Start the room'}

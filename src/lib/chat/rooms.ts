@@ -346,6 +346,27 @@ export async function createRoom(
 }
 
 /**
+ * Put photographs on the first post of a room the viewer just started.
+ *
+ * The room's folder is named after an id the database makes, so the files
+ * cannot go up before the room exists. new-room.tsx starts the room, uploads
+ * under rooms/<id>/, then calls this; the function checks the caller started
+ * the room, that the post has none yet, that nobody has replied, and that
+ * every path is a real file of theirs. See 20260923000000.
+ */
+export async function addFirstPostPhotographs(
+  roomId: string,
+  paths: string[],
+): Promise<ChatWriteResult<null>> {
+  const { error } = await getSupabase().rpc('chat_add_first_post_photographs', {
+    room: roomId,
+    paths,
+  });
+  if (error) return { ok: false, error: describeError(error, 'The photographs were not added.') };
+  return { ok: true, value: null };
+}
+
+/**
  * Which rooms the viewer has joined.
  *
  * ---------------------------------------------------------------------------

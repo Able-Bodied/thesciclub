@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type * as Router from 'react-router-dom';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Attachments from '@/lib/chat/attachments';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type { ChatRoom, RoomStats } from '@/lib/chat/types';
 
@@ -22,6 +23,28 @@ const db = vi.hoisted(() => ({
   created: [] as [string, string, string, string, string][],
   failure: null as string | null,
   navigated: [] as string[],
+  /** What went up and where, what was named on the post, and what was taken back. */
+  uploads: [] as [string[], string][],
+  uploadFailure: null as string | null,
+  attached: [] as [string, string[]][],
+  attachFailure: null as string | null,
+  deleted: [] as string[][],
+}));
+
+vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof Attachments>()),
+  uploadAttachments: (files: File[], folder: string) => {
+    db.uploads.push([files.map((f) => f.name), folder]);
+    return Promise.resolve(
+      db.uploadFailure
+        ? { ok: false, error: db.uploadFailure }
+        : { ok: true, value: files.map((f) => `${folder}/${f.name}`) },
+    );
+  },
+  deleteAttachments: (paths: string[]) => {
+    db.deleted.push(paths);
+    return Promise.resolve();
+  },
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -42,6 +65,12 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
     db.created.push([name, description, category, title, body]);
     return Promise.resolve(
       db.failure ? { ok: false, error: db.failure } : { ok: true, value: 'shoulder-pain-1a2b' },
+    );
+  },
+  addFirstPostPhotographs: (roomId: string, paths: string[]) => {
+    db.attached.push([roomId, paths]);
+    return Promise.resolve(
+      db.attachFailure ? { ok: false, error: db.attachFailure } : { ok: true, value: null },
     );
   },
 }));
@@ -95,7 +124,21 @@ beforeEach(() => {
   db.created = [];
   db.failure = null;
   db.navigated = [];
+  db.uploads = [];
+  db.uploadFailure = null;
+  db.attached = [];
+  db.attachFailure = null;
+  db.deleted = [];
 });
+
+const photo = (name: string) => new File([new Uint8Array(10)], name, { type: 'image/jpeg' });
+// The platform's picker behind the button, hidden from the accessibility tree
+// on purpose; reached by its type, as composer.test.tsx does.
+const fileInput = (): HTMLInputElement => {
+  const element = document.querySelector<HTMLInputElement>('input[type=file]');
+  if (!element) throw new Error('the form should carry a file input');
+  return element;
+};
 
 describe('starting a room', () => {
   // The whole answer to "a room of two dozen members is empty by
@@ -197,5 +240,77 @@ describe('starting a room', () => {
       expect(screen.getByText(/already a room called Skin/)).toBeInTheDocument();
     });
     expect(screen.queryByRole('link', { name: /^Open / })).toBeNull();
+  });
+});
+
+describe('photographs on the first post', () => {
+  // The other way round from a new topic: the room has to exist before its
+  // folder can, so the room is made, then the files go up, then they are
+  // named on the post.
+  it('starts the room, then uploads under its folder, then names them on the post', async () => {
+    renderPage();
+    const user = await fillIn();
+    await user.upload(fileInput(), [photo('cushion.jpg'), photo('mount.jpg')]);
+    expect(screen.getByRole('button', { name: 'Take back cushion.jpg' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Start the room' }));
+    await waitFor(() => {
+      expect(db.navigated).toEqual(['/chat/rooms/shoulder-pain-1a2b']);
+    });
+    expect(db.created).toHaveLength(1);
+    expect(db.uploads).toEqual([[['cushion.jpg', 'mount.jpg'], 'rooms/shoulder-pain-1a2b']]);
+    expect(db.attached).toEqual([
+      [
+        'shoulder-pain-1a2b',
+        ['rooms/shoulder-pain-1a2b/cushion.jpg', 'rooms/shoulder-pain-1a2b/mount.jpg'],
+      ],
+    ]);
+    expect(db.deleted).toEqual([]);
+  });
+
+  it('uploads nothing and names nothing when no photograph was chosen', async () => {
+    renderPage();
+    const user = await fillIn();
+    await user.click(screen.getByRole('button', { name: 'Start the room' }));
+    await waitFor(() => {
+      expect(db.navigated).toHaveLength(1);
+    });
+    expect(db.uploads).toEqual([]);
+    expect(db.attached).toEqual([]);
+  });
+
+  // The room is real by then. Starting another under a slightly different
+  // name is the one thing this screen must not invite, so the form gives way
+  // to a sentence and a link into the room, and the files come back out.
+  it('says the room was started without them when naming them is refused', async () => {
+    db.attachFailure = 'Somebody has already replied, so the first post stays as it is.';
+    renderPage();
+    const user = await fillIn();
+    await user.upload(fileInput(), photo('cushion.jpg'));
+    await user.click(screen.getByRole('button', { name: 'Start the room' }));
+    await waitFor(() => {
+      expect(screen.getByText(/started, but without its photographs/)).toBeInTheDocument();
+    });
+    expect(screen.getByText(/Somebody has already replied/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Shoulder pain' })).toHaveAttribute(
+      'href',
+      '/chat/rooms/shoulder-pain-1a2b',
+    );
+    expect(db.deleted).toEqual([['rooms/shoulder-pain-1a2b/cushion.jpg']]);
+    expect(db.navigated).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Start the room' })).toBeDisabled();
+  });
+
+  it('says the same when the upload itself fails, with nothing to take back', async () => {
+    db.uploadFailure = 'That photograph is still too large after shrinking. Try a smaller one.';
+    renderPage();
+    const user = await fillIn();
+    await user.upload(fileInput(), photo('huge.jpg'));
+    await user.click(screen.getByRole('button', { name: 'Start the room' }));
+    await waitFor(() => {
+      expect(screen.getByText(/started, but without its photographs/)).toBeInTheDocument();
+    });
+    expect(db.attached).toEqual([]);
+    expect(db.deleted).toEqual([]);
+    expect(db.navigated).toEqual([]);
   });
 });
