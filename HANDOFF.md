@@ -89,9 +89,10 @@ also the one line in this file that changed direction on 2026-09-20**: for
 weeks the hosted database was ahead of `origin` and everything was applied.
 It is the other way round now.
 
-**74 migrations in `supabase/migrations/`. 53 applied to the hosted project
-(`erijdvqnxavwezsbbojv`), 21 pending.** The twenty-one are the whole of Chat,
-`20260918010000` through `20260918210000`. They are applied locally and
+**75 migrations in `supabase/migrations/`. 53 applied to the hosted project
+(`erijdvqnxavwezsbbojv`), 22 pending.** The twenty-two are the whole of Chat,
+`20260918010000` through `20260918210000` plus `20260923000000` (photographs
+on a new room's first post). They are applied locally and
 nowhere else. Check rather than trust — a blank `Remote` column is a pending
 migration:
 
