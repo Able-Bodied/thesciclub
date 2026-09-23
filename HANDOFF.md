@@ -82,45 +82,30 @@ anything else. See "What Chat is".
 1,047 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 75 migrations, and the twenty-two Chat ones are not on the hosted project yet
+## 75 migrations, all of them on the hosted project
 
-This is the thing most likely to catch somebody out, so it is first. **It is
-also the one line in this file that changed direction on 2026-09-20**: for
-weeks the hosted database was ahead of `origin` and everything was applied.
-It is the other way round now.
-
-**75 migrations in `supabase/migrations/`. 53 applied to the hosted project
-(`erijdvqnxavwezsbbojv`), 22 pending.** The twenty-two are the whole of Chat,
-`20260918010000` through `20260918210000` plus `20260923000000` (photographs
-on a new room's first post). They are applied locally and
-nowhere else. Check rather than trust — a blank `Remote` column is a pending
-migration:
+**As of 2026-09-23 the hosted project (`erijdvqnxavwezsbbojv`) and
+`supabase/migrations/` agree: 75 applied, 0 pending.** For weeks before
+2026-09-20 the hosted database was ahead of `origin`; from the 20th to the
+23rd it was the other way round, with the whole of Chat applied locally and
+nowhere else; the owner pushed the twenty-one Chat migrations between
+sessions, and the twenty-second (`20260923000000`, photographs on a new
+room's first post) went up on the 23rd with their word. Check rather than
+trust — a blank `Remote` column is a pending migration:
 
     pnpm exec supabase migration list          # hosted
     pnpm exec supabase migration up --local    # bring a local stack up
 
-`pnpm exec supabase db push` is what sends them and **the owner is asked
-first**, every time: it writes to the live database that real members are in.
+`pnpm exec supabase db push --linked` is what sends them and **the owner is
+asked first**, every time: it writes to the live database that real members
+are in. `--dry-run` first, so the list of what will go is read before it goes.
 Never `config push` — see Environment for why that one is dangerous in a
-different way.
+different way. After a push that adds a realtime table, confirm Realtime is
+enabled on the hosted project, in the dashboard: a publication with the
+service switched off is the failure Environment describes, every
+subscription SUBSCRIBED and delivering nothing.
 
-Until that push the hosted project has no chat tables at all, so **every chat
-read from a deployed build fails**. Netlify builds from `main`. That makes the
-order matter, and it is three steps rather than two:
-
-1. `pnpm exec supabase db push` — with the owner's word, and never
-   `config push` alongside it.
-2. **Confirm Realtime is enabled on the hosted project, in the dashboard.** It
-   is on by default and the migration adds the tables to
-   `supabase_realtime`, but a publication with the service switched off is the
-   exact failure Environment describes below: every subscription connects,
-   reports SUBSCRIBED and delivers nothing, which looks like a chat nobody is
-   writing to. Look at the setting; do not assume it.
-3. Merge to `main` and let Netlify build.
-
-Merging first ships a Chat tab to live members with nothing behind it.
-
-The twenty-one, in the order they must apply — each header says why, and the
+The Chat migrations, in the order they apply — each header says why, and the
 "What Chat is" section below says what the member sees:
 
 | migration | what it adds |
@@ -146,7 +131,7 @@ The twenty-one, in the order they must apply — each header says why, and the
 | `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
 | `…200000` | photographs: `attachments text[]` on messages, posts, removed bodies and reports; the **private** `chat` bucket (2MB, three image types) and its three storage policies behind `chat_file_is_readable` / `_writable` / `_reported`; `chat_create_topic` takes a fourth argument; removal blanks the list |
 | `…210000` | a photograph named on a report cannot be deleted by anybody — `chat_file_is_on_a_report()` in the delete policy. The owner spotted the gap the day photographs shipped: take the message back and the report kept the words and an empty space |
-| `20260923000000` | `chat_add_first_post_photographs(room, paths)`: a new room's first post gets its photographs *after* the room exists, because the folder is named after an id the function makes — the one place the row comes first and the files second. Definer; once, by the starter, before any reply, files checked in `storage.objects`. Not on the hosted project. |
+| `20260923000000` | `chat_add_first_post_photographs(room, paths)`: a new room's first post gets its photographs *after* the room exists, because the folder is named after an id the function makes — the one place the row comes first and the files second. Definer; once, by the starter, before any reply, files checked in `storage.objects`. Pushed 2026-09-23. |
 
 The four from 2026-09-17, newest first:
 
@@ -710,8 +695,8 @@ component's own comment says so. Six migration headers still call it
 migration is not edited after it has run, comments included. There is nothing
 to go back to and nothing to trust over this file and the migrations.
 
-**The migrations are not on the hosted project.** See the second section of
-this file before deploying anything.
+**The migrations are on the hosted project since 2026-09-23.** See the second
+section of this file for how that is checked before deploying anything.
 
 ## The three kinds of thread, and what separates them
 
@@ -1035,9 +1020,10 @@ A pure function's test is a test of strings. The wiring was checked twice:
 
 # Next up: the owner's call
 
-Chat is built and has its own section above; **its twenty-one migrations still
-have to be pushed, and that is the owner's word to give.** The app is live and
-the ingest is running current code.
+Chat is built and has its own section above, and every one of its migrations
+is on the hosted project as of 2026-09-23. The app is live and the ingest is
+running current code. What is not yet live is the client work on this branch
+— merging it to `main` is what ships it, and Netlify builds from `main`.
 
 **One question is open and it is not a coding one.** The 29 "Staying Driven
 Wheelchair Fitness" events have no format — NorCal SCI's own page never says
