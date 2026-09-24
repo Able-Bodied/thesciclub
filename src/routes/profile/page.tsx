@@ -266,7 +266,9 @@ export default function ProfileSurveyPage() {
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
         {error ? (
-          <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
+          <p role="alert" className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+            {error}
+          </p>
         ) : null}
         <button
           type="button"

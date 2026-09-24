@@ -126,6 +126,7 @@ function MessageButton({
       </button>
       {failure ? (
         <p
+          role="alert"
           className={`mt-2 text-[0.78125rem] leading-[1.45] ${onDark ? 'text-white/90' : 'text-destructive'}`}
         >
           {failure}
@@ -207,7 +208,7 @@ export default function MemberDetailPage() {
   const account = useAccount();
 
   if (loading) {
-    return <Centered>Loading…</Centered>;
+    return <Centered role="status">Loading…</Centered>;
   }
   if (signedOut) {
     return <Centered>The club is members only. Sign in to see who is here.</Centered>;
@@ -472,10 +473,12 @@ export default function MemberDetailPage() {
   );
 }
 
-function Centered({ children }: { children: React.ReactNode }) {
+function Centered({ children, role }: { children: React.ReactNode; role?: 'status' }) {
   return (
     <div className="flex flex-1 items-center justify-center px-8">
-      <p className="text-center text-[0.875rem] text-ink2 leading-relaxed">{children}</p>
+      <p role={role} className="text-center text-[0.875rem] text-ink2 leading-relaxed">
+        {children}
+      </p>
     </div>
   );
 }

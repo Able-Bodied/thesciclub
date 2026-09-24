@@ -119,7 +119,11 @@ export default function TopicPage() {
   }
 
   if (loading || roomsLoading) {
-    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
+    return (
+      <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
+        Loading…
+      </p>
+    );
   }
 
   if (error || !topic) {
@@ -170,7 +174,10 @@ export default function TopicPage() {
       <div className="flex-1 overflow-y-auto px-4 pt-3 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[720px]" ref={list}>
           {removalFailure ? (
-            <p className="mb-2.5 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+            <p
+              role="alert"
+              className="mb-2.5 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+            >
               {removalFailure}
             </p>
           ) : null}
@@ -248,7 +255,10 @@ export default function TopicPage() {
               Join {room?.name ?? 'this room'} to reply
             </button>
             {membership.error ? (
-              <p className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]">
+              <p
+                role="alert"
+                className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]"
+              >
                 {membership.error}
               </p>
             ) : null}

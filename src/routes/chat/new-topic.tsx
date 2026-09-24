@@ -49,7 +49,11 @@ export default function NewTopicPage() {
   const ready = title.trim().length > 0 && body.trim().length > 0;
 
   if (loading) {
-    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
+    return (
+      <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
+        Loading…
+      </p>
+    );
   }
   if (!room) {
     return (
@@ -113,7 +117,10 @@ export default function NewTopicPage() {
         </p>
 
         {failure ? (
-          <p className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+          <p
+            role="alert"
+            className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+          >
             {failure} Nothing has been posted, and what you wrote is still here.
           </p>
         ) : null}

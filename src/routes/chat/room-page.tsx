@@ -89,7 +89,11 @@ export default function RoomPage() {
   const starter = room?.createdBy ? (authors.get(room.createdBy) ?? null) : null;
 
   if (roomsLoading) {
-    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
+    return (
+      <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
+        Loading…
+      </p>
+    );
   }
 
   if (!room) {
@@ -227,7 +231,10 @@ export default function RoomPage() {
               Join {room.name}
             </button>
             {membership.error ? (
-              <p className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]">
+              <p
+                role="alert"
+                className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]"
+              >
                 {membership.error}
               </p>
             ) : null}

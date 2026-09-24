@@ -163,7 +163,9 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
       ) : null}
 
       {error ? (
-        <p className="mt-2.5 text-[0.78125rem] text-destructive leading-[1.45]">{error}</p>
+        <p role="alert" className="mt-2.5 text-[0.78125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
       ) : null}
 
       <button

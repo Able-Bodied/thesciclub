@@ -339,7 +339,9 @@ export function CityStep({ data, set }: StepProps) {
         {locating ? 'Finding you…' : 'Use my location'}
       </button>
       {locationError ? (
-        <p className="mt-2 text-[0.78125rem] text-destructive leading-[1.45]">{locationError}</p>
+        <p role="alert" className="mt-2 text-[0.78125rem] text-destructive leading-[1.45]">
+          {locationError}
+        </p>
       ) : null}
 
       <p className="mt-4 text-center text-[0.78125rem] text-grey">or choose it yourself</p>

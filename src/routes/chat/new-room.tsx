@@ -173,7 +173,7 @@ export default function NewRoomPage() {
 
         {failure ? (
           <div className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5">
-            <p className="text-[0.8125rem] text-destructive leading-[1.45]">
+            <p role="alert" className="text-[0.8125rem] text-destructive leading-[1.45]">
               {failure} Nothing has been started, and what you wrote is still here.
             </p>
             {goTo ? (

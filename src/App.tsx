@@ -1,4 +1,5 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider } from '@/lib/accessibility';
@@ -44,14 +45,26 @@ function AppShell() {
   // phone layout. Reported as a Firefox bug; it was neither Firefox nor a bug,
   // it was this number, and both engines measured identically.
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
+    <div className="relative mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
       {/* First in the DOM, painted last on a phone and first on a desktop —
           see the ordering note in app-nav.tsx. */}
+      {/* The first thing a keyboard reaches: a way past the five tabs to the
+          screen. Off-screen until focused, then a navy pill at the top. */}
+      <a
+        href="#main"
+        // Off the top of the shell until focused, then slid in. Not sr-only:
+        // `not-sr-only` on focus makes it static and it became a strip that
+        // pushed the screen down.
+        className="-translate-y-[150%] absolute top-2 left-2 z-50 rounded-full bg-navy px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
+      >
+        Skip to content
+      </a>
       <AppNav />
       {/* The one main landmark, so a screen reader can jump past the nav to
           the screen ("main" in the rotor). A flex column the size of the slot
-          the routes already filled, so nothing about the layout moves. */}
-      <main className="flex min-h-0 flex-1 flex-col">
+          the routes already filled, so nothing about the layout moves.
+          Focusable so the skip link and a route change have somewhere to land. */}
+      <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
         <Routes>
           <Route path="/home" element={<HomePage />} />
           <Route path="/peers" element={<PeersPage />} />
@@ -99,9 +112,60 @@ function AppShell() {
 export default function App() {
   return (
     <AccessibilityProvider>
+      <RouteChange />
       <AppRoutes />
     </AccessibilityProvider>
   );
+}
+
+/**
+ * What a page load does on its own and a route change does not: name the
+ * page and put the reader at the top of it.
+ *
+ * Tapping Peers → Chat swaps the screen without a load, so a screen reader
+ * was told nothing, the title stayed "The SCI Club" on every screen, and
+ * focus stayed on the tab that was pressed. After each change the title
+ * becomes the screen's h1 — "Chat · The SCI Club" — and focus moves to the
+ * main landmark, from which the next Tab reaches the screen's first control
+ * and a screen reader starts reading the heading. Not on the first render:
+ * a page load already announces itself, and stealing focus then would take
+ * it from the address bar.
+ *
+ * One place, keyed on the h1 every screen already has, rather than a title
+ * prop on eleven pages that would drift from their headings.
+ */
+export function RouteChange() {
+  const { pathname } = useLocation();
+  // The path the last run saw. A run that sees the same path is the first
+  // screen (or StrictMode's second pass over it), and does not take focus.
+  const last = useRef(pathname);
+  // Keyed on the path so it runs once per screen. The path itself is not
+  // read: the heading is, as it appears.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger, not an input
+  useEffect(() => {
+    // The heading is not there on the first frame of most screens — the
+    // account resolves, the read lands, then the h1 draws — so the title is
+    // set from whatever the document holds now and again as it changes,
+    // until the next screen.
+    const name = () => {
+      const heading = document.querySelector('main h1, h1')?.textContent.trim();
+      document.title = heading ? `${heading} · The SCI Club` : 'The SCI Club';
+    };
+    name();
+    const observer = new MutationObserver(name);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+
+    const changed = last.current !== pathname;
+    last.current = pathname;
+    const frame = requestAnimationFrame(() => {
+      if (changed) document.querySelector<HTMLElement>('main')?.focus();
+    });
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(frame);
+    };
+  }, [pathname]);
+  return null;
 }
 
 function AppRoutes() {

@@ -150,7 +150,10 @@ export function Composer({
   return (
     <div className="flex-none border-line border-t bg-paper px-3.5 py-2.5">
       {failure ? (
-        <p className="mb-2 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2 text-[0.78125rem] text-destructive leading-[1.45]">
+        <p
+          role="alert"
+          className="mb-2 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2 text-[0.78125rem] text-destructive leading-[1.45]"
+        >
           {failure} Your words are still here.
         </p>
       ) : null}

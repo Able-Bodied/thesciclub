@@ -108,7 +108,9 @@ export function DeckVisibility({
         </button>
       </div>
       {error ? (
-        <p className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
       ) : null}
     </div>
   );

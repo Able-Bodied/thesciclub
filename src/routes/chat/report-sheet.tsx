@@ -142,11 +142,16 @@ export function ReportSheet({
             className="mt-2 min-h-[5em] w-full resize-y rounded-[13px] border-[1.6px] border-line bg-canvas px-[13px] py-[10px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-navy focus:bg-paper"
           />
           {problem ? (
-            <p className="mt-1.5 text-[0.75rem] text-destructive leading-[1.45]">{problem}</p>
+            <p role="alert" className="mt-1.5 text-[0.75rem] text-destructive leading-[1.45]">
+              {problem}
+            </p>
           ) : null}
 
           {failure ? (
-            <p className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+            <p
+              role="alert"
+              className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+            >
               {failure} Nothing has been sent, and your words are still here.
             </p>
           ) : null}

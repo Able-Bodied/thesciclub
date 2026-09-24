@@ -134,7 +134,10 @@ export default function InvitesPage() {
       <div className="flex-1 overflow-y-auto px-4 py-3.5">
         <div className="mx-auto w-full max-w-[560px]">
           {error ? (
-            <p className="mb-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+            <p
+              role="alert"
+              className="mb-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+            >
               {error}
             </p>
           ) : null}

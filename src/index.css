@@ -176,6 +176,20 @@
     @apply border-border outline-ring/50;
     -webkit-tap-highlight-color: transparent;
   }
+  /* One focus ring for everything that can take focus, drawn only for keyboard
+     and switch users (:focus-visible), in navy on light and gold on navy so it
+     is seen on both. The browser's own ring took --ring at half opacity from
+     the rule above, which on the canvas was a faint grey line — WAI tip 3,
+     "interactive elements are easy to identify", and this club drives with a
+     keyboard, a switch or a head pointer more often than most. */
+  :focus-visible {
+    outline: 3px solid var(--navy);
+    outline-offset: 2px;
+  }
+  .bg-navy :focus-visible,
+  .bg-navy-dp :focus-visible {
+    outline-color: var(--gold);
+  }
   body {
     @apply bg-background text-foreground;
     font-family: var(--body);

@@ -54,7 +54,11 @@ export default function EventDetailPage() {
   );
 
   if (loading) {
-    return <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
+    return (
+      <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
+        Loading…
+      </p>
+    );
   }
   if (error) {
     return (

@@ -179,7 +179,9 @@ export default function ProfileDetailsPage() {
 
         <div className="flex-1 overflow-y-auto px-[18px] py-4">
           {loading ? (
-            <p className="py-10 text-center text-[0.875rem] text-grey">Loading…</p>
+            <p role="status" className="py-10 text-center text-[0.875rem] text-grey">
+              Loading…
+            </p>
           ) : !details ? (
             <p className="py-10 text-center text-[0.875rem] text-ink2">{error}</p>
           ) : (
@@ -250,7 +252,10 @@ export default function ProfileDetailsPage() {
                   }}
                 />
                 {!isAdult(details.birthDate) ? (
-                  <p className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
+                  <p
+                    role="alert"
+                    className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]"
+                  >
                     The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than that.
                   </p>
                 ) : age !== null ? (
@@ -380,7 +385,9 @@ export default function ProfileDetailsPage() {
 
         <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
           {error && details ? (
-            <p className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">{error}</p>
+            <p role="alert" className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+              {error}
+            </p>
           ) : null}
           <button
             type="submit"
