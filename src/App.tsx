@@ -139,9 +139,7 @@ export function RouteChange() {
   // The path the last run saw. A run that sees the same path is the first
   // screen (or StrictMode's second pass over it), and does not take focus.
   const last = useRef(pathname);
-  // Keyed on the path so it runs once per screen. The path itself is not
-  // read: the heading is, as it appears.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: pathname is the trigger, not an input
+  // Once per screen: the path is what changes, the heading is what is read.
   useEffect(() => {
     // The heading is not there on the first frame of most screens — the
     // account resolves, the read lands, then the h1 draws — so the title is
