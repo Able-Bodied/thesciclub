@@ -1018,6 +1018,47 @@ A pure function's test is a test of strings. The wiring was checked twice:
   'relation "…" does not exist' }` reads as drift. Give a fixture a `code`
   when the test is about the code.
 
+# The WAI design tips, and where the site stands — 2026-09-23
+
+The owner asked for w3.org/WAI/tips/designing to be the standard. Audited
+tip by tip against the real app: axe-core (WCAG 2.1 A/AA + best practice)
+on ten screens as a signed-in member, a keyboard walk, a 320px measurement,
+and a read of the code. Biome's a11y rules already run in `pnpm check`.
+
+| tip | state | where |
+| --- | --- | --- |
+| 1 Contrast | met — axe passes every screen | tokens in `src/index.css` |
+| 2 Not colour alone | met — the unread dot has an sr-only " — new" and the tab an aria-label; pills are `aria-pressed`; every error is text | `thread-row.tsx`, `app-nav.tsx`, `segment-pills.tsx` |
+| 3 Interactive elements identifiable | **done 2026-09-23** — one `:focus-visible` ring, 3px navy, gold on navy; before it the browser's ring took `--ring/50` and was faint grey | `src/index.css` `@layer base` |
+| 4 Consistent navigation | **done 2026-09-23** — skip link, and `RouteChange` in `App.tsx` retitles ("Chat · The SCI Club") and moves focus to `main` on every route change, not the first screen | `App.tsx`, `route-change.test.tsx` |
+| 5 Form labels | met — axe's label rules pass; the search box has a visible placeholder and an aria-label | — |
+| 6 Identifiable feedback | **done 2026-09-23** — every error paragraph is `role="alert"`, every "Loading…" is `role="status"`; before, 24 errors announced nothing | 23 files, mechanical |
+| 7 Headings and spacing | met — one h1 per screen, h2 sections, axe's heading-order passes | — |
+| 8 Viewport sizes | met — measured at 320px, no horizontal overflow on any tab; text-size and large-target preferences exist | `src/lib/accessibility.tsx` |
+| 9 Image and media alternatives | **partly** — see below | — |
+| 10 Auto-playing content | met — nothing autoplays; spinners honour `prefers-reduced-motion` | `src/index.css` |
+
+**Tip 9 is the one that needs a decision, not code.** Two gaps:
+
+- **Chat photographs have no description.** A picture is announced as
+  "Photograph 2 of 4 from Bo" and the words beside it are its only
+  description (the reasoning is in `attachment-grid.tsx`'s header). The WAI
+  tip asks the *design* to make room for a text alternative. That means a
+  field in the composer — "Say what is in it" — and a column to hold it, and
+  it is the owner's call whether a chat is the place for that form.
+- **A profile photograph's alt text is never written.** `members.photo_alt`
+  exists and every avatar reads it, but no form sets it: the details form and
+  onboarding upload the picture and leave it null, so every avatar is
+  `alt=""` — decorative — with the name adjacent. Asking "Describe your
+  photo, for members who use a screen reader" on the details form is one
+  field and no migration, and is the honest fix. Recommended.
+
+**Two things a tool cannot check.** Half an hour with VoiceOver on an iPhone
+— the club's platform — through the join flow, a profile, and sending a
+message will find wording and reading-order problems that no audit here can.
+And `RouteChange` keys the title on `main h1, h1`; a screen that gains a
+second h1, or draws its h1 outside `main`, will name the page wrong.
+
 # Next up: the owner's call
 
 Chat is built and has its own section above, and every one of its migrations
