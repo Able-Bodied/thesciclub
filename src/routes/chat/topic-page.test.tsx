@@ -23,6 +23,11 @@ const db = vi.hoisted(() => ({
   reportFails: null as string | null,
 }));
 
+// Mutes read and write the club; the button has its own test.
+vi.mock('@/lib/chat/mutes', () => ({
+  useMute: () => ({ muted: null, busy: false, error: null, toggle: () => undefined }),
+}));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'member', userId: 'me', isAdmin: db.isAdmin, displayName: 'Alex' }),
 }));

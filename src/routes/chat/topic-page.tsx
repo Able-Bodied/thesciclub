@@ -11,6 +11,7 @@ import { chatTimeLong } from '@/lib/chat/time';
 import { firstUnreadIndex, removePost, sendPost, useTopicPosts } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
+import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 
@@ -158,6 +159,15 @@ export default function TopicPage() {
             {starter ? starter.displayName : topic.authorId ? '…' : 'a former member'} on{' '}
             {chatTimeLong(topic.createdAt)}
           </p>
+          {/* Only the member who started a topic is notified of its replies,
+              so only they are offered a way to stop that. */}
+          {topic.authorId !== null && topic.authorId === account.userId ? (
+            <MuteButton
+              target={{ kind: 'topic', id: topic.id }}
+              what="replies to this topic"
+              className="mt-2"
+            />
+          ) : null}
           {/* An administrator seeding a room reaches this screen with a
               working composer and no other sign that nobody can read what
               they are writing. The room page says the same thing; forgetting

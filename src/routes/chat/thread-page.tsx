@@ -11,6 +11,7 @@ import { shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/t
 import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
 import { MessageBubble } from '@/routes/chat/message-bubble';
+import { MuteButton } from '@/routes/chat/mute-button';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 
 /**
@@ -214,6 +215,13 @@ export default function ThreadPage() {
                 Profile
               </Link>
             ) : null}
+            {/* Every member of a conversation is notified of it, so every
+                member can mute it. Draws nothing while notifications are off. */}
+            <MuteButton
+              target={{ kind: 'thread', id: thread.id }}
+              what="this conversation"
+              className="flex-none"
+            />
           </div>
         </div>
       </header>

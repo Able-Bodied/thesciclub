@@ -8,6 +8,7 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
+import { MuteButton } from '@/routes/chat/mute-button';
 import { roomInitial } from '@/routes/chat/room-card';
 import { TopicRow } from '@/routes/chat/topic-row';
 
@@ -158,6 +159,13 @@ export default function RoomPage() {
                 </p>
               ) : null}
             </span>
+            {/* A room's replies notify whoever started the topic, so muting a
+                room means: no notifications for replies to my topics in it. */}
+            <MuteButton
+              target={{ kind: 'room', id: room.id }}
+              what="replies to your topics in this room"
+              className="mt-0.5 flex-none"
+            />
           </div>
 
           {closed ? (
