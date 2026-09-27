@@ -10,6 +10,7 @@ import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { MeHero } from '@/routes/me/hero';
+import { NotificationSettings } from '@/routes/me/notification-settings';
 import { StandingCard } from '@/routes/me/standing';
 import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
 import { MeStats } from '@/routes/me/stats';
@@ -367,7 +368,10 @@ export default function MePage() {
 
             {/* Above sign-out deliberately: somebody who cannot read the screen
                 needs to find this, and the last thing on the page is the
-                hardest thing to reach with a head pointer or a mouth stick. */}
+                hardest thing to reach with a head pointer or a mouth stick.
+                Notifications sit above it for the same reason, and beside it
+                because both are about this device rather than the member. */}
+            <NotificationSettings userId={userId} />
             <AccessibilitySettings />
           </div>
         </div>

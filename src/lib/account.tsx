@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { describeError } from '@/lib/describe-error';
+import { forgetThisDevice } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -124,6 +125,10 @@ export function useAccount(): Account {
  * welcome screen. Nothing here has to navigate.
  */
 export async function signOut(): Promise<{ ok: boolean; error?: string }> {
+  // While the session still exists, since the row can only be deleted by its
+  // owner: the next person to sign in on this phone must not get this
+  // member's notifications. Best effort, and bounded — see forgetThisDevice.
+  await forgetThisDevice();
   const { error } = await getSupabase().auth.signOut();
   return error
     ? { ok: false, error: describeError(error, 'You are still signed in.') }

@@ -84,6 +84,18 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
     wroteVisibility.calls.push(args) && Promise.resolve({ ok: true as const }),
 }));
 
+// The Notifications row reads the browser and the club; neither belongs in a
+// test of this page. It has its own test, and draws nothing while null.
+vi.mock('@/lib/push/notifications', () => ({
+  useDeviceNotifications: () => ({
+    state: null,
+    error: null,
+    busy: false,
+    turnOn: () => undefined,
+    turnOff: () => undefined,
+  }),
+}));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
   signOut: () => {
