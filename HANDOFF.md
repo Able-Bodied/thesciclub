@@ -79,7 +79,7 @@ rooms a member starts, and photographs. Its twenty-two migrations have been on
 the hosted project since 2026-09-23; the section below says how to check that
 rather than trust it. See "What Chat is".
 
-1,157 tests pass, in 78 files. `pnpm check` and `pnpm build` are clean. **Keep
+1,178 tests pass, in 81 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 75 migrations, all of them on the hosted project
@@ -410,6 +410,7 @@ Two rules, both learned the hard way:
 | `chat-attachments.sql` | photographs: the row limits (step 12a–f is the new-room function, with its four refusals); (four, words *or* a picture, paths under the row's own folder) and the `chat` bucket's read policy as members — step 6 (an outsider cannot read a conversation's picture) and 9a (an administrator reads a reported picture and not its neighbour) are the ones that matter. Uploads and deletes cannot be tested from SQL; `pnpm check-chat-photo-policy` does those through the API |
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
 | `push-subscriptions.sql` | notifications: step 5 (another member reads none of your devices) and 7 (a phone that changes hands notifies its new holder, not its old) are the ones that matter; no insert or update grant, five off-service endpoints refused, paused can turn off but not on |
+| `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
@@ -1118,25 +1119,103 @@ finds out the next time they open the app. The club is phones, and mostly
 iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
 no native wrapper.
 
-**Where it stands, end of 2026-09-27: pieces 1–3 of 5 are built and committed
-on the branch, not merged.** Piece 1 is harmless to ship on its own and was
-checked to be; pieces 2 and 3 wait on things only the owner does:
+**Where it stands, end of 2026-09-27: pieces 1–4 are built, tested end to
+end on the local stack, and committed. Pieces 1–3 are merged and live but
+switched off; piece 4 and the mute controls are on the branch.** Nothing a
+member sees has changed. Going live is six steps, in this order, and every
+one is the owner's or needs their yes:
 
-- **The migration (`20260927000000`) is on the local stack only.** It goes to
-  the hosted project with the owner's yes, `--dry-run` first, like every other.
-- **The Notifications row is invisible in production, on purpose,** until
-  `VITE_VAPID_PUBLIC_KEY` is set in Netlify. That variable is the feature's
-  one switch: set it the day the sender (piece 4) is deployed, not before — a
-  switch that turns on notifications nobody sends is the control CONTEXT.md
-  rules out. Merging pieces 1–3 without it changes nothing a member can see.
-- **A VAPID pair was generated on 2026-09-27 and is in `.env.local`**:
-  `VITE_VAPID_PUBLIC_KEY` (browser-visible by design) and `VAPID_PRIVATE_KEY`
-  (the raw `d` of a P-256 key, base64url — never `VITE_`-prefixed; it becomes
-  a function secret with `pnpm exec supabase secrets set`). Changing the pair
-  later strands every existing subscription; `turnOnNotifications` notices a
-  subscription made under another key and remakes it, but only when the member
-  presses the button again.
-- **Next is piece 4, and the three owner decisions below come first.**
+1. **`pnpm exec supabase db push --linked`** (after `--dry-run`, which should
+   list `20260927000000` and `20260927010000`). The second enables `pg_net`
+   and makes a random `push_notify_secret` in the vault. It sends nothing
+   until step 4. An attempt to push the first one from a session was refused
+   by the permission system because it piped `yes` into the prompt — run it
+   yourself, reading the list.
+2. **`pnpm exec supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`**
+   from the pair in `.env.local` (`VITE_VAPID_PUBLIC_KEY` and
+   `VAPID_PRIVATE_KEY`). Optionally `VAPID_SUBJECT`; it defaults to the site's
+   URL, deliberately not anybody's inbox.
+3. **`pnpm exec supabase functions deploy push-notify`**. `config.toml` sets
+   `verify_jwt = false` for it; see the function's header for why that is
+   safe.
+4. **In the dashboard's SQL editor, once:**
+   `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/push-notify', 'push_notify_url');`
+   This is the sending switch. Deleting the secret stops every notification
+   without touching code.
+5. **Netlify: `VITE_VAPID_PUBLIC_KEY`** = the same public key, then a deploy.
+   This is the *showing* switch: the Notifications row on Me and the three
+   mute buttons appear only when it is set.
+6. **Merge the branch** (the function, the mutes UI). Order matters only in
+   that 5 before 1–4 would show members a switch that sends nothing.
+
+Then on a real iPhone: add to the Home Screen, sign in, turn on, and have
+somebody send a direct message with the app closed. That is the one thing no
+session here can do.
+
+**The VAPID pair was generated 2026-09-27 and lives in `.env.local`.**
+Changing it later strands every existing subscription until the member
+presses the button again (`turnOnNotifications` remakes a subscription made
+under another key).
+
+## What is sent — the owner's decisions, 2026-09-27
+
+| event | who | lock screen |
+| --- | --- | --- |
+| direct message | the other member | **Direct message from Bo** · the words, cut at 120 characters on a word, or "Sent a photograph." |
+| group message | everybody else in the group | **Group message from Bo** · the words, likewise |
+| reply in a topic | the member who *started* the topic | **Reply to your topic** · "Bo replied to your topic." — never the words, never the room or topic |
+
+Nobody paused, not the author, not a starter who can no longer read the room
+(an administrator closed it). **A conversation, a topic and a room can each be
+muted** — a room's mute means replies to *your* topics in it, since those are
+the only notifications a room produces. No room, topic or group is ever named
+on a lock screen.
+
+Where each piece is:
+
+- `supabase/migrations/20260927010000_…` — the three mute tables, `push_owed`
+  (who is owed and what it may say; returns **no body for a reply**, so the
+  function could not leak one), `push_forget`, and the trigger. Probe:
+  `supabase/tests/push-notify.sql`.
+- `supabase/functions/push-notify/` — `index.ts` (Deno), `compose.ts` (the
+  words, Vitest-tested), `webpush.ts` (VAPID + aes128gcm on WebCrypto, and
+  its test reproduces RFC 8291's worked example byte for byte).
+- `src/lib/chat/mutes.ts`, `src/routes/chat/mute-button.tsx`.
+
+**How the database reaches the function**: an `after insert` trigger on
+`chat_messages` and `chat_posts` calls `net.http_post` with only the table
+and id; pg_net sends after commit. The trigger swallows every error — a
+notification must never cost the message. It carries the vault's
+`push_notify_secret`, which the function passes back to `push_owed` for the
+database to check; the function never holds it.
+
+**Checked end to end on the local stack** (`supabase functions serve
+push-notify --env-file …`, the vault's `push_notify_url` set to
+`http://kong:8000/functions/v1/push-notify`): a direct message, a group
+message and a topic reply each went trigger → function → Google's push
+service → Chromium, which decrypted and showed exactly the words above; a
+muted conversation's message produced nothing and the function said
+`owed: 0`. **Not checked:** a 404/410 from a push service forgetting the
+device — `push_forget` is probed in SQL but no push service was made to say
+gone.
+
+## More that could notify — suggestions, not built
+
+Raised for the owner on 2026-09-27; each would be a branch in `push_owed` and
+a line in `compose.ts`:
+
+- **You were added to a group.** Today they find out on their next list read.
+- **An event you are going to is tomorrow.** Needs a schedule (pg_cron), not
+  a trigger.
+- **A new event from an organization you follow.** The ingest writes events;
+  one notification per ingest run, not per event.
+- **A report, for administrators.** Harassment reported at night otherwise
+  waits for somebody to open `/admin`.
+- **Somebody you invited joined** — for a mentor.
+- **A reply in a topic you posted in but did not start.** Noisier; would want
+  its own mute.
+- **The badge** (piece 5): `setAppBadge(chat_unread_count())` when a push
+  lands. The function would compute the count per recipient.
 
 ## What iOS allows, checked against WebKit's own post
 
@@ -1247,24 +1326,13 @@ Each by running it, not by reading.
   script (a synthetic event's `waitUntil` throws); `pickWindow` is unit-tested
   and the tap itself is for the phone.
 
-## The decisions that are the owner's, before piece 4
+## The decisions that were the owner's, before piece 4
 
-- **What is worth a notification.** A direct message, certainly. A message
-  in a group? A reply in a topic you started, or one you posted in? A new
-  topic in a room you joined? An event you said you were going to,
-  tomorrow? A report, for an administrator? Each yes is a line in the
-  function and a switch on Me; start with direct messages and groups and add
-  the rest when somebody asks.
-- **What the lock screen says.** This is a club where the rooms are called
-  Bowel management and Sex, dating & fertility, and a lock screen is read by
-  whoever is next to it. **Recommended: "Bo sent you a message" and no
-  words from the message, and "New in a room you joined" without the room's
-  name, by default**, with a switch for members who want the preview. The
-  function must never put a body in a push for somebody who has not asked.
-- **Quiet.** A mute per conversation is the thing people ask for second.
-  Not in the first version unless the owner wants it; the table for it is
-  one column on `chat_thread_members`, which is *not* in the realtime
-  publication, on purpose.
+Made 2026-09-27 and recorded in "What is sent" above. The recommendation here
+had been no words on a lock screen by default; the owner chose the words for
+direct and group messages and none for replies. iOS's own setting — Settings,
+Notifications, Show Previews, *When Unlocked* — hides them on a locked phone
+for any member who wants that, and is worth telling people about.
 
 ## Traps, most of them already in this file
 
