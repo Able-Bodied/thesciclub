@@ -79,7 +79,7 @@ rooms a member starts, and photographs. Its twenty-two migrations have been on
 the hosted project since 2026-09-23; the section below says how to check that
 rather than trust it. See "What Chat is".
 
-1,116 tests pass, in 75 files. `pnpm check` and `pnpm build` are clean. **Keep
+1,157 tests pass, in 78 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 75 migrations, all of them on the hosted project
@@ -409,6 +409,7 @@ Two rules, both learned the hard way:
 | `chat-reports.sql` | that a member outside a conversation cannot report a message in it, that the reporter reads back three columns and not the snapshot, that the administrators' answer carries no thread id, that a second report is one row, that the snapshot survives the author taking the message back, and that somebody paused can still say what was done to them |
 | `chat-attachments.sql` | photographs: the row limits (step 12a–f is the new-room function, with its four refusals); (four, words *or* a picture, paths under the row's own folder) and the `chat` bucket's read policy as members — step 6 (an outsider cannot read a conversation's picture) and 9a (an administrator reads a reported picture and not its neighbour) are the ones that matter. Uploads and deletes cannot be tested from SQL; `pnpm check-chat-photo-policy` does those through the API |
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
+| `push-subscriptions.sql` | notifications: step 5 (another member reads none of your devices) and 7 (a phone that changes hands notifies its new holder, not its old) are the ones that matter; no insert or update grant, five off-service endpoints refused, paused can turn off but not on |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
@@ -1117,6 +1118,26 @@ finds out the next time they open the app. The club is phones, and mostly
 iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
 no native wrapper.
 
+**Where it stands, end of 2026-09-27: pieces 1–3 of 5 are built and committed
+on the branch, not merged.** Piece 1 is harmless to ship on its own and was
+checked to be; pieces 2 and 3 wait on things only the owner does:
+
+- **The migration (`20260927000000`) is on the local stack only.** It goes to
+  the hosted project with the owner's yes, `--dry-run` first, like every other.
+- **The Notifications row is invisible in production, on purpose,** until
+  `VITE_VAPID_PUBLIC_KEY` is set in Netlify. That variable is the feature's
+  one switch: set it the day the sender (piece 4) is deployed, not before — a
+  switch that turns on notifications nobody sends is the control CONTEXT.md
+  rules out. Merging pieces 1–3 without it changes nothing a member can see.
+- **A VAPID pair was generated on 2026-09-27 and is in `.env.local`**:
+  `VITE_VAPID_PUBLIC_KEY` (browser-visible by design) and `VAPID_PRIVATE_KEY`
+  (the raw `d` of a P-256 key, base64url — never `VITE_`-prefixed; it becomes
+  a function secret with `pnpm exec supabase secrets set`). Changing the pair
+  later strands every existing subscription; `turnOnNotifications` notices a
+  subscription made under another key and remakes it, but only when the member
+  presses the button again.
+- **Next is piece 4, and the three owner decisions below come first.**
+
 ## What iOS allows, checked against WebKit's own post
 
 Read https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/
@@ -1147,10 +1168,11 @@ whether a message for the conversation already on screen can be swallowed.
 | | state |
 | --- | --- |
 | manifest, `display: standalone`, icons, `apple-touch-icon` | there |
-| a service worker | there, but **generated**: `VitePWA` runs the default `generateSW` with `registerType: 'autoUpdate'`, so `dist/sw.js` is Workbox's precache and nothing else. It has no `push` and no `notificationclick` handler and there is nowhere to write one |
+| a service worker | **ours since 2026-09-27** (piece 1): `src/sw.ts`, `injectManifest`, IIFE. Keeps everything the generated one did and adds `push` / `notificationclick`; the words and the address are `lib/push/payload.ts` |
 | anything that can send | **nothing.** `supabase/functions/` does not exist; the only workflow is `event-ingest.yml` |
-| somewhere to keep a subscription | nothing |
-| VAPID keys | none |
+| somewhere to keep a subscription | **`push_subscriptions`** (piece 2), written only by `push_subscribe`. Local only |
+| a way to say yes | **the Notifications row on Me** (piece 3), `lib/push/notifications.ts` + `routes/me/notification-settings.tsx`; sign-out forgets the device |
+| VAPID keys | in `.env.local`, see above; in Netlify, **not yet, deliberately** |
 | a definition of "new" | there — `chat_my_threads()` / `chat_unread_count()` |
 | in-app delivery | there — realtime on messages, posts, topics, threads, rooms |
 
@@ -1188,6 +1210,42 @@ Five pieces, and each can be finished and looked at before the next.
    Never `config push`.
 5. **The badge.** `setAppBadge(chat_unread_count)` when a push lands and when
    the shell re-asks; `clearAppBadge()` at zero.
+
+## What building pieces 1–3 found
+
+Each by running it, not by reading.
+
+- **Chromium's push endpoints are `https://jmt17.google.com/fcm/send/…`**, not
+  the `fcm.googleapis.com` every guide quotes. `push_subscribe` refuses any
+  endpoint that is not a push service's (the sender will POST to it, so an open
+  column is a way to aim our function at any URL), and its first list refused
+  every Chrome member. It allows any `google.com` host now. **If a new browser
+  is refused, subscribe in it and read the host** — do not guess.
+- **A device changes hands and keeps its endpoint.** Sign out, sign in as
+  somebody else, and the browser returns the same subscription. So the
+  endpoint is the primary key and `push_subscribe` *takes it over* from
+  whoever held it; with a plain unique constraint the second member is refused
+  and the first keeps getting their messages on a phone somebody else holds.
+  Sign-out also deletes the row (`forgetThisDevice`, bounded at 3s), and the
+  takeover is the backstop for when that did not run.
+- **Playwright cannot test push by default, twice over.** The headless shell
+  denies notification permission whatever `grantPermissions` says — launch
+  with `channel: 'chromium'`. And every `newContext()` is incognito, where
+  Chrome has no Push API at all; the error reads "Registration failed -
+  permission denied". Use `launchPersistentContext` with a scratch profile.
+- **`navigator.serviceWorker.ready` never settles where no worker registered**
+  — the dev server, since `devOptions` is off. So the row cannot be exercised
+  under `pnpm dev`: build against the local stack and `vite preview --outDir`
+  it. `turnOnNotifications` races `ready` against ten seconds for the same
+  reason.
+- **Checked in the real browser**: a new deploy's worker takes over an open
+  tab (autoUpdate still works), `/chat` opens offline, a delivered push
+  (`ServiceWorker.deliverPushMessage` over CDP) becomes a notification with
+  the payload's title and a garbage one with "The SCI Club", and the row runs
+  on → reload → off → on → sign out with the table matching at every step.
+  **Not checked: `notificationclick`**, which cannot be dispatched from a
+  script (a synthetic event's `waitUntil` throws); `pickWindow` is unit-tested
+  and the tap itself is for the phone.
 
 ## The decisions that are the owner's, before piece 4
 
