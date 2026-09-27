@@ -399,6 +399,12 @@ deno_version = 2
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 
+# The notification sender. Its caller is the database (pg_net, from the
+# push_notify_enqueue trigger), not a member, so there is no JWT to verify;
+# it carries the vault's push_notify_secret instead, which push_owed checks.
+[functions.push-notify]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

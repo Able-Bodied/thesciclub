@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.functions.tsbuildinfo",
+    "target": "es2023",
+    // DOM for fetch, Request, Response and WebCrypto, which Deno provides with
+    // the same shapes. Deno's own globals are declared in index.ts rather
+    // than pulled in as types, so the check needs nothing Deno-specific.
+    "lib": ["ES2023", "DOM"],
+    "types": [],
+    "module": "esnext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "isolatedModules": true,
+
+    /* Linting */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  // The Edge Functions: Deno at runtime, checked here by the same tsc as
+  // everything else so a type error cannot wait until deploy to be found.
+  "include": ["supabase/functions"]
+}
