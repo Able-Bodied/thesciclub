@@ -1053,11 +1053,188 @@ and a read of the code. Biome's a11y rules already run in `pnpm check`.
   photo, for members who use a screen reader" on the details form is one
   field and no migration, and is the honest fix. Recommended.
 
+## What is next for accessibility, in order
+
+Decided with the owner 2026-09-27. Ranked by what a member using a screen
+reader, a switch or a keyboard would notice first. Each is small; none needs
+a migration except the fourth.
+
+1. **An hour with VoiceOver on a real iPhone, before any more code.** The
+   join flow, the deck, a profile, sending a message with a photograph,
+   starting a room. Everything below was found by a tool or by reading; what
+   VoiceOver finds is wording and reading order, and it will reorder this
+   list. Write down what it *says*, verbatim, the way the error strings were
+   copied rather than remembered.
+2. **The photograph viewer is not a dialog.** `Lightbox` in
+   `attachment-grid.tsx` is a `fixed inset-0` div: no `role="dialog"`, no
+   `aria-modal`, no focus trap, so Tab walks out of the picture into the chat
+   behind it and a screen reader is never told a viewer opened. The two
+   sheets already do it right — `filter-sheet-shell.tsx` and
+   `report-sheet.tsx` are the pattern. Focus must return to the tile that
+   opened it when it closes.
+3. **Write a profile photograph's alt text.** `members.photo_alt` exists and
+   every avatar reads it; nothing sets it. One field on the details form
+   under the photo — "Describe your photo, for members who use a screen
+   reader" — saved by `saveDetails`. No migration. Onboarding's photo step
+   can ask the same, optionally. Until then every avatar is `alt=""`.
+4. **A description for a chat photograph** — the owner's call, not yet
+   given. A field per picture in `PhotoStrip` and somewhere to keep it
+   (`attachments` is `text[]` of paths; a parallel `attachment_alts text[]`
+   is the small version). If yes, the viewer reads it instead of "Photograph
+   2 of 4 from Bo".
+5. **Say when a save worked.** WAI tip 6 asks for confirmation as well as
+   errors. Errors are `role="alert"` now; success is mostly silent — the
+   details form, the survey, an RSVP, joining a room and following an
+   organization change what is on screen and announce nothing. A polite live
+   region in the shell (`role="status"`, one at a time) that a write helper's
+   caller can speak through — "Saved.", "You joined Bowel management." — is
+   one component and a line at each site.
+6. **Audit the toggles.** `follow-button.tsx` is the model: `aria-pressed`
+   and a label that says what pressing will do. Join/Leave on a room and
+   RSVP on an event swap their words instead, which is fine to read and
+   says nothing at the moment it changes — item 5 covers the announcement;
+   this is checking each one has a name that is true in both states.
+7. **Keep axe in the loop.** The run that found the landmark gap was a
+   scratch script. It wants to be `pnpm a11y` beside `pnpm shoot` — same
+   sign-in, same local stack, axe-core over the same ten screens, non-zero
+   exit on a violation — so the next regression is found by a command and
+   not by a member.
+
+**Not merged yet:** the WAI work (`fab7455`, `95c24d1`, `e685383`) and this
+section are on `scaffold-and-peers-deck`, three commits past `main`. Nothing
+in them touches the database.
+
 **Two things a tool cannot check.** Half an hour with VoiceOver on an iPhone
 — the club's platform — through the join flow, a profile, and sending a
 message will find wording and reading-order problems that no audit here can.
 And `RouteChange` keys the title on `main h1, h1`; a screen that gains a
 second h1, or draws its h1 outside `main`, will name the page wrong.
+
+# Next up: notifications on an iPhone
+
+**The owner's next job, decided 2026-09-27.** A member who is sent a message
+finds out the next time they open the app. The club is phones, and mostly
+iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
+no native wrapper.
+
+## What iOS allows, checked against WebKit's own post
+
+Read https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/
+before writing anything; these five were confirmed there on 2026-09-27.
+
+- **iOS and iPadOS 16.4 or later.**
+- **Only a web app that has been added to the Home Screen.** Not a Safari
+  tab. The manifest's `display` must be `standalone` or `fullscreen` — ours
+  is `standalone` already (`vite.config.ts`).
+- **Permission is asked in response to a tap**, never on load. A request
+  made any other way is ignored, and a member who says no is not asked
+  again by the system.
+- **The standard Push API, Notifications API and a service worker**, with
+  VAPID. No Apple Developer Program membership. The endpoints are under
+  `*.push.apple.com`.
+- **The Badging API works** for a Home Screen web app — `setAppBadge` /
+  `clearAppBadge`, foreground or background. `chat_unread_count()` is
+  already the one definition of the number.
+
+**Not confirmed, and to be before it is relied on:** that a push which shows
+no notification costs the subscription. Safari has said so for the Mac; the
+iOS post is silent. Assume every push must show something
+(`userVisibleOnly: true`) until a real phone says otherwise — which decides
+whether a message for the conversation already on screen can be swallowed.
+
+## What the repo has, and what it does not
+
+| | state |
+| --- | --- |
+| manifest, `display: standalone`, icons, `apple-touch-icon` | there |
+| a service worker | there, but **generated**: `VitePWA` runs the default `generateSW` with `registerType: 'autoUpdate'`, so `dist/sw.js` is Workbox's precache and nothing else. It has no `push` and no `notificationclick` handler and there is nowhere to write one |
+| anything that can send | **nothing.** `supabase/functions/` does not exist; the only workflow is `event-ingest.yml` |
+| somewhere to keep a subscription | nothing |
+| VAPID keys | none |
+| a definition of "new" | there — `chat_my_threads()` / `chat_unread_count()` |
+| in-app delivery | there — realtime on messages, posts, topics, threads, rooms |
+
+## The shape of it
+
+Five pieces, and each can be finished and looked at before the next.
+
+1. **The service worker becomes ours.** `strategies: 'injectManifest'` with
+   a `src/sw.ts` that keeps Workbox's precache (`precacheAndRoute(
+   self.__WB_MANIFEST)`) and adds `push` → `showNotification` and
+   `notificationclick` → focus an open window or open the URL the push
+   named. Check `autoUpdate` still updates and the app still opens offline
+   afterwards; this is the change most likely to break something that works.
+2. **`push_subscriptions`.** `member_id`, `endpoint` (unique), `p256dh`,
+   `auth`, `user_agent`, `created_at`. A member reads, inserts and deletes
+   their own and nobody else's. **Insert and delete, not update — so not an
+   upsert**: that is the join-a-room bug exactly, see "What will bite the
+   next person". One phone is one row; a member with a phone and a tablet is
+   two.
+3. **A row on Me, "Notifications"**, beside the accessibility settings. It
+   has four states and must say which one it is in: *not on the Home Screen*
+   (say how — Share, Add to Home Screen — because nothing can be asked until
+   then; `navigator.standalone` / `display-mode: standalone` tells them
+   apart), *not asked* (the button, and the tap is the gesture), *on* (with a
+   way to turn it off, which deletes the row), *refused* (the system will
+   not ask again; say where in Settings it is changed).
+4. **The sender: one Edge Function.** `supabase/functions/notify`, called by
+   a database webhook on insert into `chat_messages` (and `chat_posts`, if
+   the owner says so). It works out who is owed — the thread's members but
+   not the author, not anybody paused or removed — reads their subscriptions
+   with the service role, signs with VAPID and sends. **A 404 or 410 from the
+   push service means the subscription is dead: delete the row**, or the
+   table fills with phones that were wiped. The private key is a function
+   secret (`supabase secrets set`), the public key is a `VITE_` variable.
+   Never `config push`.
+5. **The badge.** `setAppBadge(chat_unread_count)` when a push lands and when
+   the shell re-asks; `clearAppBadge()` at zero.
+
+## The decisions that are the owner's, before piece 4
+
+- **What is worth a notification.** A direct message, certainly. A message
+  in a group? A reply in a topic you started, or one you posted in? A new
+  topic in a room you joined? An event you said you were going to,
+  tomorrow? A report, for an administrator? Each yes is a line in the
+  function and a switch on Me; start with direct messages and groups and add
+  the rest when somebody asks.
+- **What the lock screen says.** This is a club where the rooms are called
+  Bowel management and Sex, dating & fertility, and a lock screen is read by
+  whoever is next to it. **Recommended: "Bo sent you a message" and no
+  words from the message, and "New in a room you joined" without the room's
+  name, by default**, with a switch for members who want the preview. The
+  function must never put a body in a push for somebody who has not asked.
+- **Quiet.** A mute per conversation is the thing people ask for second.
+  Not in the first version unless the owner wants it; the table for it is
+  one column on `chat_thread_members`, which is *not* in the realtime
+  publication, on purpose.
+
+## Traps, most of them already in this file
+
+- **It cannot be tested on a simulator or in a tab.** A real iPhone, the
+  site over HTTPS, added to the Home Screen. The Netlify deploy is the easy
+  way; a tunnel works (ngrok and cloudflared hostnames are in
+  `server.allowedHosts`). Build the whole path in desktop Firefox or Chrome
+  first — same API, and Playwright has Firefox — then take it to the phone
+  for what only the phone does.
+- **An installed web app is a separate browser.** It does not share Safari's
+  storage, so a member who adds the club to the Home Screen signs in again
+  there. The Notifications row should expect that, not be surprised by it.
+- **No test may reach the network.** `pushManager.subscribe` and the
+  function call go behind a module a screen test stubs, like every other
+  hook. The four states of the row are a pure function of three booleans and
+  are tested as one.
+- **A probe as the superuser proves nothing about the table's policies.**
+  `push_subscriptions` gets a probe that reads as a member and tries to read
+  somebody else's row, with `current_user` printed at the top.
+- **The webhook fires for every insert, including the ones the app is
+  showing.** If every push must show a notification (see "Not confirmed"),
+  the member looking at the conversation gets one for the message on their
+  screen. The service worker can see its open windows
+  (`clients.matchAll`); what it is allowed to do about it is the thing to
+  settle on a real phone.
+- **Errors read as sentences.** A refused subscription or a failed send goes
+  through `describeError` like everything else; the push service's own
+  words do not reach a member.
 
 # Next up: the owner's call
 
