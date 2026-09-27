@@ -44,6 +44,13 @@
 -- Microsoft's (Edge). A browser that uses another is refused with a sentence,
 -- and adding it is one alternative in the pattern below — in both places.
 --
+-- Google's is two names, and the second was found by subscribing rather than
+-- by reading: Chromium in 2026 hands out `https://jmt17.google.com/fcm/send/…`,
+-- not the `fcm.googleapis.com` every guide still quotes. Allowing any
+-- google.com host costs nothing that matters — what this guards against is
+-- the sender being aimed at an internal address or somebody's own server, and
+-- Google's public hosts are neither.
+--
 -- ---------------------------------------------------------------------------
 -- Paused members cannot subscribe, and can unsubscribe
 -- ---------------------------------------------------------------------------
@@ -60,7 +67,7 @@ create table if not exists public.push_subscriptions (
   created_at timestamptz not null default now(),
 
   constraint push_subscriptions_endpoint_check check (
-    endpoint ~ '^https://([a-z0-9-]+\.)*(push\.apple\.com|fcm\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com)/'
+    endpoint ~ '^https://([a-z0-9-]+\.)*(push\.apple\.com|fcm\.googleapis\.com|google\.com|push\.services\.mozilla\.com|notify\.windows\.com)/'
     and length(endpoint) <= 1024
   ),
   -- The keys are base64url. p256dh is a 65-byte point (87 characters), auth a
@@ -117,7 +124,7 @@ begin
   end if;
 
   if sub_endpoint is null
-     or sub_endpoint !~ '^https://([a-z0-9-]+\.)*(push\.apple\.com|fcm\.googleapis\.com|push\.services\.mozilla\.com|notify\.windows\.com)/' then
+     or sub_endpoint !~ '^https://([a-z0-9-]+\.)*(push\.apple\.com|fcm\.googleapis\.com|google\.com|push\.services\.mozilla\.com|notify\.windows\.com)/' then
     raise exception 'This browser cannot receive the club''s notifications. Add the club to your Home Screen and try from there.';
   end if;
 

@@ -33,7 +33,8 @@ values
 
 -- Realistic shapes: an Apple endpoint, an 87-character p256dh, a 22-character auth.
 \set phone '''https://web.push.apple.com/QGuQyavXutnMH8mWDnUGfzzHmU_kaWCbzkMwHcrk0LXGE7B3/'''
-\set tablet '''https://fcm.googleapis.com/fcm/send/dQw4w9WgXcQ:APA91bFakeTokenForTheProbe'''
+-- The tablet's is the host Chromium actually issued on 2026-09-27, not the one guides quote.
+\set tablet '''https://jmt17.google.com/fcm/send/dQw4w9WgXcQ:APA91bFakeTokenForTheProbe'''
 \set p256dh '''BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8QcYP7DkM'''
 \set auth '''tBHItJI5svbpez7KI4CCXg'''
 
@@ -95,13 +96,13 @@ select public.push_subscribe(:phone, :p256dh, :auth);
 select count(*) as nosy_now_holds from public.push_subscriptions;
 
 \echo ''
-\echo '== 7b. and Holder has only the tablet left (expect 1, the fcm one) =='
+\echo '== 7b. and Holder has only the tablet left (expect 1, the Google one) =='
 select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-4444-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
-select endpoint like 'https://fcm.%' as is_the_tablet from public.push_subscriptions;
+select endpoint like 'https://jmt17.google.com/%' as is_the_tablet from public.push_subscriptions;
 
 \echo ''
-\echo '== 8. an endpoint that is not a push service is refused (expect ERROR x4) =='
+\echo '== 8. an endpoint that is not a push service is refused (expect ERROR x5) =='
 \echo '   The sender will POST to whatever is stored here.'
 savepoint not_push_1;
 select public.push_subscribe('https://evil.example/collect', :p256dh, :auth);
@@ -115,6 +116,9 @@ rollback to savepoint not_push_3;
 savepoint not_push_4;
 select public.push_subscribe('https://user@web.push.apple.com/x', :p256dh, :auth);
 rollback to savepoint not_push_4;
+savepoint not_push_5;
+select public.push_subscribe('https://google.com.evil.example/fcm/send/x', :p256dh, :auth);
+rollback to savepoint not_push_5;
 
 \echo ''
 \echo '== 9. keys that are not keys are refused (expect ERROR, keys_check) =='
