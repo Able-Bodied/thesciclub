@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-21.
+Last updated 2026-09-27.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -74,12 +74,12 @@ NorCal SCI's and AdaptiveRecHub's live calendars. Also: admin tools, the invite
 system, an 18+ gate, a details editor, and a three-strike system behind Good
 standing.
 
-**Chat is the fourth and is built but not deployed** — conversations, groups,
-rooms, reporting, rooms a member starts, and photographs. Its twenty-one migrations are not
-on the hosted project, which is why the section below about that comes before
-anything else. See "What Chat is".
+**Chat is the fourth and is live** — conversations, groups, rooms, reporting,
+rooms a member starts, and photographs. Its twenty-two migrations have been on
+the hosted project since 2026-09-23; the section below says how to check that
+rather than trust it. See "What Chat is".
 
-1,047 tests pass, in 70 files. `pnpm check` and `pnpm build` are clean. **Keep
+1,116 tests pass, in 75 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 75 migrations, all of them on the hosted project
@@ -835,7 +835,7 @@ Each of these was found by running something, not by reading it.
   upsert and only *works* because that table still carries Supabase's default
   privileges (update included); it now uses `ignoreDuplicates` too, so
   tightening its grants will not break following. Nobody noticed on the
-  hosted project because the Chat migrations are not on it yet. Rule: a row
+  hosted project because the Chat migrations were not on it yet. Rule: a row
   a member only ever inserts or deletes is never upserted with `do update`.
 - **A `security definer` function has RLS off inside it, so it must check
   visibility itself.** The first draft of `chat_topics_for` leaned on the
@@ -1100,9 +1100,9 @@ a migration except the fourth.
    exit on a violation — so the next regression is found by a command and
    not by a member.
 
-**Not merged yet:** the WAI work (`fab7455`, `95c24d1`, `e685383`) and this
-section are on `scaffold-and-peers-deck`, three commits past `main`. Nothing
-in them touches the database.
+**Merged 2026-09-27:** the WAI work (`fab7455`, `95c24d1`, `e685383`) and
+this section reached `main`, and so production. Nothing in them touches the
+database.
 
 **Two things a tool cannot check.** Half an hour with VoiceOver on an iPhone
 — the club's platform — through the join flow, a profile, and sending a
