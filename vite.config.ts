@@ -11,6 +11,13 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Ours rather than generated, so it can receive a push. src/sw.ts keeps
+      // everything the generated one did; its header lists what and why.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      // A classic script, not a module: iOS came late to module workers.
+      injectManifest: { rollupFormat: 'iife' },
       manifest: {
         name: 'The SCI Club',
         short_name: 'SCI Club',
