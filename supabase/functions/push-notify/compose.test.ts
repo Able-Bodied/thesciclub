@@ -6,11 +6,14 @@ const owed = (over: Partial<Owed>): Owed => ({
   p256dh: 'p',
   auth: 'a',
   kind: 'direct',
-  author_name: 'Bo',
+  actor_name: 'Bo',
   body: 'See you Friday',
   photo_count: 0,
+  subject: null,
+  detail: null,
   url: '/chat/t/abc',
   tag: 'thread:abc',
+  badge: null,
   ...over,
 });
 
@@ -68,8 +71,68 @@ describe('compose', () => {
   });
 
   it('names somebody who has left as a member', () => {
-    expect(compose(owed({ author_name: null }))?.title).toBe('Direct message from A member');
-    expect(compose(owed({ author_name: '  ' }))?.title).toBe('Direct message from A member');
+    expect(compose(owed({ actor_name: null }))?.title).toBe('Direct message from A member');
+    expect(compose(owed({ actor_name: '  ' }))?.title).toBe('Direct message from A member');
+  });
+
+  it('carries the unread count to the app badge when it has one', () => {
+    expect(compose(owed({ badge: 3 }))?.badge).toBe(3);
+    expect(compose(owed({ badge: 0 }))?.badge).toBe(0);
+    expect(compose(owed({}))).not.toHaveProperty('badge');
+  });
+
+  it('says somebody replied in a topic the member posted in, without the words', () => {
+    expect(compose(owed({ kind: 'reply_participant', body: 'secret' }))).toMatchObject({
+      title: 'Reply in a topic you posted in',
+      body: 'Bo replied in a topic you posted in.',
+    });
+  });
+
+  it('says who added the member to a group, and not which group', () => {
+    expect(compose(owed({ kind: 'group_add', body: null }))).toMatchObject({
+      title: 'Added to a group',
+      body: 'Bo added you to a group.',
+    });
+  });
+
+  // A report names nobody and quotes nothing, whatever arrives with it.
+  it('says only that there is a report', () => {
+    const report = compose(owed({ kind: 'report', actor_name: 'Bo', body: 'awful words' }));
+    expect(report?.title).toBe('New report');
+    expect(JSON.stringify(report)).not.toMatch(/Bo|awful/);
+  });
+
+  it('says who joined on an invite', () => {
+    expect(compose(owed({ kind: 'invite_joined', actor_name: 'Ana', body: null }))).toMatchObject({
+      title: 'Somebody you invited joined',
+      body: 'Ana joined the club.',
+    });
+  });
+
+  it('reminds of tomorrow’s event by name and time', () => {
+    expect(
+      compose(owed({ kind: 'event_reminder', subject: 'Adaptive handcycling', detail: '10:00am' })),
+    ).toMatchObject({
+      title: 'Tomorrow: Adaptive handcycling',
+      body: "You're going. It starts at 10:00am.",
+    });
+  });
+
+  it('counts new events from a followed organization', () => {
+    expect(compose(owed({ kind: 'org_events', subject: 'NorCal SCI', detail: '3' }))).toMatchObject(
+      {
+        title: 'New from NorCal SCI',
+        body: '3 new events.',
+      },
+    );
+    expect(compose(owed({ kind: 'org_events', subject: 'NorCal SCI', detail: '1' }))?.body).toBe(
+      '1 new event.',
+    );
+  });
+
+  it('sends nothing for a daily kind that arrived without what it needs', () => {
+    expect(compose(owed({ kind: 'event_reminder', subject: null }))).toBeNull();
+    expect(compose(owed({ kind: 'org_events', subject: 'NorCal SCI', detail: 'many' }))).toBeNull();
   });
 
   it('sends nothing for a kind it does not know', () => {

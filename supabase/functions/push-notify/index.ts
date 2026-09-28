@@ -1,9 +1,10 @@
 /**
  * push-notify: the sender. Piece 4 of notifications (HANDOFF.md).
  *
- * Called by the `push_notify_enqueue` trigger through pg_net with the table
- * and id of one new message or post. It asks the database who is owed a
- * notification and what it may say (`push_owed`), words each one
+ * Called through pg_net by `push_notify_send` — from the triggers, and from
+ * the daily cron — with `{ event, key }`: what happened and which row. It asks
+ * the database who is owed a notification and what it may say (`push_owed`),
+ * words each one
  * (compose.ts), encrypts and signs it (webpush.ts) and sends it. A push
  * service that answers 404 or 410 has forgotten the phone, so the club
  * forgets it too (`push_forget`) — otherwise the table fills with phones that
@@ -38,8 +39,7 @@ const VAPID = {
 // somebody's inbox.
 const SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://thesciclub.netlify.app';
 
-const TABLES = new Set(['chat_messages', 'chat_posts']);
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EVENTS = new Set(['message', 'post', 'group_add', 'report', 'member_joined', 'daily']);
 
 function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -70,18 +70,19 @@ Deno.serve(async (request) => {
   }
 
   const secret = request.headers.get('x-notify-secret') ?? '';
-  let table: unknown;
-  let id: unknown;
+  let event: unknown;
+  let key: unknown;
   try {
-    ({ table, id } = (await request.json()) as { table?: unknown; id?: unknown });
+    ({ event, key } = (await request.json()) as { event?: unknown; key?: unknown });
   } catch {
     return reply(400, { error: 'not JSON' });
   }
-  if (typeof table !== 'string' || !TABLES.has(table) || typeof id !== 'string' || !UUID.test(id)) {
-    return reply(400, { error: 'expected { table, id }' });
+  // The key's contents are the database's to check; it casts what it reads.
+  if (typeof event !== 'string' || !EVENTS.has(event) || typeof key !== 'object' || key === null) {
+    return reply(400, { error: 'expected { event, key }' });
   }
 
-  const owedResponse = await rpc('push_owed', { p_secret: secret, p_table: table, p_id: id });
+  const owedResponse = await rpc('push_owed', { p_secret: secret, p_event: event, p_key: key });
   if (!owedResponse.ok) {
     // A wrong secret is 42501, which PostgREST answers with 401 or 403.
     const text = await owedResponse.text();
@@ -101,8 +102,16 @@ Deno.serve(async (request) => {
       if (!message) return;
       try {
         const status = await sendPush(row, JSON.stringify(message), VAPID, SUBJECT);
-        if (status === 404 || status === 410) gone.push(row.endpoint);
-        else if (status >= 400) {
+        if (status === 404 || status === 410) {
+          // Worth a line: a device forgotten by mistake is a member who
+          // silently stops being told anything.
+          console.log(
+            'push-notify: forgetting a device the push service called gone',
+            status,
+            new URL(row.endpoint).host,
+          );
+          gone.push(row.endpoint);
+        } else if (status >= 400) {
           // The endpoint's host names the service; the path is the device.
           console.error('push-notify: push service said', status, new URL(row.endpoint).host);
         } else sent++;

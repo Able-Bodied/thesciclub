@@ -69,14 +69,14 @@ insert into public.chat_posts (id, topic_id, author_id, body) values
 \echo ''
 \echo '== 1. a direct message reaches the other member and nobody else (expect Bo only, kind direct, the words) =='
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
-       kind, author_name, body, url
-  from public.push_owed(:'secret', 'chat_messages', '22222222-5555-0000-0000-000000000001') o;
+       kind, actor_name, body, url
+  from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000001"}') o;
 
 \echo ''
 \echo '== 2. a group message reaches everybody else in it who is not paused (expect Bo and Grouped, not Author, not Paused, not Outsider) =='
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
-       kind, author_name, body
-  from public.push_owed(:'secret', 'chat_messages', '22222222-5555-0000-0000-000000000002') o
+       kind, actor_name, body
+  from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000002"}') o
  order by 1;
 
 \echo ''
@@ -84,51 +84,54 @@ select (select display_name from public.members m join public.push_subscriptions
 insert into public.chat_thread_mutes (thread_id, member_id)
 values ('11111111-5555-0000-0000-000000000002', 'eeeeeeee-5555-0000-0000-00000000000e');
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom
-  from public.push_owed(:'secret', 'chat_messages', '22222222-5555-0000-0000-000000000002') o;
+  from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000002"}') o;
 
 \echo ''
 \echo '== 4. THE ONE THAT MATTERS: a reply reaches the starter, with a name and NO words (expect Bo, reply, Author, body null) =='
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
-       kind, author_name, body is null as no_words, url
-  from public.push_owed(:'secret', 'chat_posts', '44444444-5555-0000-0000-000000000001') o;
+       kind, actor_name, body is null as no_words, url
+  from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000001"}') o;
 
 \echo ''
-\echo '== 5. the starter''s own first post notifies nobody (expect 0 rows) =='
-select count(*) as owed from public.push_owed(:'secret', 'chat_posts', '44444444-5555-0000-0000-000000000000');
+\echo '== 5. the starter''s own post never notifies the starter (expect Author as reply_participant, never Bo) =='
+\echo '   Asked after the fact, so Author''s later reply makes Author a participant;'
+\echo '   at the moment a topic is born there is nobody else to tell.'
+select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom, kind
+  from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000000"}') o;
 
 \echo ''
 \echo '== 6. muting the topic stops it (expect 0), and unmuting brings it back (expect 1) =='
 insert into public.chat_topic_mutes (topic_id, member_id)
 values ('33333333-5555-0000-0000-000000000001', 'bbbbbbbb-5555-0000-0000-00000000000b');
-select count(*) as owed_muted from public.push_owed(:'secret', 'chat_posts', '44444444-5555-0000-0000-000000000001');
+select count(*) as owed_muted from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000001"}');
 delete from public.chat_topic_mutes where member_id = 'bbbbbbbb-5555-0000-0000-00000000000b';
-select count(*) as owed_unmuted from public.push_owed(:'secret', 'chat_posts', '44444444-5555-0000-0000-000000000001');
+select count(*) as owed_unmuted from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000001"}');
 
 \echo ''
 \echo '== 7. muting the room stops it too (expect 0) =='
 insert into public.chat_room_mutes (room_id, member_id)
 values ('probe-room', 'bbbbbbbb-5555-0000-0000-00000000000b');
-select count(*) as owed_room_muted from public.push_owed(:'secret', 'chat_posts', '44444444-5555-0000-0000-000000000001');
+select count(*) as owed_room_muted from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000001"}');
 delete from public.chat_room_mutes where member_id = 'bbbbbbbb-5555-0000-0000-00000000000b';
 
 \echo ''
 \echo '== 8. a closed room notifies a starter who can no longer read it (expect 0) =='
 update public.chat_rooms set opened_at = null where id = 'probe-room';
-select count(*) as owed_closed from public.push_owed(:'secret', 'chat_posts', '44444444-5555-0000-0000-000000000001');
+select count(*) as owed_closed from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000001"}');
 update public.chat_rooms set opened_at = now() where id = 'probe-room';
 
 \echo ''
 \echo '== 9. a message already taken back notifies nobody (expect 0) =='
 update public.chat_messages set removed_at = now(), body = '' where id = '22222222-5555-0000-0000-000000000001';
-select count(*) as owed_removed from public.push_owed(:'secret', 'chat_messages', '22222222-5555-0000-0000-000000000001');
+select count(*) as owed_removed from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000001"}');
 
 \echo ''
 \echo '== 10. the wrong secret is refused (expect ERROR x2) =='
 savepoint wrong_secret;
-select count(*) from public.push_owed('guess', 'chat_messages', '22222222-5555-0000-0000-000000000002');
+select count(*) from public.push_owed('guess', 'message', '{"id":"22222222-5555-0000-0000-000000000002"}');
 rollback to savepoint wrong_secret;
 savepoint no_secret;
-select count(*) from public.push_owed(null, 'chat_messages', '22222222-5555-0000-0000-000000000002');
+select count(*) from public.push_owed(null, 'message', '{"id":"22222222-5555-0000-0000-000000000002"}');
 rollback to savepoint no_secret;
 
 -- ---------------------------------------------------------------- as members
@@ -140,7 +143,7 @@ set local role authenticated;
 \echo '== 11. a member cannot ask who is owed (expect ERROR, permission denied for function) =='
 select current_user;
 savepoint member_owed;
-select count(*) from public.push_owed(:'secret', 'chat_messages', '22222222-5555-0000-0000-000000000002');
+select count(*) from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000002"}');
 rollback to savepoint member_owed;
 
 \echo ''
