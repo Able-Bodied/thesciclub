@@ -470,7 +470,10 @@ files, most recently by reporting a restore as broken when it had worked.
   netlify …`. It needs a person once — `pnpm exec netlify login` opens a
   browser, then `pnpm exec netlify link` picks the site and writes
   `.netlify/` (gitignored). After that a session can read and set
-  environment variables (`env:list`, `env:set`) and watch deploys. **An
+  environment variables (`env:list`, `env:set`) and watch deploys. **Pass
+  `--filter thesciclub`** to anything project-scoped (`env:get`, `env:list`,
+  `status`): the CLI sees `jobs/event-ingest` as a second project, stops to
+  ask which, and crashes when nobody answers. `netlify api …` does not need it. **An
   env var starting `VITE_` is not a secret** — it is inlined into the bundle —
   so it is never marked "contains secret values": Netlify's secret scan would
   find it in the build and fail the deploy. The four install scripts it
@@ -1130,9 +1133,9 @@ iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
 no native wrapper.
 
 **Where it stands, end of 2026-09-27: everything is built, tested end to end
-on the local stack, and merged to `main`. Five of the six go-live steps are
-done, three by a session and two by the owner; only Netlify's key (step 5) is left.** Nothing a member sees
-has changed yet — the app hides every notification control until step 5.
+on the local stack, and merged to `main`. All six go-live steps are done;
+notifications are live on 2026-09-27.** What is left is an iPhone: nothing
+here has been tested on one.
 
 | step | state |
 | --- | --- |
@@ -1140,7 +1143,7 @@ has changed yet — the app hides every notification control until step 5.
 | 2. `supabase secrets set` VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY | **done 2026-09-27**, from the pair in `.env.local` |
 | 3. `supabase functions deploy push-notify` | **done 2026-09-27**, version 1, `verify_jwt: false`; answers 405 to a GET and 400 to a bad body |
 | 4. SQL editor: `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/push-notify', 'push_notify_url');` | **done 2026-09-27 by the owner.** The sending switch; deleting that secret stops everything. Checked: the live function answers a wrong secret with 401 "not the trigger", so it reaches `push_owed` |
-| 5. Netlify: `VITE_VAPID_PUBLIC_KEY` = the public key in `.env.local`, then redeploy | **not done — the owner's.** No Netlify CLI or token on this machine. The showing switch |
+| 5. Netlify: `VITE_VAPID_PUBLIC_KEY` = the public key in `.env.local`, then redeploy | **done 2026-09-27** — set by the owner (not marked secret, correctly), checked equal to `.env.local` with `netlify env:get --filter thesciclub`, rebuilt with `netlify api createSiteBuild`; the live bundle carries the key and Me on production shows "Off on this device." with the button |
 | 6. merge to `main` | **done 2026-09-27** — safe before 1, 4 and 5 because the controls stay hidden and nothing sends |
 
 Then on a real iPhone: add to the Home Screen, sign in, turn on, and have
