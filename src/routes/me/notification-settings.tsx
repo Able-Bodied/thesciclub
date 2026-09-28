@@ -1,4 +1,10 @@
-import { type NotificationState, useDeviceNotifications } from '@/lib/push/notifications';
+import {
+  NOTIFICATION_KINDS,
+  type NotificationState,
+  useDeviceNotifications,
+  useNotificationKinds,
+} from '@/lib/push/notifications';
+import { cn } from '@/lib/utils';
 
 /**
  * Notifications, on Me, above Display.
@@ -27,7 +33,91 @@ const SENTENCES: Record<NotificationState, string> = {
     'This device has said no to the club’s notifications, and it will not ask again. To change it, open Settings, then Notifications, and find the club.',
 };
 
-export function NotificationSettings({ userId }: { userId: string | null }) {
+/**
+ * Which kinds, once notifications are on. Its own component so the hook runs
+ * only then: a member with notifications off has nothing to tune.
+ *
+ * Each row is one button whose name is the kind and whose pressed state is
+ * whether it is on — "Being added to a group, toggle button, pressed" — so the
+ * state is spoken with the name rather than in a separate word nearby.
+ * Conversations, topics and rooms are not here; they have Mute where they are.
+ */
+function NotificationKinds({
+  userId,
+  isMentor,
+  isAdmin,
+}: {
+  userId: string | null;
+  isMentor: boolean;
+  isAdmin: boolean;
+}) {
+  const { muted, busy, error, toggle } = useNotificationKinds(userId);
+  if (muted === null && error === null) return null;
+  const shown = NOTIFICATION_KINDS.filter(
+    (k) => k.who === 'all' || (k.who === 'mentor' && isMentor) || (k.who === 'admin' && isAdmin),
+  );
+
+  return (
+    <fieldset className="mt-3.5 border-line border-t pt-3">
+      <legend className="sr-only">Also notify me about</legend>
+      <p aria-hidden="true" className="font-bold font-head text-[0.8125rem] text-ink">
+        Also notify me about
+      </p>
+      <p className="mt-0.5 text-[0.75rem] text-grey leading-[1.45]">
+        Messages and replies to your topics always notify; mute a conversation, topic or room where
+        it is.
+      </p>
+      {muted ? (
+        <ul className="mt-2">
+          {shown.map(({ kind, label }) => {
+            const on = !muted.has(kind);
+            return (
+              <li key={kind}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  disabled={busy === kind}
+                  onClick={() => {
+                    toggle(kind);
+                  }}
+                  className="flex min-h-[44px] w-full items-center gap-3 py-1.5 text-left disabled:opacity-50"
+                >
+                  <span className="min-w-0 flex-1 text-[0.875rem] text-ink leading-[1.4]">
+                    {label}
+                  </span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'flex-none rounded-full px-[0.8em] py-[0.3em] font-bold font-head text-[0.75rem]',
+                      on ? 'bg-navy text-white' : 'border border-line text-ink2',
+                    )}
+                  >
+                    {on ? 'On' : 'Off'}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {error ? (
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
+export function NotificationSettings({
+  userId,
+  isMentor = false,
+  isAdmin = false,
+}: {
+  userId: string | null;
+  isMentor?: boolean;
+  isAdmin?: boolean;
+}) {
   const { state, busy, error, turnOn, turnOff } = useDeviceNotifications(userId);
   if (state === null && error === null) return null;
 
@@ -62,6 +152,10 @@ export function NotificationSettings({ userId }: { userId: string | null }) {
           <p role="alert" className="mt-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
             {error}
           </p>
+        ) : null}
+
+        {state === 'on' ? (
+          <NotificationKinds userId={userId} isMentor={isMentor} isAdmin={isAdmin} />
         ) : null}
       </div>
     </section>

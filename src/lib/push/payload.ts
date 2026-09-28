@@ -33,6 +33,11 @@
 
 export interface PushNotification {
   title: string;
+  /**
+   * The number for the app icon, when the push carried one — message pushes
+   * do, with the recipient's unread conversations. Absent means leave it.
+   */
+  badge?: number;
   options: {
     body?: string;
     tag?: string;
@@ -92,8 +97,10 @@ export function readPushPayload(raw: string | null | undefined, origin: string):
   const body = text(fields.body);
   const tag = text(fields.tag);
 
+  const badge = fields.badge;
   return {
     title: title ?? FALLBACK_TITLE,
+    ...(typeof badge === 'number' && Number.isInteger(badge) && badge >= 0 ? { badge } : {}),
     options: {
       // exactOptionalPropertyTypes: an absent key, not `body: undefined`.
       ...(body ? { body } : {}),

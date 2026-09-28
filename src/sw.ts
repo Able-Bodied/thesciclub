@@ -43,8 +43,19 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
 
 self.addEventListener('push', (event) => {
   // Always a notification, whatever arrived — see the payload file's header.
-  const { title, options } = readPushPayload(event.data?.text(), self.location.origin);
-  event.waitUntil(self.registration.showNotification(title, options));
+  const { title, options, badge } = readPushPayload(event.data?.text(), self.location.origin);
+  event.waitUntil(
+    Promise.all([
+      self.registration.showNotification(title, options),
+      // The number on the app icon, without opening the app. Only where the
+      // platform has it (a Home Screen app on iOS 16.4+, installed Chrome).
+      badge === undefined || !('setAppBadge' in self.navigator)
+        ? undefined
+        : (badge > 0 ? self.navigator.setAppBadge(badge) : self.navigator.clearAppBadge()).catch(
+            () => undefined,
+          ),
+    ]),
+  );
 });
 
 self.addEventListener('notificationclick', (event) => {

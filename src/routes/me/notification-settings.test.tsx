@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Notifications from '@/lib/push/notifications';
 import type { NotificationState } from '@/lib/push/notifications';
 import { NotificationSettings } from '@/routes/me/notification-settings';
 
@@ -12,7 +13,22 @@ const hook = vi.hoisted(() => ({
   turnedOff: 0,
 }));
 
-vi.mock('@/lib/push/notifications', () => ({
+const kinds = vi.hoisted(() => ({
+  muted: null as Set<string> | null,
+  toggled: [] as string[],
+}));
+
+vi.mock('@/lib/push/notifications', async (importOriginal) => ({
+  // The real list, so the test reads the labels a member will.
+  NOTIFICATION_KINDS: (await importOriginal<typeof Notifications>()).NOTIFICATION_KINDS,
+  useNotificationKinds: () => ({
+    muted: kinds.muted,
+    busy: null,
+    error: null,
+    toggle: (kind: string) => {
+      kinds.toggled.push(kind);
+    },
+  }),
   useDeviceNotifications: () => ({
     state: hook.state,
     error: hook.error,
@@ -32,6 +48,8 @@ beforeEach(() => {
   hook.busy = false;
   hook.turnedOn = 0;
   hook.turnedOff = 0;
+  kinds.muted = new Set();
+  kinds.toggled = [];
 });
 
 describe('NotificationSettings', () => {
@@ -99,5 +117,39 @@ describe('NotificationSettings', () => {
     hook.busy = true;
     render(<NotificationSettings userId="u1" />);
     expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  describe('the kinds, once on', () => {
+    it('are not offered while notifications are off', () => {
+      hook.state = 'off';
+      render(<NotificationSettings userId="u1" />);
+      expect(screen.queryByRole('button', { name: /Being added to a group/ })).toBeNull();
+    });
+
+    it('offer each kind as a switch that says whether it is on', async () => {
+      hook.state = 'on';
+      kinds.muted = new Set(['group_add']);
+      render(<NotificationSettings userId="u1" />);
+      expect(screen.getByRole('button', { name: /Events I am going to/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      const group = screen.getByRole('button', { name: /Being added to a group/ });
+      expect(group).toHaveAttribute('aria-pressed', 'false');
+      await userEvent.click(group);
+      expect(kinds.toggled).toEqual(['group_add']);
+    });
+
+    // Do not spend a switch on something that cannot happen to this member.
+    it('show invites to mentors only and reports to administrators only', () => {
+      hook.state = 'on';
+      const { unmount } = render(<NotificationSettings userId="u1" />);
+      expect(screen.queryByRole('button', { name: /Somebody I invited/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: /New reports/ })).toBeNull();
+      unmount();
+      render(<NotificationSettings userId="u1" isMentor isAdmin />);
+      expect(screen.getByRole('button', { name: /Somebody I invited/ })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /New reports/ })).toBeInTheDocument();
+    });
   });
 });

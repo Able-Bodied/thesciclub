@@ -53,6 +53,20 @@ export function unreadChanged(): void {
   for (const listener of listeners) listener();
 }
 
+/**
+ * The same number on the app icon, where the platform has one — a Home Screen
+ * app on iOS 16.4+, or installed Chrome. A push sets it while the app is
+ * closed (src/sw.ts); this keeps it true while the app is open, so reading a
+ * conversation takes the number down.
+ */
+function showOnAppIcon(count: number): void {
+  // TypeScript's DOM library declares these everywhere; the platform has them
+  // only where there is an icon to put a number on.
+  if (!('setAppBadge' in navigator)) return;
+  const pending = count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge();
+  pending.catch(() => undefined);
+}
+
 export interface UnreadState {
   /** Conversations with something new. Zero is drawn as no dot at all. */
   count: number;
@@ -82,6 +96,7 @@ export function useUnreadThreads(): UnreadState {
         return;
       }
       setCount(data ?? 0);
+      showOnAppIcon(data ?? 0);
     } catch {
       setCount(0);
     }

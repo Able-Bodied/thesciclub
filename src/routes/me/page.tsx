@@ -371,7 +371,11 @@ export default function MePage() {
                 hardest thing to reach with a head pointer or a mouth stick.
                 Notifications sit above it for the same reason, and beside it
                 because both are about this device rather than the member. */}
-            <NotificationSettings userId={userId} />
+            <NotificationSettings
+              userId={userId}
+              isMentor={member?.type === 'mentor'}
+              isAdmin={isAdmin}
+            />
             <AccessibilitySettings />
           </div>
         </div>

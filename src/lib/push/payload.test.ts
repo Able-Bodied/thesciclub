@@ -63,6 +63,18 @@ describe('readPushPayload', () => {
     expect(shown.options.icon).toBe('/favicon-192x192.png');
   });
 
+  it('carries a badge number when there is one, and only a sensible one', () => {
+    expect(readPushPayload(JSON.stringify({ title: 'x', badge: 3 }), origin).badge).toBe(3);
+    expect(readPushPayload(JSON.stringify({ title: 'x', badge: 0 }), origin).badge).toBe(0);
+    expect('badge' in readPushPayload(JSON.stringify({ title: 'x' }), origin)).toBe(false);
+    expect('badge' in readPushPayload(JSON.stringify({ title: 'x', badge: -1 }), origin)).toBe(
+      false,
+    );
+    expect('badge' in readPushPayload(JSON.stringify({ title: 'x', badge: '3' }), origin)).toBe(
+      false,
+    );
+  });
+
   it('never keeps an address off the club', () => {
     const shown = readPushPayload(
       JSON.stringify({ title: 'x', url: 'https://evil.example/' }),

@@ -293,3 +293,82 @@ export function useDeviceNotifications(userId: string | null) {
     },
   };
 }
+
+/**
+ * The kinds a member can switch off on Me — every kind that is not a
+ * conversation, a topic or a room, which have Mute where they are.
+ *
+ * A row in `push_muted_kinds` is a kind switched off (20260927020000), so
+ * off is an insert and on is a delete, never an upsert. `who` hides a switch
+ * for a thing that never happens to this member: a peer is never told that
+ * somebody they invited joined, because a peer cannot invite.
+ */
+export const NOTIFICATION_KINDS = [
+  { kind: 'event_reminder', label: 'Events I am going to, the day before', who: 'all' },
+  { kind: 'org_events', label: 'New events from organizations I follow', who: 'all' },
+  { kind: 'reply_participant', label: 'Replies in topics I have posted in', who: 'all' },
+  { kind: 'group_add', label: 'Being added to a group', who: 'all' },
+  { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
+  { kind: 'report', label: 'New reports', who: 'admin' },
+] as const;
+
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]['kind'];
+
+export function useNotificationKinds(userId: string | null) {
+  const [muted, setMuted] = useState<Set<NotificationKind> | null>(null);
+  const [busy, setBusy] = useState<NotificationKind | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!userId) return;
+    let live = true;
+    void getSupabase()
+      .from('push_muted_kinds')
+      .select('kind')
+      .eq('member_id', userId)
+      .then(({ data, error: readError }) => {
+        if (!live) return;
+        if (readError) {
+          setError(describeError(readError, 'Could not read your notification settings.'));
+          return;
+        }
+        setMuted(new Set((data as { kind: NotificationKind }[]).map((row) => row.kind)));
+      });
+    return () => {
+      live = false;
+    };
+  }, [userId]);
+
+  const toggle = useCallback(
+    (kind: NotificationKind) => {
+      if (!userId || muted === null) return;
+      const turningOff = !muted.has(kind);
+      setBusy(kind);
+      setError(null);
+      const table = getSupabase().from('push_muted_kinds');
+      const write = turningOff
+        ? table.insert({ member_id: userId, kind })
+        : table.delete().eq('member_id', userId).eq('kind', kind);
+      void write
+        .then(({ error: writeError }) => {
+          // Already off, from another tab: that is what was asked for.
+          if (writeError && writeError.code !== '23505') {
+            setError(describeError(writeError, 'That setting was not changed.'));
+            return;
+          }
+          setMuted((current) => {
+            const next = new Set(current);
+            if (turningOff) next.add(kind);
+            else next.delete(kind);
+            return next;
+          });
+        })
+        .then(() => {
+          setBusy(null);
+        });
+    },
+    [userId, muted],
+  );
+
+  return { muted, busy, error, toggle };
+}
