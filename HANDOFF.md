@@ -466,6 +466,15 @@ files, most recently by reporting a restore as broken when it had worked.
   After `pnpm exec supabase db reset`, run **`pnpm demo-member`** — a reset
   drops the auth schema, so the test account loses its member row and every
   sign-in lands back in onboarding.
+- **The Netlify CLI is a devDependency too** (added 2026-09-27): `pnpm exec
+  netlify …`. It needs a person once — `pnpm exec netlify login` opens a
+  browser, then `pnpm exec netlify link` picks the site and writes
+  `.netlify/` (gitignored). After that a session can read and set
+  environment variables (`env:list`, `env:set`) and watch deploys. **An
+  env var starting `VITE_` is not a secret** — it is inlined into the bundle —
+  so it is never marked "contains secret values": Netlify's secret scan would
+  find it in the build and fail the deploy. The four install scripts it
+  brought are denied in `pnpm-workspace.yaml`; it runs without them.
 - **Never run `pnpm exec supabase config push`** — `config.toml` holds
   placeholder local Twilio credentials and would overwrite the hosted project's
   real ones. `db push` is fine and is how the migrations above got there.

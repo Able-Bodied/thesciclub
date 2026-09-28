@@ -48,6 +48,7 @@
     "eslint": "^10.8.1",
     "globals": "^17.11.0",
     "jsdom": "^30.0.1",
+    "netlify-cli": "^27.10.0",
     "playwright": "^1.63.0",
     "supabase": "^2.114.0",
     "tailwindcss": "^4.3.3",

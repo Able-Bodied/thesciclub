@@ -1,3 +1,14 @@
 packages:
   - '.'
   - 'jobs/*'
+# Install scripts pnpm will not run. All four arrived with netlify-cli
+# (2026-09-27) and none is needed for what the club uses it for — env vars,
+# deploys, status: netlify-cli's own only prints a banner, sharp and esbuild
+# serve `netlify dev`'s image CDN and function bundling, unix-dgram is syslog.
+# `pnpm exec netlify --version` works with all four off. Say no by default;
+# turn one on only for a command that proves it needs it.
+allowBuilds:
+  esbuild: false
+  netlify-cli: false
+  sharp: false
+  unix-dgram: false

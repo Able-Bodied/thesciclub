@@ -33,3 +33,6 @@ supabase/.branches/
 screenshots/
 .logo-candidates/
 logos-from-you/
+
+# Netlify CLI — `netlify link` keeps the site id and local state here.
+.netlify
