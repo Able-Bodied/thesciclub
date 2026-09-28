@@ -19,6 +19,7 @@
       "!supabase/.branches",
       "!jobs/event-ingest/out",
       "!.claude",
+      "!.netlify",
       "!docs",
       "!.logo-candidates",
       "!screenshots",
