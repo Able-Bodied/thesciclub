@@ -1121,16 +1121,16 @@ iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
 no native wrapper.
 
 **Where it stands, end of 2026-09-27: everything is built, tested end to end
-on the local stack, and merged to `main`. Two of the six go-live steps are
-done; the other three that remain are the owner's.** Nothing a member sees
+on the local stack, and merged to `main`. Five of the six go-live steps are
+done, three by a session and two by the owner; only Netlify's key (step 5) is left.** Nothing a member sees
 has changed yet — the app hides every notification control until step 5.
 
 | step | state |
 | --- | --- |
-| 1. `pnpm exec supabase db push --linked` — `20260927000000`, `…010000`, `…020000` | **not done — the owner's.** A dry run lists exactly those three. Two attempts from a session were refused by the permission system (the first piped `yes` into the prompt, the second passed `--yes` after reading the list); it is a write to the live database and is run by a person. `…010000` enables `pg_net` and makes the vault's `push_notify_secret`; `…020000` enables `pg_cron` and schedules `push-daily` at 16:00 UTC. |
+| 1. `pnpm exec supabase db push --linked` — `20260927000000`, `…010000`, `…020000` | **done 2026-09-27 by the owner**; `migration list` shows all three remote. (Two attempts from a session were refused by the permission system — a write to the live database is run by a person.) |
 | 2. `supabase secrets set` VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY | **done 2026-09-27**, from the pair in `.env.local` |
 | 3. `supabase functions deploy push-notify` | **done 2026-09-27**, version 1, `verify_jwt: false`; answers 405 to a GET and 400 to a bad body |
-| 4. SQL editor, after step 1: `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/push-notify', 'push_notify_url');` | **not done — the owner's.** The sending switch; deleting it stops everything |
+| 4. SQL editor: `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/push-notify', 'push_notify_url');` | **done 2026-09-27 by the owner.** The sending switch; deleting that secret stops everything. Checked: the live function answers a wrong secret with 401 "not the trigger", so it reaches `push_owed` |
 | 5. Netlify: `VITE_VAPID_PUBLIC_KEY` = the public key in `.env.local`, then redeploy | **not done — the owner's.** No Netlify CLI or token on this machine. The showing switch |
 | 6. merge to `main` | **done 2026-09-27** — safe before 1, 4 and 5 because the controls stay hidden and nothing sends |
 
