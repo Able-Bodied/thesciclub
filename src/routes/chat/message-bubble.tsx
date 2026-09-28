@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
@@ -95,7 +96,11 @@ export function MessageBubble({
           ) : (
             <>
               {/* whitespace-pre-line, so the line breaks somebody typed survive. */}
-              {message.body ? <span className="whitespace-pre-line">{message.body}</span> : null}
+              {message.body ? (
+                <span className="whitespace-pre-line">
+                  <LinkedText text={message.body} />
+                </span>
+              ) : null}
               {message.attachments.length > 0 ? (
                 <AttachmentGrid paths={message.attachments} from="you" />
               ) : null}
@@ -159,7 +164,11 @@ export function MessageBubble({
             <span className="text-grey italic">{gone}</span>
           ) : (
             <>
-              {message.body ? <span className="whitespace-pre-line">{message.body}</span> : null}
+              {message.body ? (
+                <span className="whitespace-pre-line">
+                  <LinkedText text={message.body} />
+                </span>
+              ) : null}
               {message.attachments.length > 0 ? (
                 <AttachmentGrid
                   paths={message.attachments}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatPost } from '@/lib/chat/types';
@@ -126,7 +127,7 @@ export function Post({
           {/* whitespace-pre-line, so the paragraph breaks somebody typed survive. */}
           {post.body ? (
             <p className="mt-2 whitespace-pre-line text-[0.875rem] text-ink leading-[1.5]">
-              {post.body}
+              <LinkedText text={post.body} />
             </p>
           ) : null}
           {post.attachments.length > 0 ? (

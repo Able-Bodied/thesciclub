@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark, ClubWordmark } from '@/components/club-mark';
+import { LinkedText } from '@/components/linked-text';
 import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
@@ -385,7 +386,9 @@ export default function MemberDetailPage() {
 
             {member.bio ? (
               <Section title="Function & living situation">
-                <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.bio}</p>
+                <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
+                  <LinkedText text={member.bio} />
+                </p>
               </Section>
             ) : null}
 
