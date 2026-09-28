@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -200,5 +200,11 @@ describe('a discussion room', () => {
     db.rooms = [];
     renderRoom();
     expect(screen.getByText(/There is no such room, or it is not open yet/)).toBeInTheDocument();
+  });
+
+  it('labels the sort row as a sort, for sight and for screen readers', () => {
+    renderRoom();
+    const group = screen.getByRole('group', { name: 'Sort by' });
+    expect(within(group).getByRole('button', { name: 'Activity' })).toBeInTheDocument();
   });
 });

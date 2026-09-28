@@ -175,15 +175,23 @@ export default function RoomPage() {
             </p>
           ) : null}
 
-          <div className="mt-1 flex items-center gap-2 border-line border-t pt-1">
-            <span className="flex-none font-bold text-[0.78125rem] text-ink2">Topic</span>
+          {/* "Sort by", not "Topic": the owner read "Topic" as a fourth chip.
+              A fieldset named by it, so a screen reader hears "Sort by" before
+              "Activity, pressed" rather than a pressed button with no context. */}
+          <fieldset
+            aria-labelledby="room-sort-label"
+            className="mt-1 flex min-w-0 items-center gap-2 border-line border-t pt-1"
+          >
+            <span id="room-sort-label" className="flex-none font-bold text-[0.78125rem] text-ink2">
+              Sort by
+            </span>
             <SegmentPills
               segments={ROOM_SORTS.map((key) => [key, SORT_LABELS[key]] as const)}
               value={sort}
               onChange={setSort}
               className="flex-1"
             />
-          </div>
+          </fieldset>
         </div>
       </header>
 
