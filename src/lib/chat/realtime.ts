@@ -91,9 +91,13 @@ export function useRealtimeRows({ table, filter, onChange, enabled = true }: Rea
     };
 
     channel
-      // INSERT and UPDATE, and not DELETE: nothing in Chat deletes. Removal is
-      // a soft update that blanks the body and keeps the row, so a removal
-      // arrives here as an UPDATE and the screen redraws it as "Removed by…".
+      // INSERT and UPDATE, and not DELETE. Removal is a soft update that
+      // blanks the body and keeps the row, so it arrives here as an UPDATE and
+      // the screen redraws — a message as "Removed by…", a topic post by
+      // leaving it out. An administrator deleting a whole topic
+      // (20260927040000) is the one real DELETE, and it is not listened for:
+      // Realtime cannot filter deletes, and a room list catches up on its
+      // next focus or reload.
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table, ...(filter ? { filter } : {}) },

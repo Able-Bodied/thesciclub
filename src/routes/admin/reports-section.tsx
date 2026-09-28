@@ -99,8 +99,12 @@ export function ReportsSection({
 
   function removeReported(report: ChatReport) {
     const what = report.kind === 'post' ? 'post' : 'message';
+    // A post in a topic disappears (20260927030000); a group message keeps its
+    // place with "Removed by an administrator" in it.
     const ok = window.confirm(
-      `Remove this ${what}?\n\nIts text is replaced with "Removed by an administrator" for everybody who can see it. The row stays, so numbering and replies hold, and what it said is kept out of reach.`,
+      report.kind === 'post'
+        ? 'Remove this post?\n\nIt disappears from the topic for everybody. This report keeps its copy of what it said.'
+        : 'Remove this message?\n\nIts text is replaced with "Removed by an administrator" for everybody in the conversation. This report keeps its copy of what it said.',
     );
     if (!ok) return;
     const id = report.kind === 'post' ? report.postId : report.messageId;

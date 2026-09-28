@@ -9,14 +9,12 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
  * One post in a topic, from the mock's `fpost()`.
  *
  * ---------------------------------------------------------------------------
- * A removed post keeps its place and its number
+ * A removed post is not drawn at all
  * ---------------------------------------------------------------------------
- * The database blanks the body and keeps the row, so there is nothing here
- * deciding what to hide — the text is not in the answer. What is here is the
- * sentence that goes in its place, and there are two of them because they are
- * two different facts: somebody thinking better of what they wrote, and an
- * administrator taking it down. Rolling them into one ("This post was removed")
- * would hide a moderation decision behind an author's second thoughts.
+ * The owner, 2026-09-27: "Removed by its author." in a topic did not look good.
+ * The topic page leaves removed posts out before they get here, so this only
+ * ever draws a post that is standing. Underneath, removal is still soft — the
+ * row stays for reports and moderation (20260927030000).
  *
  * ---------------------------------------------------------------------------
  * Former member
@@ -64,8 +62,6 @@ export function Post({
   reported: boolean;
   onReport: () => void;
 }) {
-  const removed = post.removedAt !== null;
-
   return (
     <article className="mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]">
       <div className="flex items-center gap-2.5">
@@ -111,35 +107,23 @@ export function Post({
           <span className="block text-[0.78125rem] text-grey">{chatTime(post.createdAt)}</span>
         </span>
 
-        {/* The mock's `.pnum`. It is why removal is soft: "3/11" has to mean
-            the same thing before and after somebody takes a post back. */}
+        {/* The mock's `.pnum`, counted among the posts still standing. */}
         <span className="flex-none font-bold text-[0.71875rem] text-grey">
           {number}/{total}
         </span>
       </div>
 
-      {removed ? (
-        <p className="mt-2 text-[0.875rem] text-grey italic leading-[1.5]">
-          {post.removedByAdmin ? 'Removed by an administrator.' : 'Removed by its author.'}
+      {/* whitespace-pre-line, so the paragraph breaks somebody typed survive. */}
+      {post.body ? (
+        <p className="mt-2 whitespace-pre-line text-[0.875rem] text-ink leading-[1.5]">
+          <LinkedText text={post.body} />
         </p>
-      ) : (
-        <>
-          {/* whitespace-pre-line, so the paragraph breaks somebody typed survive. */}
-          {post.body ? (
-            <p className="mt-2 whitespace-pre-line text-[0.875rem] text-ink leading-[1.5]">
-              <LinkedText text={post.body} />
-            </p>
-          ) : null}
-          {post.attachments.length > 0 ? (
-            <AttachmentGrid
-              paths={post.attachments}
-              from={author?.displayName ?? 'a former member'}
-            />
-          ) : null}
-        </>
-      )}
+      ) : null}
+      {post.attachments.length > 0 ? (
+        <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a former member'} />
+      ) : null}
 
-      {removed ? null : canRemove ? (
+      {canRemove ? (
         <button
           type="button"
           onClick={onRemove}
