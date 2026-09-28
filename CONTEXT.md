@@ -96,7 +96,7 @@ Four surfaces are real, and everything else is deliberately not yet.
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. |
 | **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
-| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. No editing, no search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. Notifications from 2026-09-27: a direct or group message, and a reply to a topic you started — see HANDOFF.md for exactly what a lock screen may say. |
+| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. No editing, no search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
 | Home | Placeholder | The mixed feed. Needs four content types and a moderation story. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that

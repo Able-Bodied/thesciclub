@@ -79,7 +79,7 @@ rooms a member starts, and photographs. Its twenty-two migrations have been on
 the hosted project since 2026-09-23; the section below says how to check that
 rather than trust it. See "What Chat is".
 
-1,178 tests pass, in 81 files. `pnpm check` and `pnpm build` are clean. **Keep
+1,190 tests pass, in 81 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 75 migrations, all of them on the hosted project
@@ -411,6 +411,7 @@ Two rules, both learned the hard way:
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
 | `push-subscriptions.sql` | notifications: step 5 (another member reads none of your devices) and 7 (a phone that changes hands notifies its new holder, not its old) are the ones that matter; no insert or update grant, five off-service endpoints refused, paused can turn off but not on |
 | `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
+| `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
@@ -1119,43 +1120,27 @@ finds out the next time they open the app. The club is phones, and mostly
 iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
 no native wrapper.
 
-**Where it stands, end of 2026-09-27: pieces 1–4 are built, tested end to
-end on the local stack, and committed. Pieces 1–3 are merged and live but
-switched off; piece 4 and the mute controls are on the branch.** Nothing a
-member sees has changed. Going live is six steps, in this order, and every
-one is the owner's or needs their yes:
+**Where it stands, end of 2026-09-27: everything is built, tested end to end
+on the local stack, and merged to `main`. Two of the six go-live steps are
+done; the other three that remain are the owner's.** Nothing a member sees
+has changed yet — the app hides every notification control until step 5.
 
-1. **`pnpm exec supabase db push --linked`** (after `--dry-run`, which should
-   list `20260927000000` and `20260927010000`). The second enables `pg_net`
-   and makes a random `push_notify_secret` in the vault. It sends nothing
-   until step 4. An attempt to push the first one from a session was refused
-   by the permission system because it piped `yes` into the prompt — run it
-   yourself, reading the list.
-2. **`pnpm exec supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=…`**
-   from the pair in `.env.local` (`VITE_VAPID_PUBLIC_KEY` and
-   `VAPID_PRIVATE_KEY`). Optionally `VAPID_SUBJECT`; it defaults to the site's
-   URL, deliberately not anybody's inbox.
-3. **`pnpm exec supabase functions deploy push-notify`**. `config.toml` sets
-   `verify_jwt = false` for it; see the function's header for why that is
-   safe.
-4. **In the dashboard's SQL editor, once:**
-   `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/push-notify', 'push_notify_url');`
-   This is the sending switch. Deleting the secret stops every notification
-   without touching code.
-5. **Netlify: `VITE_VAPID_PUBLIC_KEY`** = the same public key, then a deploy.
-   This is the *showing* switch: the Notifications row on Me and the three
-   mute buttons appear only when it is set.
-6. **Merge the branch** (the function, the mutes UI). Order matters only in
-   that 5 before 1–4 would show members a switch that sends nothing.
+| step | state |
+| --- | --- |
+| 1. `pnpm exec supabase db push --linked` — `20260927000000`, `…010000`, `…020000` | **not done — the owner's.** A dry run lists exactly those three. Two attempts from a session were refused by the permission system (the first piped `yes` into the prompt, the second passed `--yes` after reading the list); it is a write to the live database and is run by a person. `…010000` enables `pg_net` and makes the vault's `push_notify_secret`; `…020000` enables `pg_cron` and schedules `push-daily` at 16:00 UTC. |
+| 2. `supabase secrets set` VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY | **done 2026-09-27**, from the pair in `.env.local` |
+| 3. `supabase functions deploy push-notify` | **done 2026-09-27**, version 1, `verify_jwt: false`; answers 405 to a GET and 400 to a bad body |
+| 4. SQL editor, after step 1: `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/push-notify', 'push_notify_url');` | **not done — the owner's.** The sending switch; deleting it stops everything |
+| 5. Netlify: `VITE_VAPID_PUBLIC_KEY` = the public key in `.env.local`, then redeploy | **not done — the owner's.** No Netlify CLI or token on this machine. The showing switch |
+| 6. merge to `main` | **done 2026-09-27** — safe before 1, 4 and 5 because the controls stay hidden and nothing sends |
 
 Then on a real iPhone: add to the Home Screen, sign in, turn on, and have
-somebody send a direct message with the app closed. That is the one thing no
-session here can do.
+somebody send a direct message with the app closed.
 
 **The VAPID pair was generated 2026-09-27 and lives in `.env.local`.**
 Changing it later strands every existing subscription until the member
 presses the button again (`turnOnNotifications` remakes a subscription made
-under another key).
+under another key), and means `secrets set` again.
 
 ## What is sent — the owner's decisions, 2026-09-27
 
@@ -1199,23 +1184,43 @@ muted conversation's message produced nothing and the function said
 device — `push_forget` is probed in SQL but no push service was made to say
 gone.
 
-## More that could notify — suggestions, not built
+## Six more, built the same evening (20260927020000)
 
-Raised for the owner on 2026-09-27; each would be a branch in `push_owed` and
-a line in `compose.ts`:
+The owner said yes to the suggestions. Wording is in `compose.ts`; who is in
+`push_owed`; the probe is `supabase/tests/push-notify-more.sql`.
 
-- **You were added to a group.** Today they find out on their next list read.
-- **An event you are going to is tomorrow.** Needs a schedule (pg_cron), not
-  a trigger.
-- **A new event from an organization you follow.** The ingest writes events;
-  one notification per ingest run, not per event.
-- **A report, for administrators.** Harassment reported at night otherwise
-  waits for somebody to open `/admin`.
-- **Somebody you invited joined** — for a mentor.
-- **A reply in a topic you posted in but did not start.** Noisier; would want
-  its own mute.
-- **The badge** (piece 5): `setAppBadge(chat_unread_count())` when a push
-  lands. The function would compute the count per recipient.
+| kind | who | lock screen | off switch |
+| --- | --- | --- | --- |
+| `group_add` | somebody added by somebody else — the trigger takes the adder from `auth.uid()`, so joining yourself or creating a group sends nothing, and an event's group never does | **Added to a group** · "Bo added you to a group." | Me |
+| `reply_participant` | everybody who has posted in the topic, but not its starter (they get `reply`) or the replier | **Reply in a topic you posted in** · "Bo replied in a topic you posted in." | Me, and the topic's and room's Mute |
+| `report` | every administrator but the reporter | **New report** · "A member reported something. Open Admin to see it." — nobody named, nothing quoted | Me |
+| `invite_joined` | the member whose invite it was | **Somebody you invited joined** · "Ana joined the club." | Me (mentors) |
+| `event_reminder` | members *going*, the day before, by the event's own zone | **Tomorrow: Adaptive handcycling** · "You're going. It starts at 10:00am." | Me |
+| `org_events` | followers; events created in the last day and still ahead, one per organization | **New from NorCal SCI** · "3 new events." | Me |
+
+The last two come from `push_daily()` via pg_cron at 16:00 UTC, after the
+04:10 ingest; `push_daily_runs` makes a second run on one day do nothing.
+Event titles and organization names are public, so those two may name
+theirs; nothing names a room, topic or group.
+
+**The badge**: a message push carries the recipient's unread count
+(`push_unread_count`, held to `chat_unread_count`'s answer by the probe); the
+service worker sets it on the app icon and `useUnreadThreads` keeps it true
+while the app is open.
+
+**Two things found by running it:**
+
+- **A push a few seconds after a Chromium subscribed came back 404**, the
+  function forgot the device, and every later notification went nowhere
+  while the switch on Me still said On. Not reproduced since; the likely
+  cause is the push service still settling a new registration.
+  `push_forget` now spares a subscription younger than ten minutes, and the
+  function logs every device it forgets.
+- **In a Playwright page, `registration.getNotifications()` stopped at two**
+  while the service worker's own count reached six. The worker is the truth:
+  a log line in its push handler showed all six arriving and shown. A test
+  of delivery should read the worker (`ctx.serviceWorkers()`, `console`),
+  not the page.
 
 ## What iOS allows, checked against WebKit's own post
 
