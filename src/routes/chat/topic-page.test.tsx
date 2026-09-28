@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Attachments from '@/lib/chat/attachments';
 import type * as Reports from '@/lib/chat/reports';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Topics from '@/lib/chat/topics';
@@ -21,6 +22,18 @@ const db = vi.hoisted(() => ({
   reportedPosts: new Set<string>(),
   reports: [] as [string, string][],
   reportFails: null as string | null,
+  deleted: [] as string[],
+  deleteFails: null as string | null,
+  filesDeleted: [] as string[][],
+}));
+
+// Storage is the network; record what would have been deleted.
+vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof Attachments>()),
+  deleteAttachments: (paths: string[]) => {
+    db.filesDeleted.push(paths);
+    return Promise.resolve();
+  },
 }));
 
 // Mutes read and write the club; the button has its own test.
@@ -60,6 +73,11 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     error: null,
     reload: () => undefined,
   }),
+  deleteTopic: (id: string) => {
+    if (db.deleteFails) return Promise.resolve({ ok: false as const, error: db.deleteFails });
+    db.deleted.push(id);
+    return Promise.resolve({ ok: true as const, value: ['rooms/bowel/a.webp'] });
+  },
   removePost: (id: string) => {
     db.removed.push(id);
     return Promise.resolve({ ok: true as const, value: null });
@@ -123,6 +141,7 @@ function renderTopic() {
     <MemoryRouter initialEntries={['/chat/rooms/bowel/topics/t']}>
       <Routes>
         <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
+        <Route path="/chat/rooms/:roomId" element={<p>The room</p>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -163,33 +182,65 @@ beforeEach(() => {
   db.reportedPosts = new Set();
   db.reports = [];
   db.reportFails = null;
+  db.deleted = [];
+  db.deleteFails = null;
+  db.filesDeleted = [];
 });
 
 describe('a topic', () => {
-  // Numbering is why removal is soft: "3/3" has to mean the same thing before
-  // and after somebody takes a post back.
-  it('numbers every post, removed ones included', () => {
+  // The owner, 2026-09-27: a removed post is not drawn at all, and the
+  // numbers close up over the gap.
+  it('leaves removed posts out and numbers the rest among themselves', () => {
     db.posts = [
       post({ id: '1' }),
       post({ id: '2', body: '', removedAt: '2026-09-02T10:00:00Z' }),
-      post({ id: '3' }),
+      post({ id: '3', body: '', removedAt: '2026-09-02T10:00:00Z', removedByAdmin: true }),
+      post({ id: '4' }),
     ];
     renderTopic();
-    expect(screen.getByText('1/3')).toBeInTheDocument();
-    expect(screen.getByText('2/3')).toBeInTheDocument();
-    expect(screen.getByText('3/3')).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    expect(screen.getByText('2/2')).toBeInTheDocument();
+    expect(screen.queryByText(/Removed by/)).toBeNull();
   });
 
-  // Two different facts. Rolling them into one would hide a moderation
-  // decision behind an author's second thoughts.
-  it('says which kind of removal it was', () => {
-    db.posts = [
-      post({ id: '1', body: '', removedAt: '2026-09-02T10:00:00Z' }),
-      post({ id: '2', body: '', removedAt: '2026-09-02T10:00:00Z', removedByAdmin: true }),
-    ];
-    renderTopic();
-    expect(screen.getByText('Removed by its author.')).toBeInTheDocument();
-    expect(screen.getByText('Removed by an administrator.')).toBeInTheDocument();
+  describe('deleting it', () => {
+    it('is not offered to a member', () => {
+      renderTopic();
+      expect(screen.queryByRole('button', { name: 'Delete topic' })).toBeNull();
+    });
+
+    it('asks first, and does nothing when the administrator says no', async () => {
+      db.isAdmin = true;
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+      expect(confirm).toHaveBeenCalledOnce();
+      expect(db.deleted).toEqual([]);
+      confirm.mockRestore();
+    });
+
+    it('deletes it, removes its photographs, and goes back to the room', async () => {
+      db.isAdmin = true;
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+      expect(await screen.findByText('The room')).toBeInTheDocument();
+      expect(db.deleted).toEqual(['t']);
+      expect(db.filesDeleted).toEqual([['rooms/bowel/a.webp']]);
+      confirm.mockRestore();
+    });
+
+    it('says so when it fails, and stays', async () => {
+      db.isAdmin = true;
+      db.deleteFails = 'The topic was not deleted. You cannot do that here.';
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('The topic was not deleted.');
+      expect(screen.queryByText('The room')).toBeNull();
+      confirm.mockRestore();
+    });
   });
 
   it('names a member who has left the club without linking to them', () => {

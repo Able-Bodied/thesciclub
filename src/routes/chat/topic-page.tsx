@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
@@ -8,7 +8,13 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
 import { chatTimeLong } from '@/lib/chat/time';
-import { firstUnreadIndex, removePost, sendPost, useTopicPosts } from '@/lib/chat/topics';
+import {
+  deleteTopic,
+  firstUnreadIndex,
+  removePost,
+  sendPost,
+  useTopicPosts,
+} from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
 import { MuteButton } from '@/routes/chat/mute-button';
@@ -37,9 +43,18 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
  * ---------------------------------------------------------------------------
  * Numbering
  * ---------------------------------------------------------------------------
- * "3/11" counts every row, removed ones included. That is why removal is soft:
- * a post that vanished would renumber the rest for everybody reading, and every
- * "as somebody said in 4" above it would be wrong.
+ * "3/11" counts the posts still standing. A removed post is not drawn at all —
+ * the owner's call, 2026-09-27, over the "Removed by its author." line that
+ * used to hold its place — so the numbers close up when one goes. The row
+ * stays underneath for reports and moderation (20260927030000); it is only
+ * the screen that forgets it.
+ *
+ * ---------------------------------------------------------------------------
+ * Deleting a topic
+ * ---------------------------------------------------------------------------
+ * Administrators only, in the header, behind a confirm. It takes every post
+ * with it; reports on them keep their own copy (20260927040000). The
+ * photographs go through the storage API afterwards, as removing a post's do.
  *
  * ---------------------------------------------------------------------------
  * Reporting
@@ -59,6 +74,11 @@ export default function TopicPage() {
   const { rooms, loading: roomsLoading } = useChatRooms();
   const membership = useRoomMembership();
   const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
+  // What the reader sees and counts: removed posts are left out. See the header.
+  const standing = useMemo(() => posts.filter((post) => post.removedAt === null), [posts]);
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = useState(false);
+  const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
   const reports = useMyReports();
@@ -88,13 +108,42 @@ export default function TopicPage() {
   const scrolled = useRef(false);
   const list = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (loading || scrolled.current || posts.length === 0) return;
+    if (loading || scrolled.current || standing.length === 0) return;
     scrolled.current = true;
-    const index = firstUnreadIndex(posts, lastReadAt);
+    const index = firstUnreadIndex(standing, lastReadAt);
     if (index === 0) return;
     const element = list.current?.children.item(index);
     element?.scrollIntoView({ block: 'start' });
-  }, [loading, posts, lastReadAt]);
+  }, [loading, standing, lastReadAt]);
+
+  function removeTopic() {
+    if (!topicId) return;
+    // A confirm, like closing a room: this cannot be undone and takes every
+    // reply with it.
+    if (
+      !window.confirm(
+        'Delete this topic and every reply in it? This cannot be undone. Reports on its posts keep their own copy.',
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setDeleteFailure(null);
+    void deleteTopic(topicId)
+      .then((result) => {
+        if (!result.ok) {
+          setDeleteFailure(result.error);
+          setDeleting(false);
+          return;
+        }
+        if (result.value.length > 0) void deleteAttachments(result.value);
+        void navigate(room ? `/chat/rooms/${room.id}` : '/chat', { replace: true });
+      })
+      .catch((e: unknown) => {
+        setDeleteFailure(describeThrown(e, 'The topic was not deleted.'));
+        setDeleting(false);
+      });
+  }
 
   function remove(postId: string) {
     setRemovingId(postId);
@@ -178,6 +227,22 @@ export default function TopicPage() {
               This room is closed. No member can see this topic yet.
             </p>
           ) : null}
+          {account.isAdmin ? (
+            <button
+              type="button"
+              onClick={removeTopic}
+              disabled={deleting}
+              data-target="small"
+              className="mt-2 rounded-full bg-destructive/10 px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-50"
+            >
+              {deleting ? 'Deleting…' : 'Delete topic'}
+            </button>
+          ) : null}
+          {deleteFailure ? (
+            <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+              {deleteFailure}
+            </p>
+          ) : null}
         </div>
       </header>
 
@@ -191,13 +256,13 @@ export default function TopicPage() {
               {removalFailure}
             </p>
           ) : null}
-          {posts.map((post, index) => (
+          {standing.map((post, index) => (
             <Post
               key={post.id}
               post={post}
               author={post.authorId ? (authors.get(post.authorId) ?? null) : null}
               number={index + 1}
-              total={posts.length}
+              total={standing.length}
               // An administrator can remove anybody's; everybody else only
               // their own. chat_remove_post decides — this only asks.
               canRemove={account.isAdmin || post.authorId === account.userId}

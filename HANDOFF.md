@@ -79,7 +79,7 @@ rooms a member starts, and photographs. Its twenty-two migrations have been on
 the hosted project since 2026-09-23; the section below says how to check that
 rather than trust it. See "What Chat is".
 
-1,190 tests pass, in 81 files. `pnpm check` and `pnpm build` are clean. **Keep
+1,206 tests pass, in 83 files. `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 75 migrations, all of them on the hosted project
@@ -410,6 +410,7 @@ Two rules, both learned the hard way:
 | `chat-attachments.sql` | photographs: the row limits (step 12a–f is the new-room function, with its four refusals); (four, words *or* a picture, paths under the row's own folder) and the `chat` bucket's read policy as members — step 6 (an outsider cannot read a conversation's picture) and 9a (an administrator reads a reported picture and not its neighbour) are the ones that matter. Uploads and deletes cannot be tested from SQL; `pnpm check-chat-photo-policy` does those through the API |
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
 | `push-subscriptions.sql` | notifications: step 5 (another member reads none of your devices) and 7 (a phone that changes hands notifies its new holder, not its old) are the ones that matter; no insert or update grant, five off-service endpoints refused, paused can turn off but not on |
+| `topic-removal-and-deletion.sql` | a removed reply stops counting and a removed opening post leaves the replies as replies; the faces on a row are posters still standing; a member cannot delete a topic, even their own; an administrator's delete takes posts, mutes and reads and leaves a report its words (step 6) |
 | `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
 | `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
@@ -770,9 +771,19 @@ Remove on the reader's own messages only, unlike a topic.
    harassment in a direct message witnessed only by the person it happened to.
    One post or one message, and nothing else about the conversation.
 6. **Soft delete only.** An author removes their own post or message, an
-   administrator removes anybody's; the row stays so numbering and replies hold,
-   and the body moves to `chat_removed_bodies` — RLS on, no policy, no grant to
-   anybody, not even an administrator through the client.
+   administrator removes anybody's; the row stays, and the body moves to
+   `chat_removed_bodies` — RLS on, no policy, no grant to anybody, not even an
+   administrator through the client. **Changed 2026-09-27 for topics**
+   (`20260927030000`): a removed post in a topic is no longer drawn as
+   "Removed by its author." — it is left out, the numbers close up, and it
+   stops counting in `reply_count`, `chat_room_stats` and the faces on a
+   topic row. The row still stays underneath. Messages in conversations are
+   unchanged and still say "Removed by…". **And an administrator can delete a
+   whole topic** (`20260927040000`, `admin_delete_topic`, the Delete topic
+   button on the topic page): posts, reads and mutes go by cascade; reports
+   keep their snapshot with `post_id` null; photographs are removed through
+   the storage API except any named on a report. Probe:
+   `supabase/tests/topic-removal-and-deletion.sql`.
 7. **Not in this build, and no control is drawn for any of them**: editing,
    attachments, search (the mock has a search box in the header — it is
    deliberately absent), member-to-member blocking, push notifications,
@@ -934,10 +945,12 @@ Each of these was found by running something, not by reading it.
 
 **"Fill your last room before starting another" is not a rate limit**, and the
 plan called it one. A room is born with its first topic and nothing in this
-build deletes a topic — no delete policy, no delete grant, and removing a
-member nulls an author rather than dropping the row. So the rule cannot fire
-today; it is a latch for the day something does delete one, and the probe has
-to empty a room as the superuser to reach it. Somebody who writes a real topic
+build deleted a topic — no delete policy, no delete grant, and removing a
+member nulls an author rather than dropping the row. So the rule could not
+fire; it was a latch for the day something did delete one. **That day was
+2026-09-27**: an administrator deleting a member-started room's only topic
+empties the room, and its starter cannot start another until they write a
+topic there (which they can while it is open). Somebody who writes a real topic
 each time can start as many rooms as they like.
 
 **The owner's answer, 2026-09-21: leave it.** With a vetted membership of this

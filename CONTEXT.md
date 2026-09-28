@@ -133,7 +133,10 @@ thought of it first. The emptiness objection is answered by the shape of the flo
 rule, because no rule makes anybody write: **a room cannot be born empty.** Starting one asks for
 its first topic in the same form, and the two are written together or not at all. Nobody renames or
 deletes a room afterwards, not even the member who started it — what people write in a room is
-theirs. An administrator can close it, which is the whole moderation lever and was already there.
+theirs. An administrator can close it, which was the whole moderation lever until 2026-09-27; from
+then an administrator can also delete a single topic and everything in it, for a topic that should
+not be there at all (reports keep their own copy). Members still cannot delete a topic, their own
+included.
 
 ## What is public, and what is not
 

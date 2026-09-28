@@ -355,6 +355,8 @@ export async function createTopic(
 const POST_REFUSALS = {
   attempt: 'Your reply was not posted.',
   refused: 'You cannot post in this room.',
+  // The topic was deleted by an administrator while this was being written.
+  missing: 'This topic has been deleted.',
   constraints: {
     chat_posts_check: 'A reply needs some words or a photograph, and at most 4,000 characters.',
     chat_posts_attachments_check: `Up to ${MAX_ATTACHMENTS} photographs on one post.`,
@@ -386,4 +388,26 @@ export async function removePost(postId: string): Promise<ChatWriteResult<null>>
   const { error } = await getSupabase().rpc('chat_remove_post', { post: postId });
   if (error) return { ok: false, error: describeError(error, 'The post was not removed.') };
   return { ok: true, value: null };
+}
+
+/**
+ * Delete a whole topic — administrators only; `admin_delete_topic` refuses
+ * anybody else in a sentence. Returns the photograph paths its posts carried,
+ * for the caller to remove through the storage API (files cannot be deleted
+ * from SQL). Reports on its posts keep their own copy; see 20260927040000.
+ */
+export async function deleteTopic(topicId: string): Promise<ChatWriteResult<string[]>> {
+  const { data, error } = (await getSupabase().rpc('admin_delete_topic', {
+    topic: topicId,
+  })) as Result<string[]>;
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'The topic was not deleted.',
+        missing: 'That topic is not there any more.',
+      }),
+    };
+  }
+  return { ok: true, value: data ?? [] };
 }
