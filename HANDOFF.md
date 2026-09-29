@@ -21,11 +21,123 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 
 ---
 
-# Start here — 2026-09-28
+# Start here — 2026-09-29
 
-**The owner's new brand is in the app** — built 2026-09-28, the owner's call
-being "the whole brand", not the logo alone. 1,211 tests pass and `pnpm check`
-is clean. Whether it is pushed and live: `git ls-remote --heads origin`.
+Three things happened on 2026-09-28/29, in this order of urgency:
+
+1. **A security audit of the live project found sign-in problems that are
+   still open.** Read "Security — open, do these first" below before anything
+   else, and raise it with the owner at the start of the session.
+2. **A migration fixing Supabase's `auth_users_exposed` email is written,
+   tested and committed, and not yet pushed to the live database.**
+3. **The owner's new brand is in the app** — the owner's call being "the whole
+   brand", not the logo alone — with Atkinson Hyperlegible Next for reading
+   text, because accessibility comes first here.
+
+**Nothing from these two days is pushed.** Nine commits sit on
+`scaffold-and-peers-deck` ahead of `origin` (check with `git log --oneline
+origin/main..HEAD`); only the tag `brand-before-outfit` is on GitHub. 1,211
+tests pass and `pnpm check` is clean. The owner has not yet said to push, and
+said on 2026-09-29 they will work on Twilio and the logins later.
+
+## Security — open, do these first
+
+Found 2026-09-29 by running Supabase's own advisor against the live project
+(`pnpm exec supabase db advisors --linked --type security --level info`) and
+reading the live auth settings through the Management API. **This repository
+is public**, which is what turns the first item from careless into urgent.
+
+**1. The live project accepts the local test numbers, and one is the
+administrator.** `sms_test_otp` on the hosted project — not only in
+`config.toml` — holds the three test numbers from Environment below, with
+their published codes, valid until 2027-01-01. The first of them is the club's
+**only administrator** on the live database (no real member's account has
+`is_admin`). So anyone who reads this repo can sign in to production as the
+administrator — every member's phone number, the reports, Remove — with no
+SMS. Checked: the admin account's open sessions on 2026-09-29 all came from
+the owner's machine (the screenshot runs); the auth audit table is empty on
+the hosted project, so earlier sign-ins cannot be ruled out, and nothing
+suggests misuse. **The owner has not yet said go.** The fix, in order:
+   - Now: change that number's code to a private one (Authentication → Sign
+     In / Providers → Phone → Test phone numbers, or the Management API's
+     `PATCH /v1/projects/{ref}/config/auth` with `sms_test_otp`). A session
+     must ask the owner first — it is a live settings change.
+   - Then: make the owner's own real account an administrator, and remove all
+     three test numbers from the live project. `pnpm shoot` then runs against
+     the local stack, never production.
+
+**2. Real members sign in with a fixed code.** The same live list holds nine
+real people's numbers with one shared fixed code; four are active members.
+Anyone who knows one of their numbers can sign in as them. It exists because
+**SMS does not work in production**: the club is not approved by Twilio, and
+the Twilio credentials saved in Supabase are rejected by Twilio itself (401 on
+every read). Remove these once texts arrive — see "Twilio" below. Until then,
+a per-person private code is better than one shared code.
+
+**3. Anybody can ask whether a number is on the invite list.**
+`before_user_created(event jsonb)` — written as an auth hook — is executable by
+`anon` and answers through `/rest/v1/rpc/`: "not on the club's list" for a
+number that is not, `{}` for one that is. Confirmed on the live API with a
+made-up number. Silent, unlimited, and a yes says the person is linked to an
+SCI club. **The hook is not even switched on** in production
+(`hook_before_user_created_enabled` is false, and `config.toml` has it
+commented out), so invite-only is enforced by onboarding and RLS, not at
+sign-up — which is also why two auth accounts exist with no member row. Fix in
+a migration: revoke execute from `public, anon, authenticated` and grant it to
+`supabase_auth_admin` only (Supabase's documented pattern for auth hooks).
+Then decide with the owner whether to switch the hook on.
+
+**4. Also from the advisor — a migration, not yet written:**
+   - Callable by `anon` and needing not to be: `active_strike_count` (answers
+     any member's strike count — strikes are meant to be private even between
+     members, and `authenticated` can call it too), `live_invite_count`,
+     `nearby_events`, and five trigger functions (`chat_bump_thread`,
+     `chat_bump_topic`, `consume_invite_for_new_member`,
+     `delete_member_for_deleted_user`, `invites_refuse_blocked` — not callable
+     as RPC, revoke anyway). Check where each is used — a policy or an invoker
+     view evaluated as the caller needs execute — before revoking from
+     `authenticated`.
+   - `has_active_invite` is the same oracle as item 3 for any signed-in
+     account, and since sign-up is not gated, any stranger with a phone can
+     become one.
+   - Nine functions with no fixed `search_path` (`touch_updated_at`,
+     `normalize_phone`, `protect_admin_flag`, `assert_adult`,
+     `invites_require_inviter`, `members_admin_is_mentor`, `strike_window`,
+     `strike_limit`, `mentor_invite_limit`).
+   - Ten views flagged `security_definer_view`: every view here runs as its
+     owner by design and is gated in its `where` (`is_admin()`,
+     `is_active_member()`). Worth a pass to confirm each gate, and
+     `security_barrier` on each, as `admin_invites` now has.
+   - Fine as they are: RLS is on for every table; the four tables with RLS and
+     no policy (`blocked_numbers`, `chat_removed_bodies`, `directory_seed`,
+     `push_daily_runs`) are deny-all on purpose; leaked-password protection
+     does not apply to phone sign-in.
+
+**Not yet audited**: storage buckets and their policies on the live project,
+and what a signed-in account with no member row can read through the 52
+definer functions `authenticated` may execute.
+
+## Twilio — the owner's next job
+
+The club only ever texts a sign-in code; notifications are web push. The
+recommendation given to the owner on 2026-09-29, from Twilio's own docs:
+**switch Supabase's SMS provider to Twilio Verify**, which "is exempt from A2P
+10DLC registration when using a provided pooled sender" — no brand or
+campaign approval, about $0.05 per successful sign-in, no number to rent, and
+no app change. The owner's steps: upgrade the Twilio account if it is a trial;
+create a Verify service (its name appears in the text — something neutral like
+"Club sign-in" keeps "SCI" off a lock screen); copy the Account SID, a fresh
+Auth Token and the Verify Service SID (`VA…`); set the provider to Twilio
+Verify in Supabase (Authentication → Sign In / Providers → Phone, or the
+Management API's `sms_twilio_verify_*` fields). Test on one real phone, then
+clear the fixed codes (security items 1 and 2).
+
+The alternative — A2P 10DLC on the club's own number — needs the
+organization's legal name and EIN, a public HTTPS privacy policy and terms
+(required since June 2026; the policy must say numbers are never shared or
+sold), an opt-in with STOP wording on the sign-in screen, and sample messages.
+The club has no public privacy policy or terms today. Only worth it if the
+club ever texts anything other than a code.
 
 ## Going back to the old look
 
@@ -37,8 +149,8 @@ the old icons. To restore the look without losing anything built since:
       src/components/club-mark.tsx vite.config.ts
 
 then revert the colour and tracking edits in the routes — or, simpler, `git
-revert` the five rebrand commits (`2985e1c`..`9dc1142`, the ones between the
-tag and this handoff). Netlify also keeps every earlier deploy; "Publish
+revert` the rebrand commits (`2985e1c`..`9dc1142`, and `390c7d7` for the
+Atkinson change). Netlify also keeps every earlier deploy; "Publish
 deploy" on one from before the rebrand puts it back in a minute without
 touching git. Before/after screenshots are in `screenshots/brand-before/` and
 `screenshots/brand-after/` on the owner's machine (gitignored).
@@ -47,7 +159,8 @@ touching git. Before/after screenshots are in `screenshots/brand-before/` and
 
 - **`sci-club-logo/` stays the owner's**, untracked, and excluded from Biome
   and git like `logos-from-you/`. What the app uses is **copied** into
-  `public/`: `fonts/` (Outfit Regular and Bold, the licence), `brand/` (the
+  `public/`: `fonts/` (Outfit Bold, Atkinson Hyperlegible Next, both
+  licences), `brand/` (the
   badge and the compact reverse lockup), and the icons. If the owner updates a
   file there, copy it across again.
 - **Two faces, both self-hosted** (the owner's decision — no request to
@@ -102,7 +215,7 @@ Each has its own section further down; this is the index.
 - **The Netlify CLI** is a devDependency (needs `--filter thesciclub`); the
   Supabase CLI is 2.118.0.
 
-## Supabase's security email, 2026-09-27 — fixed in `20260929000000`
+## Supabase's security email, 2026-09-27 — fixed in `20260929000000`, not pushed
 
 Supabase's advisor flagged `auth_users_exposed`: `admin_invites` joined
 `auth.users` to show whether an invited number has signed up. **Nothing leaked**
@@ -114,8 +227,10 @@ schema the API does not publish; the view became a `security_barrier`, and
 its grants are select-only (Supabase's defaults had also given `authenticated`
 insert/update/delete on it — inert on a join view, gone anyway). No client
 change. **Rule: no view in `public` names `auth.users`** — probe step 6 checks.
-**Owner: push it with `pnpm exec supabase db push --linked`**, after the
-dry run; then the advisor's warning should clear on its next scan.
+**Owner: push it with `pnpm exec supabase db push --linked`** — the dry run
+on 2026-09-29 listed exactly this one migration. The client does not depend on
+it, so it can go before or after the code. The advisor's warning should clear
+on its next scan.
 
 ## Still open
 
@@ -607,7 +722,8 @@ files, most recently by reporting a restore as broken when it had worked.
 - **Never run `pnpm exec supabase config push`** — `config.toml` holds
   placeholder local Twilio credentials and would overwrite the hosted project's
   real ones. `db push` is fine and is how the migrations above got there.
-- Test numbers (fixed OTPs, no SMS): `11111111111`/`111111`,
+- Test numbers (fixed OTPs, no SMS) — **for the local stack only; the live
+  project must not accept them, and today it does** (see "Security — open"): `11111111111`/`111111`,
   `12222222222`/`222222`, `13333333333`/`333333`. `11111111111` is **Admin**.
 - Dev server: `pnpm dev` (5173), or
   `./node_modules/.bin/vite --port 5180 --strictPort` to leave 5173 free for
