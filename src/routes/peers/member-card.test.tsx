@@ -198,7 +198,10 @@ describe('the official account', () => {
       />,
     );
     expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
-    expect(document.querySelector('img')).toBeNull();
+    // The badge is an <img> itself since the rebrand, so the check is that the
+    // only image is the badge — the photograph path is never drawn.
+    expect(document.querySelectorAll('img')).toHaveLength(1);
+    expect(document.querySelector('img[src*="seed/x.webp"]')).toBeNull();
   });
 
   it('does not badge an ordinary member as official', () => {

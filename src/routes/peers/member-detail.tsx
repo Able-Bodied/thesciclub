@@ -520,7 +520,7 @@ function OfficialProfile({
             <ChevronLeft className="h-4 w-4" />
             {backLabel}
           </button>
-          <ClubWordmark onDark />
+          <ClubWordmark />
         </div>
 
         <div className="mt-6 flex flex-col items-center">
