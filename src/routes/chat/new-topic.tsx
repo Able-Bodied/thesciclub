@@ -108,7 +108,7 @@ export default function NewTopicPage() {
       <div className="mx-auto w-full max-w-[720px]">
         <BackLink to={`/chat/rooms/${room.id}`} label={room.name} />
 
-        <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.02em]">
+        <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
           New topic
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">

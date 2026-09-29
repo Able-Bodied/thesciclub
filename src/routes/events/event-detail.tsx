@@ -121,7 +121,7 @@ export default function EventDetailPage() {
             <span>{longWhen(event.startTime, event.timezone)}</span>
           </div>
 
-          <h1 className="mt-2 font-extrabold font-head text-[1.4375rem] leading-[1.28] tracking-[-0.02em]">
+          <h1 className="mt-2 font-extrabold font-head text-[1.4375rem] leading-[1.28] tracking-[-0.01em]">
             {event.title}
           </h1>
 

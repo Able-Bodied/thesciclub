@@ -93,7 +93,7 @@ export function StepFrame({
 
 export function Question({ children }: { children: React.ReactNode }) {
   return (
-    <h1 className="mt-2 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.02em]">
+    <h1 className="mt-2 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.01em]">
       {children}
     </h1>
   );

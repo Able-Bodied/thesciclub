@@ -63,7 +63,7 @@ export function MeHero({ member }: { member: OwnMember }) {
         </span>
 
         <div className="min-w-0">
-          <h1 className="font-extrabold font-head text-[1.3125rem] leading-[1.2] tracking-[-0.02em]">
+          <h1 className="font-extrabold font-head text-[1.3125rem] leading-[1.2] tracking-[-0.01em]">
             {member.displayName}
           </h1>
           {summary ? <p className="mt-[3px] text-[#B9CADF] text-[0.8125rem]">{summary}</p> : null}

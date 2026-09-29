@@ -15,7 +15,7 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
           <ClubMark size={126} />
         </div>
 
-        <h1 className="mt-9 text-center font-extrabold font-head text-[1.875rem] text-ink leading-[1.14] tracking-[-0.03em]">
+        <h1 className="mt-9 text-center font-extrabold font-head text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
           Meet peers, mentors,
           <br />
           and find <em className="text-gold-dp not-italic">SCI events</em>.

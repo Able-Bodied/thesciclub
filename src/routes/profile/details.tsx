@@ -172,7 +172,7 @@ export default function ProfileDetailsPage() {
             <ChevronLeft className="h-4 w-4" />
             Me
           </button>
-          <h1 className="mt-1 font-extrabold font-head text-[1.4375rem] text-ink tracking-[-0.02em]">
+          <h1 className="mt-1 font-extrabold font-head text-[1.4375rem] text-ink tracking-[-0.01em]">
             Your details
           </h1>
         </header>

@@ -9,6 +9,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/*
+ * Outfit, the brand face, served from this site rather than Google Fonts: the
+ * club is private and a font request to Google from every member's phone is a
+ * record of who opened it, when. The files are the owner's, from
+ * sci-club-logo/fonts/, under the SIL Open Font License beside them in
+ * public/fonts/. Regular and Bold only, as the brand sets it — so
+ * font-semibold and font-extrabold both draw Bold, which is intended rather
+ * than a missing weight. The service worker precaches both (vite.config.ts).
+ */
+@font-face {
+  font-family: Outfit;
+  src: url("/fonts/Outfit-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Outfit;
+  src: url("/fonts/Outfit-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /*
  * Design tokens for The SCI Club.
@@ -74,8 +97,8 @@
   --line: #cbd3de;
   --tint: #e4e9f1;
 
-  --head: Archivo, "TeX Gyre Heros", "Liberation Sans", sans-serif;
-  --body: "Public Sans", "Liberation Sans", sans-serif;
+  --head: Outfit, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: Outfit, "Avenir Next", "Segoe UI", system-ui, sans-serif;
 
   /* ------------------------------------------------- discussion rooms */
   /*
@@ -221,7 +244,7 @@
   h2,
   h3 {
     font-family: var(--head);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
   }
 
   /*

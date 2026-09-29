@@ -87,7 +87,7 @@ export function FilterSheetShell({
 
         <div className="flex flex-none items-start justify-between gap-3 px-[18px] pt-1 lg:pt-5">
           <div className="min-w-0">
-            <h2 className="font-extrabold font-head text-[1.3125rem] tracking-[-0.02em]">
+            <h2 className="font-extrabold font-head text-[1.3125rem] tracking-[-0.01em]">
               {title}
             </h2>
             <p className="mt-0.5 text-[0.78125rem] text-grey">{summary}</p>

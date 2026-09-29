@@ -17,7 +17,13 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       // A classic script, not a module: iOS came late to module workers.
-      injectManifest: { rollupFormat: 'iife' },
+      // The default precaches js, css and html only. The fonts and the logo
+      // files are in public/, not imported, so they are named here — without
+      // them an installed app opened offline draws in the fallback face.
+      injectManifest: {
+        rollupFormat: 'iife',
+        globPatterns: ['**/*.{js,css,html,ttf,svg}'],
+      },
       manifest: {
         name: 'The SCI Club',
         short_name: 'SCI Club',

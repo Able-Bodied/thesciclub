@@ -176,7 +176,7 @@ export default function MePage() {
         <MeHero member={member} />
       ) : (
         <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.01em]">
             Me
           </h1>
           <p className="mt-0.5 text-[0.78125rem] text-grey">Signed in as {displayName ?? '—'}</p>

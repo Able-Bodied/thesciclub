@@ -113,7 +113,7 @@ export function ReportSheet({
         <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
 
         <div className="flex-1 overflow-y-auto px-[18px] pt-1 lg:pt-5">
-          <h2 className="font-extrabold font-head text-[1.3125rem] text-ink tracking-[-0.02em]">
+          <h2 className="font-extrabold font-head text-[1.3125rem] text-ink tracking-[-0.01em]">
             {title}
           </h2>
           {/* The promise, from reports.ts. Not written here. */}

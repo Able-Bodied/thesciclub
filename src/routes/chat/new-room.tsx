@@ -146,7 +146,7 @@ export default function NewRoomPage() {
       <div className="mx-auto w-full max-w-[720px]">
         <BackLink to="/chat?segment=rooms" label="Chat" />
 
-        <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.02em]">
+        <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
           Start a room
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">

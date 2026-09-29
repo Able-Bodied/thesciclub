@@ -82,7 +82,7 @@ export default function OrganizationDetailPage() {
           <div className="flex items-center gap-[13px]">
             <OrganizationBadge organization={organization} size="lg" />
             <span>
-              <span className="block font-extrabold font-head text-[1.3125rem] leading-[1.2] tracking-[-0.02em]">
+              <span className="block font-extrabold font-head text-[1.3125rem] leading-[1.2] tracking-[-0.01em]">
                 {organization.name}
               </span>
               <span className="mt-[3px] block text-[#B9CADF] text-[0.8125rem]">

@@ -150,7 +150,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
           reveals a designed tile rather than a broken-image icon. */}
       <span
         aria-hidden="true"
-        className="absolute inset-0 grid place-items-center font-extrabold font-head text-[118px] text-white opacity-[0.13] tracking-[-0.04em]"
+        className="absolute inset-0 grid place-items-center font-extrabold font-head text-[118px] text-white opacity-[0.13] tracking-[-0.01em]"
       >
         {initialsOf(member.displayName)}
       </span>

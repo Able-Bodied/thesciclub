@@ -16,12 +16,11 @@
     <!-- Member pages are never public (CONTEXT.md). Keep the whole app out of indexes. -->
     <meta name="robots" content="noindex, nofollow" />
     <title>The SCI Club</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Outfit is served from this site, never Google Fonts: a private club
+         should not tell a third party each time a member opens it. Preloaded
+         so the first screen is drawn in it rather than swapped into it. -->
+    <link rel="preload" href="/fonts/Outfit-Regular.ttf" as="font" type="font/ttf" crossorigin />
+    <link rel="preload" href="/fonts/Outfit-Bold.ttf" as="font" type="font/ttf" crossorigin />
   </head>
   <body>
     <div id="root"></div>

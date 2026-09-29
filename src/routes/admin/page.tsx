@@ -179,7 +179,7 @@ export default function AdminPage() {
             govern on a desktop — the same mismatch fixed on /invites. */}
         <div className="mx-auto w-full max-w-[760px]">
           <BackLink to="/me" label="Me" />
-          <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.01em]">
             Admin
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">

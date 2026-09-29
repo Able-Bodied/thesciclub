@@ -120,7 +120,7 @@ export default function InvitesPage() {
             read as a heading for the empty space beside it. */}
         <div className="mx-auto w-full max-w-[560px]">
           <BackLink to="/me" label="Me" />
-          <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          <h1 className="mt-1 font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.01em]">
             Your invites
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">

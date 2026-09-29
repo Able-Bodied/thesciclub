@@ -93,7 +93,7 @@ export default function PeersPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto flex w-full max-w-[1100px] min-h-[38px] items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.02em]">
+          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.01em]">
             Peers
           </h1>
           <button

@@ -35,7 +35,7 @@ export function SuspendedScreen() {
         <div className="grid h-14 w-14 place-items-center rounded-[18px] bg-gold-lt text-gold-dp">
           <PauseCircle className="h-6 w-6" />
         </div>
-        <h1 className="mt-4 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.02em]">
+        <h1 className="mt-4 font-extrabold font-head text-[1.5625rem] text-ink leading-tight tracking-[-0.01em]">
           Your membership is paused
         </h1>
         {/* No name in front of this. "Dana, an administrator has paused your
