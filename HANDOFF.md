@@ -23,86 +23,57 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 
 # Start here — 2026-09-28
 
-**Everything is merged and live.** `main` and `scaffold-and-peers-deck` point
-at the same commit (check with `git ls-remote --heads origin`); all 79
-migrations are on the hosted project and match `supabase/migrations/`; 1,207
-tests pass. Nothing is half-done.
+**The owner's new brand is in the app** — built 2026-09-28, the owner's call
+being "the whole brand", not the logo alone. 1,211 tests pass and `pnpm check`
+is clean. Whether it is pushed and live: `git ls-remote --heads origin`.
 
-## The next job: the owner's new logo files
+## Going back to the old look
 
-**`sci-club-logo/` is the owner's**, added on 2026-09-28: "cleaner logos and
-files", redrawn from the original badge as clean vectors. It is untracked, and
-the next session works on it. Read `sci-club-logo/README.md` first — it says
-which file is for what, the clear space and minimum sizes, and "don't recolour,
-stretch, rotate, add a drop shadow or a white border".
+**The git tag `brand-before-outfit`** (on `origin`) is the app exactly as it
+looked before: Archivo and Public Sans, gold `#c9a227`, the drawn `ClubMark`,
+the old icons. To restore the look without losing anything built since:
 
-What is in it:
+    git checkout brand-before-outfit -- public/ index.html src/index.css \
+      src/components/club-mark.tsx vite.config.ts
 
-| folder | contents |
-| --- | --- |
-| `svg/` | `sci-club-badge` (+ `-mono`), `sci-club-lockup` (+ `-reverse`, `-compact`, `-compact-reverse`), `sci-club-mark`. Lettering outlined, so no font needed to render them |
-| `png/` | the badge at @1x/@2x/@4x, the mono badge, the four lockups @2x, the mark at 32/64/128/256/512 |
-| `favicon/` | `favicon.ico`, `apple-touch-icon.png` |
-| `fonts/` | Outfit Regular and Bold, with its SIL Open Font License |
-| `tokens.json` | colour, type, spacing and radius scale, each colour with its contrast numbers and where it may be used |
-| `preview.png` | everything on one sheet |
+then revert the colour and tracking edits in the routes — or, simpler, `git
+revert` the five rebrand commits (`2985e1c`..`9dc1142`, the ones between the
+tag and this handoff). Netlify also keeps every earlier deploy; "Publish
+deploy" on one from before the rebrand puts it back in a minute without
+touching git. Before/after screenshots are in `screenshots/brand-before/` and
+`screenshots/brand-after/` on the owner's machine (gitignored).
 
-**It came from Windows**: every file has a `…:Zone.Identifier` twin. Those
-are download markers, not assets — never commit them.
+## What the rebrand changed, and what it left
 
-**`pnpm check` fails right now, because of this folder**:
-`sci-club-logo/tokens.json` is not in Biome's format, and Biome here scans
-untracked files (`biome.json` has `vcs.enabled: false`, so it does not read
-`.gitignore`). Nothing committed is affected — the committed tree passes every
-check. Settle it first, one of two ways, **with the owner**: the files the app
-uses move into the app (`public/`, `src/`) and the folder stays out of git and
-out of Biome (`"!sci-club-logo"` in `biome.json`, beside `"!logos-from-you"`);
-or the folder is committed as the source of truth and formatted. Do not
-reformat the owner's `tokens.json` without asking.
-
-**What the app uses today**, i.e. what the new files would replace:
-
-- **Icons**: `public/favicon.ico` and `favicon-16/32/180/192/512.png`.
-  `index.html` links the ico, 16, 32 and the 180 as `apple-touch-icon`;
-  `vite.config.ts`'s manifest uses 192 and 512 as `any maskable` — read the
-  comment there about the glyph filling the square so it survives the circle
-  and squircle masks. The new `sci-club-mark` needs checking against that mask
-  before it becomes the app icon.
-- **The drawn logo**: `src/components/club-mark.tsx` — `ClubMark` and
-  `ClubWordmark`, hand-drawn SVG components, used by the welcome screen
-  (`routes/onboarding/welcome.tsx`), the peer card and the member profile.
-- **Fonts**: Archivo (headings) and Public Sans (body) from Google Fonts in
-  `index.html`, as `--head` / `--body` in `src/index.css`.
-- **Colours**: `src/index.css`. Navy agrees (`#102a4c`). **Gold does not**:
-  the app's `--gold` is `#c9a227`, the new files' `gold-500` is `#d4a83a`, and
-  `tokens.json` adds `gold-800 #8a6512` as "the only gold allowed as text on
-  white".
-
-**Ask the owner before building**, because the answers change the size of the
-job:
-
-1. **Logo only, or the whole brand?** Swapping the icons and the drawn logo is
-   small. Moving to Outfit and the new gold touches every screen, and
-   `src/theme-contrast.test.ts` must still hold AA for every pair —
-   `tokens.json` gives the numbers to check against, but check them in the
-   test, not from the file.
-2. **Self-host Outfit or not?** The files and licence are in the folder.
-   Self-hosting means no request to Google for every member, which suits a
-   private club; it also means the service worker precaches the fonts.
-3. **The mock at www.thesciclub.com** (`docs/`) — does it change too? A push
-   that touches `docs/` rebuilds the public mock (see "Hosting on Netlify").
-
-**Traps**:
-
-- **An installed app keeps its old icon.** iOS takes the `apple-touch-icon`
-  when somebody adds the club to the Home Screen and does not refresh it; a
-  member who installed it for notifications has to remove and re-add it to
-  see the new one. Say so to the owner rather than letting it look broken.
-- **Look at it.** `pnpm shoot` for the screens, and check the lockups at
-  their minimum sizes (full lockup 56px tall, compact 32px, mark 24px) — every
-  layout problem in this project was found by eye.
-- **"Chrome and gloss belong to the logo only"** (the folder's README). UI
-  buttons stay flat gold with navy text; do not lift the gradients into CSS.
+- **`sci-club-logo/` stays the owner's**, untracked, and excluded from Biome
+  and git like `logos-from-you/`. What the app uses is **copied** into
+  `public/`: `fonts/` (Outfit Regular and Bold, the licence), `brand/` (the
+  badge and the compact reverse lockup), and the icons. If the owner updates a
+  file there, copy it across again.
+- **Outfit is self-hosted** (the owner's decision — no request to Google), from
+  `@font-face` in `src/index.css`, preloaded in `index.html`, precached by the
+  service worker (`globPatterns` in `vite.config.ts`). Regular and Bold only,
+  so `font-semibold` and `font-extrabold` both draw Bold; that is the brand, not
+  a missing file. Negative tracking tighter than `-0.01em` made Outfit's
+  letters touch and was brought to `-0.01em` everywhere.
+- **Colours** follow `tokens.json`: `--gold` gold-500, `--gold-dp` gold-800,
+  `--gold-hi` gold-300, `--navy-hi` navy-700, the brand's ink and ink-muted,
+  and a new **`--on-gold`** (navy) for anything on a gold fill — use
+  `text-on-gold`, never a hex. Two deliberate departures, both commented in
+  `index.css`: the focus ring stays navy on light, and `--canvas` keeps
+  `#f4f6f9` because the brand's `#f3f5f8` takes `--grey` under AA.
+- **The logo** is the owner's SVGs drawn as `<img>` by `ClubMark` and
+  `ClubWordmark` in `src/components/club-mark.tsx` — never redraw or recolour
+  them in code; the README forbids it.
+- **Icons**: the owner's ico, 32, 512 and apple-touch-icon; 16 and 192 rendered
+  from their mark; a separate **maskable** pair (mark on full navy at 68%) —
+  see the comment in `vite.config.ts`. Members who added the app to their Home
+  Screen must remove and re-add it to see the new icon; the owner is telling
+  them directly.
+- **Not changed, on purpose**: `docs/` — the public mock at www.thesciclub.com
+  keeps the old look (the owner's decision). The type sizes and radii are the
+  app's own, tuned for the text-size setting; the brand's type scale was not
+  imposed on them.
 
 ## What landed 2026-09-27 and 2026-09-28
 
@@ -125,7 +96,7 @@ Each has its own section further down; this is the index.
 - **The Netlify CLI** is a devDependency (needs `--filter thesciclub`); the
   Supabase CLI is 2.118.0.
 
-## Still open, besides the logos
+## Still open
 
 - **An hour with VoiceOver on a real iPhone**, then the rest of "What is next
   for accessibility, in order" — the photograph viewer is not a dialog,
