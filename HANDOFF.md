@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-27.
+Last updated 2026-09-28.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -18,6 +18,138 @@ there is one path to quote and one file to edit.
 ```
 
 Every `pnpm` and `supabase` command runs from inside `thesciclub`.
+
+---
+
+# Start here — 2026-09-28
+
+**Everything is merged and live.** `main` and `scaffold-and-peers-deck` point
+at the same commit (check with `git ls-remote --heads origin`); all 79
+migrations are on the hosted project and match `supabase/migrations/`; 1,207
+tests pass. Nothing is half-done.
+
+## The next job: the owner's new logo files
+
+**`sci-club-logo/` is the owner's**, added on 2026-09-28: "cleaner logos and
+files", redrawn from the original badge as clean vectors. It is untracked, and
+the next session works on it. Read `sci-club-logo/README.md` first — it says
+which file is for what, the clear space and minimum sizes, and "don't recolour,
+stretch, rotate, add a drop shadow or a white border".
+
+What is in it:
+
+| folder | contents |
+| --- | --- |
+| `svg/` | `sci-club-badge` (+ `-mono`), `sci-club-lockup` (+ `-reverse`, `-compact`, `-compact-reverse`), `sci-club-mark`. Lettering outlined, so no font needed to render them |
+| `png/` | the badge at @1x/@2x/@4x, the mono badge, the four lockups @2x, the mark at 32/64/128/256/512 |
+| `favicon/` | `favicon.ico`, `apple-touch-icon.png` |
+| `fonts/` | Outfit Regular and Bold, with its SIL Open Font License |
+| `tokens.json` | colour, type, spacing and radius scale, each colour with its contrast numbers and where it may be used |
+| `preview.png` | everything on one sheet |
+
+**It came from Windows**: every file has a `…:Zone.Identifier` twin. Those
+are download markers, not assets — never commit them.
+
+**`pnpm check` fails right now, because of this folder**:
+`sci-club-logo/tokens.json` is not in Biome's format, and Biome here scans
+untracked files (`biome.json` has `vcs.enabled: false`, so it does not read
+`.gitignore`). Nothing committed is affected — the committed tree passes every
+check. Settle it first, one of two ways, **with the owner**: the files the app
+uses move into the app (`public/`, `src/`) and the folder stays out of git and
+out of Biome (`"!sci-club-logo"` in `biome.json`, beside `"!logos-from-you"`);
+or the folder is committed as the source of truth and formatted. Do not
+reformat the owner's `tokens.json` without asking.
+
+**What the app uses today**, i.e. what the new files would replace:
+
+- **Icons**: `public/favicon.ico` and `favicon-16/32/180/192/512.png`.
+  `index.html` links the ico, 16, 32 and the 180 as `apple-touch-icon`;
+  `vite.config.ts`'s manifest uses 192 and 512 as `any maskable` — read the
+  comment there about the glyph filling the square so it survives the circle
+  and squircle masks. The new `sci-club-mark` needs checking against that mask
+  before it becomes the app icon.
+- **The drawn logo**: `src/components/club-mark.tsx` — `ClubMark` and
+  `ClubWordmark`, hand-drawn SVG components, used by the welcome screen
+  (`routes/onboarding/welcome.tsx`), the peer card and the member profile.
+- **Fonts**: Archivo (headings) and Public Sans (body) from Google Fonts in
+  `index.html`, as `--head` / `--body` in `src/index.css`.
+- **Colours**: `src/index.css`. Navy agrees (`#102a4c`). **Gold does not**:
+  the app's `--gold` is `#c9a227`, the new files' `gold-500` is `#d4a83a`, and
+  `tokens.json` adds `gold-800 #8a6512` as "the only gold allowed as text on
+  white".
+
+**Ask the owner before building**, because the answers change the size of the
+job:
+
+1. **Logo only, or the whole brand?** Swapping the icons and the drawn logo is
+   small. Moving to Outfit and the new gold touches every screen, and
+   `src/theme-contrast.test.ts` must still hold AA for every pair —
+   `tokens.json` gives the numbers to check against, but check them in the
+   test, not from the file.
+2. **Self-host Outfit or not?** The files and licence are in the folder.
+   Self-hosting means no request to Google for every member, which suits a
+   private club; it also means the service worker precaches the fonts.
+3. **The mock at www.thesciclub.com** (`docs/`) — does it change too? A push
+   that touches `docs/` rebuilds the public mock (see "Hosting on Netlify").
+
+**Traps**:
+
+- **An installed app keeps its old icon.** iOS takes the `apple-touch-icon`
+  when somebody adds the club to the Home Screen and does not refresh it; a
+  member who installed it for notifications has to remove and re-add it to
+  see the new one. Say so to the owner rather than letting it look broken.
+- **Look at it.** `pnpm shoot` for the screens, and check the lockups at
+  their minimum sizes (full lockup 56px tall, compact 32px, mark 24px) — every
+  layout problem in this project was found by eye.
+- **"Chrome and gloss belong to the logo only"** (the folder's README). UI
+  buttons stay flat gold with navy text; do not lift the gradients into CSS.
+
+## What landed 2026-09-27 and 2026-09-28
+
+Each has its own section further down; this is the index.
+
+- **Notifications, live.** Web Push to the Home Screen app: direct and group
+  messages (with the words), replies to your topic, replies in topics you
+  posted in, being added to a group, reports (administrators), somebody you
+  invited joining, tomorrow's events, new events from organizations you
+  follow; mutes per conversation, topic and room; switches per kind on Me; the
+  unread count on the app icon. **Not yet tried on a real iPhone** — that is
+  the owner's test. See "Next up: notifications on an iPhone", which is now a
+  record rather than a plan.
+- **A removed reply in a topic disappears** instead of saying "Removed by its
+  author", and stops counting. Conversations still say "Removed by…".
+- **An administrator can delete a topic** (Delete topic, in the topic header).
+- **Web addresses are clickable** in posts, messages and bios, shortened for
+  reading.
+- **The room's sort row says "Sort by"**, not "Topic".
+- **The Netlify CLI** is a devDependency (needs `--filter thesciclub`); the
+  Supabase CLI is 2.118.0.
+
+## Still open, besides the logos
+
+- **An hour with VoiceOver on a real iPhone**, then the rest of "What is next
+  for accessibility, in order" — the photograph viewer is not a dialog,
+  `photo_alt` is read by every avatar and written by nothing, a save that
+  worked announces nothing.
+- **The owner's iPhone test of notifications**: add to the Home Screen, sign
+  in there, turn on, close the app, have somebody send a direct message.
+- **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
+  (see "Next up: the owner's call").
+- **Home stays deferred.** Do not build it without asking.
+
+## Standing rules this session learned
+
+- **Gate every push on `pnpm check`'s exit status**, run on its own. Twice a
+  push went out after check failed, because `pnpm check | tail` takes `tail`'s
+  status and `;` does not stop — both times over an untracked local file.
+- **A session cannot write to the live database.** `supabase db push` to the
+  hosted project was refused by the permission system twice, even with the
+  owner's go-ahead: the owner runs it, after a session has run `--dry-run` and
+  shown the list. Push migrations *before* the code that needs them — a
+  button calling a function that is not there yet reads "The club is being
+  updated".
+- **The owner's terminal needs Node 24 for `pnpm`** — the system Node is 22
+  and has no pnpm. `nvm use 24`, or `nvm alias default 24` once.
 
 ---
 
@@ -1138,9 +1270,10 @@ message will find wording and reading-order problems that no audit here can.
 And `RouteChange` keys the title on `main h1, h1`; a screen that gains a
 second h1, or draws its h1 outside `main`, will name the page wrong.
 
-# Next up: notifications on an iPhone
+# Notifications on an iPhone — built and live 2026-09-27
 
-**The owner's next job, decided 2026-09-27.** A member who is sent a message
+**Done — this section is now the record of how.** It was the owner's next job,
+decided 2026-09-27. A member who is sent a message
 finds out the next time they open the app. The club is phones, and mostly
 iPhones, so this is Web Push to a web app on the Home Screen — no App Store,
 no native wrapper.
