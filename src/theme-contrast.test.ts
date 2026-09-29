@@ -65,7 +65,15 @@ describe('palette contrast', () => {
     ['--ink2 on --paper (card meta line)', 'ink2', 'paper'],
     ['--ink on --paper (body copy)', 'ink', 'paper'],
     ['--grey on --canvas (secondary copy on the page ground)', 'grey', 'canvas'],
+    // gold-800 on the pale gold is the tightest pair in the palette at 4.55:1.
     ['--gold-dp on --gold-lt (the "Online" badge)', 'gold-dp', 'gold-lt'],
+    ['--gold-dp on --paper (gold words on a card)', 'gold-dp', 'paper'],
+    ['--gold-dp on --canvas (the welcome headline)', 'gold-dp', 'canvas'],
+    // The brand pairs gold fills with navy ink, not white — white on --gold is
+    // 2.2:1, which is why no button or tag draws it.
+    ['--on-gold on --gold (every gold button and tag)', 'on-gold', 'gold'],
+    ['--on-gold on --gold-hi (a gold button under the pointer)', 'on-gold', 'gold-hi'],
+    ['--gold-hi on --navy (gold words on a navy header)', 'gold-hi', 'navy'],
     ['--navy on --tint (tag pills)', 'navy', 'tint'],
     ['--navy on --paper (links and buttons)', 'navy', 'paper'],
     // The hover states are pairs that meet on a screen too, and a hover colour
@@ -91,11 +99,5 @@ describe('palette contrast', () => {
     ['--room-places on --canvas (the Places category label)', 'room-places', 'canvas'],
   ])('%s clears AA', (_label, fg, bg) => {
     expect(contrast(token(fg), token(bg))).toBeGreaterThanOrEqual(AA);
-  });
-
-  it('keeps the gold primary readable under the pointer', () => {
-    // #2A1E06 is written into the button rather than held as a token, so it is
-    // named here rather than read from the CSS.
-    expect(contrast('#2A1E06', token('gold-hi'))).toBeGreaterThanOrEqual(AA);
   });
 });

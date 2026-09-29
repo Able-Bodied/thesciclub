@@ -121,7 +121,7 @@ function MessageButton({
         }}
         // The mock's `btn gold`. Gold is the club's one accent and this is the
         // one action on the page.
-        className="flex min-h-[46px] w-full items-center justify-center rounded-[13px] bg-gold px-4 font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-50"
+        className="flex min-h-[46px] w-full items-center justify-center rounded-[13px] bg-gold px-4 font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-50"
       >
         {opening ? 'Opening…' : `Message ${name}`}
       </button>
@@ -263,7 +263,7 @@ export default function MemberDetailPage() {
             {backFrom(location.state)}
           </button>
           {member.type === 'mentor' ? (
-            <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
+            <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
               Peer mentor
             </span>
           ) : null}

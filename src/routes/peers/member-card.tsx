@@ -19,7 +19,7 @@ const DEFAULT_GRADIENT: [string, string] = ['#102A4C', '#1A3E70'];
 const PALETTE: [string, string][] = [
   DEFAULT_GRADIENT,
   ['#1A3E70', '#2C5590'],
-  ['#8A6712', '#C9A227'],
+  ['#8A6512', '#D4A83A'],
   ['#2F6B57', '#3E8F74'],
   ['#4A2E6B', '#6B4494'],
 ];
@@ -110,7 +110,7 @@ function OfficialCard({ member, onOpen }: MemberCardProps) {
       // matching costs. The content stays centred either way.
       className="relative flex min-h-[20rem] w-full flex-col items-center justify-center overflow-hidden rounded-[26px] bg-navy px-8 py-10 text-center shadow-[0_10px_26px_rgba(10,20,35,.18)]"
     >
-      <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase tracking-[0.08em]">
+      <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
         Official
       </span>
       <ClubMark size={96} />
@@ -171,7 +171,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       <span className="absolute inset-x-0 bottom-0 h-[230px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
 
       {member.type === 'mentor' ? (
-        <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-[#2A1E06] text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
+        <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
           <MentorStar />
           Mentor
         </span>

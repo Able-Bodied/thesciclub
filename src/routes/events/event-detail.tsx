@@ -116,7 +116,7 @@ export default function EventDetailPage() {
 
           {/* A calendar, because the line is a date. This was a map pin, which
               says "place" in front of text that says "Friday 11 September". */}
-          <div className="flex items-center gap-1.5 font-bold text-[#EBD277] text-[0.71875rem] uppercase tracking-[0.07em]">
+          <div className="flex items-center gap-1.5 font-bold text-gold-hi text-[0.71875rem] uppercase tracking-[0.07em]">
             <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
             <span>{longWhen(event.startTime, event.timezone)}</span>
           </div>
@@ -134,7 +134,7 @@ export default function EventDetailPage() {
           {isOnline(event) || event.tags.length ? (
             <div className="mt-2.5 flex flex-wrap gap-1.5">
               {isOnline(event) ? (
-                <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-[#EBD277] text-[0.7375rem]">
+                <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-gold-hi text-[0.7375rem]">
                   {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
                 </span>
               ) : null}
@@ -175,7 +175,7 @@ export default function EventDetailPage() {
                   'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
                   going
                     ? 'bg-tint text-navy hover:bg-line'
-                    : 'bg-gold text-[#2A1E06] hover:bg-gold-hi',
+                    : 'bg-gold text-on-gold hover:bg-gold-hi',
                 )}
               >
                 {going ? 'Going ✓' : 'Going'}

@@ -325,7 +325,7 @@ export default function TopicPage() {
               onClick={() => {
                 if (room) membership.toggle(room.id);
               }}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[#2A1E06] text-[0.9375rem] transition-colors hover:bg-gold-hi"
+              className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi"
             >
               Join {room?.name ?? 'this room'} to reply
             </button>

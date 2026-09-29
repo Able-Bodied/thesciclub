@@ -9,12 +9,17 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
 /*
  * Design tokens for The SCI Club.
  *
- * The brand half of this file (--navy … --tint, --head, --body) is lifted
- * verbatim from the design mock in docs/index.html, hex for hex, so a screen
- * ported from the mock can keep its own values and still be on-system.
+ * The brand half of this file (--navy … --tint, --head, --body) follows the
+ * owner's brand files (sci-club-logo/tokens.json, 2026-09-28), which replaced
+ * the design mock's values: Outfit for Archivo and Public Sans, gold-500
+ * #d4a83a for #c9a227, and the navy-tinted inks. Where a token kept the
+ * mock's value, its comment says why. docs/index.html keeps the old look on
+ * purpose — it is the published mock, not the app. The app as it looked
+ * before is the git tag `brand-before-outfit`.
  *
  * The shadcn half below maps those same colours onto shadcn's semantic names.
  * **Nothing reads them.** The scaffold laid them down for generated components
@@ -29,23 +34,35 @@
 
 :root {
   /* ---------------------------------------------------------- brand */
+  /* navy-900, the badge's plate. */
   --navy: #102a4c;
-  --navy-hi: #1a3e70;
+  /* navy-700: the brand's raised navy, and the navy primary under the pointer. */
+  --navy-hi: #1b3a66;
   --navy-dp: #0a1d36;
-  --gold: #c9a227;
-  /* On --gold-lt, which is the only thing it is ever drawn on. #8a6712 was
-     4.47:1 there — under AA by three hundredths, on the "Online" badge. */
-  --gold-dp: #886510;
+  /* gold-500, the brand's flat gold for filled controls, tags and badges.
+     Never text on white — it is 2.2:1 there. What sits on it is --on-gold. */
+  --gold: #d4a83a;
+  /* on-accent: the ink on anything filled --gold, navy as the brand sets it
+     (6.5:1). It was a dark brown, #2A1E06, written into each button. */
+  --on-gold: #102a4c;
+  /* gold-800, "the only gold allowed as text on white". On --gold-lt, the
+     "Online" badge, it is 4.55:1 — the tight pair; the mock's #8a6712 was
+     4.47:1 there and failed. */
+  --gold-dp: #8a6512;
   --gold-lt: #f6edd5;
-  /* The hover state for the gold primary, lifted the way --navy-hi lifts navy
-     rather than darkened, so both primaries answer a pointer the same way. The
-     button's ink is #2A1E06, which clears AA on this comfortably. */
-  --gold-hi: #d9b53f;
+  /* gold-300: the gold primary under the pointer, lifted the way --navy-hi
+     lifts navy, and gold as text on navy grounds (9.2:1 on --navy). */
+  --gold-hi: #e9cc72;
 
+  /* The page ground. Kept at the mock's value rather than the brand's
+     surface-raised #f3f5f8, which looks the same and takes --grey under AA
+     (4.47:1). The app's shape is white cards on this, not the brand's grey
+     cards on white — a list of cards reads better that way round. */
   --canvas: #f4f6f9;
   --paper: #fff;
-  --ink: #0f1620;
-  --ink2: #455163;
+  /* The brand's ink and ink-muted: navy-tinted rather than neutral. */
+  --ink: #0e2646;
+  --ink2: #4a5b73;
   /* 4.88:1 on --paper and 4.51:1 on --canvas. It was #7c8899, which is 3.60:1
      on white — under AA for text this size, and this is the token the time and
      place of an event are drawn in. Both grounds have to clear it: grey sits on
@@ -114,7 +131,7 @@
   --muted: var(--tint);
   --muted-foreground: var(--ink2);
   --accent: var(--gold);
-  --accent-foreground: #2a1e06;
+  --accent-foreground: var(--on-gold);
   --destructive: #b3261e;
   --border: var(--line);
   --input: var(--paper);
@@ -129,6 +146,7 @@
   --color-gold-dp: var(--gold-dp);
   --color-gold-hi: var(--gold-hi);
   --color-gold-lt: var(--gold-lt);
+  --color-on-gold: var(--on-gold);
   --color-canvas: var(--canvas);
   --color-paper: var(--paper);
   --color-ink: var(--ink);
@@ -177,8 +195,10 @@
     -webkit-tap-highlight-color: transparent;
   }
   /* One focus ring for everything that can take focus, drawn only for keyboard
-     and switch users (:focus-visible), in navy on light and gold on navy so it
-     is seen on both. The browser's own ring took --ring at half opacity from
+     and switch users (:focus-visible), in navy on light and gold-300 on navy so
+     it is seen on both. The brand's own focus colour on light is gold-800; navy
+     is kept because it is 15:1 against 5.3:1, and this club drives with a
+     keyboard or a switch more often than most. The browser's own ring took --ring at half opacity from
      the rule above, which on the canvas was a faint grey line — WAI tip 3,
      "interactive elements are easy to identify", and this club drives with a
      keyboard, a switch or a head pointer more often than most. */
@@ -188,7 +208,7 @@
   }
   .bg-navy :focus-visible,
   .bg-navy-dp :focus-visible {
-    outline-color: var(--gold);
+    outline-color: var(--gold-hi);
   }
   body {
     @apply bg-background text-foreground;

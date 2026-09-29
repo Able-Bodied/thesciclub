@@ -109,7 +109,7 @@ export function RoomCard({
         <span className="flex flex-wrap items-baseline gap-x-[7px] gap-y-1">
           <span className="font-extrabold font-head text-[0.9375rem] text-ink">{room.name}</span>
           {joined ? (
-            <span className="whitespace-nowrap rounded-full bg-gold px-2 py-[2px] font-semibold text-[#2A1E06] text-[0.6875rem]">
+            <span className="whitespace-nowrap rounded-full bg-gold px-2 py-[2px] font-semibold text-on-gold text-[0.6875rem]">
               Joined
             </span>
           ) : null}

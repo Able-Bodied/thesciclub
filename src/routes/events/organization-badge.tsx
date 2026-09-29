@@ -67,7 +67,7 @@ export function OrganizationBadge({
       )}
       // The gold tile sits underneath the logo rather than beside it, so a slow
       // or failed image never leaves a hole in the row.
-      style={{ background: 'linear-gradient(140deg,#8A6712,#C9A227)' }}
+      style={{ background: 'linear-gradient(140deg,#8A6512,#D4A83A)' }}
       // Decorative throughout: every place this is used renders the
       // organization's name as text right beside it, so giving the badge a
       // label of its own would read the organization twice to a screen reader.
