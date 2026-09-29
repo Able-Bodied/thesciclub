@@ -102,6 +102,21 @@ Each has its own section further down; this is the index.
 - **The Netlify CLI** is a devDependency (needs `--filter thesciclub`); the
   Supabase CLI is 2.118.0.
 
+## Supabase's security email, 2026-09-27 — fixed in `20260929000000`
+
+Supabase's advisor flagged `auth_users_exposed`: `admin_invites` joined
+`auth.users` to show whether an invited number has signed up. **Nothing leaked**
+— checked on the live API: anon gets "permission denied", and a member who is
+not an active administrator gets no rows because of `where is_admin()`. But
+that one line was the only wall, so the lookup moved into
+`private.account_created_at()`, which checks `is_admin()` itself and lives in a
+schema the API does not publish; the view became a `security_barrier`, and
+its grants are select-only (Supabase's defaults had also given `authenticated`
+insert/update/delete on it — inert on a join view, gone anyway). No client
+change. **Rule: no view in `public` names `auth.users`** — probe step 6 checks.
+**Owner: push it with `pnpm exec supabase db push --linked`**, after the
+dry run; then the advisor's warning should clear on its next scan.
+
 ## Still open
 
 - **An hour with VoiceOver on a real iPhone**, then the rest of "What is next
@@ -522,6 +537,7 @@ Two rules, both learned the hard way:
 | `topic-removal-and-deletion.sql` | a removed reply stops counting and a removed opening post leaves the replies as replies; the faces on a row are posters still standing; a member cannot delete a topic, even their own; an administrator's delete takes posts, mutes and reads and leaves a report its words (step 6) |
 | `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
 | `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
+| `admin-invites-no-auth-users.sql` | 20260929000000, after Supabase's `auth_users_exposed` email: step 1 (an administrator still sees who has signed up — the first draft of the migration broke it, because Postgres checks a function inside a view against the reader) and 3–5 (a member reads nothing through the view or around it, anon cannot reach the lookup) matter most |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
