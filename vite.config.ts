@@ -33,22 +33,26 @@ export default defineConfig({
         background_color: '#F4F6F9',
         display: 'standalone',
         start_url: '/',
-        // The glyph fills the square edge to edge, so it survives the circular
-        // and squircle masks Android and iOS apply — which is exactly why the
-        // full lockup was the wrong choice here. 'any maskable' rather than a
-        // separate padded icon, for the same reason.
+        // Two sets since the 2026-09-28 rebrand. The owner's mark is a
+        // rounded navy plate with transparent corners, which is right as a
+        // plain icon and wrong under a mask: Android fills the corners and
+        // crops the gold keyline. The maskable pair is the same mark on navy
+        // to every edge, scaled to 68% so the keyline's corners sit inside the
+        // 80% safe circle. Rendered from sci-club-logo/svg/sci-club-mark.svg.
         icons: [
+          { src: '/favicon-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/favicon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           {
-            src: '/favicon-192x192.png',
+            src: '/maskable-192x192.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'maskable',
           },
           {
-            src: '/favicon-512x512.png',
+            src: '/maskable-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'maskable',
           },
         ],
       },
