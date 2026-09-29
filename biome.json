@@ -23,7 +23,8 @@
       "!docs",
       "!.logo-candidates",
       "!screenshots",
-      "!logos-from-you"
+      "!logos-from-you",
+      "!sci-club-logo"
     ]
   },
   "formatter": {

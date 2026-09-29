@@ -33,6 +33,9 @@ supabase/.branches/
 screenshots/
 .logo-candidates/
 logos-from-you/
+# The owner's brand master files (2026-09-28). What the app uses is copied into
+# public/ — fonts, the badge, the compact lockup and the icons.
+sci-club-logo/
 
 # Netlify CLI — `netlify link` keeps the site id and local state here.
 .netlify
