@@ -239,7 +239,7 @@ export default function ProfileSurveyPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">
-        <h1 className="font-extrabold font-head text-[1.4375rem] text-ink leading-tight tracking-[-0.01em]">
+        <h1 className="font-extrabold font-display text-[1.4375rem] text-ink leading-tight tracking-[-0.01em]">
           {screen.title}
         </h1>
         {screen.hint ? (

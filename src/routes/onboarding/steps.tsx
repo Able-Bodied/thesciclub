@@ -416,7 +416,7 @@ export function PhotoStep({ data, set }: StepProps) {
         {data.photoPreviewUrl ? (
           <img src={data.photoPreviewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="font-extrabold font-head text-[2.125rem] text-navy">+</span>
+          <span className="font-extrabold font-display text-[2.125rem] text-navy">+</span>
         )}
         <input
           type="file"

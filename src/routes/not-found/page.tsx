@@ -22,7 +22,7 @@ export default function NotFoundPage() {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        <h1 className="font-extrabold font-head text-[1.5625rem] text-ink">Page not found</h1>
+        <h1 className="font-extrabold font-display text-[1.5625rem] text-ink">Page not found</h1>
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-3 px-10 text-center">
         <p className="text-[0.90625rem] text-ink2 leading-relaxed">

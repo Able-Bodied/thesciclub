@@ -50,12 +50,18 @@ touching git. Before/after screenshots are in `screenshots/brand-before/` and
   `public/`: `fonts/` (Outfit Regular and Bold, the licence), `brand/` (the
   badge and the compact reverse lockup), and the icons. If the owner updates a
   file there, copy it across again.
-- **Outfit is self-hosted** (the owner's decision — no request to Google), from
-  `@font-face` in `src/index.css`, preloaded in `index.html`, precached by the
-  service worker (`globPatterns` in `vite.config.ts`). Regular and Bold only,
-  so `font-semibold` and `font-extrabold` both draw Bold; that is the brand, not
-  a missing file. Negative tracking tighter than `-0.01em` made Outfit's
-  letters touch and was brought to `-0.01em` everywhere.
+- **Two faces, both self-hosted** (the owner's decision — no request to
+  Google), from `@font-face` in `src/index.css`, preloaded in `index.html`,
+  precached by the service worker (`globPatterns` in `vite.config.ts`):
+  - **Atkinson Hyperlegible Next** for every word a member reads — `font-sans`
+    and `font-head`. The owner chose accessibility over the brand guide on
+    2026-09-29: the guide sets Outfit for body copy, and Outfit's I, l and 1
+    are near-identical at caption size. Atkinson was drawn by the Braille
+    Institute for low-vision readers. Its zero is slashed on purpose. Variable
+    200–800, so every weight is real.
+  - **Outfit** (the owner's Bold) for `font-display` only: text 22px and up —
+    page titles, profile names, the welcome headline. **A new large heading
+    takes `font-display`; anything smaller takes `font-head`.**
 - **Colours** follow `tokens.json`: `--gold` gold-500, `--gold-dp` gold-800,
   `--gold-hi` gold-300, `--navy-hi` navy-700, the brand's ink and ink-muted,
   and a new **`--on-gold`** (navy) for anything on a gold fill — use

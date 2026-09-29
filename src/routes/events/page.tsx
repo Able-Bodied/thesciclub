@@ -188,7 +188,7 @@ export default function EventsPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.01em]">
+          <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Events
           </h1>
           {showingList ? (

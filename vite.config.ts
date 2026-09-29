@@ -22,7 +22,7 @@ export default defineConfig({
       // them an installed app opened offline draws in the fallback face.
       injectManifest: {
         rollupFormat: 'iife',
-        globPatterns: ['**/*.{js,css,html,ttf,svg}'],
+        globPatterns: ['**/*.{js,css,html,woff2,ttf,svg}'],
       },
       manifest: {
         name: 'The SCI Club',

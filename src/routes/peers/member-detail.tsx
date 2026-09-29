@@ -315,7 +315,7 @@ export default function MemberDetailPage() {
             >
               <span
                 aria-hidden="true"
-                className="absolute inset-0 grid place-items-center font-extrabold font-head text-[6.5rem] text-white opacity-[0.13]"
+                className="absolute inset-0 grid place-items-center font-extrabold font-display text-[6.5rem] text-white opacity-[0.13]"
               >
                 {initialsOf(member.displayName)}
               </span>
@@ -343,7 +343,7 @@ export default function MemberDetailPage() {
                 className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0),rgba(10,29,54,0.8)_60%,#102a4c)]"
               />
               <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
-                <h1 className="font-extrabold font-head text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
+                <h1 className="font-extrabold font-display text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
                   {member.displayName}
                 </h1>
                 <p className="mt-1 text-[0.875rem] text-[#D3DFEE]">{summaryLine(member)}</p>
@@ -525,7 +525,7 @@ function OfficialProfile({
 
         <div className="mt-6 flex flex-col items-center">
           <ClubMark size={104} />
-          <h1 className="mt-5 font-extrabold font-head text-[1.75rem] text-white tracking-[-0.01em]">
+          <h1 className="mt-5 font-extrabold font-display text-[1.75rem] text-white tracking-[-0.01em]">
             {member.displayName}
           </h1>
           {/* The mock's own badge shape: a white pill with the gold org mark. */}

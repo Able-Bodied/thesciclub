@@ -172,7 +172,7 @@ export default function ProfileDetailsPage() {
             <ChevronLeft className="h-4 w-4" />
             Me
           </button>
-          <h1 className="mt-1 font-extrabold font-head text-[1.4375rem] text-ink tracking-[-0.01em]">
+          <h1 className="mt-1 font-extrabold font-display text-[1.4375rem] text-ink tracking-[-0.01em]">
             Your details
           </h1>
         </header>
@@ -198,7 +198,7 @@ export default function ProfileDetailsPage() {
                     {photo ? (
                       <img src={photo} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="font-extrabold font-head text-[1.5rem] text-navy">+</span>
+                      <span className="font-extrabold font-display text-[1.5rem] text-navy">+</span>
                     )}
                     <input
                       type="file"

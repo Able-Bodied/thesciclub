@@ -203,7 +203,7 @@ export function EventCard({
             <span className="block font-extrabold text-[0.65625rem] text-ink2 tracking-[0.09em]">
               {tile.dow}
             </span>
-            <span className="block font-extrabold font-head text-[1.4375rem] text-navy leading-[1.15]">
+            <span className="block font-extrabold font-display text-[1.4375rem] text-navy leading-[1.15]">
               {tile.day}
             </span>
             <span className="block font-extrabold text-[0.65625rem] text-ink2 tracking-[0.09em]">

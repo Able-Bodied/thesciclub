@@ -129,7 +129,7 @@ export default function ChatPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
         <div className="mx-auto w-full max-w-[720px]">
-          <h1 className="font-extrabold font-head text-[1.5625rem] text-ink tracking-[-0.01em]">
+          <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Chat
           </h1>
         </div>

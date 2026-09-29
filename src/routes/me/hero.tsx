@@ -48,7 +48,7 @@ export function MeHero({ member }: { member: OwnMember }) {
     <div className="bg-navy px-4 pt-[18px] pb-[26px] text-white">
       <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center gap-3.5">
         <span
-          className="relative grid h-[88px] w-[88px] flex-none place-items-center overflow-hidden rounded-[26px] font-extrabold font-head text-[1.9375rem] text-white"
+          className="relative grid h-[88px] w-[88px] flex-none place-items-center overflow-hidden rounded-[26px] font-extrabold font-display text-[1.9375rem] text-white"
           style={{ background: `linear-gradient(140deg, ${from}, ${to})` }}
         >
           {photo ? (

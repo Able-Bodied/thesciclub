@@ -114,7 +114,7 @@ function OfficialCard({ member, onOpen }: MemberCardProps) {
         Official
       </span>
       <ClubMark size={96} />
-      <span className="mt-6 block font-extrabold font-head text-[1.5rem] text-white tracking-[-0.01em]">
+      <span className="mt-6 block font-extrabold font-display text-[1.5rem] text-white tracking-[-0.01em]">
         {member.displayName}
       </span>
       <span className="mt-2 block text-[0.84375rem] text-[#B9CADF] leading-[1.5]">
@@ -150,7 +150,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
           reveals a designed tile rather than a broken-image icon. */}
       <span
         aria-hidden="true"
-        className="absolute inset-0 grid place-items-center font-extrabold font-head text-[118px] text-white opacity-[0.13] tracking-[-0.01em]"
+        className="absolute inset-0 grid place-items-center font-extrabold font-display text-[118px] text-white opacity-[0.13] tracking-[-0.01em]"
       >
         {initialsOf(member.displayName)}
       </span>
@@ -178,7 +178,7 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       ) : null}
 
       <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px] pr-[104px]">
-        <span className="block font-extrabold font-head text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
+        <span className="block font-extrabold font-display text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
           {member.displayName}
         </span>
         <span className="mt-[7px] block text-[0.84375rem] text-[#DCE6F2] leading-[1.45] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">

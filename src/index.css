@@ -10,20 +10,45 @@
 @import "tw-animate-css";
 
 /*
- * Outfit, the brand face, served from this site rather than Google Fonts: the
- * club is private and a font request to Google from every member's phone is a
- * record of who opened it, when. The files are the owner's, from
- * sci-club-logo/fonts/, under the SIL Open Font License beside them in
- * public/fonts/. Regular and Bold only, as the brand sets it — so
- * font-semibold and font-extrabold both draw Bold, which is intended rather
- * than a missing weight. The service worker precaches both (vite.config.ts).
+ * Two faces, both served from this site rather than Google Fonts: the club is
+ * private, and a font request to Google from every member's phone is a record
+ * of who opened it, when. Both are under the SIL Open Font License, beside the
+ * files in public/fonts/, and the service worker precaches them
+ * (vite.config.ts).
+ *
+ * Atkinson Hyperlegible Next is every word a member reads — body, labels,
+ * buttons, names, numbers. The Braille Institute drew it for low-vision
+ * readers: I, l and 1 differ, 0 and O differ, b/d and p/q are not mirrors.
+ * The owner's brand sets Outfit for body copy too; Outfit's geometric I, l
+ * and 1 are near-identical at caption size, and accessibility comes first
+ * here (the owner's call, 2026-09-29). Variable, 200 to 800, so semibold and
+ * extrabold are real weights.
+ *
+ * Outfit, the brand face from the owner's sci-club-logo/fonts/, is display
+ * only: `font-display`, on text 22px and larger — page titles, names on a
+ * profile, the welcome headline — where its letter shapes cost nothing and
+ * carry the brand. Bold only, since nothing sets display type lighter.
  */
 @font-face {
-  font-family: Outfit;
-  src: url("/fonts/Outfit-Regular.ttf") format("truetype");
-  font-weight: 400;
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/fonts/AtkinsonHyperlegibleNext-latin.woff2") format("woff2");
+  font-weight: 200 800;
   font-style: normal;
   font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("/fonts/AtkinsonHyperlegibleNext-latin-ext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 @font-face {
   font-family: Outfit;
@@ -38,8 +63,9 @@
  *
  * The brand half of this file (--navy … --tint, --head, --body) follows the
  * owner's brand files (sci-club-logo/tokens.json, 2026-09-28), which replaced
- * the design mock's values: Outfit for Archivo and Public Sans, gold-500
- * #d4a83a for #c9a227, and the navy-tinted inks. Where a token kept the
+ * the design mock's values: gold-500 #d4a83a for #c9a227, the navy-tinted
+ * inks, and Outfit for display type (with Atkinson Hyperlegible Next for
+ * everything else — see the @font-face comment above). Where a token kept the
  * mock's value, its comment says why. docs/index.html keeps the old look on
  * purpose — it is the published mock, not the app. The app as it looked
  * before is the git tag `brand-before-outfit`.
@@ -97,8 +123,12 @@
   --line: #cbd3de;
   --tint: #e4e9f1;
 
-  --head: Outfit, "Avenir Next", "Segoe UI", system-ui, sans-serif;
-  --body: Outfit, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  /* Display is Outfit; head and body are both Atkinson Hyperlegible Next.
+     --head stays a separate token because 170-odd labels, names and buttons
+     name it, and they are exactly the small text that most needs legibility. */
+  --display: Outfit, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --head: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible Next", "Segoe UI", system-ui, sans-serif;
 
   /* ------------------------------------------------- discussion rooms */
   /*
@@ -203,6 +233,7 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --font-display: var(--display);
   --font-head: var(--head);
   --font-sans: var(--body);
 
@@ -244,7 +275,6 @@
   h2,
   h3 {
     font-family: var(--head);
-    letter-spacing: -0.01em;
   }
 
   /*
