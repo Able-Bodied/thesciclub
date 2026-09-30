@@ -75,9 +75,12 @@ select public.chat_remove_post(
 \o
 -- Removed, then said again: the removed post keeps its place in the numbering
 -- and the second one is what the topic reads as.
-insert into public.chat_posts (topic_id, author_id, body)
+-- Each post here gets its own instant. now() is one value for the whole
+-- transaction, so three posts written at now() tie, and step 4's
+-- `order by created_at` printed them in a different order from run to run.
+insert into public.chat_posts (topic_id, author_id, body, created_at)
 values (:'topic'::uuid, 'dddddddd-6666-0000-0000-000000000001',
-        'Six years in and I still pack twice what I need.');
+        'Six years in and I still pack twice what I need.', now() + interval '1 second');
 
 select public.chat_open_direct('55555555-6666-0000-0000-000000000002') as dm \gset
 insert into public.chat_messages (thread_id, author_id, body)
@@ -91,8 +94,9 @@ values (:'grp'::uuid, 'dddddddd-6666-0000-0000-000000000001', 'Three loaner chai
 
 -- The other member answers in both, so there is something left to read.
 set local request.jwt.claims = '{"sub":"55555555-6666-0000-0000-000000000002","role":"authenticated"}';
-insert into public.chat_posts (topic_id, author_id, body)
-values (:'topic'::uuid, '55555555-6666-0000-0000-000000000002', 'That is every trip I have taken.');
+insert into public.chat_posts (topic_id, author_id, body, created_at)
+values (:'topic'::uuid, '55555555-6666-0000-0000-000000000002', 'That is every trip I have taken.',
+        now() + interval '2 seconds');
 insert into public.chat_messages (thread_id, author_id, body)
 values (:'dm'::uuid, '55555555-6666-0000-0000-000000000002', 'Any time. I am coming past anyway.');
 \o /dev/null
@@ -154,10 +158,13 @@ select count(*) as still_a_member
 
 \echo ''
 \echo '== 4. THE STEP: their words stay, their name does not =='
-\echo '   expect: the title and every body intact, the author cleared on the two'
-\echo '   posts that were theirs and left alone on the one that was not. The'
-\echo '   removed post is still blank and still counted — a topic does not'
-\echo '   renumber itself under the people reading it.'
+\echo '   expect: the title intact, topic_author_cleared t, reply_count 2; then'
+\echo '   three posts in this order — blank | t | t (the opening post they took'
+\echo '   back), their second | t | f, the reply that was not theirs | f | f.'
+\echo '   The removed post keeps its row and its place, blank — a topic does not'
+\echo '   renumber itself under the people reading it — but is not counted: since'
+\echo '   20260927030000 a removed post leaves the count, and with the opening'
+\echo '   post gone the two standing posts are both replies.'
 select t.title, t.author_id is null as topic_author_cleared, t.reply_count
   from public.chat_topics t where t.id = :'topic'::uuid;
 select p.body, p.author_id is null as author_cleared, p.removed_at is not null as removed
@@ -189,7 +196,9 @@ select t.kind, coalesce(t.name, '(direct)') as name,
        case when t.kind = 'direct' then t.direct_key is not null end as direct_key_kept,
        t.created_by is null as creator_cleared,
        (select count(*) from public.chat_thread_members m where m.thread_id = t.id) as roster
-  from public.chat_threads t order by t.kind;
+  -- This probe's two threads only: unscoped, a local stack with conversations
+  -- in it listed every one of them, in no settled order.
+  from public.chat_threads t where t.id in (:'dm'::uuid, :'grp'::uuid) order by t.kind;
 
 \echo ''
 \echo '== 8. THE STEP: what they joined and what they read goes with them =='
