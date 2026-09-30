@@ -1,3 +1,4 @@
+import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
@@ -15,6 +16,16 @@ import { useSession } from '@/lib/session';
 import { EventCard } from '@/routes/events/event-card';
 import { ComposeCard } from '@/routes/home/compose-card';
 import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
+import { HomeFilterSheet } from '@/routes/home/filter-sheet';
+import {
+  activeFilterCount,
+  chipsFor,
+  EMPTY_FEED_FILTERS,
+  type FeedFilterContext,
+  type FeedFilters,
+  matchesFeedFilters,
+  openRoomsById,
+} from '@/routes/home/filters';
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
@@ -54,6 +65,15 @@ import type { RsvpStatus } from '@/types/domain';
  * reader three times, so Everything says "Loading…" until all three have
  * settled. A single-kind pill waits for its own source only. A source that
  * fails says so once, at the top, and the rest of the list still draws.
+ *
+ * ---------------------------------------------------------------------------
+ * The filter narrows what a pill drew, and lives in component state
+ * ---------------------------------------------------------------------------
+ * "Filter your feed" keeps the cards on this pill that are in a room or a
+ * place (`filters.ts` says what matches what). It runs after the pill's list
+ * is built, not before, so "2 of 8 match" means two of the eight cards that
+ * were on screen. The choices are component state, as they are on Events: they
+ * carry from one pill to the next, and a visit starts with none.
  */
 
 const SEGMENTS: [HomeSegment, string][] = [
@@ -108,6 +128,8 @@ export default function HomePage() {
   const membersRead = useBrowseMembers();
   const threadsRead = useMyThreads();
   const [writeError, setWriteError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FeedFilters>(EMPTY_FEED_FILTERS);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const topics = useMemo(
     () => toHomeTopics(topicRead.topics, topicRead.posts, rooms.rooms),
@@ -154,7 +176,13 @@ export default function HomePage() {
     events: eventsRead.error,
     people: membersRead.error,
   };
-  const sources = SOURCES[segment];
+  // A topic is placed by its author's city, which comes from the members
+  // read. With a city chosen, Topics and Photos wait for it too, rather than
+  // drawing nothing and then filling in.
+  const sources: Source[] =
+    filters.cities.length > 0 && !SOURCES[segment].includes('people')
+      ? [...SOURCES[segment], 'people']
+      : SOURCES[segment];
   const settled = sources.every((source) => !loading[source]);
   const failures = sources.flatMap((source) => {
     const error = errors[source];
@@ -165,6 +193,18 @@ export default function HomePage() {
     () => inSegment(segment, { topics, events, people }),
     [segment, topics, events, people],
   );
+  const filterContext = useMemo<FeedFilterContext>(
+    () => ({
+      openRooms: openRoomsById(rooms.rooms),
+      cityOf: new Map(membersRead.members.map((member) => [member.id, member.city])),
+    }),
+    [rooms.rooms, membersRead.members],
+  );
+  const shown = useMemo(
+    () => items.filter((item) => matchesFeedFilters(item, filters, filterContext)),
+    [items, filters, filterContext],
+  );
+  const filterCount = activeFilterCount(filters);
 
   const onRsvp = useCallback(
     (eventId: string, next: RsvpStatus | null) => {
@@ -246,10 +286,27 @@ export default function HomePage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center">
+        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Home
           </h1>
+          {/* Events' button, the same size and the same dot. There is no row of
+              chosen chips under the pills (the mock has one): Events and Peers
+              draw none, and the dot and the name say a filter is on. */}
+          <button
+            type="button"
+            onClick={() => {
+              setSheetOpen(true);
+            }}
+            aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
+            data-target="small"
+            className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
+          >
+            <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
+            {filterCount ? (
+              <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
+            ) : null}
+          </button>
         </div>
         <SegmentPills
           segments={SEGMENTS}
@@ -273,10 +330,10 @@ export default function HomePage() {
           ) : (
             <>
               {failures.length > 0 ? <Problem sentences={failures} /> : null}
-              {items.length > 0 ? (
+              {shown.length > 0 ? (
                 <>
                   <ul>
-                    {items.map((item) => (
+                    {shown.map((item) => (
                       // An event card carries its own bottom margin; the
                       // others are given the same one here.
                       <li key={item.key} className={item.kind === 'event' ? '' : 'mb-[11px]'}>
@@ -286,13 +343,36 @@ export default function HomePage() {
                   </ul>
                   <SeeMore segment={segment} />
                 </>
-              ) : failures.length > 0 ? null : (
+              ) : failures.length > 0 ? null : items.length > 0 ? (
+                // The pill has cards and the filter kept none of them. The
+                // sentence names the filter, which is what is holding it shut.
+                <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
+                  Nothing matches that yet. Try fewer filters.
+                </p>
+              ) : (
                 <EmptyList segment={segment} />
               )}
             </>
           )}
         </div>
       </div>
+
+      {sheetOpen ? (
+        <HomeFilterSheet
+          chips={chipsFor(items, filters, filterContext)}
+          filters={filters}
+          matchCount={shown.length}
+          total={items.length}
+          activeCount={filterCount}
+          onChange={setFilters}
+          onClear={() => {
+            setFilters(EMPTY_FEED_FILTERS);
+          }}
+          onClose={() => {
+            setSheetOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

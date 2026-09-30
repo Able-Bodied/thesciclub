@@ -9,7 +9,7 @@ import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/types';
 import type * as HomeTopics from '@/lib/home/topics';
 import type { HomeTopicSummary } from '@/lib/home/types';
-import { makeEvent, makeMember, makePost, makeRoom } from '@/test/factory';
+import { makeEvent, makeMember, makePost, makeRoom, makeTag } from '@/test/factory';
 import type { BrowseMember, ClubEvent, RsvpStatus } from '@/types/domain';
 
 /**
@@ -435,5 +435,195 @@ describe('Home', () => {
       'href',
       '/events',
     );
+  });
+});
+
+describe('filtering the feed', () => {
+  beforeEach(() => {
+    db.rooms = [
+      makeRoom({ id: 'bowel', name: 'Bowel management' }),
+      makeRoom({ id: 'sport', name: 'Adaptive sport' }),
+      makeRoom({ id: 'equip', name: 'Equipment & assistive tech' }),
+      makeRoom({ id: 'skin', name: 'Skin & pressure sores', openedAt: null }),
+    ];
+    db.topics = [
+      summary({ id: 'plain', title: 'Morning or evening routine?', authorId: 'me' }),
+      summary({ id: 'photo', roomId: 'equip', title: 'Wheel covers I made', authorId: 'jan' }),
+    ];
+    db.posts = [
+      makePost({ id: 'plain-opening', topicId: 'plain', authorId: 'me' }),
+      makePost({
+        id: 'photo-opening',
+        topicId: 'photo',
+        authorId: 'jan',
+        body: '',
+        attachments: ['rooms/equip/a.webp'],
+      }),
+    ];
+    db.events = [
+      makeEvent({
+        id: 'swim',
+        title: 'Adaptive swim night',
+        city: 'San Jose',
+        startTime: soon(3),
+        tags: [makeTag('swimming', 'sport')],
+      }),
+      makeEvent({
+        id: 'circle',
+        title: 'Peer support circle',
+        city: null,
+        format: 'online',
+        startTime: soon(5),
+      }),
+    ];
+    db.members = [
+      makeMember({ id: 'me', displayName: 'Alex', city: 'San Jose' }),
+      makeMember({
+        id: 'kerry',
+        displayName: 'Kerry',
+        city: 'San Jose',
+        topics: ['Adaptive sports'],
+      }),
+      makeMember({ id: 'dante', displayName: 'Dante', city: 'Aptos', topics: ['Bowel programme'] }),
+      makeMember({ id: 'jan', displayName: 'Jan', city: 'Santa Cruz' }),
+    ];
+  });
+
+  /**
+   * The feed's own cards. Not `feed()`: a person card with topics draws them as
+   * a list of its own, and every item in it would be counted as a card.
+   */
+  const cards = () =>
+    [...screen.getByRole('list', { name: '' }).children].filter((child) => child.tagName === 'LI');
+  /** The list behind the sheet: its cards, or none when it says nothing matches. */
+  const shownCount = () =>
+    screen.queryAllByRole('list', { name: '' }).length ? cards().length : 0;
+
+  /** Open the sheet, read its count, and check it against the list behind it. */
+  async function sheetAgreesWithList(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole('button', { name: /^Filters/ }));
+    const dialog = screen.getByRole('dialog', { name: 'Filter your feed' });
+    const count = shownCount();
+    expect(within(dialog).getByText(new RegExp(`^${count} of \\d+ match`))).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: `Show ${count}` }));
+  }
+
+  it('opens from a button that counts what is on', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    expect(screen.getByRole('dialog', { name: 'Filter your feed' })).toBeInTheDocument();
+    expect(screen.getByText('7 of 7 match')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Bowel management' }));
+    await user.click(screen.getByRole('button', { name: 'Show 2' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+  });
+
+  it('offers only the rooms and places something in this pill has', async () => {
+    const user = userEvent.setup();
+    renderPage('/home?segment=events');
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    const dialog = within(screen.getByRole('dialog'));
+    // The swim is sport; the circle is online. No topic, no member.
+    expect(dialog.getByRole('button', { name: 'Adaptive sport' })).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: 'Bowel management' })).toBeNull();
+    expect(dialog.getByRole('button', { name: 'San Jose' })).toBeInTheDocument();
+    expect(dialog.getByRole('button', { name: 'Online' })).toBeInTheDocument();
+    expect(dialog.queryByRole('button', { name: 'Aptos' })).toBeNull();
+    // A closed room is never a chip, not even for an administrator's read.
+    expect(dialog.queryByRole('button', { name: 'Skin & pressure sores' })).toBeNull();
+  });
+
+  it('narrows every pill by a room and a place, and Clear puts everything back', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('button', { name: 'Adaptive sport' }));
+    await user.click(screen.getByRole('button', { name: 'San Jose' }));
+    expect(screen.getByText('2 of 7 match')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show 2' }));
+    expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
+    expect(cards()).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: 'Topics' }));
+    expect(screen.getByText('Nothing matches that yet. Try fewer filters.')).toBeInTheDocument();
+    await sheetAgreesWithList(user);
+
+    await user.click(screen.getByRole('button', { name: 'Events' }));
+    expect(cards()).toHaveLength(1);
+    expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
+    await sheetAgreesWithList(user);
+
+    await user.click(screen.getByRole('button', { name: 'People' }));
+    expect(cards()).toHaveLength(1);
+    expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
+    await sheetAgreesWithList(user);
+
+    await user.click(screen.getByRole('button', { name: 'Filters, 2 active' }));
+    await user.click(screen.getByRole('button', { name: 'Clear (2)' }));
+    await user.click(screen.getByRole('button', { name: /^Show / }));
+    expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
+    for (const [pill, count] of [
+      ['Everything', 7],
+      ['Topics', 1],
+      ['Photos', 1],
+      ['Events', 2],
+      ['People', 3],
+    ] as const) {
+      await user.click(screen.getByRole('button', { name: pill }));
+      expect(cards()).toHaveLength(count);
+    }
+  });
+
+  it('places a topic by its author’s city, and not an author hidden from Peers', async () => {
+    const user = userEvent.setup();
+    db.members = db.members.filter((member) => member.id !== 'jan');
+    renderPage('/home?segment=photos');
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    // Jan wrote the only photograph and is not in Peers: no place to offer.
+    expect(screen.queryByRole('heading', { name: 'Where' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Show 1' }));
+
+    await user.click(screen.getByRole('button', { name: 'Topics' }));
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('button', { name: 'San Jose' }));
+    await user.click(screen.getByRole('button', { name: 'Show 1' }));
+    expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
+  });
+
+  it('keeps a chip that is on, on a pill where nothing matches it', async () => {
+    const user = userEvent.setup();
+    renderPage('/home?segment=people');
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('button', { name: 'Aptos' }));
+    await user.click(screen.getByRole('button', { name: 'Show 1' }));
+
+    await user.click(screen.getByRole('button', { name: 'Events' }));
+    await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }));
+    expect(screen.getByRole('button', { name: 'Aptos' })).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByRole('button', { name: 'Aptos' }));
+    expect(screen.getByText('2 of 2 match')).toBeInTheDocument();
+  });
+
+  it('with a city on, waits for the members before drawing Topics', async () => {
+    const user = userEvent.setup();
+    const { rerender } = renderPage('/home?segment=topics');
+    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('button', { name: 'San Jose' }));
+    await user.click(screen.getByRole('button', { name: 'Show 1' }));
+
+    db.membersLoading = true;
+    rerender(
+      <MemoryRouter initialEntries={['/home?segment=topics']}>
+        <Routes>
+          <Route path="/home" element={<HomePage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+    expect(screen.queryByText('Nothing matches that yet. Try fewer filters.')).toBeNull();
   });
 });
