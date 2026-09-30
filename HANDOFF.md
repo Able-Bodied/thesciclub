@@ -362,26 +362,37 @@ Owed and noticed, not changed:
 
 ## A photograph from an iPhone was refused — fixed 2026-09-29
 
-The owner tried to put a photograph on a topic from their phone, once Home
-was live, and could not. The cause was in `src/lib/image.ts` and predates
-Home: WebKit cannot write webp from a canvas, and `toBlob('image/webp')`
-hands back a PNG without complaint. The code caught that and fell back to the
-**original file** — which for a profile photograph is merely large (the
-`photos` bucket has no limit), and for a chat photograph is refused, because
-the `chat` bucket takes 2MB and a phone's JPEG is usually more. The member
-read "That photograph is still too large after shrinking."
+The owner tried to put a photograph on a topic from Safari on their iPhone,
+once Home was live, and read "Something went wrong. Try again in a minute."
+Two faults, both older than Home, one behind the other:
 
-The live bucket showed it: every photograph sent from a phone before the fix
-sits in `chat/threads/…` as `image/jpeg` at 440KB–1.26MB — originals that
-happened to fit — and `chat/rooms/` had nothing at all.
+1. **The shrink fell back to the original file on WebKit.** Safari, and
+   every browser on an iPhone, cannot write webp from a canvas;
+   `toBlob('image/webp')` hands back a PNG without complaint.
+   `preparePhoto` caught that and returned the **original** — which for a
+   profile photograph is merely large (the `photos` bucket has no limit),
+   and for a chat photograph is refused, because the `chat` bucket takes 2MB
+   and a phone's JPEG is usually more. The live bucket showed it: every
+   photograph sent from a phone before the fix sits in `chat/threads/…` as
+   `image/jpeg` at 440KB–1.26MB — originals that happened to fit — and
+   `chat/rooms/` had nothing at all. Now `preparePhoto` tries webp, then
+   **JPEG** at the same size and quality, and only then the original; and it
+   asks `createImageBitmap` again without the orientation option if a
+   browser refuses it (`src/lib/image.ts`, four new tests).
+2. **The refusal read as "Something went wrong" instead of "too large".**
+   `describeError` sorted every error with a `code` as unknown before it
+   looked at storage's wording, and storage-js copies the API's own code
+   ("EntityTooLarge", "InvalidMimeType") onto its errors. The tests had
+   fixtures with no code — the trap this file names under "Errors read as
+   sentences" — so they passed while the real thing did not. Storage errors
+   are now sorted by name and wording first, the fixtures carry the codes
+   provoked from the local stack and the hosted project, and a sabotage run
+   showed four tests fail without the fix.
 
-`preparePhoto` now tries webp, then **JPEG** at the same size and quality,
-and only then the original; and it asks `createImageBitmap` again without the
-orientation option if a browser refuses it. Four tests in `image.test.ts`
-stand in for the three kinds of browser. Chromium is unchanged (webp as
-before). **Not checked on a real iPhone** — Playwright has no WebKit here —
-so the owner's phone is the test: a photograph on a topic, and one in a
-conversation.
+Chromium is unchanged (webp as before). **Not checked on a real iPhone** —
+Playwright has no WebKit here — so the owner's phone is the test: a
+photograph on a topic, and one in a conversation. If it still fails there,
+the sentence will at least now say why.
 
 ## Still open
 
