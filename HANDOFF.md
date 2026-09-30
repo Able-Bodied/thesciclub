@@ -49,6 +49,12 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    owner's word on 2026-09-30, both branches at `3c1af82` with `pnpm check`
    exiting 0 there; Netlify's deploy of it reads ready.
    See "Home, step 3" below.
+6. **Groups can be renamed and given a picture** (2026-09-30, a side job the
+   owner asked for). Built and committed, **not pushed, and its migration
+   `20260930020000` is not on the live database.** `db push --linked
+   --dry-run` lists that one migration and nothing else. Release in order:
+   the owner pushes the migration, then the code. See "Group names and
+   pictures" below.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -597,6 +603,67 @@ Owed and noticed, not changed:
   local storage). Local data only.
 - Step 4, "Filter your feed", is next. It has no migration.
 
+## Group names and pictures — built 2026-09-30, not pushed
+
+The owner asked for it on 2026-09-30 ("allow people to rename group chats and
+add photos to group chats") and answered four questions the same day:
+
+- **"Add photos" means a picture for the group itself**, on its tile in the
+  Chat list and at the top of the conversation. Photographs in a group's
+  messages already worked (decision 11, 2026-09-21).
+- **Anybody in the group** can rename it or change its picture. A group has
+  no owner, as for adding people.
+- **An event's group keeps the event's name** and takes no picture.
+- **Every change leaves a line in the conversation**: "Jan renamed the group
+  to “Tuesday swimmers”", "Jan changed the group’s picture", "Jan took the
+  group’s picture away".
+
+How it is built (`20260930020000`, its header says why each part is shaped as
+it is):
+
+- `chat_rename_group(group_thread, new_name)` and
+  `chat_set_group_picture(group_thread, picture_path)` (null takes it away).
+  Both definer; both check an active member in the group, a group, not an
+  event's; whitespace in a name collapses as a room's does.
+- **The line is a `chat_messages` row with `notice` set** (`renamed`,
+  `pictured`, `unpictured`), written by those two functions only: `notice` is
+  not in the column insert grant, so it cannot be forged. So it is in time
+  order, arrives over the realtime the thread already has, counts as unread
+  for everybody else, and moves the group up the list. A notice cannot be
+  edited, removed by its author (an administrator still can), or replied to,
+  and it sends no notification.
+- **The picture is a file in the group's own folder**, `threads/<id>/` in the
+  private `chat` bucket, so the storage policies already there keep it as
+  private as the words; `pnpm check-chat-photo-policy` passes. The function
+  checks the file is the caller's own upload in that folder. A `pictured`
+  line carries the path, which is what lets a report hand the picture to the
+  administrators and keeps it undeletable once reported.
+- `chat_my_threads` gains `photo_path` and `last_notice` (dropped and made
+  again; the old client ignores the extra columns, so the migration can go
+  first). A reported notice reaches `/admin` as a sentence, "Changed the
+  group’s picture", with the picture.
+
+Client: the members screen (`/chat/t/:id/members`) is headed by the group's
+picture and name, with `GroupIdentity` (Rename the group, Choose or Change the
+picture, Take the picture away) above the members; nothing is optimistic.
+`NoticeLine` draws a notice in a conversation, with Report on somebody else's.
+`GroupAvatar` takes a signed URL; the Chat list signs every group's picture
+in one call. `noticeText` words a notice once for the line and the list.
+
+Checked on the local stack: `supabase/tests/chat-group-rename.sql` (17 steps,
+as a member; steps 3, 7 and 10 carry it); the chat, reports, attachments and
+push probes still come out as they expect; Jan renamed a group and set a
+picture while Alex had it open, and Alex's header, lines and list changed live;
+Alex reported the picture line and `/admin` showed it; screenshots at 430,
+1280 and larger text; axe clean on the conversation and the list; a keyboard
+walk (focus goes into the name when the form opens, back to the button when it
+closes, and to the picture button when the picture is taken away). **Not
+checked:** production, and VoiceOver.
+
+Noticed, not changed: axe flags `link-in-text-block` on the members list —
+the member's name is a navy link beside "— you" with no underline. It was
+there before this; the fix is an underline on that link.
+
 ## A photograph from an iPhone was refused — fixed 2026-09-29
 
 The owner tried to put a photograph on a topic from Safari on their iPhone,
@@ -1062,6 +1129,7 @@ Two rules, both learned the hard way:
 | `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
 | `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
 | `admin-invites-no-auth-users.sql` | 20260929000000, after Supabase's `auth_users_exposed` email: step 1 (an administrator still sees who has signed up — the first draft of the migration broke it, because Postgres checks a function inside a view against the reader) and 3–5 (a member reads nothing through the view or around it, anon cannot reach the lookup) matter most |
+| `chat-group-rename.sql` | `20260930020000`: step 3 (somebody outside a group can neither rename it nor change its picture), 7 (a member cannot write a notice by hand) and 10 (a picture must be the caller's own upload in the group's folder) matter most; the name's rules, a pair and an event's group refused, paused refused, a notice not edited, not removed by its author, not answered; a reported notice reaches the administrators as a sentence with the picture; a rename queues no notification and a message still does (needs `push_notify_url` in the local vault) |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
