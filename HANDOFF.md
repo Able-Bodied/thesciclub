@@ -34,10 +34,11 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    brand", not the logo alone — with Atkinson Hyperlegible Next for reading
    text, because accessibility comes first here.
 
-**Nothing from these two days is pushed.** Nine commits sit on
+**Nothing from these days is pushed.** Twenty-seven commits sit on
 `scaffold-and-peers-deck` ahead of `origin` (check with `git log --oneline
-origin/main..HEAD`); only the tag `brand-before-outfit` is on GitHub. 1,211
-tests pass and `pnpm check` is clean. The owner has not yet said to push, and
+origin/main..HEAD`), Home steps 1 and 2 among them; only the tag
+`brand-before-outfit` is on GitHub. 1,330 tests pass and `pnpm check` is
+clean. The owner has not yet said to push, and
 said on 2026-09-29 they will work on Twilio and the logins later.
 
 ## Security — open, do these first
@@ -278,7 +279,83 @@ Owed and noticed, not changed:
   Events as well as Home.
 - Two zero counts drawn elsewhere: the topic page header ("0 replies ·
   1 view") and an event card's "1 going · 0 interested".
-- Next is step 2, asking and sharing from Home (`/home/new`). No migration.
+- Step 2 is built; see the next section.
+
+## Home, step 2 — built 2026-09-29, not pushed
+
+Step 2, "Asking and sharing from Home", is done. No migration, so it
+releases with a push alone, like step 1. A member who has never opened Chat
+can ask a question or share a photograph starting from Home, and both appear
+in the room and on Home.
+
+What landed, one commit each:
+
+- **A single photograph fills its card on Home** (carried over from step 1,
+  first). `AttachmentGrid` has a `fill` prop, false by default; with it one
+  photograph is full width at 400:260, cropped, and whole in the viewer.
+  Only `PhotoCard` passes it. Screenshots of a topic and a conversation that
+  hold one photograph are byte-identical before and after.
+- **`joinRoom(roomId, memberId)`** in `src/lib/chat/rooms.ts`: the same
+  insert as `useRoomMembership().toggle` (now shared, `ignoreDuplicates`),
+  but awaited, so the New topic screen is not reached before the join lands.
+- **The New topic screen reads Home's state.** Handed `{ from: 'home',
+  segment, kind }`, Back says Home and returns to the pill, and the posted
+  topic is handed `{ from: 'home', segment }`. With `kind: 'share'` it is
+  "Share a photograph": picker first, title labelled "Say something about
+  it", first post optional once there is a photograph. `topicProblem` says
+  why Post is waiting, shown under the button in share mode only. Asking
+  changes nothing but Back. `new-topic.test.tsx` is new.
+- **`/home/new`** (`src/routes/home/new.tsx`): two pills for the kind (also
+  `?kind=share`), then the open rooms under Chat's category headings as one
+  group of native radios, none chosen. "Continue", or "Join <room> and
+  continue" with the line under it; an administrator is never asked to join.
+  A refused join stays on the screen in its sentence. No open room: the
+  sentence and "Start a room", no list, no button.
+- **The dashed card** (`src/routes/home/compose-card.tsx`) at the top of every
+  pill, drawn before the list loads. From Photos it opens on sharing.
+
+Where the build differs from the plan, on purpose:
+
+- **The state carries the pill as well as the kind**: `{ from: 'home',
+  segment, kind }`, where the plan says `{ from: 'home', kind }`. It is step
+  1's "Back keeps the pill" carried one screen further, so back from a
+  photograph shared from Photos lands on Photos.
+- **The compose card has an icon where the mock has the viewer's avatar.**
+  The avatar would be one more read on Home for a picture of themselves.
+- **Share mode says why Post is disabled**, under the button. Ask mode does
+  not, as the plan says ask mode changes nothing.
+- **Sentences the plan did not write** (HOME-PLAN.md question 5 covers the
+  wording): "Which room does it go in?" (the group's heading), "Choose a
+  room." (under a disabled Continue), "Optional when there is a photograph."
+  (under The first post), "Say something about it. It is the line in the
+  list." and "Add a photograph, or some words." (share mode's reasons), and
+  "The cushion that finally worked" (share mode's title placeholder).
+
+Checked on the local stack (dev server on 5183, confirmed pointing at
+127.0.0.1:54321): a local member who had joined nothing (the third test
+number, renamed Sam locally) asked a question from Everything and shared a
+photograph with no words from Photos, joining each room on the way; both
+landed in their rooms and on Home, and back from each topic returned to the
+pill. The administrator posted without joining and was offered open rooms
+only. Screenshots at 430, 1280 and `--text=larger` of Photos (a landscape, a
+portrait and a square single photograph), `/home/new` both kinds, share mode
+and the card. 320px wide with no sideways page scroll. axe clean on all five
+pills, `/home/new` both kinds with and without a room chosen, and share mode
+(it found a heading-order jump on `/home/new`, fixed). A keyboard walk from
+the skip link to the card, through `/home/new` with the arrow keys, Enter on
+the join button. **Not checked:** VoiceOver on a real iPhone; a refused join
+in the real app (unit-tested only, as nothing refuses it locally); production.
+
+Owed and noticed, not changed:
+
+- Chat's room page draws "0 replies · 0 views" on every topic row with none,
+  a third place zero counts are drawn (with the two above).
+- On the New topic and topic screens opened from Home, the tab bar lights
+  Chat, because they live under `/chat`. Step 1's topic links do the same.
+- The compose card's dashed border is `border-line`, lighter than the
+  mock's; the words carry it.
+- Next is step 3, Likes, which has the one migration. Read its "Order of
+  release": the owner pushes the migration before the code.
 
 ## Still open
 
@@ -291,7 +368,7 @@ Owed and noticed, not changed:
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
 - **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
-  on 2026-09-29). Step 1 is done; see the section above.
+  on 2026-09-29). Steps 1 and 2 are done; see the two sections above.
 
 ## Standing rules this session learned
 
