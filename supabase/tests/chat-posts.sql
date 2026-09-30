@@ -136,6 +136,19 @@ set local role authenticated;
 insert into public.chat_posts (topic_id, author_id, body)
 values (:'topic_id', 'bbbbbbbb-3333-0000-0000-000000000002',
         'Shift the whole programme by an hour a day for the three days before you fly.');
+-- The reply gets its own instant, a second after the opening post. now() is
+-- one value for the whole transaction, so the two posts tied, and the opening
+-- post — `order by created_at, id` in chat_topic_reply_count, `order by
+-- created_at limit 1` in step 10 — was whichever uuid sorted first: step 10
+-- printed reply_count 1 on some runs and 0 on others. A member cannot choose
+-- created_at (20260918110000), so the superuser moves it, and the topic's
+-- activity date with it; nothing recounts on an update, and nothing needs to.
+set local role postgres;
+update public.chat_posts set created_at = created_at + interval '1 second'
+ where topic_id = :'topic_id' and author_id = 'bbbbbbbb-3333-0000-0000-000000000002';
+update public.chat_topics set last_post_at = last_post_at + interval '1 second'
+ where id = :'topic_id';
+set local role authenticated;
 select reply_count from public.chat_topics where id = :'topic_id';
 
 set local role postgres;
