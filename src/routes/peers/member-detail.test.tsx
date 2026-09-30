@@ -41,7 +41,11 @@ function room(id: string, name: string, openedAt: string | null) {
   };
 }
 
-const { default: MemberDetailPage, childrenLabel } = await import('@/routes/peers/member-detail');
+const {
+  default: MemberDetailPage,
+  backFrom,
+  childrenLabel,
+} = await import('@/routes/peers/member-detail');
 
 const ok = (member: ReturnType<typeof makeMember>): MemberState => ({
   member,
@@ -64,6 +68,16 @@ function renderDetail() {
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
   chatRooms.rooms = [];
+});
+
+describe('backFrom', () => {
+  // The button goes back through history either way; the label is what can
+  // be wrong.
+  it('names the screen the profile was opened from', () => {
+    expect(backFrom({ from: 'me' })).toBe('Me');
+    expect(backFrom({ from: 'home', segment: 'people' })).toBe('Home');
+    expect(backFrom(null)).toBe('Peers');
+  });
 });
 
 describe('childrenLabel', () => {

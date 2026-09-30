@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
@@ -16,6 +16,7 @@ import {
   useTopicPosts,
 } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
+import { backFromTopic } from '@/routes/chat/back';
 import { Composer } from '@/routes/chat/composer';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
@@ -100,6 +101,9 @@ export default function TopicPage() {
 
   const authors = useChatAuthors([topic?.authorId ?? null, ...posts.map((post) => post.authorId)]);
   const room = rooms.find((r) => r.id === roomId) ?? null;
+  // Home, when the topic was opened from a card there; the room otherwise.
+  const location = useLocation();
+  const back = backFromTopic(location.state, room);
   const closed = room?.openedAt === null;
   const canPost = account.isAdmin || (room !== null && !closed && membership.joined.has(room.id));
 
@@ -180,7 +184,7 @@ export default function TopicPage() {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-[720px]">
-          <BackLink to={room ? `/chat/rooms/${room.id}` : '/chat'} label={room?.name ?? 'Chat'} />
+          <BackLink to={back.to} label={back.label} />
           <p className="mt-6 text-[0.875rem] text-ink2 leading-relaxed">
             This topic cannot be shown.
           </p>
@@ -198,7 +202,7 @@ export default function TopicPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-3 pb-3">
         <div className="mx-auto w-full max-w-[720px]">
-          <BackLink to={room ? `/chat/rooms/${room.id}` : '/chat'} label={room?.name ?? 'Chat'} />
+          <BackLink to={back.to} label={back.label} />
           <h1 className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3]">
             {topic.title}
           </h1>

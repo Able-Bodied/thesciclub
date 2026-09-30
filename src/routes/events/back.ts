@@ -1,4 +1,5 @@
 import type { Location } from 'react-router-dom';
+import { backToHome } from '@/routes/home/back';
 import { EVENTS_SEGMENTS, type EventsSegment } from '@/types/domain';
 
 /**
@@ -17,6 +18,9 @@ import { EVENTS_SEGMENTS, type EventsSegment } from '@/types/domain';
  * browser's back when there is history.
  */
 export function backToEvents(location: Location): string {
+  // Opened from a card on Home, which is where back should go.
+  const home = backToHome(location.state);
+  if (home) return home;
   const state = location.state as { segment?: unknown } | null;
   const segment = state?.segment;
   if (typeof segment !== 'string') return '/events';
@@ -28,5 +32,6 @@ export function backToEvents(location: Location): string {
 
 /** What the arrow should say, given where it will land. */
 export function backLabel(location: Location): string {
+  if (backToHome(location.state)) return 'Home';
   return backToEvents(location).includes('segment=orgs') ? 'Organizations' : 'Events';
 }

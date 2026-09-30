@@ -62,7 +62,10 @@ export function childrenLabel(
  */
 export function backFrom(state: unknown): string {
   const from = (state as { from?: unknown } | null)?.from;
-  return from === 'me' ? 'Me' : 'Peers';
+  if (from === 'me') return 'Me';
+  // A photograph's author or a member worth meeting, opened from Home.
+  if (from === 'home') return 'Home';
+  return 'Peers';
 }
 
 /**

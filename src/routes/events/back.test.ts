@@ -46,6 +46,14 @@ describe('backToEvents', () => {
   });
 });
 
+describe('an event opened from Home', () => {
+  it('goes back to Home, and the pill it was opened from, and says so', () => {
+    const fromHome = location({ from: 'home', segment: 'events' });
+    expect(backToEvents(fromHome)).toBe('/home?segment=events');
+    expect(backLabel(fromHome)).toBe('Home');
+  });
+});
+
 describe('backLabel', () => {
   it('names the place it is going back to', () => {
     expect(backLabel(location({ segment: 'orgs' }))).toBe('Organizations');
