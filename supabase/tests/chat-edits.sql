@@ -163,10 +163,12 @@ rollback to savepoint too_long;
 
 \echo ''
 \echo '== 8. a post in a closed room cannot be edited, even by its author =='
-\echo '   expect: a uuid from the administrator seeding bladder, then ERROR'
+\echo '   expect: t seeded, from the administrator seeding bladder, then ERROR'
 \echo '   This room is closed — the plan says readable *and open*.'
 set local request.jwt.claims = '{"sub":"eeeeeeee-8888-0000-0000-000000000005","role":"authenticated"}';
 select public.chat_create_topic('bladder', 'Seeded', 'Before the room opens.') as seeded \gset
+-- \gset keeps the id and prints nothing; this said "a uuid" until 2026-09-30.
+select :'seeded' is not null as seeded;
 savepoint closed_edit;
 select public.chat_edit_post(
   (select p.id from public.chat_posts p where p.topic_id = :'seeded'), 'Still before it opens.');
