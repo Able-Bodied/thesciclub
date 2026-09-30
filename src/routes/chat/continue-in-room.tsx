@@ -40,7 +40,8 @@ import { roomsForTopics } from '@/routes/chat/room-map';
  * nothing to answer.
  */
 
-const ICON_COLOUR: Record<RoomCategory, string> = {
+/** A room's glyph colour by heading. Exported for Home's cards rather than copied a fourth time. */
+export const ROOM_ICON_COLOUR: Record<RoomCategory, string> = {
   Body: 'text-room-body',
   Mind: 'text-room-mind',
   Life: 'text-room-life',
@@ -78,7 +79,7 @@ export function ContinueInRooms({ topics }: { topics: readonly string[] }) {
               setting rather than leaving the name behind. */}
           <span
             aria-hidden="true"
-            className={`grid h-[2.4em] w-[2.4em] flex-none place-items-center rounded-[12px] bg-tint text-[1.125rem] leading-none ${ICON_COLOUR[room.category]}`}
+            className={`grid h-[2.4em] w-[2.4em] flex-none place-items-center rounded-[12px] bg-tint text-[1.125rem] leading-none ${ROOM_ICON_COLOUR[room.category]}`}
           >
             {room.icon}
           </span>
