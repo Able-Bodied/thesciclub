@@ -2,10 +2,12 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: steps 1 and 2 are built and committed, not pushed. Step 3,
-Likes, is next**, and it holds the only migration. HANDOFF.md, "Home, step 1"
-and "Home, step 2", say where the build departed from this plan and why; read
-both before step 3, because those departures stand.
+**Where it stands: steps 1 and 2 are built and live on production since
+2026-09-29. Step 2b is next** — the owner's changes to rooms and
+conversations, asked for before Likes — and it holds a migration. Then step
+3, Likes, with the other. HANDOFF.md, "Home, step 1" and "Home, step 2", say
+where the build departed from this plan and why; read both first, because
+those departures stand.
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request
@@ -47,6 +49,20 @@ The consequence worth holding on to: **Home adds no new kind of content.** It
 is a second way in to rooms, events and members that already exist, plus
 Likes. Reporting, removal, notifications, mutes and the administrators' tools
 are already built and are reused untouched.
+
+**Added 2026-09-29, after steps 1 and 2 went live**, for step 2b:
+
+| # | Decision | What it means for the build |
+| --- | --- | --- |
+| 8 | **Anybody can write in a room without joining it.** Join goes away entirely | `chat_can_post_in` stops asking for a membership row. The Join button, the Joined marks, the member count on a room card and the join step on `/home/new` all go. |
+| 9 | **A member can edit their own post or message**, and readers see "Edited" | An `edited_at` column and a definer function on each table. No update grant. |
+| 10 | **Administrators can read every earlier version** of an edited post or message | A table of earlier versions that only an administrator can select from. Reports keep their own copy as before. |
+| 11 | **A reply to one post**, shown under it, one level deep | `reply_to` on `chat_posts`. In a conversation the same column on `chat_messages`, drawn as a quote rather than a nest — see step 2b for why. |
+| 12 | **Rooms and conversations both** get editing and replies | Not rooms only. |
+
+These reopen two of Chat's recorded decisions — "no editing" and "joining is
+about writing" — at the owner's word. Both were the owner's to make and are
+now made the other way.
 
 ---
 
@@ -484,6 +500,9 @@ weird." It goes to `/home/new`.
 
 Then one button:
 
+> **Superseded by step 2b**, decision 8: there is no join step. The button
+> is always "Continue", and nothing below about joining is built any more.
+
 - "Continue", for a room already joined, and always for an administrator.
 - "Join Bowel management and continue", for a room not yet joined. Under it:
   "Joining is what lets you write in a room. You can leave at any time."
@@ -567,6 +586,226 @@ photographs exactly as they did.
 
 ---
 
+## Step 2b — Rooms open to write; editing; replies to a post
+
+Asked for by the owner on 2026-09-29, after steps 1 and 2 went live, and
+before Likes. Decisions 8–12 above. **One migration**, and it goes first:
+the client's Join controls cannot come out until the database has stopped
+asking for a membership row, or every member who never joined is refused.
+
+This step changes Chat, not only Home. Read HANDOFF.md "What Chat is" —
+especially "What will bite the next person" and "Components that must not
+be written twice" — before touching it, and treat the probes in
+`supabase/tests/` as the definition of what must still hold.
+
+### What a member sees, when it is done
+
+- **Any room is somewhere to write.** Open a room, start a topic, reply —
+  no Join first. The room card says how many topics and posts, not how many
+  members. `/home/new` asks which room and goes straight to the New topic
+  screen.
+- **Edit** on your own post in a topic and your own message in a
+  conversation. The words change in place; a small "Edited · 9:30am" sits
+  under them for everyone. Photographs are not changed by an edit — take
+  the post back and post again for that.
+- **Reply** on any post in a topic. Your reply sits under that post,
+  indented, in the order replies came. One level only: a reply to a reply
+  lands under the same post.
+- **Reply** on any message in a conversation. Your message carries a short
+  quote of the one it answers, which jumps to it when tapped. The list stays
+  in time order.
+- **An administrator** sees "Edited · earlier versions" on an edited post
+  and, on a report, every earlier version of the reported post or message.
+
+### The migration
+
+`supabase/migrations/20260930000000_rooms_open_to_write_editing_and_replies.sql`
+— check that stamp is still the newest; use the next if step 3's migration
+has taken it. Plain-prose header: what, the owner and the date, then why,
+one subsection per part.
+
+**1. Writing needs no membership.** Replace `chat_can_post_in(room text)`:
+`is_active_member()` and (`is_admin()`, or the room exists and is open).
+Nothing else changes: `chat_file_is_writable` calls it, so photographs
+follow. Leave `chat_room_members` and its policies in place — the rows are
+history and `chat_create_room` still writes one for the starter; the client
+simply stops reading it. `chat_room_stats.member_count` stays in the view
+and stops being drawn.
+
+**2. `edited_at`** — `timestamptz` on `chat_posts` and on `chat_messages`.
+Not insertable: it is not added to the column-level insert grants.
+
+**3. `reply_to`** — `uuid` on `chat_posts` referencing `chat_posts(id) on
+delete set null`, and on `chat_messages` referencing `chat_messages(id)`
+likewise. Indexed. **Granted for insert by column**, alongside the columns
+already granted. A `before insert` trigger on each table refuses a
+`reply_to` that names a row in a different topic (or thread), a removed row,
+or — for posts — a row that is itself a reply; one level is the rule. A
+refused reply says so in a sentence.
+
+**4. `chat_edits`** — `id`, `post_id` (→ `chat_posts` cascade, nullable),
+`message_id` (→ `chat_messages` cascade, nullable), `body text not null`,
+`attachments text[] not null`, `edited_by uuid` (→ `members` set null),
+`replaced_at timestamptz not null default clock_timestamp()`. Exactly one of
+the two ids, as `chat_reports` does it with `kind`. RLS on. **One select
+policy: `is_admin()`.** Grant select to `authenticated`; nothing else, to
+anybody. Written only by the two functions below.
+
+**5. `chat_edit_post(post uuid, new_body text) returns void`**, definer,
+fixed `search_path`, revoke from `public, anon`, grant to `authenticated`:
+- The caller is the author, an active member, and the post is standing.
+  Anybody else — an administrator included — is refused in a sentence: an
+  administrator removes, and does not rewrite somebody's words.
+- The room is readable and open.
+- `new_body` is trimmed, at most 4,000 characters, and not blank unless the
+  post has photographs — the row's own check, said before the write.
+- Copies the current `body` and `attachments` into `chat_edits`, then sets
+  `body` and `edited_at = clock_timestamp()`. An edit that changes nothing
+  is refused, so "Edited" is never a lie.
+
+**6. `chat_edit_message(message uuid, new_body text)`** — the same, with
+`is_thread_member` for the thread.
+
+**7. `admin_post_edits(post uuid)` and `admin_message_edits(message uuid)`**
+are not needed: an administrator selects `chat_edits` directly, the policy
+is the gate. Say so in the header so nobody writes them.
+
+**8. Notifications.** Nothing. An edit is an `update`, and the triggers fire
+on `insert`. A reply is an ordinary post or message and notifies as one
+already does — the topic's starter and its participants, or the thread's
+members. No new kind, no change to `push_owed` or the Edge Function.
+
+**9. Realtime.** Nothing to add: both tables are in the publication and an
+edit arrives as the `update` a removal already does.
+
+### The probes
+
+Two new files and two changed ones, all run as signed-in roles with
+`current_user` printed and a savepoint per refusal.
+
+- `chat-posts.sql`: step 1 ("post before joining is refused") **inverts**:
+  an active member who has joined nothing writes a topic and a reply in an
+  open room. Keep the steps that still hold — a closed room refuses, a paused
+  member reads and does not write, a member cannot read the roster.
+- `chat-edits.sql` (new): the author edits their post and reads "Edited";
+  another member cannot; an administrator cannot edit but can read every
+  earlier version; a member reads none of `chat_edits`; a removed post cannot
+  be edited; an unchanged body is refused; a blank body is refused unless
+  photographs; the same for a message, with a member outside the thread
+  refused; deleting the topic takes the edits with it.
+- `chat-replies.sql` (new): a reply to a post in the same topic lands; to a
+  post in another topic is refused; to a reply is refused; to a removed post
+  is refused; removing the parent leaves the reply standing with
+  `reply_to` null; `reply_count` still counts it; a message's `reply_to`
+  across threads is refused.
+- `chat-attachments.sql`: the step that uploads as an un-joined member,
+  if there is one, inverts too.
+
+Add all four to the table in HANDOFF.md.
+
+### The client
+
+| File | Change |
+| --- | --- |
+| `src/lib/chat/types.ts` | `editedAt` and `replyTo` on `ChatPost` and `ChatMessage`; `ChatEdit` |
+| `src/lib/chat/topics.ts` | `POST_COLUMNS` gains both; `editPost`; `sendPost` takes `replyTo`; `threadPosts(posts)` — pure: top-level posts in order, each with its replies in order |
+| `src/lib/chat/threads.ts` | The same for messages: `editMessage`, `sendMessage` takes `replyTo` |
+| `src/lib/chat/edits.ts` (new) | `useEdits(postIds, messageIds)` — administrators only; returns an empty map for anybody else without asking |
+| `src/lib/chat/rooms.ts` | `joinRoom` and `useRoomMembership` deleted, with their tests. `RoomStats.memberCount` goes |
+| `src/routes/chat/post.tsx` | Edit on your own standing post beside Remove; Reply on every standing post; "Edited · time"; for an administrator, "earlier versions" opening the list. Replies drawn under the parent, indented, unnumbered |
+| `src/routes/chat/topic-page.tsx` | `canPost` is `!closed`; the composer carries a "Replying to Jan ✕" bar when a Reply was pressed; numbering counts top-level standing posts |
+| `src/routes/chat/composer.tsx` | Gains an optional `replyingTo` bar and an edit mode (`initial`, `saveLabel`) so the editor is the composer and not a second textarea |
+| `src/routes/chat/message-bubble.tsx` | Edit on your own; Reply on anybody's; the quote above a reply, tapping it scrolls to the message; "Edited" |
+| `src/routes/chat/thread-page.tsx` | The reply bar; scroll-to for a tapped quote |
+| `src/routes/chat/room-page.tsx` | No Join, no Leave, no member count, no "Join the room to start the first one"; New topic offered to every member while the room is open |
+| `src/routes/chat/room-card.tsx` | No "Joined", no member count |
+| `src/routes/chat/page.tsx` | Stops reading membership |
+| `src/routes/home/new.tsx` | No join step: the button is always "Continue"; no "Joined" marks; the line under the button goes |
+| `src/routes/admin/reports-section.tsx` | Under a report: "Earlier versions", from `useEdits`, each with its time |
+| `src/routes/admin/page.tsx` | Whatever it drew about who joined a room goes |
+| `src/lib/home/topics.ts` | The first reply on a topic card is the earliest standing **top-level** post after the opener |
+| Every test of the above | |
+
+### The details that matter
+
+- **Edit is the composer.** Pressing Edit swaps the post's words for the
+  composer holding them, with Save and Cancel, and Escape cancels. The draft
+  survives a refusal, as everywhere. No second textarea.
+- **"Edited" is words, with the time**, `chatTime(editedAt)`, under the
+  body in the byline's colour. Not an icon alone.
+- **Controls stay visible controls.** Edit, Reply, Remove and Report are
+  small text buttons in one row under a post, never a long-press, never a
+  swipe. Under 44px means `data-target="small"`. Each one is named for its
+  post to a screen reader — "Reply to Jan's post" — so a topic is not a
+  column of twenty identical "Reply" links.
+- **One level of nesting, decided by the client too.** Reply on a reply
+  sets `reply_to` to the parent. The trigger is the guard; the client makes
+  the guard unnecessary in ordinary use.
+- **Numbering.** "3/11" counts top-level standing posts. A nested reply is
+  not numbered. `reply_count` on the row and on Home is unchanged: every
+  standing post but the opener.
+- **A removed parent.** Its replies stand, with `reply_to` null, and are
+  drawn as top-level posts in their own time order. Nothing says "reply to a
+  removed post".
+- **The quote in a conversation** is the first ~80 characters of the
+  answered message, or "Photograph" when it had no words, or "Removed
+  message" when it has been taken back. Tapping it scrolls that message into
+  view and flashes it once (honouring `prefers-reduced-motion`). A nest in a
+  chat would break its time order, which is the one thing a conversation is.
+- **Why an administrator cannot edit.** An administrator removes; rewriting
+  a member's words in their name is not moderation. The function refuses
+  them, and no Edit is drawn for them on somebody else's post.
+- **The earlier versions list** is a plain list — the words, the
+  photographs it had then (through `AttachmentGrid`, which the administrator
+  may read once the post is on a report or in a room), and "replaced
+  9:30am" — under a disclosure that opens on tap. Administrators only, and
+  never drawn for anybody else.
+- **Refusal sentences**, through `describeError`: edit — attempt "Your edit
+  was not saved.", refused "You can only edit your own post."; reply —
+  `sendPost`'s existing ones, plus `constraints` for the new trigger's
+  sentence if it arrives as a check.
+- **Home.** The compose card and `/home/new` lose the join talk. Topic and
+  photo cards are unchanged apart from the first-reply rule.
+
+### Order of release
+
+1. Migration and probes, run locally until every step reads as expected.
+2. `pnpm exec supabase db push --linked --dry-run`; show the owner; **the
+   owner pushes.** Nothing in the client changes yet. With the migration on
+   the live database and the old client still deployed, nothing breaks: the
+   old client still offers Join, which still works, and the database simply
+   no longer requires it.
+3. Then the client, in this order, each its own commit: Join comes out;
+   editing; replies in topics; replies and editing in conversations; Home's
+   `/home/new` and the first-reply rule; the administrators' earlier
+   versions.
+4. Documents: CONTEXT.md's Chat row ("No editing" goes; replies and editing
+   are described); HANDOFF.md's "What Chat is" gets a section on this step
+   and marks decision 7's "editing" and the joining rule as history; this
+   plan's step 2 text about joining is marked superseded.
+
+### Look at it
+
+As a member who has joined nothing, on the local stack: start a topic in a
+room, reply to a post, reply to that reply and see it land under the post,
+edit your own post and see "Edited", try Edit on somebody else's and find no
+control, take the parent back and see the reply stand. In a conversation:
+reply to a message, tap the quote, edit a message. As an administrator: open
+"earlier versions" on the edited post and on a report of it. Screenshots at
+430 and 1280, `--text=larger`, 320px wide; axe over the topic page, the
+thread page and `/home/new`; a keyboard walk through Edit → Save and Reply →
+Send.
+
+### Done when
+
+A member who has never joined a room writes in it; can edit their own post
+and message and see "Edited"; can reply to a post and see it nest, and to a
+message and see it quoted; an administrator can read what an edited post
+used to say; nobody else can; and every probe in `supabase/tests/` still
+reads as expected.
+
+---
+
 ## Step 3 — Likes
 
 **One migration.** The owner pushes it, before the code that needs it.
@@ -612,7 +851,7 @@ first. Then grant `select`, `insert (post_id, member_id)` and `delete` to
 
 Also:
 
-- **Liking does not need the room joined.** Joining is about writing.
+- **Liking does not need the room joined.** Nothing does, after step 2b.
 - **Not in the realtime publication.** A like is not urgent, and the names
   would be on the wire.
 - **No notification.** No trigger, no new kind in `push_owed`.
@@ -627,7 +866,7 @@ own savepoint. `supabase/tests/chat-posts.sql` is the pattern.
 
 | Step | Proves |
 | --- | --- |
-| 1 | A member likes a post in an open room they have not joined |
+| 1 | A member likes a post in an open room |
 | 2 | Liking twice is one row |
 | 3 | A member cannot like their own post |
 | 4 | A member cannot like as somebody else |
@@ -817,7 +1056,7 @@ on Home, and both documents describe the app as it is.
 
 Search across the feed. A notification centre. Anonymous asking. "This
 helped" and "Message" chips on an answer. Routing an unanswered question to
-matching members. A notification for a like. Editing. Video. Like and Reply
+matching members. A notification for a like. Video. Like and Reply
 on a single comment.
 
 If a task seems to need one, say so to the owner rather than quietly scoping
@@ -853,8 +1092,8 @@ default when they are not.
 - **The first standing post is not always the opening post.** See step 1,
   "The reads".
 - **A photo card is not a link.** It holds buttons.
-- **Joining is optimistic everywhere except `/home/new`**, where it must be
-  awaited.
+- ~~**Joining is optimistic everywhere except `/home/new`**, where it must be
+  awaited.~~ Gone with step 2b: nothing joins a room any more.
 - **Two select policies are ORed.** `chat_post_likes` has one on purpose.
   If a second is ever added, every read that means "mine" must say so.
 - **`AttachmentGrid` signs URLs under the reader's token.** In a test, stub
