@@ -28,8 +28,10 @@ Three things happened on 2026-09-28/29, in this order of urgency:
 1. **A security audit of the live project found sign-in problems that are
    still open.** Read "Security — open, do these first" below before anything
    else, and raise it with the owner at the start of the session.
-2. **A migration fixing Supabase's `auth_users_exposed` email is written,
-   tested and committed, and not yet pushed to the live database.**
+2. **The migration fixing Supabase's `auth_users_exposed` email is on the
+   live database** — the owner pushed it on 2026-09-29, `migration list`
+   shows 82 applied and none pending, and the advisor no longer reports
+   `auth_users_exposed`. Its other findings (item 4 below) still stand.
 3. **The owner's new brand is in the app** — the owner's call being "the whole
    brand", not the logo alone — with Atkinson Hyperlegible Next for reading
    text, because accessibility comes first here.
@@ -38,9 +40,9 @@ Three things happened on 2026-09-28/29, in this order of urgency:
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
 (`1693c8e`..this commit), each gated on `pnpm check` exiting 0 at the exact
 commit pushed. Both branches on `origin` sit at the same commit; check with
-`git log --oneline origin/main..HEAD`, which should be empty. **The
-`20260929000000` migration is on `main` but not on the live database** — the
-client does not need it, and the owner runs `db push`. 1,330 tests pass and
+`git log --oneline origin/main..HEAD`, which should be empty. The
+`20260929000000` migration is on `main` and, since the owner's push later
+that day, on the live database too. 1,337 tests pass and
 `pnpm check` is clean. The owner said on 2026-09-29 they will work on Twilio
 and the logins later.
 
@@ -219,7 +221,7 @@ Each has its own section further down; this is the index.
 - **The Netlify CLI** is a devDependency (needs `--filter thesciclub`); the
   Supabase CLI is 2.118.0.
 
-## Supabase's security email, 2026-09-27 — fixed in `20260929000000`, on `main`, not yet on the live database
+## Supabase's security email, 2026-09-27 — fixed in `20260929000000`, on the live database since 2026-09-29
 
 Supabase's advisor flagged `auth_users_exposed`: `admin_invites` joined
 `auth.users` to show whether an invited number has signed up. **Nothing leaked**
