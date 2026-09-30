@@ -360,6 +360,29 @@ Owed and noticed, not changed:
 - Next is step 3, Likes, which has the one migration. Read its "Order of
   release": the owner pushes the migration before the code.
 
+## A photograph from an iPhone was refused — fixed 2026-09-29
+
+The owner tried to put a photograph on a topic from their phone, once Home
+was live, and could not. The cause was in `src/lib/image.ts` and predates
+Home: WebKit cannot write webp from a canvas, and `toBlob('image/webp')`
+hands back a PNG without complaint. The code caught that and fell back to the
+**original file** — which for a profile photograph is merely large (the
+`photos` bucket has no limit), and for a chat photograph is refused, because
+the `chat` bucket takes 2MB and a phone's JPEG is usually more. The member
+read "That photograph is still too large after shrinking."
+
+The live bucket showed it: every photograph sent from a phone before the fix
+sits in `chat/threads/…` as `image/jpeg` at 440KB–1.26MB — originals that
+happened to fit — and `chat/rooms/` had nothing at all.
+
+`preparePhoto` now tries webp, then **JPEG** at the same size and quality,
+and only then the original; and it asks `createImageBitmap` again without the
+orientation option if a browser refuses it. Four tests in `image.test.ts`
+stand in for the three kinds of browser. Chromium is unchanged (webp as
+before). **Not checked on a real iPhone** — Playwright has no WebKit here —
+so the owner's phone is the test: a photograph on a topic, and one in a
+conversation.
+
 ## Still open
 
 - **An hour with VoiceOver on a real iPhone**, then the rest of "What is next
