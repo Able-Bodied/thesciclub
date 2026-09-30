@@ -85,10 +85,19 @@ const OFFLINE =
 const ABORTED = /^AbortError\b|user aborted a request|signal is aborted/i;
 
 /**
- * Storage's refusals carry no SQLSTATE, only an HTTP status and a sentence
- * about buckets and mime types. These are the two a bucket's own limits
- * produce; a policy refusing the object row says "row-level security" like
- * any other and is caught below with them.
+ * Storage's refusals: a sentence about buckets and mime types, and — since
+ * storage-js started copying the API's own `code` ("EntityTooLarge",
+ * "InvalidMimeType") — a code that is not a SQLSTATE. These are the two a
+ * bucket's own limits produce; a policy refusing the object row says
+ * "row-level security" like any other.
+ *
+ * They are sorted by name and wording *before* the code check. Until
+ * 2026-09-29 they were sorted after it, so a real refusal — which carries a
+ * code — never reached these sentences and every refused photograph read
+ * "Something went wrong. Try again in a minute." The tests had fixtures with
+ * no code, which is the trap HANDOFF.md names: a fixture without a code gets
+ * phrase-sorting and passes while the real thing does not. The bodies here
+ * were provoked on the local stack and the hosted project on 2026-09-29.
  */
 const STORAGE: [RegExp, string][] = [
   [
@@ -141,6 +150,16 @@ export function describeError(error: Failure, context?: string | ErrorContext): 
   // returned, so this is the tab leaving mid-write.
   if (error.name === 'AbortError' || ABORTED.test(message)) {
     return lead(ctx.attempt, 'That did not finish. Try again.');
+  }
+
+  // Storage first, by wording, because its code is not a SQLSTATE and would
+  // otherwise fall to `unknown` below. See STORAGE.
+  if (isStorage(error)) {
+    for (const [pattern, sentence] of STORAGE) {
+      if (pattern.test(message)) return lead(ctx.attempt, sentence);
+    }
+    if (RLS.test(message)) return lead(ctx.attempt, ctx.refused ?? 'You cannot do that here.');
+    return unknown(error, ctx);
   }
 
   if (OUR_CODES.has(code)) return message;
@@ -202,6 +221,11 @@ export function describeThrown(thrown: unknown, context?: string | ErrorContext)
     { message: String(thrown) },
     typeof context === 'string' ? { attempt: context } : (context ?? {}),
   );
+}
+
+/** storage-js names its errors `StorageApiError`, `StorageUnknownError`, and so on. */
+function isStorage(error: Failure): boolean {
+  return typeof error.name === 'string' && error.name.startsWith('Storage');
 }
 
 function checkConstraint(message: string, ctx: ErrorContext): string {

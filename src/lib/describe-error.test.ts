@@ -246,12 +246,23 @@ describe('the network', () => {
 });
 
 describe('the photo bucket', () => {
-  // storage-js: a StorageApiError with a status and no SQLSTATE. These two
-  // are what the bucket's allowed types and size limit produce.
+  // storage-js: a StorageApiError carrying the API's own code, which is a word
+  // and not a SQLSTATE. These bodies were provoked against the local stack
+  // and the hosted project on 2026-09-29:
+  //   {"statusCode":"415","error":"invalid_mime_type",
+  //    "message":"mime type text/plain is not supported","code":"InvalidMimeType"}
+  //   {"statusCode":"413","error":"Payload too large",
+  //    "message":"The object exceeded the maximum allowed size","code":"EntityTooLarge"}
+  // The fixtures used to have no code, and passed while the real thing read
+  // "Something went wrong" — the owner's report from an iPhone.
   it('a file that is not a photograph', () => {
     expect(
       describeError(
-        { name: 'StorageApiError', message: 'mime type text/plain is not supported' },
+        {
+          name: 'StorageApiError',
+          code: 'InvalidMimeType',
+          message: 'mime type text/plain is not supported',
+        },
         'The photograph did not upload.',
       ),
     ).toBe(
@@ -263,18 +274,52 @@ describe('the photo bucket', () => {
     expect(
       describeError({
         name: 'StorageApiError',
+        code: 'EntityTooLarge',
         message: 'The object exceeded the maximum allowed size',
       }),
     ).toMatch(/too large after shrinking/);
   });
 
+  it('never the generic sentence for a storage code it does not know by name', () => {
+    // The code is what used to send these to `unknown`. Wording decides.
+    expect(
+      describeError({
+        name: 'StorageApiError',
+        code: 'SomethingNew',
+        message: 'The object exceeded the maximum allowed size',
+      }),
+    ).toMatch(/too large after shrinking/);
+  });
+
+  it('an older storage-js, with no code at all', () => {
+    expect(
+      describeError({ name: 'StorageApiError', message: 'mime type text/plain is not supported' }),
+    ).toMatch(/not a kind of photograph/);
+  });
+
   it('a policy on the object row', () => {
     expect(
       describeError(
-        { name: 'StorageApiError', message: 'new row violates row-level security policy' },
+        {
+          name: 'StorageApiError',
+          code: 'Unauthorized',
+          message: 'new row violates row-level security policy',
+        },
         { refused: 'You cannot add a photograph here.' },
       ),
     ).toBe('You cannot add a photograph here.');
+  });
+
+  it('a storage failure nobody has met yet is generic, and logged', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    expect(
+      describeError(
+        { name: 'StorageApiError', code: 'InternalError', message: 'S3 said no' },
+        'The photograph did not upload.',
+      ),
+    ).toBe(`The photograph did not upload. ${GENERIC_FAILURE}`);
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
   });
 });
 
