@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRoom,
+  joinRoom,
   normalizeRoomName,
   roomNamed,
   roomProblem,
@@ -121,6 +122,32 @@ describe('joining a room', () => {
     });
     expect(result.current.joined.has('bowel')).toBe(false);
     expect(result.current.error).toBe('You did not join the room. You cannot do that here.');
+  });
+});
+
+// The awaited join /home/new uses before it opens the New topic screen. The
+// same write as toggle's, so the same conflict shape.
+describe('joining a room and waiting for it', () => {
+  it('inserts, doing nothing on a duplicate, and resolves once it has landed', async () => {
+    const result = await joinRoom('bowel', 'me');
+    expect(result).toEqual({ ok: true, value: null });
+    expect(db.upserts).toEqual([
+      [
+        { room_id: 'bowel', member_id: 'me' },
+        { onConflict: 'room_id,member_id', ignoreDuplicates: true },
+      ],
+    ]);
+  });
+
+  it('says in a sentence when the database refuses', async () => {
+    db.upsertError = {
+      code: '42501',
+      message: 'new row violates row-level security policy for table "chat_room_members"',
+    };
+    expect(await joinRoom('bowel', 'me')).toEqual({
+      ok: false,
+      error: 'You did not join the room. You cannot do that here.',
+    });
   });
 });
 

@@ -387,6 +387,44 @@ export async function addFirstPostPhotographs(
  * was. Leaving is the same in reverse and is never refused by the database —
  * a door that opens and does not close is worse than no door.
  */
+/**
+ * The row that says a member is in a room, written so a second tap is nothing.
+ *
+ * `ignoreDuplicates` is load-bearing. It makes this `on conflict do nothing`,
+ * so the join can be sent twice before the first write lands; without it
+ * PostgREST sends `on conflict do update`, and 20260918030000 grants insert
+ * and delete but not update — so every join was refused with `permission
+ * denied for table`. The grant is right; a member never changes a membership
+ * row.
+ */
+function insertMembership(roomId: string, memberId: string) {
+  return getSupabase()
+    .from('chat_room_members')
+    .upsert(
+      { room_id: roomId, member_id: memberId },
+      { onConflict: 'room_id,member_id', ignoreDuplicates: true },
+    );
+}
+
+/**
+ * Join a room, and say when it has landed.
+ *
+ * `useRoomMembership().toggle` is optimistic and returns nothing, which is
+ * right for a button that goes back to where it was on a failure. It is wrong
+ * for /home/new, which joins and then opens the New topic screen: the screen
+ * would be reached before the join had landed, and the topic would be refused
+ * for somebody who is not yet in the room. This is the same write, awaited.
+ */
+export async function joinRoom(roomId: string, memberId: string): Promise<ChatWriteResult<null>> {
+  try {
+    const { error } = await insertMembership(roomId, memberId);
+    if (error) return { ok: false, error: describeError(error, 'You did not join the room.') };
+    return { ok: true, value: null };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'You did not join the room.') };
+  }
+}
+
 export interface RoomMembershipState {
   /** Room ids the viewer has joined. Empty while loading. */
   joined: Set<string>;
@@ -465,18 +503,7 @@ export function useRoomMembership(): RoomMembershipState {
             .delete()
             .eq('member_id', memberId)
             .eq('room_id', roomId)
-        : // `ignoreDuplicates` is load-bearing. It makes this `on conflict do
-          // nothing`, so the button can be pressed twice before the first
-          // write lands; without it PostgREST sends `on conflict do update`,
-          // and 20260918030000 grants insert and delete but not update — so
-          // every join was refused with `permission denied for table`. The
-          // grant is right; a member never changes a membership row.
-          getSupabase()
-            .from('chat_room_members')
-            .upsert(
-              { room_id: roomId, member_id: memberId },
-              { onConflict: 'room_id,member_id', ignoreDuplicates: true },
-            );
+        : insertMembership(roomId, memberId);
 
       void Promise.resolve(write)
         .then(({ error: failure }) => {
