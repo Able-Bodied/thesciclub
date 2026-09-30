@@ -5,6 +5,7 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
+import { PostLikes } from '@/routes/chat/like-button';
 import { byline, RoomTag } from '@/routes/home/topic-card';
 
 /**
@@ -42,16 +43,35 @@ import { byline, RoomTag } from '@/routes/home/topic-card';
  * already has the replies, the composer, Report, Remove and Mute. A second
  * list of the same replies would be a second place for each of those to go
  * wrong.
+ *
+ * ---------------------------------------------------------------------------
+ * A like is on the opening post
+ * ---------------------------------------------------------------------------
+ * HOME-PLAN.md step 3. The photograph is the opening post, so liking the card
+ * likes that post, and the count here is the same rows the topic page counts
+ * under it. Named for the topic's title, as Reply is. No opening post (it was
+ * taken back) draws no likes, as it draws no photograph.
  */
 export function PhotoCard({
   topic,
   author,
   linkState,
+  likes,
 }: {
   topic: HomeTopic;
   /** Null for a former member, and while the name is still loading. */
   author: ChatAuthor | null;
   linkState: unknown;
+  /** Who likes the opening post, as the topic page's posts take it. */
+  likes?:
+    | {
+        likedBy: readonly string[];
+        /** The reader, or null on their own photograph. */
+        readerId: string | null;
+        onToggle: () => void;
+        failure: string | null;
+      }
+    | undefined;
 }) {
   const opening = topic.opening;
   const to = `/chat/rooms/${topic.roomId}/topics/${topic.id}`;
@@ -115,6 +135,16 @@ export function PhotoCard({
       ) : null}
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-line border-t pt-2">
+        {opening && likes ? (
+          <PostLikes
+            likedBy={likes.likedBy}
+            readerId={likes.readerId}
+            what={topic.title}
+            onToggle={likes.onToggle}
+            linkState={linkState}
+            className="min-h-[2.25rem] text-[0.8125rem]"
+          />
+        ) : null}
         {topic.replyCount > 0 ? (
           <Link
             to={to}
@@ -139,6 +169,11 @@ export function PhotoCard({
           Reply
         </Link>
       </div>
+      {opening && likes?.failure ? (
+        <p role="alert" className="mt-1 text-[0.78125rem] text-destructive leading-[1.45]">
+          {likes.failure}
+        </p>
+      ) : null}
     </article>
   );
 }

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatAuthor } from '@/lib/chat/types';
@@ -71,6 +72,51 @@ describe('a photograph on Home', () => {
     const tile = screen.getByRole('button', { name: 'Photograph 1 of 1 from Jan. Open it.' });
     expect(tile.className).toContain('w-full');
     expect(tile.className).toContain('aspect-[400/260]');
+  });
+
+  it('draws no likes until it is handed them', () => {
+    renderCard();
+    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+  });
+
+  it('likes the opening post, named for the topic', async () => {
+    const onToggle = vi.fn();
+    renderCard({ likes: { likedBy: ['jan'], readerId: 'me', onToggle, failure: null } });
+    expect(
+      screen.getByRole('button', {
+        name: '1 like on First trip out with the new cushion. Show who.',
+      }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Like First trip out with the new cushion' }),
+    );
+    expect(onToggle).toHaveBeenCalledOnce();
+  });
+
+  it('draws the count and no Like on the reader’s own photograph', () => {
+    renderCard({ likes: { likedBy: ['jan'], readerId: null, onToggle: vi.fn(), failure: null } });
+    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /^1 like on/ })).toBeInTheDocument();
+  });
+
+  it('says so when a like did not land', () => {
+    renderCard({
+      likes: {
+        likedBy: [],
+        readerId: 'me',
+        onToggle: vi.fn(),
+        failure: 'Your like was not saved. You cannot like this.',
+      },
+    });
+    expect(screen.getByRole('alert')).toHaveTextContent('Your like was not saved.');
+  });
+
+  it('draws no likes when the opening post was taken back', () => {
+    renderCard({
+      topic: photoTopic({ opening: null }),
+      likes: { likedBy: ['jan'], readerId: 'me', onToggle: vi.fn(), failure: null },
+    });
+    expect(screen.queryByRole('button', { name: /like/i })).toBeNull();
   });
 
   // It holds buttons, so it cannot be one link.

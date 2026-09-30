@@ -2,8 +2,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { usePostLikes } from '@/lib/chat/likes';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
+import type { ChatPost } from '@/lib/chat/types';
 import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
@@ -131,6 +133,13 @@ export default function HomePage() {
   const authors = useChatAuthors(
     topics.flatMap((topic) => [topic.authorId, topic.firstReply?.authorId ?? null]),
   );
+  // Likes on the photographs: one read for every photo topic's opening post,
+  // whichever pill is showing, so switching pills does not read again.
+  const photoPostIds = useMemo(
+    () => topics.flatMap((topic) => (topic.photo && topic.opening ? [topic.opening.id] : [])),
+    [topics],
+  );
+  const likes = usePostLikes(photoPostIds);
 
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
@@ -172,6 +181,19 @@ export default function HomePage() {
     [memberId, viewer],
   );
 
+  /** What a photo card's Like needs, or nothing while the likes load. */
+  function likesFor(opening: ChatPost | null) {
+    if (!opening || likes.loading) return undefined;
+    return {
+      likedBy: likes.byPost.get(opening.id) ?? [],
+      readerId: opening.authorId === memberId ? null : memberId,
+      onToggle: () => {
+        likes.toggle(opening.id);
+      },
+      failure: likes.failure?.postId === opening.id ? likes.failure.message : null,
+    };
+  }
+
   function draw(item: FeedItem) {
     switch (item.kind) {
       case 'topic':
@@ -193,6 +215,7 @@ export default function HomePage() {
             topic={item.topic}
             author={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
             linkState={linkState}
+            likes={likesFor(item.topic.opening)}
           />
         );
       case 'event':

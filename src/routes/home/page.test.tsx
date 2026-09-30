@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
+import type * as Likes from '@/lib/chat/likes';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/types';
@@ -35,6 +36,27 @@ const db = vi.hoisted(() => ({
   authors: new Map<string, ChatAuthor>(),
   setRsvp: vi.fn(),
   reload: vi.fn(),
+  likes: new Map<string, string[]>(),
+  likesAskedFor: [] as string[][],
+  liked: [] as string[],
+}));
+
+// Likes are a read and a write of the club; the hook has its own test.
+vi.mock('@/lib/chat/likes', async (importOriginal) => ({
+  ...(await importOriginal<typeof Likes>()),
+  usePostLikes: (ids: readonly string[]) => {
+    db.likesAskedFor.push([...ids]);
+    return {
+      byPost: db.likes,
+      loading: false,
+      error: null,
+      failure: null,
+      toggle: (id: string) => {
+        db.liked.push(id);
+      },
+      reload: () => undefined,
+    };
+  },
 }));
 
 vi.mock('@/lib/home/topics', async (importOriginal) => ({
@@ -154,7 +176,12 @@ beforeEach(() => {
   ];
   db.posts = [
     makePost({ topicId: 'plain', body: 'Evenings for six years.' }),
-    makePost({ topicId: 'photo', body: '', attachments: ['rooms/bowel/a.webp'] }),
+    makePost({
+      id: 'photo-opening',
+      topicId: 'photo',
+      body: '',
+      attachments: ['rooms/bowel/a.webp'],
+    }),
     makePost({ topicId: 'closed' }),
   ];
   db.topicsLoading = false;
@@ -173,6 +200,31 @@ beforeEach(() => {
   db.authors = new Map();
   db.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   db.reload = vi.fn();
+  db.likes = new Map();
+  db.likesAskedFor = [];
+  db.liked = [];
+});
+
+describe('likes on Home', () => {
+  it('asks for the likes of the photographs’ opening posts, and nothing else', () => {
+    renderPage();
+    expect(db.likesAskedFor.at(-1)).toEqual(['photo-opening']);
+  });
+
+  it('likes a photograph from its card, and counts it', async () => {
+    db.likes = new Map([['photo-opening', ['kerry']]]);
+    renderPage();
+    expect(
+      screen.getByRole('button', { name: '1 like on Wheel covers I made. Show who.' }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Like Wheel covers I made' }));
+    expect(db.liked).toEqual(['photo-opening']);
+  });
+
+  it('offers no Like on a topic card, which has no photograph', () => {
+    renderPage('/home?segment=topics');
+    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+  });
 });
 
 describe('Home', () => {
