@@ -62,6 +62,17 @@ describe('a photograph on Home', () => {
     ).toBeInTheDocument();
   });
 
+  // Chat's default sizes one photograph for a bubble, which left half the
+  // card empty. The card asks the grid to fill it.
+  it('draws a single photograph the full width of the card', () => {
+    renderCard({
+      topic: photoTopic({ opening: makePost({ attachments: ['rooms/equip/a.webp'] }) }),
+    });
+    const tile = screen.getByRole('button', { name: 'Photograph 1 of 1 from Jan. Open it.' });
+    expect(tile.className).toContain('w-full');
+    expect(tile.className).toContain('aspect-[400/260]');
+  });
+
   // It holds buttons, so it cannot be one link.
   it('puts no button inside a link', () => {
     renderCard();

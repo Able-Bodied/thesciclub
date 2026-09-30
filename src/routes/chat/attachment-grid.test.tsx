@@ -180,3 +180,49 @@ describe('the photographs on a message', () => {
     expect(tile.className).not.toMatch(/bg-/);
   });
 });
+
+// Home's cards are a fixed width, so a single photograph there fills the card
+// at one shape. The three Chat callers — a message, a post, a report — must
+// keep the bubble's sizing, which is why `fill` is off unless asked for.
+describe('filling a card', () => {
+  const tile = () => screen.getByRole('button', { name: /Open it/ });
+  const picture = () => {
+    const img = tile().querySelector('img');
+    if (!img) throw new Error('the tile should hold the picture');
+    return img;
+  };
+
+  it('leaves a single photograph at its own shape without fill', () => {
+    render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" />);
+    // Exactly the classes it had before `fill` existed.
+    expect(tile().className).toBe('block overflow-hidden rounded-[10px] w-fit max-w-full');
+    expect(picture().className).toBe('block h-auto max-h-[20rem] w-auto max-w-full');
+  });
+
+  it('draws a single photograph the full width at a fixed shape with fill', () => {
+    render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" fill />);
+    expect(tile().className).toContain('w-full');
+    expect(tile().className).toContain('aspect-[400/260]');
+    expect(tile().className).not.toMatch(/w-fit|bg-/);
+    expect(picture().className).toContain('object-cover');
+    expect(picture().className).not.toContain('max-h-');
+  });
+
+  it('changes nothing for two photographs', () => {
+    const paths = ['threads/t/a.webp', 'threads/t/b.webp'];
+    const plain = render(<AttachmentGrid paths={paths} from="Bo" />);
+    const before = plain.container.innerHTML;
+    plain.unmount();
+    const filled = render(<AttachmentGrid paths={paths} from="Bo" fill />);
+    expect(filled.container.innerHTML).toBe(before);
+  });
+
+  it('still opens the whole picture in the viewer', async () => {
+    const user = userEvent.setup();
+    render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" fill />);
+    await user.click(tile());
+    expect(screen.getByRole('img', { name: 'Photograph 1 of 1 from Bo' })).toHaveClass(
+      'object-contain',
+    );
+  });
+});

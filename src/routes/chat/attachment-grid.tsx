@@ -15,6 +15,14 @@ import { useAttachmentUrls } from '@/lib/chat/attachments';
  * label on a box or see a wound properly, which is what these are for. The
  * grid is the same for the reader's own and for somebody else's.
  *
+ * On Home, with `fill`, a single photograph is the full width of the card at
+ * the mock's 400 by 260, cropped to it, and still opens whole in the viewer.
+ * Home is the one caller because a card on Home is a fixed width in a column
+ * of cards, and a photograph at its own shape left half a card empty beside
+ * it on a wide screen, next to two-photograph cards that filled theirs. A
+ * bubble is the opposite: it is as wide as what it holds, so the three Chat
+ * callers — a message, a post, a report on /admin — keep the default.
+ *
  * No tile has a background (owner, 2026-09-23). The tint that used to sit
  * behind each one showed as a grey box around a single photograph that was
  * not the bubble's shape — a landscape picture in a letterbox — and as a
@@ -67,7 +75,16 @@ import { useAttachmentUrls } from '@/lib/chat/attachments';
  * not drawn. A tile that says "photograph" over nothing would be a lie about
  * what the reader can see.
  */
-export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from: string }) {
+export function AttachmentGrid({
+  paths,
+  from,
+  fill = false,
+}: {
+  paths: readonly string[];
+  from: string;
+  /** A single photograph fills the width, cropped. Home's cards only. */
+  fill?: boolean;
+}) {
   const urls = useAttachmentUrls(paths);
   const [open, setOpen] = useState<number | null>(null);
   // The tile that opened the viewer, so that closing it puts focus back
@@ -77,10 +94,12 @@ export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from
   const shown = paths.filter((path) => urls.has(path));
 
   if (shown.length === 0) return null;
+  const single = shown.length === 1;
+  const filled = fill && single;
 
   return (
     <>
-      <div className={`mt-2 grid gap-1.5 ${shown.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+      <div className={`mt-2 grid gap-1.5 ${single ? 'grid-cols-1' : 'grid-cols-2'}`}>
         {shown.map((path, index) => (
           <button
             key={path}
@@ -91,7 +110,7 @@ export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from
             }}
             aria-label={`Photograph ${index + 1} of ${shown.length} from ${from}. Open it.`}
             className={`block overflow-hidden rounded-[10px] ${
-              shown.length === 1 ? 'w-fit max-w-full' : 'aspect-square'
+              filled ? 'aspect-[400/260] w-full' : single ? 'w-fit max-w-full' : 'aspect-square'
             }`}
           >
             <img
@@ -99,7 +118,7 @@ export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from
               alt=""
               loading="lazy"
               className={
-                shown.length === 1
+                single && !filled
                   ? 'block h-auto max-h-[20rem] w-auto max-w-full'
                   : 'block h-full w-full object-cover'
               }

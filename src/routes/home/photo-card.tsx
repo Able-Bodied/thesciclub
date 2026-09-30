@@ -17,7 +17,16 @@ import { byline, RoomTag } from '@/routes/home/topic-card';
  * Each photograph is a button that opens the viewer, and a button inside a
  * link is two controls fighting over one tap. So the parts are separate: the
  * name goes to the profile, the title and the replies go to the topic, and the
- * photographs open where they are. `AttachmentGrid` is Chat's own, unchanged.
+ * photographs open where they are.
+ *
+ * ---------------------------------------------------------------------------
+ * A single photograph fills the card
+ * ---------------------------------------------------------------------------
+ * `AttachmentGrid` is Chat's, and at its default it sizes one photograph for a
+ * bubble: its own shape, no taller than 20rem. In a card that is a picture in
+ * the left half with blank beside it. So this card passes `fill`: one
+ * photograph is the full width at the mock's shape, cropped, and whole in the
+ * viewer. Two to four already fill the width and are drawn as Chat draws them.
  *
  * ---------------------------------------------------------------------------
  * No city
@@ -89,7 +98,7 @@ export function PhotoCard({
         <RoomTag room={topic.room} />
       </div>
 
-      {opening ? <AttachmentGrid paths={opening.attachments} from={name} /> : null}
+      {opening ? <AttachmentGrid paths={opening.attachments} from={name} fill /> : null}
 
       <Link
         to={to}
