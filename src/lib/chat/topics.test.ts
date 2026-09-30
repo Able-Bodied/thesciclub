@@ -28,6 +28,8 @@ const post = (o: Partial<ChatPost> & { id: string }): ChatPost => ({
   removedAt: null,
   attachments: [],
   removedByAdmin: false,
+  editedAt: null,
+  replyTo: null,
   ...o,
 });
 

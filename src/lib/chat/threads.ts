@@ -100,10 +100,12 @@ interface MessageRow {
   created_at: string;
   removed_at: string | null;
   removed_by_admin: boolean;
+  edited_at: string | null;
+  reply_to: string | null;
 }
 
 const MESSAGE_COLUMNS =
-  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin';
+  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to';
 
 function toMessage(row: MessageRow): ChatMessage {
   return {
@@ -115,6 +117,8 @@ function toMessage(row: MessageRow): ChatMessage {
     createdAt: row.created_at,
     removedAt: row.removed_at,
     removedByAdmin: row.removed_by_admin,
+    editedAt: row.edited_at,
+    replyTo: row.reply_to,
   };
 }
 
@@ -345,6 +349,8 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           createdAt: new Date().toISOString(),
           removedAt: null,
           removedByAdmin: false,
+          editedAt: null,
+          replyTo: null,
           pending: true,
         },
       ]);

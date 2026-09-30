@@ -116,6 +116,8 @@ export function makePost(overrides: Partial<ChatPost> = {}): ChatPost {
     createdAt: '2026-09-20T10:00:00Z',
     removedAt: null,
     removedByAdmin: false,
+    editedAt: null,
+    replyTo: null,
     ...overrides,
   };
 }

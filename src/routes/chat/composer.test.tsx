@@ -118,3 +118,89 @@ describe('the composer', () => {
     expect(screen.getByRole('button', { name: 'Take back a.jpg' })).toBeInTheDocument();
   });
 });
+
+describe('editing in place', () => {
+  function renderEditor(o: { initial?: string; allowEmpty?: boolean } = {}) {
+    const onSend = vi.fn<OnSend>(() => Promise.resolve(null));
+    const onCancel = vi.fn();
+    render(
+      <Composer
+        placeholder="Your post"
+        sendLabel="Save your post"
+        onSend={onSend}
+        edit={{ initial: o.initial ?? 'First draft.', allowEmpty: o.allowEmpty ?? false, onCancel }}
+      />,
+    );
+    return { onSend, onCancel };
+  }
+
+  it('starts with the words as they are, and no photo picker', () => {
+    renderEditor();
+    expect(screen.getByLabelText('Your post')).toHaveValue('First draft.');
+    expect(document.querySelector('input[type=file]')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save your post' })).toBeNull();
+  });
+
+  // The database refuses an edit that changes nothing, so that "Edited" is
+  // never a lie; a control that will be refused should not look available.
+  it('will not save what has not changed, spaces included', async () => {
+    renderEditor();
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Your post'), '  ');
+    expect(save).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Your post'), 'x');
+    expect(save).toBeEnabled();
+  });
+
+  it('will not save nothing, unless the row has photographs', async () => {
+    const { onSend } = renderEditor({ allowEmpty: true });
+    await userEvent.clear(screen.getByLabelText('Your post'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(onSend).toHaveBeenCalledWith('', []);
+    });
+  });
+
+  it('refuses nothing on a post with no photographs', async () => {
+    renderEditor({ allowEmpty: false });
+    await userEvent.clear(screen.getByLabelText('Your post'));
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('sends the new words trimmed, with no files', async () => {
+    const { onSend } = renderEditor();
+    await userEvent.type(screen.getByLabelText('Your post'), ' Second thoughts. ');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(onSend).toHaveBeenCalledWith('First draft. Second thoughts.', []);
+    });
+  });
+
+  it('is cancelled by Escape and by Cancel', async () => {
+    const { onCancel, onSend } = renderEditor();
+    await userEvent.type(screen.getByLabelText('Your post'), '{Escape}');
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onCancel).toHaveBeenCalledTimes(2);
+    expect(onSend).not.toHaveBeenCalled();
+  });
+});
+
+describe('the reply bar', () => {
+  it('says who is being answered, focuses the box, and can be closed', async () => {
+    const onCancel = vi.fn();
+    render(
+      <Composer
+        placeholder="Reply to this topic"
+        sendLabel="Post this reply"
+        onSend={() => Promise.resolve(null)}
+        replyingTo={{ id: 'p1', name: 'Jan', onCancel }}
+      />,
+    );
+    expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Jan');
+    expect(screen.getByLabelText('Reply to this topic')).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Stop replying' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});

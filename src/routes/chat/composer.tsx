@@ -1,9 +1,10 @@
-import { SendHorizontal } from 'lucide-react';
+import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
- * The box at the foot of a topic or a thread.
+ * The box at the foot of a topic or a thread — and, since 2026-09-29, the
+ * editor of a post or a message, in place.
  *
  * ---------------------------------------------------------------------------
  * A textarea, not the mock's input
@@ -71,6 +72,26 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
  * folder they go in is the caller's to know (the thread's, the room's), and
  * the composer stays ignorant of storage. The strip survives a failure the
  * same way the words do.
+ *
+ * ---------------------------------------------------------------------------
+ * Editing is this box, not a second one — since 2026-09-29
+ * ---------------------------------------------------------------------------
+ * `edit` puts it in place of a post's or a message's words, holding them,
+ * with Save and Cancel where Send was and Escape as Cancel. No photo picker:
+ * an edit changes the words and not the photographs (HOME-PLAN.md, step 2b),
+ * so the strip has nothing to offer. Save is unavailable while the words are
+ * what they were, because the database refuses an edit that changes nothing
+ * — "Edited" is never a lie — and a control that will be refused should not
+ * look available. It is also unavailable on blank words unless the row has
+ * photographs, which is the row's own check said before the round trip.
+ *
+ * ---------------------------------------------------------------------------
+ * The reply bar
+ * ---------------------------------------------------------------------------
+ * `replyingTo` draws "Replying to Jan" over the box with a way to stop, and
+ * moves focus into the box, since pressing Reply on a post halfway up the
+ * screen is a decision to write. The bar is the caller's state; this only
+ * draws it and reports the ✕.
  */
 /** About six lines. Mirrored by `max-h-[150px]` on the textarea below. */
 const MAX_HEIGHT = 150;
@@ -95,12 +116,30 @@ function fitToContent(element: HTMLTextAreaElement) {
   element.style.overflowY = wanted > MAX_HEIGHT ? 'auto' : 'hidden';
 }
 
+export interface ComposerEdit {
+  /** The words as they are now. */
+  initial: string;
+  /** Whether Save may send no words: true when the row has photographs. */
+  allowEmpty: boolean;
+  onCancel: () => void;
+}
+
+export interface ComposerReplyingTo {
+  /** The post or message being answered; focus moves into the box when it changes. */
+  id: string;
+  /** Whose it is, for "Replying to Jan". */
+  name: string;
+  onCancel: () => void;
+}
+
 export function Composer({
   placeholder,
   sendLabel,
   onSend,
   sendOnEnter = false,
   maxLength = 4000,
+  edit,
+  replyingTo = null,
 }: {
   placeholder: string;
   /** What the send button says to a screen reader. */
@@ -109,26 +148,51 @@ export function Composer({
   onSend: (body: string, files: File[]) => Promise<string | null>;
   sendOnEnter?: boolean;
   maxLength?: number;
+  /** Editing in place: see the header. */
+  edit?: ComposerEdit;
+  /** A reply in progress, drawn over the box. */
+  replyingTo?: ComposerReplyingTo | null;
 }) {
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(edit?.initial ?? '');
   const [files, setFiles] = useState<File[]>([]);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
+  // Whether this box was born as an editor. A ref, because the effect below
+  // runs once, on mount, and `edit` is stable for the life of an editor.
+  const bornEditing = useRef(edit !== undefined);
 
   useEffect(() => {
     const element = box.current;
-    if (element) fitToContent(element);
+    if (!element) return;
+    fitToContent(element);
+    if (bornEditing.current) {
+      // Editing starts with the caret at the end of what is there, which is
+      // where somebody fixing a sentence wants it.
+      element.focus();
+      element.setSelectionRange(element.value.length, element.value.length);
+    }
   }, []);
+
+  // Pressing Reply is a decision to write, so the box takes focus.
+  const replyingToId = replyingTo?.id ?? null;
+  useEffect(() => {
+    if (replyingToId) box.current?.focus();
+  }, [replyingToId]);
 
   function resize() {
     const element = box.current;
     if (element) fitToContent(element);
   }
 
+  const body = draft.trim();
+  const unchanged = edit ? body === edit.initial.trim() : false;
+  const allowEmpty = edit?.allowEmpty ?? false;
+  const empty = body === '' && files.length === 0;
+  const cannotSend = sending || unchanged || (empty && !allowEmpty);
+
   function send() {
-    const body = draft.trim();
-    if ((!body && files.length === 0) || sending) return;
+    if (cannotSend) return;
     setSending(true);
     setFailure(null);
     void onSend(body, files)
@@ -147,15 +211,88 @@ export function Composer({
       });
   }
 
+  const textarea = (
+    <textarea
+      ref={box}
+      value={draft}
+      rows={1}
+      maxLength={maxLength}
+      placeholder={placeholder}
+      aria-label={placeholder}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        resize();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && edit) {
+          event.preventDefault();
+          edit.onCancel();
+          return;
+        }
+        if (event.key !== 'Enter') return;
+        if (sendOnEnter && !event.shiftKey) {
+          event.preventDefault();
+          send();
+        }
+      }}
+      className="max-h-[150px] min-h-[44px] flex-1 resize-none rounded-[22px] border-[1.6px] border-line bg-canvas px-[15px] py-[11px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-navy focus:bg-paper"
+    />
+  );
+
+  const failureLine = failure ? (
+    <p
+      role="alert"
+      className="mb-2 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2 text-[0.78125rem] text-destructive leading-[1.45]"
+    >
+      {failure} Your words are still here.
+    </p>
+  ) : null;
+
+  if (edit) {
+    return (
+      <div className="mt-2">
+        {failureLine}
+        <div className="flex w-full items-end gap-[9px]">{textarea}</div>
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            onClick={send}
+            disabled={cannotSend}
+            className="min-h-[2.75rem] rounded-full bg-navy px-[1.1em] font-bold font-head text-[0.875rem] text-white transition-opacity disabled:opacity-35"
+          >
+            {sending ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            onClick={edit.onCancel}
+            disabled={sending}
+            className="min-h-[2.75rem] rounded-full border border-line px-[1.1em] font-bold font-head text-[0.875rem] text-navy"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex-none border-line border-t bg-paper px-3.5 py-2.5">
-      {failure ? (
-        <p
-          role="alert"
-          className="mb-2 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2 text-[0.78125rem] text-destructive leading-[1.45]"
-        >
-          {failure} Your words are still here.
-        </p>
+      {failureLine}
+      {replyingTo ? (
+        <div className="mx-auto mb-2 flex w-full max-w-[720px] items-center justify-between gap-2 rounded-[11px] bg-tint px-3 py-1.5">
+          <span className="min-w-0 truncate text-[0.78125rem] text-ink2">
+            Replying to <span className="font-semibold text-ink">{replyingTo.name}</span>
+          </span>
+          <button
+            type="button"
+            onClick={replyingTo.onCancel}
+            aria-label="Stop replying"
+            data-target="small"
+            className="grid h-7 w-7 flex-none place-items-center rounded-full text-ink2 hover:bg-line"
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       ) : null}
       <div className="mx-auto w-full max-w-[720px]">
         <PhotoStrip
@@ -168,30 +305,11 @@ export function Composer({
       </div>
       <div className="mx-auto flex w-full max-w-[720px] items-end gap-[9px]">
         <PhotoPicker files={files} onChange={setFiles} disabled={sending} compact />
-        <textarea
-          ref={box}
-          value={draft}
-          rows={1}
-          maxLength={maxLength}
-          placeholder={placeholder}
-          aria-label={placeholder}
-          onChange={(event) => {
-            setDraft(event.target.value);
-            resize();
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') return;
-            if (sendOnEnter && !event.shiftKey) {
-              event.preventDefault();
-              send();
-            }
-          }}
-          className="max-h-[150px] min-h-[44px] flex-1 resize-none rounded-[22px] border-[1.6px] border-line bg-canvas px-[15px] py-[11px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-navy focus:bg-paper"
-        />
+        {textarea}
         <button
           type="button"
           onClick={send}
-          disabled={(!draft.trim() && files.length === 0) || sending}
+          disabled={cannotSend}
           aria-label={sendLabel}
           // 44px, and never data-target="small": this is the control the whole
           // screen exists for.

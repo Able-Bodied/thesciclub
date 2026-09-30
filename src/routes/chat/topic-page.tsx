@@ -10,6 +10,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { chatTimeLong } from '@/lib/chat/time';
 import {
   deleteTopic,
+  editPost,
   firstUnreadIndex,
   removePost,
   sendPost,
@@ -58,6 +59,15 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
  * photographs go through the storage API afterwards, as removing a post's do.
  *
  * ---------------------------------------------------------------------------
+ * Editing, since 2026-09-29
+ * ---------------------------------------------------------------------------
+ * Edit on the reader's own standing post swaps its words for the composer
+ * holding them (post.tsx). One post at a time, by id, so that a removal
+ * arriving over the wire cannot leave an editor open on a post that is no
+ * longer drawn. `chat_edit_post` decides; a refusal comes back into the
+ * composer with the draft still in it.
+ *
+ * ---------------------------------------------------------------------------
  * Reporting
  * ---------------------------------------------------------------------------
  * Whoever can remove a post does not get offered Report on it — an
@@ -81,6 +91,8 @@ export default function TopicPage() {
   const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
+  /** The post whose words are in the composer, or null. See the header. */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const reports = useMyReports();
   // Which post the sheet is open over, or null. One at a time, and the id
   // rather than a boolean so that the sheet cannot outlive the post it is
@@ -148,6 +160,14 @@ export default function TopicPage() {
         setDeleteFailure(describeThrown(e, 'The topic was not deleted.'));
         setDeleting(false);
       });
+  }
+
+  async function saveEdit(postId: string, body: string): Promise<string | null> {
+    const result = await editPost(postId, body);
+    if (!result.ok) return result.error;
+    setEditingId(null);
+    reload();
+    return null;
   }
 
   function remove(postId: string) {
@@ -268,6 +288,17 @@ export default function TopicPage() {
               author={post.authorId ? (authors.get(post.authorId) ?? null) : null}
               number={index + 1}
               total={standing.length}
+              // The author's own, and nobody else's — not an administrator's
+              // either. chat_edit_post decides; this only asks.
+              canEdit={canPost && post.authorId === account.userId}
+              editing={editingId === post.id}
+              onEdit={() => {
+                setEditingId(post.id);
+              }}
+              onSaveEdit={(body) => saveEdit(post.id, body)}
+              onCancelEdit={() => {
+                setEditingId(null);
+              }}
               // An administrator can remove anybody's; everybody else only
               // their own. chat_remove_post decides — this only asks.
               canRemove={account.isAdmin || post.authorId === account.userId}

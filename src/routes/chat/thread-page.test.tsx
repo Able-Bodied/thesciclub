@@ -121,6 +121,8 @@ const message = (o: Partial<ChatMessage> & { id: string }): ChatMessage => ({
   removedAt: null,
   attachments: [],
   removedByAdmin: false,
+  editedAt: null,
+  replyTo: null,
   ...o,
 });
 

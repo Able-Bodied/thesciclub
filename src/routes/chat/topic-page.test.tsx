@@ -16,6 +16,8 @@ const db = vi.hoisted(() => ({
   authors: new Map<string, ChatAuthor>(),
   isAdmin: false,
   removed: [] as string[],
+  edited: [] as [string, string][],
+  editFails: null as string | null,
   sent: [] as string[],
   sendFails: null as string | null,
   reportedPosts: new Set<string>(),
@@ -75,6 +77,11 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     db.removed.push(id);
     return Promise.resolve({ ok: true as const, value: null });
   },
+  editPost: (id: string, body: string) => {
+    if (db.editFails) return Promise.resolve({ ok: false as const, error: db.editFails });
+    db.edited.push([id, body]);
+    return Promise.resolve({ ok: true as const, value: null });
+  },
   sendPost: (_topicId: string, _authorId: string, body: string) => {
     if (db.sendFails) return Promise.resolve({ ok: false as const, error: db.sendFails });
     db.sent.push(body);
@@ -126,6 +133,8 @@ const post = (o: Partial<ChatPost> & { id: string }): ChatPost => ({
   removedAt: null,
   attachments: [],
   removedByAdmin: false,
+  editedAt: null,
+  replyTo: null,
   ...o,
 });
 
@@ -169,6 +178,8 @@ beforeEach(() => {
   db.authors = new Map([['nicole', author({ id: 'nicole' })]]);
   db.isAdmin = false;
   db.removed = [];
+  db.edited = [];
+  db.editFails = null;
   db.sent = [];
   db.sendFails = null;
   db.reportedPosts = new Set();
@@ -259,14 +270,91 @@ describe('a topic', () => {
   it('offers Remove on the viewer’s own post and on nobody else’s', () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
     renderTopic();
-    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(1);
+    // Named for the post, so a list of twenty is not twenty "Remove"s.
+    expect(screen.getByRole('button', { name: 'Remove your post' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Report Nicole's post" })).toBeInTheDocument();
+  });
+
+  describe('editing', () => {
+    it('is offered on the viewer’s own standing post and on nobody else’s', () => {
+      db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
+      renderTopic();
+      expect(screen.getAllByRole('button', { name: 'Edit your post' })).toHaveLength(1);
+    });
+
+    // An administrator removes; rewriting a member's words in their name is
+    // not moderation, and chat_edit_post refuses them too.
+    it('is not offered to an administrator on somebody else’s post', () => {
+      db.isAdmin = true;
+      db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
+      renderTopic();
+      expect(screen.getAllByRole('button', { name: 'Edit your post' })).toHaveLength(1);
+    });
+
+    it('is not offered in a closed room', () => {
+      db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
+      db.posts = [post({ id: '2', authorId: 'me' })];
+      renderTopic();
+      expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
+    });
+
+    it('swaps the words for the composer, and saves what was changed', async () => {
+      db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+      const box = screen.getByLabelText('Your post');
+      expect(box).toHaveValue('First draft.');
+      // Nothing has changed yet, so Save waits: the database would refuse it.
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      await userEvent.type(box, ' Second thoughts.');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => {
+        expect(db.edited).toEqual([['2', 'First draft. Second thoughts.']]);
+      });
+      // The editor closes; the words come back from the reload.
+      await waitFor(() => {
+        expect(screen.queryByLabelText('Your post')).toBeNull();
+      });
+    });
+
+    it('keeps the draft and says why when the edit is refused', async () => {
+      db.editFails = 'Your edit was not saved. You can only edit your own post.';
+      db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+      const box = screen.getByLabelText('Your post');
+      await userEvent.type(box, ' More.');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(/You can only edit your own post/);
+      expect(box).toHaveValue('First draft. More.');
+    });
+
+    it('is cancelled by the button and by Escape, with nothing saved', async () => {
+      db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByLabelText('Your post')).toBeNull();
+      expect(screen.getByText('First draft.')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+      await userEvent.type(screen.getByLabelText('Your post'), ' gone{Escape}');
+      expect(screen.queryByLabelText('Your post')).toBeNull();
+      expect(db.edited).toEqual([]);
+    });
+
+    it('says Edited, with the time, under an edited post', () => {
+      db.posts = [post({ id: '1', editedAt: '2026-09-01T11:30:00Z' })];
+      renderTopic();
+      expect(screen.getByText(/^Edited · /)).toBeInTheDocument();
+    });
   });
 
   it('offers Remove on every post to an administrator', async () => {
     db.isAdmin = true;
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
     renderTopic();
-    const buttons = screen.getAllByRole('button', { name: 'Remove' });
+    const buttons = screen.getAllByRole('button', { name: /^Remove / });
     expect(buttons).toHaveLength(2);
     const [first] = buttons;
     if (!first) throw new Error('no Remove button to press');
@@ -280,7 +368,7 @@ describe('a topic', () => {
     db.isAdmin = true;
     db.posts = [post({ id: '1', body: '', removedAt: '2026-09-02T10:00:00Z' })];
     renderTopic();
-    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
   });
 
   // Enter is a paragraph break here and not a send. A member dictating a post
@@ -346,28 +434,28 @@ describe('reporting a post', () => {
     // Two posts and two controls between them, not four: the reader can take
     // back what they wrote, and hand over what somebody else did, and neither
     // post offers both.
-    expect(screen.getAllByRole('button', { name: 'Report' })).toHaveLength(1);
-    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Report / })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(1);
   });
 
   it('offers an administrator Remove instead, not a complaint to themselves', () => {
     db.isAdmin = true;
     renderTopic();
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Remove / })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
   });
 
   it("offers nothing on a former member's post", () => {
     // A report names who wrote it, and they have already left the club.
     db.posts = [post({ id: '1', authorId: null })];
     renderTopic();
-    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
   });
 
   it('says what will be disclosed before anything is sent', async () => {
     renderTopic();
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     const sheet = screen.getByRole('dialog', { name: 'Report this post' });
     // The promise, and the fact that it has not happened yet.
     expect(
@@ -379,11 +467,11 @@ describe('reporting a post', () => {
 
   it('sends the note with the report, and can be backed out of', async () => {
     renderTopic();
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(db.reports).toEqual([]);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     await userEvent.type(screen.getByLabelText('Anything to add'), 'Selling supplements.');
     await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
     await waitFor(() => {
@@ -396,7 +484,7 @@ describe('reporting a post', () => {
   it('keeps the sheet and the words when the report is refused', async () => {
     db.reportFails = 'new row violates row-level security policy';
     renderTopic();
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     const note = screen.getByLabelText('Anything to add');
     await userEvent.type(note, 'What happened.');
     await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
@@ -413,6 +501,6 @@ describe('reporting a post', () => {
     expect(screen.getByText('Reported')).toBeInTheDocument();
     // Not a disabled button: a disabled control reads out as one and invites a
     // second try.
-    expect(screen.queryByRole('button', { name: /Report/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
   });
 });

@@ -141,6 +141,15 @@ export interface ChatPost {
   removedAt: string | null;
   /** Which sentence the reader gets: by its author, or by an administrator. */
   removedByAdmin: boolean;
+  /** When the author last edited it, or null. "Edited · 9:30am" under the body. */
+  editedAt: string | null;
+  /**
+   * The post this one answers, in the same topic, or null for a post at the
+   * top level. One level only: a reply to a reply is filed under the same
+   * post, and the trigger refuses anything else (20260930000000). Nulled by
+   * the database when the parent is removed, so the reply stands on its own.
+   */
+  replyTo: string | null;
 }
 
 /**
@@ -201,11 +210,40 @@ export interface ChatMessage {
   createdAt: string;
   removedAt: string | null;
   removedByAdmin: boolean;
+  /** When the author last edited it, or null. */
+  editedAt: string | null;
+  /**
+   * The message this one answers, in the same thread, drawn as a quote above
+   * it rather than as a nest — a conversation stays in time order. Kept when
+   * the quoted message is removed, so the quote can say so.
+   */
+  replyTo: string | null;
   /**
    * True while this is a bubble the reader has sent and the database has not
    * confirmed. Never set on a row that came back from a read.
    */
   pending?: boolean;
+}
+
+/**
+ * What a post or message said before an edit replaced it, from `chat_edits`.
+ *
+ * Only an administrator ever holds one of these: the table's one select
+ * policy is `is_admin()`, and a member cannot read their own earlier versions
+ * back. Exactly one of `postId` and `messageId` is set.
+ */
+export interface ChatEdit {
+  id: string;
+  postId: string | null;
+  messageId: string | null;
+  /** The words as they were. */
+  body: string;
+  /** The photograph paths as they were — the same as now, since an edit does not change them. */
+  attachments: string[];
+  /** Null once that member has left the club. */
+  editedBy: string | null;
+  /** When this version stopped being the current one. */
+  replacedAt: string;
 }
 
 /**

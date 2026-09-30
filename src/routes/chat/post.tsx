@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatPost } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
+import { Composer } from '@/routes/chat/composer';
 
 /**
  * One post in a topic, from the mock's `fpost()`.
@@ -24,35 +26,82 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
  * nothing to make initials from, so the tile is the neutral one.
  *
  * ---------------------------------------------------------------------------
- * One control in one slot: Remove, or Report, or nothing
+ * Four controls in one row, each named for its post
  * ---------------------------------------------------------------------------
- * Report sits exactly where Remove sits, and never beside it. The reader can
- * take back what they wrote; on somebody else's post they can hand it to the
- * administrators. An administrator gets Remove on everything, which is the
- * stronger of the two — offering them Report as well would be offering them a
- * complaint addressed to themselves.
+ * Edit and Reply since 2026-09-29 (HOME-PLAN.md, decisions 9 and 11), then
+ * Remove, or Report, or nothing. Report sits exactly where Remove sits, and
+ * never beside it: the reader can take back what they wrote; on somebody
+ * else's post they can hand it to the administrators. An administrator gets
+ * Remove on everything, which is the stronger of the two — offering them
+ * Report as well would be offering them a complaint addressed to themselves.
+ * Edit is the author's alone, an administrator included: an administrator
+ * removes, and does not rewrite somebody's words in their name.
  *
- * It is a visible control and not a long-press or a swipe. Members here drive
- * with limited hand function, a mouth stick or a head pointer, and a gesture
- * that has to be held or dragged is a control some of them do not have.
+ * Each control carries the post in its name — "Reply to Jan's post", "Remove
+ * your post" — because a topic of twenty posts is otherwise a column of
+ * twenty identical "Reply" buttons in a screen reader's list.
+ *
+ * They are visible controls and not a long-press or a swipe. Members here
+ * drive with limited hand function, a mouth stick or a head pointer, and a
+ * gesture that has to be held or dragged is a control some of them do not
+ * have.
+ *
+ * ---------------------------------------------------------------------------
+ * Editing is the composer, in place
+ * ---------------------------------------------------------------------------
+ * Pressing Edit swaps the words for the composer holding them, with Save and
+ * Cancel. The photographs stay drawn and stay as they are: an edit changes
+ * the words only. "Edited · 9:30am" sits under the body afterwards, in the
+ * byline's colour, for everybody; an administrator also gets the earlier
+ * versions, under a disclosure, from chat_edits.
+ *
+ * ---------------------------------------------------------------------------
+ * Replies sit under the post they answer
+ * ---------------------------------------------------------------------------
+ * The topic page hands a top-level post its replies as `children`, drawn
+ * inside the article, indented and unnumbered. A reply's own Reply files
+ * under the same post — one level is the rule, and the trigger enforces it.
  */
 export function Post({
   post,
   author,
   number,
   total,
+  nested = false,
+  canEdit,
+  editing,
+  onEdit,
+  onSaveEdit,
+  onCancelEdit,
+  canReply = false,
+  onReply,
   canRemove,
   onRemove,
   removing,
   canReport,
   reported,
   onReport,
+  children,
 }: {
   post: ChatPost;
   /** Null for a removed member, and also while the name is still loading. */
   author: ChatAuthor | null;
-  number: number;
-  total: number;
+  /** Its place among the top-level posts still standing. Absent on a reply. */
+  number?: number;
+  total?: number;
+  /** A reply, drawn under its post: no number, no border of its own. */
+  nested?: boolean;
+  /** The reader's own standing post. */
+  canEdit: boolean;
+  /** The composer is in place of the words. */
+  editing: boolean;
+  onEdit: () => void;
+  /** Resolves to null once saved, or to the sentence to show. */
+  onSaveEdit: (body: string) => Promise<string | null>;
+  onCancelEdit: () => void;
+  /** Whether the reader may write in this room at all. */
+  canReply?: boolean;
+  onReply?: () => void;
   canRemove: boolean;
   onRemove: () => void;
   removing: boolean;
@@ -61,9 +110,22 @@ export function Post({
   /** Already handed over. The control stays, and says so, and does nothing. */
   reported: boolean;
   onReport: () => void;
+  /** The replies, as `<Post nested>` elements. */
+  children?: ReactNode;
 }) {
+  const name = author ? author.displayName : 'a former member';
+  const whose = canEdit ? 'your' : `${name}'s`;
+  const control =
+    'font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2';
+
   return (
-    <article className="mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]">
+    <article
+      className={
+        nested
+          ? 'mt-2.5 border-line border-l-2 pl-3'
+          : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]'
+      }
+    >
       <div className="flex items-center gap-2.5">
         {/* Decorative: the name is the next thing in the row, and the link to
             the profile is on the name. An avatar that is its own link has no
@@ -107,14 +169,29 @@ export function Post({
           <span className="block text-[0.78125rem] text-grey">{chatTime(post.createdAt)}</span>
         </span>
 
-        {/* The mock's `.pnum`, counted among the posts still standing. */}
-        <span className="flex-none font-bold text-[0.71875rem] text-grey">
-          {number}/{total}
-        </span>
+        {/* The mock's `.pnum`, counted among the top-level posts still
+            standing. A reply has no number. */}
+        {number !== undefined && total !== undefined ? (
+          <span className="flex-none font-bold text-[0.71875rem] text-grey">
+            {number}/{total}
+          </span>
+        ) : null}
       </div>
 
-      {/* whitespace-pre-line, so the paragraph breaks somebody typed survive. */}
-      {post.body ? (
+      {editing ? (
+        <Composer
+          placeholder="Your post"
+          sendLabel="Save your post"
+          sendOnEnter={false}
+          onSend={(body) => onSaveEdit(body)}
+          edit={{
+            initial: post.body,
+            allowEmpty: post.attachments.length > 0,
+            onCancel: onCancelEdit,
+          }}
+        />
+      ) : post.body ? (
+        // whitespace-pre-line, so the paragraph breaks somebody typed survive.
         <p className="mt-2 whitespace-pre-line text-[0.875rem] text-ink leading-[1.5]">
           <LinkedText text={post.body} />
         </p>
@@ -122,33 +199,66 @@ export function Post({
       {post.attachments.length > 0 ? (
         <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a former member'} />
       ) : null}
-
-      {canRemove ? (
-        <button
-          type="button"
-          onClick={onRemove}
-          disabled={removing}
-          data-target="small"
-          className="mt-2 font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
-        >
-          {removing ? 'Removing…' : 'Remove'}
-        </button>
-      ) : canReport ? (
-        reported ? (
-          // Not a disabled button. A disabled control is read out as one and
-          // invites a second try; this is a statement of what has happened.
-          <p className="mt-2 font-semibold text-[0.75rem] text-grey">Reported</p>
-        ) : (
-          <button
-            type="button"
-            onClick={onReport}
-            data-target="small"
-            className="mt-2 font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
-          >
-            Report
-          </button>
-        )
+      {post.editedAt && !editing ? (
+        <p className="mt-1 text-[0.78125rem] text-grey">Edited · {chatTime(post.editedAt)}</p>
       ) : null}
+
+      {editing ? null : (
+        <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1">
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="Edit your post"
+              data-target="small"
+              className={`${control} hover:text-navy`}
+            >
+              Edit
+            </button>
+          ) : null}
+          {canReply ? (
+            <button
+              type="button"
+              onClick={onReply}
+              aria-label={`Reply to ${whose} post`}
+              data-target="small"
+              className={`${control} hover:text-navy`}
+            >
+              Reply
+            </button>
+          ) : null}
+          {canRemove ? (
+            <button
+              type="button"
+              onClick={onRemove}
+              disabled={removing}
+              aria-label={`Remove ${whose} post`}
+              data-target="small"
+              className={`${control} hover:text-destructive`}
+            >
+              {removing ? 'Removing…' : 'Remove'}
+            </button>
+          ) : canReport ? (
+            reported ? (
+              // Not a disabled button. A disabled control is read out as one and
+              // invites a second try; this is a statement of what has happened.
+              <p className="font-semibold text-[0.75rem] text-grey">Reported</p>
+            ) : (
+              <button
+                type="button"
+                onClick={onReport}
+                aria-label={`Report ${name}'s post`}
+                data-target="small"
+                className={`${control} hover:text-destructive`}
+              >
+                Report
+              </button>
+            )
+          ) : null}
+        </div>
+      )}
+
+      {children}
     </article>
   );
 }

@@ -78,10 +78,12 @@ export interface PostRow {
   created_at: string;
   removed_at: string | null;
   removed_by_admin: boolean;
+  edited_at: string | null;
+  reply_to: string | null;
 }
 
 export const POST_COLUMNS =
-  'id, topic_id, author_id, body, attachments, created_at, removed_at, removed_by_admin';
+  'id, topic_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to';
 
 export function toPost(row: PostRow): ChatPost {
   return {
@@ -93,6 +95,8 @@ export function toPost(row: PostRow): ChatPost {
     createdAt: row.created_at,
     removedAt: row.removed_at,
     removedByAdmin: row.removed_by_admin,
+    editedAt: row.edited_at,
+    replyTo: row.reply_to,
   };
 }
 
@@ -379,6 +383,33 @@ export async function sendPost(
   if (error) return { ok: false, error: describeError(error, POST_REFUSALS) };
   if (!data) return { ok: false, error: 'The post was not saved.' };
   return { ok: true, value: toPost(data) };
+}
+
+/**
+ * Change the words of the reader's own post.
+ *
+ * `chat_edit_post` decides and refuses in a sentence: the author only, an
+ * administrator included — an administrator removes, and does not rewrite a
+ * member's words — and only while the post is standing and the room is open.
+ * The earlier version goes to chat_edits, where an administrator can read
+ * it; a blank body is refused unless the post has photographs, and an edit
+ * that changes nothing is refused so that "Edited" is never a lie. The
+ * composer stops the first two before sending; reaching them here means a
+ * second tab got there first.
+ */
+export async function editPost(postId: string, body: string): Promise<ChatWriteResult<null>> {
+  const { error } = await getSupabase().rpc('chat_edit_post', { post: postId, new_body: body });
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'Your edit was not saved.',
+        refused: 'You can only edit your own post.',
+        missing: 'This post is not there any more.',
+      }),
+    };
+  }
+  return { ok: true, value: null };
 }
 
 /**
