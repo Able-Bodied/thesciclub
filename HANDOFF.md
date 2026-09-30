@@ -42,6 +42,11 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    "Home, step 2b" below. Pushed to GitHub the same night, at the owner's
    word, both branches at 0be7f24 with `pnpm check` exiting 0 at that
    commit; `git log --oneline origin/main..HEAD` is empty.
+5. **Home step 3, Likes, is built and committed** (2026-09-30), and its
+   migration `20260930010000` is on the live database — the owner pushed it
+   on 2026-09-30 and `migration list --linked` shows 84 applied and none
+   pending. The client commits followed the push. **Not pushed to GitHub.**
+   See "Home, step 3" below.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -484,7 +489,110 @@ Owed and noticed, not changed:
   bullet under step 2).
 - A conversation with two messages sits at the bottom of a tall empty
   panel at 430, as it always has.
-- Step 3, Likes, is next, with the other migration.
+- Step 3, Likes, is built; see the next section.
+
+## Home, step 3 — built 2026-09-30, migration on the live database the same day
+
+Step 3, "Likes" — HOME-PLAN.md decision 4, likes with names shown to every
+member who can read the room. A Like button on a photograph's card on Home
+and on every post and reply in a topic; a count beside it once anybody has
+liked it; the count opens the list of who.
+
+**The order of release was kept.** The migration
+`20260930010000_a_member_likes_a_post.sql` and its probe
+`supabase/tests/chat-post-likes.sql` were committed first (`fb74a56`); the
+owner pushed the migration on 2026-09-30 after the dry run listed it alone;
+only then did the client land, four commits, each with `pnpm test`,
+`pnpm check` and `pnpm build` clean on its own (1,431 tests at the end):
+the likes library (`a8bfa5c`), the button and the list (`615188a`), the
+topic page (`10b510c`), Home (`6c7f6f5`). Not pushed to GitHub.
+
+The migration: one table, `chat_post_likes (post_id, member_id, liked_at)`,
+primary key on the pair, the row being the whole fact (the shape of
+`organization_follows`). One select policy — the post's room is readable
+(`chat_room_is_readable`), so a closed room's likes are invisible to a
+member as its posts are, and a suspended member still reads them. Insert:
+as yourself, `is_active_member()`, a standing post that is not your own, in
+a readable room. Delete: your own row. Insert granted by column
+`(post_id, member_id)`, no update grant, not in the realtime publication, no
+notification, no function. Removing a member or deleting a topic takes the
+likes by cascade.
+
+The client: `src/lib/chat/likes.ts` (`usePostLikes` — one read of
+`post_id, member_id` for the posts on screen, so the count and the names
+are the same rows; `likePost`, an insert with `ignoreDuplicates`;
+`unlikePost`), `src/routes/chat/like-button.tsx` (`LikeButton`,
+`LikesSheet`, and `PostLikes`, which both screens draw). The toggle is
+optimistic and put back with a sentence under the post if the write fails;
+a second tap on a post while its first write is in flight is ignored.
+Likes are not live: the topic page reads them again whenever it reads its
+posts.
+
+Where the build differs from the plan, on purpose:
+
+- **Controls are named for their post**, as step 2b's are: "Like Jan's
+  post", "Liked Jan's post. Press to take it back.", "3 likes on Jan's
+  post. Show who."; on Home, the topic's title in place of the post. The
+  owner chose this on 2026-09-30 over the plan's bare "Like".
+- **The thumb is solid navy when liked.** The mock fills it with a pale
+  tint, which on paper is next to invisible; the word carries the state
+  either way.
+- **`PostLikes` is the button, the count and the sheet together**, drawn
+  from `post.tsx` and `photo-card.tsx`, so neither screen wires the sheet
+  itself. The sheet is `fixed`, like the photograph viewer, because it opens
+  from inside a card or a post.
+- **Sentences the plan did not write:** the list's title "Who liked this",
+  and "Your like is still there." when taking a like back fails.
+- The plan's order of release said the dry run would also name
+  `20260929000000`; it was already live, and the list held the one file.
+
+Checked on the local stack (the dev server on 5183, confirmed pointing at
+127.0.0.1:54321): the new probe as signed-in members, all twelve steps as
+expected, and a rolled-back run with the policies loosened flipped steps 3,
+6 and 9. Every probe run twice, with and without the new table in the same
+rolled-back transaction: the outputs are identical but for one flaky step
+(below). All 29 run again on a throwaway second stack started fresh from
+every migration: 21 read exactly as expected, the new one among them; the
+other eight are older faults, below. In the app, by a Playwright script
+kept in the session's scratch folder, 31 checks: Alex replied to Sam's
+photograph and liked it; Jan liked it on Home (pressed at once, 2 likes,
+still there after a reload), opened the list (Alex then Jan, focus on the
+title, Tab kept inside, Escape closes, focus back on the count), found the
+same count and state in the topic, liked Alex's reply, opened its list,
+unliked the reply (no count drawn) and the photograph (1 like), and Home
+agreed; Sam saw no Like on their own photograph and the count still. axe
+clean on Home and the topic with the list open and closed. Screenshots at
+430, 1280 and `--text=larger`, all read; 320 wide with larger text, no
+sideways page scroll. **Not checked:** VoiceOver on a real iPhone;
+production.
+
+Owed and noticed, not changed:
+
+- **Eight probes do not read as expected even on a fresh database**, none
+  of it from Likes. Stale expectation text: `blocked-numbers.sql` step 10
+  (prints a uuid, not `INSERT 0 1`), `chat-groups.sql` step 14 (the evict is
+  a `DELETE 0`, not permission denied — the delete grant exists for
+  leaving), `photo-cleanup.sql` step 1 (three policies, not two; the extra
+  is the chat bucket's delete policy, `to public`, calling `is_admin()` —
+  worth a look), `restore-directory.sql` (expects 22 seeded, the seed has
+  23), `topic-removal-and-deletion.sql` step 4 (the names print in the other
+  order), `chat-member-removed.sql` step 4's note ("still counted" predates
+  `20260927030000`). Fixtures that tie on `now()`, so the answer flips
+  between runs: `chat-posts.sql` steps 10 and 10d, `chat-member-removed.sql`
+  step 4. And `claim-preview.sql` step 1 cannot fail: its subquery reads
+  `invites` as a non-member, which RLS answers with nothing.
+- **A probe with several transactions must not be wrapped in one.**
+  `claim-carries-profile.sql` has three; stripping their `begin;` to wrap
+  the file committed its second and third blocks to the local database
+  (two test members and their invites, removed by the owner afterwards).
+- On a local stack with rooms opened and topics written, the unscoped counts
+  in `chat-rooms.sql`, `chat-posts.sql`, `chat-direct.sql` and others read
+  wrong while the policies hold. A fresh stack is the fair reading: copy
+  `supabase/` elsewhere, change `project_id` and the ports, `supabase start
+  --workdir` it.
+- Locally, Alex's avatar is a broken image (the photo path has no file in
+  local storage). Local data only.
+- Step 4, "Filter your feed", is next. It has no migration.
 
 ## A photograph from an iPhone was refused — fixed 2026-09-29
 
@@ -535,7 +643,8 @@ the fix.
   (see "Next up: the owner's call").
 - **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
   on 2026-09-29). Steps 1, 2 and 2b are live; see the three sections
-  above. Step 3, Likes, is next.
+  above, and step 3 (Likes) is built with its migration live — not yet on
+  GitHub. Step 4, Filter your feed, is next.
 
 ## Standing rules this session learned
 
@@ -938,6 +1047,7 @@ Two rules, both learned the hard way:
 | `chat-posts.sql` | that a member who has joined nothing reads a room's whole history **and writes in it** (step 1 inverted on 2026-09-29 with `20260930000000`), that a suspended one reads and does not write, that an administrator seeds a closed room and a member cannot post in one, that an author and an administrator can remove a post and a third member cannot, and that nobody sees which rooms another member joined or which topics they have read |
 | `chat-edits.sql` | `20260930000000`: the author edits their post and message; another member cannot; an administrator cannot edit but reads every earlier version (step 3); a member reads none of `chat_edits`, their own included (step 4); removed, unchanged, blank-without-photographs, too long and closed-room edits are refused; deleting the topic takes its edits with it (step 12) |
 | `chat-replies.sql` | `20260930000000`: a reply lands under a post in the same topic; another topic, a missing id, a removed post and a reply to a reply are refused (step 3); removing the parent leaves the reply standing with `reply_to` null, still counted (step 5); a message quotes one in its thread, may quote a quote, cannot quote across threads or a removed one, and an existing quote of a removed message stays |
+| `chat-post-likes.sql` | `20260930010000`: a member likes a post in an open room having joined nothing, twice is one row, not their own, not as somebody else, cannot choose `liked_at`; step 6 (a closed room's likes can be neither made nor read by a member — an administrator reads them) and 7 (another member, and the author, read who liked a post) matter most; paused cannot like but reads, a removed post cannot be liked, somebody else's like cannot be deleted, removing a member and deleting a topic take the likes, `anon` reads nothing |
 | `chat-direct.sql` | that a third member sees nothing of a conversation — not the thread, not its roster, not a word of it, and nor does an administrator — that opening the same one twice from either end returns the same thread, that a hidden or suspended member cannot be found to start one while a conversation that already exists still opens, and that a member cannot reach the thread tables around the functions |
 | `chat-groups.sql` | that somebody outside a group cannot add to it, that leaving one stops every read including the words written while they were in it, that an RSVP of Interested does not open the event's group chat, that a group has an order and a cap, and that an event's group takes no members by hand |
 | `chat-member-removed.sql` | that ending a membership is not blocked by anything Chat added, that what they wrote in rooms and conversations stays without their name, that what they joined and read goes with them, and that the other half of a direct conversation can still read it |

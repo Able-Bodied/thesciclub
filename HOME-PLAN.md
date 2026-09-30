@@ -2,14 +2,14 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: steps 1 and 2 are built and live on production since
-2026-09-29. Step 2b is built and committed** (2026-09-29): its migration
-`20260930000000` is on the live database, its client commits followed the
-push in the order below, and all of it is on GitHub and live since
-2026-09-29. Next is step 3, Likes, with the other migration.
-HANDOFF.md, "Home, step 1", "Home, step 2" and "Home, step 2b", say where
-the build departed from this plan and why; read them first, because those
-departures stand.
+**Where it stands: steps 1, 2 and 2b are built and live on production
+since 2026-09-29. Step 3, Likes, is built and committed** (2026-09-30): its
+migration `20260930010000` is on the live database (the owner pushed it on
+2026-09-30), and its client commits followed the push. Step 3 is **not yet
+on GitHub**, so not yet live in the app. Next is step 4, Filter your feed,
+which has no migration. HANDOFF.md, "Home, step 1", "Home, step 2", "Home,
+step 2b" and "Home, step 3", say where the build departed from this plan
+and why; read them first, because those departures stand.
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request
