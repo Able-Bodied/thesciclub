@@ -16,6 +16,7 @@ import DevLoginPage from '@/routes/dev-login/page';
 import EventDetailPage from '@/routes/events/event-detail';
 import OrganizationDetailPage from '@/routes/events/organization-detail';
 import EventsPage from '@/routes/events/page';
+import HomeNewPage from '@/routes/home/new';
 import HomePage from '@/routes/home/page';
 import InvitesPage from '@/routes/invites/page';
 import MePage from '@/routes/me/page';
@@ -67,6 +68,7 @@ function AppShell() {
       <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
         <Routes>
           <Route path="/home" element={<HomePage />} />
+          <Route path="/home/new" element={<HomeNewPage />} />
           <Route path="/peers" element={<PeersPage />} />
           <Route path="/peers/:id" element={<MemberDetailPage />} />
           <Route path="/chat" element={<ChatPage />} />
