@@ -2,18 +2,22 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: steps 1, 2, 2b and 3 are built and live on production**
+**Where it stands: steps 1, 2, 2b, 3 and 3b are built and on GitHub**
 (steps 1, 2 and 2b on 2026-09-29; step 3, Likes, on 2026-09-30, its
-migration `20260930010000` on the live database first). **Step 3b is built
-and committed, not on GitHub** (2026-09-30): all 30 probes read as expected
-on a fresh stack, its migration `20260930030000` is on the live database,
-and every topic card on Home has Like. **Next is step 4**, Filter your
-feed. HANDOFF.md, "Home, step 1", "Home, step 2", "Home, step 2b", "Home,
-step 3" and "Home, step 3b", say where the build departed from this plan
-and why; read them first, because those departures stand. Two from 3b:
-the Like buttons on a topic card are `relative` without `z-10` (the plan's
+migration `20260930010000` on the live database first; step 3b the same
+day, its migration `20260930030000` live first). **Step 4, Filter your
+feed, is built and committed, not on GitHub** (2026-09-30; no migration).
+**Next is step 5**, Home is the first screen. HANDOFF.md, "Home, step 1"
+through "Home, step 4", say where the build departed from this plan and
+why; read them first, because those departures stand. Two from 3b: the
+Like buttons on a topic card are `relative` without `z-10` (the plan's
 `z-10` on the row trapped the likes list under the tab bar), and the
 photos bucket's member delete policy stays `{public}` (the owner's call).
+Three from 4: the filter narrows the list a pill drew (so Everything's
+four events are all it can narrow), a chip that is on is always offered,
+and Online is a flag of its own. Step 4 also found that
+`FilterSheetShell` moves no focus, on every screen that uses it; fixing
+it is the owner's call.
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request

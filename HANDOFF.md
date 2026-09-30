@@ -55,12 +55,17 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    said to push the code: both branches on GitHub at `5be5087`, gated on
    `pnpm check` exiting 0 there, and Netlify's deploy of it reads ready. See
    "Group names and pictures" below.
-7. **Home step 3b is built and committed** (2026-09-30), and **not on
-   GitHub**: the probes read as expected again (all 30, on a fresh stack),
-   the chat bucket's storage policies name `authenticated`
-   (`20260930030000`, on the live database — the owner pushed it on
-   2026-09-30 and `migration list --linked` shows 85 applied, none
-   pending), and every topic card on Home has Like. See "Home, step 3b".
+7. **Home step 3b is built and on GitHub** (2026-09-30): the probes read
+   as expected again (all 30, on a fresh stack), the chat bucket's storage
+   policies name `authenticated` (`20260930030000`, on the live database —
+   the owner pushed it on 2026-09-30 and `migration list --linked` shows 85
+   applied, none pending), and every topic card on Home has Like. Both
+   branches on `origin` were at `41db25e` when step 4 began. See "Home,
+   step 3b".
+8. **Home step 4, Filter your feed, is built and committed** (2026-09-30),
+   **not on GitHub**. No migration, so it releases with a push alone. See
+   "Home, step 4". It found that **`FilterSheetShell` moves no focus** —
+   on Home, Events and Peers — which is the owner's call to fix.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -687,6 +692,86 @@ VoiceOver, production.
 Noticed, not changed: the accessible name reads "3 likes on Morning or
 evening routine?. Show who." — a title ending in a question mark gets a
 full stop after it. The plan's wording, and the photo card's since step 3.
+
+## Home, step 4 — built 2026-09-30, not pushed
+
+HOME-PLAN.md step 4, "Filter your feed". No migration. Three commits, each
+with `pnpm test` (1,498 at the end), `pnpm check` and `pnpm build` clean:
+the rules (`066f38b`), the sheet (`128dd3a`), the page (`ef42789`).
+
+- **`src/routes/home/filters.ts`**, pure: `roomsOf` and `cityOf` say what
+  one card belongs to, `matchesFeedFilters` keeps or drops it, `roomsIn`
+  and `placesIn` build the chips from a list, `chipsFor` is what the sheet
+  draws, `activeFilterCount`, `toggleFeedFilter`, `openRoomsById`. What
+  matches is the plan's table: a topic or photograph by its own room, and
+  by its author's city only when the author is in Peers (`browse_members`
+  on Home, already read for People); an event in Adaptive sport only when
+  `isSport` and only while that room is open, and Online by `isOnline`
+  (hybrid counts); a member in every open room `roomsForTopics` names, and
+  their city. Within a group a choice widens, across groups it narrows.
+  Rooms come from the open rooms something in the list belongs to — no
+  membership, since step 2b there is none.
+- **`src/routes/home/filter-sheet.tsx`** on `FilterSheetShell`: Rooms in
+  Chat's order, then Where (cities most common first, Online last), then
+  the mock's note. `--ink2` on `--gold-lt` for the note, a new pair in
+  `theme-contrast.test.ts` (Events' note is a hex; not copied).
+- **The page**: Events' 38px button with the gold dot and "Filters, 2
+  active"; filters in component state, so they carry across pills and a
+  visit starts with none.
+
+Where the build differs from the plan, or says what the plan did not:
+
+- **The filter narrows the list a pill drew**, after `inSegment`, not the
+  sources before the mix. So "2 of 8 match" is two of the eight cards on
+  screen. The cost: Everything mixes in four events at most, so a city can
+  show one event on Everything and three on Events. The mock does the same.
+- **The summary's second number is the pill's list**, not the whole feed
+  as in the mock ("6 of 28" on Everything, "0 of 7" on Events).
+- **A chip that is on is always offered**, even on a pill where nothing
+  matches it. The plan's "only offered if something would match" would
+  otherwise hide a chosen city on a pill it empties, leaving Clear as the
+  only way to turn it off.
+- **Online is a flag**, not a string among the cities, so a member whose
+  city reads "Online" is not an online event.
+- **With a city chosen, Topics and Photos wait for the members read**, as
+  a topic is placed by its author's city; otherwise they drew "Nothing
+  matches" and then filled in.
+- **Sentences the plan did not write:** "1 of 31 matches" (singular), and
+  "Nothing in this list has a room or a place to narrow by." when a pill
+  offers no chip at all.
+
+Checked on the local stack (the dev server on 5183, confirmed by fetching
+`src/lib/supabase.ts` from it to inline `http://127.0.0.1:54321` and the
+local key), by Playwright scripts in the session's scratch folder, signed
+in as Jan (a member), with the Adaptive sport room opened and four sport
+events tagged locally for the look and **put back afterwards** (room closed,
+`event_tags` empty again, as it was). At 430 and 1280, two pairs —
+Bowel management + San Jose, Adaptive sport + San Francisco — on all five
+pills: every pill narrowed, the sheet's first number equalled the cards
+behind it and its second the unfiltered pill (6 of 28, 5 of 14, 1 of 7,
+0 of 7, 0 of 6; 2 of 28, 0, 0, 3 of 7, 1 of 6), every card kept was one
+from before, an empty pill said "Nothing matches that yet. Try fewer
+filters.", and Clear gave back each pill card for card. 71 checks, none
+failed. As Alex, the administrator, no closed room is ever a chip. axe
+clean on the open sheet, two filtered lists and four empty filtered pills.
+Screenshots at 430, 1280 and `--text=larger` at 430, 1280 and 320, read;
+no sideways page scroll with the sheet open. Tests: 23 for the rules, 8 for
+the sheet, 6 on the page; two sabotages of the rules and two of the page
+(drawing the unfiltered list; not waiting for members) each failed them. **Not checked:** VoiceOver, production.
+
+**Needs the owner — the filter sheet moves no focus, here and on Events
+and Peers.** "What is next for accessibility", item 2, says
+`filter-sheet-shell.tsx` does it right; it does not. It has `role="dialog"`,
+`aria-modal`, Escape and the backdrop, but opening it leaves focus on the
+Filters button behind it, Tab walks the page behind the backdrop, and
+closing does not put focus back. Measured on Home as Jan: **85 Tab presses
+after Enter on Filters to reach the first chip.** The fix is one change in
+the shell — focus the title on open, keep Tab inside, return focus to the
+button on close, the pattern `report-sheet.tsx` and the likes list use —
+and it changes all three sheets, so it was not made in step 4.
+
+Noticed, not changed: the filter button is now written three times
+(Peers at 34px, Events and Home at 38px).
 
 ## Group names and pictures — built 2026-09-30, live the same day
 
@@ -1912,7 +1997,8 @@ a migration except the fourth.
    `aria-modal`, no focus trap, so Tab walks out of the picture into the chat
    behind it and a screen reader is never told a viewer opened. The two
    sheets already do it right — `filter-sheet-shell.tsx` and
-   `report-sheet.tsx` are the pattern. Focus must return to the tile that
+   `report-sheet.tsx` are the pattern. (Not the first: 2026-09-30 found
+   the filter shell moves no focus at all; see "Home, step 4".) Focus must return to the tile that
    opened it when it closes.
 3. **Write a profile photograph's alt text.** `members.photo_alt` exists and
    every avatar reads it; nothing sets it. One field on the details form
