@@ -34,12 +34,15 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    brand", not the logo alone — with Atkinson Hyperlegible Next for reading
    text, because accessibility comes first here.
 
-**Nothing from these days is pushed.** Twenty-seven commits sit on
-`scaffold-and-peers-deck` ahead of `origin` (check with `git log --oneline
-origin/main..HEAD`), Home steps 1 and 2 among them; only the tag
-`brand-before-outfit` is on GitHub. 1,330 tests pass and `pnpm check` is
-clean. The owner has not yet said to push, and
-said on 2026-09-29 they will work on Twilio and the logins later.
+**Pushed, at the owner's word, on 2026-09-29:** first the brand alone
+(`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
+(`1693c8e`..this commit), each gated on `pnpm check` exiting 0 at the exact
+commit pushed. Both branches on `origin` sit at the same commit; check with
+`git log --oneline origin/main..HEAD`, which should be empty. **The
+`20260929000000` migration is on `main` but not on the live database** — the
+client does not need it, and the owner runs `db push`. 1,330 tests pass and
+`pnpm check` is clean. The owner said on 2026-09-29 they will work on Twilio
+and the logins later.
 
 ## Security — open, do these first
 
@@ -216,7 +219,7 @@ Each has its own section further down; this is the index.
 - **The Netlify CLI** is a devDependency (needs `--filter thesciclub`); the
   Supabase CLI is 2.118.0.
 
-## Supabase's security email, 2026-09-27 — fixed in `20260929000000`, not pushed
+## Supabase's security email, 2026-09-27 — fixed in `20260929000000`, on `main`, not yet on the live database
 
 Supabase's advisor flagged `auth_users_exposed`: `admin_invites` joined
 `auth.users` to show whether an invited number has signed up. **Nothing leaked**
@@ -233,7 +236,7 @@ on 2026-09-29 listed exactly this one migration. The client does not depend on
 it, so it can go before or after the code. The advisor's warning should clear
 on its next scan.
 
-## Home, step 1 — built 2026-09-29, not pushed
+## Home, step 1 — built 2026-09-29, pushed the same day
 
 The plan is `HOME-PLAN.md` at the repo root (untracked; the owner's seven
 decisions are in it). Step 1, "Home reads", is done: `/home` lists recent
@@ -281,7 +284,7 @@ Owed and noticed, not changed:
   1 view") and an event card's "1 going · 0 interested".
 - Step 2 is built; see the next section.
 
-## Home, step 2 — built 2026-09-29, not pushed
+## Home, step 2 — built 2026-09-29, pushed the same day
 
 Step 2, "Asking and sharing from Home", is done. No migration, so it
 releases with a push alone, like step 1. A member who has never opened Chat
