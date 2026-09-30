@@ -49,8 +49,8 @@ values
   ('99999999-9999-0000-0000-000000000007', 'mentor', 'active',    'Admin A',    '19990009007', '1986-01-01', 'T1–T6', 'CA', true, true);
 update public.chat_rooms set opened_at = now() where id = 'bowel';
 update public.chat_rooms set opened_at = null where id = 'skin';
-insert into public.chat_room_members (room_id, member_id)
-values ('bowel', 'aaaaaaaa-9999-0000-0000-000000000001');
+-- Nobody joins bowel: writing needs no membership since 20260930000000, and
+-- step 11 is the one that used to depend on Ada having joined.
 insert into public.chat_topics (id, room_id, title, author_id)
 values ('11111111-9999-0000-0000-00000000a001', 'bowel', 'What fits in a rucksack',
         'aaaaaaaa-9999-0000-0000-000000000001');
@@ -187,7 +187,7 @@ set local role authenticated;
 
 \echo ''
 \echo '== 11. a topic starts with photographs on its first post =='
-\echo '   expect: 2, as Ada, who has joined bowel.'
+\echo '   expect: 2, as Ada, who has joined nothing (20260930000000).'
 set local request.jwt.claims = '{"sub":"aaaaaaaa-9999-0000-0000-000000000001","role":"authenticated"}';
 select public.chat_create_topic('bowel', 'With pictures', 'Here they are.',
                                 array['rooms/bowel/p1.webp', 'rooms/bowel/p2.webp']) as topic \gset

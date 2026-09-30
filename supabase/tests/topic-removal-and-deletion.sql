@@ -29,10 +29,7 @@ values
 
 insert into public.chat_rooms (id, name, description, category, sort_order, opened_at)
 values ('probe-room-3', 'Probe room 3', 'For the probe.', 'Life', 996, now());
--- Writing in a room takes joining it.
-insert into public.chat_room_members (room_id, member_id) values
-  ('probe-room-3', 'aaaaaaaa-7777-0000-0000-00000000000a'),
-  ('probe-room-3', 'bbbbbbbb-7777-0000-0000-00000000000b');
+-- Nobody joins it: writing needs no membership since 20260930000000.
 
 -- chat_create_topic as the starter, so the topic is born the real way.
 select set_config('request.jwt.claims',

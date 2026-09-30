@@ -10,10 +10,14 @@
 --
 -- Three steps carry the feature and are marked in place:
 --
+--   1  — a member who has joined nothing writes in an open room. Inverted on
+--         2026-09-29 (20260930000000): until then this step was "post before
+--         joining is refused", and joining is gone at the owner's word.
 --   4  — an un-joined member reads the whole history. That is the sentence
---         /chat prints, and it is the one thing a membership must not gate.
+--         /chat prints, and reading never depended on joining.
 --   8  — a member cannot see that another member has joined a room or read a
---         topic. The member count is published; the names behind it are not.
+--         topic. The rows are history now and the table stays; so does the
+--         rule that nobody else reads them.
 --   12 — a closed room's topics are invisible to a member. chat_topics_for() is
 --         security definer, so RLS is off inside it and its own first line is
 --         the only thing between a member and a room nobody has opened.
@@ -55,19 +59,11 @@ select current_user, auth.uid()::text as uid,
        public.is_member() as a_member, public.is_admin() as admin;
 
 \echo ''
-\echo '== 1. before joining, a member may not start a topic =='
-\echo '   expect: f, then ERROR (new row violates row-level security policy).'
-select public.chat_can_post_in('bowel') as may_post;
-savepoint post_before_joining;
-select public.chat_create_topic('bowel', 'Can I post yet', 'Apparently not.');
-rollback to savepoint post_before_joining;
-
-\echo ''
-\echo '== 2. joining an open room, then starting a topic =='
-\echo '   expect: INSERT 0 1, then t, then a uuid.'
-insert into public.chat_room_members (room_id, member_id)
-values ('bowel', 'aaaaaaaa-3333-0000-0000-000000000001');
-select public.chat_can_post_in('bowel') as may_post;
+\echo '== 1. THE STEP: a member who has joined nothing starts a topic in an open room =='
+\echo '   expect: 0 memberships | t may_post, then a uuid. Until 20260930000000'
+\echo '   this step was the refusal; the owner reopened it on 2026-09-29.'
+select (select count(*) from public.chat_room_members) as memberships,
+       public.chat_can_post_in('bowel') as may_post;
 select public.chat_create_topic(
   'bowel',
   'Travelling with a bowel programme',
@@ -75,7 +71,7 @@ select public.chat_create_topic(
 ) as topic_id \gset
 
 \echo ''
-\echo '== 3. the topic carries its first post, and the counters start at zero =='
+\echo '== 2. the topic carries its first post, and the counters start at zero =='
 \echo '   expect: 1 post | 0 replies, and last_post_at equal to the post time.'
 select t.reply_count,
        (select count(*) from public.chat_posts p where p.topic_id = t.id) as posts,
@@ -86,7 +82,7 @@ select t.reply_count,
 \echo ''
 \echo '== 4. a member who never joined reads the whole thing =='
 \echo '   THE STEP THAT MATTERS. /chat promises "the whole history from before'
-\echo '   you joined". expect: 0 memberships | 1 topic | 1 post | f may_post.'
+\echo '   you joined". expect: 0 memberships | 1 topic | 1 post | t may_post.'
 savepoint onlooker_reads;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"cccccccc-3333-0000-0000-000000000003","role":"authenticated"}';
@@ -97,19 +93,16 @@ select (select count(*) from public.chat_room_members) as my_memberships,
        public.chat_can_post_in('bowel') as may_post;
 
 \echo ''
-\echo '== 5. ...and cannot post into it =='
-\echo '   expect: ERROR, new row violates row-level security policy.'
-savepoint onlooker_posts;
+\echo '== 5. ...and replies in it, still having joined nothing =='
+\echo '   expect: INSERT 0 1, then 1 reply. Inverted with step 1.'
 insert into public.chat_posts (topic_id, author_id, body)
-values (:'topic_id', 'cccccccc-3333-0000-0000-000000000003', 'Chiming in uninvited.');
-rollback to savepoint onlooker_posts;
+values (:'topic_id', 'cccccccc-3333-0000-0000-000000000003', 'Chiming in, no join needed.');
+select reply_count from public.chat_topics where id = :'topic_id';
 
 \echo ''
-\echo '== 5b. ...nor pass somebody else off as the author =='
+\echo '== 5b. ...but cannot pass somebody else off as the author =='
 \echo '   expect: ERROR. author_id = auth.uid() is half of the insert check.'
 savepoint onlooker_forges;
-insert into public.chat_room_members (room_id, member_id)
-values ('bowel', 'cccccccc-3333-0000-0000-000000000003');
 insert into public.chat_posts (topic_id, author_id, body)
 values (:'topic_id', 'aaaaaaaa-3333-0000-0000-000000000001', 'Not my words.');
 rollback to savepoint onlooker_forges;
@@ -117,18 +110,15 @@ rollback to savepoint onlooker_reads;
 
 \echo ''
 \echo '== 6. a suspended member reads and does not write =='
-\echo '   expect: t a_member | f active | 1 topic, then ERROR on the join and'
-\echo '   ERROR on the post. Reading is not what suspension takes away.'
+\echo '   expect: t a_member | f active | 1 topic | f may_post, then ERROR on'
+\echo '   the post. Reading is not what suspension takes away.'
 savepoint suspended;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-3333-0000-0000-000000000004","role":"authenticated"}';
 set local role authenticated;
 select public.is_member() as a_member, public.is_active_member() as active,
-       (select count(*) from public.chat_topics where room_id = 'bowel') as topics;
-savepoint suspended_joins;
-insert into public.chat_room_members (room_id, member_id)
-values ('bowel', 'dddddddd-3333-0000-0000-000000000004');
-rollback to savepoint suspended_joins;
+       (select count(*) from public.chat_topics where room_id = 'bowel') as topics,
+       public.chat_can_post_in('bowel') as may_post;
 savepoint suspended_posts;
 insert into public.chat_posts (topic_id, author_id, body)
 values (:'topic_id', 'dddddddd-3333-0000-0000-000000000004', 'Still here.');
@@ -167,9 +157,12 @@ select unread, view_count from public.chat_topics_for('bowel');
 \echo '   THE STEP THAT MATTERS. Which rooms somebody joined — "Sex, dating &'
 \echo '   fertility" is one of the twelve — is a statement about them they did'
 \echo '   not make to the room. expect: 0 | 0 from the onlooker, who has joined'
-\echo '   nothing and read nothing, against a table holding rows for two others.'
+\echo '   nothing and read nothing, against a table holding a row for somebody'
+\echo '   else. Nobody joins any more; the row is put there as history.'
 savepoint privacy;
 set local role postgres;
+insert into public.chat_room_members (room_id, member_id)
+values ('bowel', 'aaaaaaaa-3333-0000-0000-000000000001');
 select count(*) as memberships_in_table from public.chat_room_members;
 select count(*) as reads_in_table from public.chat_topic_reads;
 set local request.jwt.claims = '{"sub":"cccccccc-3333-0000-0000-000000000003","role":"authenticated"}';
@@ -179,7 +172,9 @@ select count(*) as reads_i_can_see from public.chat_topic_reads;
 
 \echo ''
 \echo '== 8b. ...but the count of them is published =='
-\echo '   expect: 1 topic | 2 posts | 1 member. Counts, never names.'
+\echo '   expect: 1 topic | 2 posts | 1 member. Counts, never names. The'
+\echo '   member count is still in the view for an older client; nothing'
+\echo '   draws it since 20260930000000.'
 select topic_count, post_count, member_count
   from public.chat_room_stats where room_id = 'bowel';
 rollback to savepoint privacy;
@@ -277,8 +272,8 @@ select public.chat_create_topic(
 \echo '   THE STEP THAT MATTERS. chat_topics_for() is security definer, so RLS'
 \echo '   is off inside it; its first line is the only thing between a member'
 \echo '   and a room nobody has opened. expect: f readable | 0 topics | 0 rows'
-\echo '   from chat_topics_for | 0 rows from chat_room_stats | ERROR on marking'
-\echo '   its topic read.'
+\echo '   from chat_topics_for | 0 rows from chat_room_stats | f may_post |'
+\echo '   ERROR on marking its topic read | ERROR on replying in it.'
 savepoint closed_room;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"aaaaaaaa-3333-0000-0000-000000000001","role":"authenticated"}';
@@ -286,14 +281,15 @@ set local role authenticated;
 select public.chat_room_is_readable('bladder') as readable,
        (select count(*) from public.chat_topics where room_id = 'bladder') as topics_via_table,
        (select count(*) from public.chat_topics_for('bladder')) as topics_via_function,
-       (select count(*) from public.chat_room_stats where room_id = 'bladder') as stats_rows;
+       (select count(*) from public.chat_room_stats where room_id = 'bladder') as stats_rows,
+       public.chat_can_post_in('bladder') as may_post;
 savepoint mark_closed;
 select public.chat_mark_topic_read(:'seeded_topic');
 rollback to savepoint mark_closed;
-savepoint join_closed;
-insert into public.chat_room_members (room_id, member_id)
-values ('bladder', 'aaaaaaaa-3333-0000-0000-000000000001');
-rollback to savepoint join_closed;
+savepoint post_in_closed;
+insert into public.chat_posts (topic_id, author_id, body)
+values (:'seeded_topic', 'aaaaaaaa-3333-0000-0000-000000000001', 'Into a room I cannot see.');
+rollback to savepoint post_in_closed;
 rollback to savepoint closed_room;
 
 \echo ''
