@@ -389,10 +389,13 @@ Two faults, both older than Home, one behind the other:
    provoked from the local stack and the hosted project, and a sabotage run
    showed four tests fail without the fix.
 
-Chromium is unchanged (webp as before). **Not checked on a real iPhone** —
-Playwright has no WebKit here — so the owner's phone is the test: a
-photograph on a topic, and one in a conversation. If it still fails there,
-the sentence will at least now say why.
+Chromium is unchanged (webp as before). **Checked on the owner's iPhone,
+2026-09-29, after the deploy**: a photograph went onto a topic, and the live
+bucket holds it at `rooms/…/….jpg`, `image/jpeg`, 843KB — the JPEG path,
+since a phone cannot write webp, and the first file `chat/rooms/` had ever
+received. Playwright has no WebKit here, so the phone stays the only test of
+this path; a conversation photograph from a phone has not been tried since
+the fix.
 
 ## Still open
 
