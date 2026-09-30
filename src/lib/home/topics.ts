@@ -22,6 +22,12 @@ import { getSupabase } from '@/lib/supabase';
  * topic whose question was taken down would present its first reply as the
  * question.
  *
+ * The first reply on a card is the earliest standing post after the opener
+ * that answers the topic and not another post — `replyTo` null. Since
+ * 20260930000000 a post can sit under another (a reply to an answer); those
+ * belong to the answer they are under, and a card that quoted one would put
+ * half a side-conversation under the title.
+ *
  * ---------------------------------------------------------------------------
  * When this should become one SQL function
  * ---------------------------------------------------------------------------
@@ -84,8 +90,9 @@ function byPostTime(a: ChatPost, b: ChatPost): number {
  *
  * Pure, so the rules that matter are tested without a database: a topic in a
  * room that is not open is dropped; the opening post is the earliest row even
- * when it has been removed; the first reply is the earliest standing post
- * after it; and a photo topic is one whose opening post has a photograph.
+ * when it has been removed; the first reply is the earliest standing
+ * top-level post after it; and a photo topic is one whose opening post has a
+ * photograph.
  */
 export function toHomeTopics(
   topics: readonly HomeTopicSummary[],
@@ -111,7 +118,8 @@ export function toHomeTopics(
       const list = [...(byTopic.get(topic.id) ?? [])].sort(byPostTime);
       const first = list[0];
       const opening = first?.removedAt === null ? first : null;
-      const firstReply = list.slice(1).find((post) => post.removedAt === null) ?? null;
+      const firstReply =
+        list.slice(1).find((post) => post.removedAt === null && post.replyTo === null) ?? null;
       return [
         {
           ...topic,
