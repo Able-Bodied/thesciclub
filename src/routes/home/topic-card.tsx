@@ -4,6 +4,7 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
+import { PostLikes } from '@/routes/chat/like-button';
 
 /**
  * A topic on Home, from the mock's `qCard`.
@@ -23,6 +24,22 @@ import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
  * time focus reached it. The rest is read as ordinary text.
  *
  * ---------------------------------------------------------------------------
+ * Like sits above the stretched link, and nothing else does
+ * ---------------------------------------------------------------------------
+ * HOME-PLAN.md step 3b: Like on every topic card, liking the opening post as
+ * the photo card does. The link's pseudo-element covers the card, so a button
+ * under it cannot be pressed — the tap lands on the link and opens the topic.
+ * The two buttons are `relative`, which paints them after the pseudo-element
+ * (positioned boxes paint in document order) and so on top of it. Not the row
+ * around them: its gaps and the reply count should still open the topic.
+ *
+ * Not the plan's `relative z-10` on the row. A z-index makes a stacking
+ * context, and the list of who liked it is a `fixed` sheet drawn inside the
+ * row, by `PostLikes`: trapped at z-10, it opened under the tab bar and under
+ * the next card's buttons, which covered its Close (seen in a browser,
+ * 2026-09-30). Plain `relative` makes none.
+ *
+ * ---------------------------------------------------------------------------
  * No count of zero
  * ---------------------------------------------------------------------------
  * "No replies yet." is information about a question somebody asked. "0
@@ -33,6 +50,7 @@ export function TopicCard({
   starter,
   replier,
   linkState,
+  likes,
 }: {
   topic: HomeTopic;
   /** Null for a former member, and while the name is still loading. */
@@ -40,8 +58,11 @@ export function TopicCard({
   replier: ChatAuthor | null;
   /** Router state for the topic page, so its back link can say Home. */
   linkState: unknown;
+  /** Who likes the opening post, or nothing while the likes load. */
+  likes?: CardLikes | undefined;
 }) {
   const reply = topic.firstReply;
+  const opening = topic.opening;
 
   return (
     <article className="relative rounded-[17px] border border-line bg-paper p-3.5">
@@ -88,13 +109,40 @@ export function TopicCard({
         </div>
       ) : null}
 
-      <p className="mt-2.5 font-semibold text-[0.78125rem] text-navy">
-        {topic.replyCount > 0
-          ? `${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'}`
-          : 'No replies yet.'}
-      </p>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {opening && likes ? (
+          <PostLikes
+            likedBy={likes.likedBy}
+            readerId={likes.readerId}
+            what={topic.title}
+            onToggle={likes.onToggle}
+            linkState={linkState}
+            // `relative` is what lets them be pressed. See the header.
+            className="relative min-h-[2.25rem] text-[0.8125rem]"
+          />
+        ) : null}
+        <p className="font-semibold text-[0.78125rem] text-navy">
+          {topic.replyCount > 0
+            ? `${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'}`
+            : 'No replies yet.'}
+        </p>
+      </div>
+      {opening && likes?.failure ? (
+        <p role="alert" className="mt-1 text-[0.78125rem] text-destructive leading-[1.45]">
+          {likes.failure}
+        </p>
+      ) : null}
     </article>
   );
+}
+
+/** What a card's Like needs: the topic page's posts take the same. */
+export interface CardLikes {
+  likedBy: readonly string[];
+  /** The reader, or null on their own topic, where only the count is drawn. */
+  readerId: string | null;
+  onToggle: () => void;
+  failure: string | null;
 }
 
 /**

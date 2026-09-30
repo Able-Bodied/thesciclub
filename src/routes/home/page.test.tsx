@@ -175,7 +175,7 @@ beforeEach(() => {
     summary({ id: 'closed', roomId: 'skin', title: 'Seeded in a closed room' }),
   ];
   db.posts = [
-    makePost({ topicId: 'plain', body: 'Evenings for six years.' }),
+    makePost({ id: 'plain-opening', topicId: 'plain', body: 'Evenings for six years.' }),
     makePost({
       id: 'photo-opening',
       topicId: 'photo',
@@ -206,9 +206,9 @@ beforeEach(() => {
 });
 
 describe('likes on Home', () => {
-  it('asks for the likes of the photographs’ opening posts, and nothing else', () => {
+  it('asks for the likes of every opening post on Home, and nothing else', () => {
     renderPage();
-    expect(db.likesAskedFor.at(-1)).toEqual(['photo-opening']);
+    expect([...(db.likesAskedFor.at(-1) ?? [])].sort()).toEqual(['photo-opening', 'plain-opening']);
   });
 
   it('likes a photograph from its card, and counts it', async () => {
@@ -221,9 +221,14 @@ describe('likes on Home', () => {
     expect(db.liked).toEqual(['photo-opening']);
   });
 
-  it('offers no Like on a topic card, which has no photograph', () => {
+  it('likes a topic from its card, and counts it', async () => {
+    db.likes = new Map([['plain-opening', ['kerry']]]);
     renderPage('/home?segment=topics');
-    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: '1 like on Morning or evening routine?. Show who.' }),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Like Morning or evening routine?' }));
+    expect(db.liked).toEqual(['plain-opening']);
   });
 });
 

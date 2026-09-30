@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { TopicCard } from '@/routes/home/topic-card';
 import { makeHomeTopic, makePost, makeRoom } from '@/test/factory';
@@ -107,5 +107,82 @@ describe('a topic on Home', () => {
     renderCard({ topic: makeHomeTopic({ replyCount: 0, firstReply: null }) });
     expect(screen.getByText('No replies yet.')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/\b0 repl/);
+  });
+});
+
+describe('likes on a topic card', () => {
+  const likes = (o: Partial<NonNullable<Parameters<typeof TopicCard>[0]['likes']>> = {}) => ({
+    likedBy: [] as string[],
+    readerId: 'me',
+    onToggle: vi.fn(),
+    failure: null,
+    ...o,
+  });
+
+  it('draws no likes until it is handed them', () => {
+    renderCard();
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  // The card is a stretched link. In a browser the button is lifted above the
+  // link's pseudo-element; here there is no layout, so what this can hold is
+  // that the button is not inside the link and that pressing it goes nowhere.
+  it('likes the opening post, named for the topic, without opening it', async () => {
+    const user = userEvent.setup();
+    const onToggle = vi.fn();
+    renderCard({ likes: likes({ likedBy: ['jan'], onToggle }) });
+    const like = screen.getByRole('button', { name: 'Like Morning or evening routine?' });
+    expect(like.closest('a')).toBeNull();
+    expect(
+      screen.getByRole('button', { name: '1 like on Morning or evening routine?. Show who.' }),
+    ).toBeInTheDocument();
+    await user.click(like);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/^at \//)).toBeNull();
+  });
+
+  it('says it is liked when the reader has', () => {
+    renderCard({ likes: likes({ likedBy: ['me'] }) });
+    expect(
+      screen.getByRole('button', {
+        name: 'Liked Morning or evening routine?. Press to take it back.',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('is reached by Tab after the title, and before the count', async () => {
+    const user = userEvent.setup();
+    renderCard({ likes: likes({ likedBy: ['jan'] }) });
+    await user.tab();
+    expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Like Morning or evening routine?' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('button', { name: /^1 like on/ })).toHaveFocus();
+  });
+
+  it('draws the count and no Like on the reader’s own topic', () => {
+    renderCard({ likes: likes({ likedBy: ['jan'], readerId: null }) });
+    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /^1 like on/ })).toBeInTheDocument();
+  });
+
+  it('draws no count of zero', () => {
+    renderCard({ likes: likes() });
+    expect(screen.getAllByRole('button')).toHaveLength(1);
+    expect(document.body.textContent).not.toMatch(/\b0 like/);
+  });
+
+  it('says so when a like did not land', () => {
+    renderCard({ likes: likes({ failure: 'Your like was not saved. You cannot like this.' }) });
+    expect(screen.getByRole('alert')).toHaveTextContent('Your like was not saved.');
+  });
+
+  it('draws no likes when the opening post was taken back', () => {
+    renderCard({
+      topic: makeHomeTopic({ id: 't1', title: 'Morning or evening routine?', opening: null }),
+      likes: likes({ likedBy: ['jan'] }),
+    });
+    expect(screen.queryByRole('button')).toBeNull();
   });
 });

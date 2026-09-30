@@ -6,7 +6,7 @@ import type { ChatAuthor } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { PostLikes } from '@/routes/chat/like-button';
-import { byline, RoomTag } from '@/routes/home/topic-card';
+import { byline, type CardLikes, RoomTag } from '@/routes/home/topic-card';
 
 /**
  * A photograph on Home, from the mock's `postCard`: a topic whose first post
@@ -63,15 +63,7 @@ export function PhotoCard({
   author: ChatAuthor | null;
   linkState: unknown;
   /** Who likes the opening post, as the topic page's posts take it. */
-  likes?:
-    | {
-        likedBy: readonly string[];
-        /** The reader, or null on their own photograph. */
-        readerId: string | null;
-        onToggle: () => void;
-        failure: string | null;
-      }
-    | undefined;
+  likes?: CardLikes | undefined;
 }) {
   const opening = topic.opening;
   const to = `/chat/rooms/${topic.roomId}/topics/${topic.id}`;

@@ -17,7 +17,7 @@ import { ComposeCard } from '@/routes/home/compose-card';
 import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
-import { TopicCard } from '@/routes/home/topic-card';
+import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
 import type { RsvpStatus } from '@/types/domain';
 
 /**
@@ -133,13 +133,13 @@ export default function HomePage() {
   const authors = useChatAuthors(
     topics.flatMap((topic) => [topic.authorId, topic.firstReply?.authorId ?? null]),
   );
-  // Likes on the photographs: one read for every photo topic's opening post,
+  // Likes on every topic and photograph: one read for every opening post,
   // whichever pill is showing, so switching pills does not read again.
-  const photoPostIds = useMemo(
-    () => topics.flatMap((topic) => (topic.photo && topic.opening ? [topic.opening.id] : [])),
+  const openingPostIds = useMemo(
+    () => topics.flatMap((topic) => (topic.opening ? [topic.opening.id] : [])),
     [topics],
   );
-  const likes = usePostLikes(photoPostIds);
+  const likes = usePostLikes(openingPostIds);
 
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
@@ -181,8 +181,8 @@ export default function HomePage() {
     [memberId, viewer],
   );
 
-  /** What a photo card's Like needs, or nothing while the likes load. */
-  function likesFor(opening: ChatPost | null) {
+  /** What a card's Like needs, or nothing while the likes load. */
+  function likesFor(opening: ChatPost | null): CardLikes | undefined {
     if (!opening || likes.loading) return undefined;
     return {
       likedBy: likes.byPost.get(opening.id) ?? [],
@@ -207,6 +207,7 @@ export default function HomePage() {
                 : null
             }
             linkState={linkState}
+            likes={likesFor(item.topic.opening)}
           />
         );
       case 'photo':
