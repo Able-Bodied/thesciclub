@@ -60,7 +60,7 @@ select current_user, auth.uid()::text as uid,
 
 \echo ''
 \echo '== 1. THE STEP: a member who has joined nothing starts a topic in an open room =='
-\echo '   expect: 0 memberships | t may_post, then a uuid. Until 20260930000000'
+\echo '   expect: 0 memberships | t may_post, then t started. Until 20260930000000'
 \echo '   this step was the refusal; the owner reopened it on 2026-09-29.'
 select (select count(*) from public.chat_room_members) as memberships,
        public.chat_can_post_in('bowel') as may_post;
@@ -69,6 +69,9 @@ select public.chat_create_topic(
   'Travelling with a bowel programme',
   'Two weeks away and the timing has to move. What has worked for people?'
 ) as topic_id \gset
+-- \gset keeps the id and prints nothing; these steps said "a uuid" until
+-- 2026-09-30.
+select :'topic_id' is not null as started;
 
 \echo ''
 \echo '== 2. the topic carries its first post, and the counters start at zero =='
@@ -136,18 +139,18 @@ set local role authenticated;
 insert into public.chat_posts (topic_id, author_id, body)
 values (:'topic_id', 'bbbbbbbb-3333-0000-0000-000000000002',
         'Shift the whole programme by an hour a day for the three days before you fly.');
--- The reply gets its own instant, a second after the opening post. now() is
--- one value for the whole transaction, so the two posts tied, and the opening
--- post — `order by created_at, id` in chat_topic_reply_count, `order by
--- created_at limit 1` in step 10 — was whichever uuid sorted first: step 10
--- printed reply_count 1 on some runs and 0 on others. A member cannot choose
--- created_at (20260918110000), so the superuser moves it, and the topic's
--- activity date with it; nothing recounts on an update, and nothing needs to.
+-- The two posts get their own instants: the opening post goes a second
+-- back. now() is one value for the whole transaction, so they tied, and the
+-- opening post — `order by created_at, id` in chat_topic_reply_count, `order
+-- by created_at limit 1` in step 10 — was whichever uuid sorted first: step
+-- 10 printed reply_count 1 on some runs and 0 on others. A member cannot
+-- choose created_at (20260918110000), so the superuser moves it.
+-- Back, not the reply forward: the topic's activity date stays at now(), so
+-- marking it read at now() in step 7b still clears it. Moving the reply a
+-- second on made 7b read unread t.
 set local role postgres;
-update public.chat_posts set created_at = created_at + interval '1 second'
- where topic_id = :'topic_id' and author_id = 'bbbbbbbb-3333-0000-0000-000000000002';
-update public.chat_topics set last_post_at = last_post_at + interval '1 second'
- where id = :'topic_id';
+update public.chat_posts set created_at = created_at - interval '1 second'
+ where topic_id = :'topic_id' and author_id = 'aaaaaaaa-3333-0000-0000-000000000001';
 set local role authenticated;
 select reply_count from public.chat_topics where id = :'topic_id';
 
@@ -273,12 +276,13 @@ select removed_by_admin from public.chat_posts where topic_id = :'topic_id' orde
 \echo ''
 \echo '== 11. an administrator seeds a closed room; a member cannot =='
 \echo '   expect: t may_post for the administrator in bladder, which nobody has'
-\echo '   opened, then a uuid. Seeding a room before it is shown to anybody is'
+\echo '   opened, then t seeded. Seeding a room before it is shown to anybody is'
 \echo '   the whole reason an administrator can see a closed one.'
 select public.chat_can_post_in('bladder') as admin_may_post_in_a_closed_room;
 select public.chat_create_topic(
   'bladder', 'Supplies when you travel', 'Starting this one off before the room opens.'
 ) as seeded_topic \gset
+select :'seeded_topic' is not null as seeded;
 
 \echo ''
 \echo '== 12. a member sees nothing of a closed room =='
