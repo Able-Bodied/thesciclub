@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils';
 /**
  * The five-tab bottom bar, matching `nav()` in docs/index.html.
  *
- * Home and Chat are placeholder surfaces for now (CONTEXT.md); they are
- * in the bar because leaving a hole there would change every other tab's
- * position once they land.
+ * Every tab is a real screen now. Home was the last placeholder, and was in
+ * the bar from the start because leaving a hole there would have moved every
+ * other tab once it landed. It is still not where the app opens: `/` goes to
+ * Peers until Home has had real content on the live club for a while.
  *
  * ---------------------------------------------------------------------------
  * Chat is still not raised, and now carries a dot
