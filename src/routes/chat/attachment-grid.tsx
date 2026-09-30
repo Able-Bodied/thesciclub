@@ -38,6 +38,19 @@ import { useAttachmentUrls } from '@/lib/chat/attachments';
  * trap for all three. The open picture takes focus so Escape reaches it.
  *
  * ---------------------------------------------------------------------------
+ * The viewer is a dialog, and focus goes back where it came from
+ * ---------------------------------------------------------------------------
+ * It covers the page, so it says so: `role="dialog"` and `aria-modal`, and
+ * Tab goes round its own controls instead of walking out into the chat that
+ * is hidden behind it. When it closes, focus goes back to the tile that
+ * opened it. Without that, a keyboard or switch user would land at the top of
+ * the page and have to find their place in the conversation again.
+ *
+ * The backdrop is out of the Tab order. It is there for a pointer. A keyboard
+ * already has the close control and Escape, and a focus ring round the whole
+ * screen would say nothing about where focus is.
+ *
+ * ---------------------------------------------------------------------------
  * Alt text
  * ---------------------------------------------------------------------------
  * Nobody is asked to describe a photograph on the way in — a chat is not the
@@ -57,6 +70,10 @@ import { useAttachmentUrls } from '@/lib/chat/attachments';
 export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from: string }) {
   const urls = useAttachmentUrls(paths);
   const [open, setOpen] = useState<number | null>(null);
+  // The tile that opened the viewer, so that closing it puts focus back
+  // there. Held from the click rather than read from `document.activeElement`,
+  // because Safari does not focus a button when it is clicked.
+  const opener = useRef<HTMLButtonElement | null>(null);
   const shown = paths.filter((path) => urls.has(path));
 
   if (shown.length === 0) return null;
@@ -68,7 +85,8 @@ export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from
           <button
             key={path}
             type="button"
-            onClick={() => {
+            onClick={(event) => {
+              opener.current = event.currentTarget;
               setOpen(index);
             }}
             aria-label={`Photograph ${index + 1} of ${shown.length} from ${from}. Open it.`}
@@ -93,6 +111,7 @@ export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from
         <Lightbox
           url={urls.get(shown[open]) ?? ''}
           label={`Photograph ${open + 1} of ${shown.length} from ${from}`}
+          from={from}
           index={open}
           count={shown.length}
           onStep={(to) => {
@@ -100,6 +119,7 @@ export function AttachmentGrid({ paths, from }: { paths: readonly string[]; from
           }}
           onClose={() => {
             setOpen(null);
+            opener.current?.focus();
           }}
         />
       ) : null}
@@ -113,6 +133,7 @@ const SWIPE_PX = 48;
 function Lightbox({
   url,
   label,
+  from,
   index,
   count,
   onStep,
@@ -120,6 +141,7 @@ function Lightbox({
 }: {
   url: string;
   label: string;
+  from: string;
   index: number;
   count: number;
   onStep: (to: number) => void;
@@ -128,12 +150,41 @@ function Lightbox({
   const hasPrevious = index > 0;
   const hasNext = index < count - 1;
   const touch = useRef<{ x: number; y: number } | null>(null);
+  const dialog = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Tab') keepFocusInside(event);
+      else if (event.key === 'Escape') onClose();
       else if (event.key === 'ArrowLeft' && hasPrevious) onStep(index - 1);
       else if (event.key === 'ArrowRight' && hasNext) onStep(index + 1);
+    }
+    // Tab goes round the viewer's own controls. Handled on the window, not
+    // the dialog, so that focus which has somehow left it still comes back.
+    // A disabled step control is skipped the way the browser skips it; after
+    // a step, focus is on the new picture, which is not in the Tab order, so
+    // Shift+Tab from there goes to the last control rather than out.
+    function keepFocusInside(event: KeyboardEvent) {
+      const root = dialog.current;
+      if (!root) return;
+      const controls = [
+        ...root.querySelectorAll<HTMLButtonElement>('button:not([disabled]):not([tabindex="-1"])'),
+      ];
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first || !last) return;
+      // -1 when focus is on the picture, or outside the viewer altogether.
+      const at = controls.findIndex((control) => control === document.activeElement);
+      if (event.shiftKey && at <= 0) {
+        event.preventDefault();
+        last.focus();
+      } else if (
+        !event.shiftKey &&
+        (at === controls.length - 1 || !root.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        first.focus();
+      }
     }
     window.addEventListener('keydown', onKey);
     return () => {
@@ -150,6 +201,12 @@ function Lightbox({
     // The backdrop is the third way out. It is a button so that it has a name
     // and a keyboard, not a div with an onClick.
     <div
+      ref={dialog}
+      role="dialog"
+      aria-modal="true"
+      // The count is the picture's own name, so it is not said twice on the
+      // way in.
+      aria-label={`Photographs from ${from}`}
       className="fixed inset-0 z-50 grid place-items-center bg-[#0A1D36]/92 p-3"
       onTouchStart={(event) => {
         const t = event.touches[0];
@@ -171,6 +228,7 @@ function Lightbox({
         type="button"
         aria-label="Close the photograph"
         onClick={onClose}
+        tabIndex={-1}
         className="absolute inset-0 h-full w-full cursor-default"
       />
       <img
