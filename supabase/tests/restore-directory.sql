@@ -23,8 +23,15 @@ values ('aaaaaaaa-1111-1111-1111-111111111111', 'peer', 'active', 'The Admin',
         '19990000020', '1980-01-01', 'T1–T6', 'CA', true);
 
 \echo ''
-\echo '== the directory before anything happens (expect 22 seeded) =='
-select count(*) as seeded from public.members where is_seed;
+\echo '== the directory before anything happens =='
+\echo '   expect: seeded equals in_snapshot, t, on a fresh stack. The snapshot is'
+\echo '   counted rather than written down: this said 22 while the seed held 23,'
+\echo '   and the next seeded row would have made it wrong again. On a stack where'
+\echo '   a test number has claimed a seeded profile, seeded is short one per claim.'
+select (select count(*) from public.members where is_seed) as seeded,
+       (select count(*) from public.directory_seed) as in_snapshot,
+       (select count(*) from public.members where is_seed)
+         = (select count(*) from public.directory_seed) as the_whole_seed;
 
 -- Ajay is claimed: his seeded row goes and a real member appears on his
 -- number, which is what the claim trigger does.
