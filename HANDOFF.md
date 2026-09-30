@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-28.
+Last updated 2026-09-29.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -232,6 +232,54 @@ on 2026-09-29 listed exactly this one migration. The client does not depend on
 it, so it can go before or after the code. The advisor's warning should clear
 on its next scan.
 
+## Home, step 1 — built 2026-09-29, not pushed
+
+The plan is `HOME-PLAN.md` at the repo root (untracked; the owner's seven
+decisions are in it). Step 1, "Home reads", is done: `/home` lists recent
+topics and photographs from the open rooms, upcoming events with working
+RSVPs, and members worth meeting, under Everything · Topics · Photos ·
+Events · People. No migration, so it releases with a push alone. Before
+that, the photograph viewer became a real dialog (the owner said yes to
+fixing it first): `role="dialog"`, `aria-modal`, Tab kept inside, focus back
+on the tile that opened it.
+
+Files: `src/lib/home/` (types, the topic read and `toHomeTopics`),
+`src/routes/home/` (`feed.ts` for the mix, three cards, the page, `back.ts`),
+`src/routes/chat/back.ts`. `pnpm shoot` has `--scroll=<px>` now.
+
+Where the build differs from the plan, on purpose:
+
+- **`useHomeTopics` returns the raw reads; the page calls `toHomeTopics`.**
+  So the screen test stubs the read and still runs the real join, including
+  the closed-room filter.
+- **A topic or person card is not one big link.** The link is on the title
+  (or name) and stretched over the card with `after:absolute after:inset-0`.
+  The whole card is still the target, but a screen reader reads the title as
+  the link rather than the room, byline and four lines of a reply.
+- **Back keeps the pill.** Cards hand over `{ from: 'home', segment }`, and
+  `backToHome` rebuilds `/home?segment=…`, as Events does for its segments.
+- **Extras left when the topics run out go at the end of Everything**, so a
+  quiet week still lists events and people.
+- **Reply links are named "Reply to <title>"**, so a links list is not a
+  column of identical names.
+
+Checked on the local stack as a member and as an administrator: every pill at
+430 and 1280 with `--scroll`, `--text=larger`, 320px wide (no sideways
+scroll), a keyboard walk from the skip link, axe on all five pills (clean),
+and back from a topic, an event and a profile landing on the pill it came
+from. **Not checked:** VoiceOver on a real iPhone, and production data.
+
+Owed and noticed, not changed:
+
+- **Before releasing step 1, ask the owner which rooms are open on the live
+  project.** If none are, Topics and Photos open empty (HOME-PLAN.md,
+  question 3).
+- `EventCard`'s Interested and Going are 40px tall with no `data-target`, on
+  Events as well as Home.
+- Two zero counts drawn elsewhere: the topic page header ("0 replies ·
+  1 view") and an event card's "1 going · 0 interested".
+- Next is step 2, asking and sharing from Home (`/home/new`). No migration.
+
 ## Still open
 
 - **An hour with VoiceOver on a real iPhone**, then the rest of "What is next
@@ -242,7 +290,8 @@ on its next scan.
   in there, turn on, close the app, have somebody send a direct message.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
-- **Home stays deferred.** Do not build it without asking.
+- **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
+  on 2026-09-29). Step 1 is done; see the section above.
 
 ## Standing rules this session learned
 
