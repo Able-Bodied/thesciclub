@@ -256,8 +256,13 @@ function RoomChoice({
 }) {
   return (
     <fieldset className="mt-4">
-      <legend className="font-extrabold font-head text-[0.9375rem] text-ink">
-        Which room does it go in?
+      {/* A heading inside the legend: the six category headings under it are
+          h3s, as they are in Chat, and a screen reader's list of headings
+          should not jump from the page's h1 straight to them. */}
+      <legend>
+        <h2 className="font-extrabold font-head text-[0.9375rem] text-ink">
+          Which room does it go in?
+        </h2>
       </legend>
       {roomsByCategory(rooms).map(([category, inCategory]) => (
         <div key={category}>

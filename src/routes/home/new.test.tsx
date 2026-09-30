@@ -139,10 +139,22 @@ describe('the rooms', () => {
     for (const radio of radios) expect(radio).not.toBeChecked();
     expect(
       within(group())
-        .getAllByRole('heading')
+        .getAllByRole('heading', { level: 3 })
         .map((heading) => heading.textContent),
     ).toEqual(['Body', 'Life', 'Kit']);
     expect(screen.queryByRole('radio', { name: /Skin/ })).toBeNull();
+  });
+
+  // h1, then h2, then the six h3s Chat uses for categories; never a jump.
+  it('keeps the headings in order', () => {
+    renderPage();
+    expect(screen.getAllByRole('heading').map((h) => [h.tagName, h.textContent])).toEqual([
+      ['H1', 'Ask the club'],
+      ['H2', 'Which room does it go in?'],
+      ['H3', 'Body'],
+      ['H3', 'Life'],
+      ['H3', 'Kit'],
+    ]);
   });
 
   it('names each room, says Joined where it is, and describes it', () => {
