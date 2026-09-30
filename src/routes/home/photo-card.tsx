@@ -70,6 +70,7 @@ export function PhotoCard({
               <Link
                 to={`/peers/${author.id}`}
                 state={linkState}
+                data-target="small"
                 className="underline-offset-2 hover:underline"
               >
                 {name}
@@ -93,6 +94,7 @@ export function PhotoCard({
       <Link
         to={to}
         state={linkState}
+        data-target="small"
         className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] underline-offset-2 hover:underline"
       >
         {topic.title}
