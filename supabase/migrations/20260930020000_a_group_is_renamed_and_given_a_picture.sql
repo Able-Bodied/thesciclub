@@ -487,8 +487,8 @@ begin
     ('message', thread.kind, target.id, auth.uid(), target.author_id,
      case target.notice
        when 'renamed' then 'Renamed the group to “' || target.body || '”'
-       when 'pictured' then 'Changed the group''s picture'
-       when 'unpictured' then 'Took the group''s picture away'
+       when 'pictured' then 'Changed the group’s picture'
+       when 'unpictured' then 'Took the group’s picture away'
        else target.body
      end,
      target.attachments, target.created_at,

@@ -260,7 +260,7 @@ rollback to savepoint twice;
 
 \echo ''
 \echo '== 15. a reported notice reaches an administrator as a sentence =='
-\echo '   expect, as Bo reporting Ada''s picture line: Changed the group''s'
+\echo '   expect, as Bo reporting Ada''s picture line: Changed the group’s'
 \echo '   picture | the ada-2 path handed over | Saturday swimmers as the place.'
 select id as ada_picture from public.chat_messages
  where thread_id = :'grp' and notice = 'pictured'
