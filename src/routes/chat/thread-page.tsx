@@ -3,7 +3,12 @@ import { Link, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
-import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
+import {
+  attachmentFolder,
+  deleteAttachments,
+  uploadAttachments,
+  useAttachmentUrls,
+} from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
@@ -13,6 +18,7 @@ import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
 import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
 import { MuteButton } from '@/routes/chat/mute-button';
+import { NoticeLine } from '@/routes/chat/notice-line';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 
 /**
@@ -72,6 +78,15 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
  * over that one message, its author and its time, and nothing else — not the
  * thread, not the message before it, not the reply. The sheet says so before
  * anything is sent.
+ *
+ * ---------------------------------------------------------------------------
+ * A change to the group is a line, not a bubble — since 2026-09-30
+ * ---------------------------------------------------------------------------
+ * Renaming a group or changing its picture leaves a row marked as a notice
+ * (20260930020000), drawn by `NoticeLine` in its place in time order. It
+ * arrives over the same realtime as a message, and the reload that brings it
+ * in re-reads the thread too, so the header's name and picture change for
+ * everybody looking at the same moment.
  */
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
@@ -108,6 +123,9 @@ export default function ThreadPage() {
     ...messages.map((message) => message.authorId),
   ]);
   const other = thread?.otherMemberId ? (authors.get(thread.otherMemberId) ?? null) : null;
+  // Signed under the reader's token: a group's picture is as private as its
+  // words. Empty for a pair, and for a group with none.
+  const picture = useAttachmentUrls(thread?.photoPath ? [thread.photoPath] : []);
   const title = thread ? threadTitle(thread, other?.displayName ?? null) : '';
   // A direct thread keeps its composer; one whose other half has gone does not.
   const gone = thread?.kind === 'direct' && thread.otherMemberId === null;
@@ -242,7 +260,7 @@ export default function ThreadPage() {
             {/* Decorative: the name is beside it, and Profile is the link. */}
             <span aria-hidden="true" className="flex-none">
               {thread.kind === 'group' ? (
-                <GroupAvatar />
+                <GroupAvatar url={thread.photoPath ? picture.get(thread.photoPath) : null} />
               ) : other ? (
                 <MemberAvatar
                   id={other.id}
@@ -318,55 +336,75 @@ export default function ThreadPage() {
               Whatever you write here is between the two of you.
             </p>
           ) : (
-            messages.map((message) => (
-              <MessageBubble
-                key={message.id}
-                message={message}
-                author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
-                mine={message.authorId === account.userId}
-                quote={quoteOf(message)}
-                onQuoteTap={showQuoted}
-                flash={flashId === message.id}
-                // The author's own, standing, while there is a conversation
-                // to edit in. chat_edit_message decides; this only asks.
-                canEdit={!gone && message.authorId === account.userId && !message.pending}
-                editing={editingId === message.id}
-                onEdit={() => {
-                  setEditingId(message.id);
-                }}
-                onSaveEdit={(body) => saveEdit(message.id, body)}
-                onCancelEdit={() => {
-                  setEditingId(null);
-                }}
-                canReply={!gone && !message.pending}
-                onReply={() => {
-                  setReplyingTo(message);
-                }}
-                // An administrator can remove anybody's; everybody else only
-                // their own. chat_remove_message decides — this only asks.
-                // Own messages only, even for an administrator. They are in
-                // this conversation as a member of it — a private thread they
-                // could reach as an administrator would not be private — and
-                // moderating one they are not in happens by an id somebody
-                // hands them, which is not a screen. See 20260918100000.
-                canRemove={message.authorId === account.userId}
-                onRemove={() => {
-                  removeMessage(message.id);
-                }}
-                removing={removingId === message.id}
-                // Somebody else's, and not a former member's: a report names
-                // who wrote it, and they have already left the club.
-                canReport={
-                  message.authorId !== null &&
-                  message.authorId !== account.userId &&
-                  !message.pending
-                }
-                reported={reports.messageIds.has(message.id)}
-                onReport={() => {
-                  setReportingId(message.id);
-                }}
-              />
-            ))
+            messages.map((message) =>
+              message.notice ? (
+                <NoticeLine
+                  key={message.id}
+                  message={message}
+                  notice={message.notice}
+                  who={
+                    message.authorId === account.userId
+                      ? 'You'
+                      : ((message.authorId ? authors.get(message.authorId)?.displayName : null) ??
+                        'A former member')
+                  }
+                  // As on a bubble: somebody else's, and not a former member's.
+                  canReport={message.authorId !== null && message.authorId !== account.userId}
+                  reported={reports.messageIds.has(message.id)}
+                  onReport={() => {
+                    setReportingId(message.id);
+                  }}
+                />
+              ) : (
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
+                  mine={message.authorId === account.userId}
+                  quote={quoteOf(message)}
+                  onQuoteTap={showQuoted}
+                  flash={flashId === message.id}
+                  // The author's own, standing, while there is a conversation
+                  // to edit in. chat_edit_message decides; this only asks.
+                  canEdit={!gone && message.authorId === account.userId && !message.pending}
+                  editing={editingId === message.id}
+                  onEdit={() => {
+                    setEditingId(message.id);
+                  }}
+                  onSaveEdit={(body) => saveEdit(message.id, body)}
+                  onCancelEdit={() => {
+                    setEditingId(null);
+                  }}
+                  canReply={!gone && !message.pending}
+                  onReply={() => {
+                    setReplyingTo(message);
+                  }}
+                  // An administrator can remove anybody's; everybody else only
+                  // their own. chat_remove_message decides — this only asks.
+                  // Own messages only, even for an administrator. They are in
+                  // this conversation as a member of it — a private thread they
+                  // could reach as an administrator would not be private — and
+                  // moderating one they are not in happens by an id somebody
+                  // hands them, which is not a screen. See 20260918100000.
+                  canRemove={message.authorId === account.userId}
+                  onRemove={() => {
+                    removeMessage(message.id);
+                  }}
+                  removing={removingId === message.id}
+                  // Somebody else's, and not a former member's: a report names
+                  // who wrote it, and they have already left the club.
+                  canReport={
+                    message.authorId !== null &&
+                    message.authorId !== account.userId &&
+                    !message.pending
+                  }
+                  reported={reports.messageIds.has(message.id)}
+                  onReport={() => {
+                    setReportingId(message.id);
+                  }}
+                />
+              ),
+            )
           )}
         </div>
       </div>

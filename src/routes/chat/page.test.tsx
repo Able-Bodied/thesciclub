@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Attachments from '@/lib/chat/attachments';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatRoom, ChatThread, RoomStats } from '@/lib/chat/types';
@@ -29,6 +30,16 @@ const db = vi.hoisted(() => ({
   threadsLoading: false,
   threadsError: null as string | null,
   authors: new Map<string, ChatAuthor>(),
+  /** Signed URLs for group pictures, by path. */
+  urls: new Map<string, string>(),
+}));
+
+// Signing is a storage call under the reader's token; stubbed, as the grid's
+// own test does.
+vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof Attachments>()),
+  useAttachmentUrls: (paths: readonly string[]) =>
+    new Map([...db.urls].filter(([path]) => paths.includes(path))),
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -118,6 +129,7 @@ function renderPage(entry = '/chat') {
 }
 
 beforeEach(() => {
+  db.urls = new Map();
   db.rooms = [];
   db.loading = false;
   db.error = null;
@@ -207,6 +219,44 @@ describe('the chat screen', () => {
     db.threads = [thread({ id: 'g1', kind: 'group', name: 'Saturday ride', otherMemberId: null })];
     renderPage();
     expect(screen.getByText('Jan: The seat took three fittings.')).toBeInTheDocument();
+  });
+
+  // A rename's body is the new name. Printed as "Jan: Tuesday swimmers" it
+  // would read as something Jan said; the new name is already the title.
+  it('says a change to a group as a change, not as the new name', () => {
+    db.threads = [
+      thread({
+        id: 'g1',
+        kind: 'group',
+        name: 'Tuesday swimmers',
+        otherMemberId: null,
+        lastBody: 'Tuesday swimmers',
+        lastNotice: 'renamed',
+      }),
+    ];
+    renderPage();
+    expect(screen.getByText('Jan renamed the group')).toBeInTheDocument();
+    expect(screen.queryByText('Jan: Tuesday swimmers')).toBeNull();
+  });
+
+  it('draws a group’s picture on its row, and the glyph for one with none', () => {
+    db.urls = new Map([['threads/g1/p.webp', 'https://signed/p']]);
+    db.threads = [
+      thread({
+        id: 'g1',
+        kind: 'group',
+        name: 'Tuesday swimmers',
+        otherMemberId: null,
+        photoPath: 'threads/g1/p.webp',
+      }),
+      thread({ id: 'g2', kind: 'group', name: 'Saturday ride', otherMemberId: null }),
+    ];
+    renderPage();
+    const pictured = screen.getByRole('link', { name: /Tuesday swimmers/ });
+    expect(pictured.querySelector('img')).toHaveAttribute('src', 'https://signed/p');
+    const plain = screen.getByRole('link', { name: /Saturday ride/ });
+    expect(plain.querySelector('img')).toBeNull();
+    expect(plain).toHaveTextContent('◎');
   });
 
   it('says "You" when the last word was the viewer’s', () => {

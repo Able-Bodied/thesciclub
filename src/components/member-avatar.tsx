@@ -90,20 +90,38 @@ export function FormerMemberAvatar({ className }: { className?: string | undefin
  * tinted square the discussion rooms use, with a glyph that is decorative and
  * a name printed beside it.
  *
+ * Since 2026-09-30 a group can have a picture of its own, which anybody in
+ * it sets (20260930020000). It lives in the private `chat` bucket, readable by
+ * the group's members only, so it arrives here as a signed URL the caller has
+ * already made — the list signs every group's at once rather than one request
+ * a row. No URL, or one that has not arrived yet, is the glyph.
+ *
  * It lives here rather than in a file of its own because this is the one tile
  * file: the alternative is a fourth 34px square drawn somewhere else, which is
  * how somebody ends up purple on their profile and green on an event.
  */
-export function GroupAvatar({ className }: { className?: string | undefined }) {
+export function GroupAvatar({
+  url,
+  className,
+}: {
+  /** A signed URL for the group's picture, or nothing for the glyph. */
+  url?: string | null | undefined;
+  className?: string | undefined;
+}) {
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-[1.0625rem] text-navy leading-none',
+        'relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] bg-tint text-[1.0625rem] text-navy leading-none',
         className,
       )}
     >
-      ◎
+      {url ? (
+        // Empty alt: the tile is decorative and the group's name is beside it.
+        <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        '◎'
+      )}
     </span>
   );
 }

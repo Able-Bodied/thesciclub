@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
+import { useAttachmentUrls } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { roomsByCategory, useChatRooms, useRoomStats } from '@/lib/chat/rooms';
@@ -237,6 +238,12 @@ function Conversations({
   authors: Map<string, ChatAuthor>;
   viewerId: string | null;
 }) {
+  // Every group's picture signed in one request, under the reader's token, so
+  // a group they have left comes back with no URL and draws its glyph.
+  const pictures = useAttachmentUrls(
+    threads.flatMap((thread) => (thread.photoPath ? [thread.photoPath] : [])),
+  );
+
   if (loading) {
     return (
       <p className="py-8 text-center text-[0.875rem] text-grey">Loading your conversations…</p>
@@ -265,6 +272,7 @@ function Conversations({
               other={thread.otherMemberId ? (authors.get(thread.otherMemberId) ?? null) : null}
               lastAuthor={thread.lastAuthorId ? (authors.get(thread.lastAuthorId) ?? null) : null}
               viewerId={viewerId}
+              pictureUrl={thread.photoPath ? pictures.get(thread.photoPath) : null}
             />
           ))}
         </div>

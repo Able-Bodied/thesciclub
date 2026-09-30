@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
-import { threadTitle } from '@/lib/chat/threads';
+import { noticeText, threadTitle } from '@/lib/chat/threads';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
 
@@ -30,12 +30,17 @@ import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
  * A removed message reads "Message removed" rather than showing the blank the
  * database left, and a thread with nothing in it says so — not an empty line
  * that looks like a message that failed to load.
+ *
+ * A change to the group reads as one — "Jan renamed the group" — and not as
+ * its bare body, which for a rename is the new name and would look like Jan
+ * had said it. The new name is already the row's title.
  */
 export function ThreadRow({
   thread,
   other,
   lastAuthor,
   viewerId,
+  pictureUrl,
 }: {
   thread: ChatThread;
   /** The other member of a direct conversation; null for a group. */
@@ -43,6 +48,8 @@ export function ThreadRow({
   /** Whoever wrote the last message; null for a former member or a group. */
   lastAuthor: ChatAuthor | null;
   viewerId: string | null;
+  /** A signed URL for a group's picture, made by the list for every row at once. */
+  pictureUrl?: string | null | undefined;
 }) {
   const title = threadTitle(thread, other?.displayName ?? null);
   const mine = thread.lastAuthorId !== null && thread.lastAuthorId === viewerId;
@@ -56,9 +63,16 @@ export function ThreadRow({
 
   const last = thread.lastRemoved
     ? 'Message removed'
-    : thread.lastBody === null
-      ? 'Nothing said yet'
-      : `${who}${thread.lastBody}`;
+    : thread.lastNotice
+      ? noticeText(
+          thread.lastNotice,
+          mine ? 'You' : (lastAuthor?.displayName ?? 'A former member'),
+          thread.lastBody ?? '',
+          false,
+        )
+      : thread.lastBody === null
+        ? 'Nothing said yet'
+        : `${who}${thread.lastBody}`;
 
   return (
     <Link
@@ -70,7 +84,7 @@ export function ThreadRow({
             former-member square: three people have no one face, and the
             neutral tile already means "nobody" in this list. */}
         {thread.kind === 'group' ? (
-          <GroupAvatar />
+          <GroupAvatar url={pictureUrl} />
         ) : other ? (
           <MemberAvatar
             id={other.id}

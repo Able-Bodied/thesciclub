@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Attachments from '@/lib/chat/attachments';
 import type * as Reports from '@/lib/chat/reports';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatMessage, ChatThread } from '@/lib/chat/types';
@@ -32,6 +33,15 @@ const db = vi.hoisted(() => ({
   reportedMessages: new Set<string>(),
   reports: [] as [string, string][],
   reportFails: null as string | null,
+  /** Signed URLs by path, for the group's picture. */
+  urls: new Map<string, string>(),
+}));
+
+// Signing is a storage call under the reader's token.
+vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof Attachments>()),
+  useAttachmentUrls: (paths: readonly string[]) =>
+    new Map([...db.urls].filter(([path]) => paths.includes(path))),
 }));
 
 // Mutes read and write the club; the button has its own test.
@@ -171,6 +181,7 @@ beforeEach(() => {
   db.reportedMessages = new Set();
   db.reports = [];
   db.reportFails = null;
+  db.urls = new Map();
 });
 
 describe('a conversation', () => {
@@ -510,5 +521,56 @@ describe('replying to a message', () => {
     db.messages = [message({ id: 'm1', authorId: null })];
     renderThread();
     expect(screen.queryByRole('button', { name: /^Reply to/ })).toBeNull();
+  });
+});
+
+// A change to a group is recorded, not said (20260930020000): no Reply, no
+// Edit, no Remove — the database refuses all three — and Report on somebody
+// else's, since a hostile name is done to everybody in the group.
+describe('a change to the group', () => {
+  const group = () =>
+    thread({ kind: 'group', name: 'Tuesday swimmers', otherMemberId: null, memberCount: 3 });
+
+  it('is a line that says who did what, not a bubble', () => {
+    db.thread = group();
+    db.messages = [message({ id: 'n1', notice: 'renamed', body: 'Tuesday swimmers' })];
+    renderThread();
+    expect(screen.getByText(/Jan renamed the group to “Tuesday swimmers”/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Reply/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Remove/ })).toBeNull();
+  });
+
+  it('can be reported when somebody else made it', async () => {
+    const user = userEvent.setup();
+    db.thread = group();
+    db.messages = [message({ id: 'n1', notice: 'renamed', body: 'Something rude' })];
+    renderThread();
+    await user.click(screen.getByRole('button', { name: 'Report Jan’s change to the group' }));
+    await user.click(screen.getByRole('button', { name: 'Send report' }));
+    await waitFor(() => {
+      expect(db.reports.map(([id]) => id)).toEqual(['n1']);
+    });
+  });
+
+  it('says You, and offers nothing, on the reader’s own', () => {
+    db.thread = group();
+    db.messages = [message({ id: 'n1', authorId: 'me', notice: 'unpictured', body: '' })];
+    renderThread();
+    expect(screen.getByText(/You took the group’s picture away/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Report/ })).toBeNull();
+  });
+
+  it('shows the new picture beside the line, and in the header', () => {
+    db.urls = new Map([['threads/th1/p.webp', 'https://signed/p']]);
+    db.thread = { ...group(), photoPath: 'threads/th1/p.webp' };
+    db.messages = [
+      message({ id: 'n1', notice: 'pictured', body: '', attachments: ['threads/th1/p.webp'] }),
+    ];
+    renderThread();
+    expect(screen.getByText(/Jan changed the group’s picture/)).toBeInTheDocument();
+    const pictures = [...document.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+    // Once in the header's tile, once beside the line.
+    expect(pictures.filter((src) => src === 'https://signed/p')).toHaveLength(2);
   });
 });
