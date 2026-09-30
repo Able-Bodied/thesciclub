@@ -11,6 +11,13 @@
 -- returning a row, `browse_members` has been loosened and that is a bigger
 -- problem than this file.
 --
+-- Until 2026-09-30 step 1 could not fail. It found Ajay's id with a subquery
+-- on `invites`, run as the person onboarding — who has no member row, so RLS
+-- answered it with nothing, and `id = null` matched no row whatever
+-- `browse_members` did. Ajay's id is now read as the superuser, before the
+-- role switch, and step 1b asks the same question as an active member, so a
+-- zero in step 1 is the viewer's standing and not an empty lookup.
+--
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
 --     -f - < supabase/tests/claim-preview.sql
@@ -43,6 +50,16 @@ insert into public.invites (phone_raw, invited_by_organization_id, seed_member_i
 select '4085553000', id, '99999999-0000-0000-0000-000000000009'
 from public.organizations where short_code = 'NCS';
 
+-- Ajay's seeded id, read here as the superuser: see the header for why step 1
+-- must not look it up as the person onboarding. No row means the seed has
+-- been claimed on this stack, and every step below would be meaningless.
+\echo ''
+\echo '== setup. Ajay is seeded and shown (expect t | t) =='
+select id as ajay from public.members where display_name = 'Ajay' and is_seed \gset
+select :'ajay' is not null as ajay_found,
+       (select show_in_browse and status = 'active' from public.members where id = :'ajay')
+         as ajay_is_browsable;
+
 -- Somebody who has verified 4085551000 and has no member row: exactly the
 -- state onboarding is in when it asks.
 select set_config('request.jwt.claims',
@@ -51,8 +68,8 @@ select set_config('request.jwt.claims',
 set local role authenticated;
 
 \echo ''
-\echo '== 0. no member row, so not a member (expect 0) =='
-select count(*) as own_member_rows from public.members where id = auth.uid();
+\echo '== 0. signed in, with no member row, so not a member (expect authenticated | 0) =='
+select current_user, count(*) as own_member_rows from public.members where id = auth.uid();
 
 \echo ''
 \echo '== 1. the old lookup returns nothing — this is the bug (expect 0) =='
@@ -60,7 +77,20 @@ select count(*) as own_member_rows from public.members where id = auth.uid();
 \echo '   asked it anyway and read the empty answer as "no claim".'
 select count(*) as rows_from_browse_members
   from public.browse_members
- where id = (select seed_member_id from public.invites where phone = '14085551000');
+ where id = :'ajay';
+
+\echo ''
+\echo '== 1b. the same lookup as an active member finds Ajay (expect 1) =='
+\echo '   The control for step 1: the query can return a row, so the 0 above'
+\echo '   is browse_members refusing the viewer.'
+savepoint as_a_member;
+select set_config('request.jwt.claims',
+  '{"sub":"99999999-0000-0000-0000-000000000009","role":"authenticated"}',
+  true) is not null as ok;
+select count(*) as rows_for_an_active_member
+  from public.browse_members
+ where id = :'ajay';
+rollback to savepoint as_a_member;
 
 \echo ''
 \echo '== 2. the new one answers (expect 1 row: Ajay, San Jose) =='
