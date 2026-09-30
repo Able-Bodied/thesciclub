@@ -163,9 +163,11 @@ export default function ThreadPage() {
   const quoteOf = (message: ChatMessage): Quote | null => {
     if (!message.replyTo) return null;
     const target = messages.find((candidate) => candidate.id === message.replyTo);
+    // "You" as a heading over the quote, where the reply bar says "you".
+    const name = target ? nameOf(target) : 'Earlier message';
     return {
       id: message.replyTo,
-      name: target ? nameOf(target) : 'Earlier message',
+      name: name === 'you' ? 'You' : name,
       text: quoteText(target),
     };
   };

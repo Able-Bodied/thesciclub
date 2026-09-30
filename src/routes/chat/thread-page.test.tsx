@@ -493,6 +493,15 @@ describe('replying to a message', () => {
     expect(screen.getByRole('button', { name: /Photograph$/ })).toBeInTheDocument();
   });
 
+  it('heads a quote of the viewer’s own message with You', () => {
+    db.messages = [
+      message({ id: 'm1', authorId: 'me', body: 'Mine first.' }),
+      message({ id: 'm2', authorId: 'me', body: 'And again.', replyTo: 'm1' }),
+    ];
+    renderThread();
+    expect(screen.getByRole('button', { name: /Mine first/ })).toHaveTextContent(/^You/);
+  });
+
   it('offers no Reply once the other member has left the club', () => {
     db.thread = thread({ otherMemberId: null });
     db.messages = [message({ id: 'm1', authorId: null })];

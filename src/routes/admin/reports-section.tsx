@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useEdits } from '@/lib/chat/edits';
 import { resolveReport } from '@/lib/chat/reports';
 import { removeMessage } from '@/lib/chat/threads';
 import { chatTimeLong } from '@/lib/chat/time';
 import { removePost } from '@/lib/chat/topics';
-import type { ChatAuthor, ChatReport } from '@/lib/chat/types';
+import type { ChatAuthor, ChatEdit, ChatReport } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
+import { EarlierVersions } from '@/routes/chat/earlier-versions';
 
 /**
  * What members have handed over, for an administrator.
@@ -68,6 +70,15 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
  * a link. Which of the two a name gets comes from chat_authors.has_profile.
  *
  * ---------------------------------------------------------------------------
+ * Earlier versions, since 2026-09-29
+ * ---------------------------------------------------------------------------
+ * The snapshot is what the reporter saw. If the author edited the post or
+ * message afterwards — or before, and the reporter saw the second version —
+ * every earlier version is under "Earlier versions" beneath it, from
+ * chat_edits (HOME-PLAN.md, decision 10). Once the row itself is gone its
+ * versions go with it; the snapshot is what survives.
+ *
+ * ---------------------------------------------------------------------------
  * Resolved reports collapse, and are not deleted
  * ---------------------------------------------------------------------------
  * The next administrator to look at somebody needs to know what was decided
@@ -93,6 +104,14 @@ export function ReportsSection({
   // For has_profile only — the names themselves come with the report, so a
   // former member is still named after chat_authors has stopped knowing them.
   const authors = useChatAuthors(reports.flatMap((r) => [r.reporterId, r.reportedAuthorId]));
+  const edits = useEdits(
+    reports.flatMap((r) => (r.postId ? [r.postId] : [])),
+    reports.flatMap((r) => (r.messageId ? [r.messageId] : [])),
+  );
+  const editsOf = (report: ChatReport): ChatEdit[] =>
+    (report.postId ? edits.byPost.get(report.postId) : null) ??
+    (report.messageId ? edits.byMessage.get(report.messageId) : null) ??
+    [];
 
   const open = reports.filter((r) => r.resolvedAt === null);
   const closed = reports.filter((r) => r.resolvedAt !== null);
@@ -176,6 +195,7 @@ export function ReportsSection({
             <ReportRow
               key={report.id}
               report={report}
+              edits={editsOf(report)}
               authors={authors}
               busy={busyId === report.id}
               onRemove={() => {
@@ -202,7 +222,7 @@ export function ReportsSection({
             {closed.map((report) => (
               <div key={report.id} className="border-line border-b p-3 last:border-b-0">
                 <Where report={report} authors={authors} onGoToMember={onGoToMember} />
-                <Snapshot report={report} />
+                <Snapshot report={report} edits={editsOf(report)} />
                 <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
                   {report.resolvedByName ?? 'A former member'} settled this
                   {report.resolvedAt ? ` on ${chatTimeLong(report.resolvedAt)}` : ''}:{' '}
@@ -219,6 +239,7 @@ export function ReportsSection({
 
 function ReportRow({
   report,
+  edits,
   authors,
   busy,
   onRemove,
@@ -227,6 +248,7 @@ function ReportRow({
   onFailure,
 }: {
   report: ChatReport;
+  edits: ChatEdit[];
   authors: Map<string, ChatAuthor>;
   busy: boolean;
   onRemove: () => void;
@@ -268,7 +290,7 @@ function ReportRow({
   return (
     <div className="border-line border-b p-3 last:border-b-0">
       <Where report={report} authors={authors} onGoToMember={onGoToMember} />
-      <Snapshot report={report} />
+      <Snapshot report={report} edits={edits} />
 
       <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
         Reported by{' '}
@@ -452,7 +474,7 @@ function MemberName({
  * administrator (20260918210000), so taking the message back leaves the
  * evidence where it is. The sentence under the grid says so.
  */
-function Snapshot({ report }: { report: ChatReport }) {
+function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) {
   return (
     <div className="mt-1.5 border-line border-l-2 pl-2.5">
       {report.bodySnapshot ? (
@@ -474,6 +496,9 @@ function Snapshot({ report }: { report: ChatReport }) {
             sent it.
           </p>
         </div>
+      ) : null}
+      {edits.length > 0 ? (
+        <EarlierVersions edits={edits} from={report.reportedAuthorName ?? 'a former member'} />
       ) : null}
     </div>
   );

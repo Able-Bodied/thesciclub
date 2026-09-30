@@ -6,7 +6,7 @@ import type * as Attachments from '@/lib/chat/attachments';
 import type * as Reports from '@/lib/chat/reports';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Topics from '@/lib/chat/topics';
-import type { ChatAuthor, ChatPost, ChatRoom, ChatTopic } from '@/lib/chat/types';
+import type { ChatAuthor, ChatEdit, ChatPost, ChatRoom, ChatTopic } from '@/lib/chat/types';
 import TopicPage from '@/routes/chat/topic-page';
 
 const db = vi.hoisted(() => ({
@@ -26,6 +26,22 @@ const db = vi.hoisted(() => ({
   deleted: [] as string[],
   deleteFails: null as string | null,
   filesDeleted: [] as string[][],
+  edits: new Map<string, ChatEdit[]>(),
+  editsReloads: 0,
+}));
+
+// chat_edits is administrators' reading; the hook has its own test, and an
+// unmocked read here would reach for the network.
+vi.mock('@/lib/chat/edits', () => ({
+  useEdits: () => ({
+    byPost: db.edits,
+    byMessage: new Map(),
+    loading: false,
+    error: null,
+    reload: () => {
+      db.editsReloads += 1;
+    },
+  }),
 }));
 
 // Storage is the network; record what would have been deleted.
@@ -194,6 +210,8 @@ beforeEach(() => {
   db.deleted = [];
   db.deleteFails = null;
   db.filesDeleted = [];
+  db.edits = new Map();
+  db.editsReloads = 0;
 });
 
 describe('a topic', () => {
@@ -353,6 +371,69 @@ describe('a topic', () => {
       db.posts = [post({ id: '1', editedAt: '2026-09-01T11:30:00Z' })];
       renderTopic();
       expect(screen.getByText(/^Edited · /)).toBeInTheDocument();
+    });
+
+    // What an edited post used to say, for the one reader who may have to
+    // act on it. The hook hands a member nothing, so the disclosure is
+    // simply absent for them; here the map says what came back.
+    it('shows an administrator every earlier version under a disclosure', async () => {
+      db.isAdmin = true;
+      db.posts = [post({ id: '1', body: 'Third draft.', editedAt: '2026-09-01T11:30:00Z' })];
+      db.edits = new Map([
+        [
+          '1',
+          [
+            {
+              id: 'e1',
+              postId: '1',
+              messageId: null,
+              body: 'First draft.',
+              attachments: [],
+              editedBy: 'nicole',
+              replacedAt: '2026-09-01T11:00:00Z',
+            },
+            {
+              id: 'e2',
+              postId: '1',
+              messageId: null,
+              body: 'Second draft.',
+              attachments: [],
+              editedBy: 'nicole',
+              replacedAt: '2026-09-01T11:30:00Z',
+            },
+          ],
+        ],
+      ]);
+      renderTopic();
+      const disclosure = screen.getByText('Earlier versions');
+      expect(disclosure.closest('details')).not.toHaveAttribute('open');
+      await userEvent.click(disclosure);
+      expect(disclosure.closest('details')).toHaveAttribute('open');
+      const items = screen.getAllByRole('listitem');
+      expect(items.map((item) => item.textContent)).toEqual([
+        expect.stringContaining('First draft.'),
+        expect.stringContaining('Second draft.'),
+      ]);
+      expect(screen.getAllByText(/^Replaced /)).toHaveLength(2);
+    });
+
+    it('draws no disclosure for a post with no earlier versions', () => {
+      db.isAdmin = true;
+      db.posts = [post({ id: '1' })];
+      renderTopic();
+      expect(screen.queryByText('Earlier versions')).toBeNull();
+    });
+
+    it('re-reads the earlier versions once its own edit lands', async () => {
+      db.isAdmin = true;
+      db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+      await userEvent.type(screen.getByLabelText('Your post'), ' More.');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => {
+        expect(db.editsReloads).toBe(1);
+      });
     });
   });
 

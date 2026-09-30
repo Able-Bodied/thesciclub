@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
-import type { ChatAuthor, ChatPost } from '@/lib/chat/types';
+import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
+import { EarlierVersions } from '@/routes/chat/earlier-versions';
 
 /**
  * One post in a topic, from the mock's `fpost()`.
@@ -81,6 +82,7 @@ export function Post({
   canReport,
   reported,
   onReport,
+  edits,
   children,
 }: {
   post: ChatPost;
@@ -110,6 +112,8 @@ export function Post({
   /** Already handed over. The control stays, and says so, and does nothing. */
   reported: boolean;
   onReport: () => void;
+  /** Earlier versions, for an administrator. Absent or empty for everybody else. */
+  edits?: ChatEdit[];
   /** The replies, as `<Post nested>` elements. */
   children?: ReactNode;
 }) {
@@ -202,6 +206,7 @@ export function Post({
       {post.editedAt && !editing ? (
         <p className="mt-1 text-[0.78125rem] text-grey">Edited · {chatTime(post.editedAt)}</p>
       ) : null}
+      {edits && edits.length > 0 && !editing ? <EarlierVersions edits={edits} from={name} /> : null}
 
       {editing ? null : (
         <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1">

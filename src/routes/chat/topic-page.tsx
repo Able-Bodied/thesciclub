@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useEdits } from '@/lib/chat/edits';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
@@ -111,10 +112,22 @@ export default function TopicPage() {
   // anything, and a removal arrives as an UPDATE and redraws as the sentence
   // that replaces it. The scroll is not affected: it happens once, on the
   // first load, so a reply landing does not throw the reader up the page.
+  // Administrators only; everybody else gets empty maps without a read.
+  const editedIds = useMemo(
+    () => posts.filter((post) => post.editedAt !== null).map((post) => post.id),
+    [posts],
+  );
+  const edits = useEdits(editedIds, []);
+
   useRealtimeRows({
     table: 'chat_posts',
     filter: topicId ? `topic_id=eq.${topicId}` : undefined,
-    onChange: reload,
+    onChange: () => {
+      reload();
+      // An edit arrives as an update to the post; its earlier version is a
+      // new row here.
+      edits.reload();
+    },
     enabled: Boolean(topicId),
   });
 
@@ -175,6 +188,7 @@ export default function TopicPage() {
     if (!result.ok) return result.error;
     setEditingId(null);
     reload();
+    edits.reload();
     return null;
   }
 
@@ -264,6 +278,7 @@ export default function TopicPage() {
     onReport: () => {
       setReportingId(post.id);
     },
+    edits: edits.byPost.get(post.id) ?? [],
   });
 
   return (

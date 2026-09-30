@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
-import type { ChatReport } from '@/lib/chat/types';
+import type { ChatEdit, ChatReport } from '@/lib/chat/types';
 import { ReportsSection } from '@/routes/admin/reports-section';
 
 /**
@@ -15,6 +15,22 @@ const api = vi.hoisted(() => ({
   removedPosts: [] as string[],
   removedMessages: [] as string[],
   failWith: null as string | null,
+}));
+
+// Earlier versions of the reported post or message. The hook has its own
+// test; here the maps say what came back.
+const edits = vi.hoisted(() => ({
+  byPost: new Map<string, ChatEdit[]>(),
+  byMessage: new Map<string, ChatEdit[]>(),
+}));
+vi.mock('@/lib/chat/edits', () => ({
+  useEdits: () => ({
+    byPost: edits.byPost,
+    byMessage: edits.byMessage,
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
 }));
 
 vi.mock('@/lib/chat/reports', () => ({
@@ -102,6 +118,8 @@ beforeEach(() => {
   went.length = 0;
   reloads = 0;
   authorsById.clear();
+  edits.byPost.clear();
+  edits.byMessage.clear();
   authorsById.set('ada', { hasProfile: true });
   authorsById.set('bo', { hasProfile: true });
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -284,6 +302,30 @@ describe('the reports panel', () => {
     expect(screen.getByText(/Reported by a former member/)).toBeInTheDocument();
     // Nobody to go to.
     expect(screen.queryByRole('button', { name: /^Go to/ })).toBeNull();
+  });
+
+  it('shows what a reported message said before it was edited, under a disclosure', async () => {
+    edits.byMessage.set('m1', [
+      {
+        id: 'e1',
+        postId: null,
+        messageId: 'm1',
+        body: 'Buy my miracle supplement.',
+        attachments: [],
+        editedBy: 'bo',
+        replacedAt: '2026-09-18T10:30:00Z',
+      },
+    ]);
+    renderSection([report({ id: 'r1' })]);
+    const disclosure = screen.getByText('Earlier versions');
+    await userEvent.click(disclosure);
+    expect(screen.getByText('Buy my miracle supplement.')).toBeInTheDocument();
+    expect(screen.getByText(/^Replaced /)).toBeInTheDocument();
+  });
+
+  it('draws no disclosure on a report of something never edited', () => {
+    renderSection([report({ id: 'r1' })]);
+    expect(screen.queryByText('Earlier versions')).toBeNull();
   });
 
   it('invites nothing when there is nothing, rather than showing an empty frame', () => {
