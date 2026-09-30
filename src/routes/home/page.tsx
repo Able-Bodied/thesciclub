@@ -11,6 +11,7 @@ import { useBrowseMembers } from '@/lib/members';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { EventCard } from '@/routes/events/event-card';
+import { ComposeCard } from '@/routes/home/compose-card';
 import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
@@ -24,7 +25,8 @@ import type { RsvpStatus } from '@/types/domain';
  * members worth meeting, from the mock's `homePage()`. Home adds no new kind
  * of content. Every card is a way in to a room, an event or a member that
  * already exists, and reporting, removal, notifications and mutes are theirs.
- * Nothing can be written from here yet.
+ * The dashed card at the top is the way to ask or share, and what it writes is
+ * a topic in a room, through /home/new and the New topic screen.
  *
  * ---------------------------------------------------------------------------
  * A column, for the reason Events is one
@@ -235,6 +237,9 @@ export default function HomePage() {
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
+          {/* On every pill, and before anything has loaded: it reads nothing,
+              and asking should not wait for the list. */}
+          <ComposeCard segment={segment} linkState={linkState} />
           {writeError ? <Problem sentences={[writeError]} /> : null}
 
           {!settled ? (

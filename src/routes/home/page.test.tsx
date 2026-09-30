@@ -198,6 +198,40 @@ describe('Home', () => {
     expect(screen.queryByText('Seeded in a closed room')).toBeNull();
   });
 
+  describe('asking or sharing', () => {
+    it('comes before the list, and opens /home/new with the way back', async () => {
+      const user = userEvent.setup();
+      renderPage('/home?segment=topics');
+      const ask = screen.getByRole('link', { name: 'Ask something, or share something' });
+      const [first] = feed();
+      if (!first) throw new Error('the list should have a card in it');
+      expect(ask.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      await user.click(ask);
+      expect(
+        screen.getByText('at /home/new with {"from":"home","segment":"topics"}'),
+      ).toBeInTheDocument();
+    });
+
+    it('opens on sharing from the Photos pill', async () => {
+      const user = userEvent.setup();
+      renderPage('/home?segment=photos');
+      await user.click(screen.getByRole('link', { name: 'Ask something, or share something' }));
+      expect(
+        screen.getByText('at /home/new?kind=share with {"from":"home","segment":"photos"}'),
+      ).toBeInTheDocument();
+    });
+
+    // It reads nothing, so asking does not wait for the list.
+    it('is there while the list is still loading', () => {
+      db.membersLoading = true;
+      renderPage();
+      expect(screen.getByRole('status')).toHaveTextContent('Loading…');
+      expect(
+        screen.getByRole('link', { name: 'Ask something, or share something' }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe('the pills', () => {
     it('list only their own kind', async () => {
       const user = userEvent.setup();
@@ -330,7 +364,10 @@ describe('Home', () => {
       if (link) {
         expect(screen.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
       } else {
-        expect(screen.queryAllByRole('link')).toHaveLength(0);
+        // The one link is the way to ask or share, which is on every pill.
+        expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
+          'Ask something, or share something',
+        ]);
       }
     });
   });
