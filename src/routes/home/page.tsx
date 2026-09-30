@@ -1,17 +1,341 @@
-import { PlaceholderScreen } from '@/components/placeholder-screen';
+import { useCallback, useMemo, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { SegmentPills } from '@/components/segment-pills';
+import { useChatAuthors } from '@/lib/chat/authors';
+import { useChatRooms } from '@/lib/chat/rooms';
+import { useMyThreads } from '@/lib/chat/threads';
+import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
+import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
+import { useBrowseMembers } from '@/lib/members';
+import { useOrganizations } from '@/lib/organizations';
+import { useSession } from '@/lib/session';
+import { EventCard } from '@/routes/events/event-card';
+import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
+import { PersonCard } from '@/routes/home/person-card';
+import { PhotoCard } from '@/routes/home/photo-card';
+import { TopicCard } from '@/routes/home/topic-card';
+import type { RsvpStatus } from '@/types/domain';
 
 /**
- * Home — the mixed feed (questions, photo posts, events, member suggestions)
- * from the mock. Deliberately not built yet: it needs four content types and a
- * moderation story, and none of the three flows this app is being built around
- * depend on it. See CONTEXT.md, "Deliberately deferred".
+ * Home: what the club is doing, in one list.
+ *
+ * Recent topics and photographs from the open rooms, upcoming events and
+ * members worth meeting, from the mock's `homePage()`. Home adds no new kind
+ * of content. Every card is a way in to a room, an event or a member that
+ * already exists, and reporting, removal, notifications and mutes are theirs.
+ * Nothing can be written from here yet.
+ *
+ * ---------------------------------------------------------------------------
+ * A column, for the reason Events is one
+ * ---------------------------------------------------------------------------
+ * A feed is read down, not scanned across. `src/routes/events/page.tsx` says
+ * why the column is capped: for a member driving a head pointer, distance on
+ * screen is effort.
+ *
+ * ---------------------------------------------------------------------------
+ * It reads once, on arrival, and does not subscribe
+ * ---------------------------------------------------------------------------
+ * Chat's screens are realtime and this one deliberately is not. A list that
+ * reorders while somebody is reading it is a list they lose their place in,
+ * and Home is for finding things, not for watching them. A new reply is on
+ * the topic page and in the room, both live. Do not add a subscription here as
+ * a fix for "Home did not update".
+ *
+ * ---------------------------------------------------------------------------
+ * Everything waits for all three sources
+ * ---------------------------------------------------------------------------
+ * The mixed list is decided by `buildFeed`, which interleaves topics, events
+ * and people. Drawing each source as it lands would re-mix the list under the
+ * reader three times, so Everything says "Loading…" until all three have
+ * settled. A single-kind pill waits for its own source only. A source that
+ * fails says so once, at the top, and the rest of the list still draws.
  */
+
+const SEGMENTS: [HomeSegment, string][] = [
+  ['everything', 'Everything'],
+  ['topics', 'Topics'],
+  ['photos', 'Photos'],
+  ['events', 'Events'],
+  ['people', 'People'],
+];
+
+type Source = 'topics' | 'events' | 'people';
+
+/** Which sources each pill draws from, and so waits for. */
+const SOURCES: Record<HomeSegment, Source[]> = {
+  everything: ['topics', 'events', 'people'],
+  topics: ['topics'],
+  photos: ['topics'],
+  events: ['events'],
+  people: ['people'],
+};
+
 export default function HomePage() {
+  const navigate = useNavigate();
+  const session = useSession();
+  const memberId = session.status === 'signed-in' ? session.userId : null;
+
+  // In the URL, for the reason Events and Chat keep theirs there: back from a
+  // card lands on the pill it was opened from, and a pill can be linked to.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const fromUrl = searchParams.get('segment');
+  const segment: HomeSegment = HOME_SEGMENTS.includes(fromUrl as HomeSegment)
+    ? (fromUrl as HomeSegment)
+    : 'everything';
+  const setSegment = useCallback(
+    (next: HomeSegment) => {
+      // Replace, not push: tapping through five pills should not mean five
+      // presses of back to leave.
+      setSearchParams(next === 'everything' ? {} : { segment: next }, { replace: true });
+    },
+    [setSearchParams],
+  );
+  // What every card hands to the screen it opens, so that screen's back link
+  // says Home and returns to this pill.
+  const linkState = useMemo(() => ({ from: 'home', segment }), [segment]);
+
+  const topicRead = useHomeTopics();
+  const rooms = useChatRooms();
+  const eventsRead = useEvents();
+  const { byEvent: attendeesByEvent } = useAttendeesByEvent();
+  const { byId: organizationsById } = useOrganizations();
+  const viewer = useViewerEvents(memberId);
+  const membersRead = useBrowseMembers();
+  const threadsRead = useMyThreads();
+  const [writeError, setWriteError] = useState<string | null>(null);
+
+  const topics = useMemo(
+    () => toHomeTopics(topicRead.topics, topicRead.posts, rooms.rooms),
+    [topicRead.topics, topicRead.posts, rooms.rooms],
+  );
+  const events = useMemo(() => pickEvents(eventsRead.events), [eventsRead.events]);
+  // Anybody the viewer has actually spoken with directly. A direct thread
+  // nobody has written in is not a conversation, as Chat's own list agrees.
+  const talkedTo = useMemo(
+    () =>
+      new Set(
+        threadsRead.threads
+          .filter((thread) => thread.kind === 'direct' && thread.lastAt !== null)
+          .flatMap((thread) => (thread.otherMemberId ? [thread.otherMemberId] : [])),
+      ),
+    [threadsRead.threads],
+  );
+  const people = useMemo(
+    () => suggestPeople(membersRead.members, memberId, talkedTo, new Date(), SEGMENT_PEOPLE),
+    [membersRead.members, memberId, talkedTo],
+  );
+
+  const authors = useChatAuthors(
+    topics.flatMap((topic) => [topic.authorId, topic.firstReply?.authorId ?? null]),
+  );
+
+  const loading: Record<Source, boolean> = {
+    topics: topicRead.loading || rooms.loading,
+    events: eventsRead.loading,
+    // A failed conversations read is not waited on and not reported: the cost
+    // is suggesting somebody the viewer already talks to, which is smaller
+    // than losing the suggestions.
+    people: membersRead.loading || threadsRead.loading,
+  };
+  const errors: Record<Source, string | null> = {
+    topics: topicRead.error ?? rooms.error,
+    events: eventsRead.error,
+    people: membersRead.error,
+  };
+  const sources = SOURCES[segment];
+  const settled = sources.every((source) => !loading[source]);
+  const failures = sources.flatMap((source) => {
+    const error = errors[source];
+    return error ? [error] : [];
+  });
+
+  const items = useMemo(
+    () => inSegment(segment, { topics, events, people }),
+    [segment, topics, events, people],
+  );
+
+  const onRsvp = useCallback(
+    (eventId: string, next: RsvpStatus | null) => {
+      if (!memberId) return;
+      setWriteError(null);
+      void setRsvp(eventId, memberId, next).then((result) => {
+        // Re-read rather than patch, as Events does: the tallies come from
+        // the database, and a local edit would leave the number and the
+        // button disagreeing.
+        if (result.ok) viewer.reload();
+        else setWriteError(result.error ?? 'Could not save that.');
+      });
+    },
+    [memberId, viewer],
+  );
+
+  function draw(item: FeedItem) {
+    switch (item.kind) {
+      case 'topic':
+        return (
+          <TopicCard
+            topic={item.topic}
+            starter={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
+            replier={
+              item.topic.firstReply?.authorId
+                ? (authors.get(item.topic.firstReply.authorId) ?? null)
+                : null
+            }
+            linkState={linkState}
+          />
+        );
+      case 'photo':
+        return (
+          <PhotoCard
+            topic={item.topic}
+            author={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
+            linkState={linkState}
+          />
+        );
+      case 'event':
+        return (
+          <EventCard
+            event={item.event}
+            status={viewer.rsvps.get(item.event.id) ?? null}
+            attendees={attendeesByEvent.get(item.event.id) ?? []}
+            organization={
+              item.event.organizationId
+                ? (organizationsById.get(item.event.organizationId) ?? null)
+                : null
+            }
+            onOpen={() => {
+              void navigate(`/events/${item.event.id}`, { state: linkState });
+            }}
+            onRsvp={(next) => {
+              onRsvp(item.event.id, next);
+            }}
+          />
+        );
+      case 'person':
+        return <PersonCard member={item.member} linkState={linkState} />;
+    }
+  }
+
   return (
-    <PlaceholderScreen
-      title="Home"
-      blurb="The club feed — questions members have asked, photos, and what is coming up near you."
-      note="Not built yet. Peers, Events, and your profile are the working surfaces."
-    />
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
+        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center">
+          <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
+            Home
+          </h1>
+        </div>
+        <SegmentPills
+          segments={SEGMENTS}
+          value={segment}
+          onChange={setSegment}
+          className="max-w-[var(--events-measure)]"
+        />
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
+        <div className="mx-auto w-full max-w-[var(--events-measure)]">
+          {writeError ? <Problem sentences={[writeError]} /> : null}
+
+          {!settled ? (
+            <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
+              Loading…
+            </p>
+          ) : (
+            <>
+              {failures.length > 0 ? <Problem sentences={failures} /> : null}
+              {items.length > 0 ? (
+                <>
+                  <ul>
+                    {items.map((item) => (
+                      // An event card carries its own bottom margin; the
+                      // others are given the same one here.
+                      <li key={item.key} className={item.kind === 'event' ? '' : 'mb-[11px]'}>
+                        {draw(item)}
+                      </li>
+                    ))}
+                  </ul>
+                  <SeeMore segment={segment} />
+                </>
+              ) : failures.length > 0 ? null : (
+                <EmptyList segment={segment} />
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** A failure, said once, above whatever did load. */
+function Problem({ sentences }: { sentences: string[] }) {
+  return (
+    <div
+      role="alert"
+      className="mb-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+    >
+      {sentences.map((sentence) => (
+        <p key={sentence}>{sentence}</p>
+      ))}
+    </div>
+  );
+}
+
+const LINK_CLASS =
+  'inline-flex min-h-[2.75rem] items-center font-semibold text-[0.875rem] text-navy underline decoration-line underline-offset-2 hover:decoration-navy';
+
+/** Where the rest of a single-kind list lives. Everything has no "rest". */
+function SeeMore({ segment }: { segment: HomeSegment }) {
+  const more: Partial<Record<HomeSegment, [string, string]>> = {
+    topics: ['/chat?segment=rooms', 'See the rooms'],
+    photos: ['/chat?segment=rooms', 'See the rooms'],
+    events: ['/events', 'See the whole calendar'],
+    people: ['/peers', 'See everyone in Peers'],
+  };
+  const link = more[segment];
+  if (!link) return null;
+  return (
+    <p className="text-center">
+      <Link to={link[0]} className={LINK_CLASS}>
+        {link[1]}
+      </Link>
+    </p>
+  );
+}
+
+/**
+ * Each empty pill says which emptiness it is, and where to go instead.
+ *
+ * An empty Topics pill is the ordinary day for this club: rooms open a few at
+ * a time. The sentence says so rather than apologising, and the way out is a
+ * link, not a button.
+ */
+function EmptyList({ segment }: { segment: HomeSegment }) {
+  const empty: Record<HomeSegment, [string, [string, string] | null]> = {
+    everything: ['Nothing here yet.', null],
+    topics: [
+      'No topics yet. Rooms open a few at a time, and anybody can start one.',
+      ['/chat?segment=rooms', 'See the rooms'],
+    ],
+    photos: [
+      'No photographs yet. A topic with a photograph shows up here.',
+      ['/chat?segment=rooms', 'See the rooms'],
+    ],
+    events: ['Nothing on the calendar in the next 30 days.', ['/events', 'See the whole calendar']],
+    people: ['Nobody new to suggest today.', ['/peers', 'See everyone in Peers']],
+  };
+  const [sentence, link] = empty[segment];
+  return (
+    <div className="px-6 py-10 text-center">
+      <p className="text-[0.875rem] text-grey leading-relaxed">{sentence}</p>
+      {link ? (
+        <p className="mt-2">
+          <Link to={link[0]} className={LINK_CLASS}>
+            {link[1]}
+          </Link>
+        </p>
+      ) : null}
+    </div>
   );
 }
