@@ -50,11 +50,11 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    exiting 0 there; Netlify's deploy of it reads ready.
    See "Home, step 3" below.
 6. **Groups can be renamed and given a picture** (2026-09-30, a side job the
-   owner asked for). Built and committed, **not pushed, and its migration
-   `20260930020000` is not on the live database.** `db push --linked
-   --dry-run` lists that one migration and nothing else. Release in order:
-   the owner pushes the migration, then the code. See "Group names and
-   pictures" below.
+   owner asked for), and it is live. The owner pushed its migration
+   `20260930020000` first (`migration list --linked` shows it applied), then
+   said to push the code: both branches on GitHub at `5be5087`, gated on
+   `pnpm check` exiting 0 there, and Netlify's deploy of it reads ready. See
+   "Group names and pictures" below.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -603,7 +603,7 @@ Owed and noticed, not changed:
   local storage). Local data only.
 - Step 4, "Filter your feed", is next. It has no migration.
 
-## Group names and pictures — built 2026-09-30, not pushed
+## Group names and pictures — built 2026-09-30, live the same day
 
 The owner asked for it on 2026-09-30 ("allow people to rename group chats and
 add photos to group chats") and answered four questions the same day:
