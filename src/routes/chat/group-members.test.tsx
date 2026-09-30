@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type * as Router from 'react-router-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Attachments from '@/lib/chat/attachments';
 import type * as Groups from '@/lib/chat/groups';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatThread } from '@/lib/chat/types';
@@ -27,6 +28,30 @@ const db = vi.hoisted(() => ({
   left: [] as [string, string][],
   navigated: [] as string[],
   reloaded: 0,
+  threadsReloaded: 0,
+  renamed: [] as [string, string][],
+  renameFailure: null as string | null,
+  pictured: [] as [string, string | null][],
+  pictureFailure: null as string | null,
+  uploads: [] as [string[], string][],
+  deleted: [] as string[][],
+  urls: new Map<string, string>(),
+}));
+
+// The uploads and signing are storage calls; attachmentProblem is left real,
+// since it is what refuses a video before anything is sent.
+vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof Attachments>()),
+  uploadAttachments: (files: File[], folder: string) => {
+    db.uploads.push([files.map((f) => f.name), folder]);
+    return Promise.resolve({ ok: true, value: files.map((f) => `${folder}/${f.name}`) });
+  },
+  deleteAttachments: (paths: string[]) => {
+    db.deleted.push(paths);
+    return Promise.resolve();
+  },
+  useAttachmentUrls: (paths: readonly string[]) =>
+    new Map([...db.urls].filter(([path]) => paths.includes(path))),
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -43,7 +68,14 @@ vi.mock('@/lib/chat/authors', () => ({
 
 vi.mock('@/lib/chat/threads', async (importOriginal) => ({
   ...(await importOriginal<typeof Threads>()),
-  useMyThreads: () => ({ threads: db.threads, loading: false, error: null, reload: vi.fn() }),
+  useMyThreads: () => ({
+    threads: db.threads,
+    loading: false,
+    error: null,
+    reload: () => {
+      db.threadsReloaded += 1;
+    },
+  }),
 }));
 
 vi.mock('@/lib/chat/groups', async (importOriginal) => ({
@@ -60,6 +92,18 @@ vi.mock('@/lib/chat/groups', async (importOriginal) => ({
     db.added.push([threadId, memberId]);
     return Promise.resolve(
       db.addFailure ? { ok: false, error: db.addFailure } : { ok: true, value: null },
+    );
+  },
+  renameGroup: (threadId: string, name: string) => {
+    db.renamed.push([threadId, name]);
+    return Promise.resolve(
+      db.renameFailure ? { ok: false, error: db.renameFailure } : { ok: true, value: null },
+    );
+  },
+  setGroupPicture: (threadId: string, path: string | null) => {
+    db.pictured.push([threadId, path]);
+    return Promise.resolve(
+      db.pictureFailure ? { ok: false, error: db.pictureFailure } : { ok: true, value: null },
     );
   },
   leaveGroup: (threadId: string, memberId: string) => {
@@ -135,6 +179,14 @@ beforeEach(() => {
   db.left = [];
   db.navigated = [];
   db.reloaded = 0;
+  db.threadsReloaded = 0;
+  db.renamed = [];
+  db.renameFailure = null;
+  db.pictured = [];
+  db.pictureFailure = null;
+  db.uploads = [];
+  db.deleted = [];
+  db.urls = new Map();
 });
 
 describe('who is in a group', () => {
@@ -214,5 +266,128 @@ describe('who is in a group', () => {
     db.threads = [thread({ kind: 'direct', name: null, otherMemberId: 'jan' })];
     renderPage();
     expect(screen.getByText(/no members to manage/)).toBeInTheDocument();
+  });
+});
+
+const photo = (name: string, type = 'image/jpeg') => new File([new Uint8Array(10)], name, { type });
+// The platform's picker behind the button, hidden from the accessibility tree
+// on purpose; reached by its type, as the composer's test does.
+const fileInput = (): HTMLInputElement => {
+  const element = document.querySelector<HTMLInputElement>('input[type=file]');
+  if (!element) throw new Error('the screen should carry a file input');
+  return element;
+};
+
+// The owner, 2026-09-30: anybody in a group can rename it or change its
+// picture, an event's group keeps its name and takes no picture, and the
+// conversation says who changed what.
+describe('a group’s name and picture', () => {
+  it('is headed by the group’s name, with the members under it', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'Saturday ride' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: '2 members' })).toBeInTheDocument();
+    expect(screen.getByText(/Anybody in the group can change these/)).toBeInTheDocument();
+  });
+
+  it('renames, and reads the group back', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Rename the group' }));
+    const field = screen.getByLabelText('The group’s name');
+    expect(field).toHaveValue('Saturday ride');
+    // The current name is refused by the database, so it is not offered.
+    expect(screen.getByRole('button', { name: 'Save the name' })).toBeDisabled();
+    expect(screen.getByText('That is already the group’s name.')).toBeInTheDocument();
+    await user.clear(field);
+    await user.type(field, 'Tuesday swimmers');
+    await user.click(screen.getByRole('button', { name: 'Save the name' }));
+    await waitFor(() => {
+      expect(db.renamed).toEqual([['g1', 'Tuesday swimmers']]);
+    });
+    expect(db.threadsReloaded).toBe(1);
+    expect(screen.queryByLabelText('The group’s name')).toBeNull();
+  });
+
+  // The control that had focus goes away each time; focus must not fall to
+  // the top of the page.
+  it('keeps focus in place as the form opens and closes', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Rename the group' }));
+    expect(screen.getByLabelText('The group’s name')).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Rename the group' })).toHaveFocus();
+  });
+
+  it('keeps what was typed when a rename is refused, and says why', async () => {
+    db.renameFailure = 'Only an active member can rename a group.';
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: 'Rename the group' }));
+    const field = screen.getByLabelText('The group’s name');
+    await user.clear(field);
+    await user.type(field, 'Tuesday swimmers');
+    await user.click(screen.getByRole('button', { name: 'Save the name' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Only an active member can rename a group.',
+    );
+    expect(screen.getByLabelText('The group’s name')).toHaveValue('Tuesday swimmers');
+    expect(db.threadsReloaded).toBe(0);
+  });
+
+  it('uploads a picture to the group’s own folder, then names it', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    expect(screen.queryByRole('button', { name: 'Take the picture away' })).toBeNull();
+    await user.upload(fileInput(), photo('pool.jpg'));
+    await waitFor(() => {
+      expect(db.pictured).toEqual([['g1', 'threads/g1/pool.jpg']]);
+    });
+    expect(db.uploads).toEqual([[['pool.jpg'], 'threads/g1']]);
+    expect(db.threadsReloaded).toBe(1);
+  });
+
+  it('takes a refused picture back out of storage, and says why', async () => {
+    db.pictureFailure = 'That picture has not been uploaded.';
+    const user = userEvent.setup();
+    renderPage();
+    await user.upload(fileInput(), photo('pool.jpg'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That picture has not been uploaded.',
+    );
+    expect(db.deleted).toEqual([['threads/g1/pool.jpg']]);
+  });
+
+  it('refuses something that is not a photograph before sending anything', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    renderPage();
+    await user.upload(fileInput(), photo('clip.mp4', 'video/mp4'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/not a photograph/);
+    expect(db.uploads).toEqual([]);
+    expect(db.pictured).toEqual([]);
+  });
+
+  it('shows the picture, and offers to change it or take it away', async () => {
+    db.urls = new Map([['threads/g1/p.webp', 'https://signed/p']]);
+    db.threads = [thread({ photoPath: 'threads/g1/p.webp' })];
+    const user = userEvent.setup();
+    renderPage();
+    expect(document.querySelector('img')).toHaveAttribute('src', 'https://signed/p');
+    expect(screen.getByRole('button', { name: /Change the picture/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Take the picture away' }));
+    await waitFor(() => {
+      expect(db.pictured).toEqual([['g1', null]]);
+    });
+  });
+
+  it('offers neither to an event’s group, which keeps the event’s name', () => {
+    db.threads = [thread({ eventId: 'ev1', name: 'Adaptive swim night' })];
+    renderPage();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Adaptive swim night' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Rename the group' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /picture/ })).toBeNull();
+    expect(screen.getByText(/It keeps the event’s name/)).toBeInTheDocument();
   });
 });

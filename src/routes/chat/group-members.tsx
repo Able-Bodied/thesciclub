@@ -1,20 +1,25 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
+import { useAttachmentUrls } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { addToGroup, leaveGroup, useThreadRoster } from '@/lib/chat/groups';
 import { useMyThreads } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
+import { GroupIdentity } from '@/routes/chat/group-identity';
 import { MemberPicker } from '@/routes/chat/member-picker';
 
 /**
- * Who is in a group, how somebody else gets in, and how you get out.
+ * Who is in a group, how somebody else gets in, and how you get out — and,
+ * since 2026-09-30, the group's name and picture and the way to change them.
  *
  * A screen of its own rather than a panel on the conversation, because all
- * three of those are things somebody does once and none of them belongs beside
- * a composer. The header of the thread links here by its "N members" line.
+ * of those are things somebody does once and none of them belongs beside a
+ * composer. The header of the thread links here by its "N members" line. The
+ * screen is headed by the group's name and picture, since it is about the
+ * group; `GroupIdentity` holds the controls and says why they are there.
  *
  * ---------------------------------------------------------------------------
  * There is no removing anybody but yourself
@@ -49,8 +54,9 @@ export default function GroupMembersPage() {
 
   // The list, not the conversation: this screen has no use for the messages,
   // and chat_my_threads is the one round trip that carries the name and kind.
-  const { threads, loading: threadsLoading } = useMyThreads();
+  const { threads, loading: threadsLoading, reload: reloadThreads } = useMyThreads();
   const thread = threads.find((candidate) => candidate.id === threadId) ?? null;
+  const picture = useAttachmentUrls(thread?.photoPath ? [thread.photoPath] : []);
   const {
     memberIds,
     loading: rosterLoading,
@@ -145,9 +151,23 @@ export default function GroupMembersPage() {
       <div className="mx-auto w-full max-w-[720px]">
         <BackLink to={`/chat/t/${thread.id}`} label={thread.name ?? 'Group'} />
 
-        <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
+        <div className="mt-1.5 flex items-center gap-3">
+          {/* Decorative: the name beside it is the heading. Sized in rem so it
+              grows with the text-size setting, as the name does. */}
+          <GroupAvatar
+            url={thread.photoPath ? picture.get(thread.photoPath) : null}
+            className="h-[3.5rem] w-[3.5rem] rounded-[16px] text-[1.75rem]"
+          />
+          <h1 className="min-w-0 break-words font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
+            {thread.name ?? 'Group'}
+          </h1>
+        </div>
+
+        {thread.eventId ? null : <GroupIdentity thread={thread} onChanged={reloadThreads} />}
+
+        <h2 className="mt-6 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
           {memberIds.length} {memberIds.length === 1 ? 'member' : 'members'}
-        </h1>
+        </h2>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
           Everybody here can read the whole conversation, including what was said before they
           arrived.
@@ -210,8 +230,8 @@ export default function GroupMembersPage() {
 
         {thread.eventId ? (
           <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
-            This is the group chat for an event. Everybody going to it can join from the event, so
-            nobody is added by hand here.
+            This is the group chat for an event. It keeps the event’s name, and everybody going to
+            it can join from the event, so nobody is added by hand here.
           </p>
         ) : (
           <>
