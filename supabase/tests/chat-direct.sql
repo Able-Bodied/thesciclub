@@ -71,7 +71,8 @@ rollback to savepoint nobody;
 
 \echo ''
 \echo '== 2. opening one with a member who can be found =='
-\echo '   expect: a uuid, then kind direct | 2 on the roster | the ordered key.'
+\echo '   expect: direct | 2 on the roster | t key_is_ordered | t direct_shape_holds.'
+\echo '   (The thread id goes into \\gset and is not printed; the row is read by it.)'
 select public.chat_open_direct('bbbbbbbb-4444-0000-0000-000000000002') as thread \gset
 select t.kind,
        (select count(*) from public.chat_thread_members m where m.thread_id = t.id) as roster,
