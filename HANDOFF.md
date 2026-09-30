@@ -35,6 +35,11 @@ Three things happened on 2026-09-28/29, in this order of urgency:
 3. **The owner's new brand is in the app** — the owner's call being "the whole
    brand", not the logo alone — with Atkinson Hyperlegible Next for reading
    text, because accessibility comes first here.
+4. **Home step 2b is built and its client half is not committed.** The
+   migration `20260930000000` is committed and is **not on the live
+   database**; the owner pushes it, and only then does the client land — see
+   "Home, step 2b" below for the replay script, and its "Order of release"
+   in HOME-PLAN.md for why the order matters.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -359,8 +364,122 @@ Owed and noticed, not changed:
   Chat, because they live under `/chat`. Step 1's topic links do the same.
 - The compose card's dashed border is `border-line`, lighter than the
   mock's; the words carry it.
-- Next is step 3, Likes, which has the one migration. Read its "Order of
-  release": the owner pushes the migration before the code.
+- Next was step 2b; see the next section.
+
+## Home, step 2b — built 2026-09-29, waiting on the owner's database push
+
+Step 2b, "Rooms open to write; editing; replies to a post" — HOME-PLAN.md
+decisions 8 to 12, asked for by the owner on 2026-09-29 before Likes. It
+changes Chat as much as Home, and it reopens two of Chat's recorded
+decisions at the owner's word: joining no longer buys anything, and a
+member can edit their own words.
+
+**What is committed:** the migration
+`20260930000000_rooms_open_to_write_editing_and_replies.sql` and five probes
+(`chat-edits.sql` and `chat-replies.sql` new; `chat-posts.sql`,
+`chat-attachments.sql` and `topic-removal-and-deletion.sql` changed). All
+28 probes in `supabase/tests/` were run on the local stack as signed-in
+roles on 2026-09-29 and every one reads as expected.
+`pnpm exec supabase db push --linked --dry-run` lists exactly that one
+migration. **The owner pushes it.**
+
+**What is built and not committed:** the client, in the working tree, with
+`pnpm test` (1,384), `pnpm check` and `pnpm build` clean at every one of
+its six steps. The owner asked that no client code depending on the
+migration be committed until the push is done, so each step is saved as a
+cumulative patch with its commit message in `screenshots/step-2b-commits/`
+(gitignored, on this machine), and `commit-step-2b.sh` there replays them
+as six commits in the plan's order — Join comes out; editing; replies in
+topics; conversations; Home's first-reply rule; earlier versions — then
+the documents. Run it from the repo root once the owner says the push is
+done, after `git status` shows the working tree still holds the changes.
+If the working tree has been lost, the patches rebuild it.
+
+What the migration does, one part each, with the header saying why:
+`chat_can_post_in` stops asking for a membership row (rows and policies
+stay; `chat_room_stats.member_count` stays for an older client and is not
+read); `edited_at` and `reply_to` on `chat_posts` and `chat_messages`,
+`reply_to` granted for insert and guarded by a `before insert` trigger on
+each table — same topic or thread, not removed, and for posts not a reply;
+`chat_edits` holds every earlier version, one select policy `is_admin()`;
+`chat_edit_post` and `chat_edit_message` are its only writers and refuse
+everybody but the author, an administrator included; `chat_remove_post`
+nulls `reply_to` on the replies of a post it removes. No `admin_post_edits`
+function, on purpose: an administrator selects the table.
+
+What the client does:
+
+- **Join is gone**: `joinRoom` and `useRoomMembership` deleted; the room
+  page, room card, Chat page and `/home/new` draw no Join, Joined, Leave or
+  member count; `canPost` is the room being open (or the reader being an
+  administrator). The Chat page's sentence reads "Open to every member, to
+  read and to write, with the whole history."
+- **Editing** is the composer in place (`Composer` gains `edit`): Save and
+  Cancel, Escape cancels, no photo picker, Save unavailable while nothing
+  has changed or the words are blank on a row with no photographs. "Edited
+  · 9:30am" under a post; "· Edited 9:30am" on a bubble's byline.
+- **Replies in a topic**: `threadPosts` (pure, `topics.ts`) files each
+  reply under its post; a reply whose post is gone stands on its own; a
+  reply to a reply files under the same post, and the client sets
+  `reply_to` to the parent so the trigger is never met in ordinary use.
+  Numbering counts the top level; `firstUnreadThread` opens at the first
+  thread with something new in it. The composer carries "Replying to Jan"
+  with a ✕.
+- **Replies in a conversation** are a quote (`quoteText`, pure,
+  `threads.ts`): eighty characters, "Removed message", "Photograph".
+  Tapping it scrolls to the message and lights it up once
+  (`.message-flash` in `index.css`; reduced motion honoured). A quote of
+  your own message is headed "You".
+- **Controls are named for their post or message** — "Reply to Jan's
+  post", "Remove your message" — so a topic is not twenty identical
+  buttons in a screen reader's list. The tests that queried `Remove` and
+  `Report` by exact name now match by prefix.
+- **Earlier versions**: `useEdits` (`src/lib/chat/edits.ts`) reads
+  `chat_edits` for an administrator and hands everybody else empty maps
+  without asking; `EarlierVersions` (`routes/chat/earlier-versions.tsx`)
+  is a `<details>` list drawn under an edited post on the topic page and
+  under the snapshot on a report.
+- **Home**: the first reply on a card is the earliest standing top-level
+  post after the opener.
+
+Where the build differs from the plan, on purpose:
+
+- **`/home/new`'s join step came out with the first commit**, not the
+  fifth: nothing in the client could join once `joinRoom` went, and the
+  first commit has to typecheck on its own.
+- **Exactly one of `post_id` and `message_id` on `chat_edits` is a check
+  constraint**, not a `kind` column: both foreign keys cascade, so the
+  reason `chat_reports` needed `kind` does not apply.
+- **The reply bar and the quote name the reader as "you"**, and the quote's
+  heading as "You"; the plan did not say.
+
+Checked on the local stack (the dev server on 5183, confirmed pointing at
+127.0.0.1:54321), by a Playwright script kept in the session's scratch
+folder: as Sam, a local member whose memberships were deleted so they had
+joined nothing — a topic started in bowel with no Join; a reply nested; a
+reply to the reply filed under the same post; a second post with a reply
+under it taken back, the reply standing at the top level and numbered,
+nothing saying "removed"; the opening post edited twice, "Edited · time"
+shown, no versions offered; Jan's topic with no Edit and a Reply; a
+conversation with Jan with a reply quoted, the quote tapped and the
+message lit, a message edited; `/home/new` with Continue only. As Jan, the
+edited post reported. As Alex, the administrator: no Edit on Sam's posts,
+"Earlier versions" under the edited post with both drafts, and again under
+the report on `/admin`. Screenshots at 430 and 1280, `--text=larger`, and
+320 wide with no sideways page scroll, all read. axe clean on the topic
+page (as a member and as the administrator with the versions open), the
+thread page and `/home/new`. A keyboard walk: Tab to Edit, Enter, type,
+Tab to Save, Enter; Tab to Reply, Enter, type, Tab to Post this reply,
+Enter. **Not checked:** VoiceOver on a real iPhone; notifications for a
+reply (unchanged by design — a reply is an ordinary post); production.
+
+Owed and noticed, not changed:
+
+- The topic rows on a room page still draw "0 views" (the zero-count
+  bullet under step 2).
+- A conversation with two messages sits at the bottom of a tall empty
+  panel at 430, as it always has.
+- Step 3, Likes, is next, with the other migration.
 
 ## A photograph from an iPhone was refused — fixed 2026-09-29
 
@@ -410,7 +529,9 @@ the fix.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
 - **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
-  on 2026-09-29). Steps 1 and 2 are done; see the two sections above.
+  on 2026-09-29). Steps 1 and 2 are live; step 2b is built and waits on the
+  owner's database push before its client commits; see the three sections
+  above.
 
 ## Standing rules this session learned
 
@@ -538,6 +659,7 @@ The Chat migrations, in the order they apply — each header says why, and the
 | `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
 | `…200000` | photographs: `attachments text[]` on messages, posts, removed bodies and reports; the **private** `chat` bucket (2MB, three image types) and its three storage policies behind `chat_file_is_readable` / `_writable` / `_reported`; `chat_create_topic` takes a fourth argument; removal blanks the list |
 | `…210000` | a photograph named on a report cannot be deleted by anybody — `chat_file_is_on_a_report()` in the delete policy. The owner spotted the gap the day photographs shipped: take the message back and the report kept the words and an empty space |
+| `20260930000000` | Home step 2b: `chat_can_post_in` without a membership row; `edited_at` and `reply_to` on posts and messages with a `before insert` trigger each; `chat_edits` (administrators select, nobody else reads) with `chat_edit_post` / `chat_edit_message` as its writers; `chat_remove_post` frees a removed post's replies. **Not yet pushed** — see "Home, step 2b". |
 | `20260923000000` | `chat_add_first_post_photographs(room, paths)`: a new room's first post gets its photographs *after* the room exists, because the folder is named after an id the function makes — the one place the row comes first and the files second. Definer; once, by the starter, before any reply, files checked in `storage.objects`. Pushed 2026-09-23. |
 
 The four from 2026-09-17, newest first:
@@ -809,12 +931,14 @@ Two rules, both learned the hard way:
 | `declined.sql` | that "rather not say" is recorded, and that the name and the birthday cannot be |
 | `chat-authors.sql` | that a member can put a name to a post by anybody — hidden, suspended or removed — and that a session without a member row can put a name to nobody |
 | `chat-rooms.sql` | that a closed discussion room is invisible to a member and visible to an administrator, that only an administrator can open one, and that a member cannot reach the table around the function |
-| `chat-posts.sql` | that an un-joined member reads a room's whole history and cannot write in it, that a suspended one reads and does not write, that an administrator seeds a closed room, that an author and an administrator can remove a post and a third member cannot, and that nobody sees which rooms another member joined or which topics they have read |
+| `chat-posts.sql` | that a member who has joined nothing reads a room's whole history **and writes in it** (step 1 inverted on 2026-09-29 with `20260930000000`), that a suspended one reads and does not write, that an administrator seeds a closed room and a member cannot post in one, that an author and an administrator can remove a post and a third member cannot, and that nobody sees which rooms another member joined or which topics they have read |
+| `chat-edits.sql` | `20260930000000`: the author edits their post and message; another member cannot; an administrator cannot edit but reads every earlier version (step 3); a member reads none of `chat_edits`, their own included (step 4); removed, unchanged, blank-without-photographs, too long and closed-room edits are refused; deleting the topic takes its edits with it (step 12) |
+| `chat-replies.sql` | `20260930000000`: a reply lands under a post in the same topic; another topic, a missing id, a removed post and a reply to a reply are refused (step 3); removing the parent leaves the reply standing with `reply_to` null, still counted (step 5); a message quotes one in its thread, may quote a quote, cannot quote across threads or a removed one, and an existing quote of a removed message stays |
 | `chat-direct.sql` | that a third member sees nothing of a conversation — not the thread, not its roster, not a word of it, and nor does an administrator — that opening the same one twice from either end returns the same thread, that a hidden or suspended member cannot be found to start one while a conversation that already exists still opens, and that a member cannot reach the thread tables around the functions |
 | `chat-groups.sql` | that somebody outside a group cannot add to it, that leaving one stops every read including the words written while they were in it, that an RSVP of Interested does not open the event's group chat, that a group has an order and a cap, and that an event's group takes no members by hand |
 | `chat-member-removed.sql` | that ending a membership is not blocked by anything Chat added, that what they wrote in rooms and conversations stays without their name, that what they joined and read goes with them, and that the other half of a direct conversation can still read it |
 | `chat-reports.sql` | that a member outside a conversation cannot report a message in it, that the reporter reads back three columns and not the snapshot, that the administrators' answer carries no thread id, that a second report is one row, that the snapshot survives the author taking the message back, and that somebody paused can still say what was done to them |
-| `chat-attachments.sql` | photographs: the row limits (step 12a–f is the new-room function, with its four refusals); (four, words *or* a picture, paths under the row's own folder) and the `chat` bucket's read policy as members — step 6 (an outsider cannot read a conversation's picture) and 9a (an administrator reads a reported picture and not its neighbour) are the ones that matter. Uploads and deletes cannot be tested from SQL; `pnpm check-chat-photo-policy` does those through the API |
+| `chat-attachments.sql` | photographs (Ada joins nothing since 2026-09-29; step 11 used to depend on her having joined): the row limits (step 12a–f is the new-room function, with its four refusals); (four, words *or* a picture, paths under the row's own folder) and the `chat` bucket's read policy as members — step 6 (an outsider cannot read a conversation's picture) and 9a (an administrator reads a reported picture and not its neighbour) are the ones that matter. Uploads and deletes cannot be tested from SQL; `pnpm check-chat-photo-policy` does those through the API |
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
 | `push-subscriptions.sql` | notifications: step 5 (another member reads none of your devices) and 7 (a phone that changes hands notifies its new holder, not its old) are the ones that matter; no insert or update grant, five off-service endpoints refused, paused can turn off but not on |
 | `topic-removal-and-deletion.sql` | a removed reply stops counting and a removed opening post leaves the replies as replies; the faces on a row are posters still standing; a member cannot delete a topic, even their own; an administrator's delete takes posts, mutes and reads and leaves a report its words (step 6) |
@@ -1136,9 +1260,13 @@ open one.
 | **Room** | every member | topics, then numbered posts | open to the club, never public |
 
 **A room is a forum and the other two are chats.** Room → topics → posts, with
-reply counts, a sort bar, and the whole history from before you joined —
-joining a room is about writing in it, not reading it. Direct and group threads
-are flat message lists.
+reply counts, a sort bar, and the whole history. Until 2026-09-29 joining a
+room was what bought the right to write in it; the owner took joining out
+with Home step 2b (`20260930000000`), and any member writes in any open
+room. `chat_room_members` stays as history and nothing reads it. Direct and
+group threads are flat message lists; since the same step a post can sit
+under the post it answers, one level deep, and a message can quote the one
+it answers.
 
 **Rooms sit under six headings** — Body · Mind · Life · Family · Kit · Places,
 in that order, from `ROOM_CATEGORIES`. The mock's three held the seeded twelve;
@@ -1147,11 +1275,10 @@ Mind, Family and Places arrived on 2026-09-21 once members could start rooms
 it afterwards. Three copies of the list: the constraint, `chat_create_room`'s
 own check, and the client's constant, and a change is all three.
 
-**An administrator does not have to join a room** to start a topic or post in
-it — `chat_can_post_in` short-circuits on `is_admin()`. Raised on 2026-09-21
-and kept on purpose. The consequence is that an administrator never sees the
-Join / Joined state, so a room they started looks unjoined to them when it is
-not; ordinary members see the chip.
+**An administrator may post in a closed room** to seed it —
+`chat_can_post_in` short-circuits on `is_admin()`. Raised on 2026-09-21 and
+kept on purpose. (Until 2026-09-29 the same short-circuit was also what let
+an administrator post without joining; joining is history now.)
 
 **An administrator is not in a conversation.** They cannot read a thread they
 are not on the roster of, and this is deliberate and load-bearing: it is why
@@ -1193,10 +1320,13 @@ Remove on the reader's own messages only, unlike a topic.
    keep their snapshot with `post_id` null; photographs are removed through
    the storage API except any named on a report. Probe:
    `supabase/tests/topic-removal-and-deletion.sql`.
-7. **Not in this build, and no control is drawn for any of them**: editing,
-   attachments, search (the mock has a search box in the header — it is
-   deliberately absent), member-to-member blocking, push notifications,
-   anonymous posting, and any way to remove somebody else from a thread.
+7. **Not in this build, and no control is drawn for any of them**: ~~editing~~
+   (built 2026-09-29, Home step 2b: your own post or message, with every
+   earlier version kept for administrators), ~~attachments~~ (photographs,
+   2026-09-21), search (the mock has a search box in the header — it is
+   deliberately absent), member-to-member blocking, ~~push notifications~~
+   (2026-09-27), anonymous posting, and any way to remove somebody else from
+   a thread.
 
 Four more from 2026-09-21, after the owner used the build:
 
@@ -1340,7 +1470,12 @@ Each of these was found by running something, not by reading it.
 - **`SegmentPills`** — the segment row on Peers, Events and Chat, and the room
   sort bar. Not a fourth kind of pill.
 - **`src/routes/chat/composer.tsx`** — takes `sendOnEnter`, true in a thread and
-  false in a topic.
+  false in a topic; `edit` makes it the in-place editor of a post or a
+  message (no second textarea), and `replyingTo` draws the "Replying to Jan"
+  bar.
+- **`src/routes/chat/earlier-versions.tsx`** — the administrators' list of
+  what an edited post or message said, under a topic's post and under a
+  report. `useEdits` in `src/lib/chat/edits.ts` is its one read.
 - **`src/routes/chat/report-sheet.tsx`** — the sheet to copy where
   `FilterSheetShell` does not fit, which is anywhere the footer is the moment
   something happens rather than Clear and Apply over filters already applied.
