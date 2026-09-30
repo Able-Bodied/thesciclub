@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { deleteAttachments, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
-import type { ChatMessage, ChatThread } from '@/lib/chat/types';
+import { CHAT_NOTICES, type ChatMessage, type ChatNotice, type ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
@@ -67,6 +67,20 @@ interface ThreadRow {
   last_at: string | null;
   last_removed: boolean | null;
   unread: boolean;
+  photo_path: string | null;
+  last_notice: string | null;
+}
+
+/**
+ * A notice as the database spelled it, or null.
+ *
+ * The column is checked against exactly these three, so anything else means
+ * the check changed without this doing. Null is the safer reading: the row is
+ * then drawn as an ordinary message with its words, not as a change nobody
+ * made.
+ */
+function toNotice(raw: string | null | undefined): ChatNotice | null {
+  return (CHAT_NOTICES as readonly string[]).includes(raw ?? '') ? (raw as ChatNotice) : null;
 }
 
 function toThread(row: ThreadRow): ChatThread {
@@ -88,6 +102,8 @@ function toThread(row: ThreadRow): ChatThread {
     lastAt: row.last_at,
     lastRemoved: row.last_removed ?? false,
     unread: row.unread,
+    photoPath: row.photo_path ?? null,
+    lastNotice: toNotice(row.last_notice),
   };
 }
 
@@ -102,10 +118,11 @@ interface MessageRow {
   removed_by_admin: boolean;
   edited_at: string | null;
   reply_to: string | null;
+  notice: string | null;
 }
 
 const MESSAGE_COLUMNS =
-  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to';
+  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice';
 
 function toMessage(row: MessageRow): ChatMessage {
   return {
@@ -119,6 +136,7 @@ function toMessage(row: MessageRow): ChatMessage {
     removedByAdmin: row.removed_by_admin,
     editedAt: row.edited_at,
     replyTo: row.reply_to,
+    notice: toNotice(row.notice),
   };
 }
 
@@ -183,6 +201,22 @@ export function quoteText(message: ChatMessage | undefined): string {
   if (words === '') return message.attachments.length > 0 ? 'Photograph' : 'Earlier message';
   if (words.length <= QUOTE_LENGTH) return words;
   return `${words.slice(0, QUOTE_LENGTH).trimEnd()}…`;
+}
+
+/**
+ * What a line about a change to the group says, with who did it in front.
+ *
+ * `who` is "You", a name, or "A former member", decided by the caller, which
+ * knows who is reading. Pure, so the conversation and the list cannot word the
+ * same change two ways. `withName` is false in the list, where "Jan renamed
+ * the group" is the whole of what fits and the new name is the row's title.
+ */
+export function noticeText(notice: ChatNotice, who: string, body: string, withName = true): string {
+  if (notice === 'renamed') {
+    return withName && body ? `${who} renamed the group to “${body}”` : `${who} renamed the group`;
+  }
+  if (notice === 'pictured') return `${who} changed the group’s picture`;
+  return `${who} took the group’s picture away`;
 }
 
 export interface MyThreadsState {
@@ -384,6 +418,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           removedByAdmin: false,
           editedAt: null,
           replyTo,
+          notice: null,
           pending: true,
         },
       ]);

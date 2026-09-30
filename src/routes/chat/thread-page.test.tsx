@@ -116,6 +116,8 @@ const thread = (o: Partial<ChatThread> = {}): ChatThread => ({
   lastAt: '2026-09-18T10:00:00Z',
   lastRemoved: false,
   unread: false,
+  photoPath: null,
+  lastNotice: null,
   ...o,
 });
 
@@ -129,6 +131,7 @@ const message = (o: Partial<ChatMessage> & { id: string }): ChatMessage => ({
   removedByAdmin: false,
   editedAt: null,
   replyTo: null,
+  notice: null,
   ...o,
 });
 

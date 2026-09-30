@@ -115,6 +115,79 @@ export async function addToGroup(
 }
 
 /**
+ * What is wrong with a new name for a group, or null.
+ *
+ * The same bounds as starting one, plus the one rename adds: a name that is
+ * the current one, after spaces are collapsed the way the database collapses
+ * them, would be refused as "That is already the group's name", so the button
+ * is not offered for it. Pure, and the sentence is the screen's.
+ */
+export function renameProblem(name: string, current: string | null): string | null {
+  const clean = name.trim().replace(/\s+/g, ' ');
+  if (clean.length === 0) return 'Give the group a name.';
+  if (clean.length > GROUP_NAME_MAX) {
+    return `A group's name is ${GROUP_NAME_MAX} characters or fewer.`;
+  }
+  if (clean === current) return 'That is already the group’s name.';
+  return null;
+}
+
+/**
+ * Rename a group the viewer is in.
+ *
+ * ---------------------------------------------------------------------------
+ * Anybody in it, and the conversation says who
+ * ---------------------------------------------------------------------------
+ * The owner's decisions, 2026-09-30: a group has no owner, so anybody in it
+ * can rename it; an event's group keeps the event's name; and every change
+ * leaves a line in the conversation — "Jan renamed the group to …" — that its
+ * author cannot edit or take back. `chat_rename_group` writes the name and the
+ * line together, and the line arrives over the realtime the conversation
+ * already listens to. See 20260930020000.
+ */
+export async function renameGroup(threadId: string, name: string): Promise<ChatWriteResult<null>> {
+  const { error } = await getSupabase().rpc('chat_rename_group', {
+    // `group_thread` and `new_name`: a parameter called `name` is ambiguous
+    // against chat_threads.name inside plpgsql. PostgREST sends these by name.
+    group_thread: threadId,
+    new_name: name.trim(),
+  });
+  if (error) return { ok: false, error: describeError(error, 'The group was not renamed.') };
+  return { ok: true, value: null };
+}
+
+/**
+ * Give a group a picture, change it, or take it away (null).
+ *
+ * The file goes up first, under the group's own folder in the private `chat`
+ * bucket — `attachmentFolder('thread', id)`, where a photograph in its
+ * messages goes — so the storage policies already there are the privacy: only
+ * the group's members can upload there or read it. Then this names it. The
+ * function checks the file is the caller's own and in that folder, and writes
+ * the line that says who changed it. If it refuses, the caller takes the file
+ * back out.
+ */
+export async function setGroupPicture(
+  threadId: string,
+  path: string | null,
+): Promise<ChatWriteResult<null>> {
+  const { error } = await getSupabase().rpc('chat_set_group_picture', {
+    group_thread: threadId,
+    picture_path: path,
+  });
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(
+        error,
+        path ? 'The picture was not changed.' : 'The picture was not taken away.',
+      ),
+    };
+  }
+  return { ok: true, value: null };
+}
+
+/**
  * Leave a group.
  *
  * An ordinary delete and not a function, because it writes the viewer's own

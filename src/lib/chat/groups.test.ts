@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GROUP_CAP, GROUP_NAME_MAX, groupProblem } from '@/lib/chat/groups';
+import { GROUP_CAP, GROUP_NAME_MAX, groupProblem, renameProblem } from '@/lib/chat/groups';
 
 /**
  * The pure half of groups.ts. Nothing here touches supabase — the writes are
@@ -49,6 +49,30 @@ describe('groupProblem', () => {
     expect(groupProblem('Big', new Array(GROUP_CAP - 1).fill('a'))).toBeNull();
     expect(groupProblem('Bigger', new Array(GROUP_CAP).fill('a'))).toContain(
       `${GROUP_CAP} members, counting you`,
+    );
+  });
+});
+
+// The same value disables Save and is printed under the field.
+describe('renameProblem', () => {
+  it('says nothing about a new name that is ready to save', () => {
+    expect(renameProblem('Tuesday swimmers', 'Saturday ride')).toBeNull();
+  });
+
+  it('asks for a name, and holds it to sixty characters', () => {
+    expect(renameProblem('   ', 'Saturday ride')).toBe('Give the group a name.');
+    expect(renameProblem('x'.repeat(GROUP_NAME_MAX), 'Saturday ride')).toBeNull();
+    expect(renameProblem('x'.repeat(GROUP_NAME_MAX + 1), 'Saturday ride')).toContain(
+      `${GROUP_NAME_MAX} characters`,
+    );
+  });
+
+  // chat_rename_group collapses runs of spaces before it compares, and refuses
+  // the name the group already has. Offering Save for it would be offering a
+  // refusal.
+  it('treats the current name, spaced differently, as no change', () => {
+    expect(renameProblem('  Saturday   ride ', 'Saturday ride')).toBe(
+      'That is already the group’s name.',
     );
   });
 });

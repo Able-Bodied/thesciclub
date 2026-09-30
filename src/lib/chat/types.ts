@@ -195,7 +195,26 @@ export interface ChatThread {
   lastRemoved: boolean;
   /** Somebody else's words, newer than you last looked. Not "last_at moved". */
   unread: boolean;
+  /**
+   * A group's picture: a path in the private `chat` bucket, under the
+   * group's own folder, so only its members can sign it. Null for a pair, and
+   * for a group nobody has given one.
+   */
+  photoPath: string | null;
+  /** Set when the last thing in the conversation was a change to the group. */
+  lastNotice: ChatNotice | null;
 }
+
+/**
+ * A line that records a change to a group rather than something said.
+ *
+ * Written only by `chat_rename_group` and `chat_set_group_picture`
+ * (20260930020000); a member cannot insert one. `renamed` carries the new
+ * name as its body, `pictured` the new picture as its one attachment, and
+ * `unpictured` neither.
+ */
+export const CHAT_NOTICES = ['renamed', 'pictured', 'unpictured'] as const;
+export type ChatNotice = (typeof CHAT_NOTICES)[number];
 
 /** One message in a thread. */
 export interface ChatMessage {
@@ -218,6 +237,8 @@ export interface ChatMessage {
    * the quoted message is removed, so the quote can say so.
    */
   replyTo: string | null;
+  /** Set on a line about a change to the group; null on anything said. */
+  notice: ChatNotice | null;
   /**
    * True while this is a bubble the reader has sent and the database has not
    * confirmed. Never set on a row that came back from a read.

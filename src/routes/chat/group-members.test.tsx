@@ -103,6 +103,8 @@ const thread = (o: Partial<ChatThread> = {}): ChatThread => ({
   lastAt: null,
   lastRemoved: false,
   unread: false,
+  photoPath: null,
+  lastNotice: null,
   ...o,
 });
 

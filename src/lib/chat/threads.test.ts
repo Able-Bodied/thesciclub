@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   FOLLOW_SCROLL_SLACK,
+  noticeText,
   QUOTE_LENGTH,
   quoteText,
   shouldFollowScroll,
@@ -27,6 +28,8 @@ const thread = (o: Partial<ChatThread> = {}): ChatThread => ({
   lastAt: '2026-09-01T10:00:00Z',
   lastRemoved: false,
   unread: false,
+  photoPath: null,
+  lastNotice: null,
   ...o,
 });
 
@@ -80,6 +83,7 @@ describe('quoteText', () => {
     removedByAdmin: false,
     editedAt: null,
     replyTo: null,
+    notice: null,
     ...o,
   });
 
@@ -112,5 +116,26 @@ describe('quoteText', () => {
 
   it('says Earlier message for one that is not in the list', () => {
     expect(quoteText(undefined)).toBe('Earlier message');
+  });
+});
+
+// One wording for a change to the group, in the conversation and the list.
+describe('noticeText', () => {
+  it('says who renamed the group and to what', () => {
+    expect(noticeText('renamed', 'Jan', 'Tuesday swimmers')).toBe(
+      'Jan renamed the group to “Tuesday swimmers”',
+    );
+  });
+
+  // In the list the new name is already the row's title.
+  it('leaves the new name out where the caller asks it to', () => {
+    expect(noticeText('renamed', 'You', 'Tuesday swimmers', false)).toBe('You renamed the group');
+  });
+
+  it('says a picture changed, or was taken away, and by whom', () => {
+    expect(noticeText('pictured', 'A former member', '')).toBe(
+      'A former member changed the group’s picture',
+    );
+    expect(noticeText('unpictured', 'Jan', '')).toBe('Jan took the group’s picture away');
   });
 });

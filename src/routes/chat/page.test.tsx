@@ -82,6 +82,8 @@ const thread = (o: Partial<ChatThread> & { id: string }): ChatThread => ({
   lastAt: '2026-09-18T10:00:00Z',
   lastRemoved: false,
   unread: false,
+  photoPath: null,
+  lastNotice: null,
   ...o,
 });
 
