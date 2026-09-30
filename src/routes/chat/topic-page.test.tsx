@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
+import type * as Likes from '@/lib/chat/likes';
 import type * as Reports from '@/lib/chat/reports';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Topics from '@/lib/chat/topics';
@@ -28,6 +29,29 @@ const db = vi.hoisted(() => ({
   filesDeleted: [] as string[][],
   edits: new Map<string, ChatEdit[]>(),
   editsReloads: 0,
+  likes: new Map<string, string[]>(),
+  likesAskedFor: [] as string[][],
+  liked: [] as string[],
+  likeFailure: null as { postId: string; message: string } | null,
+}));
+
+// Likes are a read and a write of the club; the hook has its own test. The
+// pure functions stay real.
+vi.mock('@/lib/chat/likes', async (importOriginal) => ({
+  ...(await importOriginal<typeof Likes>()),
+  usePostLikes: (ids: readonly string[]) => {
+    db.likesAskedFor.push([...ids]);
+    return {
+      byPost: db.likes,
+      loading: false,
+      error: null,
+      failure: db.likeFailure,
+      toggle: (id: string) => {
+        db.liked.push(id);
+      },
+      reload: () => undefined,
+    };
+  },
 }));
 
 // chat_edits is administrators' reading; the hook has its own test, and an
@@ -212,6 +236,61 @@ beforeEach(() => {
   db.filesDeleted = [];
   db.edits = new Map();
   db.editsReloads = 0;
+  db.likes = new Map();
+  db.likesAskedFor = [];
+  db.liked = [];
+  db.likeFailure = null;
+});
+
+describe('likes', () => {
+  it('asks for the likes of the standing posts only', () => {
+    db.posts = [
+      post({ id: '1' }),
+      post({ id: '2', body: '', removedAt: '2026-09-02T10:00:00Z' }),
+      post({ id: '3', authorId: 'me' }),
+    ];
+    renderTopic();
+    expect(db.likesAskedFor.at(-1)).toEqual(['1', '3']);
+  });
+
+  it('offers Like on somebody else’s post, named for it, and likes on a press', async () => {
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: "Like Nicole's post" }));
+    expect(db.liked).toEqual(['1']);
+  });
+
+  it('draws the count, and no Like, on the reader’s own post', () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
+    db.likes = new Map([['2', ['nicole']]]);
+    renderTopic();
+    const mine = screen.getByRole('button', { name: '1 like on your post. Show who.' });
+    const article = mine.closest('article');
+    if (!article) throw new Error('the count is not inside its post');
+    expect(within(article).queryByRole('button', { name: /^Like/ })).toBeNull();
+    expect(screen.getAllByRole('button', { name: /^Like / })).toHaveLength(1);
+  });
+
+  it('likes a reply as well as a top-level post', () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan', replyTo: '1' })];
+    db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
+    db.likes = new Map([['2', ['me']]]);
+    renderTopic();
+    expect(
+      screen.getByRole('button', { name: "Liked Jan's post. Press to take it back." }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('says under the post when a like did not land', () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan' })];
+    db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
+    db.likeFailure = { postId: '2', message: 'Your like was not saved. You cannot like this.' };
+    renderTopic();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Your like was not saved. You cannot like this.');
+    expect(alert.closest('article')).toBe(
+      screen.getByRole('button', { name: "Like Jan's post" }).closest('article'),
+    );
+  });
 });
 
 describe('a topic', () => {

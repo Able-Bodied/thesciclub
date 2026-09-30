@@ -7,6 +7,7 @@ import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
+import { PostLikes } from '@/routes/chat/like-button';
 
 /**
  * One post in a topic, from the mock's `fpost()`.
@@ -27,10 +28,11 @@ import { EarlierVersions } from '@/routes/chat/earlier-versions';
  * nothing to make initials from, so the tile is the neutral one.
  *
  * ---------------------------------------------------------------------------
- * Four controls in one row, each named for its post
+ * The controls in one row, each named for its post
  * ---------------------------------------------------------------------------
- * Edit and Reply since 2026-09-29 (HOME-PLAN.md, decisions 9 and 11), then
- * Remove, or Report, or nothing. Report sits exactly where Remove sits, and
+ * Like and its count first (HOME-PLAN.md step 3; like-button.tsx says why
+ * there is no Like on your own post), then Edit and Reply since 2026-09-29
+ * (decisions 9 and 11), then Remove, or Report, or nothing. Report sits exactly where Remove sits, and
  * never beside it: the reader can take back what they wrote; on somebody
  * else's post they can hand it to the administrators. An administrator gets
  * Remove on everything, which is the stronger of the two — offering them
@@ -94,6 +96,7 @@ export function Post({
   reported,
   onReport,
   edits,
+  likes,
   replies = 0,
   children,
 }: {
@@ -126,6 +129,20 @@ export function Post({
   onReport: () => void;
   /** Earlier versions, for an administrator. Absent or empty for everybody else. */
   edits?: ChatEdit[];
+  /**
+   * Who likes it, and what pressing Like does. Absent draws no likes at all —
+   * while they have not loaded, or where a screen does not read them.
+   */
+  likes?:
+    | {
+        likedBy: readonly string[];
+        /** The reader, or null on their own post, which draws no Like button. */
+        readerId: string | null;
+        onToggle: () => void;
+        /** The sentence for a like that did not land on this post, or null. */
+        failure: string | null;
+      }
+    | undefined;
   /** How many replies `children` holds, for the hide control. */
   replies?: number;
   /** The replies, as `<Post nested>` elements. */
@@ -227,7 +244,16 @@ export function Post({
       {edits && edits.length > 0 && !editing ? <EarlierVersions edits={edits} from={name} /> : null}
 
       {editing ? null : (
-        <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1">
+        <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1">
+          {likes ? (
+            <PostLikes
+              likedBy={likes.likedBy}
+              readerId={likes.readerId}
+              what={`${whose} post`}
+              onToggle={likes.onToggle}
+              className="text-[0.75rem]"
+            />
+          ) : null}
           {canEdit ? (
             <button
               type="button"
@@ -280,6 +306,11 @@ export function Post({
           ) : null}
         </div>
       )}
+      {likes?.failure && !editing ? (
+        <p role="alert" className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
+          {likes.failure}
+        </p>
+      ) : null}
 
       {replies > 0 ? (
         <button

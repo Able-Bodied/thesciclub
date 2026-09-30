@@ -5,6 +5,7 @@ import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
+import { usePostLikes } from '@/lib/chat/likes';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
@@ -71,6 +72,14 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
  * composer with the draft still in it.
  *
  * ---------------------------------------------------------------------------
+ * Likes, since 2026-09-30
+ * ---------------------------------------------------------------------------
+ * One read of who likes the standing posts on screen (likes.ts). Likes are
+ * not live, so it is read again whenever the posts are — a reply arriving is
+ * the moment somebody is looking, and that is enough for a count that is not
+ * urgent.
+ *
+ * ---------------------------------------------------------------------------
  * Reporting
  * ---------------------------------------------------------------------------
  * Whoever can remove a post does not get offered Report on it — an
@@ -118,6 +127,11 @@ export default function TopicPage() {
     [posts],
   );
   const edits = useEdits(editedIds, []);
+  const standingIds = useMemo(
+    () => posts.filter((post) => post.removedAt === null).map((post) => post.id),
+    [posts],
+  );
+  const likes = usePostLikes(standingIds);
 
   useRealtimeRows({
     table: 'chat_posts',
@@ -127,6 +141,7 @@ export default function TopicPage() {
       // An edit arrives as an update to the post; its earlier version is a
       // new row here.
       edits.reload();
+      likes.reload();
     },
     enabled: Boolean(topicId),
   });
@@ -279,6 +294,18 @@ export default function TopicPage() {
       setReportingId(post.id);
     },
     edits: edits.byPost.get(post.id) ?? [],
+    // No likes drawn until they have loaded, rather than a row of zeroes
+    // that fills in. The reader's own post draws the count and no button.
+    likes: likes.loading
+      ? undefined
+      : {
+          likedBy: likes.byPost.get(post.id) ?? [],
+          readerId: post.authorId === account.userId ? null : account.userId,
+          onToggle: () => {
+            likes.toggle(post.id);
+          },
+          failure: likes.failure?.postId === post.id ? likes.failure.message : null,
+        },
   });
 
   return (
