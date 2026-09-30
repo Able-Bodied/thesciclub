@@ -65,4 +65,91 @@ describe('preparePhoto', () => {
     const result = await preparePhoto(file('screenshot'));
     expect(result.ext).toBe('jpg');
   });
+
+  /**
+   * A browser that can draw the image and write some, all or none of the
+   * encodings. `toBlob` never fails for a type it cannot write — it hands back
+   * a PNG and says nothing — which is exactly what Safari does for webp, and
+   * what these stand in for.
+   */
+  function browserThatWrites(...types: string[]) {
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(() => Promise.resolve({ width: 3088, height: 2316, close: () => undefined })),
+    );
+    const asked: string[] = [];
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({ drawImage: () => undefined }),
+      toBlob: (resolve: (blob: Blob | null) => void, type: string) => {
+        asked.push(type);
+        const written = types.includes(type) ? type : 'image/png';
+        resolve(new Blob([new Uint8Array(200_000)], { type: written }));
+      },
+    };
+    vi.spyOn(document, 'createElement').mockImplementation(
+      () => canvas as unknown as HTMLCanvasElement,
+    );
+    return asked;
+  }
+
+  it('stores webp where the browser can write it', async () => {
+    browserThatWrites('image/webp', 'image/jpeg');
+    const result = await preparePhoto(file('holiday.jpg'));
+    expect(result.ext).toBe('webp');
+    expect(result.blob.type).toBe('image/webp');
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  // The case the owner hit on 2026-09-29: an iPhone, a 3MB photograph and a
+  // chat bucket that takes 2MB. Falling back to the original meant the
+  // photograph was refused; a JPEG at 1,600px is a few hundred kilobytes.
+  it('stores a JPEG where the browser cannot write webp, rather than the original', async () => {
+    const asked = browserThatWrites('image/jpeg');
+    const original = file('IMG_4821.jpeg');
+    const result = await preparePhoto(original);
+    expect(asked).toEqual(['image/webp', 'image/jpeg']);
+    expect(result.blob).not.toBe(original);
+    expect(result.blob.type).toBe('image/jpeg');
+    expect(result.ext).toBe('jpg');
+    expect(result.blob.size).toBeLessThan(original.size);
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('falls back to the original where the browser writes neither', async () => {
+    browserThatWrites();
+    const original = file('holiday.jpg');
+    const result = await preparePhoto(original);
+    expect(result.blob).toBe(original);
+    expect(result.ext).toBe('jpg');
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('asks again without the orientation option when a browser refuses it', async () => {
+    const bitmap = { width: 3088, height: 2316, close: () => undefined };
+    const decode = vi.fn((_file: File, options?: unknown) =>
+      options ? Promise.reject(new TypeError('unknown option')) : Promise.resolve(bitmap),
+    );
+    vi.stubGlobal('createImageBitmap', decode);
+    const canvas = {
+      width: 0,
+      height: 0,
+      getContext: () => ({ drawImage: () => undefined }),
+      toBlob: (resolve: (blob: Blob | null) => void, type: string) => {
+        resolve(new Blob([new Uint8Array(200_000)], { type }));
+      },
+    };
+    vi.spyOn(document, 'createElement').mockImplementation(
+      () => canvas as unknown as HTMLCanvasElement,
+    );
+    const result = await preparePhoto(file('holiday.jpg'));
+    expect(decode).toHaveBeenCalledTimes(2);
+    expect(result.ext).toBe('webp');
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
 });

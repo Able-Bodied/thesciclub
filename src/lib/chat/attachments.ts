@@ -22,7 +22,11 @@ import { getSupabase } from '@/lib/supabase';
  *   1,600px webp         `preparePhoto`, at a longer edge than a profile
  *                        picture gets, because what people share here is a
  *                        cushion, a catheter set-up, a wound — the detail is
- *                        the point
+ *                        the point. JPEG on an iPhone, where the browser
+ *                        cannot write webp; see image.ts. Until 2026-09-29 it
+ *                        fell back to the original there, which is usually
+ *                        over the bucket's 2MB, so no photograph could be put
+ *                        on a topic from a phone
  *
  * ---------------------------------------------------------------------------
  * The bucket is private, so every URL is signed and short-lived
