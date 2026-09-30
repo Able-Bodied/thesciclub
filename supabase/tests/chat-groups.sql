@@ -291,9 +291,10 @@ rollback to savepoint leave_pair;
 
 \echo ''
 \echo '== 10. THE STEP THAT MATTERS: Interested is not going =='
-\echo '   expect: ERROR with no RSVP at all, then ERROR with Interested, then a'
-\echo '   uuid once the RSVP says going. "Interested" is a different sentence'
-\echo '   about the same event and must not open the door.'
+\echo '   expect: ERROR with no RSVP at all, then ERROR with Interested, then,'
+\echo '   once the RSVP says going, the group it opens: group | the event''s'
+\echo '   title | t for_the_event | 1 roster. "Interested" is a different'
+\echo '   sentence about the same event and must not open the door.'
 savepoint interested_only;
 select public.chat_join_event_group('22222222-5555-0000-0000-0000000000e1');
 rollback to savepoint interested_only;
