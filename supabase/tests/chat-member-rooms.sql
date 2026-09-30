@@ -275,9 +275,10 @@ rollback to savepoint admin_no_delete;
 
 \echo ''
 \echo '== 14. the close switch still works on a member room =='
-\echo '   expect: null when closed, then a timestamp, and Bo loses sight of it'
-\echo '   in between. The one control an administrator has over a room they did'
-\echo '   not start is the one they already had.'
+\echo '   expect: null when closed, f | f for Bo in between, then t reopened —'
+\echo '   the timestamp came back, printed as a yes so the output does not'
+\echo '   change from run to run. The one control an administrator has over a'
+\echo '   room they did not start is the one they already had.'
 select public.admin_set_room_open(:'room_a', false) as closed;
 set local request.jwt.claims = '{"sub":"bbbbbbbb-8888-0000-0000-000000000002","role":"authenticated"}';
 select exists (select 1 from public.chat_rooms where id = :'room_a') as bo_still_sees_it,
