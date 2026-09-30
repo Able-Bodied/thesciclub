@@ -2,14 +2,14 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: steps 1, 2 and 2b are built and live on production
-since 2026-09-29. Step 3, Likes, is built and committed** (2026-09-30): its
-migration `20260930010000` is on the live database (the owner pushed it on
-2026-09-30), its client commits followed the push, and all of it is on
-GitHub and live since 2026-09-30. Next is step 4, Filter your feed,
-which has no migration. HANDOFF.md, "Home, step 1", "Home, step 2", "Home,
-step 2b" and "Home, step 3", say where the build departed from this plan
-and why; read them first, because those departures stand.
+**Where it stands: steps 1, 2, 2b and 3 are built and live on production**
+(steps 1, 2 and 2b on 2026-09-29; step 3, Likes, on 2026-09-30, its
+migration `20260930010000` on the live database first). **Next is step 3b**,
+a clean-up the owner asked for on 2026-09-30 — the probes, one storage
+policy, and Like on every card on Home — then step 4, Filter your feed.
+HANDOFF.md, "Home, step 1", "Home, step 2", "Home, step 2b" and "Home,
+step 3", say where the build departed from this plan and why; read them
+first, because those departures stand.
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request
@@ -939,6 +939,91 @@ HANDOFF.md.
 
 A member can like and unlike a photograph on Home and a reply in a topic,
 the count agrees in both places, and the list names who.
+
+---
+
+## Step 3b — Clean-up: the probes, one storage policy, and Like on every card
+
+Asked for by the owner on 2026-09-30, after step 3 went live. Three small
+things, one session. **One migration**, a small one, in part 2. Nothing
+in the client depends on it, but the order of release is kept for the
+habit: the owner pushes it before the client commits land.
+
+### Part 1 — The eight probes read as expected again
+
+The probes in `supabase/tests/` are how this project finds a broken rule
+before a member does. Step 3 ran all 29 on a stack started fresh from every
+migration and eight did not read as expected; none was a rule broken, and
+that is the problem: a real fault would hide among eight false alarms.
+HANDOFF.md, "Home, step 3", "Owed and noticed" lists them. Each fix, and
+what it must not do:
+
+| Probe | The fault | The fix |
+| --- | --- | --- |
+| `blocked-numbers.sql` step 10 | Prints a uuid; the text says `INSERT 0 1` | Correct the `expect:` line. |
+| `chat-groups.sql` step 14 | Evicting somebody else is a `DELETE 0`, the text says permission denied | Correct the text, and add one line that proves the row is still there afterwards — a silent no-op that leaves the row is the right answer, and the probe should say so. |
+| `photo-cleanup.sql` step 1 | Three delete policies, the text says two | After part 2: expect three, every one `{authenticated}`. |
+| `restore-directory.sql` | Expects 22 seeded members, the seed has 23 | Count the seed in the probe rather than hard-coding it (`select count(*) from directory_seed`), so the next seeded row does not break it again. |
+| `topic-removal-and-deletion.sql` step 4 | Two names print in the other order | Order the query. |
+| `chat-member-removed.sql` step 4 and its note | The note says "still counted", untrue since `20260927030000`; the fixture writes two rows in one instant | Fix the note; give the fixture rows distinct `created_at` values (`clock_timestamp()` or explicit times). |
+| `chat-posts.sql` steps 10 and 10d | Fixture rows in one instant, so "first" flips | Distinct `created_at` values. |
+| `claim-preview.sql` step 1 | Cannot fail: its subquery reads `invites` as a non-member, and RLS answers with nothing | Make it assert something that can be false — read the row the step is about as the superuser inside a savepoint, or check the function's answer rather than the table. Then sabotage it once to see it fail. |
+
+Rules: a probe stays one transaction that rolls back, expected refusals
+keep their own savepoints, `current_user` stays printed at the top, and
+**a probe with several transactions is never wrapped in one** (HANDOFF.md,
+step 3, says what that did to the local database). Run all 29 on a fresh
+throwaway stack afterwards — `supabase start --workdir` on a copy of
+`supabase/` with its own `project_id` and ports — and put the count that
+read as expected in the handoff. It should be 29.
+
+### Part 2 — The chat storage policies name their role
+
+The three policies on the `chat` bucket (`20260918200000`, and the delete
+one recreated in `20260918210000`) are written for every role. Each calls a
+function that only `authenticated` may execute (`is_admin`,
+`chat_file_is_readable`, and so on), so a signed-out visitor who tried is
+refused with "permission denied for function …" — refused either way, but
+an error that names an internal function and says what the policy tests.
+`20260918000000`'s header explains why the `photos` bucket's administrator
+policy was narrowed for the same reason.
+
+One migration, `2026093002xxxx_chat_storage_policies_name_their_role.sql`
+(the next free stamp), recreating the three with `to authenticated` and
+nothing else changed. Probe: `photo-cleanup.sql` step 1 shows the roles;
+`chat-attachments.sql` still reads as it did. **This is a change to what a
+policy applies to, not to what it allows**: a member's reads, uploads and
+deletes are unchanged, and `pnpm check-chat-photo-policy` against the local
+stack proves it through the API.
+
+### Part 3 — Like from every card on Home
+
+Step 3 put Like on a photograph's card. The owner wants it on **every topic
+card on Home** too (2026-09-30): the plain topic card likes the topic's
+opening post, exactly as the photo card does, with the same `PostLikes` and
+the same words ("Like <title>", "3 likes on <title>. Show who.").
+
+The trap: the topic card is a stretched link — the title's `after:absolute
+after:inset-0` covers the whole card — and **a button under a stretched
+link cannot be pressed**. `photo-card.tsx` is not stretched for this reason
+(its header says so). So either lift `PostLikes` above the overlay
+(`relative z-10` on its row, the way a card's other controls would be) or
+give the topic card the photo card's shape (title is the link, card is not).
+Prefer the first: it keeps the whole card tappable and adds one row of
+controls that sits above it. Check by tapping Like on a topic card and
+seeing the count change without the topic opening. Then the keyboard: Tab
+reaches the title link, then Like, in that order. Test in
+`topic-card.test.tsx`; screenshots at 430 and 1280 and `--text=larger`;
+axe over Home with a list open.
+
+A person card and an event card get no Like: a person is not a post, and
+an event's answer is Interested and Going.
+
+### Done when
+
+29 probes read as expected on a fresh stack; the three chat policies say
+`{authenticated}`; a member likes a plain topic from Home and sees the same
+count on the topic page; and Home's photo cards are unchanged.
 
 ---
 
