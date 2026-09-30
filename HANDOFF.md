@@ -436,6 +436,14 @@ What the client does:
   under the snapshot on a report.
 - **Home**: the first reply on a card is the earliest standing top-level
   post after the opener.
+- **Replies can be hidden** (the owner, 2026-09-29, after the step landed):
+  "Hide 3 replies" under a post's controls folds them away and becomes
+  "Show 3 replies", named for its post, with `aria-expanded`. Shown by
+  default on every visit, and shown again when their number changes, so a
+  reply written under a folded post lands in view. No control on a post
+  with no replies. Checked on the local stack at 430 and 1280, axe clean
+  with the replies hidden, Enter on the control by keyboard, and a reply
+  written while hidden landing visible.
 
 Where the build differs from the plan, on purpose:
 
