@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
+import { backToHome } from '@/routes/home/back';
 
 /**
  * Starting a topic: a title and the first post itself.
@@ -34,10 +35,34 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
  * when it was dictated — and the database's own sentence is shown rather than
  * "something went wrong", because the likely refusals here say something
  * useful: not a member of the room, or the room closed while they typed.
+ *
+ * ---------------------------------------------------------------------------
+ * From Home, and sharing a photograph
+ * ---------------------------------------------------------------------------
+ * /home/new picks the kind and the room, then hands over to this screen with
+ * `{ from: 'home', segment, kind }`. It is this screen rather than a second
+ * form on Home because a topic is written one way, whoever starts it and
+ * wherever from: the draft that survives a refusal, the files that go up and
+ * come back out, and the sentence the database says no in are all here
+ * already. What Home changes is small:
+ *
+ * - Back says "Home" and returns to the pill the member came from, and the
+ *   topic they post is handed the same, so its back link does too.
+ * - `kind: 'share'` is a photograph with a line about it — the mock's "Share
+ *   something". The picker comes first, the title is asked for as "Say
+ *   something about it", and the first post's words are optional once there
+ *   is a photograph, which `chat_posts_check` already allows: words or a
+ *   photograph. The title stays required. It is the line in the room's list,
+ *   and a picture is not a line.
+ *
+ * Asking changes nothing but the back link: a question is an ordinary topic.
  */
 export default function NewTopicPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const home = fromHome(location.state);
+  const sharing = home?.kind === 'share';
   const { rooms, loading } = useChatRooms();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -46,7 +71,8 @@ export default function NewTopicPage() {
   const [failure, setFailure] = useState<string | null>(null);
 
   const room = rooms.find((r) => r.id === roomId) ?? null;
-  const ready = title.trim().length > 0 && body.trim().length > 0;
+  const problem = topicProblem(title, body, files.length, sharing);
+  const ready = problem === null;
 
   if (loading) {
     return (
@@ -59,7 +85,7 @@ export default function NewTopicPage() {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
         <div className="mx-auto w-full max-w-[720px]">
-          <BackLink to="/chat" label="Chat" />
+          {home ? <BackLink to={home.back} label="Home" /> : <BackLink to="/chat" label="Chat" />}
           <p className="mt-6 text-[0.875rem] text-ink2">
             There is no such room, or it is not open.
           </p>
@@ -93,7 +119,12 @@ export default function NewTopicPage() {
         }
         // Straight to the topic, which is also what marks it read, so the
         // member's own new topic is not bold in the list they land back on.
-        void navigate(`/chat/rooms/${room.id}/topics/${result.value}`, { replace: true });
+        // From Home, the topic is handed the same state, so its back link says
+        // Home rather than naming a room the member never passed through.
+        void navigate(`/chat/rooms/${room.id}/topics/${result.value}`, {
+          replace: true,
+          state: home ? { from: 'home', segment: home.segment } : undefined,
+        });
       })
       .catch((e: unknown) => {
         setFailure(describeThrown(e, 'That did not work.'));
@@ -103,13 +134,34 @@ export default function NewTopicPage() {
       });
   }
 
+  // Up to four, with the first post. Asking, the words stay required — a topic
+  // is a line in a list and a picture is not a title — so a photograph comes
+  // with the post rather than instead of it. Sharing, the photograph is the
+  // point, so it comes first and the words are optional.
+  const photos = (
+    <div className={sharing ? 'mt-4' : 'mt-3'}>
+      <PhotoStrip
+        files={files}
+        disabled={saving}
+        onRemove={(index) => {
+          setFiles((current) => current.filter((_, i) => i !== index));
+        }}
+      />
+      <PhotoPicker files={files} onChange={setFiles} disabled={saving} />
+    </div>
+  );
+
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6">
       <div className="mx-auto w-full max-w-[720px]">
-        <BackLink to={`/chat/rooms/${room.id}`} label={room.name} />
+        {home ? (
+          <BackLink to={home.back} label="Home" />
+        ) : (
+          <BackLink to={`/chat/rooms/${room.id}`} label={room.name} />
+        )}
 
         <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
-          New topic
+          {sharing ? 'Share a photograph' : 'New topic'}
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
           In {room.name}. Every member can read this, including members who join later. Nothing here
@@ -125,11 +177,13 @@ export default function NewTopicPage() {
           </p>
         ) : null}
 
+        {sharing ? photos : null}
+
         <label
           htmlFor="topic-title"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          What is it about?
+          {sharing ? 'Say something about it' : 'What is it about?'}
         </label>
         <input
           id="topic-title"
@@ -138,7 +192,9 @@ export default function NewTopicPage() {
           onChange={(event) => {
             setTitle(event.target.value);
           }}
-          placeholder="Travelling with a bowel programme"
+          placeholder={
+            sharing ? 'The cushion that finally worked' : 'Travelling with a bowel programme'
+          }
           className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
@@ -151,11 +207,17 @@ export default function NewTopicPage() {
         >
           The first post
         </label>
+        {sharing ? (
+          <p id="topic-body-hint" className="mt-0.5 text-[0.71875rem] text-grey">
+            Optional when there is a photograph.
+          </p>
+        ) : null}
         <textarea
           id="topic-body"
           value={body}
-          rows={7}
+          rows={sharing ? 4 : 7}
           maxLength={4000}
+          aria-describedby={sharing ? 'topic-body-hint' : undefined}
           onChange={(event) => {
             setBody(event.target.value);
           }}
@@ -163,19 +225,7 @@ export default function NewTopicPage() {
           className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
         />
 
-        {/* Up to four, with the first post. The words stay required — a topic
-            is a line in a list and a picture is not a title — so a photograph
-            comes with the post rather than instead of it. */}
-        <div className="mt-3">
-          <PhotoStrip
-            files={files}
-            disabled={saving}
-            onRemove={(index) => {
-              setFiles((current) => current.filter((_, i) => i !== index));
-            }}
-          />
-          <PhotoPicker files={files} onChange={setFiles} disabled={saving} />
-        </div>
+        {sharing ? null : photos}
 
         <button
           type="button"
@@ -185,8 +235,51 @@ export default function NewTopicPage() {
         >
           {saving ? 'Posting…' : 'Post it'}
         </button>
+        {/* Sharing, the rule is "a title, and words or a photograph", which is
+            not what a disabled button says on its own. Asking, both fields
+            are plainly there to be filled, as they always were. */}
+        {sharing && problem ? (
+          <p className="mt-1.5 text-center text-[0.71875rem] text-grey">{problem}</p>
+        ) : null}
         <div className="h-3" />
       </div>
     </div>
   );
+}
+
+/**
+ * What a screen opened from Home was handed, or null when it was not.
+ *
+ * Router state is not trusted: anything but `'share'` is asking, and the way
+ * back is rebuilt by `backToHome`, which drops a segment that is not Home's.
+ */
+function fromHome(
+  state: unknown,
+): { back: string; segment: unknown; kind: 'ask' | 'share' } | null {
+  const back = backToHome(state);
+  if (!back) return null;
+  const { segment, kind } = state as { segment?: unknown; kind?: unknown };
+  return { back, segment, kind: kind === 'share' ? 'share' : 'ask' };
+}
+
+/**
+ * Why Post is not ready yet, or null when it is.
+ *
+ * Asking wants a title and words. Sharing wants a title and either words or a
+ * photograph, which is the database's own rule for a post. Pure, and exported
+ * for its test.
+ */
+export function topicProblem(
+  title: string,
+  body: string,
+  photographs: number,
+  sharing: boolean,
+): string | null {
+  if (sharing) {
+    if (title.trim().length === 0) return 'Say something about it. It is the line in the list.';
+    if (body.trim().length === 0 && photographs === 0) return 'Add a photograph, or some words.';
+    return null;
+  }
+  if (title.trim().length === 0 || body.trim().length === 0) return 'A title and a first post.';
+  return null;
 }
