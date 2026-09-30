@@ -123,7 +123,8 @@ select public.admin_block_number('4085559000', 'Never invited, still unwelcome')
 
 \echo ''
 \echo '== 10. unblocking puts the number back where it started =='
-\echo '   expect: no error, then INSERT 0 1 — invitable again, not readmitted'
+\echo '   expect: no error, then one uuid (the new invite’s id — admin_create_invite'
+\echo '   returns it) — invitable again, not readmitted'
 select public.admin_unblock_number('4085550150');
 select public.admin_create_invite('4085550150',
   (select id from public.organizations where short_code = 'NCS'), null, 'Second chance');
