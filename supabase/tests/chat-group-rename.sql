@@ -280,8 +280,24 @@ select removed_at is not null as removed, removed_by_admin from public.chat_mess
 
 \echo ''
 \echo '== 17. a rename queues no notification; a message does =='
-\echo '   expect: 0 then 1. Nobody''s phone buzzes because a group changed its'
-\echo '   name. (Needs push_notify_url in the local vault, which it is.)'
+\echo '   expect: t url_set, then 0 then 1. Nobody''s phone buzzes because a'
+\echo '   group changed its name.'
+-- The trigger sends nothing without push_notify_url in the vault, and a
+-- stack started fresh has none, so this step read 0 then 0 there and proved
+-- nothing about the rename. Made here when it is missing, inside this
+-- transaction, pointing at the discard port: the rollback takes the secret
+-- and the queued request both, and pg_net sends only what commits. On a
+-- stack that has one already, nothing changes.
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'push_notify_url') then
+    perform vault.create_secret('http://127.0.0.1:9/', 'push_notify_url');
+  end if;
+end
+$$;
+select exists (
+  select 1 from vault.decrypted_secrets where name = 'push_notify_url' and decrypted_secret <> ''
+) as url_set;
 select count(*) as queued_before from net.http_request_queue \gset
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"aaaaaaaa-7777-0000-0000-000000000001","role":"authenticated"}';
