@@ -426,11 +426,17 @@ rollback to savepoint suspended_caller;
 
 \echo ''
 \echo '== 14. a member cannot reach the tables around the functions =='
-\echo '   THE STEP THAT MATTERS for the grants. expect: permission denied four'
-\echo '   times — not four zero-row no-ops. Supabase grants every privilege on a'
+\echo '   THE STEP THAT MATTERS for the grants. expect: permission denied three'
+\echo '   times — not three zero-row no-ops. Supabase grants every privilege on a'
 \echo '   new table by default, so revoking from anon and public only leaves'
 \echo '   insert, update and delete in place and RLS fails them silently:'
 \echo '   `update ...` reports UPDATE 0 and succeeds.'
+\echo '   The fourth, evicting somebody else, is DELETE 0 and not a refusal: the'
+\echo '   delete grant is there so a member can leave, and the policy lets them'
+\echo '   delete their own row only. A silent no-op is the right answer here, so'
+\echo '   the step proves the row is still there — read as the superuser, since a'
+\echo '   count through the caller''s policies is what a no-op would fool.'
+\echo '   expect: DELETE 0, 4 on the roster, then t bo_still_in_it'
 savepoint no_insert_group;
 insert into public.chat_threads (kind, name, created_by)
 values ('group', 'Forged', auth.uid());
@@ -447,6 +453,11 @@ delete from public.chat_thread_members
  where thread_id = :'grp' and member_id = 'bbbbbbbb-5555-0000-0000-000000000002';
 select count(*) as roster_after_trying_to_evict
   from public.chat_thread_members where thread_id = :'grp';
+set local role postgres;
+select exists (
+  select 1 from public.chat_thread_members
+   where thread_id = :'grp' and member_id = 'bbbbbbbb-5555-0000-0000-000000000002'
+) as bo_still_in_it;
 rollback to savepoint no_evict;
 
 \echo ''
