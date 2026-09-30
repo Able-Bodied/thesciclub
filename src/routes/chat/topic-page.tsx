@@ -11,11 +11,13 @@ import { chatTimeLong } from '@/lib/chat/time';
 import {
   deleteTopic,
   editPost,
-  firstUnreadIndex,
+  firstUnreadThread,
   removePost,
   sendPost,
+  threadPosts,
   useTopicPosts,
 } from '@/lib/chat/topics';
+import type { ChatPost } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { backFromTopic } from '@/routes/chat/back';
 import { Composer } from '@/routes/chat/composer';
@@ -84,8 +86,12 @@ export default function TopicPage() {
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
   const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
-  // What the reader sees and counts: removed posts are left out. See the header.
-  const standing = useMemo(() => posts.filter((post) => post.removedAt === null), [posts]);
+  // What the reader sees and counts: removed posts are left out, and the
+  // rest are filed under the post they answer. See the header.
+  const threads = useMemo(
+    () => threadPosts(posts.filter((post) => post.removedAt === null)),
+    [posts],
+  );
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
@@ -93,6 +99,8 @@ export default function TopicPage() {
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
   /** The post whose words are in the composer, or null. See the header. */
   const [editingId, setEditingId] = useState<string | null>(null);
+  /** The top-level post the next reply goes under, or null. */
+  const [replyingTo, setReplyingTo] = useState<ChatPost | null>(null);
   const reports = useMyReports();
   // Which post the sheet is open over, or null. One at a time, and the id
   // rather than a boolean so that the sheet cannot outlive the post it is
@@ -125,13 +133,13 @@ export default function TopicPage() {
   const scrolled = useRef(false);
   const list = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (loading || scrolled.current || standing.length === 0) return;
+    if (loading || scrolled.current || threads.length === 0) return;
     scrolled.current = true;
-    const index = firstUnreadIndex(standing, lastReadAt);
+    const index = firstUnreadThread(threads, lastReadAt);
     if (index === 0) return;
     const element = list.current?.children.item(index);
     element?.scrollIntoView({ block: 'start' });
-  }, [loading, standing, lastReadAt]);
+  }, [loading, threads, lastReadAt]);
 
   function removeTopic() {
     if (!topicId) return;
@@ -218,6 +226,45 @@ export default function TopicPage() {
   }
 
   const starter = topic.authorId ? authors.get(topic.authorId) : null;
+  const nameOf = (post: ChatPost) =>
+    (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a former member';
+
+  /** What every post is handed, top level or reply. `under` is the post a
+      reply to this one files beneath: itself for a top-level post, its post
+      for a reply — one level, decided here as well as by the trigger. */
+  const postProps = (post: ChatPost, under: ChatPost) => ({
+    post,
+    author: post.authorId ? (authors.get(post.authorId) ?? null) : null,
+    // The author's own, and nobody else's — not an administrator's either.
+    // chat_edit_post decides; this only asks.
+    canEdit: canPost && post.authorId === account.userId,
+    editing: editingId === post.id,
+    onEdit: () => {
+      setEditingId(post.id);
+    },
+    onSaveEdit: (body: string) => saveEdit(post.id, body),
+    onCancelEdit: () => {
+      setEditingId(null);
+    },
+    canReply: canPost,
+    onReply: () => {
+      setReplyingTo(under);
+    },
+    // An administrator can remove anybody's; everybody else only their own.
+    // chat_remove_post decides — this only asks.
+    canRemove: account.isAdmin || post.authorId === account.userId,
+    onRemove: () => {
+      remove(post.id);
+    },
+    removing: removingId === post.id,
+    // Exactly the posts the reader can neither remove nor wrote, and not a
+    // former member's — see the header.
+    canReport: !account.isAdmin && post.authorId !== null && post.authorId !== account.userId,
+    reported: reports.postIds.has(post.id),
+    onReport: () => {
+      setReportingId(post.id);
+    },
+  });
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -281,41 +328,17 @@ export default function TopicPage() {
               {removalFailure}
             </p>
           ) : null}
-          {standing.map((post, index) => (
+          {threads.map(({ post, replies }, index) => (
             <Post
               key={post.id}
-              post={post}
-              author={post.authorId ? (authors.get(post.authorId) ?? null) : null}
+              {...postProps(post, post)}
               number={index + 1}
-              total={standing.length}
-              // The author's own, and nobody else's — not an administrator's
-              // either. chat_edit_post decides; this only asks.
-              canEdit={canPost && post.authorId === account.userId}
-              editing={editingId === post.id}
-              onEdit={() => {
-                setEditingId(post.id);
-              }}
-              onSaveEdit={(body) => saveEdit(post.id, body)}
-              onCancelEdit={() => {
-                setEditingId(null);
-              }}
-              // An administrator can remove anybody's; everybody else only
-              // their own. chat_remove_post decides — this only asks.
-              canRemove={account.isAdmin || post.authorId === account.userId}
-              onRemove={() => {
-                remove(post.id);
-              }}
-              removing={removingId === post.id}
-              // Exactly the posts the reader can neither remove nor wrote,
-              // and not a former member's — see the header.
-              canReport={
-                !account.isAdmin && post.authorId !== null && post.authorId !== account.userId
-              }
-              reported={reports.postIds.has(post.id)}
-              onReport={() => {
-                setReportingId(post.id);
-              }}
-            />
+              total={threads.length}
+            >
+              {replies.map((reply) => (
+                <Post key={reply.id} {...postProps(reply, post)} nested />
+              ))}
+            </Post>
           ))}
         </div>
       </div>
@@ -326,6 +349,17 @@ export default function TopicPage() {
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.
           sendOnEnter={false}
+          replyingTo={
+            replyingTo
+              ? {
+                  id: replyingTo.id,
+                  name: nameOf(replyingTo),
+                  onCancel: () => {
+                    setReplyingTo(null);
+                  },
+                }
+              : null
+          }
           onSend={async (body, files) => {
             if (!account.userId) return 'You are signed out.';
             // Files first, under the room's folder, which is what the read
@@ -337,11 +371,18 @@ export default function TopicPage() {
               if (!up.ok) return up.error;
               paths = up.value;
             }
-            const result = await sendPost(topic.id, account.userId, body, paths);
+            const result = await sendPost(
+              topic.id,
+              account.userId,
+              body,
+              paths,
+              replyingTo?.id ?? null,
+            );
             if (!result.ok) {
               void deleteAttachments(paths);
               return result.error;
             }
+            setReplyingTo(null);
             reload();
             return null;
           }}

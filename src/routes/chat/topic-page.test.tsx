@@ -18,7 +18,7 @@ const db = vi.hoisted(() => ({
   removed: [] as string[],
   edited: [] as [string, string][],
   editFails: null as string | null,
-  sent: [] as string[],
+  sent: [] as [string, string | null][],
   sendFails: null as string | null,
   reportedPosts: new Set<string>(),
   reports: [] as [string, string][],
@@ -82,9 +82,15 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     db.edited.push([id, body]);
     return Promise.resolve({ ok: true as const, value: null });
   },
-  sendPost: (_topicId: string, _authorId: string, body: string) => {
+  sendPost: (
+    _topicId: string,
+    _authorId: string,
+    body: string,
+    _attachments: string[] = [],
+    replyTo: string | null = null,
+  ) => {
     if (db.sendFails) return Promise.resolve({ ok: false as const, error: db.sendFails });
-    db.sent.push(body);
+    db.sent.push([body, replyTo]);
     return Promise.resolve({ ok: true as const, value: db.posts[0] });
   },
 }));
@@ -350,6 +356,111 @@ describe('a topic', () => {
     });
   });
 
+  describe('replies under a post', () => {
+    const jake = author({ id: 'jake', displayName: 'Jake' });
+    beforeEach(() => {
+      db.authors = new Map([
+        ['nicole', author({ id: 'nicole' })],
+        ['jake', jake],
+      ]);
+      db.posts = [
+        post({ id: 'q', createdAt: '2026-09-01T10:00:00Z' }),
+        post({ id: 'r1', authorId: 'jake', replyTo: 'q', createdAt: '2026-09-01T12:00:00Z' }),
+        post({ id: 'a1', authorId: 'me', createdAt: '2026-09-01T11:00:00Z' }),
+      ];
+    });
+
+    it('draws a reply inside its post, unnumbered, and numbers the top level only', () => {
+      renderTopic();
+      const articles = screen.getAllByRole('article');
+      // Three articles: the question with its reply inside it, and the answer.
+      expect(articles).toHaveLength(3);
+      const question = articles[0];
+      if (!question) throw new Error('no question');
+      expect(within(question).getByText('1/2')).toBeInTheDocument();
+      expect(within(question).getByRole('article')).toBeInTheDocument();
+      expect(screen.getByText('2/2')).toBeInTheDocument();
+      expect(screen.queryByText('3/3')).toBeNull();
+      expect(screen.queryByText(/\/3$/)).toBeNull();
+    });
+
+    it('offers Reply on every standing post, named for its author', () => {
+      renderTopic();
+      expect(screen.getByRole('button', { name: "Reply to Nicole's post" })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "Reply to Jake's post" })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Reply to your post' })).toBeInTheDocument();
+    });
+
+    it('files the reply under the post, and says so over the composer until it is sent', async () => {
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: "Reply to Nicole's post" }));
+      expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Nicole');
+      const box = screen.getByLabelText('Reply to this topic');
+      expect(box).toHaveFocus();
+      await userEvent.type(box, 'Under the question.');
+      await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
+      await waitFor(() => {
+        expect(db.sent).toEqual([['Under the question.', 'q']]);
+      });
+      await waitFor(() => {
+        expect(screen.queryByText(/Replying to/)).toBeNull();
+      });
+    });
+
+    // One level. Reply on a reply goes under the reply's post, and the bar
+    // names that post's author.
+    it('files a reply to a reply under the same post', async () => {
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: "Reply to Jake's post" }));
+      expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Nicole');
+      await userEvent.type(
+        screen.getByLabelText('Reply to this topic'),
+        'Also under the question.',
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
+      await waitFor(() => {
+        expect(db.sent).toEqual([['Also under the question.', 'q']]);
+      });
+    });
+
+    it('turns back into an ordinary post when the bar is closed', async () => {
+      renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: "Reply to Nicole's post" }));
+      await userEvent.click(screen.getByRole('button', { name: 'Stop replying' }));
+      expect(screen.queryByText(/Replying to/)).toBeNull();
+      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'On its own.');
+      await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
+      await waitFor(() => {
+        expect(db.sent).toEqual([['On its own.', null]]);
+      });
+    });
+
+    // The database nulls replyTo when the parent is removed; and if the read
+    // is older than that, the parent is simply not drawn. Either way the
+    // reply stands on its own, and nothing says "reply to a removed post".
+    it('stands a reply on its own once its post is removed', () => {
+      db.posts = [
+        post({
+          id: 'q',
+          body: '',
+          removedAt: '2026-09-02T10:00:00Z',
+          createdAt: '2026-09-01T10:00:00Z',
+        }),
+        post({ id: 'r1', authorId: 'jake', replyTo: 'q', createdAt: '2026-09-01T12:00:00Z' }),
+      ];
+      renderTopic();
+      expect(screen.getAllByRole('article')).toHaveLength(1);
+      expect(screen.getByText('1/1')).toBeInTheDocument();
+      expect(screen.queryByText(/removed/i)).toBeNull();
+    });
+
+    it('offers no Reply in a closed room', () => {
+      db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
+      renderTopic();
+      expect(screen.queryByRole('button', { name: /^Reply to/ })).toBeNull();
+    });
+  });
+
   it('offers Remove on every post to an administrator', async () => {
     db.isAdmin = true;
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
@@ -386,7 +497,7 @@ describe('a topic', () => {
     await userEvent.type(screen.getByLabelText('Reply to this topic'), 'That worked for me too.');
     await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
     await waitFor(() => {
-      expect(db.sent).toEqual(['That worked for me too.']);
+      expect(db.sent).toEqual([['That worked for me too.', null]]);
     });
   });
 

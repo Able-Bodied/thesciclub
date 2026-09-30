@@ -132,6 +132,86 @@ export function firstUnreadIndex(posts: ChatPost[], lastReadAt: string | null): 
   return index === -1 ? 0 : index;
 }
 
+/** A top-level post and the replies filed under it, each in time order. */
+export interface PostThread {
+  post: ChatPost;
+  replies: ChatPost[];
+}
+
+/** Earliest first, with the id to break a tie so two reads agree. */
+function byPostTime(a: ChatPost, b: ChatPost): number {
+  return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
+}
+
+/**
+ * The posts of a topic as the screen draws them: top-level posts in time
+ * order, each with its replies in time order under it.
+ *
+ * Pure, and the one place the nesting rule is written for the screen. One
+ * level: a reply is filed under the post its `replyTo` names. A reply whose
+ * parent is not in the list — the parent was removed, and the screen leaves
+ * removed posts out, or the database has nulled `replyTo` and this read is
+ * older than that — stands as a top-level post in its own time order, and
+ * nothing says "reply to a removed post". A reply whose parent is itself a
+ * reply, which the trigger refuses and an older row could still hold, is
+ * filed under that reply's post.
+ */
+export function threadPosts(posts: readonly ChatPost[]): PostThread[] {
+  const sorted = [...posts].sort(byPostTime);
+  const byId = new Map(sorted.map((post) => [post.id, post]));
+  const threads: PostThread[] = [];
+  const threadOf = new Map<string, PostThread>();
+
+  // The post a reply is filed under: follow replyTo up to a post that is
+  // top level here, or give up where the chain leaves the list.
+  const rootOf = (post: ChatPost): ChatPost | null => {
+    let current = post;
+    // Bounded by the list's length, so a cycle an older row could hold
+    // cannot spin.
+    let hops = sorted.length;
+    while (hops > 0) {
+      if (current.replyTo === null) return current;
+      const parent = byId.get(current.replyTo);
+      if (!parent) return null;
+      current = parent;
+      hops -= 1;
+    }
+    return null;
+  };
+
+  for (const post of sorted) {
+    const root = rootOf(post);
+    if (root === null || root.id === post.id) {
+      const thread = { post, replies: [] };
+      threads.push(thread);
+      threadOf.set(post.id, thread);
+    }
+  }
+  for (const post of sorted) {
+    const root = rootOf(post);
+    if (root === null || root.id === post.id) continue;
+    threadOf.get(root.id)?.replies.push(post);
+  }
+  return threads;
+}
+
+/**
+ * Which thread to open at: the first whose post, or any reply under it, was
+ * written since the reader last looked. 0 for a reader who has never opened
+ * the topic, or when nothing is new — see firstUnreadIndex.
+ */
+export function firstUnreadThread(
+  threads: readonly PostThread[],
+  lastReadAt: string | null,
+): number {
+  if (!lastReadAt) return 0;
+  const index = threads.findIndex(
+    ({ post, replies }) =>
+      post.createdAt > lastReadAt || replies.some((reply) => reply.createdAt > lastReadAt),
+  );
+  return index === -1 ? 0 : index;
+}
+
 export interface RoomTopicsState {
   topics: ChatTopic[];
   loading: boolean;
@@ -374,10 +454,21 @@ export async function sendPost(
   authorId: string,
   body: string,
   attachments: string[] = [],
+  /** The post this one answers, or null for a post at the top level. */
+  replyTo: string | null = null,
 ): Promise<ChatWriteResult<ChatPost>> {
   const { data, error } = (await getSupabase()
     .from('chat_posts')
-    .insert({ topic_id: topicId, author_id: authorId, body, attachments })
+    // reply_to is named only when there is one, so a plain post still lands
+    // on a database that predates the column. The trigger behind it refuses
+    // a parent in another topic, a removed one, or a reply, in a sentence.
+    .insert({
+      topic_id: topicId,
+      author_id: authorId,
+      body,
+      attachments,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    })
     .select(POST_COLUMNS)
     .single()) as Result<PostRow>;
   if (error) return { ok: false, error: describeError(error, POST_REFUSALS) };
