@@ -45,7 +45,9 @@ Three things happened on 2026-09-28/29, in this order of urgency:
 5. **Home step 3, Likes, is built and committed** (2026-09-30), and its
    migration `20260930010000` is on the live database — the owner pushed it
    on 2026-09-30 and `migration list --linked` shows 84 applied and none
-   pending. The client commits followed the push. **Not pushed to GitHub.**
+   pending. The client commits followed the push. Pushed to GitHub at the
+   owner's word on 2026-09-30, both branches at `3c1af82` with `pnpm check`
+   exiting 0 there; Netlify's deploy of it reads ready.
    See "Home, step 3" below.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
@@ -505,7 +507,8 @@ owner pushed the migration on 2026-09-30 after the dry run listed it alone;
 only then did the client land, four commits, each with `pnpm test`,
 `pnpm check` and `pnpm build` clean on its own (1,431 tests at the end):
 the likes library (`a8bfa5c`), the button and the list (`615188a`), the
-topic page (`10b510c`), Home (`6c7f6f5`). Not pushed to GitHub.
+topic page (`10b510c`), Home (`6c7f6f5`). Pushed to GitHub on 2026-09-30,
+at the owner's word, and live.
 
 The migration: one table, `chat_post_likes (post_id, member_id, liked_at)`,
 primary key on the pair, the row being the whole fact (the shape of
@@ -643,8 +646,8 @@ the fix.
   (see "Next up: the owner's call").
 - **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
   on 2026-09-29). Steps 1, 2 and 2b are live; see the three sections
-  above, and step 3 (Likes) is built with its migration live — not yet on
-  GitHub. Step 4, Filter your feed, is next.
+  above, and step 3 (Likes) is built and live, migration and client, since
+  2026-09-30. Step 4, Filter your feed, is next.
 
 ## Standing rules this session learned
 
