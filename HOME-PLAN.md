@@ -4,12 +4,16 @@ Written 2026-09-29, for the session that builds it.
 
 **Where it stands: steps 1, 2, 2b and 3 are built and live on production**
 (steps 1, 2 and 2b on 2026-09-29; step 3, Likes, on 2026-09-30, its
-migration `20260930010000` on the live database first). **Next is step 3b**,
-a clean-up the owner asked for on 2026-09-30 — the probes, one storage
-policy, and Like on every card on Home — then step 4, Filter your feed.
-HANDOFF.md, "Home, step 1", "Home, step 2", "Home, step 2b" and "Home,
-step 3", say where the build departed from this plan and why; read them
-first, because those departures stand.
+migration `20260930010000` on the live database first). **Step 3b is built
+and committed, not on GitHub** (2026-09-30): all 30 probes read as expected
+on a fresh stack, its migration `20260930030000` is on the live database,
+and every topic card on Home has Like. **Next is step 4**, Filter your
+feed. HANDOFF.md, "Home, step 1", "Home, step 2", "Home, step 2b", "Home,
+step 3" and "Home, step 3b", say where the build departed from this plan
+and why; read them first, because those departures stand. Two from 3b:
+the Like buttons on a topic card are `relative` without `z-10` (the plan's
+`z-10` on the row trapped the likes list under the tab bar), and the
+photos bucket's member delete policy stays `{public}` (the owner's call).
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request

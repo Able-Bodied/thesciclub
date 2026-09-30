@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-29.
+Last updated 2026-09-30.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -55,6 +55,12 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    said to push the code: both branches on GitHub at `5be5087`, gated on
    `pnpm check` exiting 0 there, and Netlify's deploy of it reads ready. See
    "Group names and pictures" below.
+7. **Home step 3b is built and committed** (2026-09-30), and **not on
+   GitHub**: the probes read as expected again (all 30, on a fresh stack),
+   the chat bucket's storage policies name `authenticated`
+   (`20260930030000`, on the live database — the owner pushed it on
+   2026-09-30 and `migration list --linked` shows 85 applied, none
+   pending), and every topic card on Home has Like. See "Home, step 3b".
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -577,19 +583,8 @@ production.
 
 Owed and noticed, not changed:
 
-- **Eight probes do not read as expected even on a fresh database**, none
-  of it from Likes. Stale expectation text: `blocked-numbers.sql` step 10
-  (prints a uuid, not `INSERT 0 1`), `chat-groups.sql` step 14 (the evict is
-  a `DELETE 0`, not permission denied — the delete grant exists for
-  leaving), `photo-cleanup.sql` step 1 (three policies, not two; the extra
-  is the chat bucket's delete policy, `to public`, calling `is_admin()` —
-  worth a look), `restore-directory.sql` (expects 22 seeded, the seed has
-  23), `topic-removal-and-deletion.sql` step 4 (the names print in the other
-  order), `chat-member-removed.sql` step 4's note ("still counted" predates
-  `20260927030000`). Fixtures that tie on `now()`, so the answer flips
-  between runs: `chat-posts.sql` steps 10 and 10d, `chat-member-removed.sql`
-  step 4. And `claim-preview.sql` step 1 cannot fail: its subquery reads
-  `invites` as a non-member, which RLS answers with nothing.
+- The probes that did not read as expected here are fixed: see "Home, step
+  3b".
 - **A probe with several transactions must not be wrapped in one.**
   `claim-carries-profile.sql` has three; stripping their `begin;` to wrap
   the file committed its second and third blocks to the local database
@@ -601,7 +596,97 @@ Owed and noticed, not changed:
   --workdir` it.
 - Locally, Alex's avatar is a broken image (the photo path has no file in
   local storage). Local data only.
-- Step 4, "Filter your feed", is next. It has no migration.
+- Step 3b came next, at the owner's word; step 4, "Filter your feed", is
+  after it. It has no migration.
+
+## Home, step 3b — built 2026-09-30, migration on the live database the same day
+
+HOME-PLAN.md step 3b: the probes, one storage policy, and Like on every
+topic card on Home. Three parts, committed in the plan's order — probe
+fixes, then the migration and its probe, the owner's push, then the
+client. Not pushed to GitHub.
+
+**Part 1, the probes.** Every one of the 30 in `supabase/tests/` reads as
+expected on a stack started fresh from all 85 migrations, twice, with the
+two runs identical once ids and times are masked (and but for where
+psql's error lines fall among the others, which varies) (step 3 counted 29; the
+thirtieth is `chat-group-rename.sql`, from the side job). Every log was
+read against its own `expect:` lines, which found seven files beyond the
+eight step 3 named. What was wrong, and the fix:
+
+- Text that no longer said what the step prints: `blocked-numbers.sql`
+  step 10 (a uuid), `chat-groups.sql` steps 10 and 14, `chat-member-rooms`
+  14, `chat-direct` 2, `chat-edits` 8, `chat-posts` 1 and 11, `chat-reports`
+  0a, `topic-removal-and-deletion` 4 (the order was always "Starter,
+  Replier", by first standing post; the query was already ordered).
+  Several promised "a uuid" from a `\gset`, which stores and never prints.
+- `chat-groups` 14: evicting somebody else is a silent `DELETE 0`, which is
+  right; the step now reads Bo's row back as the superuser to prove it
+  stayed.
+- `restore-directory`: counts `directory_seed` instead of expecting 22.
+- Ties on `now()`: `chat-member-removed` (posts a second apart; step 7
+  scoped to its own two threads, since unscoped it listed every
+  conversation on a local stack) and `chat-posts` (the opening post moved
+  a second back — **not the reply forward**, which was the first attempt:
+  it put the topic's activity after step 7b's read and 7b read unread t).
+- `claim-preview` step 1 could not fail. Ajay's id is now read as the
+  superuser before the role switch, and step 1b runs the same lookup as
+  an active member. **Sabotaged to prove it**: with `browse_members`'
+  viewer check dropped inside the probe's transaction, step 1 printed 1;
+  the old step 1, under the same sabotage, still printed 0.
+- `chat-group-rename` 17 read 0 then 0 on a fresh stack, which has no
+  `push_notify_url`. The step makes one inside its transaction when it is
+  missing, pointing at the discard port; the rollback takes it and the
+  queued request, and pg_net sends only what commits.
+- `photo-cleanup` 1: three delete policies. See part 2.
+
+A file with several transactions is run as written, never wrapped:
+`claim-carries-profile.sql` has three, each rolled back.
+
+**Part 2, `20260930030000_chat_storage_policies_name_their_role.sql`.** The
+chat bucket's read, upload and delete policies are made again with `to
+authenticated` and nothing else. Before, a signed-out visitor was refused
+with "permission denied for function chat_file_is_readable"; now a read
+returns nothing and a write is a row-level security refusal. Checked:
+`pg_policies` before and after on the local stack differ only in the
+roles; `pnpm check-chat-photo-policy` passes all 14 against it;
+`chat-attachments.sql` reads the same before and after. `photo-cleanup.sql`
+step 1 expects three delete policies, **the photos bucket's member policy
+still `{public}`** — the owner's call on 2026-09-30, since it calls only
+`auth.uid()` and `storage.foldername()`, which anon may run; 1b lists the
+chat bucket's three, each `{authenticated}`; 7 asks as anon. Pushed by the
+owner after the dry run listed it alone.
+
+**Part 3, Like on every topic card.** `TopicCard` takes `likes` as
+`PhotoCard` does (the shape is `CardLikes`, exported from
+`topic-card.tsx`), and Home reads likes for every opening post, not the
+photographs' only. The card is a stretched link, so **the two buttons are
+`relative`**, which paints them over the link's pseudo-element; the row
+around them is not, so its gaps and the reply count still open the topic.
+Both alternatives were tried in a browser: without `relative` the link is
+what sits under a finger on Like and the tap opens the topic; the plan's
+`relative z-10` on the row traps the likes sheet in the row's stacking
+context, and the tab bar and the next card's buttons covered its Close.
+The header of `topic-card.tsx` says so.
+
+Checked on the local stack (the dev server on 5183, confirmed pointing at
+127.0.0.1:54321), by a Playwright script in the session's scratch folder,
+32 checks at 430 and 1280: Like is on top where a finger lands; a raw tap
+at its centre counts (0 to 1) and stays on Home; still liked after a
+reload; Tab goes from the title to Like; the list opens above everything,
+names Alex, Escape closes it and focus returns to the count; axe clean on
+Home with the list open and closed; the topic page shows the same count;
+taking it back restores the count; a tap elsewhere on the card opens the
+topic; photo cards keep their likes. Tests: eight new in
+`topic-card.test.tsx`, and two in `page.test.tsx` that were seen to fail
+against the old page. Screenshots at
+430, 1280 and `--text=larger`, read; 320 wide at larger text, no sideways
+scroll. Likes made while checking were taken back. **Not checked:**
+VoiceOver, production.
+
+Noticed, not changed: the accessible name reads "3 likes on Morning or
+evening routine?. Show who." — a title ending in a question mark gets a
+full stop after it. The plan's wording, and the photo card's since step 3.
 
 ## Group names and pictures — built 2026-09-30, live the same day
 
@@ -1104,7 +1189,7 @@ Two rules, both learned the hard way:
 | `invite-lifecycle.sql` | deleting a member: their invite, the ones they issued, the constraint that used to block it |
 | `mentor-invites.sql` | the two-invite cap, as a real mentor session |
 | `blocked-numbers.sql` | all three places a ban is enforced |
-| `claim-preview.sql` | that somebody mid-onboarding can see the profile they may claim |
+| `claim-preview.sql` | that somebody mid-onboarding can see the profile they may claim; step 1 asserts the old lookup is refused, and 1b is its control — the same lookup as an active member finds Ajay (step 1 could not fail until 2026-09-30) |
 | `claim-carries-profile.sql` | that claiming carries the whole profile and their own answers win |
 | `restore-directory.sql` | restoring the seeded directory without touching anybody real |
 | `admin-vouches-directly.sql` | an administrator inviting in their own name |
@@ -1129,8 +1214,8 @@ Two rules, both learned the hard way:
 | `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
 | `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
 | `admin-invites-no-auth-users.sql` | 20260929000000, after Supabase's `auth_users_exposed` email: step 1 (an administrator still sees who has signed up — the first draft of the migration broke it, because Postgres checks a function inside a view against the reader) and 3–5 (a member reads nothing through the view or around it, anon cannot reach the lookup) matter most |
-| `chat-group-rename.sql` | `20260930020000`: step 3 (somebody outside a group can neither rename it nor change its picture), 7 (a member cannot write a notice by hand) and 10 (a picture must be the caller's own upload in the group's folder) matter most; the name's rules, a pair and an event's group refused, paused refused, a notice not edited, not removed by its author, not answered; a reported notice reaches the administrators as a sentence with the picture; a rename queues no notification and a message still does (needs `push_notify_url` in the local vault) |
-| `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added. **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
+| `chat-group-rename.sql` | `20260930020000`: step 3 (somebody outside a group can neither rename it nor change its picture), 7 (a member cannot write a notice by hand) and 10 (a picture must be the caller's own upload in the group's folder) matter most; the name's rules, a pair and an event's group refused, paused refused, a notice not edited, not removed by its author, not answered; a reported notice reaches the administrators as a sentence with the picture; a rename queues no notification and a message still does (step 17 makes a `push_notify_url` inside its own transaction when the stack has none) |
+| `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added; since `20260930030000`, that the `chat` bucket's three name `authenticated` (step 1b) and that anon is refused without a function named (step 7). **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
