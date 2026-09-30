@@ -1,3 +1,5 @@
+import type { ChatPost, ChatRoom } from '@/lib/chat/types';
+import type { HomeTopic } from '@/lib/home/types';
 import type { BrowseMember, ClubEvent, EventTag, Organization } from '@/types/domain';
 
 /** A member with everything empty, for tests to fill in only what they care about. */
@@ -84,6 +86,55 @@ export function makeOrganization(overrides: Partial<Organization> = {}): Organiz
     tags: [],
     canInvite: true,
     logoPath: null,
+    ...overrides,
+  };
+}
+
+/** An open room, for tests to close or rename only when that is the point. */
+export function makeRoom(overrides: Partial<ChatRoom> = {}): ChatRoom {
+  return {
+    id: 'bowel',
+    name: 'Bowel management',
+    description: 'The one nobody talks about anywhere else.',
+    category: 'Body',
+    icon: '◍',
+    sortOrder: 1,
+    openedAt: '2026-09-18T10:00:00Z',
+    createdBy: null,
+    ...overrides,
+  };
+}
+
+/** A standing post with words and no photographs. */
+export function makePost(overrides: Partial<ChatPost> = {}): ChatPost {
+  return {
+    id: Math.random().toString(36).slice(2),
+    topicId: 't',
+    authorId: 'a',
+    body: 'Something.',
+    attachments: [],
+    createdAt: '2026-09-20T10:00:00Z',
+    removedAt: null,
+    removedByAdmin: false,
+    ...overrides,
+  };
+}
+
+/** A plain topic in an open room, with its opening post and no replies. */
+export function makeHomeTopic(overrides: Partial<HomeTopic> = {}): HomeTopic {
+  const id = overrides.id ?? Math.random().toString(36).slice(2);
+  return {
+    id,
+    roomId: 'bowel',
+    title: 'Morning or evening routine?',
+    authorId: 'a',
+    createdAt: '2026-09-20T10:00:00Z',
+    lastPostAt: '2026-09-20T10:00:00Z',
+    replyCount: 0,
+    room: makeRoom(),
+    opening: makePost({ topicId: id }),
+    firstReply: null,
+    photo: false,
     ...overrides,
   };
 }

@@ -68,7 +68,8 @@ function toTopic(row: TopicRow): ChatTopic {
   };
 }
 
-interface PostRow {
+/** Exported with `toPost` for Home, which reads posts across topics. */
+export interface PostRow {
   id: string;
   topic_id: string;
   author_id: string | null;
@@ -79,10 +80,10 @@ interface PostRow {
   removed_by_admin: boolean;
 }
 
-const POST_COLUMNS =
+export const POST_COLUMNS =
   'id, topic_id, author_id, body, attachments, created_at, removed_at, removed_by_admin';
 
-function toPost(row: PostRow): ChatPost {
+export function toPost(row: PostRow): ChatPost {
   return {
     id: row.id,
     topicId: row.topic_id,
