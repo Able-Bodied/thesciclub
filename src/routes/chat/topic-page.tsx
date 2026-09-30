@@ -349,6 +349,7 @@ export default function TopicPage() {
               {...postProps(post, post)}
               number={index + 1}
               total={threads.length}
+              replies={replies.length}
             >
               {replies.map((reply) => (
                 <Post key={reply.id} {...postProps(reply, post)} nested />

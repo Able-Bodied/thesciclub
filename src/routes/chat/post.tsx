@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -62,6 +62,17 @@ import { EarlierVersions } from '@/routes/chat/earlier-versions';
  * The topic page hands a top-level post its replies as `children`, drawn
  * inside the article, indented and unnumbered. A reply's own Reply files
  * under the same post — one level is the rule, and the trigger enforces it.
+ *
+ * **They can be hidden** — the owner, 2026-09-29, for the day a thread of
+ * replies gets long. "Hide 3 replies" over the replies folds them away and
+ * becomes "Show 3 replies"; the control names its post to a screen reader
+ * and says `aria-expanded`. Shown by default on every visit: the words are
+ * what a topic is for, and hiding is a reader's answer to one long thread
+ * rather than a setting. The replies come back on their own when their
+ * number changes — a reply you have just written under a folded post must
+ * not land where you cannot see it — which is why what is stored is the
+ * count at which they were hidden, not a flag. No control on a post with no
+ * replies: a count of zero is not drawn.
  */
 export function Post({
   post,
@@ -83,6 +94,7 @@ export function Post({
   reported,
   onReport,
   edits,
+  replies = 0,
   children,
 }: {
   post: ChatPost;
@@ -114,9 +126,15 @@ export function Post({
   onReport: () => void;
   /** Earlier versions, for an administrator. Absent or empty for everybody else. */
   edits?: ChatEdit[];
+  /** How many replies `children` holds, for the hide control. */
+  replies?: number;
   /** The replies, as `<Post nested>` elements. */
   children?: ReactNode;
 }) {
+  // The count the replies were hidden at, or null. See the header.
+  const [hiddenAt, setHiddenAt] = useState<number | null>(null);
+  const hidden = replies > 0 && hiddenAt === replies;
+  const repliesId = `replies-${post.id}`;
   const name = author ? author.displayName : 'a former member';
   const whose = canEdit ? 'your' : `${name}'s`;
   const control =
@@ -263,7 +281,26 @@ export function Post({
         </div>
       )}
 
-      {children}
+      {replies > 0 ? (
+        <button
+          type="button"
+          onClick={() => {
+            setHiddenAt(hidden ? null : replies);
+          }}
+          aria-expanded={!hidden}
+          aria-controls={repliesId}
+          aria-label={`${hidden ? 'Show' : 'Hide'} ${replies} ${replies === 1 ? 'reply' : 'replies'} to ${whose} post`}
+          data-target="small"
+          className={`mt-2 ${control} hover:text-navy`}
+        >
+          {hidden ? 'Show' : 'Hide'} {replies} {replies === 1 ? 'reply' : 'replies'}
+        </button>
+      ) : null}
+      {replies > 0 ? (
+        <div id={repliesId} hidden={hidden}>
+          {children}
+        </div>
+      ) : null}
     </article>
   );
 }

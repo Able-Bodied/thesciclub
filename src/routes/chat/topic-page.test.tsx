@@ -535,6 +535,71 @@ describe('a topic', () => {
       expect(screen.queryByText(/removed/i)).toBeNull();
     });
 
+    // The owner, 2026-09-29: for the day a thread of replies gets long.
+    const folded = () => [
+      post({ id: 'q', body: 'The question.', createdAt: '2026-09-01T10:00:00Z' }),
+      post({
+        id: 'r1',
+        authorId: 'jake',
+        replyTo: 'q',
+        body: 'A reply under the question.',
+        createdAt: '2026-09-01T12:00:00Z',
+      }),
+      post({ id: 'a1', authorId: 'me', body: 'An answer.', createdAt: '2026-09-01T11:00:00Z' }),
+    ];
+
+    it('hides the replies under a post and shows them again, naming the count and the post', async () => {
+      db.posts = folded();
+      renderTopic();
+      expect(screen.getByText('A reply under the question.')).toBeVisible();
+      const hide = screen.getByRole('button', { name: "Hide 1 reply to Nicole's post" });
+      expect(hide).toHaveAttribute('aria-expanded', 'true');
+      await userEvent.click(hide);
+      const show = screen.getByRole('button', { name: "Show 1 reply to Nicole's post" });
+      expect(show).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByText('A reply under the question.')).not.toBeVisible();
+      await userEvent.click(show);
+      expect(screen.getByText('A reply under the question.')).toBeVisible();
+    });
+
+    it('draws no hide control on a post with no replies', () => {
+      db.posts = folded();
+      renderTopic();
+      expect(screen.getAllByRole('button', { name: /^Hide / })).toHaveLength(1);
+      expect(screen.queryByRole('button', { name: /^(Hide|Show) .* to your post$/ })).toBeNull();
+    });
+
+    // A reply you have just written under a folded post must not land where
+    // you cannot see it.
+    it('shows the replies again once their number changes', async () => {
+      db.posts = folded();
+      const { rerender } = renderTopic();
+      await userEvent.click(screen.getByRole('button', { name: "Hide 1 reply to Nicole's post" }));
+      expect(screen.getByText('A reply under the question.')).not.toBeVisible();
+      db.posts = [
+        ...folded(),
+        post({
+          id: 'r2',
+          authorId: 'me',
+          replyTo: 'q',
+          body: 'Mine, just now.',
+          createdAt: '2026-09-01T13:00:00Z',
+        }),
+      ];
+      rerender(
+        <MemoryRouter initialEntries={['/chat/rooms/bowel/topics/t']}>
+          <Routes>
+            <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+      expect(screen.getByText('Mine, just now.')).toBeVisible();
+      expect(screen.getByText('A reply under the question.')).toBeVisible();
+      expect(
+        screen.getByRole('button', { name: "Hide 2 replies to Nicole's post" }),
+      ).toBeInTheDocument();
+    });
+
     it('offers no Reply in a closed room', () => {
       db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
       renderTopic();
