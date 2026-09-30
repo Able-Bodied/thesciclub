@@ -1120,6 +1120,109 @@ on Home, and both documents describe the app as it is.
 
 ---
 
+## Step 6 — The photos bucket
+
+Asked for by the owner on 2026-09-30, after step 3b's storage-policy tidy
+raised it. Last, after step 5. Two parts; **the second needs the owner's
+decision before it is built**, and the first does not.
+
+The `photos` bucket holds every member photograph (`<member_id>/…`), the
+seeded directory's (`seed/…`) and the organizations' logos
+(`organizations/…`). It was made in `20260910120100` as **public, with no
+size limit and no allowed types**. `src/lib/photos.ts` builds a public URL
+from `members.photo_path`; nine screens draw through it, most through
+`MemberAvatar` and `OrganizationBadge`.
+
+### Part 1 — Limits, like the chat bucket's. No decision needed
+
+- `file_size_limit` 2MB and `allowed_mime_types` webp, jpeg, png on the
+  `photos` bucket — the chat bucket's own numbers, in one migration that
+  updates `storage.buckets`.
+- **Check the live files first.** On 2026-09-30 the bucket held 50 files,
+  the largest 329KB, none over 2MB, so nothing needs shrinking before the
+  limit lands. Check again on the day with the storage API's list, since a
+  limit under a file already there would not delete it but would stop it
+  being replaced. `pnpm reprocess-photos` is the tool if one has appeared.
+- The client already shrinks a profile photograph to 800px, webp or (on a
+  phone) JPEG, before upload — `preparePhoto`, fixed on 2026-09-29 — so an
+  ordinary upload is far under the limit and nothing on a screen changes.
+  The refusal sentences for a file that is not, "too large after shrinking"
+  and "not a kind of photograph the club can hold", already exist in
+  `describeError` and reach the details form and onboarding through
+  `savePhoto`'s error path; check that they do, since until now that bucket
+  refused nothing.
+- Probe: `photo-cleanup.sql` gains a step reading the bucket's row and
+  expecting the two limits.
+- **Nothing else in this part**: the member policies stay for every role
+  (they call nothing a visitor cannot run — step 3b's note), and the bucket
+  stays public until part 2 decides otherwise.
+
+### Part 2 — Private, or public. The owner decides first
+
+**What is true today.** Anyone holding a photograph's URL can open it
+without signing in. The path is a member's id and a random file name, so
+nothing can be browsed or guessed, but a link copied out of the app works
+for anyone, forever. CONTEXT.md's public/private table puts photos behind
+sign-in, and the bucket does not.
+
+**The choice**, put to the owner before anything is built:
+
+- **Keep it public.** Nothing to build. Change CONTEXT.md's table to say
+  photographs are readable by link, and why that was accepted: the paths
+  are unguessable, and a private bucket costs every screen a signing round
+  trip.
+- **Make it private (recommended).** The bucket becomes `public = false`
+  and its select policy becomes `to authenticated` with `is_member()`; the
+  chat bucket is the model. Every avatar, hero photograph and logo is then
+  drawn through a **signed URL**, the way chat photographs already are.
+
+If private, the build:
+
+- One signing cache for both buckets. `useAttachmentUrls` in
+  `src/lib/chat/attachments.ts` signs paths for the `chat` bucket and caches
+  them for a little under their hour. Give it the bucket as a parameter
+  (default `chat`, so the six chat callers do not change) and let
+  `src/lib/photos.ts` export `usePhotoUrls(paths)` over it. `photoUrlFor`
+  goes; nothing else builds a URL by hand.
+- **One request per screen, not per face.** The Peers deck draws up to
+  twenty-three photographs and Home a dozen; `createSignedUrls` takes the
+  whole list in one call, and the cache means scrolling back re-signs
+  nothing. Measure the deck's first paint before and after on the local
+  stack and put both numbers in the handoff; if the second is worse by
+  more than a blink, the answer is to sign earlier (in `useBrowseMembers`,
+  alongside the rows), not to give up.
+- `MemberAvatar`, `MemberCard`, the profile hero, Me's hero, the details
+  form, onboarding's photo step, `OrganizationBadge` and the organization
+  page all read through the hook. Each keeps drawing the initials tile
+  until the URL arrives, which is what they do today for a member with no
+  photograph, so there is no flash of a broken image.
+- **Organization logos are public information**, on the organizations' own
+  sites. If signing them grates, they can move to a bucket of their own
+  that stays public; the plan's default is to leave them in `photos` and
+  sign them like everything else, because two buckets is more to keep
+  right and a logo is small.
+- The service worker precaches nothing from storage today, so nothing
+  there changes; an offline Peers deck already draws initials.
+- Probes: `photo-cleanup.sql` reads the bucket as private and its select
+  policy as `{authenticated}`; a new step as `anon` reads nothing. `pnpm
+  check-photo-policy` gains the read side (it covers insert and delete).
+- **Order of release: the client first, then the migration.** The reverse
+  of every other step, and deliberately: the signing client works against
+  a public bucket (a signed URL to a public file is still a URL), but the
+  old public-URL client against a private bucket is every photograph
+  broken at once. So: land and deploy the client that signs, confirm on
+  production that every face still draws, then the owner pushes the
+  migration that closes the bucket.
+
+### Done when
+
+The bucket refuses a file over 2MB or of another type, with the sentence a
+member can read; and either CONTEXT.md says photographs are readable by
+link and why, or the bucket is private, every face and logo still draws,
+and a copied URL stops working within the hour.
+
+---
+
 ## Departures from the mock, with reasons — do not "fix" these
 
 - **No comments sheet.** A comment is a reply, and the topic page already
