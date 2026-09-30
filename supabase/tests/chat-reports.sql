@@ -89,8 +89,8 @@ select current_user, auth.uid()::text as uid,
 
 \echo ''
 \echo '== 0a. a post has to be removable before it can be "already removed" =='
-\echo '   expect: t. Ada is not the author, so this is the administrator path —'
-\echo '   except she is not one either. Done as Bo, its author, below.'
+\echo '   expect: one blank line from a void function, and no error. Done as'
+\echo '   Bo, its author: Ada is neither the author nor an administrator.'
 set local request.jwt.claims = '{"sub":"bbbbbbbb-7777-0000-0000-000000000002","role":"authenticated"}';
 select public.chat_remove_post('22222222-7777-0000-0000-00000000b003');
 set local request.jwt.claims = '{"sub":"aaaaaaaa-7777-0000-0000-000000000001","role":"authenticated"}';
