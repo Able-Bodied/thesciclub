@@ -18,11 +18,13 @@ import type { ChatAuthor, ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/t
  * ---------------------------------------------------------------------------
  * A room with nothing in it says so in words
  * ---------------------------------------------------------------------------
- * The stats line is the mock's "N topics · N posts · N members", and it is left
- * off entirely when the room has no topics. "0 topics · 0 posts · 0 members" is
- * the invented-content rule broken in the other direction: three zeros read as
- * a room that failed rather than as one that has not started, and they are the
- * first thing a member would see on the day the first room opens.
+ * The stats line is the mock's "N topics · N posts · N members" less the
+ * members — nobody joins a room since 20260930000000, so there is nobody to
+ * count — and it is left off entirely when the room has no topics. "0 topics ·
+ * 0 posts" is the invented-content rule broken in the other direction: two
+ * zeros read as a room that failed rather than as one that has not started,
+ * and they are the first thing a member would see on the day the first room
+ * opens.
  *
  * ---------------------------------------------------------------------------
  * The Closed chip is for an audience of one kind of person
@@ -77,14 +79,12 @@ export function RoomCard({
   room,
   starter,
   stats,
-  joined,
 }: {
   room: ChatRoom;
   /** Who started it, for a member room. Null for the seeded twelve, for a
       starter who has left the club, and while the name is still loading. */
   starter?: ChatAuthor | null;
   stats: RoomStats | undefined;
-  joined: boolean;
 }) {
   const style = CATEGORY_STYLE[room.category];
   const closed = room.openedAt === null;
@@ -108,11 +108,6 @@ export function RoomCard({
             two lines and took its own pill background with it. */}
         <span className="flex flex-wrap items-baseline gap-x-[7px] gap-y-1">
           <span className="font-extrabold font-head text-[0.9375rem] text-ink">{room.name}</span>
-          {joined ? (
-            <span className="whitespace-nowrap rounded-full bg-gold px-2 py-[2px] font-semibold text-on-gold text-[0.6875rem]">
-              Joined
-            </span>
-          ) : null}
           {closed ? (
             <span className="whitespace-nowrap rounded-full bg-tint px-2 py-[2px] font-semibold text-[0.6875rem] text-ink2">
               Closed
@@ -125,8 +120,7 @@ export function RoomCard({
         {stats && stats.topicCount > 0 ? (
           <span className="mt-1.5 block font-semibold text-[0.75rem] text-navy leading-[1.45]">
             {stats.topicCount} {stats.topicCount === 1 ? 'topic' : 'topics'} · {stats.postCount}{' '}
-            {stats.postCount === 1 ? 'post' : 'posts'} · {stats.memberCount}{' '}
-            {stats.memberCount === 1 ? 'member' : 'members'}
+            {stats.postCount === 1 ? 'post' : 'posts'}
           </span>
         ) : (
           <span className="mt-1.5 block text-[0.75rem] text-grey leading-[1.45]">

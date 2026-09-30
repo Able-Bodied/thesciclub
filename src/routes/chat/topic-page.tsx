@@ -6,7 +6,7 @@ import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/ch
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
-import { useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
+import { useChatRooms } from '@/lib/chat/rooms';
 import { chatTimeLong } from '@/lib/chat/time';
 import {
   deleteTopic,
@@ -73,7 +73,6 @@ export default function TopicPage() {
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
-  const membership = useRoomMembership();
   const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
   // What the reader sees and counts: removed posts are left out. See the header.
   const standing = useMemo(() => posts.filter((post) => post.removedAt === null), [posts]);
@@ -105,7 +104,9 @@ export default function TopicPage() {
   const location = useLocation();
   const back = backFromTopic(location.state, room);
   const closed = room?.openedAt === null;
-  const canPost = account.isAdmin || (room !== null && !closed && membership.joined.has(room.id));
+  // Any member, in an open room; an administrator in a closed one too, to
+  // seed it. No membership since 20260930000000.
+  const canPost = room !== null && (!closed || account.isAdmin);
 
   // Where the reader had got to, captured on the first load and not recomputed:
   // once they are reading, the page must stay where they put it.
@@ -296,7 +297,6 @@ export default function TopicPage() {
           sendOnEnter={false}
           onSend={async (body, files) => {
             if (!account.userId) return 'You are signed out.';
-            if (!room) return 'There is no such room.';
             // Files first, under the room's folder, which is what the read
             // policy checks; then the row that names them. A refused row
             // takes its files back out — see attachments.ts.
@@ -315,33 +315,11 @@ export default function TopicPage() {
             return null;
           }}
         />
-      ) : closed ? (
+      ) : (
         <div className="flex-none border-line border-t bg-paper px-3.5 py-3">
           <p className="mx-auto w-full max-w-[720px] text-center text-[0.78125rem] text-grey leading-[1.45]">
             This room is closed. No member can see it yet.
           </p>
-        </div>
-      ) : (
-        <div className="flex-none border-line border-t bg-paper px-3.5 py-2.5">
-          <div className="mx-auto w-full max-w-[720px]">
-            <button
-              type="button"
-              onClick={() => {
-                if (room) membership.toggle(room.id);
-              }}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi"
-            >
-              Join {room?.name ?? 'this room'} to reply
-            </button>
-            {membership.error ? (
-              <p
-                role="alert"
-                className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]"
-              >
-                {membership.error}
-              </p>
-            ) : null}
-          </div>
         </div>
       )}
 

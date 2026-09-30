@@ -25,7 +25,6 @@ const db = vi.hoisted(() => ({
   loading: false,
   error: null as string | null,
   stats: new Map<string, RoomStats>(),
-  joined: new Set<string>(),
   threads: [] as ChatThread[],
   threadsLoading: false,
   threadsError: null as string | null,
@@ -68,12 +67,6 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
     reload: () => undefined,
   }),
   useRoomStats: () => ({ stats: db.stats, loading: false, reload: () => undefined }),
-  useRoomMembership: () => ({
-    joined: db.joined,
-    loading: false,
-    error: null,
-    toggle: () => undefined,
-  }),
 }));
 
 const thread = (o: Partial<ChatThread> & { id: string }): ChatThread => ({
@@ -127,7 +120,6 @@ beforeEach(() => {
   db.loading = false;
   db.error = null;
   db.stats = new Map();
-  db.joined = new Set();
   db.threads = [];
   db.threadsLoading = false;
   db.threadsError = null;
@@ -328,7 +320,7 @@ describe('the chat screen', () => {
   it('keeps the mock’s promise about history and privacy', () => {
     renderPage();
     expect(
-      screen.getByText(/the whole history from before you joined. Nothing here is public/),
+      screen.getByText(/to read and to write, with the whole history. Nothing here is public/),
     ).toBeInTheDocument();
   });
 
@@ -369,17 +361,12 @@ describe('the chat screen', () => {
 
   it('counts what is in a room once there is something in it', () => {
     db.rooms = [room({ id: 'bowel' })];
-    db.stats = new Map([['bowel', { topicCount: 1, postCount: 4, memberCount: 2 }]]);
+    db.stats = new Map([['bowel', { topicCount: 1, postCount: 4 }]]);
     renderPage();
-    expect(screen.getByText('1 topic · 4 posts · 2 members')).toBeInTheDocument();
-  });
-
-  it('marks the rooms the viewer is in', () => {
-    db.rooms = [room({ id: 'bowel' })];
-    db.joined = new Set(['bowel']);
-    renderPage();
-    const card = screen.getByRole('link', { name: /Bowel management/ });
-    expect(within(card).getByText('Joined')).toBeInTheDocument();
+    // Topics and posts, and no member count: nobody joins a room since
+    // 20260930000000, so there is nobody to count and no Joined chip.
+    expect(screen.getByText('1 topic · 4 posts')).toBeInTheDocument();
+    expect(screen.queryByText('Joined')).toBeNull();
   });
 
   // Only an administrator is ever given a closed room to draw — the select

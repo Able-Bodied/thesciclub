@@ -5,7 +5,7 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
-import { useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
+import { useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
 import { MuteButton } from '@/routes/chat/mute-button';
@@ -16,12 +16,14 @@ import { TopicRow } from '@/routes/chat/topic-row';
  * One discussion room: its topics, and the way in.
  *
  * ---------------------------------------------------------------------------
- * Reading does not wait for anything
+ * Nothing waits for anything
  * ---------------------------------------------------------------------------
- * The room, its topics and every post in them are readable by any member,
- * joined or not — that is the promise /chat prints, and the select policies
- * keep it. Joining is about writing. So this screen never gates its content on
- * membership; what membership changes is the bar at the bottom.
+ * The room, its topics and every post in them are readable by any member —
+ * that is the promise /chat prints, and the select policies keep it. Since
+ * 20260930000000 writing is the same: any member starts a topic in an open
+ * room, and there is no Join. Until then joining bought the right to write,
+ * and this screen carried a join bar where a topic carries its composer; the
+ * owner took joining out on 2026-09-29 (HOME-PLAN.md, decision 8).
  *
  * ---------------------------------------------------------------------------
  * A closed room, for the one person who can see it
@@ -60,7 +62,6 @@ export default function RoomPage() {
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
   const { topics, loading: topicsLoading, error, reload } = useRoomTopics(roomId);
-  const membership = useRoomMembership();
   const { stats, reload: reloadStats } = useRoomStats();
 
   // Watching chat_topics catches both halves of what this screen shows: a new
@@ -114,11 +115,10 @@ export default function RoomPage() {
   }
 
   const closed = room.openedAt === null;
-  const joined = membership.joined.has(room.id);
   const count = stats.get(room.id);
-  // An administrator may post in a closed room without joining it — seeding one
-  // is why they can see it. Everybody else needs the room open and a membership.
-  const canPost = account.isAdmin || (joined && !closed);
+  // An administrator may post in a closed room — seeding one is why they can
+  // see it. Everybody else needs the room open, and nothing more.
+  const canPost = account.isAdmin || !closed;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -147,14 +147,14 @@ export default function RoomPage() {
                 </p>
               ) : null}
               {/* Left off entirely until there is something to count, for the
-                  reason room-card.tsx gives: three zeros read as a room that
+                  reason room-card.tsx gives: two zeros read as a room that
                   failed rather than as one that has not started. And "open to
                   all" is not a promise to make about a closed room, which is
                   open to nobody — the banner below says so instead. */}
               {count && count.topicCount > 0 ? (
                 <p className="mt-[5px] font-semibold text-[0.78125rem] text-navy">
                   {count.topicCount} {count.topicCount === 1 ? 'topic' : 'topics'} ·{' '}
-                  {count.memberCount} {count.memberCount === 1 ? 'member' : 'members'}
+                  {count.postCount} {count.postCount === 1 ? 'post' : 'posts'}
                   {closed ? '' : ' · open to all, full history'}
                 </p>
               ) : null}
@@ -213,9 +213,7 @@ export default function RoomPage() {
               <br />
               {canPost
                 ? 'Start the first topic.'
-                : closed
-                  ? 'An administrator can start one before the room opens.'
-                  : 'Join the room to start the first one.'}
+                : 'An administrator can start one before the room opens.'}
             </p>
           ) : (
             sorted.map((topic) => <TopicRow key={topic.id} topic={topic} authors={authors} />)
@@ -231,50 +229,6 @@ export default function RoomPage() {
           ) : null}
         </div>
       </div>
-
-      {/* The join bar sits where the composer sits in a topic, because it is
-          the same decision in the same place: this is how you get to write. */}
-      {!canPost && !closed ? (
-        <div className="flex-none border-line border-t bg-paper px-3.5 py-2.5">
-          <div className="mx-auto w-full max-w-[720px]">
-            <button
-              type="button"
-              onClick={() => {
-                membership.toggle(room.id);
-              }}
-              className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi"
-            >
-              Join {room.name}
-            </button>
-            {membership.error ? (
-              <p
-                role="alert"
-                className="mt-2 text-center text-[0.75rem] text-destructive leading-[1.45]"
-              >
-                {membership.error}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {joined && !closed ? (
-        <div className="flex-none border-line border-t bg-paper px-3.5 py-2">
-          <div className="mx-auto flex w-full max-w-[720px] items-center justify-between gap-2">
-            <span className="text-[0.78125rem] text-grey">You are in this room.</span>
-            <button
-              type="button"
-              onClick={() => {
-                membership.toggle(room.id);
-              }}
-              data-target="small"
-              className="flex-none rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-navy"
-            >
-              Leave
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

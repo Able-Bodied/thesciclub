@@ -14,7 +14,6 @@ const db = vi.hoisted(() => ({
   topic: null as ChatTopic | null,
   posts: [] as ChatPost[],
   authors: new Map<string, ChatAuthor>(),
-  joined: new Set<string>(),
   isAdmin: false,
   removed: [] as string[],
   sent: [] as string[],
@@ -55,12 +54,6 @@ vi.mock('@/lib/chat/realtime', () => ({
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
   ...(await importOriginal<typeof ChatRooms>()),
   useChatRooms: () => ({ rooms: db.rooms, loading: false, error: null, reload: () => undefined }),
-  useRoomMembership: () => ({
-    joined: db.joined,
-    loading: false,
-    error: null,
-    toggle: () => undefined,
-  }),
 }));
 
 vi.mock('@/lib/chat/topics', async (importOriginal) => ({
@@ -174,7 +167,6 @@ beforeEach(() => {
   };
   db.posts = [post({ id: '1' })];
   db.authors = new Map([['nicole', author({ id: 'nicole' })]]);
-  db.joined = new Set(['bowel']);
   db.isAdmin = false;
   db.removed = [];
   db.sent = [];
@@ -324,13 +316,19 @@ describe('a topic', () => {
     expect(box).toHaveValue('Four paragraphs of this.');
   });
 
-  it('offers a way in rather than a composer to somebody who has not joined', () => {
-    db.joined = new Set();
+  // Since 20260930000000 any member writes in an open room: the composer is
+  // there for somebody who has joined nothing, and there is no Join.
+  it('offers the composer to somebody who has joined nothing, and no Join', () => {
+    renderTopic();
+    expect(screen.getByLabelText('Reply to this topic')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Join/ })).toBeNull();
+  });
+
+  it('offers a member no composer in a closed room', () => {
+    db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
     renderTopic();
     expect(screen.queryByLabelText('Reply to this topic')).toBeNull();
-    expect(
-      screen.getByRole('button', { name: 'Join Bowel management to reply' }),
-    ).toBeInTheDocument();
+    expect(screen.getByText('This room is closed. No member can see it yet.')).toBeInTheDocument();
   });
 
   it('tells an administrator that nobody can see a topic in a closed room', () => {

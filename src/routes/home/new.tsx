@@ -2,10 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
-import { useAccount } from '@/lib/account';
-import { joinRoom, roomsByCategory, useChatRooms, useRoomMembership } from '@/lib/chat/rooms';
+import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import type { ChatRoom } from '@/lib/chat/types';
-import { describeThrown } from '@/lib/describe-error';
 import { RoomCategoryLabel } from '@/routes/chat/room-card';
 import { backToHome } from '@/routes/home/back';
 
@@ -33,22 +31,19 @@ import { backToHome } from '@/routes/home/back';
  * headings are for reading; the choice is one group of native radios sharing
  * a name, so the arrow keys move through every room and a screen reader says
  * "3 of 9" rather than starting again under each heading. Each radio is named
- * by the room's name alone, and "Joined" where it is true, with the
- * description as the longer account, so the list of names is quick to go
- * through and the description is there for whoever stops on one.
+ * by the room's name alone, with the description as the longer account, so
+ * the list of names is quick to go through and the description is there for
+ * whoever stops on one.
  *
  * ---------------------------------------------------------------------------
- * The join is awaited
+ * There is no join step
  * ---------------------------------------------------------------------------
- * Writing in a room needs a membership row (`chat_can_post_in`), and the New
- * topic screen does not offer to join. So a room not yet joined is joined
- * here, by the button that says so, and the New topic screen opens only once
- * the join has landed: `joinRoom` rather than the optimistic toggle Chat uses.
- * A refusal stays on this screen and says why. An administrator may write in
- * any room without joining, so is never asked to.
- *
- * If the read of which rooms the viewer is in fails, every room offers to
- * join. That costs nothing: a join of a room already joined does nothing.
+ * Until 20260930000000 writing in a room needed a membership row, and this
+ * screen joined the room — awaited, so the New topic screen was not reached
+ * before the join landed — with a button that said so. The owner took joining
+ * out on 2026-09-29 (HOME-PLAN.md, decision 8): any member writes in any open
+ * room. So the button is Continue, always, and the only thing it waits for is
+ * a room being chosen.
  *
  * ---------------------------------------------------------------------------
  * No open room is an ordinary day
@@ -82,29 +77,20 @@ const LINK_CLASS =
 export default function HomeNewPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const account = useAccount();
-  const memberId = account.status === 'member' ? account.userId : null;
-  const isAdmin = account.status === 'member' && account.isAdmin;
   const rooms = useChatRooms();
-  const membership = useRoomMembership();
 
   // In the URL, so a link can open either kind: /home/new?kind=share.
   const [searchParams, setSearchParams] = useSearchParams();
   const kind: Kind = searchParams.get('kind') === 'share' ? 'share' : 'ask';
   const [roomId, setRoomId] = useState<string | null>(null);
-  const [joining, setJoining] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
 
   const back = backToHome(location.state) ?? '/home';
-  // The pill on Home this was opened from, handed on so that the New topic
-  // screen, and the topic after it, come back to it.
   const { segment } = (location.state ?? {}) as { segment?: unknown };
 
   // An administrator reads closed rooms too. Only a room a member can see is
   // somewhere to ask.
   const open = rooms.rooms.filter((room) => room.openedAt !== null);
   const chosen = open.find((room) => room.id === roomId) ?? null;
-  const mustJoin = chosen !== null && !isAdmin && !membership.joined.has(chosen.id);
 
   function setKind(next: Kind) {
     // Replace, not push, as Home's pills do; and keep the state, which is the
@@ -116,29 +102,9 @@ export default function HomeNewPage() {
   }
 
   function proceed(room: ChatRoom) {
-    const to = `/chat/rooms/${room.id}/new`;
-    const state = { from: 'home', segment, kind };
-    if (!mustJoin) {
-      void navigate(to, { state });
-      return;
-    }
-    if (!memberId || joining) return;
-    setJoining(true);
-    setFailure(null);
-    joinRoom(room.id, memberId)
-      .then((result) => {
-        if (!result.ok) {
-          setFailure(result.error);
-          return;
-        }
-        void navigate(to, { state });
-      })
-      .catch((e: unknown) => {
-        setFailure(describeThrown(e, 'You did not join the room.'));
-      })
-      .finally(() => {
-        setJoining(false);
-      });
+    // The pill on Home this was opened from goes with it, so that the New
+    // topic screen, and the topic after it, come back to it.
+    void navigate(`/chat/rooms/${room.id}/new`, { state: { from: 'home', segment, kind } });
   }
 
   const words = WORDS[kind];
@@ -154,7 +120,7 @@ export default function HomeNewPage() {
         <SegmentPills segments={KINDS} value={kind} onChange={setKind} className="flex-wrap" />
         <p className="text-[0.8125rem] text-ink2 leading-[1.45]">{words.line}</p>
 
-        {rooms.loading || membership.loading ? (
+        {rooms.loading ? (
           <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
             Loading…
           </p>
@@ -185,15 +151,7 @@ export default function HomeNewPage() {
           </div>
         ) : (
           <>
-            <RoomChoice
-              rooms={open}
-              joined={membership.joined}
-              value={roomId}
-              onChange={(next) => {
-                setRoomId(next);
-                setFailure(null);
-              }}
-            />
+            <RoomChoice rooms={open} value={roomId} onChange={setRoomId} />
 
             <p className="mt-1 text-[0.8125rem] text-ink2">
               None of these fit?{' '}
@@ -202,38 +160,20 @@ export default function HomeNewPage() {
               </Link>
             </p>
 
-            {failure ? (
-              <p
-                role="alert"
-                className="mt-2 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
-              >
-                {failure}
-              </p>
-            ) : null}
-
             <button
               type="button"
-              disabled={!chosen || joining}
+              disabled={!chosen}
               onClick={() => {
                 if (chosen) proceed(chosen);
               }}
               className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold px-4 py-2 text-center font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
             >
-              {joining
-                ? 'Joining…'
-                : chosen && mustJoin
-                  ? `Join ${chosen.name} and continue`
-                  : 'Continue'}
+              Continue
             </button>
-            {/* What the button waits for, or what pressing it does. A
-                disabled control with no explanation is a dead end, and a join
-                should not be a surprise. */}
+            {/* What the button waits for. A disabled control with no
+                explanation is a dead end. */}
             {!chosen ? (
               <p className="mt-1.5 text-center text-[0.75rem] text-grey">Choose a room.</p>
-            ) : mustJoin ? (
-              <p className="mt-1.5 text-center text-[0.75rem] text-grey leading-[1.45]">
-                Joining is what lets you write in a room. You can leave at any time.
-              </p>
             ) : null}
           </>
         )}
@@ -245,12 +185,10 @@ export default function HomeNewPage() {
 
 function RoomChoice({
   rooms,
-  joined,
   value,
   onChange,
 }: {
   rooms: ChatRoom[];
-  joined: Set<string>;
   value: string | null;
   onChange: (roomId: string) => void;
 }) {
@@ -270,7 +208,6 @@ function RoomChoice({
           <ul>
             {inCategory.map((room) => {
               const id = `room-${room.id}`;
-              const isJoined = joined.has(room.id);
               return (
                 <li key={room.id} className="mb-2">
                   {/* The whole card is the target; the radio inside it is
@@ -288,26 +225,16 @@ function RoomChoice({
                       onChange={() => {
                         onChange(room.id);
                       }}
-                      aria-labelledby={`${id}-name${isJoined ? ` ${id}-joined` : ''}`}
+                      aria-labelledby={`${id}-name`}
                       aria-describedby={`${id}-description`}
                       className="mt-[0.2em] h-[1.1em] w-[1.1em] flex-none accent-navy outline-none"
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-baseline gap-x-[7px] gap-y-1">
-                        <span
-                          id={`${id}-name`}
-                          className="font-extrabold font-head text-[0.9375rem] text-ink"
-                        >
-                          {room.name}
-                        </span>
-                        {isJoined ? (
-                          <span
-                            id={`${id}-joined`}
-                            className="whitespace-nowrap rounded-full bg-gold px-2 py-[2px] font-semibold text-on-gold text-[0.6875rem]"
-                          >
-                            Joined
-                          </span>
-                        ) : null}
+                      <span
+                        id={`${id}-name`}
+                        className="block font-extrabold font-head text-[0.9375rem] text-ink"
+                      >
+                        {room.name}
                       </span>
                       <span
                         id={`${id}-description`}

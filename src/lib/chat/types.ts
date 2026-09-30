@@ -88,11 +88,16 @@ export interface ChatAuthor {
   hasProfile: boolean;
 }
 
-/** How many topics, posts and members a room has. Counts only, never who. */
+/**
+ * How many topics and posts a room has.
+ *
+ * The view still returns a member count for an older client; nothing draws
+ * it since 20260930000000, when writing stopped needing a membership, so it
+ * is not read.
+ */
 export interface RoomStats {
   topicCount: number;
   postCount: number;
-  memberCount: number;
 }
 
 /** One topic in a room, as `chat_topics_for` returns it. */

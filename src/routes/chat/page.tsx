@@ -4,7 +4,7 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
-import { roomsByCategory, useChatRooms, useRoomMembership, useRoomStats } from '@/lib/chat/rooms';
+import { roomsByCategory, useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import {
   CHAT_SEGMENTS,
@@ -71,7 +71,6 @@ export default function ChatPage() {
   const account = useAccount();
   const { rooms, loading, error, reload: reloadRooms } = useChatRooms();
   const { stats, reload: reloadStats } = useRoomStats();
-  const membership = useRoomMembership();
   const {
     threads,
     loading: threadsLoading,
@@ -159,12 +158,12 @@ export default function ChatPage() {
               <h2 className="mt-4 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
                 Discussion rooms
               </h2>
-              {/* The mock's words, kept. They say the two things a member
-                  needs to know before reading one: that the whole history is
-                  there from before they joined, and that none of it is
-                  public. */}
+              {/* The mock's words, less "from before you joined": nobody
+                  joins a room since 20260930000000. They still say the two
+                  things a member needs to know before reading one: that the
+                  whole history is there, and that none of it is public. */}
               <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-                Open to every member, with the whole history from before you joined. Nothing here is
+                Open to every member, to read and to write, with the whole history. Nothing here is
                 public.
               </p>
 
@@ -193,7 +192,6 @@ export default function ChatPage() {
                         room={room}
                         starter={room.createdBy ? (roomStarters.get(room.createdBy) ?? null) : null}
                         stats={stats.get(room.id)}
-                        joined={membership.joined.has(room.id)}
                       />
                     ))}
                   </section>

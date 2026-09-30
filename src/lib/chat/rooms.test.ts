@@ -1,8 +1,7 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createRoom,
-  joinRoom,
   normalizeRoomName,
   roomNamed,
   roomProblem,
@@ -11,7 +10,6 @@ import {
   roomToFill,
   setRoomOpen,
   useChatRooms,
-  useRoomMembership,
 } from '@/lib/chat/rooms';
 import type { ChatRoom, RoomStats } from '@/lib/chat/types';
 import { UPDATING_FAILURE } from '@/lib/describe-error';
@@ -29,9 +27,6 @@ const db = vi.hoisted(() => ({
   rpcCalls: [] as [string, Record<string, unknown>][],
   rpcData: null as string | null,
   rpcError: null as { message: string } | null,
-  /** Every upsert's row and options, so a test can see the conflict shape. */
-  upserts: [] as [Record<string, unknown>, Record<string, unknown>][],
-  upsertError: null as { code?: string; message: string } | null,
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -49,10 +44,6 @@ vi.mock('@/lib/supabase', () => ({
           abortSignal: () => Promise.resolve({ data: db.rows, error: db.error }),
         }),
       }),
-      upsert: (row: Record<string, unknown>, options: Record<string, unknown>) => {
-        db.upserts.push([row, options]);
-        return Promise.resolve({ error: db.upsertError });
-      },
     }),
     rpc: (name: string, args: Record<string, unknown>) => {
       db.rpcCalls.push([name, args]);
@@ -78,77 +69,6 @@ beforeEach(() => {
   db.rpcCalls = [];
   db.rpcData = null;
   db.rpcError = null;
-  db.upserts = [];
-  db.upsertError = null;
-});
-
-describe('joining a room', () => {
-  // Found by a member, not a test: every join was refused with `permission
-  // denied for table chat_room_members`. PostgREST turns an upsert into
-  // `on conflict do update`, which needs an update grant the table rightly
-  // does not have. `ignoreDuplicates` makes it `do nothing`, which needs only
-  // insert and still absorbs a double tap.
-  it('inserts, and on a second tap does nothing rather than updating', async () => {
-    const { result } = renderHook(() => useRoomMembership());
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-    act(() => {
-      result.current.toggle('bowel');
-    });
-    await waitFor(() => {
-      expect(db.upserts).toHaveLength(1);
-    });
-    expect(db.upserts[0]?.[0]).toEqual({ room_id: 'bowel', member_id: 'me' });
-    expect(db.upserts[0]?.[1]).toMatchObject({ ignoreDuplicates: true });
-    expect(result.current.joined.has('bowel')).toBe(true);
-    expect(result.current.error).toBeNull();
-  });
-
-  it('takes the join back and says so when the database refuses', async () => {
-    db.upsertError = {
-      code: '42501',
-      message: 'new row violates row-level security policy for table "chat_room_members"',
-    };
-    const { result } = renderHook(() => useRoomMembership());
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
-    });
-    act(() => {
-      result.current.toggle('bowel');
-    });
-    await waitFor(() => {
-      expect(result.current.error).not.toBeNull();
-    });
-    expect(result.current.joined.has('bowel')).toBe(false);
-    expect(result.current.error).toBe('You did not join the room. You cannot do that here.');
-  });
-});
-
-// The awaited join /home/new uses before it opens the New topic screen. The
-// same write as toggle's, so the same conflict shape.
-describe('joining a room and waiting for it', () => {
-  it('inserts, doing nothing on a duplicate, and resolves once it has landed', async () => {
-    const result = await joinRoom('bowel', 'me');
-    expect(result).toEqual({ ok: true, value: null });
-    expect(db.upserts).toEqual([
-      [
-        { room_id: 'bowel', member_id: 'me' },
-        { onConflict: 'room_id,member_id', ignoreDuplicates: true },
-      ],
-    ]);
-  });
-
-  it('says in a sentence when the database refuses', async () => {
-    db.upsertError = {
-      code: '42501',
-      message: 'new row violates row-level security policy for table "chat_room_members"',
-    };
-    expect(await joinRoom('bowel', 'me')).toEqual({
-      ok: false,
-      error: 'You did not join the room. You cannot do that here.',
-    });
-  });
 });
 
 describe('grouping rooms into categories', () => {
@@ -373,10 +293,10 @@ describe('the room a member has to fill first', () => {
     room({ id: 'theirs', name: 'Theirs, empty', createdBy: 'bo' }),
   ];
   const stats = new Map<string, RoomStats>([
-    ['bowel', { topicCount: 0, postCount: 0, memberCount: 0 }],
-    ['mine-1', { topicCount: 0, postCount: 0, memberCount: 1 }],
-    ['mine-2', { topicCount: 3, postCount: 9, memberCount: 2 }],
-    ['theirs', { topicCount: 0, postCount: 0, memberCount: 1 }],
+    ['bowel', { topicCount: 0, postCount: 0 }],
+    ['mine-1', { topicCount: 0, postCount: 0 }],
+    ['mine-2', { topicCount: 3, postCount: 9 }],
+    ['theirs', { topicCount: 0, postCount: 0 }],
   ]);
 
   it('is theirs, empty, and nobody else’s', () => {
