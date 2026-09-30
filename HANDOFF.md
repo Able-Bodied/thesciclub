@@ -35,11 +35,12 @@ Three things happened on 2026-09-28/29, in this order of urgency:
 3. **The owner's new brand is in the app** — the owner's call being "the whole
    brand", not the logo alone — with Atkinson Hyperlegible Next for reading
    text, because accessibility comes first here.
-4. **Home step 2b is built and its client half is not committed.** The
-   migration `20260930000000` is committed and is **not on the live
-   database**; the owner pushes it, and only then does the client land — see
-   "Home, step 2b" below for the replay script, and its "Order of release"
-   in HOME-PLAN.md for why the order matters.
+4. **Home step 2b is built and committed**, and its migration
+   `20260930000000` is on the live database — the owner pushed it on
+   2026-09-29 and `migration list --linked` shows 83 applied and none
+   pending. The client commits followed the push, in the plan's order; see
+   "Home, step 2b" below. Nothing is pushed to GitHub yet: `git log
+   --oneline origin/main..HEAD` lists eleven commits.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -366,7 +367,7 @@ Owed and noticed, not changed:
   mock's; the words carry it.
 - Next was step 2b; see the next section.
 
-## Home, step 2b — built 2026-09-29, waiting on the owner's database push
+## Home, step 2b — built 2026-09-29, migration on the live database the same day
 
 Step 2b, "Rooms open to write; editing; replies to a post" — HOME-PLAN.md
 decisions 8 to 12, asked for by the owner on 2026-09-29 before Likes. It
@@ -374,26 +375,20 @@ changes Chat as much as Home, and it reopens two of Chat's recorded
 decisions at the owner's word: joining no longer buys anything, and a
 member can edit their own words.
 
-**What is committed:** the migration
+**The order of release was kept.** The migration
 `20260930000000_rooms_open_to_write_editing_and_replies.sql` and five probes
 (`chat-edits.sql` and `chat-replies.sql` new; `chat-posts.sql`,
-`chat-attachments.sql` and `topic-removal-and-deletion.sql` changed). All
-28 probes in `supabase/tests/` were run on the local stack as signed-in
-roles on 2026-09-29 and every one reads as expected.
-`pnpm exec supabase db push --linked --dry-run` lists exactly that one
-migration. **The owner pushes it.**
-
-**What is built and not committed:** the client, in the working tree, with
-`pnpm test` (1,384), `pnpm check` and `pnpm build` clean at every one of
-its six steps. The owner asked that no client code depending on the
-migration be committed until the push is done, so each step is saved as a
-cumulative patch with its commit message in `screenshots/step-2b-commits/`
-(gitignored, on this machine), and `commit-step-2b.sh` there replays them
-as six commits in the plan's order — Join comes out; editing; replies in
-topics; conversations; Home's first-reply rule; earlier versions — then
-the documents. Run it from the repo root once the owner says the push is
-done, after `git status` shows the working tree still holds the changes.
-If the working tree has been lost, the patches rebuild it.
+`chat-attachments.sql` and `topic-removal-and-deletion.sql` changed) were
+committed first; all 28 probes in `supabase/tests/` were run on the local
+stack as signed-in roles on 2026-09-29 and every one reads as expected. The
+owner pushed the migration to the live database the same evening. Only then
+did the client land, as six commits in the plan's order — Join comes out;
+editing; replies in topics; conversations; Home's first-reply rule; earlier
+versions — then the documents, with `pnpm test` (1,384), `pnpm check` and
+`pnpm build` clean at every step. (The client was built before the push and
+held in the working tree as patches until it was done; the patches and the
+replay script are still in `screenshots/step-2b-commits/`, gitignored, and
+are of no further use.) **Not pushed to GitHub**: the owner says when.
 
 What the migration does, one part each, with the header saying why:
 `chat_can_post_in` stops asking for a membership row (rows and policies
@@ -529,9 +524,9 @@ the fix.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
 - **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
-  on 2026-09-29). Steps 1 and 2 are live; step 2b is built and waits on the
-  owner's database push before its client commits; see the three sections
-  above.
+  on 2026-09-29). Steps 1 and 2 are live; step 2b is committed with its
+  migration on the live database, and waits on a push to GitHub; see the
+  three sections above.
 
 ## Standing rules this session learned
 
@@ -659,7 +654,7 @@ The Chat migrations, in the order they apply — each header says why, and the
 | `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
 | `…200000` | photographs: `attachments text[]` on messages, posts, removed bodies and reports; the **private** `chat` bucket (2MB, three image types) and its three storage policies behind `chat_file_is_readable` / `_writable` / `_reported`; `chat_create_topic` takes a fourth argument; removal blanks the list |
 | `…210000` | a photograph named on a report cannot be deleted by anybody — `chat_file_is_on_a_report()` in the delete policy. The owner spotted the gap the day photographs shipped: take the message back and the report kept the words and an empty space |
-| `20260930000000` | Home step 2b: `chat_can_post_in` without a membership row; `edited_at` and `reply_to` on posts and messages with a `before insert` trigger each; `chat_edits` (administrators select, nobody else reads) with `chat_edit_post` / `chat_edit_message` as its writers; `chat_remove_post` frees a removed post's replies. **Not yet pushed** — see "Home, step 2b". |
+| `20260930000000` | Home step 2b: `chat_can_post_in` without a membership row; `edited_at` and `reply_to` on posts and messages with a `before insert` trigger each; `chat_edits` (administrators select, nobody else reads) with `chat_edit_post` / `chat_edit_message` as its writers; `chat_remove_post` frees a removed post's replies. Pushed 2026-09-29. |
 | `20260923000000` | `chat_add_first_post_photographs(room, paths)`: a new room's first post gets its photographs *after* the room exists, because the folder is named after an id the function makes — the one place the row comes first and the files second. Definer; once, by the starter, before any reply, files checked in `storage.objects`. Pushed 2026-09-23. |
 
 The four from 2026-09-17, newest first:

@@ -3,11 +3,10 @@
 Written 2026-09-29, for the session that builds it.
 
 **Where it stands: steps 1 and 2 are built and live on production since
-2026-09-29. Step 2b is built** (2026-09-29): its migration `20260930000000`
-and probes are committed and **wait on the owner's database push**; its
-client is in the working tree, uncommitted until the push is done, with
-a replay script in `screenshots/step-2b-commits/` — HANDOFF.md, "Home,
-step 2b", says how. Then step 3, Likes, with the other migration.
+2026-09-29. Step 2b is built and committed** (2026-09-29): its migration
+`20260930000000` is on the live database, and its client commits followed
+the push in the order below; nothing is pushed to GitHub yet. Next is step
+3, Likes, with the other migration.
 HANDOFF.md, "Home, step 1", "Home, step 2" and "Home, step 2b", say where
 the build departed from this plan and why; read them first, because those
 departures stand.
