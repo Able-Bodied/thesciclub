@@ -25,6 +25,14 @@
 -- left here is what SQL *can* settle: that the policies exist, are scoped to
 -- the right roles, and that the insert side was not loosened on the way.
 --
+-- Steps 1b and 7 are the chat bucket's (20260930030000): its three policies
+-- name `authenticated`, and a signed-out visitor is refused without being
+-- told the name of a function. `pnpm check-chat-photo-policy` is that
+-- bucket's delete side, as check-photo-policy is this one's.
+--
+-- Steps 1 to 3 read the catalogue and are the superuser's, on purpose; steps
+-- 4 to 7 are under a real role, and say which.
+--
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
 --     -f - < supabase/tests/photo-cleanup.sql
@@ -42,10 +50,24 @@ values
   ('aaaaaaaa-5555-0000-0000-00000000000a', 'peer', 'active', 'The Admin', '19990000060', '1980-01-01', 'T1–T6', 'CA', true),
   ('bbbbbbbb-5555-0000-0000-00000000000b', 'peer', 'active', 'A Member',  '19990000061', '1981-01-01', 'T1–T6', 'CA', false);
 
+-- A chat photograph for step 7 to be refused, written as the superuser. With
+-- no row in the bucket no policy expression is ever evaluated, and a refusal
+-- that never had anything to refuse proves nothing.
+insert into storage.objects (bucket_id, name, owner_id)
+values ('chat', 'rooms/bowel/probe-photo-cleanup.webp', 'bbbbbbbb-5555-0000-0000-00000000000b');
+
+\echo ''
+\echo '== 0. the catalogue steps are the superuser''s (expect postgres) =='
+select current_user;
+
 \echo ''
 \echo '== 1. the delete policies, and the roles they apply to =='
-\echo '   expect: "members can delete their own photo" {public}'
+\echo '   expect three, in this order:'
 \echo '           "an administrator can delete any photo" {authenticated}'
+\echo '           "members can delete their own photo" {public}'
+\echo '           "the uploader or an administrator deletes a chat photograph" {authenticated}'
+\echo '   The member policy stays {public}: it calls auth.uid() and'
+\echo '   storage.foldername(), which anon may execute, so it names nothing.'
 \echo ''
 \echo '   The role matters. is_admin() is executable by authenticated only, so a'
 \echo '   policy left open to every role turns an anonymous delete attempt into'
@@ -55,6 +77,18 @@ select policyname, roles::text, cmd
   from pg_policies
  where schemaname = 'storage' and tablename = 'objects' and cmd = 'DELETE'
  order by policyname;
+
+\echo ''
+\echo '== 1b. every policy on the chat bucket names authenticated =='
+\echo '   expect three rows — DELETE, INSERT, SELECT — each {authenticated}.'
+\echo '   Every one calls a function only authenticated may execute. Read by'
+\echo '   the bucket its expression names rather than by policy name, so a'
+\echo '   fourth chat policy written without a role shows up here too.'
+select cmd, roles::text, policyname
+  from pg_policies
+ where schemaname = 'storage' and tablename = 'objects'
+   and coalesce(qual, with_check) like '%bucket_id = ''chat''::text%'
+ order by cmd;
 
 \echo ''
 \echo '== 2. the administrator policy is delete-only (expect 1 row, DELETE) =='
@@ -104,4 +138,23 @@ insert into storage.objects (bucket_id, name)
 values ('photos', 'aaaaaaaa-5555-0000-0000-00000000000a/planted.webp');
 rollback to savepoint member_writes;
 
+\echo ''
+\echo '== 7. a signed-out visitor is refused by the chat bucket, and told nothing =='
+\echo '   expect: anon | 0 chat files, with no error; then ERROR: new row'
+\echo '   violates row-level security policy. Before 20260930030000 both said'
+\echo '   "permission denied for function chat_file_is_…", naming what the'
+\echo '   policy tests.'
+set local role postgres;
+select set_config('request.jwt.claims', '', true) is not null as ok;
+set local role anon;
+savepoint anon_reads;
+select current_user, count(*) as chat_files_anon_sees
+  from storage.objects where bucket_id = 'chat';
+rollback to savepoint anon_reads;
+savepoint anon_writes;
+insert into storage.objects (bucket_id, name)
+values ('chat', 'rooms/bowel/planted-by-nobody.webp');
+rollback to savepoint anon_writes;
+
+set local role postgres;
 rollback;
