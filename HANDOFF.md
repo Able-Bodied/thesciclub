@@ -39,8 +39,9 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    `20260930000000` is on the live database — the owner pushed it on
    2026-09-29 and `migration list --linked` shows 83 applied and none
    pending. The client commits followed the push, in the plan's order; see
-   "Home, step 2b" below. Nothing is pushed to GitHub yet: `git log
-   --oneline origin/main..HEAD` lists eleven commits.
+   "Home, step 2b" below. Pushed to GitHub the same night, at the owner's
+   word, both branches at 0be7f24 with `pnpm check` exiting 0 at that
+   commit; `git log --oneline origin/main..HEAD` is empty.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -388,7 +389,8 @@ versions — then the documents, with `pnpm test` (1,384), `pnpm check` and
 `pnpm build` clean at every step. (The client was built before the push and
 held in the working tree as patches until it was done; the patches and the
 replay script are still in `screenshots/step-2b-commits/`, gitignored, and
-are of no further use.) **Not pushed to GitHub**: the owner says when.
+are of no further use.) Pushed to GitHub on 2026-09-29, with the hide-
+replies change below.
 
 What the migration does, one part each, with the header saying why:
 `chat_can_post_in` stops asking for a membership row (rows and policies
@@ -532,9 +534,8 @@ the fix.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
 - **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
-  on 2026-09-29). Steps 1 and 2 are live; step 2b is committed with its
-  migration on the live database, and waits on a push to GitHub; see the
-  three sections above.
+  on 2026-09-29). Steps 1, 2 and 2b are live; see the three sections
+  above. Step 3, Likes, is next.
 
 ## Standing rules this session learned
 
