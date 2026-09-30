@@ -67,6 +67,7 @@ describe('palette contrast', () => {
     ['--grey on --canvas (secondary copy on the page ground)', 'grey', 'canvas'],
     // gold-800 on the pale gold is the tightest pair in the palette at 4.55:1.
     ['--gold-dp on --gold-lt (the "Online" badge)', 'gold-dp', 'gold-lt'],
+    ['--ink2 on --gold-lt (the note in Home’s filter sheet)', 'ink2', 'gold-lt'],
     ['--gold-dp on --paper (gold words on a card)', 'gold-dp', 'paper'],
     ['--gold-dp on --canvas (the welcome headline)', 'gold-dp', 'canvas'],
     // The brand pairs gold fills with navy ink, not white — white on --gold is
