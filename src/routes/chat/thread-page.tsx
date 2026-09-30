@@ -7,10 +7,11 @@ import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/ch
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
-import { shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
+import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
+import type { ChatMessage } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
-import { MessageBubble } from '@/routes/chat/message-bubble';
+import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 
@@ -51,6 +52,18 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
  * than presenting a box that would fail.
  *
  * ---------------------------------------------------------------------------
+ * Replies are quotes, and editing is in place — since 2026-09-29
+ * ---------------------------------------------------------------------------
+ * Reply on a bubble puts "Replying to Jan" over the composer and sends the
+ * next message with `reply_to` set; the bubble that lands carries a quote of
+ * the message it answers, and the list stays in time order (HOME-PLAN.md,
+ * decision 11 — a nest in a chat would break the one thing a conversation
+ * is). Tapping a quote scrolls the quoted message into view and lights it
+ * up once, with `prefers-reduced-motion` honoured for both. Edit on the
+ * reader's own bubble swaps it for the composer holding the words; one at a
+ * time, by id.
+ *
+ * ---------------------------------------------------------------------------
  * Reporting is the one way anything said here reaches an administrator
  * ---------------------------------------------------------------------------
  * They are not in this conversation and cannot read it, which is right and is
@@ -63,7 +76,8 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
   const account = useAccount();
-  const { thread, messages, loading, error, reload, send, remove } = useThreadMessages(threadId);
+  const { thread, messages, loading, error, reload, send, edit, remove } =
+    useThreadMessages(threadId);
 
   // Live. The reload also re-marks the thread read, which is right: the reader
   // is looking at it. Removal arrives here as an UPDATE, so a message taken
@@ -79,6 +93,12 @@ export default function ThreadPage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
   const [behind, setBehind] = useState(false);
+  /** The message whose words are in the composer, or null. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  /** The message the next one answers, or null. */
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  /** The message lit up after a quote was tapped, or null. */
+  const [flashId, setFlashId] = useState<string | null>(null);
   const reports = useMyReports();
   /** Which message the sheet is open over, or null. One at a time. */
   const [reportingId, setReportingId] = useState<string | null>(null);
@@ -131,6 +151,46 @@ export default function ThreadPage() {
     if (shouldFollowScroll(distance)) toBottom('smooth');
     else setBehind(true);
   }, [messages.length, toBottom]);
+
+  const nameOf = (message: ChatMessage): string => {
+    if (message.authorId === account.userId) return 'you';
+    return (
+      (message.authorId ? authors.get(message.authorId)?.displayName : null) ?? 'a former member'
+    );
+  };
+
+  /** The quote over a reply: the message it answers, found in the list. */
+  const quoteOf = (message: ChatMessage): Quote | null => {
+    if (!message.replyTo) return null;
+    const target = messages.find((candidate) => candidate.id === message.replyTo);
+    return {
+      id: message.replyTo,
+      name: target ? nameOf(target) : 'Earlier message',
+      text: quoteText(target),
+    };
+  };
+
+  /** Scroll the quoted message into view and light it up once. */
+  function showQuoted(messageId: string) {
+    const element = document.getElementById(`message-${messageId}`);
+    if (!element) return;
+    const reduced =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    element.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+    // Off and on again, so a second tap on the same quote lights it again.
+    setFlashId(null);
+    requestAnimationFrame(() => {
+      setFlashId(messageId);
+    });
+  }
+
+  async function saveEdit(messageId: string, body: string): Promise<string | null> {
+    const problem = await edit(messageId, body);
+    if (problem) return problem;
+    setEditingId(null);
+    return null;
+  }
 
   function removeMessage(messageId: string) {
     setRemovingId(messageId);
@@ -262,6 +322,24 @@ export default function ThreadPage() {
                 message={message}
                 author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
                 mine={message.authorId === account.userId}
+                quote={quoteOf(message)}
+                onQuoteTap={showQuoted}
+                flash={flashId === message.id}
+                // The author's own, standing, while there is a conversation
+                // to edit in. chat_edit_message decides; this only asks.
+                canEdit={!gone && message.authorId === account.userId && !message.pending}
+                editing={editingId === message.id}
+                onEdit={() => {
+                  setEditingId(message.id);
+                }}
+                onSaveEdit={(body) => saveEdit(message.id, body)}
+                onCancelEdit={() => {
+                  setEditingId(null);
+                }}
+                canReply={!gone && !message.pending}
+                onReply={() => {
+                  setReplyingTo(message);
+                }}
                 // An administrator can remove anybody's; everybody else only
                 // their own. chat_remove_message decides — this only asks.
                 // Own messages only, even for an administrator. They are in
@@ -318,6 +396,17 @@ export default function ThreadPage() {
           sendLabel="Send this message"
           // Enter sends here — see the header.
           sendOnEnter
+          replyingTo={
+            replyingTo
+              ? {
+                  id: replyingTo.id,
+                  name: nameOf(replyingTo),
+                  onCancel: () => {
+                    setReplyingTo(null);
+                  },
+                }
+              : null
+          }
           onSend={async (body, files) => {
             // Files first, under this thread's folder, which is what the read
             // policy checks; then the row that names them. A refused row takes
@@ -328,9 +417,13 @@ export default function ThreadPage() {
               if (!up.ok) return up.error;
               paths = up.value;
             }
-            const problem = await send(body, paths);
-            if (problem) void deleteAttachments(paths);
-            return problem;
+            const problem = await send(body, paths, replyingTo?.id ?? null);
+            if (problem) {
+              void deleteAttachments(paths);
+              return problem;
+            }
+            setReplyingTo(null);
+            return null;
           }}
         />
       )}

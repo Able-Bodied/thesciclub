@@ -161,6 +161,30 @@ export function shouldFollowScroll(distanceFromBottom: number): boolean {
   return distanceFromBottom <= FOLLOW_SCROLL_SLACK;
 }
 
+/** How much of a quoted message is shown over the reply that answers it. */
+export const QUOTE_LENGTH = 80;
+
+/**
+ * The words of a quote: what the answered message said, cut short.
+ *
+ * Pure, so the three special cases are tested without a screen: a message
+ * that has been taken back reads "Removed message" — the quote stays, since
+ * the reply still answers something, and a gap with a reason reads better
+ * than a quote that silently disappears; a message that was a photograph
+ * alone reads "Photograph"; and one not in the list at all, which a read
+ * that is mid-flight can produce, reads "Earlier message" rather than
+ * nothing. The cut is by characters and not words, since a message that is
+ * one long word is still a message.
+ */
+export function quoteText(message: ChatMessage | undefined): string {
+  if (!message) return 'Earlier message';
+  if (message.removedAt !== null) return 'Removed message';
+  const words = message.body.trim().replace(/\s+/g, ' ');
+  if (words === '') return message.attachments.length > 0 ? 'Photograph' : 'Earlier message';
+  if (words.length <= QUOTE_LENGTH) return words;
+  return `${words.slice(0, QUOTE_LENGTH).trimEnd()}…`;
+}
+
 export interface MyThreadsState {
   threads: ChatThread[];
   loading: boolean;
@@ -228,9 +252,14 @@ export interface ThreadMessagesState {
   loading: boolean;
   error: string | null;
   reload: () => void;
-  /** Append a bubble, write it, and take it back out if it is refused. */
-  /** Words, and the paths of photographs already uploaded under this thread. */
-  send: (body: string, attachments?: string[]) => Promise<string | null>;
+  /**
+   * Append a bubble, write it, and take it back out if it is refused. Words,
+   * the paths of photographs already uploaded under this thread, and the
+   * message this one answers, if any.
+   */
+  send: (body: string, attachments?: string[], replyTo?: string | null) => Promise<string | null>;
+  /** Change the words of the reader's own message. Not optimistic: see below. */
+  edit: (messageId: string, body: string) => Promise<string | null>;
   /** Remove a message: the reader's own, or anybody's for an administrator. */
   remove: (messageId: string) => Promise<string | null>;
 }
@@ -329,7 +358,11 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
   }, [load]);
 
   const send = useCallback(
-    async (body: string, attachments: string[] = []): Promise<string | null> => {
+    async (
+      body: string,
+      attachments: string[] = [],
+      replyTo: string | null = null,
+    ): Promise<string | null> => {
       if (!threadId) return 'This conversation is gone.';
       if (!memberId) return 'You are signed out.';
 
@@ -350,12 +383,12 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           removedAt: null,
           removedByAdmin: false,
           editedAt: null,
-          replyTo: null,
+          replyTo,
           pending: true,
         },
       ]);
 
-      const result = await sendMessage(threadId, memberId, body, attachments);
+      const result = await sendMessage(threadId, memberId, body, attachments, replyTo);
       if (!result.ok) {
         // The undo. A bubble that stays on screen having never been saved is
         // the one thing this must not do.
@@ -377,6 +410,23 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
     },
     [threadId, memberId],
   );
+
+  const edit = useCallback(async (messageId: string, body: string): Promise<string | null> => {
+    const result = await editMessage(messageId, body);
+    if (!result.ok) return result.error;
+    // Not optimistic, unlike sending: the words were already on the screen
+    // in the editor, and what replaces them should be what the database
+    // holds. The row arrives over the wire as an update and the reload
+    // redraws it; this only stops the old words flashing back first.
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === messageId
+          ? { ...message, body, editedAt: new Date().toISOString() }
+          : message,
+      ),
+    );
+    return null;
+  }, []);
 
   const remove = useCallback(async (messageId: string): Promise<string | null> => {
     const result = await removeMessage(messageId);
@@ -402,7 +452,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
     return null;
   }, []);
 
-  return { thread, messages, loading, error, reload, send, remove };
+  return { thread, messages, loading, error, reload, send, edit, remove };
 }
 
 /**
@@ -444,18 +494,55 @@ export async function sendMessage(
   authorId: string,
   body: string,
   attachments: string[] = [],
+  /** The message this one answers, drawn as a quote, or null. */
+  replyTo: string | null = null,
 ): Promise<ChatWriteResult<ChatMessage>> {
   const { data, error } = (await getSupabase()
     .from('chat_messages')
-    // Exactly the four columns insert is granted on. created_at, removed_at
-    // and removed_by_admin belong to the database — see 20260918070000 — and
-    // naming one here would fail with `permission denied for column`.
-    .insert({ thread_id: threadId, author_id: authorId, body, attachments })
+    // Exactly the columns insert is granted on. created_at, removed_at,
+    // removed_by_admin and edited_at belong to the database — see
+    // 20260918070000 — and naming one here would fail with `permission
+    // denied`. reply_to is named only when there is one, so a plain message
+    // still lands on a database that predates the column.
+    .insert({
+      thread_id: threadId,
+      author_id: authorId,
+      body,
+      attachments,
+      ...(replyTo ? { reply_to: replyTo } : {}),
+    })
     .select(MESSAGE_COLUMNS)
     .single()) as Result<MessageRow>;
   if (error) return { ok: false, error: describeError(error, MESSAGE_REFUSALS) };
   if (!data) return { ok: false, error: 'The message was not sent.' };
   return { ok: true, value: toMessage(data) };
+}
+
+/**
+ * Change the words of the reader's own message.
+ *
+ * `chat_edit_message` decides and refuses in a sentence: the author only, and
+ * only while the message is standing. The earlier version goes to
+ * chat_edits, which an administrator reads on a report of it. A blank body
+ * is refused unless the message has photographs, and an edit that changes
+ * nothing is refused; the composer stops both before sending.
+ */
+export async function editMessage(messageId: string, body: string): Promise<ChatWriteResult<null>> {
+  const { error } = await getSupabase().rpc('chat_edit_message', {
+    message: messageId,
+    new_body: body,
+  });
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'Your edit was not saved.',
+        refused: 'You can only edit your own message.',
+        missing: 'This message is not there any more.',
+      }),
+    };
+  }
+  return { ok: true, value: null };
 }
 
 /**

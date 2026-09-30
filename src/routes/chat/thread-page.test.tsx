@@ -24,8 +24,10 @@ const db = vi.hoisted(() => ({
   error: null as string | null,
   authors: new Map<string, ChatAuthor>(),
   isAdmin: false,
-  sent: [] as string[],
+  sent: [] as [string, string | null][],
   sendFailure: null as string | null,
+  edited: [] as [string, string][],
+  editFailure: null as string | null,
   removed: [] as string[],
   reportedMessages: new Set<string>(),
   reports: [] as [string, string][],
@@ -61,9 +63,13 @@ vi.mock('@/lib/chat/threads', async (importOriginal) => ({
     loading: db.loading,
     error: db.error,
     reload: () => undefined,
-    send: (body: string) => {
-      db.sent.push(body);
+    send: (body: string, _attachments: string[] = [], replyTo: string | null = null) => {
+      db.sent.push([body, replyTo]);
       return Promise.resolve(db.sendFailure);
+    },
+    edit: (id: string, body: string) => {
+      if (!db.editFailure) db.edited.push([id, body]);
+      return Promise.resolve(db.editFailure);
     },
     remove: (id: string) => {
       db.removed.push(id);
@@ -156,6 +162,8 @@ beforeEach(() => {
   db.isAdmin = false;
   db.sent = [];
   db.sendFailure = null;
+  db.edited = [];
+  db.editFailure = null;
   db.removed = [];
   db.reportedMessages = new Set();
   db.reports = [];
@@ -193,7 +201,7 @@ describe('a conversation', () => {
     await userEvent.type(screen.getByLabelText('Message Jan'), 'Saturday works.');
     await userEvent.click(screen.getByRole('button', { name: 'Send this message' }));
     await waitFor(() => {
-      expect(db.sent).toEqual(['Saturday works.']);
+      expect(db.sent).toEqual([['Saturday works.', null]]);
     });
   });
 
@@ -215,7 +223,7 @@ describe('a conversation', () => {
     renderThread();
     await userEvent.type(screen.getByLabelText('Message Jan'), 'Yes{Enter}');
     await waitFor(() => {
-      expect(db.sent).toEqual(['Yes']);
+      expect(db.sent).toEqual([['Yes', null]]);
     });
   });
 
@@ -237,7 +245,7 @@ describe('a conversation', () => {
   it('offers Remove on the viewer’s own message and not on anybody else’s', () => {
     db.messages = [message({ id: 'm1' }), message({ id: 'm2', authorId: 'me' })];
     renderThread();
-    expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(1);
   });
 
   // Unlike a topic. An administrator is in a conversation as a member of it,
@@ -247,13 +255,13 @@ describe('a conversation', () => {
     db.isAdmin = true;
     db.messages = [message({ id: 'm1' })];
     renderThread();
-    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
   });
 
   it('removes the viewer’s own message', async () => {
     db.messages = [message({ id: 'm2', authorId: 'me' })];
     renderThread();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Remove / }));
     await waitFor(() => {
       expect(db.removed).toEqual(['m2']);
     });
@@ -310,8 +318,8 @@ describe('reporting a message', () => {
   it('offers Report on theirs and Remove on yours, never both', () => {
     db.messages = [message({ id: 'm1' }), message({ id: 'm2', authorId: 'me' })];
     renderThread();
-    expect(screen.getByRole('button', { name: 'Report' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Report / })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Remove / })).toBeInTheDocument();
   });
 
   it('offers an administrator the same two, because they are in this conversation as a member', () => {
@@ -321,20 +329,20 @@ describe('reporting a message', () => {
     db.isAdmin = true;
     db.messages = [message({ id: 'm1' })];
     renderThread();
-    expect(screen.getByRole('button', { name: 'Report' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Remove' })).toBeNull();
+    expect(screen.getByRole('button', { name: /^Report / })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
   });
 
   it("offers nothing on a former member's message", () => {
     db.messages = [message({ id: 'm1', authorId: null })];
     renderThread();
-    expect(screen.queryByRole('button', { name: 'Report' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
   });
 
   it('promises that nothing else in the conversation goes with it', async () => {
     db.messages = [message({ id: 'm1' })];
     renderThread();
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     const sheet = screen.getByRole('dialog', { name: 'Report this message' });
     // The sentence a room's post does not get, and the whole point of the
     // feature: an administrator is handed one message and no way back in.
@@ -345,7 +353,7 @@ describe('reporting a message', () => {
   it('sends the message id and the note, and closes once it has worked', async () => {
     db.messages = [message({ id: 'm1' })];
     renderThread();
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     await userEvent.type(screen.getByLabelText('Anything to add'), 'He will not stop.');
     await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
     await waitFor(() => {
@@ -357,7 +365,7 @@ describe('reporting a message', () => {
   it('sends without a note, because demanding one is a toll', async () => {
     db.messages = [message({ id: 'm1' })];
     renderThread();
-    await userEvent.click(screen.getByRole('button', { name: 'Report' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Report / }));
     await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
     await waitFor(() => {
       expect(db.reports).toEqual([['m1', '']]);
@@ -369,6 +377,126 @@ describe('reporting a message', () => {
     db.reportedMessages = new Set(['m1']);
     renderThread();
     expect(screen.getByText('Reported')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Report/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
+  });
+});
+
+describe('editing a message', () => {
+  it('is offered on the viewer’s own standing message and on nobody else’s', () => {
+    db.messages = [message({ id: 'm1' }), message({ id: 'm2', authorId: 'me' })];
+    renderThread();
+    expect(screen.getAllByRole('button', { name: 'Edit your message' })).toHaveLength(1);
+  });
+
+  it('swaps the bubble for the composer and saves the change', async () => {
+    db.messages = [message({ id: 'm2', authorId: 'me', body: 'Saturday works.' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
+    const box = screen.getByLabelText('Your message');
+    expect(box).toHaveValue('Saturday works.');
+    await userEvent.type(box, ' Sunday too.');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      expect(db.edited).toEqual([['m2', 'Saturday works. Sunday too.']]);
+    });
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Your message')).toBeNull();
+    });
+  });
+
+  it('keeps the draft and says why when the edit is refused', async () => {
+    db.editFailure = 'Your edit was not saved. You can only edit your own message.';
+    db.messages = [message({ id: 'm2', authorId: 'me', body: 'Saturday works.' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
+    await userEvent.type(screen.getByLabelText('Your message'), '!');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/only edit your own message/);
+    expect(screen.getByLabelText('Your message')).toHaveValue('Saturday works.!');
+  });
+
+  it('says Edited, with the time, on an edited bubble', () => {
+    db.messages = [message({ id: 'm1', editedAt: '2026-09-18T10:05:00Z' })];
+    renderThread();
+    expect(screen.getByText(/· Edited /)).toBeInTheDocument();
+  });
+
+  it('is not offered on a removed message, nor to an administrator on somebody else’s', () => {
+    db.isAdmin = true;
+    db.messages = [
+      message({ id: 'm1' }),
+      message({ id: 'm2', authorId: 'me', body: '', removedAt: '2026-09-18T11:00:00Z' }),
+    ];
+    renderThread();
+    expect(screen.queryByRole('button', { name: 'Edit your message' })).toBeNull();
+  });
+});
+
+describe('replying to a message', () => {
+  it('offers Reply on every standing bubble, named for its author', () => {
+    db.messages = [
+      message({ id: 'm1' }),
+      message({ id: 'm2', authorId: 'me' }),
+      message({ id: 'm3', body: '', removedAt: '2026-09-18T11:00:00Z' }),
+    ];
+    renderThread();
+    expect(screen.getByRole('button', { name: "Reply to Jan's message" })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reply to your message' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^Reply to/ })).toHaveLength(2);
+  });
+
+  it('says who is being answered over the composer, and sends the message with the quote', async () => {
+    db.messages = [message({ id: 'm1', body: 'Which frame?' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: "Reply to Jan's message" }));
+    expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Jan');
+    const box = screen.getByLabelText('Message Jan');
+    expect(box).toHaveFocus();
+    await userEvent.type(box, 'A Top End Force.{Enter}');
+    await waitFor(() => {
+      expect(db.sent).toEqual([['A Top End Force.', 'm1']]);
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(/Replying to/)).toBeNull();
+    });
+  });
+
+  it('draws the quote over a reply, and scrolls to the quoted message when tapped', async () => {
+    db.messages = [
+      message({ id: 'm1', body: 'Which frame do you ride these days, the rigid or the folder?' }),
+      message({ id: 'm2', authorId: 'me', body: 'The rigid.', replyTo: 'm1' }),
+    ];
+    renderThread();
+    const quote = screen.getByRole('button', { name: /Which frame do you ride/ });
+    expect(quote).toHaveTextContent('Jan');
+    const target = document.getElementById('message-m1');
+    if (!target) throw new Error('the quoted message should be on the page');
+    const scrolled = vi.fn();
+    target.scrollIntoView = scrolled;
+    await userEvent.click(quote);
+    expect(scrolled).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(target.querySelector('.message-flash')).not.toBeNull();
+    });
+  });
+
+  it('quotes a removed message as removed, and a photograph as a photograph', () => {
+    db.messages = [
+      message({ id: 'm1', body: '', removedAt: '2026-09-18T11:00:00Z' }),
+      message({ id: 'm2', body: '', attachments: ['threads/th1/a.webp'] }),
+      message({ id: 'm3', authorId: 'me', body: 'Sorry to hear it.', replyTo: 'm1' }),
+      message({ id: 'm4', authorId: 'me', body: 'Nice.', replyTo: 'm2' }),
+    ];
+    db.authors = new Map([['jan', jan]]);
+    renderThread();
+    expect(screen.getByRole('button', { name: /Removed message/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Photograph$/ })).toBeInTheDocument();
+  });
+
+  it('offers no Reply once the other member has left the club', () => {
+    db.thread = thread({ otherMemberId: null });
+    db.messages = [message({ id: 'm1', authorId: null })];
+    renderThread();
+    expect(screen.queryByRole('button', { name: /^Reply to/ })).toBeNull();
   });
 });

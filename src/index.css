@@ -390,3 +390,21 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * A message a quote was tapped on lights up once, so the eye finds it after
+ * the scroll. The reduced-motion block above collapses this to nothing, as it
+ * does every animation.
+ */
+@keyframes message-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  30% {
+    box-shadow: 0 0 0 4px var(--gold);
+  }
+}
+.message-flash {
+  animation: message-flash 1.2s ease-out 1;
+}

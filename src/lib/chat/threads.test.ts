@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { FOLLOW_SCROLL_SLACK, shouldFollowScroll, threadTitle } from '@/lib/chat/threads';
-import type { ChatThread } from '@/lib/chat/types';
+import {
+  FOLLOW_SCROLL_SLACK,
+  QUOTE_LENGTH,
+  quoteText,
+  shouldFollowScroll,
+  threadTitle,
+} from '@/lib/chat/threads';
+import type { ChatMessage, ChatThread } from '@/lib/chat/types';
 
 /**
  * The pure half of threads.ts. Nothing here touches supabase, so nothing here
@@ -59,5 +65,52 @@ describe('shouldFollowScroll', () => {
     // page away mid-sentence; the pill is what brings them back.
     expect(shouldFollowScroll(FOLLOW_SCROLL_SLACK + 1)).toBe(false);
     expect(shouldFollowScroll(900)).toBe(false);
+  });
+});
+
+describe('quoteText', () => {
+  const message = (o: Partial<ChatMessage> = {}): ChatMessage => ({
+    id: 'm1',
+    threadId: 'th1',
+    authorId: 'jan',
+    body: 'Which frame do you ride?',
+    attachments: [],
+    createdAt: '2026-09-18T10:00:00Z',
+    removedAt: null,
+    removedByAdmin: false,
+    editedAt: null,
+    replyTo: null,
+    ...o,
+  });
+
+  it('is the words, whole when they are short', () => {
+    expect(quoteText(message())).toBe('Which frame do you ride?');
+  });
+
+  it('cuts long words short and says so, with line breaks flattened', () => {
+    const long = message({ body: `${'a'.repeat(70)}\n\n${'b'.repeat(70)}` });
+    const quote = quoteText(long);
+    expect(quote.endsWith('…')).toBe(true);
+    expect(quote.length).toBeLessThanOrEqual(QUOTE_LENGTH + 1);
+    expect(quote).not.toContain('\n');
+  });
+
+  // The quote stays over a reply to a message that has been taken back: the
+  // reply still answers something, and a gap with a reason reads better than
+  // a quote that silently disappears.
+  it('says Removed message for one that has been taken back', () => {
+    expect(quoteText(message({ body: '', removedAt: '2026-09-18T11:00:00Z' }))).toBe(
+      'Removed message',
+    );
+  });
+
+  it('says Photograph for one that was a picture alone', () => {
+    expect(quoteText(message({ body: '', attachments: ['threads/th1/a.webp'] }))).toBe(
+      'Photograph',
+    );
+  });
+
+  it('says Earlier message for one that is not in the list', () => {
+    expect(quoteText(undefined)).toBe('Earlier message');
   });
 });
