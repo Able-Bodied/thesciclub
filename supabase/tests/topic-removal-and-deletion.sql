@@ -67,7 +67,12 @@ select public.chat_remove_post(p.id) from public.chat_posts p
 select reply_count from public.chat_topics where id = :'topic_id';
 
 \echo ''
-\echo '== 4. faces on the row are people with a post still standing (expect Replier, Starter — both still have one) =='
+\echo '== 4. faces on the row are people with a post still standing (expect Starter, Replier — both still have one) =='
+\echo '   In the order chat_topics_for gives them: by each one''s earliest post'
+\echo '   still standing. Both earlier posts are removed by now, so Starter''s'
+\echo '   reply two (+2s) comes before Replier''s reply three (+3s). The fixture''s'
+\echo '   times are distinct, so this cannot flip between runs; it said "Replier,'
+\echo '   Starter" until 2026-09-30, which was never the order.'
 -- Names read as postgres: members' RLS hides other members' rows from a
 -- member, which would blank the names and look like the faces were missing.
 -- chat_topics_for still runs with the starter's claims.
