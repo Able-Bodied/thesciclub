@@ -2,15 +2,22 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: the five steps are built** — 1, 2, 2b, 3, 3b, 4 and 5.
-Steps 1 to 4 are on GitHub and live (1, 2 and 2b on 2026-09-29; 3, 3b and 4
-on 2026-09-30, with the migrations `20260930010000` and `20260930030000` on
-the live database first). Step 5, Home is the first screen, was built and
-committed on 2026-09-30 and is **not pushed** — the owner says when. **Only
-step 6, the photos bucket, remains**, and its part 2 needs the owner's
-decision first. HANDOFF.md, "Home, step 1" through "Home, step 5", say where
-the build departed from this plan and why; those departures stand, and
-"What Home is" in HANDOFF.md gathers them with the decisions and the traps.
+**Where it stands: every step is built and live** — 1, 2, 2b, 3, 3b, 4, 5
+and 6. Steps 1 to 4 went live on 2026-09-29 and 2026-09-30, step 5 (the
+app opens on Home) on 2026-09-30. Step 6, the photos bucket, finished on
+2026-10-01: the bucket takes 2MB and webp, JPEG or PNG
+(`20260930040000`), and it is **private** — the owner's choice — with every
+face and logo drawn through a signed URL (`20261001000000`, the signing
+client released first, as part 2 says). Both migrations are on the live
+database. The owner's calls in step 6 — onboarding stays on the photo step
+when storage refuses; any signed-in account reads the logos; somebody
+mid-signup reads the face on their claim card — and the read the plan
+missed (an account's own folder, without which storage refuses
+onboarding's upload) are in HANDOFF.md, "Home, step 6". HANDOFF.md, "Home,
+step 1" through "Home, step 6", say where the build departed from this
+plan and why; those departures stand, and "What Home is" in HANDOFF.md
+gathers them with the decisions and the traps. This file is now the
+record, not the work.
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request
