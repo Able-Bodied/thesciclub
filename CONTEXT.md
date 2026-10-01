@@ -89,30 +89,38 @@ silently disabling a button.
 
 ## What actually works
 
-Four surfaces are real, and everything else is deliberately not yet.
+Five surfaces are real, and everything else is deliberately not yet.
 
 | Surface | State | Notes |
 | --- | --- | --- |
+| **Home** | Real | Where the app opens (2026-09-30). A second way in to rooms, events and members that already exist, not a new kind of content: recent topics and photographs from the open rooms, upcoming events with their RSVPs, and members worth meeting, under Everything · Topics · Photos · Events · People, narrowed by room and place. Asking a question there starts a topic in a room; sharing a photograph starts a topic whose first post has it; a comment is a reply on the topic page. Likes, with the names shown to every member who can read the room. Built in steps, 2026-09-29 to 2026-09-30. No anonymous asking, no search across it, no notification centre, no notification for a like, no comments sheet. |
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. |
 | **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
 | **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. Any member writes in any open room, no joining (2026-09-29). A member edits their own post or message, readers see "Edited", and administrators can read every earlier version; a reply to a post sits under it, and a reply to a message quotes it (all 2026-09-29). Anybody in a group can rename it or give it a picture, and the conversation says who; an event's group keeps the event's name (2026-09-30). No search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
-| Home | Placeholder | The mixed feed. Needs four content types and a moderation story. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that
-looks finished and does nothing gets demoed, believed, and then explained. **That rule still
-governs Home**, and it governed Chat the whole way through — which is why Chat draws no control for the
-things it does not do. There is no search box (the mock has one) and no block. A member who looks for one of those finds nothing at all, which reads as unfinished;
-a control that does nothing reads as broken.
+looks finished and does nothing gets demoed, believed, and then explained. **That rule governed Home
+until it was built, and Chat the whole way through**, and it still decides what both draw: no control
+for a thing they do not do. Chat has no search box (the mock has one) and no block; Home has no
+search, no bell and no "Ask anonymously". A member who looks for one of those finds nothing at all,
+which reads as unfinished; a control that does nothing reads as broken.
 
 ## Deliberately deferred
 
 Real, wanted, and explicitly not now. If a task seems to need one of these, say so rather than
 quietly scoping it in.
 
-- **The Home feed.** Questions, photo posts, comments, member suggestions.
 - **Mentor badging** (e.g. "Craig-certified").
 - **Coordinator tooling**, classifieds, equipment exchange, AI-assisted matching.
+
+**The Home feed was on this list until 2026-09-29**, when the owner asked for it. What kept it here
+was that it needed four content types and a moderation story. It was answered by adding no content
+type at all: a question is a topic in a room, a photo post is a topic whose first post has
+photographs, a comment is a reply, and a suggestion is a member already in Peers. So reporting,
+removal, notifications, mutes and the administrators' tools reach everything on Home without a line
+changed. The one new thing is a like, which is a member's name against a post and holds no words.
+It was built and released in five steps, and the app opens on it from 2026-09-30.
 
 **Topic rooms were on this list until 2026-09-18** and the owner has decided to build them. The
 objection that kept them here has not stopped being true, so it is recorded rather than deleted:
