@@ -18,6 +18,8 @@ const calls = vi.hoisted(() => ({
   claimable: null as Record<string, unknown> | null,
   existingMember: null as { id: string } | null,
   submitted: null as Record<string, unknown> | null,
+  /** What each submit answers, in turn; ok when the list runs out. */
+  submitResults: [] as { ok: boolean; error?: string; photoRefused?: boolean }[],
   status: 'signed-out',
 }));
 
@@ -56,7 +58,7 @@ vi.mock('@/lib/organizations', () => ({
 vi.mock('@/routes/onboarding/submit-onboarding', () => ({
   submitOnboarding: (data: Record<string, unknown>) => {
     calls.submitted = data;
-    return Promise.resolve({ ok: true });
+    return Promise.resolve(calls.submitResults.shift() ?? { ok: true });
   },
 }));
 
@@ -138,6 +140,7 @@ beforeEach(() => {
   calls.claimable = null;
   calls.submitted = null;
   calls.existingMember = null;
+  calls.submitResults = [];
   calls.status = 'signed-out';
 });
 
@@ -465,7 +468,14 @@ describe('finishing later', () => {
   });
 });
 
-describe('skipping the photograph', () => {
+describe('a photograph the club cannot hold', () => {
+  const REFUSED = {
+    ok: false,
+    photoRefused: true,
+    error:
+      'The photograph was not added. That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
+  };
+
   beforeEach(() => {
     // jsdom has no object URLs; the step makes one for the preview.
     URL.createObjectURL = () => 'blob:preview';
@@ -495,6 +505,31 @@ describe('skipping the photograph', () => {
     await userEvent.upload(input, new File(['x'], name, { type: 'image/png' }));
   }
 
+  // The owner, 2026-09-30: stay on the photo step with the sentence.
+  it('stays on the photo step and says why, without a preview of what was refused', async () => {
+    calls.submitResults = [REFUSED];
+    await reachPhoto();
+    await choose();
+    await userEvent.click(screen.getByRole('button', { name: 'Enter the club' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(REFUSED.error);
+    expect(screen.getByText('Add a photo?')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Home' })).toBeNull();
+    expect(document.querySelector('label img')).toBeNull();
+  });
+
+  it('still lets them in with Skip for now, without the photograph', async () => {
+    calls.submitResults = [REFUSED];
+    await reachPhoto();
+    await choose();
+    await userEvent.click(screen.getByRole('button', { name: 'Enter the club' }));
+    await screen.findByRole('alert');
+    await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(calls.submitted?.photoFile).toBeNull();
+  });
+
   // Skip used to `set` the file away and submit from the same render, which
   // still held it: the photograph it skipped went up anyway.
   it('skips a photograph that is chosen and never sent', async () => {
@@ -506,6 +541,17 @@ describe('skipping the photograph', () => {
       expect(calls.submitted).not.toBeNull();
     });
     expect(calls.submitted?.photoFile).toBeNull();
+  });
+
+  it('takes the sentence away when another photograph is chosen', async () => {
+    calls.submitResults = [REFUSED];
+    await reachPhoto();
+    await choose();
+    await userEvent.click(screen.getByRole('button', { name: 'Enter the club' }));
+    await screen.findByRole('alert');
+    await choose('another.png');
+
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });
 

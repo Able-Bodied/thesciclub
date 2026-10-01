@@ -192,13 +192,22 @@ export default function OnboardingPage() {
   /**
    * `patch` is for "Skip for now", which must submit without the photograph
    * it skips. It used to `set` the file away and then call this, but this
-   * reads `data` from the same render, so the file went up anyway.
+   * reads `data` from the same render, so the file went up anyway — which,
+   * once the bucket refused files, would have kept Skip on the photo step.
    */
   async function finish(patch: Partial<OnboardingData> = {}) {
     setPhase('submitting');
     const result = await submitOnboarding({ ...data, ...patch });
     if (!result.ok) {
       setPhase('wizard');
+      // A refused photograph is answered on the photo step, whichever
+      // button finished: "Finish later" from the city carries a photograph
+      // chosen and then gone back past. The file is let go, so the tile
+      // shows "+" rather than a preview of something that is not stored.
+      if (result.photoRefused) {
+        set({ photoFile: null, photoPreviewUrl: null });
+        setStep('photo');
+      }
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
@@ -412,7 +421,17 @@ export default function OnboardingPage() {
       {step === 'birthday' ? <BirthdayStep data={data} set={set} /> : null}
       {step === 'injury' ? <InjuryStep data={data} set={set} /> : null}
       {step === 'city' ? <CityStep data={data} set={set} /> : null}
-      {step === 'photo' ? <PhotoStep data={data} set={set} /> : null}
+      {step === 'photo' ? (
+        <PhotoStep
+          data={data}
+          set={(patch) => {
+            // Another photograph chosen after a refusal: the sentence was
+            // about the last one.
+            if ('photoFile' in patch) setError(null);
+            set(patch);
+          }}
+        />
+      ) : null}
     </StepFrame>
   );
 }

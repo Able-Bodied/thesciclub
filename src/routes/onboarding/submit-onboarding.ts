@@ -21,6 +21,12 @@ export interface SubmitResult {
   ok: boolean;
   /** The database's own sentence when it refuses, so the cause is not guessed at. */
   error?: string;
+  /**
+   * Storage refused the photograph, and nothing was written: the page goes
+   * back to the photo step with the sentence, where "Skip for now" still
+   * lets them in.
+   */
+  photoRefused?: boolean;
 }
 
 export async function submitOnboarding(data: OnboardingData): Promise<SubmitResult> {
@@ -49,9 +55,21 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     const upload = await supabase.storage
       .from('photos')
       .upload(path, blob, { upsert: true, contentType: blob.type });
-    // A photo that will not upload must not cost somebody their signup — it is
-    // the one optional answer in the flow. Carry on without it.
-    if (!upload.error) photoPath = path;
+    // Refused, so stop before the row is written and say why. Until
+    // 20260930040000 this carried on without the photograph and without a
+    // word, which was harmless while the bucket took anything; with 2MB and
+    // three types a member could choose a photograph, enter the club and
+    // never learn it was not there. The owner's call, 2026-09-30: stay on
+    // the photo step with the sentence. A photograph still cannot cost
+    // somebody their signup, because "Skip for now" is on that step.
+    if (upload.error) {
+      return {
+        ok: false,
+        photoRefused: true,
+        error: describeError(upload.error, 'The photograph was not added.'),
+      };
+    }
+    photoPath = path;
   }
 
   const { error } = await supabase.from('members').insert({
