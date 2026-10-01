@@ -65,8 +65,8 @@ Three things happened on 2026-09-28/29, in this order of urgency:
 8. **Home step 4, Filter your feed, is built and committed** (2026-09-30),
    **not on GitHub**. No migration, so it releases with a push alone. See
    "Home, step 4". It found that `FilterSheetShell` moved no focus on
-   Home, Events or Peers; the owner said fix it, and it is fixed
-   (`a2753e4`), also not pushed.
+   Home, Events or Peers, and neither did the report sheet; the owner said
+   fix both, and both are fixed, also not pushed.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -784,9 +784,34 @@ round the sheet and never out, Shift+Tab from the title to Show, Escape and
 Show each putting focus back on Filters, a chip chosen by Enter, and axe
 clean with each sheet open.
 
-**`report-sheet.tsx` moves no focus either.** It was named as the pattern
-alongside this shell, and it has the same gap: no focus on open, no loop,
-nothing given back. Not changed; it is the owner's to say.
+**The report sheet moved no focus either — fixed at the owner's word.** It
+was named as the pattern alongside the shell and had the same gap. Three
+commits:
+
+- `c517393`: the rules move out of the shell into **`useDialogFocus`**
+  (`src/lib/dialog-focus.ts`), unchanged but for also going round text
+  fields. The shell's tests and its three screens' pass untouched.
+- `7ada33f`: `report-sheet.tsx` uses it — the title on open, Tab round the
+  note, Cancel and Send report, the backdrop out of the Tab order, focus
+  back on Report after Cancel or Escape. Six tests in
+  `report-sheet.test.tsx`, all six failing against the old sheet.
+- `8577087`: **`ReportControl`** (`src/routes/chat/report-control.tsx`),
+  now drawn by `post.tsx`, `message-bubble.tsx` and `notice-line.tsx`. After
+  a report is sent the screen reads the reports back and Report becomes
+  "Reported"; focus given back to a button that then leaves the page falls
+  to the top of the screen. "Reported" (`tabIndex=-1`) takes focus when it
+  replaces a Report pressed there and focus has fallen to the page, and
+  never when a screen opens on something already reported. Five tests, two
+  rules each seen to fail by sabotage; the topic page's test stub now reads
+  back what was sent, and a new test there fails against the old post.
+
+Checked on the local stack as Jan, by keyboard only: one of Sam's posts at
+430 and one of Sam's messages at 1280 — title focused on open, Tab round
+the note and both buttons six times and never out, axe clean with the sheet
+open, Escape back on "Report Sam's post" / "Report Sam's message", a report
+sent by Enter, focus then on "Reported" with its ring drawn, and the next
+Tab going on from there. The two local report rows were deleted afterwards
+(six in `chat_reports`, as before). **Not checked:** VoiceOver.
 
 Noticed, not changed: the filter button is now written three times
 (Peers at 34px, Events and Home at 38px).
@@ -1849,6 +1874,13 @@ Each of these was found by running something, not by reading it.
 - **`src/routes/chat/earlier-versions.tsx`** — the administrators' list of
   what an edited post or message said, under a topic's post and under a
   report. `useEdits` in `src/lib/chat/edits.ts` is its one read.
+- **`useDialogFocus`** (`src/lib/dialog-focus.ts`) — focus in a sheet: the
+  title on open, Tab kept inside, focus back on close. The filter shell and
+  the report sheet use it; the likes list and the photograph viewer keep
+  older copies of the same rules. A new sheet uses this, not a fourth copy.
+- **`ReportControl`** (`src/routes/chat/report-control.tsx`) — Report, then
+  "Reported" with focus moved onto it. Posts, messages and group-change
+  lines draw it.
 - **`src/routes/chat/report-sheet.tsx`** — the sheet to copy where
   `FilterSheetShell` does not fit, which is anywhere the footer is the moment
   something happens rather than Clear and Apply over filters already applied.
@@ -2016,9 +2048,8 @@ a migration except the fourth.
    behind it and a screen reader is never told a viewer opened. The two
    sheets already do it right — `filter-sheet-shell.tsx` and
    `report-sheet.tsx` are the pattern. (Neither was: on 2026-09-30 both
-   were found to move no focus. The filter shell is fixed, `a2753e4`;
-   the report sheet is not. See "Home, step 4". The likes list in
-   `like-button.tsx` is the pattern that holds.) Focus must return to the tile that
+   were found to move no focus, and both are fixed — see "Home, step 4".
+   `useDialogFocus` in `src/lib/dialog-focus.ts` is the pattern now.) Focus must return to the tile that
    opened it when it closes.
 3. **Write a profile photograph's alt text.** `members.photo_alt` exists and
    every avatar reads it; nothing sets it. One field on the details form
