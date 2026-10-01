@@ -64,8 +64,9 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    step 3b".
 8. **Home step 4, Filter your feed, is built and committed** (2026-09-30),
    **not on GitHub**. No migration, so it releases with a push alone. See
-   "Home, step 4". It found that **`FilterSheetShell` moves no focus** —
-   on Home, Events and Peers — which is the owner's call to fix.
+   "Home, step 4". It found that `FilterSheetShell` moved no focus on
+   Home, Events or Peers; the owner said fix it, and it is fixed
+   (`a2753e4`), also not pushed.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -759,16 +760,33 @@ no sideways page scroll with the sheet open. Tests: 23 for the rules, 8 for
 the sheet, 6 on the page; two sabotages of the rules and two of the page
 (drawing the unfiltered list; not waiting for members) each failed them. **Not checked:** VoiceOver, production.
 
-**Needs the owner — the filter sheet moves no focus, here and on Events
-and Peers.** "What is next for accessibility", item 2, says
-`filter-sheet-shell.tsx` does it right; it does not. It has `role="dialog"`,
-`aria-modal`, Escape and the backdrop, but opening it leaves focus on the
-Filters button behind it, Tab walks the page behind the backdrop, and
-closing does not put focus back. Measured on Home as Jan: **85 Tab presses
-after Enter on Filters to reach the first chip.** The fix is one change in
-the shell — focus the title on open, keep Tab inside, return focus to the
-button on close, the pattern `report-sheet.tsx` and the likes list use —
-and it changes all three sheets, so it was not made in step 4.
+**The filter sheet moved no focus, here and on Events and Peers — fixed
+at the owner's word, `a2753e4`.** "What is next for accessibility", item 2,
+said `filter-sheet-shell.tsx` did it right; it did not. It had
+`role="dialog"`, `aria-modal`, Escape and the backdrop, but opening it left
+focus on the Filters button behind it, Tab walked the page behind the
+backdrop, and closing put nothing back. Measured on Home as Jan: 85 Tab
+presses after Enter on Filters to reach the first chip.
+
+Now, in the shell, so all three sheets have it: the title (`tabIndex=-1`,
+and what names the dialog through `aria-labelledby`) takes focus on open;
+Tab and Shift+Tab go round the sheet's own buttons, skipping a disabled
+Clear and the panel's Close where a phone hides it; the backdrop is out of
+the Tab order (still a named button for a pointer); and the shell puts
+focus back on whatever had it when it unmounts, so no screen has to hand
+it a ref. The likes list's rules. Tests: eight in
+`src/components/filter-sheet-shell.test.tsx`, six of which fail against the
+old shell and two against the shell with only the loop removed. In the
+browser, by keyboard only, on Home, Events and Peers at 430 and 1280 (54
+checks, none failed): Filters reached by Tab, the title focused on open,
+the next Tab on the first chip at 430 (on Close, then the chip, at 1280),
+round the sheet and never out, Shift+Tab from the title to Show, Escape and
+Show each putting focus back on Filters, a chip chosen by Enter, and axe
+clean with each sheet open.
+
+**`report-sheet.tsx` moves no focus either.** It was named as the pattern
+alongside this shell, and it has the same gap: no focus on open, no loop,
+nothing given back. Not changed; it is the owner's to say.
 
 Noticed, not changed: the filter button is now written three times
 (Peers at 34px, Events and Home at 38px).
@@ -1997,8 +2015,10 @@ a migration except the fourth.
    `aria-modal`, no focus trap, so Tab walks out of the picture into the chat
    behind it and a screen reader is never told a viewer opened. The two
    sheets already do it right — `filter-sheet-shell.tsx` and
-   `report-sheet.tsx` are the pattern. (Not the first: 2026-09-30 found
-   the filter shell moves no focus at all; see "Home, step 4".) Focus must return to the tile that
+   `report-sheet.tsx` are the pattern. (Neither was: on 2026-09-30 both
+   were found to move no focus. The filter shell is fixed, `a2753e4`;
+   the report sheet is not. See "Home, step 4". The likes list in
+   `like-button.tsx` is the pattern that holds.) Focus must return to the tile that
    opened it when it closes.
 3. **Write a profile photograph's alt text.** `members.photo_alt` exists and
    every avatar reads it; nothing sets it. One field on the details form

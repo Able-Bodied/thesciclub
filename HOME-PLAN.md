@@ -16,8 +16,8 @@ photos bucket's member delete policy stays `{public}` (the owner's call).
 Three from 4: the filter narrows the list a pill drew (so Everything's
 four events are all it can narrow), a chip that is on is always offered,
 and Online is a flag of its own. Step 4 also found that
-`FilterSheetShell` moves no focus, on every screen that uses it; fixing
-it is the owner's call.
+`FilterSheetShell` moved no focus, on every screen that uses it; at the
+owner's word it now does (`a2753e4`, not pushed).
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request
