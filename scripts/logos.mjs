@@ -188,6 +188,14 @@ async function upload(spec) {
     process.exit(1);
   }
   const ext = file.split('.').pop();
+  // The bucket takes webp, JPEG and PNG only (20260930040000), and storage
+  // would refuse anything else with a 415 after the read. An SVG is the one
+  // a site is likely to offer: it is a document that can carry script, served
+  // to anyone with the link, so render it to PNG and choose that instead.
+  if (!/^(webp|jpe?g|png)$/i.test(ext)) {
+    console.error(`  The photos bucket takes webp, JPEG or PNG, not .${ext}. Convert it first.`);
+    process.exit(1);
+  }
   const path = `organizations/${code.toLowerCase()}.${ext}`;
   const body = await readFile(`${DIR}/${file}`);
   const res = await fetch(`${URL_BASE}/storage/v1/object/photos/${path}`, {
