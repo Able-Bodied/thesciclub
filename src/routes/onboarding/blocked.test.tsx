@@ -3,6 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Organization } from '@/types/domain';
 
 const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
+// The logo is drawn through a signed URL since HOME-PLAN.md step 6. Stubbed
+// here, as every screen test stubs the hooks its screen calls: unstubbed, the
+// signing request is refused by the network guard, storage-js turns that into
+// an ordinary error, and the badge quietly draws its short code instead.
+vi.mock('@/lib/photos', () => ({
+  usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed.test/${path}` : null),
+}));
+
 vi.mock('@/lib/organizations', () => ({
   useOrganizations: () => ({ organizations: orgs.list, loading: false }),
 }));
@@ -34,7 +42,7 @@ describe('the screen somebody is turned away on', () => {
     render(<BlockedScreen onTryAnother={noop} />);
     const logo = document.querySelector('img');
     expect(logo).not.toBeNull();
-    expect(logo?.getAttribute('src')).toContain('organizations/ncs.webp');
+    expect(logo?.getAttribute('src')).toBe('https://signed.test/organizations/ncs.webp');
   });
 
   it('falls back to the short code when there is no logo', () => {

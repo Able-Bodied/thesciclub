@@ -1,6 +1,6 @@
 import { ClubMark } from '@/components/club-mark';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { BrowseMember } from '@/types/domain';
@@ -127,7 +127,7 @@ function OfficialCard({ member, onOpen }: MemberCardProps) {
 
 function PersonCard({ member, onOpen }: MemberCardProps) {
   const { organizations } = useOrganizations();
-  const photo = photoUrlFor(member.photoPath);
+  const photo = usePhotoUrl(member.photoPath);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);
   // Every affiliation, as a mark. It was `affiliations[0]` with its name

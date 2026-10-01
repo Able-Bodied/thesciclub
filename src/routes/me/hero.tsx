@@ -1,5 +1,5 @@
 import type { OwnMember } from '@/lib/members';
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 
 /**
@@ -36,7 +36,7 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 export function MeHero({ member }: { member: OwnMember }) {
-  const photo = photoUrlFor(member.photoPath);
+  const photo = usePhotoUrl(member.photoPath);
   const [from, to] = gradientFor(member.id);
   const age = ageFrom(member.birthDate);
 

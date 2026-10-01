@@ -4,7 +4,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { describeThrown } from '@/lib/describe-error';
 import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import {
   DECLINABLE_DETAILS,
@@ -46,6 +46,9 @@ export default function ProfileDetailsPage() {
       setLoading(false);
     });
   }, [account.status]);
+
+  // Above the two early returns: a hook runs on every render or none.
+  const photo = usePhotoUrl(details?.photoPath ?? null);
 
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
   if (account.status !== 'member') return <Navigate to="/join" replace />;
@@ -152,7 +155,6 @@ export default function ProfileDetailsPage() {
   }
 
   const age = details ? ageFrom(details.birthDate) : null;
-  const photo = photoUrlFor(details?.photoPath ?? null);
 
   return (
     // A form, so Enter saves — the same as onboarding. Somebody who learns the

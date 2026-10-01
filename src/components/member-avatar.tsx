@@ -1,4 +1,4 @@
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 
@@ -29,7 +29,7 @@ export function MemberAvatar({
   photoAlt?: string | null | undefined;
   className?: string | undefined;
 }) {
-  const photo = photoUrlFor(photoPath);
+  const photo = usePhotoUrl(photoPath);
   const [from, to] = gradientFor(id);
 
   return (

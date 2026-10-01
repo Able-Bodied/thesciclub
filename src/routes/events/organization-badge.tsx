@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { shortCodeFor } from '@/routes/peers/member-card';
 import type { Organization } from '@/types/domain';
@@ -41,12 +41,13 @@ export function OrganizationBadge({
   className,
 }: OrganizationBadgeProps) {
   const [logoFailed, setLogoFailed] = useState(false);
+  // Above the early return: a hook runs on every render or none.
+  const logo = usePhotoUrl(organization?.logoPath);
 
   const name = organization?.name ?? hostName ?? null;
   if (!name) return null;
 
   const letters = organization?.shortCode ?? shortCodeFor(name);
-  const logo = photoUrlFor(organization?.logoPath);
   const showLogo = Boolean(logo) && !logoFailed;
 
   // In `em`, off the tile's own letters, so the tile grows with them. In pixels

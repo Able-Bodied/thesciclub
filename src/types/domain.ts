@@ -256,8 +256,8 @@ export interface BrowseMember {
   id: string;
   type: MemberType;
   displayName: string;
-  /** Path inside the public `photos` bucket, not a URL. Compose one with
-   *  `photoUrlFor()` so the project ref is never baked into the data. */
+  /** Path inside the `photos` bucket, not a URL. `usePhotoUrl()` signs one,
+   *  so the project ref is never baked into the data. */
   photoPath: string | null;
   photoAlt: string | null;
   avatarColor: string | null;
@@ -351,8 +351,8 @@ export interface Organization {
   /** Whether this organization can put numbers on the list. */
   canInvite: boolean;
   /**
-   * Path within the public `photos` bucket, or null to fall back to the
-   * short-code badge. Not a URL — `photoUrlFor()` composes one, so the data
+   * Path within the `photos` bucket, or null to fall back to the
+   * short-code badge. Not a URL — `usePhotoUrl()` signs one, so the data
    * stays portable between projects. See
    * supabase/migrations/20260911260000_organization_logos_to_storage.sql.
    */

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
 import { formatPhoneInput } from '@/lib/phone';
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { ClaimableProfile, OnboardingData } from '@/routes/onboarding/types';
 import { injuryDateOf } from '@/routes/onboarding/types';
@@ -446,7 +446,7 @@ export function ClaimStep({
   onAccept: () => void;
   onDecline: () => void;
 }) {
-  const photo = photoUrlFor(profile.photoPath);
+  const photo = usePhotoUrl(profile.photoPath);
   return (
     <>
       <Question>Is this you?</Question>

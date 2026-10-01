@@ -48,7 +48,7 @@ import { getSupabase } from '@/lib/supabase';
  * cost is bytes, not disclosure.
  */
 
-export const CHAT_BUCKET = 'chat';
+export const CHAT_BUCKET: SignedBucket = 'chat';
 export const MAX_ATTACHMENTS = 4;
 export const MAX_ATTACHMENT_EDGE = 1600;
 export const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
@@ -127,61 +127,139 @@ export async function deleteAttachments(paths: string[]): Promise<void> {
   }
 }
 
+/**
+ * The buckets read through signed URLs. `chat` from the start; `photos` —
+ * every member photograph, the seeded directory's and the organizations'
+ * logos — from HOME-PLAN.md step 6, part 2, through `usePhotoUrls` in
+ * src/lib/photos.ts. One cache for both, so there is one thing to keep right.
+ */
+export type SignedBucket = 'chat' | 'photos';
+
+/** Keyed by bucket and path: the same path in two buckets is two files. */
 const signed = new Map<string, { url: string; until: number }>();
+const cacheKey = (bucket: SignedBucket, path: string) => `${bucket}\n${path}`;
 
 /** For tests, and for a sign-out: nothing signed for one member serves the next. */
 export function resetAttachmentUrls(): void {
   signed.clear();
+  queued.clear();
+  inFlight.clear();
 }
 
-async function signUrls(paths: string[]): Promise<Map<string, string>> {
+/** What the cache already holds for these paths, unexpired. */
+function cachedUrls(bucket: SignedBucket, paths: readonly string[]): Map<string, string> {
   const now = Date.now();
-  const missing = paths.filter((path) => {
-    const hit = signed.get(path);
-    return !hit || hit.until <= now;
-  });
-  if (missing.length > 0) {
-    const { data } = await getSupabase()
-      .storage.from(CHAT_BUCKET)
-      .createSignedUrls(missing, SIGNED_FOR_SECONDS);
-    for (const row of data ?? []) {
-      // A path the policy refuses comes back with an error and no URL, and is
-      // simply not drawn — the same as a photograph that has been deleted.
-      if (row.signedUrl && row.path) {
-        signed.set(row.path, { url: row.signedUrl, until: now + CACHE_FOR_MS });
-      }
-    }
-  }
   const out = new Map<string, string>();
   for (const path of paths) {
-    const hit = signed.get(path);
-    if (hit && hit.until > Date.now()) out.set(path, hit.url);
+    const hit = signed.get(cacheKey(bucket, path));
+    if (hit && hit.until > now) out.set(path, hit.url);
   }
   return out;
 }
 
 /**
+ * Paths asked for in the same moment, signed in one request.
+ *
+ * The Peers deck draws twenty-odd faces and Home a dozen, each through its
+ * own component, and each component asks for its own path. Signing as they
+ * asked would be a request per face. Instead every path asked for before the
+ * next turn of the event loop joins one batch per bucket, and the batch is
+ * one `createSignedUrls` — the whole screen in one round trip.
+ */
+const queued = new Map<SignedBucket, { paths: Set<string>; done: Promise<void> }>();
+/** A path already being signed is waited on, not asked for twice. */
+const inFlight = new Map<string, Promise<void>>();
+
+function enqueue(bucket: SignedBucket, paths: readonly string[]): Promise<void> {
+  let batch = queued.get(bucket);
+  if (!batch) {
+    const fresh = { paths: new Set<string>(), done: Promise.resolve() };
+    fresh.done = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        queued.delete(bucket);
+        void sign(bucket, [...fresh.paths]).finally(resolve);
+      }, 0);
+    });
+    queued.set(bucket, fresh);
+    batch = fresh;
+  }
+  for (const path of paths) {
+    batch.paths.add(path);
+    inFlight.set(cacheKey(bucket, path), batch.done);
+  }
+  return batch.done;
+}
+
+async function sign(bucket: SignedBucket, paths: string[]): Promise<void> {
+  const now = Date.now();
+  try {
+    const { data } = await getSupabase()
+      .storage.from(bucket)
+      .createSignedUrls(paths, SIGNED_FOR_SECONDS);
+    for (const row of data ?? []) {
+      // A path the policy refuses comes back with an error and no URL, and is
+      // simply not drawn — the same as a photograph that has been deleted.
+      if (row.signedUrl && row.path) {
+        signed.set(cacheKey(bucket, row.path), { url: row.signedUrl, until: now + CACHE_FOR_MS });
+      }
+    }
+  } catch {
+    // Offline, or the request failed: nothing is drawn but the initials or
+    // the tile, which is what a face without a photograph looks like anyway.
+    // The next screen to ask tries again.
+  } finally {
+    for (const path of paths) inFlight.delete(cacheKey(bucket, path));
+  }
+}
+
+async function signUrls(bucket: SignedBucket, paths: string[]): Promise<Map<string, string>> {
+  const now = Date.now();
+  const waits = new Set<Promise<void>>();
+  const missing: string[] = [];
+  for (const path of paths) {
+    const hit = signed.get(cacheKey(bucket, path));
+    if (hit && hit.until > now) continue;
+    const pending = inFlight.get(cacheKey(bucket, path));
+    if (pending) waits.add(pending);
+    else missing.push(path);
+  }
+  if (missing.length > 0) waits.add(enqueue(bucket, missing));
+  await Promise.all(waits);
+  return cachedUrls(bucket, paths);
+}
+
+const NONE = new Map<string, string>();
+
+/**
  * Signed URLs for the paths given, as they arrive. A path with no URL yet — or
  * ever, if the policy refuses it — is absent from the map.
+ *
+ * What the cache already holds is there on the first render, so a face seen
+ * a moment ago does not blink to its initials and back on the way to a
+ * screen it was signed for.
  */
-export function useAttachmentUrls(paths: readonly string[]): Map<string, string> {
+export function useAttachmentUrls(
+  paths: readonly string[],
+  bucket: SignedBucket = CHAT_BUCKET,
+): Map<string, string> {
   // Keyed on the paths themselves: the array is a new identity every render.
   const key = paths.join('\n');
-  const [urls, setUrls] = useState<Map<string, string>>(() => new Map());
+  const [arrived, setArrived] = useState<{ key: string; urls: Map<string, string> }>(() => ({
+    key,
+    urls: key ? cachedUrls(bucket, key.split('\n')) : NONE,
+  }));
 
   useEffect(() => {
-    if (!key) {
-      setUrls(new Map());
-      return;
-    }
+    if (!key) return;
     let live = true;
-    void signUrls(key.split('\n')).then((map) => {
-      if (live) setUrls(map);
+    void signUrls(bucket, key.split('\n')).then((urls) => {
+      if (live) setArrived({ key, urls });
     });
     return () => {
       live = false;
     };
-  }, [key]);
+  }, [key, bucket]);
 
-  return urls;
+  if (!key) return NONE;
+  return arrived.key === key ? arrived.urls : cachedUrls(bucket, key.split('\n'));
 }

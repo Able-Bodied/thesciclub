@@ -9,7 +9,7 @@ import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
-import { photoUrlFor } from '@/lib/photos';
+import { usePhotoUrl } from '@/lib/photos';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
@@ -210,6 +210,7 @@ export default function MemberDetailPage() {
   // branch below this either renders the profile or does not need the list.
   const { organizations } = useOrganizations();
   const account = useAccount();
+  const photo = usePhotoUrl(member?.photoPath);
 
   if (loading) {
     return <Centered role="status">Loading…</Centered>;
@@ -236,7 +237,6 @@ export default function MemberDetailPage() {
     );
 
   const [from, to] = gradientFor(member.id);
-  const photo = photoUrlFor(member.photoPath);
   const verifier = member.affiliations[0] ?? null;
   const injury = injuryLine(member);
   const canMessage = account.userId !== null && account.userId !== member.id;

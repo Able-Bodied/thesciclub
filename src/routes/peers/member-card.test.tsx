@@ -7,6 +7,14 @@ const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
 // Partial: `organizationByName` is pure and the card should be running the
 // real one. Without any mock the hook reaches for Supabase and throws inside
 // the render, which would leave the badge silently on its fallback.
+// The logo is drawn through a signed URL since HOME-PLAN.md step 6. Stubbed
+// here, as every screen test stubs the hooks its screen calls: unstubbed, the
+// signing request is refused by the network guard, storage-js turns that into
+// an ordinary error, and the badge quietly draws its short code instead.
+vi.mock('@/lib/photos', () => ({
+  usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed.test/${path}` : null),
+}));
+
 vi.mock('@/lib/organizations', async (importOriginal) => ({
   ...(await importOriginal<typeof Organizations>()),
   useOrganizations: () => ({ organizations: orgs.list, loading: false }),
@@ -216,7 +224,7 @@ describe('the organization on a card', () => {
     render(
       <MemberCard member={makeMember({ affiliations: ['NorCal SCI'] })} onOpen={() => undefined} />,
     );
-    const logo = document.querySelector('img[src*="organizations/ncs.webp"]');
+    const logo = document.querySelector('img[src="https://signed.test/organizations/ncs.webp"]');
     expect(logo).not.toBeNull();
     expect(screen.getByText('NorCal SCI')).toHaveClass('sr-only');
   });

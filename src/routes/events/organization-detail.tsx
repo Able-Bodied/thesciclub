@@ -1,15 +1,14 @@
 import { ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { MemberAvatar } from '@/components/member-avatar';
 import { useEvents } from '@/lib/events';
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
-import { photoUrlFor } from '@/lib/photos';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 
 /**
  * One organization, from `orgPage()` in the mock: who they are, the members who
@@ -172,8 +171,6 @@ export default function OrganizationDetailPage() {
               Members here
             </h2>
             {affiliated.map((member) => {
-              const [from, to] = gradientFor(member.id);
-              const photo = photoUrlFor(member.photoPath);
               return (
                 <button
                   key={member.id}
@@ -183,20 +180,14 @@ export default function OrganizationDetailPage() {
                   }}
                   className="flex w-full items-center gap-3 border-line border-b py-[13px] text-left last:border-b-0"
                 >
-                  <span
-                    className="relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] font-extrabold font-head text-[0.8125rem] text-white"
-                    style={{ background: `linear-gradient(140deg, ${from}, ${to})` }}
-                  >
-                    {photo ? (
-                      <img
-                        src={photo}
-                        alt={member.photoAlt ?? ''}
-                        className="absolute inset-0 h-full w-full object-cover object-[50%_32%]"
-                      />
-                    ) : (
-                      initialsOf(member.displayName)
-                    )}
-                  </span>
+                  {/* The same tile as everywhere else a member appears beside
+                      their name, which signs its own photograph. */}
+                  <MemberAvatar
+                    id={member.id}
+                    displayName={member.displayName}
+                    photoPath={member.photoPath}
+                    photoAlt={member.photoAlt}
+                  />
                   <span className="min-w-0 flex-1">
                     <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
                       {member.displayName}
