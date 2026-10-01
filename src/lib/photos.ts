@@ -26,10 +26,13 @@ import { type SignedBucket, useAttachmentUrls } from '@/lib/chat/attachments';
  * image on the way in. A path storage refuses never arrives, and looks the
  * same.
  *
- * The client goes out first, while the bucket is still public: a signed URL
- * to a public file is still a URL, but a public URL to a private file is
- * every photograph broken at once. The migration that closes the bucket
- * comes after, once every face has been seen drawing on production.
+ * The client went out first (fd5d69e), while the bucket was still public: a
+ * signed URL to a public file is still a URL, but a public URL to a private
+ * file is every photograph broken at once. 20261001000000 closed the bucket
+ * after the owner had seen every face drawing on production. Who may be
+ * signed which file is that migration's select policy: a member, anything;
+ * any signed-in account, the logos and its own folder; somebody mid-signup,
+ * the face on their claim card.
  */
 export const PHOTOS_BUCKET: SignedBucket = 'photos';
 
