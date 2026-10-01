@@ -93,7 +93,7 @@ Five surfaces are real, and everything else is deliberately not yet.
 
 | Surface | State | Notes |
 | --- | --- | --- |
-| **Home** | Real | Where the app opens (2026-09-30). A second way in to rooms, events and members that already exist, not a new kind of content: recent topics and photographs from the open rooms, upcoming events with their RSVPs, and members worth meeting, under Everything · Topics · Photos · Events · People, narrowed by room and place. Asking a question there starts a topic in a room; sharing a photograph starts a topic whose first post has it; a comment is a reply on the topic page. Likes, with the names shown to every member who can read the room. Built in steps, 2026-09-29 to 2026-09-30. No anonymous asking, no search across it, no notification centre, no notification for a like, no comments sheet. |
+| **Home** | Real | Where the app opens (2026-09-30). A second way in to rooms, events and members that already exist, not a new kind of content: recent topics and photographs from the open rooms, upcoming events with their RSVPs, and members worth meeting, under Everything · Topics · Photos · Events · People, narrowed by room and place. Asking a question there starts a topic in a room; sharing a photograph starts a topic whose first post has it; a comment is a reply on the topic page. Likes, with the names shown to every member who can read the room. Built in eight steps, 2026-09-29 to 2026-10-01. No anonymous asking, no search across it, no notification centre, no notification for a like, no comments sheet. |
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. |
 | **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
@@ -120,7 +120,8 @@ type at all: a question is a topic in a room, a photo post is a topic whose firs
 photographs, a comment is a reply, and a suggestion is a member already in Peers. So reporting,
 removal, notifications, mutes and the administrators' tools reach everything on Home without a line
 changed. The one new thing is a like, which is a member's name against a post and holds no words.
-It was built and released in five steps, and the app opens on it from 2026-09-30.
+It was built and released in eight steps from 2026-09-29 to 2026-10-01, and the app opens on it
+from 2026-09-30.
 
 **Topic rooms were on this list until 2026-09-18** and the owner has decided to build them. The
 objection that kept them here has not stopped being true, so it is recorded rather than deleted:
