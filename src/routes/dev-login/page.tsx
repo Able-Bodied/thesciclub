@@ -27,7 +27,8 @@ export default function DevLoginPage() {
 
   const phone = params.get('phone') ?? '';
   const code = params.get('code') ?? '';
-  const next = params.get('next') ?? '/peers';
+  // Where the app opens, as `/` does, unless told otherwise.
+  const next = params.get('next') ?? '/home';
 
   const run = useCallback(async () => {
     if (!phone || !code) {

@@ -21,6 +21,6 @@ describe('NotFoundPage', () => {
         <NotFoundPage />
       </MemoryRouter>,
     );
-    expect(screen.getByRole('link', { name: /go to peers/i })).toHaveAttribute('href', '/peers');
+    expect(screen.getByRole('link', { name: 'Go to Home' })).toHaveAttribute('href', '/home');
   });
 });

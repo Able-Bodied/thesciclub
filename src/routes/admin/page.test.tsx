@@ -161,7 +161,7 @@ function renderAdmin() {
     <MemoryRouter initialEntries={['/admin']}>
       <Routes>
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/peers" element={<p>The deck</p>} />
+        <Route path="/home" element={<p>Home</p>} />
         <Route path="/join" element={<p>Welcome screen</p>} />
       </Routes>
     </MemoryRouter>,
@@ -209,7 +209,7 @@ describe('AdminPage', () => {
   it('sends an ordinary member back to the club rather than showing an empty tool', async () => {
     account.current = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Test' };
     renderAdmin();
-    expect(await screen.findByText('The deck')).toBeInTheDocument();
+    expect(await screen.findByText('Home')).toBeInTheDocument();
   });
 
   it('sends a signed-out visitor to the welcome screen', async () => {

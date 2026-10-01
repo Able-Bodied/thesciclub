@@ -32,10 +32,10 @@ export default function NotFoundPage() {
           Everything in the club is reachable from the tabs below.
         </p>
         <Link
-          to="/peers"
+          to="/home"
           className="mt-2 inline-flex min-h-[44px] items-center rounded-[13px] bg-navy px-5 font-bold font-head text-[0.9375rem] text-white"
         >
-          Go to Peers
+          Go to Home
         </Link>
       </div>
     </div>

@@ -98,7 +98,7 @@ export default function AdminPage() {
   if (account.status !== 'member') return <Navigate to="/join" replace />;
   // Not the permission check — the database refuses either way. This is so an
   // ordinary member sees the club rather than an empty admin screen.
-  if (!account.isAdmin) return <Navigate to="/peers" replace />;
+  if (!account.isAdmin) return <Navigate to="/home" replace />;
 
   /**
    * Takes an administrator from a report to the row where they can act on the
