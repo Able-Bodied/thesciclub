@@ -41,23 +41,20 @@ migration.
 
 **What is open, in order of urgency**, each with its own section:
 
-1. **The live project still accepts the published test sign-in codes, and
-   one of those numbers is the club's only administrator.** "Security —
-   open, do these first". Unchanged since 2026-09-29; the owner has said
-   they will take it with Twilio. Raise it at the start of every session.
-2. **Twilio Verify**, so real members stop sharing one fixed code.
-   "Twilio — the owner's next job".
-3. **"Start fresh" on a claim still carries the seeded profile's photograph
+1. **Twilio approval, in progress** — the owner is working with Twilio
+   (2026-10-01). Once texts arrive, the sign-in clean-up in "Twilio — the
+   owner's next job" follows. Not a session's job until then.
+2. **"Start fresh" on a claim still carries the seeded profile's photograph
    and bio** into a profile that chose not to claim it, though the screen
    promises the opposite. A real bug, small, needing a migration. "Still
    open" has the detail; the owner has not yet asked for it.
-4. **Things only a phone can check**: an hour with VoiceOver; the
+3. **Things only a phone can check**: an hour with VoiceOver; the
    notifications test; signed photographs on an iPhone (every face is a
    signed URL since 2026-10-01 — the owner saw production draw in a
    browser, not on a phone). "Still open".
-5. **The advisor's remaining findings** — functions without a fixed
-   `search_path`, definer views to confirm, `before_user_created` callable
-   by `anon`. "Security — open", item 4.
+4. **The advisor's remaining findings** — `before_user_created` callable
+   by `anon`, functions without a fixed `search_path`, definer views to
+   confirm. "Security — the advisor's findings", items 1 and 2.
 
 **What landed, by day**, newest first. Each has a section:
 
@@ -84,41 +81,15 @@ before the client that needed them, from a dry run shown first — except step
 6's closing migration, which went *after* the signing client, because the old
 client against a closed bucket would have broken every face at once.
 
-## Security — open, do these first
+## Security — the advisor's findings
 
 Found 2026-09-29 by running Supabase's own advisor against the live project
 (`pnpm exec supabase db advisors --linked --type security --level info`) and
-reading the live auth settings through the Management API. **This repository
-is public**, which is what turns the first item from careless into urgent.
+reading the live auth settings through the Management API. The sign-in
+codes it also found are waiting on Twilio, the owner's decision of
+2026-10-01; see "Twilio — the owner's next job".
 
-**1. The live project accepts the local test numbers, and one is the
-administrator.** `sms_test_otp` on the hosted project — not only in
-`config.toml` — holds the three test numbers from Environment below, with
-their published codes, valid until 2027-01-01. The first of them is the club's
-**only administrator** on the live database (no real member's account has
-`is_admin`). So anyone who reads this repo can sign in to production as the
-administrator — every member's phone number, the reports, Remove — with no
-SMS. Checked: the admin account's open sessions on 2026-09-29 all came from
-the owner's machine (the screenshot runs); the auth audit table is empty on
-the hosted project, so earlier sign-ins cannot be ruled out, and nothing
-suggests misuse. **The owner has not yet said go.** The fix, in order:
-   - Now: change that number's code to a private one (Authentication → Sign
-     In / Providers → Phone → Test phone numbers, or the Management API's
-     `PATCH /v1/projects/{ref}/config/auth` with `sms_test_otp`). A session
-     must ask the owner first — it is a live settings change.
-   - Then: make the owner's own real account an administrator, and remove all
-     three test numbers from the live project. `pnpm shoot` then runs against
-     the local stack, never production.
-
-**2. Real members sign in with a fixed code.** The same live list holds nine
-real people's numbers with one shared fixed code; four are active members.
-Anyone who knows one of their numbers can sign in as them. It exists because
-**SMS does not work in production**: the club is not approved by Twilio, and
-the Twilio credentials saved in Supabase are rejected by Twilio itself (401 on
-every read). Remove these once texts arrive — see "Twilio" below. Until then,
-a per-person private code is better than one shared code.
-
-**3. Anybody can ask whether a number is on the invite list.**
+**1. Anybody can ask whether a number is on the invite list.**
 `before_user_created(event jsonb)` — written as an auth hook — is executable by
 `anon` and answers through `/rest/v1/rpc/`: "not on the club's list" for a
 number that is not, `{}` for one that is. Confirmed on the live API with a
@@ -131,7 +102,7 @@ a migration: revoke execute from `public, anon, authenticated` and grant it to
 `supabase_auth_admin` only (Supabase's documented pattern for auth hooks).
 Then decide with the owner whether to switch the hook on.
 
-**4. Also from the advisor — a migration, not yet written:**
+**2. Also from the advisor — a migration, not yet written:**
    - Callable by `anon` and needing not to be: `active_strike_count` (answers
      any member's strike count — strikes are meant to be private even between
      members, and `authenticated` can call it too), `live_invite_count`,
@@ -141,7 +112,7 @@ Then decide with the owner whether to switch the hook on.
      as RPC, revoke anyway). Check where each is used — a policy or an invoker
      view evaluated as the caller needs execute — before revoking from
      `authenticated`.
-   - `has_active_invite` is the same oracle as item 3 for any signed-in
+   - `has_active_invite` is the same oracle as item 1 for any signed-in
      account, and since sign-up is not gated, any stranger with a phone can
      become one.
    - Nine functions with no fixed `search_path` (`touch_updated_at`,
@@ -166,6 +137,10 @@ through the storage API on 2026-09-30.
 
 ## Twilio — the owner's next job
 
+**In progress**: the owner is working with Twilio on approval (2026-10-01).
+Until then SMS does not reach anybody in production, and real members sign
+in with codes set on the live project's test-number list.
+
 The club only ever texts a sign-in code; notifications are web push. The
 recommendation given to the owner on 2026-09-29, from Twilio's own docs:
 **switch Supabase's SMS provider to Twilio Verify**, which "is exempt from A2P
@@ -176,8 +151,15 @@ create a Verify service (its name appears in the text — something neutral like
 "Club sign-in" keeps "SCI" off a lock screen); copy the Account SID, a fresh
 Auth Token and the Verify Service SID (`VA…`); set the provider to Twilio
 Verify in Supabase (Authentication → Sign In / Providers → Phone, or the
-Management API's `sms_twilio_verify_*` fields). Test on one real phone, then
-clear the fixed codes (security items 1 and 2).
+Management API's `sms_twilio_verify_*` fields). Test on one real phone.
+
+**Once texts arrive, clear the test-number list on the live project**
+(Authentication → Sign In / Providers → Phone → Test phone numbers): the
+real members' numbers and the three local test numbers in Environment. The
+club's only administrator on the live database is the first of those test
+numbers, so make the owner's own real account an administrator before
+removing it. From then on `pnpm shoot` runs against the local stack only.
+A live settings change, so a session asks the owner first.
 
 The alternative — A2P 10DLC on the club's own number — needs the
 organization's legal name and EIN, a public HTTPS privacy policy and terms
@@ -1654,8 +1636,8 @@ files, most recently by reporting a restore as broken when it had worked.
 - **Never run `pnpm exec supabase config push`** — `config.toml` holds
   placeholder local Twilio credentials and would overwrite the hosted project's
   real ones. `db push` is fine and is how the migrations above got there.
-- Test numbers (fixed OTPs, no SMS) — **for the local stack only; the live
-  project must not accept them, and today it does** (see "Security — open"): `11111111111`/`111111`,
+- Test numbers (fixed OTPs, no SMS) — for the local stack. The live project
+  accepts them too until the Twilio clean-up (see "Twilio"): `11111111111`/`111111`,
   `12222222222`/`222222`, `13333333333`/`333333`. `11111111111` is **Admin**.
 - Dev server: `pnpm dev` (5173), or
   `./node_modules/.bin/vite --port 5180 --strictPort` to leave 5173 free for
@@ -2797,7 +2779,7 @@ from a plan since deleted (see "What Home is"). The rule under it still stands f
 mock draws: CONTEXT.md's "Deliberately deferred" list is not built without
 the owner asking.
 
-## What this session changed, in one place
+## What the 2026-09-17 session changed, in one place
 
 For a new session, so the diff does not have to be read:
 
@@ -2814,7 +2796,7 @@ For a new session, so the diff does not have to be read:
 - **Everywhere**: buttons have hover states; boxes that hold text are sized in
   `em` off that text.
 
-## Four traps this session walked into
+## Four traps the 2026-09-17 session walked into
 
 Each cost real time, and each is the kind that repeats:
 
@@ -3813,8 +3795,8 @@ confusing half of that bug.
 
 ## Real people have joined
 
-**Since 2026-09-29 this section is wrong about Twilio, and "Security — open"
-and "Twilio — the owner's next job" at the top of this file are right.** SMS
+**Since 2026-09-29 this section is wrong about Twilio, and "Twilio — the
+owner's next job" at the top of this file is right.** SMS
 does not work in production: the club is not approved by Twilio and the
 credentials saved in Supabase are rejected (401). Real members sign in with a
 fixed code from the live project's test-number list — nine real numbers, four
@@ -3841,8 +3823,7 @@ requires an invite. That is tested, including against the live project.
 2. **No SMS will arrive** until Twilio Verify is set up (see "Twilio — the
    owner's next job"). Until then a new number signs in only once it is
    added to the live project's test-number list with a code — a live
-   settings change, the owner's to make, and a private code per person is
-   better than the shared one.
+   settings change, the owner's to make.
 
 Signing somebody up also puts their phone number and injury details in a real
 database. Worth their explicit yes rather than a surprise.
