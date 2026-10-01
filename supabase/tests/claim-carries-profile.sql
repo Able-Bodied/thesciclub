@@ -10,6 +10,11 @@
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
 --     -f - < supabase/tests/claim-carries-profile.sql
 --
+-- Steps 9 to 12 (20261002000000): "Start fresh" retires the seed and carries
+-- none of it. Before that migration the insert in step 9 is refused, as the
+-- column does not exist; the old behaviour, copying regardless, is what
+-- steps 1 to 6 still show for an insert that does not say.
+--
 -- Rolls back. Runs as the superuser on purpose: this exercises a trigger and
 -- a check constraint, not a policy, and the insert has to bypass the members
 -- insert policy to happen at all without a real auth user behind it.
@@ -120,5 +125,56 @@ select photo_path is not null as has_photo,
 \echo ''
 \echo '== 8. and the directory is untouched (expect 23) =='
 select count(*) as seeded from public.members where is_seed;
+
+rollback;
+
+-- ---------------------------------------------------------------------------
+begin;
+
+-- The same invite naming Ajay, and the person signing up says it is not
+-- them: "Start fresh". Onboarding sends start_fresh and only what the
+-- wizard collected after it — their own name, a birthday, a place.
+insert into public.invites (phone_raw, invited_by_organization_id, seed_member_id)
+select '4085551400', o.id, m.id
+from public.organizations o, public.members m
+where o.short_code = 'NCS' and m.display_name = 'Ajay' and m.is_seed;
+
+insert into public.members (id, phone, display_name, birth_date, level_range, city, state,
+                            start_fresh)
+values ('aaaaaaaa-0000-0000-0000-00000000000a', '14085551400', 'Sam', '1992-05-05',
+        'Not sure yet', 'Fresno', 'CA', true);
+
+\echo ''
+\echo '== 9. starting fresh carries nothing of the seed =='
+\echo '   expect: Sam | Fresno | f | f | f | 0 | 0 | 0 | Not sure yet | (null) | (null)'
+select display_name, city,
+       photo_path is not null as has_photo, bio is not null as has_bio,
+       detail is not null as has_detail,
+       coalesce(array_length(interests, 1), 0) as interests,
+       coalesce(array_length(topics, 1), 0) as topics,
+       coalesce(array_length(affiliations, 1), 0) as affiliations,
+       level_range, exact_level, injury_date
+  from public.members where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+
+\echo ''
+\echo '== 10. the seed is retired and the invite consumed all the same =='
+\echo '   expect: 0 | consumed | t'
+select (select count(*) from public.members where display_name = 'Ajay' and is_seed) as seeded_ajay,
+       i.status, m.invite_id = i.id as linked
+  from public.invites i
+  join public.members m on m.id = 'aaaaaaaa-0000-0000-0000-00000000000a'
+ where i.phone = '14085551400';
+
+\echo ''
+\echo '== 11. the instruction is not stored (expect f) =='
+select start_fresh from public.members where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+
+\echo ''
+\echo '== 12. nor can it be set afterwards =='
+\echo '   expect: ERROR ... violates check constraint "members_start_fresh_not_stored"'
+savepoint set_after;
+update public.members set start_fresh = true
+ where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+rollback to savepoint set_after;
 
 rollback;
