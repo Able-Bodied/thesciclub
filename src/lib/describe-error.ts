@@ -98,16 +98,14 @@ const ABORTED = /^AbortError\b|user aborted a request|signal is aborted/i;
  * no code, which is the trap HANDOFF.md names: a fixture without a code gets
  * phrase-sorting and passes while the real thing does not. The bodies here
  * were provoked on the local stack and the hosted project on 2026-09-29.
+ *
+ * Each stands alone, without the caller's "The photograph was not saved."
+ * in front: the owner found the two together too long on 2026-10-01, and
+ * "too large" or "can't be used" already says nothing was kept.
  */
 const STORAGE: [RegExp, string][] = [
-  [
-    /mime type .* is not supported/i,
-    'That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
-  ],
-  [
-    /exceeded the maximum allowed size|too large/i,
-    'That photograph is still too large after shrinking. Try a smaller one.',
-  ],
+  [/mime type .* is not supported/i, "That kind of file can't be used. Try a JPEG or PNG."],
+  [/exceeded the maximum allowed size|too large/i, 'That photo is too large. Try a smaller one.'],
 ];
 
 /** GoTrue's codes and, for the versions that send only a message, its wording. */
@@ -156,7 +154,7 @@ export function describeError(error: Failure, context?: string | ErrorContext): 
   // otherwise fall to `unknown` below. See STORAGE.
   if (isStorage(error)) {
     for (const [pattern, sentence] of STORAGE) {
-      if (pattern.test(message)) return lead(ctx.attempt, sentence);
+      if (pattern.test(message)) return sentence;
     }
     if (RLS.test(message)) return lead(ctx.attempt, ctx.refused ?? 'You cannot do that here.');
     return unknown(error, ctx);
@@ -190,7 +188,7 @@ export function describeError(error: Failure, context?: string | ErrorContext): 
   if (code) return unknown(error, ctx);
 
   for (const [pattern, sentence] of STORAGE) {
-    if (pattern.test(message)) return lead(ctx.attempt, sentence);
+    if (pattern.test(message)) return sentence;
   }
 
   // No code at all. The database's wording is still recognisable, and a test

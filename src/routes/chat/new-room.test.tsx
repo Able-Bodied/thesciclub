@@ -301,7 +301,7 @@ describe('photographs on the first post', () => {
   });
 
   it('says the same when the upload itself fails, with nothing to take back', async () => {
-    db.uploadFailure = 'That photograph is still too large after shrinking. Try a smaller one.';
+    db.uploadFailure = 'That photo is too large. Try a smaller one.';
     renderPage();
     const user = await fillIn();
     await user.upload(fileInput(), photo('huge.jpg'));

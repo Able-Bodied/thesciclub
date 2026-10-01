@@ -71,8 +71,7 @@ describe('submitOnboarding and the photograph', () => {
     expect(result).toEqual({
       ok: false,
       photoRefused: true,
-      error:
-        'The photograph was not added. That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
+      error: "That kind of file can't be used. Try a JPEG or PNG.",
     });
     expect(db.inserts).toEqual([]);
   });
@@ -86,7 +85,7 @@ describe('submitOnboarding and the photograph', () => {
     const result = await submitOnboarding(data({ photoFile: photo() }));
 
     expect(result.photoRefused).toBe(true);
-    expect(result.error).toMatch(/too large after shrinking/);
+    expect(result.error).toMatch(/^That photo is too large\. Try a smaller one\.$/);
     expect(db.inserts).toEqual([]);
   });
 

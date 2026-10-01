@@ -265,9 +265,7 @@ describe('the photo bucket', () => {
         },
         'The photograph did not upload.',
       ),
-    ).toBe(
-      'The photograph did not upload. That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
-    );
+    ).toBe("That kind of file can't be used. Try a JPEG or PNG.");
   });
 
   it('a file over the bucket limit', () => {
@@ -277,7 +275,7 @@ describe('the photo bucket', () => {
         code: 'EntityTooLarge',
         message: 'The object exceeded the maximum allowed size',
       }),
-    ).toMatch(/too large after shrinking/);
+    ).toMatch(/^That photo is too large\. Try a smaller one\.$/);
   });
 
   it('never the generic sentence for a storage code it does not know by name', () => {
@@ -288,13 +286,13 @@ describe('the photo bucket', () => {
         code: 'SomethingNew',
         message: 'The object exceeded the maximum allowed size',
       }),
-    ).toMatch(/too large after shrinking/);
+    ).toMatch(/^That photo is too large\. Try a smaller one\.$/);
   });
 
   it('an older storage-js, with no code at all', () => {
     expect(
       describeError({ name: 'StorageApiError', message: 'mime type text/plain is not supported' }),
-    ).toMatch(/not a kind of photograph/);
+    ).toMatch(/^That kind of file can't be used\./);
   });
 
   it('a policy on the object row', () => {

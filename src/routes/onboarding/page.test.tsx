@@ -472,8 +472,7 @@ describe('a photograph the club cannot hold', () => {
   const REFUSED = {
     ok: false,
     photoRefused: true,
-    error:
-      'The photograph was not added. That file is not a kind of photograph the club can hold. Try a JPEG or a PNG.',
+    error: "That kind of file can't be used. Try a JPEG or PNG.",
   };
 
   beforeEach(() => {
