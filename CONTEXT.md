@@ -164,6 +164,14 @@ catheter preferences is a scraping target and a training-data donation. Member p
 `noindex`, and the API requires a session. `browse_members` is the single projection through which
 one member is visible to another, and it does not select `phone` or `birth_date` at all.
 
+Photographs are behind sign-in too. Until 2026-10-01 they were not: the photos bucket was public,
+and a link copied out of the app opened a member's face for anyone, for ever. The owner chose to
+close it. Every face and logo is now drawn through a signed URL that lasts an hour, asked for under
+the reader's own session, and storage signs only what the reader may see: a member sees every
+photograph; anybody signed in sees the organizations' logos, which are public on their own sites
+anyway, and their own upload; somebody part-way through joining sees the face on the profile they
+may claim. Nobody signed out sees any of them.
+
 ## How injury is recorded
 
 **Level, completeness, and date of injury.** Not a disability type, not a duration bucket.
