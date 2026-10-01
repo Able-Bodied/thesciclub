@@ -30,8 +30,8 @@
 -- told the name of a function. `pnpm check-chat-photo-policy` is that
 -- bucket's delete side, as check-photo-policy is this one's.
 --
--- Step 8 is the bucket's own limits (20260930040000): 2MB and three image
--- types. Storage enforces those, not Postgres, so SQL can only read the row
+-- Step 8 is the bucket's own settings: private since 20261001000000, and
+-- 2MB and three image types since 20260930040000. Storage enforces those, not Postgres, so SQL can only read the row
 -- back; `pnpm check-photo-policy` has an over-size and a wrong-type upload
 -- refused through the API.
 --
@@ -164,10 +164,10 @@ rollback to savepoint anon_writes;
 set local role postgres;
 
 \echo ''
-\echo '== 8. the photos bucket takes 2MB and three image types =='
-\echo '   expect: postgres | t | 2097152 | {image/webp,image/jpeg,image/png}'
-\echo '   Public until step 6, part 2 says otherwise. Before 20260930040000 the'
-\echo '   last two were empty: no limit and every type.'
+\echo '== 8. the photos bucket is private, and takes 2MB and three image types =='
+\echo '   expect: postgres | f | 2097152 | {image/webp,image/jpeg,image/png}'
+\echo '   Public until 20261001000000; who reads it now is photos-bucket-reads.sql.'
+\echo '   Before 20260930040000 the last two were empty: no limit and every type.'
 select current_user, public, file_size_limit, allowed_mime_types::text
   from storage.buckets
  where id = 'photos';
