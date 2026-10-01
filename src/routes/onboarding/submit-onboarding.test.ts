@@ -98,6 +98,15 @@ describe('submitOnboarding and the photograph', () => {
     expect(db.inserts[0]?.photo_path).toBe('u1/profile.heic');
   });
 
+  // Read by the claim trigger: true retires a claimed seed without copying it
+  // (20261002000000). An insert that leaves it out gets the old behaviour.
+  it('carries "Start fresh" to the insert', async () => {
+    await submitOnboarding(data({ startFresh: true }));
+    await submitOnboarding(data());
+
+    expect(db.inserts.map((row) => row.start_fresh)).toEqual([true, false]);
+  });
+
   it('uploads nothing without a photograph', async () => {
     const result = await submitOnboarding(data());
 

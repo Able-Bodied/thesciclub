@@ -36,6 +36,13 @@ export interface OnboardingData {
    * once, so a decline is another answer to carry to the insert.
    */
   declined: string[];
+  /**
+   * "Start fresh" was pressed on a claimed seeded profile. Sent with the
+   * insert so the claim trigger retires the seed without copying any of it
+   * into the new row — see 20261002000000. Until then the trigger could not
+   * tell the two buttons apart and copied either way.
+   */
+  startFresh: boolean;
 }
 
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
@@ -54,6 +61,7 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   photoFile: null,
   photoPreviewUrl: null,
   declined: [],
+  startFresh: false,
 };
 
 /**

@@ -411,8 +411,11 @@ export default function OnboardingPage() {
             setStep('birthday');
           }}
           // Declining starts at the name and carries nothing across: the
-          // pre-fill only happens on accept, so there is nothing to undo.
+          // pre-fill only happens on accept, and `startFresh` tells the claim
+          // trigger not to copy the rest of the seed. There is no way back
+          // to this step, so the choice cannot be changed after it.
           onDecline={() => {
+            set({ startFresh: true });
             setStep('name');
           }}
         />

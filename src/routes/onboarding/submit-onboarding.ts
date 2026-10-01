@@ -96,6 +96,9 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     // birthday here (members_declined_excludes_required) and neither can be
     // declined in the flow, so nothing filters them out on the way.
     declined: data.declined,
+    // "Start fresh" on a claim: the trigger retires the seeded profile and
+    // copies none of it. Read and cleared there, never stored.
+    start_fresh: data.startFresh,
   });
 
   // The 18+ trigger and the name check are the two refusals a person can

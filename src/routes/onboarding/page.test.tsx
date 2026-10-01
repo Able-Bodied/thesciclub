@@ -615,6 +615,7 @@ describe('claiming a seeded profile', () => {
     await waitFor(() => {
       expect(calls.submitted?.displayName).toBe('Ajay');
     });
+    expect(calls.submitted?.startFresh).toBe(false);
   });
 
   it('declines back to the name, carrying nothing across', async () => {
@@ -629,6 +630,36 @@ describe('claiming a seeded profile', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Start fresh' }));
     expect(await screen.findByText(/name/i)).toBeInTheDocument();
     expect(screen.queryByDisplayValue('Ajay')).toBeNull();
+  });
+
+  // The fine print says starting fresh removes the old profile. The trigger
+  // copied it into the new row anyway until the insert said which button was
+  // pressed (20261002000000), so the screen has to hand that on.
+  it('tells the insert they started fresh, so none of the seed is copied', async () => {
+    calls.invited = true;
+    calls.claimableId = ajay.id;
+    calls.claimable = ajay;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Is this you?');
+    await userEvent.click(screen.getByRole('button', { name: 'Start fresh' }));
+
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Sam');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const input = await waitFor(() => {
+      const el = document.querySelector('#birthday');
+      if (!(el instanceof HTMLInputElement)) throw new Error('no birthday input');
+      return el;
+    });
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+
+    await waitFor(() => {
+      expect(calls.submitted?.displayName).toBe('Sam');
+    });
+    expect(calls.submitted?.startFresh).toBe(true);
   });
 
   // An invite with no claim on it must not stop to ask.
