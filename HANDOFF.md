@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-01.
+Last updated 2026-10-01, for the next session.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -21,83 +21,68 @@ Every `pnpm` and `supabase` command runs from inside `thesciclub`.
 
 ---
 
-# Start here — 2026-09-29
+# Start here — 2026-10-01
 
-Three things happened on 2026-09-28/29, in this order of urgency:
+**Home is built and live, and the plan that built it is gone.** The owner
+asked for Home on 2026-09-29; it went out in eight steps over three days, each
+reviewed and pushed at the owner's word, and `HOME-PLAN.md` was deleted on
+2026-10-01 once "What Home is" (below, near the end) held everything in it
+that stays true. `git show fe96183:HOME-PLAN.md` reads the plan as it last
+stood; the sections "Home, step 1" to "Home, step 6" say what each step
+changed and how it was checked.
 
-1. **A security audit of the live project found sign-in problems that are
-   still open.** Read "Security — open, do these first" below before anything
-   else, and raise it with the owner at the start of the session.
-2. **The migration fixing Supabase's `auth_users_exposed` email is on the
-   live database** — the owner pushed it on 2026-09-29, `migration list`
-   shows 82 applied and none pending, and the advisor no longer reports
-   `auth_users_exposed`. Its other findings (item 4 below) still stand.
-3. **The owner's new brand is in the app** — the owner's call being "the whole
-   brand", not the logo alone — with Atkinson Hyperlegible Next for reading
-   text, because accessibility comes first here.
-4. **Home step 2b is built and committed**, and its migration
-   `20260930000000` is on the live database — the owner pushed it on
-   2026-09-29 and `migration list --linked` shows 83 applied and none
-   pending. The client commits followed the push, in the plan's order; see
-   "Home, step 2b" below. Pushed to GitHub the same night, at the owner's
-   word, both branches at 0be7f24 with `pnpm check` exiting 0 at that
-   commit; `git log --oneline origin/main..HEAD` is empty.
-5. **Home step 3, Likes, is built and committed** (2026-09-30), and its
-   migration `20260930010000` is on the live database — the owner pushed it
-   on 2026-09-30 and `migration list --linked` shows 84 applied and none
-   pending. The client commits followed the push. Pushed to GitHub at the
-   owner's word on 2026-09-30, both branches at `3c1af82` with `pnpm check`
-   exiting 0 there; Netlify's deploy of it reads ready.
-   See "Home, step 3" below.
-6. **Groups can be renamed and given a picture** (2026-09-30, a side job the
-   owner asked for), and it is live. The owner pushed its migration
-   `20260930020000` first (`migration list --linked` shows it applied), then
-   said to push the code: both branches on GitHub at `5be5087`, gated on
-   `pnpm check` exiting 0 there, and Netlify's deploy of it reads ready. See
-   "Group names and pictures" below.
-7. **Home step 3b is built and on GitHub** (2026-09-30): the probes read
-   as expected again (all 30, on a fresh stack), the chat bucket's storage
-   policies name `authenticated` (`20260930030000`, on the live database —
-   the owner pushed it on 2026-09-30 and `migration list --linked` shows 85
-   applied, none pending), and every topic card on Home has Like. Both
-   branches on `origin` were at `41db25e` when step 4 began. See "Home,
-   step 3b".
-8. **Home step 4, Filter your feed, is built and on GitHub** (2026-09-30;
-   no migration). The owner pushed it with the filter sheet's focus fix:
-   both branches at `bb46b31`. See "Home, step 4". It found that
-   `FilterSheetShell` moved no focus on Home, Events or Peers, and neither
-   did the report sheet; the owner said fix both. The report sheet's fix
-   (`c517393`..`8577087`) followed: both branches on GitHub at `ce97651`
-   on 2026-09-30, and live.
-9. **Home step 5, Home is the first screen, is built and live**
-   (2026-09-30; no migration). `/`, signing in, finishing onboarding, the
-   not-found page's link, an ordinary member opening `/admin` and
-   dev-login's default all land on `/home`. See "Home, step 5" and "What
-   Home is".
-10. **Home step 6, the photos bucket, is done** (2026-09-30 to 2026-10-01),
-   and with it the whole of HOME-PLAN.md. The bucket takes 2MB and webp,
-   JPEG or PNG (`20260930040000`), and it is **private**, the owner's
-   choice (`20261001000000`): every face and logo is drawn through a signed
-   URL. Both migrations are on the live database — the owner pushed each
-   after its dry run, and `migration list --linked` shows 87 applied, none
-   pending. The signing client went to GitHub and production *before* the
-   bucket closed, at the owner's word (`6b2edd6`), and the owner saw every
-   face drawing there; after the push the owner confirmed the bucket
-   closed. Onboarding now stays on the photo step when storage refuses a
-   photograph. **The commits after `6b2edd6` are not on GitHub** (`692e1b3`
-   onwards): the migration and its probes, the API checks, a comment in
-   `photos.ts` and the documents — nothing the app runs differently. See
-   "Home, step 6".
+**Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
+sit at the same commit, and Netlify builds `main`. The hosted database has 87
+migrations applied and none pending (`pnpm exec supabase migration list`).
+1,542 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
+rather than trusting it: `git log --oneline origin/main..HEAD` should be
+empty, and a blank Remote column in the migration list is a pending
+migration.
 
-**Pushed, at the owner's word, on 2026-09-29:** first the brand alone
-(`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
-(`1693c8e`..this commit), each gated on `pnpm check` exiting 0 at the exact
-commit pushed. Both branches on `origin` sit at the same commit; check with
-`git log --oneline origin/main..HEAD`, which should be empty. The
-`20260929000000` migration is on `main` and, since the owner's push later
-that day, on the live database too. 1,337 tests pass and
-`pnpm check` is clean. The owner said on 2026-09-29 they will work on Twilio
-and the logins later.
+**What is open, in order of urgency**, each with its own section:
+
+1. **The live project still accepts the published test sign-in codes, and
+   one of those numbers is the club's only administrator.** "Security —
+   open, do these first". Unchanged since 2026-09-29; the owner has said
+   they will take it with Twilio. Raise it at the start of every session.
+2. **Twilio Verify**, so real members stop sharing one fixed code.
+   "Twilio — the owner's next job".
+3. **"Start fresh" on a claim still carries the seeded profile's photograph
+   and bio** into a profile that chose not to claim it, though the screen
+   promises the opposite. A real bug, small, needing a migration. "Still
+   open" has the detail; the owner has not yet asked for it.
+4. **Things only a phone can check**: an hour with VoiceOver; the
+   notifications test; signed photographs on an iPhone (every face is a
+   signed URL since 2026-10-01 — the owner saw production draw in a
+   browser, not on a phone). "Still open".
+5. **The advisor's remaining findings** — functions without a fixed
+   `search_path`, definer views to confirm, `before_user_created` callable
+   by `anon`. "Security — open", item 4.
+
+**What landed, by day**, newest first. Each has a section:
+
+| Day | What | Database |
+| --- | --- | --- |
+| 2026-10-01 | Home step 6: the photos bucket takes 2MB and three image types, and is **private** — every face and logo a signed URL, the signing client released before the bucket closed | `20260930040000`, `20261001000000` |
+| 2026-09-30 | Home step 5: the app opens on Home; CONTEXT.md and this file say what the app is | — |
+| 2026-09-30 | Home step 4: Filter your feed; the filter sheet and the report sheet move focus (`useDialogFocus`) | — |
+| 2026-09-30 | Home step 3b: the probes read as expected again (all 30 on a fresh stack); the chat bucket's policies name `authenticated`; Like on every topic card | `20260930030000` |
+| 2026-09-30 | Group names and pictures, a side job | `20260930020000` |
+| 2026-09-30 | Home step 3: Likes, with names shown | `20260930010000` |
+| 2026-09-29 | Home step 2b: rooms open to write without joining; editing with earlier versions for administrators; replies under a post, quotes in a conversation | `20260930000000` |
+| 2026-09-29 | A photograph from an iPhone was refused — two faults fixed | — |
+| 2026-09-29 | Home steps 1 and 2: the feed, and asking or sharing from Home | — |
+| 2026-09-29 | The owner's brand, with Atkinson Hyperlegible Next for reading text | — |
+| 2026-09-29 | `admin_invites` stops reading `auth.users` | `20260929000000` |
+
+**How the Home work was run**, since it worked and is worth repeating: one
+session wrote the plan; a fresh session built each step from it and stopped;
+the planning session reviewed each step on the local stack with its own
+scripts, not the builder's word, then gated the push on `pnpm check` at the
+exact commit in a scratch worktree. Migrations were pushed by the owner,
+before the client that needed them, from a dry run shown first — except step
+6's closing migration, which went *after* the signing client, because the old
+client against a closed bucket would have broken every face at once.
 
 ## Security — open, do these first
 
@@ -296,8 +281,8 @@ on its next scan.
 
 ## Home, step 1 — built 2026-09-29, pushed the same day
 
-The plan is `HOME-PLAN.md` at the repo root (untracked; the owner's seven
-decisions are in it). Step 1, "Home reads", is done: `/home` lists recent
+The plan was `HOME-PLAN.md` at the repo root (deleted 2026-10-01; its
+seven decisions are in "What Home is"). Step 1, "Home reads", is done: `/home` lists recent
 topics and photographs from the open rooms, upcoming events with working
 RSVPs, and members worth meeting, under Everything · Topics · Photos ·
 Events · People. No migration, so it releases with a push alone. Before
@@ -1156,10 +1141,6 @@ the fix.
   in there, turn on, close the app, have somebody send a direct message.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
-- **Home is built and live**, every step of `HOME-PLAN.md` (the owner
-  asked on 2026-09-29), the photos bucket included. See "What Home is".
-  The commits after `6b2edd6` wait for the owner's push to GitHub; none of
-  them changes what the app does.
 - **Signed photographs on an iPhone.** Every face and logo is a signed URL
   since 2026-10-01, and Playwright here has no WebKit. The owner saw
   production drawing in their own browser; a phone has not been tried.
@@ -1884,9 +1865,12 @@ reformats a file out from under a string-match patch made moments earlier.
 # What Home is
 
 Built 2026-09-29 to 2026-10-01, in the steps of `HOME-PLAN.md` (1, 2, 2b, 3,
-3b, 4, 5, 6), and **where the app opens** from step 5. Every step is done;
-the plan stays at the repo root as the record, and this section holds what
-stays true of Home once the plan goes, as "What Chat is" does for Chat.
+3b, 4, 5, 6), and **where the app opens** from step 5. Every step is done and
+the plan was deleted on 2026-10-01, as `CHAT-PLAN.md` was once "What Chat is"
+held it; `git show fe96183:HOME-PLAN.md` reads it as it last stood. This
+section holds what stays true of Home. Code comments that cite the plan by
+step or decision number mean this section; the migrations and probes that
+name the file were written before it went and are not edited.
 The step sections near the top of this file ("Home, step 1" to "Home, step
 6") say what each step changed and how it was checked.
 
@@ -2778,7 +2762,7 @@ History, kept for its reason: until 2026-09-29 this said **"Do not build
 Home without asking"** — it was deliberately deferred in CONTEXT.md and said
 so on screen, and the mock renders it convincingly, which was the trap
 rather than the mandate. The owner asked on 2026-09-29, and it was built
-from HOME-PLAN.md. The rule under it still stands for anything else the
+from a plan since deleted (see "What Home is"). The rule under it still stands for anything else the
 mock draws: CONTEXT.md's "Deliberately deferred" list is not built without
 the owner asking.
 
