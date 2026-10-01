@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -28,6 +28,23 @@ import { cn } from '@/lib/utils';
  * The close button, the backdrop and Escape. A sheet dismissable only by a tap
  * on one specific region is a trap for anybody navigating by keyboard or
  * switch.
+ *
+ * ---------------------------------------------------------------------------
+ * Focus goes in, stays in, and comes back
+ * ---------------------------------------------------------------------------
+ * The likes list's rules (`src/routes/chat/like-button.tsx`), the photograph
+ * viewer's before it. On open, focus moves to the title, so a screen reader
+ * says which sheet this is and the next Tab is its first chip. Tab and
+ * Shift+Tab go round the sheet's own buttons. On close, focus goes back to
+ * whatever had it before, which is the Filters button.
+ *
+ * Until 2026-09-30 it did none of this: `aria-modal` said the page behind was
+ * out of reach, focus stayed on the Filters button behind the backdrop, and
+ * the first chip on Home was 85 presses of Tab away, through the whole feed.
+ *
+ * The shell puts focus back itself, on unmount, rather than asking each
+ * screen for a ref to its button: three screens open it, and a rule each one
+ * has to remember is a rule one of them forgets.
  */
 
 export interface FilterSheetShellProps {
@@ -50,28 +67,76 @@ export function FilterSheetShell({
   applyLabel,
   children,
 }: FilterSheetShellProps) {
+  const titleId = useId();
+  const dialog = useRef<HTMLDivElement | null>(null);
+  const heading = useRef<HTMLHeadingElement | null>(null);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKey);
+    // Read before anything moves it: this is what opened the sheet.
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    heading.current?.focus();
     return () => {
-      document.removeEventListener('keydown', onKey);
+      // Only if it is still on the page. A sheet closed by leaving the screen
+      // has nothing to go back to.
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
+      else if (event.key === 'Tab') keepFocusInside(event);
+    }
+    // On the window, so focus that has somehow left the sheet still comes
+    // back. The title is not in the Tab order, so Shift+Tab from it goes to
+    // the last control. Clear is skipped while it is disabled.
+    function keepFocusInside(event: KeyboardEvent) {
+      const root = dialog.current;
+      if (!root) return;
+      // Not the panel's Close on a phone, where it is `hidden`: a hidden
+      // control cannot take focus, and the loop would end on nothing.
+      const controls = [
+        ...root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]):not([tabindex="-1"])',
+        ),
+      ].filter((control) => getComputedStyle(control).display !== 'none');
+      const first = controls[0];
+      const last = controls.at(-1);
+      if (!first || !last) return;
+      const at = controls.findIndex((control) => control === document.activeElement);
+      if (event.shiftKey && at <= 0) {
+        event.preventDefault();
+        last.focus();
+      } else if (
+        !event.shiftKey &&
+        (at === controls.length - 1 || !root.contains(document.activeElement))
+      ) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
 
   return (
     <>
+      {/* Out of the Tab order, as the likes list's backdrop is: it is there for
+          a pointer, and a keyboard has Escape and the buttons in the sheet. */}
       <button
         type="button"
         aria-label="Close filters"
+        tabIndex={-1}
         onClick={onClose}
         className="absolute inset-0 z-[70] bg-[rgba(10,20,35,.5)]"
       />
       <div
+        ref={dialog}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
         className={cn(
           'absolute z-[71] flex flex-col bg-paper',
           // Phone: a bottom sheet, full width, rounded at the top.
@@ -87,7 +152,12 @@ export function FilterSheetShell({
 
         <div className="flex flex-none items-start justify-between gap-3 px-[18px] pt-1 lg:pt-5">
           <div className="min-w-0">
-            <h2 className="font-extrabold font-head text-[1.3125rem] tracking-[-0.01em]">
+            <h2
+              id={titleId}
+              ref={heading}
+              tabIndex={-1}
+              className="font-extrabold font-head text-[1.3125rem] tracking-[-0.01em] outline-none"
+            >
               {title}
             </h2>
             <p className="mt-0.5 text-[0.78125rem] text-grey">{summary}</p>
