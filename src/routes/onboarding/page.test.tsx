@@ -465,6 +465,50 @@ describe('finishing later', () => {
   });
 });
 
+describe('skipping the photograph', () => {
+  beforeEach(() => {
+    // jsdom has no object URLs; the step makes one for the preview.
+    URL.createObjectURL = () => 'blob:preview';
+  });
+
+  async function reachPhoto() {
+    calls.invited = true;
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const birthday = document.querySelector('#birthday');
+    if (!(birthday instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(birthday, { target: { value: '1990-04-02' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.selectOptions(await screen.findByLabelText('State'), 'CA');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Add a photo?');
+  }
+
+  async function choose(name = 'photo.heic') {
+    const input = document.querySelector('input[type="file"]');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no photograph input');
+    await userEvent.upload(input, new File(['x'], name, { type: 'image/png' }));
+  }
+
+  // Skip used to `set` the file away and submit from the same render, which
+  // still held it: the photograph it skipped went up anyway.
+  it('skips a photograph that is chosen and never sent', async () => {
+    await reachPhoto();
+    await choose();
+    await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+
+    await waitFor(() => {
+      expect(calls.submitted).not.toBeNull();
+    });
+    expect(calls.submitted?.photoFile).toBeNull();
+  });
+});
+
 describe('claiming a seeded profile', () => {
   const ajay = {
     id: 'c85c10bf-0226-394f-8c91-2a2ffc40a147',

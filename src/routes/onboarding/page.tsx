@@ -189,9 +189,14 @@ export default function OnboardingPage() {
     setStep('name');
   }
 
-  async function finish() {
+  /**
+   * `patch` is for "Skip for now", which must submit without the photograph
+   * it skips. It used to `set` the file away and then call this, but this
+   * reads `data` from the same render, so the file went up anyway.
+   */
+  async function finish(patch: Partial<OnboardingData> = {}) {
     setPhase('submitting');
-    const result = await submitOnboarding(data);
+    const result = await submitOnboarding({ ...data, ...patch });
     if (!result.ok) {
       setPhase('wizard');
       setError(result.error ?? 'Could not finish signing up.');
@@ -348,8 +353,9 @@ export default function OnboardingPage() {
           {SKIPPABLE.includes(step) && (step !== 'birthday' || ready) ? (
             <LinkButton
               onClick={() => {
-                if (step === 'photo') set({ photoFile: null, photoPreviewUrl: null });
-                void finish();
+                const skipped = step === 'photo' ? { photoFile: null, photoPreviewUrl: null } : {};
+                set(skipped);
+                void finish(skipped);
               }}
             >
               {step === 'photo' ? 'Skip for now' : 'Finish later — enter the club'}
