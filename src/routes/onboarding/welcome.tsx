@@ -19,17 +19,34 @@ import { ClubMark } from '@/components/club-mark';
  * have been cut off. `my-auto` on the column does the same centring with
  * room to spare and, without it, starts the content at the top and lets it
  * scroll, which is what the other onboarding steps already do.
+ *
+ * ---------------------------------------------------------------------------
+ * It fits a short window, and draws no scrollbar when it cannot
+ * ---------------------------------------------------------------------------
+ * With the Windows taskbar showing, a laptop browser is about 550px tall and
+ * the column overflowed by 97px, so the box drew a scrollbar beside the
+ * introduction (the owner, 2026-10-01). The badge and the gaps around it now
+ * shrink with the window's height — the badge never below the 96px the brand
+ * README sets as its minimum, never above its old 196px — so at the normal
+ * text size it fits a 550px laptop window and every phone from 360px wide
+ * held upright. The text does not shrink: the owner's rule is legibility
+ * over looks.
+ *
+ * Below that, or at a larger text size, it still cannot fit, and the box
+ * scrolls with its bar hidden (`scrollbar-hidden`). That is safe here and
+ * would not be on a list: nothing in the box is a control, and both buttons
+ * are in the footer, which never scrolls away.
  */
 export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSignIn: () => void }) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
-      <div className="flex flex-1 flex-col overflow-y-auto px-[22px] py-8">
+      <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">
         <div className="my-auto">
           <div className="flex justify-center">
-            <ClubMark size={126} />
+            <ClubMark size={126} className="h-[clamp(96px,22dvh,196px)] w-auto" />
           </div>
 
-          <h1 className="mt-9 text-center font-extrabold font-display text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
+          <h1 className="mt-[clamp(16px,4dvh,36px)] text-center font-extrabold font-display text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
             Meet peers, mentors,
             <br />
             and find <em className="text-gold-dp not-italic">SCI events</em>.

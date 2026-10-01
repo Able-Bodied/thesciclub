@@ -408,3 +408,16 @@
 .message-flash {
   animation: message-flash 1.2s ease-out 1;
 }
+
+/*
+ * A box that still scrolls but draws no scrollbar. Only for a box whose
+ * content is not the point of the screen and whose controls sit outside it —
+ * the welcome screen's introduction, where the buttons stay on screen below
+ * and a bar beside a paragraph reads as a fault. Never on a list.
+ */
+.scrollbar-hidden {
+  scrollbar-width: none;
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
