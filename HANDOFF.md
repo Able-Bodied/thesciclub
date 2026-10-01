@@ -66,9 +66,9 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    no migration). The owner pushed it with the filter sheet's focus fix:
    both branches at `bb46b31`. See "Home, step 4". It found that
    `FilterSheetShell` moved no focus on Home, Events or Peers, and neither
-   did the report sheet; the owner said fix both. **The report sheet's fix
-   (`c517393`..`8577087`, and the note recording it) is not on GitHub** —
-   check with `git log --oneline origin/main..HEAD`.
+   did the report sheet; the owner said fix both. The report sheet's fix
+   (`c517393`..`8577087`) followed: both branches on GitHub at `ce97651`
+   on 2026-09-30, and live.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -696,7 +696,7 @@ Noticed, not changed: the accessible name reads "3 likes on Morning or
 evening routine?. Show who." — a title ending in a question mark gets a
 full stop after it. The plan's wording, and the photo card's since step 3.
 
-## Home, step 4 — built 2026-09-30, pushed the same day (the report sheet's fix after it, not pushed)
+## Home, step 4 — built 2026-09-30, pushed the same day (the report sheet's fix after it, also pushed)
 
 HOME-PLAN.md step 4, "Filter your feed". No migration. Three commits, each
 with `pnpm test` (1,498 at the end), `pnpm check` and `pnpm build` clean:
@@ -2044,15 +2044,14 @@ a migration except the fourth.
    VoiceOver finds is wording and reading order, and it will reorder this
    list. Write down what it *says*, verbatim, the way the error strings were
    copied rather than remembered.
-2. **The photograph viewer is not a dialog.** `Lightbox` in
-   `attachment-grid.tsx` is a `fixed inset-0` div: no `role="dialog"`, no
-   `aria-modal`, no focus trap, so Tab walks out of the picture into the chat
-   behind it and a screen reader is never told a viewer opened. The two
-   sheets already do it right — `filter-sheet-shell.tsx` and
-   `report-sheet.tsx` are the pattern. (Neither was: on 2026-09-30 both
-   were found to move no focus, and both are fixed — see "Home, step 4".
-   `useDialogFocus` in `src/lib/dialog-focus.ts` is the pattern now.) Focus must return to the tile that
-   opened it when it closes.
+2. ~~**The photograph viewer is not a dialog.**~~ Done 2026-09-29, before
+   Home step 1 (`5295556`): `role="dialog"`, `aria-modal`, Tab kept inside,
+   focus back on the tile that opened it. This item used to name the two
+   sheets as the pattern to copy; neither was — on 2026-09-30 both were found
+   to move no focus, and both are fixed (see "Home, step 4"). **The pattern
+   is `useDialogFocus`** in `src/lib/dialog-focus.ts`, which the filter
+   shell and the report sheet now call. The viewer and the likes list keep
+   older copies of the same rules.
 3. **Write a profile photograph's alt text.** `members.photo_alt` exists and
    every avatar reads it; nothing sets it. One field on the details form
    under the photo — "Describe your photo, for members who use a screen
