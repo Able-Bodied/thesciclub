@@ -32,10 +32,8 @@ stood; the sections "Home, step 1" to "Home, step 6" say what each step
 changed and how it was checked.
 
 **Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
-sit at the same commit, and Netlify builds `main`. The hosted database has 87
-migrations applied; **the 88th, `20261002000000`, waits for the owner's
-push** — see "Start fresh carries nothing" (`pnpm exec supabase migration
-list`).
+sit at the same commit, and Netlify builds `main`. The hosted database has 88
+migrations applied and none pending (`pnpm exec supabase migration list`).
 1,544 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
 rather than trusting it: `git log --oneline origin/main..HEAD` should be
 empty, and a blank Remote column in the migration list is a pending
@@ -46,14 +44,11 @@ migration.
 1. **Twilio approval, in progress** — the owner is working with Twilio
    (2026-10-01). Once texts arrive, the sign-in clean-up in "Twilio — the
    owner's next job" follows. Not a session's job until then.
-2. **"Start fresh" carries nothing — built, not yet released.** The owner
-   pushes `20261002000000` first, from a dry run, then the client. See its
-   section below.
-3. **Things only a phone can check**: an hour with VoiceOver; the
+2. **Things only a phone can check**: an hour with VoiceOver; the
    notifications test; signed photographs on an iPhone (every face is a
    signed URL since 2026-10-01 — the owner saw production draw in a
    browser, not on a phone). "Still open".
-4. **The advisor's remaining findings** — `before_user_created` callable
+3. **The advisor's remaining findings** — `before_user_created` callable
    by `anon`, functions without a fixed `search_path`, definer views to
    confirm. "Security — the advisor's findings", items 1 and 2.
 
@@ -61,7 +56,7 @@ migration.
 
 | Day | What | Database |
 | --- | --- | --- |
-| 2026-10-01 | "Start fresh" on a claim carries nothing of the seed — built, the migration not yet pushed | `20261002000000` |
+| 2026-10-01 | "Start fresh" on a claim carries nothing of the seed | `20261002000000` |
 | 2026-10-01 | Home step 6: the photos bucket takes 2MB and three image types, and is **private** — every face and logo a signed URL, the signing client released before the bucket closed | `20260930040000`, `20261001000000` |
 | 2026-09-30 | Home step 5: the app opens on Home; CONTEXT.md and this file say what the app is | — |
 | 2026-09-30 | Home step 4: Filter your feed; the filter sheet and the report sheet move focus (`useDialogFocus`) | — |
@@ -83,7 +78,7 @@ before the client that needed them, from a dry run shown first — except step
 6's closing migration, which went *after* the signing client, because the old
 client against a closed bucket would have broken every face at once.
 
-## Start fresh carries nothing — built 2026-10-01, the migration not yet pushed
+## Start fresh carries nothing — built 2026-10-01, live the same day
 
 The owner asked on 2026-10-01. Somebody whose invite names a seeded profile
 is asked "Is this you?"; under "Start fresh" the screen says "Starting fresh
@@ -114,9 +109,9 @@ later, Home — the row has no photograph, bio, lists or level, the seed is
 gone, the invite consumed and linked, and Me shows "S" and 0%. Applied to the
 working local stack too.
 
-**To release:** the owner runs `pnpm exec supabase db push --linked
---dry-run`, which should list `20261002000000` alone, then the push; then
-the client goes to `main`. In the other order the client's insert names a
+**Released in order**: the owner pushed `20261002000000` after a dry run
+listed it alone, `migration list` showed it remote, and only then did the
+client go to `main`. In the other order the client's insert names a
 column the live database does not have, and every new member's signup is
 refused (PostgREST's `PGRST204`, which `describeError` does not count as
 drift, so it reads "Something went wrong").
@@ -1248,11 +1243,11 @@ rather than trust it. See "What Chat is".
 1,542 tests pass, in 105 files (2026-10-01). `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 87 migrations, all of them on the hosted project
+## 88 migrations, all of them on the hosted project
 
 **As of 2026-10-01 the hosted project (`erijdvqnxavwezsbbojv`) and
-`supabase/migrations/` agree: 87 applied, 0 pending** (75 on 2026-09-23,
-then the twelve listed below). For weeks before
+`supabase/migrations/` agree: 88 applied, 0 pending** (75 on 2026-09-23,
+then the thirteen listed below). For weeks before
 2026-09-20 the hosted database was ahead of `origin`; from the 20th to the
 23rd it was the other way round, with the whole of Chat applied locally and
 nowhere else; the owner pushed the twenty-one Chat migrations between
@@ -1272,7 +1267,7 @@ enabled on the hosted project, in the dashboard: a publication with the
 service switched off is the failure Environment describes, every
 subscription SUBSCRIBED and delivering nothing.
 
-The twelve since 2026-09-23, each pushed by the owner after a dry run that
+The thirteen since 2026-09-23, each pushed by the owner after a dry run that
 listed it, oldest first — the sections named say more:
 
 | migration | what it adds |
@@ -1289,7 +1284,7 @@ listed it, oldest first — the sections named say more:
 | `20260930030000` | Home step 3b: the chat bucket's policies name `authenticated` |
 | `20260930040000` | Home step 6: the photos bucket takes 2MB and three image types |
 | `20261001000000` | Home step 6: the photos bucket is private |
-| `20261002000000` | "Start fresh" on a claim carries nothing — **not yet on the live database** |
+| `20261002000000` | "Start fresh" on a claim carries nothing |
 
 The Chat migrations, in the order they apply — each header says why, and the
 "What Chat is" section below says what the member sees:
@@ -2068,7 +2063,7 @@ component's own comment says so. Six migration headers still call it
 migration is not edited after it has run, comments included. There is nothing
 to go back to and nothing to trust over this file and the migrations.
 
-**The migrations are on the hosted project since 2026-09-23.** See "87
+**The migrations are on the hosted project since 2026-09-23.** See "88
 migrations, all of them on the hosted project" for how that is checked
 before deploying anything.
 
