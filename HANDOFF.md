@@ -1713,6 +1713,144 @@ reformats a file out from under a string-match patch made moments earlier.
 
 ---
 
+# What Home is
+
+Built 2026-09-29 to 2026-09-30, in the steps of `HOME-PLAN.md` (1, 2, 2b, 3,
+3b, 4, 5), and **where the app opens** from step 5. The plan is still at the
+repo root, with step 6 (the photos bucket) left in it; this section holds
+what stays true of Home once the plan goes, as "What Chat is" does for Chat.
+The step sections near the top of this file ("Home, step 1" to "Home, step
+5") say what each step changed and how it was checked.
+
+**Home adds no new kind of content.** It is a second way in to rooms, events
+and members that already exist, plus Likes. A question is a topic in a room,
+a photograph is a topic whose first post has photographs, a comment is a
+reply, a suggestion is a member from Peers. So reporting, removal,
+notifications, mutes and the administrators' tools reach everything on Home
+without a line of their own. That is how CONTEXT.md's old objection — "needs
+four content types and a moderation story" — was answered.
+
+## The owner's decisions, 2026-09-29
+
+Settled; build to them, do not reopen them.
+
+1. A question asked from Home lives **in a Chat room**, as a topic.
+2. A photo post lives **in a room too**, as a topic whose first post has
+   photographs. No post or comment tables, no second photo store.
+3. **No anonymous asking.** No control is drawn for it.
+4. **Likes, with names shown** to every member who can read the room (chosen
+   over a count only). One table, `chat_post_likes`.
+5. The pills read **Everything · Topics · Photos · Events · People**, not the
+   mock's "Questions" and "Posts": a topic is not always a question, and
+   "post" already means a reply.
+6. **The app opens on Home** — the last step, once Home had real content on
+   the live club.
+7. **Ship everything, in steps**, each releasable on its own.
+
+Added the same evening, for step 2b, and changing Chat as much as Home:
+
+8. **Anybody writes in an open room without joining it.** Join is gone.
+9. **A member can edit their own post or message**; readers see "Edited".
+10. **Administrators can read every earlier version** (`chat_edits`).
+11. **A reply to one post** sits under it, one level deep; in a conversation
+    it is a quote.
+12. **Rooms and conversations both** get editing and replies.
+
+## Departures from the mock — do not "fix" these
+
+- **No comments sheet.** "Reply" and "3 replies" go to the topic page, which
+  already lists replies with a composer, Report, Remove and Mute.
+- **No floating "Post" button.** The dashed card at the top of every pill
+  does the job, and a fixed button covers the last card at larger text.
+- **No brand row, search or bell in the header.** No other tab has them.
+- **No chip row of active filters**, as on Events and Peers; the gold dot
+  and "Filters, 2 active" say a filter is on.
+- **Room names where the mock has categories**, and **"replies"** where it
+  has "answers" and "comments".
+- **No city on a topic or a photograph.** `ChatAuthor` leaves it out, so a
+  member hidden from Peers is not placed on a map by what they wrote.
+- **An icon on the compose card** where the mock has the viewer's avatar.
+- **The like thumb is solid navy when liked**; the mock's pale tint is next
+  to invisible on paper.
+
+## Departures from the plan, made in the steps — these stand
+
+- **A topic or person card is not one big link**: the link is on the title
+  or name, stretched over the card with `after:absolute after:inset-0`. A
+  screen reader reads the title as the link, not the whole card.
+- **Back keeps the pill**: cards hand over `{ from: 'home', segment }`, and
+  the New topic screen `{ from: 'home', segment, kind }`.
+- **Controls are named for their post** — "Like Jan's post", "3 likes on
+  Jan's post. Show who.", "Reply to <title>" — the owner's choice over the
+  plan's bare "Like".
+- **Like on a topic card is `relative` without `z-10`**: `z-10` on the row
+  trapped the likes list under the tab bar and the next card.
+- **The filter narrows the list a pill drew**, so "2 of 8" is two of the
+  cards on screen, and Everything's four events are all it can narrow. A chip
+  that is on is always offered; Online is a flag of its own.
+- **`/home/new`'s join step went with step 2b's first commit**, since
+  nothing could join once `joinRoom` went.
+- **The photos bucket's member delete policy stays `{public}`** (the owner's
+  call, 2026-09-30); the chat bucket's three name `authenticated`.
+
+## Out of scope — draw no control for any of these
+
+Search across the feed. A notification centre. Anonymous asking. "This
+helped" and "Message" chips on an answer. Routing an unanswered question to
+matching members. A notification for a like. Video. Like and Reply on a
+single comment. If a task seems to need one, ask the owner.
+
+## Traps
+
+- **An administrator reads closed rooms.** Without the `openedAt` filter
+  their Home shows topics no member can see, and a screenshot taken as the
+  administrator looks fuller than any member's.
+- **The first standing post is not always the opening post**, and a card's
+  first reply is the earliest standing top-level post after the opener.
+- **A photo card is not a link**; it holds buttons. A topic card is a
+  stretched link with buttons painted over it — a button inside it must stay
+  `relative` or the link is what a finger lands on.
+- **Two select policies are ORed.** `chat_post_likes` has one on purpose; a
+  second would make every "mine" read need to say so.
+- **`AttachmentGrid` is drawn by four screens** and signs URLs under the
+  reader's token. A change for Home goes behind the `fill` prop; a test
+  stubs `useAttachmentUrls`.
+- **The mixed feed is `buildFeed`, a pure function.** Test it, not an order
+  on the rendered screen.
+- **Screens opened from Home light the Chat tab**, because a topic and New
+  topic live under `/chat`. Known, not changed.
+- **A sheet's focus is `useDialogFocus`** (`src/lib/dialog-focus.ts`). The
+  filter shell and the report sheet use it; the likes list and the
+  photograph viewer keep older copies. A new sheet uses the hook.
+- **A probe with several transactions is never wrapped in one**
+  (`claim-carries-profile.sql` has three), and the fair count is a fresh
+  stack. See "Home, step 3b".
+- **`pnpm demo-member` after every `supabase db reset`**, and `pnpm shoot`
+  signs in as `11111111111`, which a reset makes an ordinary member, Alex.
+- **Landing places are written in five files** — `App.tsx`, onboarding,
+  dev-login, not-found and admin. A change to where the app opens touches
+  all five, and `src/App.test.tsx` and the onboarding tests say where
+  somebody lands.
+
+## The files
+
+- `src/routes/home/`: `page.tsx` (the screen, the pills, the filter
+  button), `feed.ts` (`buildFeed`, `inSegment`), `topic-card.tsx`,
+  `photo-card.tsx`, `person-card.tsx`, `compose-card.tsx`, `new.tsx`
+  (`/home/new`, the kind and the room), `filters.ts` and `filter-sheet.tsx`,
+  `back.ts`.
+- `src/lib/home/`: `types.ts`, `topics.ts` (the topic read and
+  `toHomeTopics`).
+- Likes: `src/lib/chat/likes.ts`, `src/routes/chat/like-button.tsx`
+  (`LikeButton`, `LikesSheet`, `PostLikes`), the migration
+  `20260930010000_a_member_likes_a_post.sql` and the probe
+  `supabase/tests/chat-post-likes.sql`.
+- Shared with Chat and the other tabs: `src/routes/chat/new-topic.tsx`
+  (reads Home's state), `src/routes/chat/back.ts`,
+  `src/components/filter-sheet-shell.tsx`, `src/lib/dialog-focus.ts`,
+  `src/routes/chat/report-control.tsx`, `EventCard`, and `rankMembers` from
+  `src/routes/peers/ranking.ts` for the people.
+
 # What Chat is
 
 Built 2026-09-18 to 2026-09-21, in nine phases, from a plan file that was
