@@ -12,6 +12,8 @@ const api = vi.hoisted(() => ({
   saves: [] as { details: MemberDetails; levelRange: string }[],
   declineSaves: [] as string[][],
   failWith: null as string | null,
+  /** What each photograph chosen returns, in turn; saved when the list runs out. */
+  photoResults: [] as ({ ok: true; path: string } | { ok: false; error: string })[],
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
@@ -33,7 +35,8 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
     api.saves.push({ details, levelRange });
     return Promise.resolve({ ok: true });
   },
-  savePhoto: () => Promise.resolve({ ok: true as const, path: 'u1/profile.jpg' }),
+  savePhoto: () =>
+    Promise.resolve(api.photoResults.shift() ?? { ok: true as const, path: 'u1/profile.jpg' }),
   removePhoto: () => Promise.resolve({ ok: true }),
 }));
 
@@ -61,6 +64,14 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   ...o,
 });
 
+const photoFile = () => new File(['x'], 'photo.png', { type: 'image/png' });
+
+function choosePhoto(container: HTMLElement): HTMLInputElement {
+  const input = container.querySelector<HTMLInputElement>('input[type="file"]');
+  if (!input) throw new Error('No photograph input on the page.');
+  return input;
+}
+
 function renderDetails() {
   return render(
     <MemoryRouter initialEntries={['/profile/details']}>
@@ -79,6 +90,7 @@ beforeEach(() => {
   api.saves = [];
   api.declineSaves = [];
   api.failWith = null;
+  api.photoResults = [];
 });
 
 describe('Your details', () => {
@@ -150,6 +162,31 @@ describe('Your details', () => {
     await screen.findByLabelText('Name');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('The Me tab')).toBeInTheDocument();
+  });
+
+  it('says why a photograph was refused', async () => {
+    api.photoResults = [{ ok: false, error: 'The photograph was not saved. Too large.' }];
+    const { container } = renderDetails();
+    await screen.findByLabelText('Name');
+    await userEvent.upload(choosePhoto(container), photoFile());
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The photograph was not saved. Too large.',
+    );
+  });
+
+  // Since 20260930040000 the photos bucket refuses a file, where before it
+  // took anything. The refusal stayed on screen under the photograph that
+  // replaced it, saying "not saved" about a photograph that was.
+  it('takes a refusal away once a photograph saves', async () => {
+    api.photoResults = [{ ok: false, error: 'The photograph was not saved. Too large.' }];
+    const { container } = renderDetails();
+    await screen.findByLabelText('Name');
+    await userEvent.upload(choosePhoto(container), photoFile());
+    await screen.findByRole('alert');
+    await userEvent.upload(choosePhoto(container), photoFile());
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
   });
 
   it('stays on the page when saving fails, so the field is still there', async () => {

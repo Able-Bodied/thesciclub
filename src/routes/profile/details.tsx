@@ -134,6 +134,10 @@ export default function ProfileDetailsPage() {
   function onPhoto(file: File) {
     if (!account.userId) return;
     setSaving(true);
+    // Cleared as submit clears it. The photos bucket refuses a file since
+    // 20260930040000, and without this the refusal stayed under the next
+    // photograph, saying "not saved" about one that was.
+    setError(null);
     savePhoto(account.userId, file)
       .then((result) => {
         if (result.ok) set({ photoPath: result.path });
