@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
+import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
 /**
@@ -32,19 +33,15 @@ import { cn } from '@/lib/utils';
  * ---------------------------------------------------------------------------
  * Focus goes in, stays in, and comes back
  * ---------------------------------------------------------------------------
- * The likes list's rules (`src/routes/chat/like-button.tsx`), the photograph
- * viewer's before it. On open, focus moves to the title, so a screen reader
- * says which sheet this is and the next Tab is its first chip. Tab and
- * Shift+Tab go round the sheet's own buttons. On close, focus goes back to
- * whatever had it before, which is the Filters button.
+ * `useDialogFocus` (`src/lib/dialog-focus.ts`), shared with the report sheet.
+ * On open, focus moves to the title, so a screen reader says which sheet this
+ * is and the next Tab is its first chip. Tab and Shift+Tab go round the
+ * sheet's own buttons. On close, focus goes back to whatever had it before,
+ * which is the Filters button.
  *
  * Until 2026-09-30 it did none of this: `aria-modal` said the page behind was
  * out of reach, focus stayed on the Filters button behind the backdrop, and
  * the first chip on Home was 85 presses of Tab away, through the whole feed.
- *
- * The shell puts focus back itself, on unmount, rather than asking each
- * screen for a ref to its button: three screens open it, and a rule each one
- * has to remember is a rule one of them forgets.
  */
 
 export interface FilterSheetShellProps {
@@ -71,55 +68,7 @@ export function FilterSheetShell({
   const dialog = useRef<HTMLDivElement | null>(null);
   const heading = useRef<HTMLHeadingElement | null>(null);
 
-  useEffect(() => {
-    // Read before anything moves it: this is what opened the sheet.
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    heading.current?.focus();
-    return () => {
-      // Only if it is still on the page. A sheet closed by leaving the screen
-      // has nothing to go back to.
-      if (opener?.isConnected) opener.focus();
-    };
-  }, []);
-
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-      else if (event.key === 'Tab') keepFocusInside(event);
-    }
-    // On the window, so focus that has somehow left the sheet still comes
-    // back. The title is not in the Tab order, so Shift+Tab from it goes to
-    // the last control. Clear is skipped while it is disabled.
-    function keepFocusInside(event: KeyboardEvent) {
-      const root = dialog.current;
-      if (!root) return;
-      // Not the panel's Close on a phone, where it is `hidden`: a hidden
-      // control cannot take focus, and the loop would end on nothing.
-      const controls = [
-        ...root.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]):not([tabindex="-1"])',
-        ),
-      ].filter((control) => getComputedStyle(control).display !== 'none');
-      const first = controls[0];
-      const last = controls.at(-1);
-      if (!first || !last) return;
-      const at = controls.findIndex((control) => control === document.activeElement);
-      if (event.shiftKey && at <= 0) {
-        event.preventDefault();
-        last.focus();
-      } else if (
-        !event.shiftKey &&
-        (at === controls.length - 1 || !root.contains(document.activeElement))
-      ) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
+  useDialogFocus(dialog, heading, onClose);
 
   return (
     <>
