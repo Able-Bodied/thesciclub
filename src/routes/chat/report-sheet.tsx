@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { REPORT_NOTE_MAX, reportNoteProblem, reportPreamble } from '@/lib/chat/reports';
 import { describeThrown } from '@/lib/describe-error';
+import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
 /**
@@ -34,6 +35,12 @@ import { cn } from '@/lib/utils';
  * screen a full-bleed sheet puts Send a thousand pixels from the note somebody
  * just typed, which for a member driving a mouth stick is the interaction.
  *
+ * Focus is the shell's too, through `useDialogFocus`: the title on open, Tab
+ * round the note and the two buttons, and back on the Report control when it
+ * closes. Until 2026-09-30 it moved none, so a keyboard opening it stayed on
+ * Report behind the backdrop. When a report has gone, Report becomes
+ * "Reported", and `ReportControl` moves focus onto those words.
+ *
  * ---------------------------------------------------------------------------
  * The note is optional and the words are kept
  * ---------------------------------------------------------------------------
@@ -56,15 +63,10 @@ export function ReportSheet({
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [onCancel]);
+  const titleId = useId();
+  const dialog = useRef<HTMLDivElement | null>(null);
+  const heading = useRef<HTMLHeadingElement | null>(null);
+  useDialogFocus(dialog, heading, onCancel);
 
   const noun = kind === 'post' ? 'post' : 'message';
   const title = `Report this ${noun}`;
@@ -94,13 +96,17 @@ export function ReportSheet({
       <button
         type="button"
         aria-label="Close without reporting"
+        // Out of the Tab order: it is there for a pointer, and a keyboard has
+        // Escape and Cancel.
+        tabIndex={-1}
         onClick={onCancel}
         className="absolute inset-0 z-[70] bg-[rgba(10,20,35,.5)]"
       />
       <div
+        ref={dialog}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
         className={cn(
           'absolute z-[71] flex flex-col bg-paper',
           'inset-x-0 bottom-0 max-h-[88%] rounded-t-3xl shadow-[0_-14px_40px_rgba(10,20,35,.3)]',
@@ -113,7 +119,12 @@ export function ReportSheet({
         <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
 
         <div className="flex-1 overflow-y-auto px-[18px] pt-1 lg:pt-5">
-          <h2 className="font-extrabold font-head text-[1.3125rem] text-ink tracking-[-0.01em]">
+          <h2
+            id={titleId}
+            ref={heading}
+            tabIndex={-1}
+            className="font-extrabold font-head text-[1.3125rem] text-ink tracking-[-0.01em] outline-none"
+          >
             {title}
           </h2>
           {/* The promise, from reports.ts. Not written here. */}
