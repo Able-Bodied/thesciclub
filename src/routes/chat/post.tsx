@@ -8,6 +8,7 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
+import { ReportControl } from '@/routes/chat/report-control';
 
 /**
  * One post in a topic, from the mock's `fpost()`.
@@ -288,21 +289,13 @@ export function Post({
               {removing ? 'Removing…' : 'Remove'}
             </button>
           ) : canReport ? (
-            reported ? (
-              // Not a disabled button. A disabled control is read out as one and
-              // invites a second try; this is a statement of what has happened.
-              <p className="font-semibold text-[0.75rem] text-grey">Reported</p>
-            ) : (
-              <button
-                type="button"
-                onClick={onReport}
-                aria-label={`Report ${name}'s post`}
-                data-target="small"
-                className={`${control} hover:text-destructive`}
-              >
-                Report
-              </button>
-            )
+            <ReportControl
+              reported={reported}
+              label={`Report ${name}'s post`}
+              onReport={onReport}
+              buttonClassName={`${control} hover:text-destructive`}
+              noteClassName="font-semibold text-[0.75rem] text-grey"
+            />
           ) : null}
         </div>
       )}

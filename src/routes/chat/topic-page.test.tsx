@@ -151,7 +151,11 @@ vi.mock('@/lib/chat/reports', async (importOriginal) => ({
     messageIds: new Set<string>(),
     loading: false,
     error: null,
-    reload: () => undefined,
+    // Reads back what was sent, as the real one does, so Report becomes
+    // Reported in the same render that closes the sheet.
+    reload: () => {
+      for (const [id] of db.reports) db.reportedPosts.add(id);
+    },
   }),
   reportPost: (id: string, note: string) => {
     if (db.reportFails) return Promise.resolve({ ok: false as const, error: db.reportFails });
@@ -815,6 +819,21 @@ describe('reporting a post', () => {
     });
     // The sheet goes once it has worked, and not before.
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('puts focus on Reported once the report has gone, and back on Report after Cancel', async () => {
+    const user = userEvent.setup();
+    renderTopic();
+    await user.click(screen.getByRole('button', { name: /^Report / }));
+    expect(screen.getByRole('heading', { name: 'Report this post' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: /^Report / })).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /^Report / }));
+    await user.click(screen.getByRole('button', { name: 'Send report' }));
+    await waitFor(() => {
+      expect(screen.getByText('Reported')).toHaveFocus();
+    });
   });
 
   it('keeps the sheet and the words when the report is refused', async () => {

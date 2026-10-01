@@ -5,6 +5,7 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
+import { ReportControl } from '@/routes/chat/report-control';
 
 /**
  * One message, from the mock's `msgBubble()`.
@@ -208,21 +209,13 @@ export function MessageBubble({
             {removing ? 'Removing…' : 'Remove'}
           </button>
         ) : canReport ? (
-          reported ? (
-            // Not a disabled button. A disabled control is read out as one and
-            // invites a second try; this is a statement of what has happened.
-            <p className="font-semibold text-[0.71875rem] text-grey">Reported</p>
-          ) : (
-            <button
-              type="button"
-              onClick={onReport}
-              aria-label={`Report ${name}'s message`}
-              data-target="small"
-              className={`${control} hover:text-destructive`}
-            >
-              Report
-            </button>
-          )
+          <ReportControl
+            reported={reported}
+            label={`Report ${name}'s message`}
+            onReport={onReport}
+            buttonClassName={`${control} hover:text-destructive`}
+            noteClassName="font-semibold text-[0.71875rem] text-grey"
+          />
         ) : null}
       </div>
     );

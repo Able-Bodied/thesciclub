@@ -2,6 +2,7 @@ import { useAttachmentUrls } from '@/lib/chat/attachments';
 import { noticeText } from '@/lib/chat/threads';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatMessage, ChatNotice } from '@/lib/chat/types';
+import { ReportControl } from '@/routes/chat/report-control';
 
 /**
  * A line in a group's conversation that records a change to the group:
@@ -71,19 +72,13 @@ export function NoticeLine({
         </span>
       </p>
       {canReport && message.removedAt === null ? (
-        reported ? (
-          <p className="font-semibold text-[0.71875rem] text-grey">Reported</p>
-        ) : (
-          <button
-            type="button"
-            onClick={onReport}
-            aria-label={`Report ${who}’s change to the group`}
-            data-target="small"
-            className="min-h-[1.75rem] font-semibold text-[0.71875rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
-          >
-            Report
-          </button>
-        )
+        <ReportControl
+          reported={reported}
+          label={`Report ${who}’s change to the group`}
+          onReport={onReport}
+          buttonClassName="min-h-[1.75rem] font-semibold text-[0.71875rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
+          noteClassName="font-semibold text-[0.71875rem] text-grey"
+        />
       ) : null}
     </div>
   );
