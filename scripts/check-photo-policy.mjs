@@ -1,6 +1,7 @@
 /**
  * Can an administrator clear another member's photograph, and can a member not?
- * And does the bucket refuse what its limits say it refuses?
+ * Does the bucket refuse what its limits say it refuses? And, since it went
+ * private (20261001000000), who can get a signed URL for what?
  *
  *   pnpm exec supabase start …   # a local stack must be running
  *   node scripts/check-photo-policy.mjs
@@ -199,9 +200,77 @@ const fits = await as(MEMBER)
   .upload(`${MEMBER}/fits.png`, PNG, { upsert: true, contentType: 'image/png' });
 check('a small PNG in their own folder is stored', fits.error?.code ?? 'stored', 'stored');
 
+/**
+ * The read side, since 20261001000000. A signed URL is the only way to a
+ * photograph now, and storage grants one only where the select policy lets
+ * the caller read the row. The claim card's face is in
+ * supabase/tests/photos-bucket-reads.sql, which can set a phone claim.
+ */
+console.log('\nWho can read what, now the bucket is private:\n');
+
+const NOT_YET = 'dddddddd-6666-0000-0000-00000000000d';
+const LOGO = 'organizations/probe-logo.png';
+await put(MEMBER);
+{
+  const { error } = await root.storage
+    .from('photos')
+    .upload(LOGO, PNG, { upsert: true, contentType: 'image/png' });
+  if (error) {
+    console.error(`\n  Could not put the probe logo in place: ${error.message}\n`);
+    process.exit(2);
+  }
+}
+const signs = async (client, path) =>
+  !(await client.storage.from('photos').createSignedUrl(path, 60)).error;
+
+check(
+  "a member gets a signed URL for another member's photograph",
+  await signs(as(OTHER), `${MEMBER}/${PROBE}`),
+  true,
+);
+check(
+  'a signed-out visitor gets none',
+  await signs(createClient(API, ANON), `${MEMBER}/${PROBE}`),
+  false,
+);
+check('…not even for a logo', await signs(createClient(API, ANON), LOGO), false);
+check(
+  "somebody signed in with no member row gets none for a member's photograph",
+  await signs(as(NOT_YET), `${MEMBER}/${PROBE}`),
+  false,
+);
+check('…and does get one for a logo', await signs(as(NOT_YET), LOGO), true);
+
+const publicUrl = await fetch(`${API}/storage/v1/object/public/photos/${MEMBER}/${PROBE}`);
+check('the old public URL no longer serves it', publicUrl.ok, false);
+
+const { data: signedForMember } = await as(OTHER)
+  .storage.from('photos')
+  .createSignedUrl(`${MEMBER}/${PROBE}`, 60);
+const served = signedForMember ? await fetch(signedForMember.signedUrl) : null;
+check('a signed URL serves it', served?.ok ?? false, true);
+
+// Onboarding uploads before the member row exists, with upsert, and storage
+// refuses an upsert without a select policy on the row, even the first one —
+// which is why the policy lets an account read its own folder. Twice, so a
+// second try at signup is covered too.
+const firstTry = await as(NOT_YET)
+  .storage.from('photos')
+  .upload(`${NOT_YET}/profile.png`, PNG, { upsert: true, contentType: 'image/png' });
+const secondTry = await as(NOT_YET)
+  .storage.from('photos')
+  .upload(`${NOT_YET}/profile.png`, PNG, { upsert: true, contentType: 'image/png' });
+check(
+  'somebody mid-signup can upload their photograph twice',
+  `${firstTry.error?.message ?? 'stored'} / ${secondTry.error?.message ?? 'stored'}`,
+  'stored / stored',
+);
+
 await root.storage
   .from('photos')
   .remove([
+    LOGO,
+    `${NOT_YET}/profile.png`,
     `${MEMBER}/${PROBE}`,
     `${MEMBER}/too-large.png`,
     `${MEMBER}/not-a-photo.heic`,
