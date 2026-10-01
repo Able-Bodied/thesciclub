@@ -139,11 +139,71 @@ export type SignedBucket = 'chat' | 'photos';
 const signed = new Map<string, { url: string; until: number }>();
 const cacheKey = (bucket: SignedBucket, path: string) => `${bucket}\n${path}`;
 
+/**
+ * The photos bucket's URLs outlive a reload; chat's do not.
+ *
+ * Measured on the local stack with 150ms of latency (HANDOFF.md, "Home, step
+ * 6"): with the cache in memory only, reloading Peers drew its faces in about
+ * 1,060ms against 580ms from public URLs. A reload forgot every URL, so each
+ * face was signed again, and a new token is a new URL to the browser, so each
+ * photograph was downloaded again rather than read from its cache. Reopening
+ * the app is a reload. Kept here until they expire, the same URLs come back,
+ * nothing is signed and the browser's cache answers.
+ *
+ * Only `photos`: a face is readable by every member already. A chat URL opens
+ * a photograph from a private conversation, and stays in memory, where a
+ * reload ends it. Both are forgotten on sign-out (signOut in account.tsx).
+ */
+const KEPT_BUCKET: SignedBucket = 'photos';
+const KEPT_KEY = 'thesciclub.signed-photos';
+
+function restoreKept(): void {
+  let stored: string | null = null;
+  try {
+    stored = localStorage.getItem(KEPT_KEY);
+  } catch {
+    // Private mode, or storage blocked: faces are signed again, as before.
+  }
+  if (!stored) return;
+  try {
+    const now = Date.now();
+    const kept = JSON.parse(stored) as Record<string, { url?: unknown; until?: unknown }>;
+    for (const [path, hit] of Object.entries(kept)) {
+      if (typeof hit.url === 'string' && typeof hit.until === 'number' && hit.until > now) {
+        signed.set(cacheKey(KEPT_BUCKET, path), { url: hit.url, until: hit.until });
+      }
+    }
+  } catch {
+    // Not ours, or damaged. Nothing restored; the next signing writes it again.
+  }
+}
+
+function saveKept(): void {
+  const now = Date.now();
+  const prefix = cacheKey(KEPT_BUCKET, '');
+  const kept: Record<string, { url: string; until: number }> = {};
+  for (const [key, hit] of signed) {
+    if (key.startsWith(prefix) && hit.until > now) kept[key.slice(prefix.length)] = hit;
+  }
+  try {
+    localStorage.setItem(KEPT_KEY, JSON.stringify(kept));
+  } catch {
+    // Storage full or blocked. The URLs still serve this page.
+  }
+}
+
+restoreKept();
+
 /** For tests, and for a sign-out: nothing signed for one member serves the next. */
 export function resetAttachmentUrls(): void {
   signed.clear();
   queued.clear();
   inFlight.clear();
+  try {
+    localStorage.removeItem(KEPT_KEY);
+  } catch {
+    // Nothing was kept where storage is blocked.
+  }
 }
 
 /** What the cache already holds for these paths, unexpired. */
@@ -210,6 +270,7 @@ async function sign(bucket: SignedBucket, paths: string[]): Promise<void> {
   } finally {
     for (const path of paths) inFlight.delete(cacheKey(bucket, path));
   }
+  if (bucket === KEPT_BUCKET) saveKept();
 }
 
 async function signUrls(bucket: SignedBucket, paths: string[]): Promise<Map<string, string>> {

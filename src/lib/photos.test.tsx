@@ -41,6 +41,7 @@ function Face({ path }: { path: string | null }) {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   resetAttachmentUrls();
   storage.calls = [];
   storage.refuse = new Set();
@@ -123,5 +124,77 @@ describe('usePhotoUrl', () => {
       );
     });
     expect(storage.calls).toEqual([{ bucket: 'chat', paths: ['rooms/bowel/x.webp'] }]);
+  });
+});
+
+describe('across a reload', () => {
+  const KEPT = 'thesciclub.signed-photos';
+
+  /** A fresh copy of the modules, as a reload would load them. */
+  async function reload() {
+    vi.resetModules();
+    return {
+      photos: await import('@/lib/photos'),
+      attachments: await import('@/lib/chat/attachments'),
+    };
+  }
+
+  // Measured: a reload re-signed every face and, with a new token in every
+  // URL, downloaded every photograph again — about half a second at 150ms.
+  it('keeps a signed face, so a reload draws it at once and asks for nothing', async () => {
+    render(<Face path="seed/a.webp" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('seed/a.webp')).not.toHaveTextContent('initials');
+    });
+
+    const { photos } = await reload();
+    function Again() {
+      return <span data-testid="again">{photos.usePhotoUrl('seed/a.webp') ?? 'initials'}</span>;
+    }
+    render(<Again />);
+    expect(screen.getByTestId('again')).toHaveTextContent(
+      'https://signed.test/photos/seed/a.webp?token=t',
+    );
+    await act(() => new Promise((r) => setTimeout(r, 10)));
+    expect(storage.calls).toHaveLength(1);
+  });
+
+  it('signs again what was kept past its time', async () => {
+    localStorage.setItem(
+      KEPT,
+      JSON.stringify({ 'seed/a.webp': { url: 'https://signed.test/old', until: Date.now() - 1 } }),
+    );
+    const { photos } = await reload();
+    function Again() {
+      return <span data-testid="again">{photos.usePhotoUrl('seed/a.webp') ?? 'initials'}</span>;
+    }
+    render(<Again />);
+    expect(screen.getByTestId('again')).toHaveTextContent('initials');
+    await waitFor(() => {
+      expect(screen.getByTestId('again')).toHaveTextContent(
+        'https://signed.test/photos/seed/a.webp?token=t',
+      );
+    });
+  });
+
+  it('never keeps a chat photograph’s URL', async () => {
+    renderHook(() => useAttachmentUrls(['threads/t1/x.webp']));
+    render(<Face path="seed/a.webp" />);
+    await waitFor(() => {
+      expect(storage.calls).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(localStorage.getItem(KEPT)).toContain('seed/a.webp');
+    });
+    expect(localStorage.getItem(KEPT)).not.toContain('threads/t1/x.webp');
+  });
+
+  it('forgets every kept URL on a reset, which is what signing out does', async () => {
+    render(<Face path="seed/a.webp" />);
+    await waitFor(() => {
+      expect(localStorage.getItem(KEPT)).toContain('seed/a.webp');
+    });
+    resetAttachmentUrls();
+    expect(localStorage.getItem(KEPT)).toBeNull();
   });
 });

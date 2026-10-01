@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import { describeError } from '@/lib/describe-error';
 import { forgetThisDevice } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
@@ -130,6 +131,10 @@ export async function signOut(): Promise<{ ok: boolean; error?: string }> {
   // member's notifications. Best effort, and bounded — see forgetThisDevice.
   await forgetThisDevice();
   const { error } = await getSupabase().auth.signOut();
+  // Signed photograph URLs are kept across reloads (src/lib/chat/attachments.ts)
+  // and were signed under this member's session. The next person on this
+  // phone signs their own.
+  if (!error) resetAttachmentUrls();
   return error
     ? { ok: false, error: describeError(error, 'You are still signed in.') }
     : { ok: true };
