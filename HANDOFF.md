@@ -251,8 +251,8 @@ Each has its own section further down; this is the index.
   invited joining, tomorrow's events, new events from organizations you
   follow; mutes per conversation, topic and room; switches per kind on Me; the
   unread count on the app icon. **Not yet tried on a real iPhone** — that is
-  the owner's test. See "Next up: notifications on an iPhone", which is now a
-  record rather than a plan.
+  the owner's test. See "Notifications on an iPhone — built and live
+  2026-09-27", which is now a record rather than a plan.
 - **A removed reply in a topic disappears** instead of saying "Removed by its
   author", and stops counting. Conversations still say "Removed by…".
 - **An administrator can delete a topic** (Delete topic, in the topic header).
@@ -619,7 +619,7 @@ Owed and noticed, not changed:
 HOME-PLAN.md step 3b: the probes, one storage policy, and Like on every
 topic card on Home. Three parts, committed in the plan's order — probe
 fixes, then the migration and its probe, the owner's push, then the
-client. Not pushed to GitHub.
+client. Since pushed to GitHub, and live.
 
 **Part 1, the probes.** Every one of the 30 in `supabase/tests/` reads as
 expected on a stack started fresh from all 85 migrations, twice, with the
@@ -1210,7 +1210,7 @@ observing the thing itself rather than by assuming the setting took:
 Check a sha with `git ls-remote --heads origin` rather than trusting one
 written here.
 
-**All four surfaces are built, and the app is live** at
+**All five surfaces are built, and the app is live** at
 https://thesciclub.netlify.app/ — see "Hosting on Netlify". Peers (deck,
 profiles, filters), onboarding + the profile survey, and Events (list, detail,
 RSVPs, organizations, series collapsing) with 125 real events ingested from
@@ -1224,16 +1224,16 @@ the hosted project since 2026-09-23; the section below says how to check that
 rather than trust it. See "What Chat is".
 
 **Home is the fifth, and where the app opens** — built in steps from
-2026-09-29 to 2026-09-30. Steps 1 to 4 are live; step 5, the redirect, is
-committed and not yet pushed. See "What Home is".
+2026-09-29 to 2026-10-01, every step live. See "What Home is".
 
-1,522 tests pass, in 103 files (2026-09-30). `pnpm check` and `pnpm build` are clean. **Keep
+1,542 tests pass, in 105 files (2026-10-01). `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 75 migrations, all of them on the hosted project
+## 87 migrations, all of them on the hosted project
 
-**As of 2026-09-23 the hosted project (`erijdvqnxavwezsbbojv`) and
-`supabase/migrations/` agree: 75 applied, 0 pending.** For weeks before
+**As of 2026-10-01 the hosted project (`erijdvqnxavwezsbbojv`) and
+`supabase/migrations/` agree: 87 applied, 0 pending** (75 on 2026-09-23,
+then the twelve listed below). For weeks before
 2026-09-20 the hosted database was ahead of `origin`; from the 20th to the
 23rd it was the other way round, with the whole of Chat applied locally and
 nowhere else; the owner pushed the twenty-one Chat migrations between
@@ -1252,6 +1252,24 @@ different way. After a push that adds a realtime table, confirm Realtime is
 enabled on the hosted project, in the dashboard: a publication with the
 service switched off is the failure Environment describes, every
 subscription SUBSCRIBED and delivering nothing.
+
+The twelve since 2026-09-23, each pushed by the owner after a dry run that
+listed it, oldest first — the sections named say more:
+
+| migration | what it adds |
+| --- | --- |
+| `20260927000000` | `push_subscriptions` and `push_subscribe` — see "Notifications on an iPhone" |
+| `20260927010000` | the three mute tables, `push_owed`, `push_forget` and the trigger that notifies on messages and replies |
+| `20260927020000` | the six later kinds of notification, `push_daily()` and the badge count |
+| `20260927030000` | a removed reply in a topic is left out and stops counting |
+| `20260927040000` | `admin_delete_topic` |
+| `20260929000000` | `admin_invites` stops reading `auth.users` — "Supabase's security email" |
+| `20260930000000` | Home step 2b: rooms open to write without joining, editing with `chat_edits`, replies under a post and quotes in a conversation |
+| `20260930010000` | Home step 3: `chat_post_likes` |
+| `20260930020000` | group names and pictures, and notices in the conversation |
+| `20260930030000` | Home step 3b: the chat bucket's policies name `authenticated` |
+| `20260930040000` | Home step 6: the photos bucket takes 2MB and three image types |
+| `20261001000000` | Home step 6: the photos bucket is private |
 
 The Chat migrations, in the order they apply — each header says why, and the
 "What Chat is" section below says what the member sees:
@@ -1279,7 +1297,6 @@ The Chat migrations, in the order they apply — each header says why, and the
 | `…190000` | `chat_reports.context_kind` (room, group or direct), written by both report functions; `admin_chat_reports` dropped and recreated to return it — the panel offers Remove for the first two only |
 | `…200000` | photographs: `attachments text[]` on messages, posts, removed bodies and reports; the **private** `chat` bucket (2MB, three image types) and its three storage policies behind `chat_file_is_readable` / `_writable` / `_reported`; `chat_create_topic` takes a fourth argument; removal blanks the list |
 | `…210000` | a photograph named on a report cannot be deleted by anybody — `chat_file_is_on_a_report()` in the delete policy. The owner spotted the gap the day photographs shipped: take the message back and the report kept the words and an empty space |
-| `20260930000000` | Home step 2b: `chat_can_post_in` without a membership row; `edited_at` and `reply_to` on posts and messages with a `before insert` trigger each; `chat_edits` (administrators select, nobody else reads) with `chat_edit_post` / `chat_edit_message` as its writers; `chat_remove_post` frees a removed post's replies. Pushed 2026-09-29. |
 | `20260923000000` | `chat_add_first_post_photographs(room, paths)`: a new room's first post gets its photographs *after* the room exists, because the folder is named after an id the function makes — the one place the row comes first and the files second. Definer; once, by the starter, before any reply, files checked in `storage.objects`. Pushed 2026-09-23. |
 
 The four from 2026-09-17, newest first:
@@ -2027,8 +2044,9 @@ component's own comment says so. Six migration headers still call it
 migration is not edited after it has run, comments included. There is nothing
 to go back to and nothing to trust over this file and the migrations.
 
-**The migrations are on the hosted project since 2026-09-23.** See the second
-section of this file for how that is checked before deploying anything.
+**The migrations are on the hosted project since 2026-09-23.** See "87
+migrations, all of them on the hosted project" for how that is checked
+before deploying anything.
 
 ## The three kinds of thread, and what separates them
 
@@ -2166,7 +2184,8 @@ took the two tiles out on 2026-09-21 because the Chat tab is one tap away and
 already carries an unread dot. src/routes/me/stats.tsx says so.)
 
 `src/lib/chat/`: `types`, `rooms`, `topics`, `threads`, `groups`, `reports`,
-`authors`, `unread`, `realtime`, `time`, and `routes/chat/room-map.ts`.
+`authors`, `unread`, `realtime`, `time`, `attachments`, `mutes`, `edits`,
+`likes`, and `routes/chat/room-map.ts`.
 
 ## What will bite the next person
 
@@ -2232,17 +2251,20 @@ Each of these was found by running something, not by reading it.
   `post_id` — and a check demanding one be set would refuse that update and
   block the delete. `kind` is the discriminator instead. Anything later that
   keeps a snapshot of a row it does not own has this shape.
-- **A count of zero is not drawn**, anywhere: no "0 topics · 0 posts", no empty
-  nav badge. Found in a screenshot.
+- **A count of zero is not drawn**: no "0 topics · 0 posts", no empty nav
+  badge. Found in a screenshot. Three places still break the rule, noticed
+  and not fixed — a topic page's header ("0 replies · 1 view"), an event
+  card ("1 going · 0 interested") and a room's topic rows ("0 views"); see
+  the owed lists under "Home, step 1" and "Home, step 2".
 - **An avatar is never its own link.** A link whose only content is an image or
   two initials has no accessible name — a screen reader reaches it and says
   "link, N". The profile link goes on the name and the tile beside it is
   `aria-hidden`.
-- **`pnpm shoot` cannot see below the fold.** The shell is `h-dvh` with an inner
-  scroller, so `--full` captures one viewport. The new-room form and the Start a
-  room button are both under it, and a one-off Playwright script that scrolls
-  the inner container was needed to look at them. If anything touches
-  `shoot.mjs`, a `--scroll` flag is the thing to add.
+- **`--full` cannot see below the fold.** The shell is `h-dvh` with an inner
+  scroller, so `--full` captures one viewport. Use `pnpm shoot <route>
+  --scroll=<px>` (added in Home step 1), which scrolls the inner container
+  first; before it, a one-off Playwright script was needed to see the
+  new-room form and the Start a room button.
 
 ## Components that must not be written twice
 
@@ -2447,14 +2469,15 @@ a migration except the fourth.
    2 of 4 from Bo".
 5. **Say when a save worked.** WAI tip 6 asks for confirmation as well as
    errors. Errors are `role="alert"` now; success is mostly silent — the
-   details form, the survey, an RSVP, joining a room and following an
-   organization change what is on screen and announce nothing. A polite live
+   details form, the survey, an RSVP, a like and following an organization
+   change what is on screen and announce nothing. A polite live
    region in the shell (`role="status"`, one at a time) that a write helper's
-   caller can speak through — "Saved.", "You joined Bowel management." — is
+   caller can speak through — "Saved.", "You are following NorCal SCI." — is
    one component and a line at each site.
 6. **Audit the toggles.** `follow-button.tsx` is the model: `aria-pressed`
-   and a label that says what pressing will do. Join/Leave on a room and
-   RSVP on an event swap their words instead, which is fine to read and
+   and a label that says what pressing will do. RSVP on an event swaps
+   its words instead (Join/Leave on a room went with Home step 2b), which
+   is fine to read and
    says nothing at the moment it changes — item 5 covers the announcement;
    this is checking each one has a name that is true in both states.
 7. **Keep axe in the loop.** The run that found the landmark gap was a
@@ -2610,18 +2633,26 @@ whether a message for the conversation already on screen can be swallowed.
 
 ## What the repo has, and what it does not
 
+Written while pieces 1 to 3 were being built; the last column is brought up
+to date, since everything here is live.
+
 | | state |
 | --- | --- |
 | manifest, `display: standalone`, icons, `apple-touch-icon` | there |
 | a service worker | **ours since 2026-09-27** (piece 1): `src/sw.ts`, `injectManifest`, IIFE. Keeps everything the generated one did and adds `push` / `notificationclick`; the words and the address are `lib/push/payload.ts` |
-| anything that can send | **nothing.** `supabase/functions/` does not exist; the only workflow is `event-ingest.yml` |
-| somewhere to keep a subscription | **`push_subscriptions`** (piece 2), written only by `push_subscribe`. Local only |
+| anything that can send | **`supabase/functions/push-notify/`** (piece 4), deployed to the hosted project |
+| somewhere to keep a subscription | **`push_subscriptions`** (piece 2), written only by `push_subscribe`. On the hosted project since 2026-09-27 |
 | a way to say yes | **the Notifications row on Me** (piece 3), `lib/push/notifications.ts` + `routes/me/notification-settings.tsx`; sign-out forgets the device |
-| VAPID keys | in `.env.local`, see above; in Netlify, **not yet, deliberately** |
+| VAPID keys | in `.env.local`, see above; the private key a function secret, the public one `VITE_VAPID_PUBLIC_KEY` in Netlify |
 | a definition of "new" | there — `chat_my_threads()` / `chat_unread_count()` |
 | in-app delivery | there — realtime on messages, posts, topics, threads, rooms |
 
 ## The shape of it
+
+The plan as it was written, kept for its reasoning. All five pieces are
+built; where the build differs (the function is `push-notify`, not `notify`,
+and a trigger with `net.http_post` stands where a webhook is named), the
+sections above are what is true.
 
 Five pieces, and each can be finished and looked at before the next.
 
@@ -2730,10 +2761,10 @@ for any member who wants that, and is worth telling people about.
 
 # Next up: the owner's call
 
-Chat is built and has its own section above, and every one of its migrations
-is on the hosted project as of 2026-09-23. The app is live and the ingest is
-running current code. What is not yet live is the client work on this branch
-— merging it to `main` is what ships it, and Netlify builds from `main`.
+Chat and Home are built, each has its own section above, and every
+migration is on the hosted project. The app is live and the ingest is
+running current code. Work on this branch ships when it is pushed to `main`,
+which Netlify builds from — at the owner's word, and gated on `pnpm check`.
 
 **One question is open and it is not a coding one.** The 29 "Staying Driven
 Wheelchair Fitness" events have no format — NorCal SCI's own page never says
@@ -3106,7 +3137,8 @@ a null `invite_id`, so an id join reports them missing while they sit there.
 
 `/invites`, reached from the Invites card on Me, which stated the allowance
 and then offered no way to spend it. Unlisted in the tab bar and redirects a
-non-mentor to Me, the way `/admin` redirects a non-admin to Peers. Neither is
+non-mentor to Me, the way `/admin` redirects a non-admin to Home (Peers
+until Home step 5). Neither is
 the permission check — the insert policy refuses a peer regardless.
 
 No migration was needed, as this entry predicted. The three mentor policies
@@ -3146,7 +3178,8 @@ Three things it turned up that were not obvious from reading the policies:
 `invites` records exactly one inviter and there are now three kinds:
 
 - **An organization**, through `admin_create_invite` with one named.
-- **A mentor**, through their own RLS policy, capped at two.
+- **A mentor**, through their own RLS policy, capped at
+  `mentor_invite_limit()` — two at first, ten since 20260917010000.
 - **The administrator**, through `admin_create_invite` with no organization
   — 20260913070000. It writes `invited_by_member_id = auth.uid()`, the same
   column a mentor's invite uses, so the one-inviter constraint governs both.
@@ -3256,7 +3289,8 @@ sentence explaining why, and that was worse than silence — an apology where an
 action goes, on the row an administrator sees every time they open the page.
 
 The mentor allowance line is also hidden for them: every administrator is a
-mentor now, a mentor's row prints "N of 2 invites used", and an administrator
+mentor now, a mentor's row prints "N of 10 invites used" (2 when this was
+written), and an administrator
 invites through `admin_create_invite`, which the cap does not govern. The real
 row read **"3 of 2 invites used"**.
 
@@ -3383,7 +3417,7 @@ link to a list.
 
 It was the last placeholder, kept as a sentence on screen rather than
 invented content until the owner asked. They asked on 2026-09-29; it was
-built in steps to 2026-09-30, and the app opens on it. See "What Home is".
+built in steps to 2026-10-01, and the app opens on it. See "What Home is".
 Chat was in the same position until 2026-09-18. No placeholder is left.
 
 ## 6. ~~Messaging does not exist~~ — built
@@ -3395,8 +3429,9 @@ where it was; an event's "group chat is coming" card is a real group.
 **The pattern those sentences came from is still the rule**, and Chat kept it
 for the things it does not do. A surface says so in words rather than offering
 a dead button. A button that silently does nothing is worse than a sentence
-explaining where things stand — which is why Chat has no search box, no
-attachment control and no way to edit a message, rather than greyed-out ones.
+explaining where things stand — which is why Chat has no search box and no
+block, rather than greyed-out ones. (Photographs came 2026-09-21 and editing
+2026-09-29; each arrived as a working control, never a dead one first.)
 
 ## Smaller things noticed but not fixed
 
@@ -3601,6 +3636,10 @@ it pointed nowhere near a grant. Fixed by `20260916010000`.
 
 # The old note: repeating events are grouped into series
 
+**Superseded**: the choice it leaves open was made — the list collapses a
+series (see "Repeating events collapse in the list"). Kept for the matcher
+below, which is still how series are found.
+
 The calendar is 124 rows made of 36 distinct events. Three titles are half of
 it: 29 Staying Driven Wheelchair Fitness, 16 Friday Happy Hour, 16 Weekly
 Wednesdays. A member scrolling Events meets the same class 29 times.
@@ -3774,12 +3813,19 @@ confusing half of that bug.
 
 ## Real people have joined
 
+**Since 2026-09-29 this section is wrong about Twilio, and "Security — open"
+and "Twilio — the owner's next job" at the top of this file are right.** SMS
+does not work in production: the club is not approved by Twilio and the
+credentials saved in Supabase are rejected (401). Real members sign in with a
+fixed code from the live project's test-number list — nine real numbers, four
+of them active members on 2026-09-29. What follows is kept as it was written.
+
 **Three, on 2026-09-18**: Ran, Ajay and Wojtek, on real phone numbers, through
 the real Twilio path. So the cautions below are no longer hypothetical — Twilio
 is demonstrably delivering, and there are now real phone numbers and injury
 details in the hosted database belonging to people who are not the owner.
 
-Five non-seed members in total: those three, Admin, and the owner's own account
+Five non-seed members in total on 2026-09-18: those three, Admin, and the owner's own account
 — which is on the test number `12222222222`, because the original on their real
 number was removed while testing the Remove button. That is worth knowing
 before reading anything into the roster.
@@ -3792,10 +3838,11 @@ requires an invite. That is tested, including against the live project.
 
 1. Whoever you share with needs a row in `invites` for their real number —
    add it from `/admin`.
-2. They will receive a **real SMS through Twilio**. The three test numbers only
-   work because they are configured as test OTPs in Supabase. Confirm Twilio is
-   actually sending — US A2P 10DLC registration can take days to weeks, and if
-   it is incomplete the message silently never arrives and they cannot sign in.
+2. **No SMS will arrive** until Twilio Verify is set up (see "Twilio — the
+   owner's next job"). Until then a new number signs in only once it is
+   added to the live project's test-number list with a code — a live
+   settings change, the owner's to make, and a private code per person is
+   better than the shared one.
 
 Signing somebody up also puts their phone number and injury details in a real
 database. Worth their explicit yes rather than a surprise.
