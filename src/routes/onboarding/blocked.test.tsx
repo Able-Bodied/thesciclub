@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Organization } from '@/types/domain';
 
 const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
-// The logo is drawn through a signed URL since HOME-PLAN.md step 6. Stubbed
+// The logo is drawn through a signed URL since HANDOFF.md "What Home is" step 6. Stubbed
 // here, as every screen test stubs the hooks its screen calls: unstubbed, the
 // signing request is refused by the network guard, storage-js turns that into
 // an ordinary error, and the badge quietly draws its short code instead.

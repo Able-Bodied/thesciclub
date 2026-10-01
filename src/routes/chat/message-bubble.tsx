@@ -45,7 +45,7 @@ import { ReportControl } from '@/routes/chat/report-control';
  * A reply is a quote, not a nest — since 2026-09-29
  * ---------------------------------------------------------------------------
  * A message that answers another carries a short quote of it at the top of
- * the bubble (HOME-PLAN.md, decision 11). Tapping the quote scrolls the
+ * the bubble (HANDOFF.md "What Home is", decision 11). Tapping the quote scrolls the
  * quoted message into view and lights it up once. The list stays in time
  * order: a nest in a chat would break the one thing a conversation is. The
  * quote's words are `quoteText`'s — "Removed message", "Photograph" — and

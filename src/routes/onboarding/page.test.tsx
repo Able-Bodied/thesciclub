@@ -112,7 +112,7 @@ vi.mock('@/lib/supabase', () => ({
 const { default: OnboardingPage } = await import('@/routes/onboarding/page');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
-// of HOME-PLAN.md. Until then it was Peers.
+// of HANDOFF.md "What Home is". Until then it was Peers.
 function renderJoin() {
   return render(
     <MemoryRouter initialEntries={['/join']}>

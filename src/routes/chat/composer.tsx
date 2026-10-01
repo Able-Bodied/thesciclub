@@ -78,7 +78,7 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
  * ---------------------------------------------------------------------------
  * `edit` puts it in place of a post's or a message's words, holding them,
  * with Save and Cancel where Send was and Escape as Cancel. No photo picker:
- * an edit changes the words and not the photographs (HOME-PLAN.md, step 2b),
+ * an edit changes the words and not the photographs (HANDOFF.md "What Home is", step 2b),
  * so the strip has nothing to offer. Save is unavailable while the words are
  * what they were, because the database refuses an edit that changes nothing
  * — "Edited" is never a lie — and a control that will be refused should not

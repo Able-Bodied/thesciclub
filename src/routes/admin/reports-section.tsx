@@ -75,7 +75,7 @@ import { EarlierVersions } from '@/routes/chat/earlier-versions';
  * The snapshot is what the reporter saw. If the author edited the post or
  * message afterwards — or before, and the reporter saw the second version —
  * every earlier version is under "Earlier versions" beneath it, from
- * chat_edits (HOME-PLAN.md, decision 10). Once the row itself is gone its
+ * chat_edits (HANDOFF.md "What Home is", decision 10). Once the row itself is gone its
  * versions go with it; the snapshot is what survives.
  *
  * ---------------------------------------------------------------------------

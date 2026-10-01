@@ -130,7 +130,7 @@ export async function deleteAttachments(paths: string[]): Promise<void> {
 /**
  * The buckets read through signed URLs. `chat` from the start; `photos` —
  * every member photograph, the seeded directory's and the organizations'
- * logos — from HOME-PLAN.md step 6, part 2, through `usePhotoUrls` in
+ * logos — from HANDOFF.md "What Home is" step 6, part 2, through `usePhotoUrls` in
  * src/lib/photos.ts. One cache for both, so there is one thing to keep right.
  */
 export type SignedBucket = 'chat' | 'photos';

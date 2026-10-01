@@ -10,7 +10,7 @@ import { type SignedBucket, useAttachmentUrls } from '@/lib/chat/attachments';
  * The path is the same in every project; only the origin differs.
  *
  * ---------------------------------------------------------------------------
- * Signed, not public — HOME-PLAN.md step 6, part 2
+ * Signed, not public — HANDOFF.md "What Home is" step 6, part 2
  * ---------------------------------------------------------------------------
  * Until 2026-09-30 this built a public URL by hand, and anybody holding one
  * could open the photograph without signing in, for ever. CONTEXT.md puts

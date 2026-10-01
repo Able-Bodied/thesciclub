@@ -4,7 +4,7 @@ import { INITIAL_ONBOARDING_DATA } from '@/routes/onboarding/types';
 
 /**
  * A refused photograph stops the signup before the member row is written,
- * so the page can say why on the photo step (HOME-PLAN.md step 6). The
+ * so the page can say why on the photo step (HANDOFF.md "What Home is" step 6). The
  * refusal carries the name and the code storage-js gives it, as the real
  * one does — a fixture without it would be sorted by its wording and pass while
  * the real thing did not (HANDOFF.md, "Errors read as sentences").

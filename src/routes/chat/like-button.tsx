@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 /**
  * Likes on a post: the Like button, the count beside it, and the list of who.
  *
- * The owner, 2026-09-29 (HOME-PLAN.md decision 4): likes with names shown.
+ * The owner, 2026-09-29 (HANDOFF.md "What Home is" decision 4): likes with names shown.
  * Drawn under every post in a topic and on a photograph on Home, from
  * `PostLikes` in both places, so the two cannot drift into disagreeing about
  * what the states are called or what the count opens.

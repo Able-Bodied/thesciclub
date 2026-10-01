@@ -31,7 +31,7 @@ import { ReportControl } from '@/routes/chat/report-control';
  * ---------------------------------------------------------------------------
  * The controls in one row, each named for its post
  * ---------------------------------------------------------------------------
- * Like and its count first (HOME-PLAN.md step 3; like-button.tsx says why
+ * Like and its count first (HANDOFF.md "What Home is" step 3; like-button.tsx says why
  * there is no Like on your own post), then Edit and Reply since 2026-09-29
  * (decisions 9 and 11), then Remove, or Report, or nothing. Report sits exactly where Remove sits, and
  * never beside it: the reader can take back what they wrote; on somebody

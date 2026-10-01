@@ -13,7 +13,7 @@ import { backToHome } from '@/routes/home/back';
  * ---------------------------------------------------------------------------
  * A question lives in a room, so this only picks one
  * ---------------------------------------------------------------------------
- * The owner's decision (HOME-PLAN.md, 1 and 2): a question asked from Home is
+ * The owner's decision (HANDOFF.md "What Home is", 1 and 2): a question asked from Home is
  * a topic, and a photograph shared from Home is a topic whose first post has
  * one. So there is no form here. This screen asks the two things the mock's
  * compose sheet asked — the kind, and where it goes — and hands over to the
@@ -41,7 +41,7 @@ import { backToHome } from '@/routes/home/back';
  * Until 20260930000000 writing in a room needed a membership row, and this
  * screen joined the room — awaited, so the New topic screen was not reached
  * before the join landed — with a button that said so. The owner took joining
- * out on 2026-09-29 (HOME-PLAN.md, decision 8): any member writes in any open
+ * out on 2026-09-29 (HANDOFF.md "What Home is", decision 8): any member writes in any open
  * room. So the button is Continue, always, and the only thing it waits for is
  * a room being chosen.
  *

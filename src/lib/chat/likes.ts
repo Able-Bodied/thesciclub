@@ -7,7 +7,7 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * Likes on posts in rooms: who likes which, liking, and taking it back.
  *
- * The owner, 2026-09-29 (HOME-PLAN.md decision 4): likes, with names shown to
+ * The owner, 2026-09-29 (HANDOFF.md "What Home is" decision 4): likes, with names shown to
  * every member who can read the room. `chat_post_likes` (20260930010000)
  * holds a row per member per post and nothing else.
  *
@@ -98,7 +98,7 @@ export function likesLabel(count: number): string {
   return `${count} ${count === 1 ? 'like' : 'likes'}`;
 }
 
-// The sentences are the plan's (HOME-PLAN.md step 3), except the one for
+// The sentences are the plan's (HANDOFF.md "What Home is" step 3), except the one for
 // taking a like back, which it did not write. That one has no "refused": the
 // delete policy hides somebody else's row rather than refusing it, so the
 // only failures are the ones describeError sorts by itself.

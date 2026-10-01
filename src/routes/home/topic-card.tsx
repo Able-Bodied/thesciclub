@@ -26,7 +26,7 @@ import { PostLikes } from '@/routes/chat/like-button';
  * ---------------------------------------------------------------------------
  * Like sits above the stretched link, and nothing else does
  * ---------------------------------------------------------------------------
- * HOME-PLAN.md step 3b: Like on every topic card, liking the opening post as
+ * HANDOFF.md "What Home is" step 3b: Like on every topic card, liking the opening post as
  * the photo card does. The link's pseudo-element covers the card, so a button
  * under it cannot be pressed — the tap lands on the link and opens the topic.
  * The two buttons are `relative`, which paints them after the pseudo-element

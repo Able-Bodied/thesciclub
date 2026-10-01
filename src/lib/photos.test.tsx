@@ -4,7 +4,7 @@ import { resetAttachmentUrls, useAttachmentUrls } from '@/lib/chat/attachments';
 import { usePhotoUrl } from '@/lib/photos';
 
 /**
- * Photographs and logos are drawn through signed URLs (HOME-PLAN.md step 6,
+ * Photographs and logos are drawn through signed URLs (HANDOFF.md "What Home is" step 6,
  * part 2). What matters is the shape of the requests: one per screen, not
  * one per face, nothing for a member without a photograph, and nothing again
  * for a face already signed.

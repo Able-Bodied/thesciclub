@@ -47,7 +47,7 @@ import { byline, type CardLikes, RoomTag } from '@/routes/home/topic-card';
  * ---------------------------------------------------------------------------
  * A like is on the opening post
  * ---------------------------------------------------------------------------
- * HOME-PLAN.md step 3. The photograph is the opening post, so liking the card
+ * HANDOFF.md "What Home is" step 3. The photograph is the opening post, so liking the card
  * likes that post, and the count here is the same rows the topic page counts
  * under it. Named for the topic's title, as Reply is. No opening post (it was
  * taken back) draws no likes, as it draws no photograph.

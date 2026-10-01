@@ -23,7 +23,7 @@ import { TopicRow } from '@/routes/chat/topic-row';
  * 20260930000000 writing is the same: any member starts a topic in an open
  * room, and there is no Join. Until then joining bought the right to write,
  * and this screen carried a join bar where a topic carries its composer; the
- * owner took joining out on 2026-09-29 (HOME-PLAN.md, decision 8).
+ * owner took joining out on 2026-09-29 (HANDOFF.md "What Home is", decision 8).
  *
  * ---------------------------------------------------------------------------
  * A closed room, for the one person who can see it

@@ -62,7 +62,7 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
  * ---------------------------------------------------------------------------
  * Reply on a bubble puts "Replying to Jan" over the composer and sends the
  * next message with `reply_to` set; the bubble that lands carries a quote of
- * the message it answers, and the list stays in time order (HOME-PLAN.md,
+ * the message it answers, and the list stays in time order (HANDOFF.md "What Home is",
  * decision 11 — a nest in a chat would break the one thing a conversation
  * is). Tapping a quote scrolls the quoted message into view and lights it
  * up once, with `prefers-reduced-motion` honoured for both. Edit on the

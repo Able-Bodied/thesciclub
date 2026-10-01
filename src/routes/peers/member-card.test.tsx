@@ -7,7 +7,7 @@ const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
 // Partial: `organizationByName` is pure and the card should be running the
 // real one. Without any mock the hook reaches for Supabase and throws inside
 // the render, which would leave the badge silently on its fallback.
-// The logo is drawn through a signed URL since HOME-PLAN.md step 6. Stubbed
+// The logo is drawn through a signed URL since HANDOFF.md "What Home is" step 6. Stubbed
 // here, as every screen test stubs the hooks its screen calls: unstubbed, the
 // signing request is refused by the network guard, storage-js turns that into
 // an ordinary error, and the badge quietly draws its short code instead.

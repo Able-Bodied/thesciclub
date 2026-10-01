@@ -11,7 +11,7 @@ import type { HomeSegment } from '@/lib/home/types';
  * The mock opens a compose sheet. Here it goes to /home/new, which picks the
  * kind and the room and hands over to the New topic screen: a question lives
  * in a room, so where it goes is the one thing to decide before writing it.
- * The mock also draws a floating "Post" button; there is none (HOME-PLAN.md,
+ * The mock also draws a floating "Post" button; there is none (HANDOFF.md "What Home is",
  * Departures). This card is the first thing in the list and does the job, and
  * two controls with one name read as a repeated control to a screen reader.
  *

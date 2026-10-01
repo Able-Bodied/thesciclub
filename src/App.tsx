@@ -171,7 +171,7 @@ export function RouteChange() {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Home, since 2026-09-30 (HOME-PLAN.md decision 6). Until then this
+      {/* Home, since 2026-09-30 (HANDOFF.md "What Home is" decision 6). Until then this
           went to Peers, because Home was a placeholder and landing on it
           opened the app on a page whose own copy pointed elsewhere. Home is
           now the club's recent topics, photographs, events and people in one
