@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-09-30.
+Last updated 2026-10-01.
 
 It is the whole context needed; you should not need to re-read the previous
 conversation.
@@ -69,12 +69,25 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    did the report sheet; the owner said fix both. The report sheet's fix
    (`c517393`..`8577087`) followed: both branches on GitHub at `ce97651`
    on 2026-09-30, and live.
-9. **Home step 5, Home is the first screen, is built and committed**
-   (2026-09-30; no migration). **Not pushed** — the owner says when. `/`,
-   signing in, finishing onboarding, the not-found page's link, an ordinary
-   member opening `/admin` and dev-login's default all land on `/home`, and
-   CONTEXT.md and this file describe Home as built. See "Home, step 5" and
-   "What Home is". Only step 6, the photos bucket, is left of HOME-PLAN.md.
+9. **Home step 5, Home is the first screen, is built and live**
+   (2026-09-30; no migration). `/`, signing in, finishing onboarding, the
+   not-found page's link, an ordinary member opening `/admin` and
+   dev-login's default all land on `/home`. See "Home, step 5" and "What
+   Home is".
+10. **Home step 6, the photos bucket, is done** (2026-09-30 to 2026-10-01),
+   and with it the whole of HOME-PLAN.md. The bucket takes 2MB and webp,
+   JPEG or PNG (`20260930040000`), and it is **private**, the owner's
+   choice (`20261001000000`): every face and logo is drawn through a signed
+   URL. Both migrations are on the live database — the owner pushed each
+   after its dry run, and `migration list --linked` shows 87 applied, none
+   pending. The signing client went to GitHub and production *before* the
+   bucket closed, at the owner's word (`6b2edd6`), and the owner saw every
+   face drawing there; after the push the owner confirmed the bucket
+   closed. Onboarding now stays on the photo step when storage refuses a
+   photograph. **The commits after `6b2edd6` are not on GitHub** (`692e1b3`
+   onwards): the migration and its probes, the API checks, a comment in
+   `photos.ts` and the documents — nothing the app runs differently. See
+   "Home, step 6".
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -159,9 +172,12 @@ Then decide with the owner whether to switch the hook on.
      `push_daily_runs`) are deny-all on purpose; leaked-password protection
      does not apply to phone sign-in.
 
-**Not yet audited**: storage buckets and their policies on the live project,
-and what a signed-in account with no member row can read through the 52
-definer functions `authenticated` may execute.
+**Not yet audited**: what a signed-in account with no member row can read
+through the 52 definer functions `authenticated` may execute. The two
+storage buckets are now set by migrations and probed — `chat` by
+`20260930030000`, `photos` by `20260930040000` and `20261001000000` (see
+"Home, step 6") — and the live `photos` bucket's settings were read back
+through the storage API on 2026-09-30.
 
 ## Twilio — the owner's next job
 
@@ -824,7 +840,7 @@ Tab going on from there. The two local report rows were deleted afterwards
 Noticed, not changed: the filter button is now written three times
 (Peers at 34px, Events and Home at 38px).
 
-## Home, step 5 — built 2026-09-30, not pushed
+## Home, step 5 — built 2026-09-30, pushed the same day
 
 HOME-PLAN.md step 5, "Home is the first screen, and the documents say so".
 No migration, so it releases with a push alone. Each commit with
@@ -892,6 +908,144 @@ Noticed, not changed:
 - On a club with no open rooms and no events, a new member's Home is the
   compose card and three "Worth meeting" cards. That is the fresh stack;
   the owner says every room is open on the live club.
+
+## Home, step 6 — built 2026-09-30 to 2026-10-01, both migrations on the live database
+
+HOME-PLAN.md step 6, the photos bucket, in two parts released differently.
+`pnpm test` (1,542 at the end, in 105 files), `pnpm check` and `pnpm build`
+clean before every commit. All looking was on the local stack: the dev
+server on 5183, confirmed by its process environment and by fetching
+`src/lib/supabase.ts` from it, both naming `http://127.0.0.1:54321`.
+
+**Part 1, limits — `20260930040000`, on the live database since 2026-09-30.**
+The live bucket was listed first, read-only, through the storage API with
+the service key: 49 files (the plan's 50 less one), the largest 329KB, 28
+webp, 15 PNG, 6 JPEG — nothing over 2MB and nothing of another type. The
+migration sets `file_size_limit` 2MB and webp, JPEG and PNG, the chat
+bucket's numbers, and touches nothing else. The owner pushed it after a
+dry run that listed it alone. Commits:
+
+- `d3d59d0`: the migration; `photo-cleanup.sql` step 8 reads the row back
+  (empty before the migration was applied, the two limits after).
+- `449d8d9`: `check-photo-policy` uploaded `probe.txt` as text/plain and
+  ignored the result — against the limit, two checks failed and two passed
+  with no file there. It puts a PNG now, stops if refused, and has an
+  over-size and a wrong-type upload refused through the API (each failed
+  with the limits cleared).
+- `a25ed00`: `pnpm logos --upload` refuses an SVG before trying. No live
+  logo is one; an SVG can carry script.
+- `1dda5b3`: the details form left a refusal under the photograph that
+  replaced it, "not saved" about one that was. `onPhoto` clears it.
+- `472d2e8`: onboarding's **Skip for now uploaded the photograph it
+  skipped** — it `set` the file away and submitted from the same render.
+  `finish` takes the skip as a patch.
+- `a88d1bb`: onboarding dropped a refused photograph in silence and
+  entered the club. **The owner's call, 2026-09-30**: "Enter the club"
+  uploads first; if storage refuses, the member stays on the photo step
+  with the sentence, the file let go and no member row written; "Skip for
+  now" still lets them in.
+
+The refusal sentences were seen in Chromium on the local stack with files
+it cannot shrink (a HEIC, a 3MB undecodable JPEG — anything it can read
+it shrinks under the limit): "That file is not a kind of photograph the
+club can hold" and "still too large after shrinking", on the details form
+and, on a throwaway stack with a new member, on onboarding's photo step at
+430, 1280 and `--text=larger`.
+
+**Part 2, private — the owner's choice, 2026-09-30.** Released in the
+reverse of every other step's order, as the plan said: client, then
+migration.
+
+- `fd5d69e`: `photoUrlFor` is gone. `usePhotoUrls` / `usePhotoUrl` in
+  `src/lib/photos.ts` sign through the chat bucket's cache, which takes
+  the bucket as a parameter (default `chat`). Paths asked for before the
+  next turn of the event loop go in one `createSignedUrls` per bucket, and
+  a path already signed is there on the first render. Every caller moved;
+  the organization page's member list draws `MemberAvatar` instead of its
+  own copy of it, and two hooks moved above early returns (details form,
+  profile).
+- `6b0d59e`: signed URLs for `photos` are kept in `localStorage`
+  (`thesciclub.signed-photos`) until they expire; chat's stay in memory, as
+  they open private conversations' photographs. `signOut` clears them —
+  nothing called the cache's reset before.
+- `6b2edd6`: `reprocess-photos` downloads through the storage API.
+- **The owner pushed to GitHub at `6b2edd6` and saw every face draw on
+  production** before anything closed.
+- `692e1b3`: `20261001000000`. `public = false`; one select policy, `to
+  authenticated`: a member (suspended included) reads everything; **any
+  signed-in account reads `organizations/` and its own folder**; **somebody
+  mid-signup reads the photograph of the profile they may claim**, through
+  `photo_is_my_claimable()`, which asks `my_claimable_profile()`. The logo
+  and claim reads were the owner's calls, 2026-10-01 — the turned-away
+  screen draws logos and the claim card a face, both for somebody who is
+  not a member. **The own-folder read was not in the plan and is
+  necessary**: storage refuses an upsert without a select policy on the
+  row, even a first upload, and onboarding uploads with upsert before the
+  member row exists. Tried without it: a plain upload stored, an upsert was
+  refused. The owner pushed it after a dry run listing it alone, and
+  confirmed the bucket closed.
+- `6458195`: `check-photo-policy` has the read side — 14 checks, all
+  passing; without the own-folder read the upsert check failed, and with
+  the bucket public again the public-URL check failed.
+
+**The probes.** `photos-bucket-reads.sql` is new (see the table). Before
+the migration every one of its six readers, anon included, read all five
+files; after, each reads what its `expect:` line says, the same on the
+working stack and a fresh one. With the claim clause sabotaged inside its
+transaction, step 5 lost "claimable". All 31 probes ran on a fresh stack
+before and after the migration: only the two photo probes differ, beyond
+the random four-character suffixes on rooms.
+
+**What was looked at.** The local bucket was empty, so it was filled with
+generated stand-ins (see Environment). Signed in as Alex, a Playwright
+script visited Peers, a profile, Me, Home, a topic with a photograph and
+a poster with a face, an organization page and Events, at 430, 1280 and
+`--text=larger`, before and after the bucket closed: no image broken, none
+on a public URL; screenshots read. The deck's faces sign in one request,
+logos in a few small ones as their badges appear. On a throwaway stack,
+with the bucket private: the turned-away screen draws both logos, the
+claim card draws the seeded face, and a new member's photograph uploads
+at signup (200) and draws on Me. The old public URL answers 400, and a
+signed URL works until it expires, then answers 400 (signed for three
+seconds to show it; the app's last an hour).
+
+**The Peers deck's first paint, before and after.** A production build
+pointed at the local stack (the dev server's unbundled modules made a
+throttled load take 14s), 430 wide, Chromium with 150ms of latency and
+1.25MB/s, the median of 7 runs, the time until every face in view has
+loaded:
+
+| | before (public URLs) | after (signed) |
+| --- | --- | --- |
+| Cold load | 1,516ms | 1,672ms |
+| Reload | 576ms | 570ms |
+| Home → Peers within the app | 406ms | 409ms |
+| Cold load, no added latency | 204ms | 223ms |
+
+The cold load pays one round trip to sign, and cannot avoid it: the paths
+are not known until the rows arrive. Signing "earlier, in
+`useBrowseMembers`" would save only the moment between the rows and the
+cards mounting, so it was not built. **The reload was the real cost**:
+1,064ms with the cache in memory only, because a reload re-signed every
+face and a new token is a new URL to the browser, so every photograph was
+downloaded again. Keeping the URLs (`6b0d59e`) brought it to 570ms. The
+stand-ins were re-uploaded with `max-age=3600`, as supabase-js uploads
+production's, before the final numbers; with `no-cache` the "before"
+reload looked slower than it is.
+
+**Not checked:** an iPhone (Playwright has no WebKit here), VoiceOver,
+and production beyond the owner's own look. Not built: a public bucket of
+its own for logos — the plan's alternative, unnecessary once any
+signed-in account may read them.
+
+Noticed, not changed:
+
+- **"Start fresh" on a claim still carries the seeded profile's photograph
+  and bio** (`consume_invite_for_new_member` copies whenever the invite
+  names a seed), against its own fine print. The owner said leave it.
+- After a refusal on onboarding's photo step, focus is on the page body,
+  as after every onboarding error: the button is disabled while
+  submitting. The sentence is an alert, so it is announced.
 
 ## Group names and pictures — built 2026-09-30, live the same day
 
@@ -964,7 +1118,8 @@ Two faults, both older than Home, one behind the other:
    every browser on an iPhone, cannot write webp from a canvas;
    `toBlob('image/webp')` hands back a PNG without complaint.
    `preparePhoto` caught that and returned the **original** — which for a
-   profile photograph is merely large (the `photos` bucket has no limit),
+   profile photograph is merely large (the `photos` bucket had no limit
+   until `20260930040000`),
    and for a chat photograph is refused, because the `chat` bucket takes 2MB
    and a phone's JPEG is usually more. The live bucket showed it: every
    photograph sent from a phone before the fix sits in `chat/threads/…` as
@@ -1001,11 +1156,17 @@ the fix.
   in there, turn on, close the app, have somebody send a direct message.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
-- **Home is built**, in the steps of `HOME-PLAN.md` (the owner asked on
-  2026-09-29): steps 1 to 4 are live, and step 5 — the app opens on Home —
-  is committed and waits for the owner's push. See "What Home is". Step 6,
-  the photos bucket, is what is left of the plan, and its second part is the
-  owner's decision first.
+- **Home is built and live**, every step of `HOME-PLAN.md` (the owner
+  asked on 2026-09-29), the photos bucket included. See "What Home is".
+  The commits after `6b2edd6` wait for the owner's push to GitHub; none of
+  them changes what the app does.
+- **Signed photographs on an iPhone.** Every face and logo is a signed URL
+  since 2026-10-01, and Playwright here has no WebKit. The owner saw
+  production drawing in their own browser; a phone has not been tried.
+- **"Start fresh" on a claim still carries the seeded profile's photograph
+  and bio**, though its fine print says it removes the old profile: the
+  claim trigger copies whenever the invite names a seed. Found in step 6;
+  the owner said leave it.
 
 ## Standing rules this session learned
 
@@ -1425,7 +1586,8 @@ Two rules, both learned the hard way:
 | `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
 | `admin-invites-no-auth-users.sql` | 20260929000000, after Supabase's `auth_users_exposed` email: step 1 (an administrator still sees who has signed up — the first draft of the migration broke it, because Postgres checks a function inside a view against the reader) and 3–5 (a member reads nothing through the view or around it, anon cannot reach the lookup) matter most |
 | `chat-group-rename.sql` | `20260930020000`: step 3 (somebody outside a group can neither rename it nor change its picture), 7 (a member cannot write a notice by hand) and 10 (a picture must be the caller's own upload in the group's folder) matter most; the name's rules, a pair and an event's group refused, paused refused, a notice not edited, not removed by its author, not answered; a reported notice reaches the administrators as a sentence with the picture; a rename queues no notification and a message still does (step 17 makes a `push_notify_url` inside its own transaction when the stack has none) |
-| `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added; since `20260930030000`, that the `chat` bucket's three name `authenticated` (step 1b) and that anon is refused without a function named (step 7). **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
+| `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added; since `20260930030000`, that the `chat` bucket's three name `authenticated` (step 1b) and that anon is refused without a function named (step 7); step 8 reads the bucket's own row — private, 2MB, webp/JPEG/PNG (`20260930040000`, `20261001000000`). **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
+| `photos-bucket-reads.sql` | `20261001000000`: six readers against five files in the private `photos` bucket. Step 1 (a signed-out visitor reads nothing and is told nothing) and 5 (somebody mid-signup reads the logo, the face on their claim card and their own upload, and not a member's photograph) matter most; a member and a suspended one read all five, a removed member and an account on no invite read the logo only, anon cannot call `photo_is_my_claimable`. Its view is `security_invoker`, or it reads as the superuser and every step says five. `pnpm check-photo-policy` asks storage for the signed URLs |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
 testing is a constraint or a trigger — and read the note at the top of each
@@ -1538,6 +1700,12 @@ files, most recently by reporting a restore as broken when it had worked.
   `~/.vscode-server` existing is the tell that it is attached. Then
   TypeScript: Select TypeScript Version → Use Workspace Version, since the
   project pins 6.0.3.
+- **The local `photos` bucket holds stand-ins**, not photographs. It was
+  empty until 2026-10-01 — every seeded face and logo was a broken image
+  locally — and step 6 filled it with a generated tile for each of the 45
+  paths the local database names (numbered gradients, short codes), by a
+  script in that session's scratch folder; nothing was copied from
+  production. A `db reset` empties it again.
 - No host `psql`; use
   `docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine psql …`.
 
@@ -1715,12 +1883,12 @@ reformats a file out from under a string-match patch made moments earlier.
 
 # What Home is
 
-Built 2026-09-29 to 2026-09-30, in the steps of `HOME-PLAN.md` (1, 2, 2b, 3,
-3b, 4, 5), and **where the app opens** from step 5. The plan is still at the
-repo root, with step 6 (the photos bucket) left in it; this section holds
-what stays true of Home once the plan goes, as "What Chat is" does for Chat.
+Built 2026-09-29 to 2026-10-01, in the steps of `HOME-PLAN.md` (1, 2, 2b, 3,
+3b, 4, 5, 6), and **where the app opens** from step 5. Every step is done;
+the plan stays at the repo root as the record, and this section holds what
+stays true of Home once the plan goes, as "What Chat is" does for Chat.
 The step sections near the top of this file ("Home, step 1" to "Home, step
-5") say what each step changed and how it was checked.
+6") say what each step changed and how it was checked.
 
 **Home adds no new kind of content.** It is a second way in to rooms, events
 and members that already exist, plus Likes. A question is a topic in a room,
@@ -1827,6 +1995,15 @@ single comment. If a task seems to need one, ask the owner.
   stack. See "Home, step 3b".
 - **`pnpm demo-member` after every `supabase db reset`**, and `pnpm shoot`
   signs in as `11111111111`, which a reset makes an ordinary member, Alex.
+- **Every photograph and logo is a signed URL** (`usePhotoUrl` in
+  `src/lib/photos.ts`, since step 6). A new screen drawing a face uses
+  `MemberAvatar` or the hook, never a URL built by hand, and its test stubs
+  `@/lib/photos`: unstubbed, the network guard's error is swallowed by
+  storage-js and the test passes drawing initials.
+- **Storage refuses an upsert without a select policy on the row**, even a
+  first upload. Onboarding uploads with upsert before the member row
+  exists, which is why the photos bucket lets an account read its own
+  folder. See "Home, step 6".
 - **Landing places are written in five files** — `App.tsx`, onboarding,
   dev-login, not-found and admin. A change to where the app opens touches
   all five, and `src/App.test.tsx` and the onboarding tests say where
@@ -1850,6 +2027,10 @@ single comment. If a task seems to need one, ask the owner.
   `src/components/filter-sheet-shell.tsx`, `src/lib/dialog-focus.ts`,
   `src/routes/chat/report-control.tsx`, `EventCard`, and `rankMembers` from
   `src/routes/peers/ranking.ts` for the people.
+- The photos bucket: `src/lib/photos.ts` over the signing cache in
+  `src/lib/chat/attachments.ts`, the migrations `20260930040000` and
+  `20261001000000`, the probes `photo-cleanup.sql` and
+  `photos-bucket-reads.sql`, and `pnpm check-photo-policy`.
 
 # What Chat is
 
