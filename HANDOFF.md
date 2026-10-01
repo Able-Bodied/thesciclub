@@ -33,8 +33,10 @@ changed and how it was checked.
 
 **Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
 sit at the same commit, and Netlify builds `main`. The hosted database has 87
-migrations applied and none pending (`pnpm exec supabase migration list`).
-1,542 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
+migrations applied; **the 88th, `20261002000000`, waits for the owner's
+push** — see "Start fresh carries nothing" (`pnpm exec supabase migration
+list`).
+1,544 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
 rather than trusting it: `git log --oneline origin/main..HEAD` should be
 empty, and a blank Remote column in the migration list is a pending
 migration.
@@ -44,10 +46,9 @@ migration.
 1. **Twilio approval, in progress** — the owner is working with Twilio
    (2026-10-01). Once texts arrive, the sign-in clean-up in "Twilio — the
    owner's next job" follows. Not a session's job until then.
-2. **"Start fresh" on a claim still carries the seeded profile's photograph
-   and bio** into a profile that chose not to claim it, though the screen
-   promises the opposite. A real bug, small, needing a migration. "Still
-   open" has the detail; the owner has not yet asked for it.
+2. **"Start fresh" carries nothing — built, not yet released.** The owner
+   pushes `20261002000000` first, from a dry run, then the client. See its
+   section below.
 3. **Things only a phone can check**: an hour with VoiceOver; the
    notifications test; signed photographs on an iPhone (every face is a
    signed URL since 2026-10-01 — the owner saw production draw in a
@@ -60,6 +61,7 @@ migration.
 
 | Day | What | Database |
 | --- | --- | --- |
+| 2026-10-01 | "Start fresh" on a claim carries nothing of the seed — built, the migration not yet pushed | `20261002000000` |
 | 2026-10-01 | Home step 6: the photos bucket takes 2MB and three image types, and is **private** — every face and logo a signed URL, the signing client released before the bucket closed | `20260930040000`, `20261001000000` |
 | 2026-09-30 | Home step 5: the app opens on Home; CONTEXT.md and this file say what the app is | — |
 | 2026-09-30 | Home step 4: Filter your feed; the filter sheet and the report sheet move focus (`useDialogFocus`) | — |
@@ -80,6 +82,44 @@ exact commit in a scratch worktree. Migrations were pushed by the owner,
 before the client that needed them, from a dry run shown first — except step
 6's closing migration, which went *after* the signing client, because the old
 client against a closed bucket would have broken every face at once.
+
+## Start fresh carries nothing — built 2026-10-01, the migration not yet pushed
+
+The owner asked on 2026-10-01. Somebody whose invite names a seeded profile
+is asked "Is this you?"; under "Start fresh" the screen says "Starting fresh
+removes the old profile too." It did remove it — after copying its
+photograph, bio, lists, level and the rest into the new row, because the
+insert never said which button was pressed. On a mistyped invite that hands
+a stranger's face and bio to the wrong person.
+
+- **`20261002000000`**: `members.start_fresh boolean not null default
+  false`, an instruction to `consume_invite_for_new_member()` rather than a
+  fact. The trigger copies only when it is false, retires the seed and
+  consumes the invite either way, then sets it back to false; the check
+  `members_start_fresh_not_stored` holds it there, so an update cannot set
+  it. The default keeps an installed app that is not yet updated on the old
+  behaviour, so the migration goes first.
+- **Client** (`fa43c3a`): `startFresh` in `OnboardingData`, set by Start
+  fresh, sent by `submitOnboarding` as `start_fresh`. Two tests, each seen to
+  fail with its line removed.
+
+Checked on a throwaway stack started fresh: `claim-carries-profile.sql` read
+against every expect line before and after — steps 1 to 8 the same, step 9
+refused before (no column) and as expected after; with `and not
+new.start_fresh` taken out of the function, step 9 carried the photograph,
+bio, three interests, five topics and the level. All 31 probes ran after;
+only that one names the column. In a browser on the same stack, as
+`11111111111` (its invite names Bob): Start fresh, "Sam", a birthday, Finish
+later, Home — the row has no photograph, bio, lists or level, the seed is
+gone, the invite consumed and linked, and Me shows "S" and 0%. Applied to the
+working local stack too.
+
+**To release:** the owner runs `pnpm exec supabase db push --linked
+--dry-run`, which should list `20261002000000` alone, then the push; then
+the client goes to `main`. In the other order the client's insert names a
+column the live database does not have, and every new member's signup is
+refused (PostgREST's `PGRST204`, which `describeError` does not count as
+drift, so it reads "Something went wrong").
 
 ## Security — the advisor's findings
 
@@ -1007,9 +1047,10 @@ signed-in account may read them.
 
 Noticed, not changed:
 
-- **"Start fresh" on a claim still carries the seeded profile's photograph
-  and bio** (`consume_invite_for_new_member` copies whenever the invite
-  names a seed), against its own fine print. The owner said leave it.
+- **"Start fresh" on a claim still carried the seeded profile's photograph
+  and bio** (`consume_invite_for_new_member` copied whenever the invite
+  named a seed), against its own fine print. The owner said leave it, then
+  asked for it later the same day: see "Start fresh carries nothing".
 - After a refusal on onboarding's photo step, focus is on the page body,
   as after every onboarding error: the button is disabled while
   submitting. The sentence is an alert, so it is announced.
@@ -1126,10 +1167,6 @@ the fix.
 - **Signed photographs on an iPhone.** Every face and logo is a signed URL
   since 2026-10-01, and Playwright here has no WebKit. The owner saw
   production drawing in their own browser; a phone has not been tried.
-- **"Start fresh" on a claim still carries the seeded profile's photograph
-  and bio**, though its fine print says it removes the old profile: the
-  claim trigger copies whenever the invite names a seed. Found in step 6;
-  the owner said leave it.
 
 ## Standing rules this session learned
 
@@ -1252,6 +1289,7 @@ listed it, oldest first — the sections named say more:
 | `20260930030000` | Home step 3b: the chat bucket's policies name `authenticated` |
 | `20260930040000` | Home step 6: the photos bucket takes 2MB and three image types |
 | `20261001000000` | Home step 6: the photos bucket is private |
+| `20261002000000` | "Start fresh" on a claim carries nothing — **not yet on the live database** |
 
 The Chat migrations, in the order they apply — each header says why, and the
 "What Chat is" section below says what the member sees:
@@ -1396,13 +1434,17 @@ The copy is in the trigger and not the client on purpose. The alternative is
 yet a member and, on a mistyped invite, is not the person on the card — that
 function is ten columns deliberately. Keep it that way.
 
-Two rules to preserve if you touch it:
+Three rules to preserve if you touch it:
 
 - **Their answers win.** Every field copies only where the incoming row is
   null or an empty array.
 - **`type` is not carried.** Several seeded rows are mentors and a mentor can
   put two numbers on the list, so inheriting it would turn a mistyped invite
   into an invite-rights grant. Promotion stays an administrator's decision.
+- **"Start fresh" copies nothing** (`20261002000000`). The insert carries
+  `start_fresh`; the trigger retires the seed either way and copies only
+  when it is false, then clears it. An insert that leaves it out copies, as
+  before.
 
 `supabase/tests/claim-carries-profile.sql` covers all of it.
 
@@ -1541,7 +1583,7 @@ Two rules, both learned the hard way:
 | `mentor-invites.sql` | the two-invite cap, as a real mentor session |
 | `blocked-numbers.sql` | all three places a ban is enforced |
 | `claim-preview.sql` | that somebody mid-onboarding can see the profile they may claim; step 1 asserts the old lookup is refused, and 1b is its control — the same lookup as an active member finds Ajay (step 1 could not fail until 2026-09-30) |
-| `claim-carries-profile.sql` | that claiming carries the whole profile and their own answers win |
+| `claim-carries-profile.sql` | that claiming carries the whole profile and their own answers win; steps 9–12 (`20261002000000`) that "Start fresh" carries none of it, still retires the seed and consumes the invite, and that `start_fresh` is never stored. Four transactions — run as written, never wrapped |
 | `restore-directory.sql` | restoring the seeded directory without touching anybody real |
 | `admin-vouches-directly.sql` | an administrator inviting in their own name |
 | `admin-is-protected.sql` | that no administrator can be paused, removed, blocked or made a peer — and that an ordinary member still can be |
