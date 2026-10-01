@@ -7,10 +7,11 @@ import { cn } from '@/lib/utils';
 /**
  * The five-tab bottom bar, matching `nav()` in docs/index.html.
  *
- * Every tab is a real screen now. Home was the last placeholder, and was in
- * the bar from the start because leaving a hole there would have moved every
- * other tab once it landed. It is still not where the app opens: `/` goes to
- * Peers until Home has had real content on the live club for a while.
+ * Every tab is a real screen. Home was the last placeholder, and was in the bar
+ * from the start because leaving a hole there would have moved every other tab
+ * once it landed. Since 2026-09-30 it is also where the app opens: `/` goes to
+ * Home, so the first tab is the first screen. Until then `/` went to Peers,
+ * while Home was built in steps and seen on the live club.
  *
  * ---------------------------------------------------------------------------
  * Chat is still not raised, and now carries a dot
