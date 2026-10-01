@@ -2,11 +2,11 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: steps 1, 2, 2b, 3 and 3b are built and on GitHub**
+**Where it stands: steps 1, 2, 2b, 3, 3b and 4 are built and on GitHub**
 (steps 1, 2 and 2b on 2026-09-29; step 3, Likes, on 2026-09-30, its
 migration `20260930010000` on the live database first; step 3b the same
-day, its migration `20260930030000` live first). **Step 4, Filter your
-feed, is built and committed, not on GitHub** (2026-09-30; no migration).
+day, its migration `20260930030000` live first; step 4, Filter your feed,
+the same day, no migration, both branches at `bb46b31`).
 **Next is step 5**, Home is the first screen. HANDOFF.md, "Home, step 1"
 through "Home, step 4", say where the build departed from this plan and
 why; read them first, because those departures stand. Two from 3b: the
@@ -17,7 +17,8 @@ Three from 4: the filter narrows the list a pill drew (so Everything's
 four events are all it can narrow), a chip that is on is always offered,
 and Online is a flag of its own. Step 4 also found that
 `FilterSheetShell` and the report sheet moved no focus; at the owner's
-word both now do, through `useDialogFocus` (not pushed).
+word both now do, through `useDialogFocus` (the filter sheet's fix is on
+GitHub; the report sheet's is not).
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request

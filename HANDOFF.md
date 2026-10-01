@@ -62,11 +62,13 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    applied, none pending), and every topic card on Home has Like. Both
    branches on `origin` were at `41db25e` when step 4 began. See "Home,
    step 3b".
-8. **Home step 4, Filter your feed, is built and committed** (2026-09-30),
-   **not on GitHub**. No migration, so it releases with a push alone. See
-   "Home, step 4". It found that `FilterSheetShell` moved no focus on
-   Home, Events or Peers, and neither did the report sheet; the owner said
-   fix both, and both are fixed, also not pushed.
+8. **Home step 4, Filter your feed, is built and on GitHub** (2026-09-30;
+   no migration). The owner pushed it with the filter sheet's focus fix:
+   both branches at `bb46b31`. See "Home, step 4". It found that
+   `FilterSheetShell` moved no focus on Home, Events or Peers, and neither
+   did the report sheet; the owner said fix both. **The report sheet's fix
+   (`c517393`..`8577087`, and the note recording it) is not on GitHub** —
+   check with `git log --oneline origin/main..HEAD`.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -694,7 +696,7 @@ Noticed, not changed: the accessible name reads "3 likes on Morning or
 evening routine?. Show who." — a title ending in a question mark gets a
 full stop after it. The plan's wording, and the photo card's since step 3.
 
-## Home, step 4 — built 2026-09-30, not pushed
+## Home, step 4 — built 2026-09-30, pushed the same day (the report sheet's fix after it, not pushed)
 
 HOME-PLAN.md step 4, "Filter your feed". No migration. Three commits, each
 with `pnpm test` (1,498 at the end), `pnpm check` and `pnpm build` clean:
