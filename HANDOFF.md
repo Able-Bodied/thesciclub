@@ -69,6 +69,12 @@ Three things happened on 2026-09-28/29, in this order of urgency:
    did the report sheet; the owner said fix both. The report sheet's fix
    (`c517393`..`8577087`) followed: both branches on GitHub at `ce97651`
    on 2026-09-30, and live.
+9. **Home step 5, Home is the first screen, is built and committed**
+   (2026-09-30; no migration). **Not pushed** — the owner says when. `/`,
+   signing in, finishing onboarding, the not-found page's link, an ordinary
+   member opening `/admin` and dev-login's default all land on `/home`, and
+   CONTEXT.md and this file describe Home as built. See "Home, step 5" and
+   "What Home is". Only step 6, the photos bucket, is left of HOME-PLAN.md.
 
 **Pushed, at the owner's word, on 2026-09-29:** first the brand alone
 (`2985e1c`..`390c7d7`), then Home steps 1 and 2 with everything between
@@ -818,6 +824,75 @@ Tab going on from there. The two local report rows were deleted afterwards
 Noticed, not changed: the filter button is now written three times
 (Peers at 34px, Events and Home at 38px).
 
+## Home, step 5 — built 2026-09-30, not pushed
+
+HOME-PLAN.md step 5, "Home is the first screen, and the documents say so".
+No migration, so it releases with a push alone. Each commit with
+`pnpm test` (1,522 at the end, in 103 files), `pnpm check` and `pnpm build`
+clean:
+
+- `dea331b`: `/` goes to `/home` (`App.tsx`, the comment above it
+  rewritten). `src/App.test.tsx` is new: the real routes and the real door
+  at `/`, the screens stubbed, and it drew Peers against the old line. The
+  manifest's `start_url` stays `/`, and so do the notifications' fallbacks,
+  so an installed app and a tapped notification with no path both follow.
+- `04835f5`: onboarding's three navigations — a member signing in, a new
+  member finishing (or Finish later), somebody already in opening `/join` —
+  go to `/home`. The test file renders real routes now; three tests say
+  where somebody lands, and all three failed against the old code.
+- `ecc7048`: the not-found page's button is "Go to Home" and goes there, an
+  ordinary member opening `/admin` lands on Home, and `/dev-login` with no
+  `next` lands on Home. dev-login had no test; it has two.
+- `eaab657`: `app-nav.tsx`'s header comment.
+- Then CONTEXT.md, this file, and HOME-PLAN.md's status note.
+
+Before it, the report sheet's focus fix the brief asked for was found
+already done and live (`7ada33f`, `8577087`, in "Home, step 4"). It was
+checked rather than redone: the six focus tests in `report-sheet.test.tsx`
+were run in a scratch worktree against the sheet as it was before
+`7ada33f`, and all six failed. `3443eb9` corrected the sentences here that
+still called the report sheet the pattern, or its fix unpushed.
+
+Checked on the local stack (the dev server on 5183, confirmed by fetching
+`src/lib/supabase.ts` from it: it inlines `http://127.0.0.1:54321` and the
+local key), by a Playwright script in the session's scratch folder, 37
+checks at 430 and 1280, none failed: signed out, `/` goes to `/join`;
+signing in as Jan lands on `/home`, titled "Home · The SCI Club"; signed in,
+`/` opens `/home`; `/no-such-place` says "Page not found", axe clean, Tab
+reaches "Go to Home" and Enter lands on Home; Jan opening `/admin` lands on
+Home; `/dev-login` with no `next` lands on Home. The report sheet on a topic
+page, keyboard only: Tab from the top of the page to "Report Sam's post",
+Enter opens it with focus on the title, eight Tabs go round the note,
+Cancel and Send report and never out, Shift+Tab from the title stays
+inside, axe clean with it open, Escape and Cancel each put focus back on
+"Report Sam's post", and at 430 a report sent by Enter leaves focus on
+"Reported". That report row was deleted afterwards (`chat_reports` back to
+6).
+
+**A new member finishing onboarding** could not be done on the working
+stack: all three test numbers already have member rows. It was done on a
+throwaway stack started fresh from every migration (`supabase/` copied to
+the scratch folder, new `project_id` and ports, `start --workdir`) with a
+second dev server on 5184 pointed at it and confirmed the same way: from
+`/` signed out, Join the club, the seeded invite for `11111111111`, "Start
+fresh" on the claim, a name, a birthday, Finish later — landing on `/home`
+with Home drawn and a member row written. The stack and the server were
+stopped and the stack's volumes removed; the working stack was not touched.
+
+Screenshots read: Home just after signing in at 430, the not-found page at
+1280 and at `--text=larger` at 430, the report sheet open and just sent at
+430, and the new member's Home. **Not checked:** VoiceOver; production; an
+installed app opening from the Home Screen (it opens `/`, which redirects,
+but no phone was tried).
+
+Noticed, not changed:
+
+- The not-found page says "Everything in the club is reachable from the
+  tabs below." At 768px and up the tabs are a top bar. Older than step 5.
+- On a club with no open rooms and no events, a new member's Home is the
+  compose card and three "Worth meeting" cards. That is the fresh stack;
+  the owner says every room is open on the live club.
+
 ## Group names and pictures — built 2026-09-30, live the same day
 
 The owner asked for it on 2026-09-30 ("allow people to rename group chats and
@@ -919,17 +994,18 @@ the fix.
 ## Still open
 
 - **An hour with VoiceOver on a real iPhone**, then the rest of "What is next
-  for accessibility, in order" — the photograph viewer is not a dialog,
-  `photo_alt` is read by every avatar and written by nothing, a save that
-  worked announces nothing.
+  for accessibility, in order" — `photo_alt` is read by every avatar and
+  written by nothing, a save that worked announces nothing. (The photograph
+  viewer became a dialog on 2026-09-29.)
 - **The owner's iPhone test of notifications**: add to the Home Screen, sign
   in there, turn on, close the app, have somebody send a direct message.
 - **Staying Driven Wheelchair Fitness** still has no format; ask NorCal SCI
   (see "Next up: the owner's call").
-- **Home is being built**, in five steps from `HOME-PLAN.md` (the owner asked
-  on 2026-09-29). Steps 1, 2 and 2b are live; see the three sections
-  above, and step 3 (Likes) is built and live, migration and client, since
-  2026-09-30. Step 4, Filter your feed, is next.
+- **Home is built**, in the steps of `HOME-PLAN.md` (the owner asked on
+  2026-09-29): steps 1 to 4 are live, and step 5 — the app opens on Home —
+  is committed and waits for the owner's push. See "What Home is". Step 6,
+  the photos bucket, is what is left of the plan, and its second part is the
+  owner's decision first.
 
 ## Standing rules this session learned
 
@@ -1005,7 +1081,11 @@ rooms a member starts, and photographs. Its twenty-two migrations have been on
 the hosted project since 2026-09-23; the section below says how to check that
 rather than trust it. See "What Chat is".
 
-1,206 tests pass, in 83 files. `pnpm check` and `pnpm build` are clean. **Keep
+**Home is the fifth, and where the app opens** — built in steps from
+2026-09-29 to 2026-09-30. Steps 1 to 4 are live; step 5, the redirect, is
+committed and not yet pushed. See "What Home is".
+
+1,522 tests pass, in 103 files (2026-09-30). `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
 ## 75 migrations, all of them on the hosted project
@@ -2373,11 +2453,15 @@ Things that are real, wanted, and nobody has asked for yet:
   cannot be *ticked*. Reachable by typing it, unreachable as a filter.
 
 **Chat is done — see "What Chat is" above, and the error-message job is the
-section before this one.** Home has not been asked for.
-**Do not build Home without asking.** It is deliberately deferred in CONTEXT.md
-and says so on screen; the mock renders it convincingly, which is the trap
-rather than the mandate. Chat shipping is not permission to drag Home in
-behind it.
+section before this one.** Home is done too: see "What Home is".
+
+History, kept for its reason: until 2026-09-29 this said **"Do not build
+Home without asking"** — it was deliberately deferred in CONTEXT.md and said
+so on screen, and the mock renders it convincingly, which was the trap
+rather than the mandate. The owner asked on 2026-09-29, and it was built
+from HOME-PLAN.md. The rule under it still stands for anything else the
+mock draws: CONTEXT.md's "Deliberately deferred" list is not built without
+the owner asking.
 
 ## What this session changed, in one place
 
@@ -2583,7 +2667,8 @@ what changed and, more usefully, what was looked at and deliberately left.
   at 24; grouped, 29 and 17. Same shape as the event tags in classify.js, and it
   keeps a member's own words on their own profile.
 - "/" opens Peers. It opened Home, a placeholder whose copy says the working
-  surfaces are elsewhere.
+  surfaces are elsewhere. (History: Home is built, and from Home step 5,
+  2026-09-30, "/" opens it again.)
 - The nav is a top bar on a desktop and the Chat tab is no longer raised — the
   strongest mark in the bar was on the one tab that does nothing.
 - Organizations are ordered by what they are running. 5 of 23 host anything.
@@ -2991,13 +3076,12 @@ answer months later has to walk to it. There is no overview of what they said,
 and Me shows only a percentage. Consider a review screen, or making the ring
 link to a list.
 
-## 5. Home is a placeholder — and Chat was one until 2026-09-18
+## 5. ~~Home is a placeholder~~ — built
 
-Home stays deferred, says plainly that it is not built rather than showing
-invented content, and **that is to be kept**. The reasoning is in CONTEXT.md.
-
-Chat was in the same position until 2026-09-18 and is built now. See
-"What Chat is". Home is the only placeholder left.
+It was the last placeholder, kept as a sentence on screen rather than
+invented content until the owner asked. They asked on 2026-09-29; it was
+built in steps to 2026-09-30, and the app opens on it. See "What Home is".
+Chat was in the same position until 2026-09-18. No placeholder is left.
 
 ## 6. ~~Messaging does not exist~~ — built
 
