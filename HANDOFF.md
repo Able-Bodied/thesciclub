@@ -34,7 +34,7 @@ changed and how it was checked.
 **Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
 sit at the same commit, and Netlify builds `main`. The hosted database has 88
 migrations applied and none pending (`pnpm exec supabase migration list`).
-1,544 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
+1,553 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
 rather than trusting it: `git log --oneline origin/main..HEAD` should be
 empty, and a blank Remote column in the migration list is a pending
 migration.
@@ -56,6 +56,7 @@ migration.
 
 | Day | What | Database |
 | --- | --- | --- |
+| 2026-10-01 | Onboarding: the code verifies on its sixth digit; "Rather not say" moves on, on the injury step and a new one on the location step; one notifications screen after the profile is saved, however signup finished. The welcome screen fits a short window with no scrollbar; a refused photograph says why in one short sentence | — |
 | 2026-10-01 | "Start fresh" on a claim carries nothing of the seed | `20261002000000` |
 | 2026-10-01 | Home step 6: the photos bucket takes 2MB and three image types, and is **private** — every face and logo a signed URL, the signing client released before the bucket closed | `20260930040000`, `20261001000000` |
 | 2026-09-30 | Home step 5: the app opens on Home; CONTEXT.md and this file say what the app is | — |
@@ -1483,6 +1484,19 @@ the name and birthday, which cannot be absent.
 because an empty string sorts, filters and compares as though it were a
 place — `relevanceScore` was scoring two members who had both skipped it as
 neighbours. Anything reading `state` should expect null.
+
+**Since 2026-10-01 nothing answered needs a second press** (the owner):
+the sixth digit of the code verifies it, and "Rather not say" — on the
+injury step, and on the location step, where it declines `city` and
+`state` — moves to the next step. A decline answered after all is lifted
+on the insert (`submitOnboarding`), as the details form does. After the
+insert, whichever button finished, `NotificationsStep`
+(`src/routes/onboarding/notifications-step.tsx`) asks once before Home: only
+while the club can send, skipped for a device that is already on, has
+refused or cannot, and on an iPhone in a Safari tab it says how to add the
+club to the Home Screen. Members signing in are not asked; Me has the
+switch. Turning on was not tried end to end: the dev server registers no
+service worker, so it needs a production build or a real phone.
 
 **Claiming a seeded profile goes straight to the birthday**, not to the name.
 The organization has already asserted the name, level, completeness and
