@@ -1,5 +1,6 @@
 /**
  * Can an administrator clear another member's photograph, and can a member not?
+ * And does the bucket refuse what its limits say it refuses?
  *
  *   pnpm exec supabase start …   # a local stack must be running
  *   node scripts/check-photo-policy.mjs
@@ -120,15 +121,32 @@ await root
     member(OTHER, 'Policy Other', false),
   ]);
 
+/**
+ * A one-pixel PNG, because since 20260930040000 the bucket takes webp, JPEG
+ * and PNG only — for the service key too. This used to upload `probe.txt` as
+ * text/plain and ignore the result, so once the limit landed every `put` was
+ * refused in silence: the two checks expecting the file gone passed without
+ * a file ever being there. A refused `put` now stops the run.
+ */
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+);
+const PROBE = 'probe.png';
+
 const put = async (owner) => {
-  await root.storage.from('photos').upload(`${owner}/probe.txt`, Buffer.from('x'), {
+  const { error } = await root.storage.from('photos').upload(`${owner}/${PROBE}`, PNG, {
     upsert: true,
-    contentType: 'text/plain',
+    contentType: 'image/png',
   });
+  if (error) {
+    console.error(`\n  Could not put the probe file in place: ${error.message}\n`);
+    process.exit(2);
+  }
 };
 const exists = async (owner) => {
   const { data } = await root.storage.from('photos').list(owner);
-  return (data ?? []).some((o) => o.name === 'probe.txt');
+  return (data ?? []).some((o) => o.name === PROBE);
 };
 
 console.log('\nStorage delete policy, through the API that actually governs it:\n');
@@ -136,27 +154,59 @@ console.log('\nStorage delete policy, through the API that actually governs it:\
 await put(MEMBER);
 await as(OTHER)
   .storage.from('photos')
-  .remove([`${MEMBER}/probe.txt`]);
+  .remove([`${MEMBER}/${PROBE}`]);
 check("a member cannot delete another member's photograph", await exists(MEMBER), true);
 
 await as(MEMBER)
   .storage.from('photos')
-  .remove([`${MEMBER}/probe.txt`]);
+  .remove([`${MEMBER}/${PROBE}`]);
 check('a member can delete their own', await exists(MEMBER), false);
 
 await put(MEMBER);
 await as(ADMIN)
   .storage.from('photos')
-  .remove([`${MEMBER}/probe.txt`]);
+  .remove([`${MEMBER}/${PROBE}`]);
 check("an administrator can clear another member's", await exists(MEMBER), false);
 
 await put(MEMBER);
 await createClient(API, ANON)
   .storage.from('photos')
-  .remove([`${MEMBER}/probe.txt`]);
+  .remove([`${MEMBER}/${PROBE}`]);
 check('a signed-out visitor cannot', await exists(MEMBER), true);
 
-await root.storage.from('photos').remove([`${MEMBER}/probe.txt`]);
+/**
+ * The bucket's own limits (20260930040000), as the member who owns the
+ * folder, so the policy would let both through and only the limit is left to
+ * refuse them. The codes are what describeError sorts on.
+ */
+console.log("\nThe bucket's limits, as a member writing into their own folder:\n");
+
+const tooLarge = await as(MEMBER)
+  .storage.from('photos')
+  .upload(`${MEMBER}/too-large.png`, Buffer.concat([PNG, Buffer.alloc(2 * 1024 * 1024)]), {
+    upsert: true,
+    contentType: 'image/png',
+  });
+check('a file over 2MB is refused', tooLarge.error?.code ?? 'stored', 'EntityTooLarge');
+
+const wrongType = await as(MEMBER)
+  .storage.from('photos')
+  .upload(`${MEMBER}/not-a-photo.heic`, PNG, { upsert: true, contentType: 'image/heic' });
+check('a file of another type is refused', wrongType.error?.code ?? 'stored', 'InvalidMimeType');
+
+const fits = await as(MEMBER)
+  .storage.from('photos')
+  .upload(`${MEMBER}/fits.png`, PNG, { upsert: true, contentType: 'image/png' });
+check('a small PNG in their own folder is stored', fits.error?.code ?? 'stored', 'stored');
+
+await root.storage
+  .from('photos')
+  .remove([
+    `${MEMBER}/${PROBE}`,
+    `${MEMBER}/too-large.png`,
+    `${MEMBER}/not-a-photo.heic`,
+    `${MEMBER}/fits.png`,
+  ]);
 await root.from('members').delete().in('id', [ADMIN, MEMBER, OTHER]);
 console.log(failed ? `\n${failed} failed.\n` : '\nAll passed.\n');
 process.exit(failed ? 1 : 0);
