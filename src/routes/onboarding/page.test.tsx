@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -18,6 +18,7 @@ const calls = vi.hoisted(() => ({
   claimable: null as Record<string, unknown> | null,
   existingMember: null as { id: string } | null,
   submitted: null as Record<string, unknown> | null,
+  status: 'signed-out',
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -60,7 +61,7 @@ vi.mock('@/routes/onboarding/submit-onboarding', () => ({
 }));
 
 vi.mock('@/lib/account', () => ({
-  useAccount: () => ({ status: 'signed-out', userId: null, isAdmin: false, displayName: null }),
+  useAccount: () => ({ status: calls.status, userId: null, isAdmin: false, displayName: null }),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -108,10 +109,15 @@ vi.mock('@/lib/supabase', () => ({
 
 const { default: OnboardingPage } = await import('@/routes/onboarding/page');
 
+// Real routes, so a test can see where somebody lands: Home, since step 5
+// of HOME-PLAN.md. Until then it was Peers.
 function renderJoin() {
   return render(
-    <MemoryRouter>
-      <OnboardingPage />
+    <MemoryRouter initialEntries={['/join']}>
+      <Routes>
+        <Route path="/join" element={<OnboardingPage />} />
+        <Route path="/home" element={<h1>Home</h1>} />
+      </Routes>
     </MemoryRouter>,
   );
 }
@@ -132,6 +138,7 @@ beforeEach(() => {
   calls.claimable = null;
   calls.submitted = null;
   calls.existingMember = null;
+  calls.status = 'signed-out';
 });
 
 describe('joining', () => {
@@ -273,6 +280,15 @@ describe('the two doors', () => {
     await waitFor(() => {
       expect(calls.order).not.toContain('my_invite_status');
     });
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  });
+
+  // A member who opens /join again, or a suspended one sent here by
+  // /profile, is not asked to join a club they are in.
+  it('sends somebody already in the club on to Home', async () => {
+    calls.status = 'member';
+    renderJoin();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 
   it('hands the questions to somebody who signed in but never finished joining', async () => {
@@ -445,6 +461,7 @@ describe('finishing later', () => {
     // Unanswered, and left that way rather than guessed at.
     expect(calls.submitted?.exactLevel).toBeNull();
     expect(calls.submitted?.state).toBe('');
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 });
 

@@ -143,7 +143,7 @@ export default function OnboardingPage() {
     const existing = await supabase.from('members').select('id').maybeSingle();
     if (existing.data) {
       setBusy(false);
-      void navigate('/peers', { replace: true });
+      void navigate('/home', { replace: true });
       return;
     }
 
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
-    void navigate('/peers', { replace: true });
+    void navigate('/home', { replace: true });
   }
 
   // Somebody who already finished has no business being asked again.
@@ -207,7 +207,7 @@ export default function OnboardingPage() {
   // already in. Sending them into the shell lands them on the screen that
   // explains the pause.
   if (account.status === 'member' || account.status === 'suspended') {
-    return <Navigate to="/peers" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   if (phase === 'blocked') {
