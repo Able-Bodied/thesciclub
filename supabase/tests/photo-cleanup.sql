@@ -30,8 +30,13 @@
 -- told the name of a function. `pnpm check-chat-photo-policy` is that
 -- bucket's delete side, as check-photo-policy is this one's.
 --
--- Steps 1 to 3 read the catalogue and are the superuser's, on purpose; steps
--- 4 to 7 are under a real role, and say which.
+-- Step 8 is the bucket's own limits (20260930040000): 2MB and three image
+-- types. Storage enforces those, not Postgres, so SQL can only read the row
+-- back; `pnpm check-photo-policy` has an over-size and a wrong-type upload
+-- refused through the API.
+--
+-- Steps 1 to 3 and 8 read the catalogue and are the superuser's, on purpose;
+-- steps 4 to 7 are under a real role, and say which.
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -157,4 +162,14 @@ values ('chat', 'rooms/bowel/planted-by-nobody.webp');
 rollback to savepoint anon_writes;
 
 set local role postgres;
+
+\echo ''
+\echo '== 8. the photos bucket takes 2MB and three image types =='
+\echo '   expect: postgres | t | 2097152 | {image/webp,image/jpeg,image/png}'
+\echo '   Public until step 6, part 2 says otherwise. Before 20260930040000 the'
+\echo '   last two were empty: no limit and every type.'
+select current_user, public, file_size_limit, allowed_mime_types::text
+  from storage.buckets
+ where id = 'photos';
+
 rollback;
