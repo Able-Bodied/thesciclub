@@ -2,27 +2,19 @@
 
 Written 2026-09-29, for the session that builds it.
 
-**Where it stands: steps 1, 2, 2b, 3, 3b and 4 are built and on GitHub**
-(steps 1, 2 and 2b on 2026-09-29; step 3, Likes, on 2026-09-30, its
-migration `20260930010000` on the live database first; step 3b the same
-day, its migration `20260930030000` live first; step 4, Filter your feed,
-the same day, no migration, both branches at `bb46b31`).
-**Next is step 5**, Home is the first screen. HANDOFF.md, "Home, step 1"
-through "Home, step 4", say where the build departed from this plan and
-why; read them first, because those departures stand. Two from 3b: the
-Like buttons on a topic card are `relative` without `z-10` (the plan's
-`z-10` on the row trapped the likes list under the tab bar), and the
-photos bucket's member delete policy stays `{public}` (the owner's call).
-Three from 4: the filter narrows the list a pill drew (so Everything's
-four events are all it can narrow), a chip that is on is always offered,
-and Online is a flag of its own. Step 4 also found that
-`FilterSheetShell` and the report sheet moved no focus; at the owner's
-word both now do, through `useDialogFocus` (the filter sheet's fix is on
-GitHub; the report sheet's is not).
+**Where it stands: the five steps are built** — 1, 2, 2b, 3, 3b, 4 and 5.
+Steps 1 to 4 are on GitHub and live (1, 2 and 2b on 2026-09-29; 3, 3b and 4
+on 2026-09-30, with the migrations `20260930010000` and `20260930030000` on
+the live database first). Step 5, Home is the first screen, was built and
+committed on 2026-09-30 and is **not pushed** — the owner says when. **Only
+step 6, the photos bucket, remains**, and its part 2 needs the owner's
+decision first. HANDOFF.md, "Home, step 1" through "Home, step 5", say where
+the build departed from this plan and why; those departures stand, and
+"What Home is" in HANDOFF.md gathers them with the decisions and the traps.
 
 Home was the last placeholder in the app. The owner asked for it on 2026-09-29,
 modelled on `homePage()` in `docs/index.html`, shipped in steps. That request
-is the "ask" HANDOFF.md says Home must wait for.
+is the "ask" HANDOFF.md said Home must wait for.
 
 All bare paths are relative to `thesciclub/`. Every `pnpm` and `supabase`
 command runs from inside it, on Node 24.
