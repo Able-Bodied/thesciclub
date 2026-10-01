@@ -18,7 +18,7 @@ describe('a step puts the cursor in its own field', () => {
   it('focuses the code box, so six digits can be typed straight in', () => {
     // The step a member reaches holding a phone that has just buzzed. Making
     // them tap the box first is a tap that exists for no reason.
-    render(<CodeStep data={data()} set={() => undefined} />);
+    render(<CodeStep data={data()} set={() => undefined} onComplete={() => undefined} />);
     expect(screen.getByPlaceholderText('000000')).toHaveFocus();
   });
 

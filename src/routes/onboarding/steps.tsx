@@ -61,7 +61,15 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
   );
 }
 
-export function CodeStep({ data, set }: StepProps) {
+/**
+ * `onComplete` runs when the sixth digit goes in, typed or filled in by the
+ * phone from the text message, so nobody has to find Continue as well.
+ */
+export function CodeStep({
+  data,
+  set,
+  onComplete,
+}: StepProps & { onComplete: (code: string) => void }) {
   const codeRef = useAutoFocus();
   return (
     <>
@@ -77,7 +85,9 @@ export function CodeStep({ data, set }: StepProps) {
         className="text-center font-extrabold text-[1.5rem] tracking-[.42em]"
         value={data.code}
         onChange={(e) => {
-          set({ code: e.target.value.replace(/\D/g, '') });
+          const code = e.target.value.replace(/\D/g, '').slice(0, 6);
+          set({ code });
+          if (code.length === 6 && code !== data.code) onComplete(code);
         }}
       />
     </>
@@ -398,7 +408,7 @@ export function CityStep({ data, set }: StepProps) {
           set({ city: e.target.value });
         }}
       />
-      <Fine>Leave the city blank if you would rather not say. The state is enough.</Fine>
+      <Fine>The city can be left blank. The state is enough.</Fine>
     </>
   );
 }

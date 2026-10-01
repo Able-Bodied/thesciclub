@@ -21,6 +21,9 @@ const calls = vi.hoisted(() => ({
   /** What each submit answers, in turn; ok when the list runs out. */
   submitResults: [] as { ok: boolean; error?: string; photoRefused?: boolean }[],
   status: 'signed-out',
+  /** Null is the club unable to send, which is the default for these tests. */
+  vapidKey: null as string | null,
+  notificationState: 'off',
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -64,6 +67,21 @@ vi.mock('@/routes/onboarding/submit-onboarding', () => ({
 
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: calls.status, userId: null, isAdmin: false, displayName: null }),
+}));
+
+// The device and the push service are the network; the screen's own choices
+// are what is tested here. See notifications-step.tsx.
+vi.mock('@/lib/push/notifications', () => ({
+  vapidPublicKey: () => calls.vapidKey,
+  useDeviceNotifications: () => ({
+    state: calls.notificationState,
+    busy: false,
+    error: null,
+    turnOn: () => {
+      calls.order.push('turnOn');
+    },
+    turnOff: () => undefined,
+  }),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -142,6 +160,8 @@ beforeEach(() => {
   calls.existingMember = null;
   calls.submitResults = [];
   calls.status = 'signed-out';
+  calls.vapidKey = null;
+  calls.notificationState = 'off';
 });
 
 describe('joining', () => {
@@ -169,15 +189,20 @@ describe('joining', () => {
     // The code has been sent; the list has not been consulted.
     expect(calls.order).toEqual(['signInWithOtp']);
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(calls.order).toEqual(['signInWithOtp', 'verifyOtp', 'members.self', 'my_invite_status']);
+    await waitFor(() => {
+      expect(calls.order).toEqual([
+        'signInWithOtp',
+        'verifyOtp',
+        'members.self',
+        'my_invite_status',
+      ]);
+    });
   });
 
   it('shows the closed door when the verified number is not on the list', async () => {
     calls.invited = false;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
     // And it says who can open it, rather than being a dead end.
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
@@ -190,7 +215,6 @@ describe('joining', () => {
     calls.invited = false;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.queryByText('Wheel with Me Foundation')).not.toBeInTheDocument();
   });
@@ -199,7 +223,6 @@ describe('joining', () => {
     calls.invited = false;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Try another number' }));
     expect(screen.getByPlaceholderText('(408) 555-0112')).toBeInTheDocument();
   });
@@ -207,7 +230,6 @@ describe('joining', () => {
   it('goes on to the questions when the number is on the list', async () => {
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
   });
 
@@ -217,7 +239,6 @@ describe('joining', () => {
     calls.verifyError = 'Token has expired or is invalid';
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(
       await screen.findByText('That code is not right, or it has expired. Ask for a new one.'),
     ).toBeInTheDocument();
@@ -228,7 +249,6 @@ describe('joining', () => {
     calls.verifyError = 'bad code';
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(calls.order).not.toContain('my_invite_status');
   });
 });
@@ -278,7 +298,6 @@ describe('the two doors', () => {
     calls.existingMember = { id: 'u1' };
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     // The invite list is not consulted for somebody who has already joined.
     await waitFor(() => {
       expect(calls.order).not.toContain('my_invite_status');
@@ -301,7 +320,6 @@ describe('the two doors', () => {
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
   });
 });
@@ -316,7 +334,6 @@ describe('the club is adults only', () => {
   async function reachBirthday() {
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText(/What should people call you/i);
     await userEvent.type(screen.getByPlaceholderText('Alex'), 'Sam');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -383,7 +400,6 @@ describe('finishing later', () => {
     calls.invited = true;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     const input = document.querySelector('#birthday');
@@ -399,7 +415,6 @@ describe('finishing later', () => {
     calls.invited = true;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByPlaceholderText('Alex');
     expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
   });
@@ -408,7 +423,6 @@ describe('finishing later', () => {
     calls.invited = true;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('When is your birthday?');
@@ -484,7 +498,6 @@ describe('a photograph the club cannot hold', () => {
     calls.invited = true;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     const birthday = document.querySelector('#birthday');
@@ -579,7 +592,6 @@ describe('claiming a seeded profile', () => {
     calls.claimable = ajay;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText('Is this you?')).toBeInTheDocument();
     expect(screen.getByText('Ajay')).toBeInTheDocument();
@@ -597,7 +609,6 @@ describe('claiming a seeded profile', () => {
     calls.claimable = ajay;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Is this you?');
 
     await userEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
@@ -623,7 +634,6 @@ describe('claiming a seeded profile', () => {
     calls.claimable = ajay;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Is this you?');
 
     await userEvent.click(screen.getByRole('button', { name: 'Start fresh' }));
@@ -640,7 +650,6 @@ describe('claiming a seeded profile', () => {
     calls.claimable = ajay;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Is this you?');
     await userEvent.click(screen.getByRole('button', { name: 'Start fresh' }));
 
@@ -667,10 +676,106 @@ describe('claiming a seeded profile', () => {
     calls.claimableId = null;
     await reachCodeStep();
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(await screen.findByText(/name/i)).toBeInTheDocument();
     expect(screen.queryByText('Is this you?')).toBeNull();
     expect(calls.order).not.toContain('my_claimable_profile');
+  });
+});
+
+// The owner, 2026-10-01: nothing that has already been answered should need a
+// second press to move on.
+describe('steps that move on by themselves', () => {
+  async function reachInjuryStep() {
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  }
+
+  it('verifies the code on the sixth digit, without Continue', async () => {
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '11111');
+    expect(calls.order).not.toContain('verifyOtp');
+
+    await userEvent.type(screen.getByPlaceholderText('000000'), '1');
+    expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
+    expect(calls.order.filter((c) => c === 'verifyOtp')).toHaveLength(1);
+  });
+
+  it('moves on from the injury step when they would rather not say', async () => {
+    await reachInjuryStep();
+    await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  it('offers rather not say for where they live, and moves on to the photograph', async () => {
+    await reachInjuryStep();
+    await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
+    await screen.findByText('Where do you live?');
+    await userEvent.click(screen.getByRole('button', { name: 'Rather not say' }));
+
+    expect(await screen.findByText('Add a photo?')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+    await waitFor(() => {
+      expect(calls.submitted?.declined).toEqual(['exactLevel', 'injuryDate', 'city', 'state']);
+    });
+    expect(calls.submitted?.state).toBe('');
+  });
+});
+
+describe('notifications, as they enter', () => {
+  async function finishLater() {
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const input = document.querySelector('#birthday');
+    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
+    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+  }
+
+  it('asks somebody who pressed Finish later, and Not now goes to Home', async () => {
+    calls.vapidKey = 'key';
+    await finishLater();
+    expect(await screen.findByText('Turn on notifications?')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(calls.order).not.toContain('turnOn');
+  });
+
+  it('asks the device when they say yes', async () => {
+    calls.vapidKey = 'key';
+    await finishLater();
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn on notifications' }));
+    expect(calls.order).toContain('turnOn');
+  });
+
+  it('says how on an iPhone that has not added the club to its Home Screen', async () => {
+    calls.vapidKey = 'key';
+    calls.notificationState = 'install';
+    await finishLater();
+    expect(await screen.findByText('Get notifications on your iPhone')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  });
+
+  it('does not ask a device that has already answered', async () => {
+    calls.vapidKey = 'key';
+    calls.notificationState = 'refused';
+    await finishLater();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Turn on notifications?')).toBeNull();
+  });
+
+  it('does not ask while the club cannot send', async () => {
+    await finishLater();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Turn on notifications?')).toBeNull();
   });
 });

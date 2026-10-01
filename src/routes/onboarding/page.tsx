@@ -4,9 +4,11 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { describeError } from '@/lib/describe-error';
 import { toE164 } from '@/lib/phone';
+import { vapidPublicKey } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, StepFrame } from '@/routes/onboarding/chrome';
+import { NotificationsStep } from '@/routes/onboarding/notifications-step';
 import {
   BirthdayStep,
   CityStep,
@@ -22,11 +24,13 @@ import {
   type ClaimableProfile,
   COUNTED_STEPS,
   canAdvance,
+  cityStepDeclined,
   INITIAL_ONBOARDING_DATA,
   injuryStepDeclined,
   type OnboardingData,
   type Step,
   stepNumber,
+  withCityDeclined,
   withInjuryDeclined,
 } from '@/routes/onboarding/types';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
@@ -44,7 +48,8 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  * turns out not to be invited. That is the cheaper of the two mistakes.
  */
 
-type Phase = 'wizard' | 'blocked' | 'submitting';
+/** `notifications` is after the profile is saved, before Home: see NotificationsStep. */
+type Phase = 'wizard' | 'blocked' | 'submitting' | 'notifications';
 
 /**
  * Which door somebody came through.
@@ -112,8 +117,15 @@ export default function OnboardingPage() {
     setStep('code');
   }
 
-  /** Verify, then — and only then — ask whether this number is on the list. */
-  async function verifyCode() {
+  /**
+   * Verify, then — and only then — ask whether this number is on the list.
+   *
+   * Runs on its own when the sixth digit goes in (the owner, 2026-10-01), as
+   * well as from Continue, so `token` is handed in: the keystroke that
+   * completes the code has not reached `data` yet.
+   */
+  async function verifyCode(token: string = data.code) {
+    if (busy) return;
     setBusy(true);
     setError(null);
     const supabase = getSupabase();
@@ -125,7 +137,7 @@ export default function OnboardingPage() {
     }
     const { error: verifyError } = await supabase.auth.verifyOtp({
       phone,
-      token: data.code,
+      token,
       type: 'sms',
     });
     if (verifyError) {
@@ -195,6 +207,10 @@ export default function OnboardingPage() {
    * reads `data` from the same render, so the file went up anyway — which,
    * once the bucket refused files, would have kept Skip on the photo step.
    */
+  function enterTheClub() {
+    void navigate('/home', { replace: true });
+  }
+
   async function finish(patch: Partial<OnboardingData> = {}) {
     setPhase('submitting');
     const result = await submitOnboarding({ ...data, ...patch });
@@ -211,7 +227,18 @@ export default function OnboardingPage() {
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
+    // Asked once, as they enter, however they finished — see NotificationsStep.
+    if (vapidPublicKey()) {
+      setPhase('notifications');
+      return;
+    }
     void navigate('/home', { replace: true });
+  }
+
+  // Before the check below: the row now exists, and should the account be
+  // read again meanwhile, this screen must not vanish under a tap.
+  if (phase === 'notifications') {
+    return <NotificationsStep userId={account.userId} onDone={enterTheClub} />;
   }
 
   // Somebody who already finished has no business being asked again.
@@ -350,13 +377,41 @@ export default function OnboardingPage() {
            * It declines the level and the date together, the way the survey
            * declines a screen. Complete-or-incomplete is not included: 'Do not
            * know' is already on that list as a real answer. */}
+          {/* Declining moves straight on (the owner, 2026-10-01): it is an
+              answer, and pressing Continue after it was a second press for
+              the same thing. What was entered is cleared, so the row does not
+              hold a level beside a decline of it. Back shows the tick, and
+              pressing it again takes the decline back. */}
           {step === 'injury' ? (
             <LinkButton
               onClick={() => {
-                set({ declined: withInjuryDeclined(data, !injuryStepDeclined(data)) });
+                const declining = !injuryStepDeclined(data);
+                set({
+                  declined: withInjuryDeclined(data, declining),
+                  ...(declining
+                    ? { exactLevel: null, injuryYear: '', injuryMonth: '', injuryDay: '' }
+                    : {}),
+                });
+                if (declining) setStep('city');
               }}
             >
               {injuryStepDeclined(data) ? 'Rather not say ✓' : 'Rather not say'}
+            </LinkButton>
+          ) : null}
+          {/* The same for where they live: both halves, as the details form
+              declines them, and on to the photograph. */}
+          {step === 'city' ? (
+            <LinkButton
+              onClick={() => {
+                const declining = !cityStepDeclined(data);
+                set({
+                  declined: withCityDeclined(data, declining),
+                  ...(declining ? { city: '', state: '', zip: '' } : {}),
+                });
+                if (declining) setStep('photo');
+              }}
+            >
+              {cityStepDeclined(data) ? 'Rather not say ✓' : 'Rather not say'}
             </LinkButton>
           ) : null}
           {SKIPPABLE.includes(step) && (step !== 'birthday' || ready) ? (
@@ -389,7 +444,15 @@ export default function OnboardingPage() {
       }
     >
       {step === 'phone' ? <PhoneStep data={data} set={set} mode={mode} /> : null}
-      {step === 'code' ? <CodeStep data={data} set={set} /> : null}
+      {step === 'code' ? (
+        <CodeStep
+          data={data}
+          set={set}
+          onComplete={(code) => {
+            void verifyCode(code);
+          }}
+        />
+      ) : null}
       {step === 'claim' && claimable ? (
         <ClaimStep
           profile={claimable}
