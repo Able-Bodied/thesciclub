@@ -60,13 +60,14 @@ await page.goto(`${BASE}/join`, { waitUntil: 'domcontentloaded' });
 
 let changed = 0;
 for (const m of todo) {
-  const from = `${URL_}/storage/v1/object/public/photos/${m.photo_path}`;
-  const before = await fetch(from);
-  if (!before.ok) {
-    console.log(`  ${m.display_name}: could not fetch ${m.photo_path} (${before.status})`);
+  // Through the storage API with the service key, not the public URL: the
+  // bucket is private from HOME-PLAN.md step 6, and a public URL to it 400s.
+  const before = await db.storage.from('photos').download(m.photo_path);
+  if (before.error) {
+    console.log(`  ${m.display_name}: could not fetch ${m.photo_path} (${before.error.message})`);
     continue;
   }
-  const originalBytes = Buffer.from(await before.arrayBuffer());
+  const originalBytes = Buffer.from(await before.data.arrayBuffer());
 
   // preparePhoto, in the page, against the real module.
   const fitted = await page.evaluate(
