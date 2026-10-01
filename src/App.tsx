@@ -171,11 +171,14 @@ export function RouteChange() {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Peers, not Home. Home is a placeholder that says so in words
-          (CONTEXT.md), so landing there opened the app on a page whose
-          own copy points at the working surfaces. Peers is the one the club
-          exists for, and it has content from the first sign-in. */}
-      <Route path="/" element={<Navigate to="/peers" replace />} />
+      {/* Home, since 2026-09-30 (HOME-PLAN.md decision 6). Until then this
+          went to Peers, because Home was a placeholder and landing on it
+          opened the app on a page whose own copy pointed elsewhere. Home is
+          now the club's recent topics, photographs, events and people in one
+          list, and it was released one step at a time and seen on the live
+          club before it became the door. The manifest's start_url stays "/",
+          so an installed app follows this line too. */}
+      <Route path="/" element={<Navigate to="/home" replace />} />
       {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
       {/* Outside the shell: onboarding has its own footer and no tab bar. */}
       <Route path="/join" element={<OnboardingPage />} />
