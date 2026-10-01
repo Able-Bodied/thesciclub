@@ -6,30 +6,45 @@ import { ClubMark } from '@/components/club-mark';
  *
  * The logo carries "MEMBERS ONLY" on it, which is why the footer line beneath
  * the button is short — the badge has already said it.
+ *
+ * ---------------------------------------------------------------------------
+ * Centred by its own margins, not by the box
+ * ---------------------------------------------------------------------------
+ * The column above the buttons is centred vertically when there is room and
+ * scrolls when there is not — a short window, a zoomed browser, the larger
+ * text size. It used to be centred with `justify-center` on the scrolling
+ * box, and a flex box that centres content taller than itself puts half the
+ * overflow above the top, where no scroll can reach it: the owner saw the
+ * scrollbar on 2026-10-01, and at one size more the top of the logo would
+ * have been cut off. `my-auto` on the column does the same centring with
+ * room to spare and, without it, starts the content at the top and lets it
+ * scroll, which is what the other onboarding steps already do.
  */
 export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSignIn: () => void }) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
-      <div className="flex flex-1 flex-col justify-center overflow-y-auto px-[22px] py-8">
-        <div className="flex justify-center">
-          <ClubMark size={126} />
+      <div className="flex flex-1 flex-col overflow-y-auto px-[22px] py-8">
+        <div className="my-auto">
+          <div className="flex justify-center">
+            <ClubMark size={126} />
+          </div>
+
+          <h1 className="mt-9 text-center font-extrabold font-display text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
+            Meet peers, mentors,
+            <br />
+            and find <em className="text-gold-dp not-italic">SCI events</em>.
+          </h1>
+
+          <p className="mt-4 text-center font-bold text-[0.9375rem] text-navy leading-[1.45]">
+            An app built by people with SCI for people with SCI.
+          </p>
+
+          <p className="mt-3.5 text-center text-[0.8875rem] text-ink2 leading-[1.6]">
+            A private community for people living with spinal cord injury. Ask the questions you
+            can't ask anyone else, find the people who have already answered them, and get to
+            something worth going to.
+          </p>
         </div>
-
-        <h1 className="mt-9 text-center font-extrabold font-display text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
-          Meet peers, mentors,
-          <br />
-          and find <em className="text-gold-dp not-italic">SCI events</em>.
-        </h1>
-
-        <p className="mt-4 text-center font-bold text-[0.9375rem] text-navy leading-[1.45]">
-          An app built by people with SCI for people with SCI.
-        </p>
-
-        <p className="mt-3.5 text-center text-[0.8875rem] text-ink2 leading-[1.6]">
-          A private community for people living with spinal cord injury. Ask the questions you can't
-          ask anyone else, find the people who have already answered them, and get to something
-          worth going to.
-        </p>
       </div>
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
