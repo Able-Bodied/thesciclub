@@ -29,6 +29,16 @@ export interface SubmitResult {
   photoRefused?: boolean;
 }
 
+/** Whether a declinable detail was given after all. Keys as `DECLINABLE_DETAILS`. */
+function answered(key: string, data: OnboardingData, hasInjuryDate: boolean): boolean {
+  if (key === 'exactLevel') return data.exactLevel !== null && data.exactLevel !== 'Do not know';
+  if (key === 'injuryDate') return hasInjuryDate;
+  if (key === 'city') return data.city.trim() !== '';
+  if (key === 'state') return data.state.trim() !== '';
+  if (key === 'photo') return data.photoFile !== null;
+  return false;
+}
+
 export async function submitOnboarding(data: OnboardingData): Promise<SubmitResult> {
   const supabase = getSupabase();
 
@@ -95,7 +105,9 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     // has nowhere to go until now. The database refuses the name and the
     // birthday here (members_declined_excludes_required) and neither can be
     // declined in the flow, so nothing filters them out on the way.
-    declined: data.declined,
+    // A decline lifts once the thing is answered, as on the details form:
+    // somebody who declined, went Back and filled it in has answered it.
+    declined: data.declined.filter((key) => !answered(key, data, injury !== null)),
     // "Start fresh" on a claim: the trigger retires the seeded profile and
     // copies none of it. Read and cleared there, never stored.
     start_fresh: data.startFresh,

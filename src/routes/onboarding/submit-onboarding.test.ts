@@ -106,6 +106,15 @@ describe('submitOnboarding and the photograph', () => {
     expect(db.inserts.map((row) => row.start_fresh)).toEqual([true, false]);
   });
 
+  // Declined, then gone Back to and answered: the answer wins, as on the
+  // details form.
+  it('lifts a decline that was answered after all', async () => {
+    await submitOnboarding(
+      data({ declined: ['exactLevel', 'injuryDate', 'city', 'state'], state: 'CA' }),
+    );
+    expect(db.inserts[0]?.declined).toEqual(['exactLevel', 'injuryDate', 'city']);
+  });
+
   it('uploads nothing without a photograph', async () => {
     const result = await submitOnboarding(data());
 

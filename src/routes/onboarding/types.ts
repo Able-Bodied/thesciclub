@@ -134,9 +134,9 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
         (injuryDateOf(data) !== null || data.declined.includes('injuryDate'))
       );
     case 'city':
-      // A state is the coarsest thing we always want. City can be blank —
-      // "somewhere else" is a real answer.
-      return data.state.trim().length > 0;
+      // A state is the coarsest thing we ask for. City can be blank —
+      // "somewhere else" is a real answer — and both can be declined.
+      return data.state.trim().length > 0 || cityStepDeclined(data);
     default:
       return true;
   }
@@ -175,20 +175,45 @@ export interface ClaimableProfile {
  */
 export const INJURY_STEP_DECLINABLE = ['exactLevel', 'injuryDate'] as const;
 
-/** Whether the injury step has already been declined, in whole. */
-export function injuryStepDeclined(data: OnboardingData): boolean {
-  return INJURY_STEP_DECLINABLE.every((key) => data.declined.includes(key));
+/**
+ * What the city step asks that can be declined: both halves of a place, as
+ * the details form offers them (`DECLINABLE_DETAILS`). The owner asked for it
+ * on 2026-10-01; until then the state was required to move on, and the only
+ * way past it without answering was "Finish later".
+ */
+export const CITY_STEP_DECLINABLE = ['city', 'state'] as const;
+
+/** Whether every key of a step has been declined. */
+function stepDeclined(data: OnboardingData, keys: readonly string[]): boolean {
+  return keys.every((key) => data.declined.includes(key));
 }
 
 /**
- * Toggle the injury step's decline.
+ * Toggle a step's decline.
  *
  * Pressed again it takes the decline back, the same way the survey's does:
  * somebody who changes their mind should not have to guess that the only way
  * out is to answer.
  */
+function withStepDeclined(data: OnboardingData, keys: readonly string[], declined: boolean) {
+  const rest = data.declined.filter((k) => !keys.includes(k));
+  return declined ? [...rest, ...keys] : rest;
+}
+
+/** Whether the injury step has already been declined, in whole. */
+export function injuryStepDeclined(data: OnboardingData): boolean {
+  return stepDeclined(data, INJURY_STEP_DECLINABLE);
+}
+
 export function withInjuryDeclined(data: OnboardingData, declined: boolean): string[] {
-  const keys: string[] = [...INJURY_STEP_DECLINABLE];
-  if (!declined) return data.declined.filter((k) => !keys.includes(k));
-  return [...data.declined.filter((k) => !keys.includes(k)), ...keys];
+  return withStepDeclined(data, INJURY_STEP_DECLINABLE, declined);
+}
+
+/** Whether the city step has been declined. */
+export function cityStepDeclined(data: OnboardingData): boolean {
+  return stepDeclined(data, CITY_STEP_DECLINABLE);
+}
+
+export function withCityDeclined(data: OnboardingData, declined: boolean): string[] {
+  return withStepDeclined(data, CITY_STEP_DECLINABLE, declined);
 }
