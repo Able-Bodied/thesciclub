@@ -43,6 +43,13 @@ export interface OnboardingData {
    * tell the two buttons apart and copied either way.
    */
   startFresh: boolean;
+  /**
+   * The two boxes on the phone step, both unticked to begin with: agreeing to
+   * the sign-in texts, and to the Terms of Service and Privacy Policy. Kept
+   * apart because carriers require it — see `ConsentBox` in steps.tsx.
+   */
+  smsConsent: boolean;
+  termsAgreed: boolean;
 }
 
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
@@ -62,6 +69,8 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   photoPreviewUrl: null,
   declined: [],
   startFresh: false,
+  smsConsent: false,
+  termsAgreed: false,
 };
 
 /**
@@ -115,7 +124,9 @@ export function injuryDateOf(
 export function canAdvance(step: Step, data: OnboardingData): boolean {
   switch (step) {
     case 'phone':
-      return isCompletePhone(data.phone);
+      // No code is sent without both ticks: the text is the one thing the
+      // club sends to a phone, and carriers require agreement before it.
+      return isCompletePhone(data.phone) && data.smsConsent && data.termsAgreed;
     case 'code':
       return data.code.replace(/\D/g, '').length === 6;
     case 'name':

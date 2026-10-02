@@ -48,8 +48,17 @@ describe('injuryDateOf', () => {
 
 describe('canAdvance', () => {
   it('needs ten digits of phone, however they are punctuated', () => {
-    expect(canAdvance('phone', data({ phone: '(408) 555-0112' }))).toBe(true);
-    expect(canAdvance('phone', data({ phone: '408555' }))).toBe(false);
+    const agreed = { smsConsent: true, termsAgreed: true };
+    expect(canAdvance('phone', data({ phone: '(408) 555-0112', ...agreed }))).toBe(true);
+    expect(canAdvance('phone', data({ phone: '408555', ...agreed }))).toBe(false);
+  });
+
+  it('needs both boxes ticked before a code is sent', () => {
+    const phone = '(408) 555-0112';
+    expect(canAdvance('phone', data({ phone }))).toBe(false);
+    expect(canAdvance('phone', data({ phone, smsConsent: true }))).toBe(false);
+    expect(canAdvance('phone', data({ phone, termsAgreed: true }))).toBe(false);
+    expect(canAdvance('phone', data({ phone, smsConsent: true, termsAgreed: true }))).toBe(true);
   });
 
   it('needs exactly six digits of code', () => {

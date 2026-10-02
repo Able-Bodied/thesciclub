@@ -145,9 +145,16 @@ function renderJoin() {
   );
 }
 
+/** Ticks both boxes on the phone step: no code is sent without them. */
+async function agree() {
+  await userEvent.click(screen.getByRole('checkbox', { name: /Text me a one-time sign-in code/ }));
+  await userEvent.click(screen.getByRole('checkbox', { name: /I agree to the Terms of Service/ }));
+}
+
 async function reachCodeStep() {
   renderJoin();
   await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+  await agree();
   await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }
@@ -180,6 +187,7 @@ describe('joining', () => {
   it('will not send a code until there are ten digits', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '408555');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
@@ -320,10 +328,77 @@ describe('the two doors', () => {
     calls.existingMember = null;
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await agree();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
+  });
+});
+
+// The opt-in the carriers' text-message registration describes: two boxes,
+// both unticked, the texts apart from the terms, and no code without both.
+describe('agreeing to the texts', () => {
+  const smsBox = () => screen.getByRole('checkbox', { name: /Text me a one-time sign-in code/ });
+  const termsBox = () => screen.getByRole('checkbox', { name: /I agree to the Terms of Service/ });
+
+  async function openPhone() {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+  }
+
+  it('starts with both boxes unticked', async () => {
+    await openPhone();
+    expect(smsBox()).not.toBeChecked();
+    expect(termsBox()).not.toBeChecked();
+  });
+
+  // Word for word what the registration quotes: a change here is a change there.
+  it('says what the registration says', async () => {
+    await openPhone();
+    expect(smsBox()).toHaveAccessibleName(
+      'Text me a one-time sign-in code from The SCI Club. One text each time I ask for a code. Message and data rates may apply. Reply HELP for help, STOP to opt out.',
+    );
+  });
+
+  it('sends no code until both are ticked, and says why', async () => {
+    await openPhone();
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    const continueButton = screen.getByRole('button', { name: 'Continue' });
+    expect(continueButton).toBeDisabled();
+    expect(screen.getByText(/Both boxes need a tick/)).toBeInTheDocument();
+
+    await userEvent.click(smsBox());
+    expect(continueButton).toBeDisabled();
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '{Enter}');
+    expect(calls.order).toEqual([]);
+
+    await userEvent.click(termsBox());
+    expect(continueButton).toBeEnabled();
+    expect(screen.queryByText(/Both boxes need a tick/)).toBeNull();
+  });
+
+  it('does not explain before there is a number to send to', async () => {
+    await openPhone();
+    expect(screen.queryByText(/Both boxes need a tick/)).toBeNull();
+  });
+
+  // In a new tab, so reading them does not lose the number and the ticks.
+  it('links to the Terms and the Privacy Policy in a new tab', async () => {
+    await openPhone();
+    const terms = screen.getByRole('link', { name: /Terms of Service/ });
+    const privacy = screen.getByRole('link', { name: /Privacy Policy/ });
+    expect(terms).toHaveAttribute('href', '/terms');
+    expect(privacy).toHaveAttribute('href', '/privacy');
+    expect(terms).toHaveAttribute('target', '_blank');
+    expect(privacy).toHaveAttribute('target', '_blank');
+  });
+
+  it('asks a returning member too', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    expect(smsBox()).not.toBeChecked();
+    expect(termsBox()).not.toBeChecked();
   });
 });
 
@@ -373,6 +448,7 @@ describe('the keyboard', () => {
   it('advances a step on Enter, not only on the button', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
     const phone = screen.getByPlaceholderText('(408) 555-0112');
     await userEvent.type(phone, '4085550112{Enter}');
     expect(await screen.findByPlaceholderText('000000')).toBeInTheDocument();
@@ -381,6 +457,7 @@ describe('the keyboard', () => {
   it('does nothing on Enter when the step is not finished', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
     const phone = screen.getByPlaceholderText('(408) 555-0112');
     await userEvent.type(phone, '408555{Enter}');
     // Still on the number, and no code was requested.
@@ -391,6 +468,7 @@ describe('the keyboard', () => {
   it('does not fire twice when the button itself is used', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByPlaceholderText('000000');
@@ -798,6 +876,7 @@ describe('the number pad stays open into the code', () => {
   it('holds focus in a numeric field while the code is sent, then gives it to the code box', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -812,6 +891,7 @@ describe('the number pad stays open into the code', () => {
     calls.otpError = 'Error sending sms';
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 

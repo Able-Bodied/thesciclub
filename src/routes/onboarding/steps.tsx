@@ -2,7 +2,7 @@ import { Loader2, LocateFixed } from 'lucide-react';
 import { useState } from 'react';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
-import { formatPhoneInput } from '@/lib/phone';
+import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import { usePhotoUrl } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { ClaimableProfile, OnboardingData } from '@/routes/onboarding/types';
@@ -56,8 +56,95 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
           }}
         />
       </div>
-      <Fine>We text you a one-time code to verify it. Message and data rates may apply.</Fine>
+      <ConsentBox
+        id="sms-consent"
+        checked={data.smsConsent}
+        onChange={(smsConsent) => {
+          set({ smsConsent });
+        }}
+      >
+        {SMS_CONSENT}
+      </ConsentBox>
+      <ConsentBox
+        id="terms-agreed"
+        checked={data.termsAgreed}
+        onChange={(termsAgreed) => {
+          set({ termsAgreed });
+        }}
+      >
+        I agree to the <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
+        <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
+      </ConsentBox>
+      {/* Said, not just shown by a dimmed button, the way the birthday step
+          says why an under-18 date goes no further. Only once the number is
+          in, so it is not the first thing read on an empty screen. */}
+      {isCompletePhone(data.phone) && !(data.smsConsent && data.termsAgreed) ? (
+        <Fine>
+          Both boxes need a tick before the code is sent: the club signs you in by text, and using
+          it means agreeing to its terms.
+        </Fine>
+      ) : null}
     </>
+  );
+}
+
+/**
+ * The words of the first box, exactly as the club's text-message
+ * registration with the carriers quotes them (2026-10-01). Change one and
+ * the registration has to change with it.
+ */
+export const SMS_CONSENT =
+  'Text me a one-time sign-in code from The SCI Club. One text each time I ask for a code. Message and data rates may apply. Reply HELP for help, STOP to opt out.';
+
+/**
+ * One of the two boxes on the phone step.
+ *
+ * A real checkbox, unticked to begin with: carriers reject a box that starts
+ * ticked, and agreement to the texts has to be a box of its own, apart from the
+ * terms. The whole row is the label, so the target is the sentence and not
+ * only the square, and the square is sized in em so it grows with the text.
+ */
+function ConsentBox({
+  id,
+  checked,
+  onChange,
+  children,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      htmlFor={id}
+      className="mt-3 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[0.84375rem] text-ink2 leading-[1.5]"
+    >
+      <input
+        id={id}
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => {
+          onChange(e.target.checked);
+        }}
+        className="mt-[0.1em] h-[1.375em] w-[1.375em] flex-none accent-navy"
+      />
+      <span>{children}</span>
+    </label>
+  );
+}
+
+/**
+ * A link out of the phone step that leaves it where it was. In the same tab,
+ * reading the terms would throw away the number and the ticks, and the way
+ * back would start again at the welcome screen.
+ */
+function NewTabLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} target="_blank" rel="noopener" className="font-semibold text-navy underline">
+      {children}
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
   );
 }
 
