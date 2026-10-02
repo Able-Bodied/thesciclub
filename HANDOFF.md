@@ -31,8 +31,9 @@ wins over this file.
    the owner's real account an administrator (the only live one is test
    number `11111111111`), then clear Authentication → Sign In / Providers →
    Phone → Test phone numbers. Recommended: Twilio Verify. The owner is
-   registering an A2P 10DLC campaign (2FA) quoting `/join`'s two boxes
-   (`SMS_CONSENT` in `onboarding/steps.tsx`), `/privacy`, `/terms` and
+   registering an A2P 10DLC campaign (2FA) quoting `/join`'s two boxes and
+   the sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
+   `onboarding/steps.tsx`), `/privacy`, `/terms` and
    `public/sms-opt-in/*.png`: change any of them and the registration with it.
 2. **Never tried on a real iPhone**: an hour of VoiceOver (including the
    "Saved." confirmations, Your answers, a described photo); notifications
