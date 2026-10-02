@@ -47,7 +47,13 @@ select current_user, public.is_admin() as admin;
 
 \echo ''
 \echo '== 1. before the ban, the number is admissible (expect t) =='
-select public.has_active_invite('4085550150') as can_join;
+\echo '   Asked as that number signing in, the way the members insert policy'
+\echo '   asks: nobody else can ask about it (20261003040000).'
+select set_config('request.jwt.claims',
+  '{"sub":"15015015-0000-0000-0000-000000000150","role":"authenticated","phone":"14085550150"}', true) is not null as ok;
+select public.my_number_is_invited() as can_join;
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
 
 \echo ''
 \echo '== 2. ban it (expect no error) =='
@@ -69,7 +75,11 @@ select status from public.admin_invites where phone = '14085550150';
 \echo ''
 \echo '== 4. the gate refuses them (expect f) =='
 \echo '   This is the one that matters: the members insert policy calls it.'
-select public.has_active_invite('4085550150') as can_join;
+select set_config('request.jwt.claims',
+  '{"sub":"15015015-0000-0000-0000-000000000150","role":"authenticated","phone":"14085550150"}', true) is not null as ok;
+select public.my_number_is_invited() as can_join;
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
 
 \echo ''
 \echo '== 5. an administrator cannot re-add them by accident =='
