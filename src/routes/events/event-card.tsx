@@ -284,7 +284,7 @@ export function EventCard({
           }}
           aria-pressed={interested}
           className={cn(
-            'flex min-h-10 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
+            'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
             interested
               ? 'bg-tint text-navy hover:bg-line'
               : 'border-[1.6px] border-navy text-navy hover:bg-tint',
@@ -299,7 +299,7 @@ export function EventCard({
           }}
           aria-pressed={going}
           className={cn(
-            'flex min-h-10 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
+            'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
             going ? 'bg-tint text-navy hover:bg-line' : 'bg-navy text-white hover:bg-navy-hi',
           )}
         >
