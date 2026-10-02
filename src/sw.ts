@@ -39,7 +39,15 @@ void self.skipWaiting();
 clientsClaim();
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')));
+// Not for an address that is a file. Opened in a tab, an image is a
+// navigation too, and served index.html it became the app, which sent it to
+// /join: the opt-in screenshots the carriers' reviewers open from the
+// text-message registration (public/sms-opt-in/) did exactly that in any tab
+// that had been to the club first. No route of the app has a dot in its last
+// segment, so a path that ends in an extension goes to the network.
+registerRoute(
+  new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/\.[a-z0-9]+$/i] }),
+);
 
 self.addEventListener('push', (event) => {
   // Always a notification, whatever arrived — see the payload file's header.
