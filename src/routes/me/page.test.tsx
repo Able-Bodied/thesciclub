@@ -310,15 +310,31 @@ describe('MePage', () => {
     expect(screen.queryByRole('link', { name: 'Admin' })).not.toBeInTheDocument();
   });
 
-  it('links to the survey and says how much of it is done', async () => {
+  // Once anything is answered, to the overview, where one answer can be
+  // changed without walking the survey to it.
+  it('links to Your answers and says how much of the survey is done', async () => {
     survey.answers = { gender: 'Female' };
     renderMe();
-    const link = screen.getByRole('link', { name: /Complete your profile/ });
-    expect(link).toHaveAttribute('href', '/profile');
     await waitFor(() => {
       // One of seventeen applicable questions answered.
       expect(screen.getByText('6%')).toBeInTheDocument();
     });
+    expect(screen.getByRole('link', { name: /Complete your profile/ })).toHaveAttribute(
+      'href',
+      '/profile/answers',
+    );
+  });
+
+  it('links straight into the survey when nothing is answered yet', async () => {
+    survey.answers = {};
+    renderMe();
+    await waitFor(() => {
+      expect(screen.getByText('0%')).toBeInTheDocument();
+    });
+    expect(screen.getByRole('link', { name: /Complete your profile/ })).toHaveAttribute(
+      'href',
+      '/profile',
+    );
   });
 });
 

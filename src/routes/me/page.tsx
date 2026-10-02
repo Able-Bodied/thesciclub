@@ -192,8 +192,10 @@ export default function MePage() {
         <div className="lg:grid lg:grid-cols-2 lg:gap-x-5">
           <div>
             <SectionHeading>Your profile</SectionHeading>
+            {/* To the overview once there is anything to see on it; a member
+                who has answered nothing goes straight into the survey. */}
             <Link
-              to="/profile"
+              to={percent ? '/profile/answers' : '/profile'}
               className="flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5"
             >
               {/* Gone once it is finished, at the owner's request, and it is
