@@ -14,6 +14,7 @@ const api = vi.hoisted(() => ({
   failWith: null as string | null,
   /** What each photograph chosen returns, in turn; saved when the list runs out. */
   photoResults: [] as ({ ok: true; path: string } | { ok: false; error: string })[],
+  removeFails: null as string | null,
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
@@ -37,7 +38,8 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
   },
   savePhoto: () =>
     Promise.resolve(api.photoResults.shift() ?? { ok: true as const, path: 'u1/profile.jpg' }),
-  removePhoto: () => Promise.resolve({ ok: true }),
+  removePhoto: () =>
+    Promise.resolve(api.removeFails ? { ok: false, error: api.removeFails } : { ok: true }),
 }));
 
 vi.mock('@/routes/profile/profile-api', () => ({
@@ -92,6 +94,7 @@ beforeEach(() => {
   api.declineSaves = [];
   api.failWith = null;
   api.photoResults = [];
+  api.removeFails = null;
 });
 
 describe('Your details', () => {
@@ -188,6 +191,24 @@ describe('Your details', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
+  });
+
+  it('removes the photo', async () => {
+    api.details = details({ photoPath: 'u1/profile.jpg' });
+    renderDetails();
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Remove' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('keeps the photo, and says so, when removing it fails', async () => {
+    api.details = details({ photoPath: 'u1/profile.jpg' });
+    api.removeFails = 'The photograph was not removed.';
+    renderDetails();
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+    expect(await screen.findByText('The photograph was not removed.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
   });
 
   describe('describing the photo', () => {

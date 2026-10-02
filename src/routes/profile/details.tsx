@@ -221,8 +221,12 @@ export default function ProfileDetailsPage() {
                       type="button"
                       onClick={() => {
                         if (!account.userId) return;
-                        void removePhoto(account.userId).then(() => {
-                          set({ photoPath: null, photoAlt: null });
+                        setError(null);
+                        void removePhoto(account.userId).then((result) => {
+                          // Only once it is gone: a refusal keeps the photo on
+                          // screen, where it still is.
+                          if (result.ok) set({ photoPath: null, photoAlt: null });
+                          else setError(result.error ?? 'The photograph was not removed.');
                         });
                       }}
                       className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
