@@ -34,7 +34,7 @@ changed and how it was checked.
 **Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
 sit at the same commit, and Netlify builds `main`. The hosted database has 88
 migrations applied and none pending (`pnpm exec supabase migration list`).
-1,555 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
+1,559 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
 rather than trusting it: `git log --oneline origin/main..HEAD` should be
 empty, and a blank Remote column in the migration list is a pending
 migration.
@@ -56,6 +56,7 @@ migration.
 
 | Day | What | Database |
 | --- | --- | --- |
+| 2026-10-01 | A like notifies the post's author, one per like, quoting the start of the post; a switch on Me — **migration and `push-notify` deploy waiting on the owner**, and here the order matters: the migration first queues 'like' events that the old function refuses (a 400, nothing sent, the like unaffected), so deploy the function right after | `20261003010000` |
 | 2026-10-01 | A reply's notification carries its words, cut at 120 — **migration and `push-notify` deploy waiting on the owner**; either order is safe (the new wording falls back to "Bo replied…" when no words arrive, and the old function ignores them) | `20261003000000` |
 | 2026-10-01 | Onboarding: the code verifies on its sixth digit; "Rather not say" moves on, on the injury step and a new one on the location step; one notifications screen after the profile is saved, however signup finished. The welcome screen fits a short window with no scrollbar; a refused photograph says why in one short sentence | — |
 | 2026-10-01 | "Start fresh" on a claim carries nothing of the seed | `20261002000000` |
@@ -1619,6 +1620,7 @@ Two rules, both learned the hard way:
 | `admin-invites-no-auth-users.sql` | 20260929000000, after Supabase's `auth_users_exposed` email: step 1 (an administrator still sees who has signed up — the first draft of the migration broke it, because Postgres checks a function inside a view against the reader) and 3–5 (a member reads nothing through the view or around it, anon cannot reach the lookup) matter most |
 | `chat-group-rename.sql` | `20260930020000`: step 3 (somebody outside a group can neither rename it nor change its picture), 7 (a member cannot write a notice by hand) and 10 (a picture must be the caller's own upload in the group's folder) matter most; the name's rules, a pair and an event's group refused, paused refused, a notice not edited, not removed by its author, not answered; a reported notice reaches the administrators as a sentence with the picture; a rename queues no notification and a message still does (step 17 makes a `push_notify_url` inside its own transaction when the stack has none) |
 | `photo-cleanup.sql` | that the `photos` bucket's policies exist and are scoped to the right roles, and that the insert side was not loosened when the delete side was added; since `20260930030000`, that the `chat` bucket's three name `authenticated` (step 1b) and that anon is refused without a function named (step 7); step 8 reads the bucket's own row — private, 2MB, webp/JPEG/PNG (`20260930040000`, `20261001000000`). **The delete side is not in here** — `storage.protect_delete()` refuses every direct delete before RLS is consulted, so those steps pass without proving anything; `pnpm check-photo-policy` is what settles them |
+| `push-notify-likes.sql` | `20261003010000`: step 1 (Ana likes Bo's reply; Bo is told who and which post, quoted, nobody else is) and 6 (the topic's mute, the room's mute and the switch on Me each silence it — sabotaged, the topic mute missing printed 1) matter most; a like on an opening post says topic, the author's own like, an undone like, a removed post, a closed room and a paused author send nothing; step 9 sees the trigger queue one 'like' request (it makes a `push_notify_url` inside the transaction when the stack has none) |
 | `photos-bucket-reads.sql` | `20261001000000`: six readers against five files in the private `photos` bucket. Step 1 (a signed-out visitor reads nothing and is told nothing) and 5 (somebody mid-signup reads the logo, the face on their claim card and their own upload, and not a member's photograph) matter most; a member and a suspended one read all five, a removed member and an account on no invite read the logo only, anon cannot call `photo_is_my_claimable`. Its view is `security_invoker`, or it reads as the superuser and every step says five. `pnpm check-photo-policy` asks storage for the signed URLs |
 
 **Run them as a signed-in role, not as the superuser**, unless what you are
@@ -2000,7 +2002,7 @@ Added the same evening, for step 2b, and changing Chat as much as Home:
 
 Search across the feed. A notification centre. Anonymous asking. "This
 helped" and "Message" chips on an answer. Routing an unanswered question to
-matching members. A notification for a like. Video. Like and Reply on a
+matching members. Video. Like and Reply on a
 single comment. If a task seems to need one, ask the owner.
 
 ## Traps
@@ -2615,6 +2617,7 @@ The owner said yes to the suggestions. Wording is in `compose.ts`; who is in
 | `invite_joined` | the member whose invite it was | **Somebody you invited joined** · "Ana joined the club." | Me (mentors) |
 | `event_reminder` | members *going*, the day before, by the event's own zone | **Tomorrow: Adaptive handcycling** · "You're going. It starts at 10:00am." | Me |
 | `org_events` | followers; events created in the last day and still ahead, one per organization | **New from NorCal SCI** · "3 new events." | Me |
+| `like` (2026-10-01, `20261003010000`) | the author of the liked post, once per like; a second like on the same post replaces the first on the lock screen (tag `like:<post>`) | **Bo liked your post** (or **your topic**, for an opening post) · “the start of the post, cut at 80” | Me, and the topic's and room's Mute |
 
 The last two come from `push_daily()` via pg_cron at 16:00 UTC, after the
 04:10 ingest; `push_daily_runs` makes a second run on one day do nothing.
