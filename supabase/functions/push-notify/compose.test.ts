@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compose, type Owed, PREVIEW_LENGTH, shorten } from './compose.ts';
+import { compose, LIKED_LENGTH, type Owed, PREVIEW_LENGTH, shorten } from './compose.ts';
 
 const owed = (over: Partial<Owed>): Owed => ({
   endpoint: 'https://web.push.apple.com/x',
@@ -103,6 +103,38 @@ describe('compose', () => {
     });
     expect(compose(owed({ kind: 'reply_participant', body: null }))?.body).toBe(
       'Bo replied in a topic you posted in.',
+    );
+  });
+
+  // The owner, 2026-10-01: one per like, to the author, quoting their own post.
+  it('says who liked a post and quotes the start of it', () => {
+    expect(
+      compose(
+        owed({ kind: 'like', body: 'Try it after breakfast', detail: 'post', tag: 'like:p' }),
+      ),
+    ).toMatchObject({
+      title: 'Bo liked your post',
+      body: '“Try it after breakfast”',
+      tag: 'like:p',
+    });
+  });
+
+  it('says topic when the liked post opened the topic', () => {
+    expect(
+      compose(owed({ kind: 'like', body: 'Morning or evening?', detail: 'topic' }))?.title,
+    ).toBe('Bo liked your topic');
+  });
+
+  it('quotes no more than the start of a long post', () => {
+    const shown = compose(owed({ kind: 'like', body: 'word '.repeat(60), detail: 'post' }));
+    // Two quotation marks around at most LIKED_LENGTH characters.
+    expect(Array.from(shown?.body ?? '').length).toBeLessThanOrEqual(LIKED_LENGTH + 2);
+    expect(shown?.body.endsWith('…”')).toBe(true);
+  });
+
+  it('says a liked photograph is one when the post has no words', () => {
+    expect(compose(owed({ kind: 'like', body: '', photo_count: 1 }))?.body).toBe(
+      'Your photograph.',
     );
   });
 

@@ -39,7 +39,15 @@ const VAPID = {
 // somebody's inbox.
 const SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://thesciclub.netlify.app';
 
-const EVENTS = new Set(['message', 'post', 'group_add', 'report', 'member_joined', 'daily']);
+const EVENTS = new Set([
+  'message',
+  'post',
+  'like',
+  'group_add',
+  'report',
+  'member_joined',
+  'daily',
+]);
 
 function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {

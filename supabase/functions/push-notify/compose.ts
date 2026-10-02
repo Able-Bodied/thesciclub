@@ -17,6 +17,11 @@
  *   Event reminder   "Tomorrow: <event title>"   + "You're going. It starts at 10:00am."
  *   Org digest       "New from <organization>"   + "3 new events."
  *
+ * And one more, 2026-10-01 (20261003010000):
+ *
+ *   Like             "Bo liked your post"         + the start of that post, quoted
+ *                    ("your topic" for a topic's opening post)
+ *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
  * who replied. Nothing here names a room, a topic or a group — those are
@@ -27,6 +32,13 @@
 
 /** How much of a message a lock screen gets. iOS shows about four lines. */
 export const PREVIEW_LENGTH = 120;
+
+/**
+ * How much of a liked post is quoted back to its author: enough to say which
+ * one, as they wrote it. Shorter than a message, which is news; this is a
+ * reminder.
+ */
+export const LIKED_LENGTH = 80;
 
 /** One row of `push_owed`. */
 export interface Owed {
@@ -118,6 +130,21 @@ export function compose(owed: Owed): PushMessage | null {
         body: words(owed) || `${name} replied in a topic you posted in.`,
         ...where,
       };
+    case 'like': {
+      // The member's own words, quoted so they read as theirs and not Bo's.
+      const own = shorten(owed.body ?? '', LIKED_LENGTH);
+      const what = owed.detail === 'topic' ? 'topic' : 'post';
+      return {
+        title: `${name} liked your ${what}`,
+        body:
+          own !== ''
+            ? `“${own}”`
+            : owed.photo_count > 0
+              ? 'Your photograph.'
+              : `${name} liked your ${what}.`,
+        ...where,
+      };
+    }
     case 'group_add':
       return { title: 'Added to a group', body: `${name} added you to a group.`, ...where };
     case 'report':
