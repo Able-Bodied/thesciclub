@@ -34,7 +34,7 @@ changed and how it was checked.
 **Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
 sit at the same commit, and Netlify builds `main`. The hosted database has 88
 migrations applied and none pending (`pnpm exec supabase migration list`).
-1,553 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
+1,555 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
 rather than trusting it: `git log --oneline origin/main..HEAD` should be
 empty, and a blank Remote column in the migration list is a pending
 migration.
@@ -56,6 +56,7 @@ migration.
 
 | Day | What | Database |
 | --- | --- | --- |
+| 2026-10-01 | A reply's notification carries its words, cut at 120 — **migration and `push-notify` deploy waiting on the owner**; either order is safe (the new wording falls back to "Bo replied…" when no words arrive, and the old function ignores them) | `20261003000000` |
 | 2026-10-01 | Onboarding: the code verifies on its sixth digit; "Rather not say" moves on, on the injury step and a new one on the location step; one notifications screen after the profile is saved, however signup finished. The welcome screen fits a short window with no scrollbar; a refused photograph says why in one short sentence | — |
 | 2026-10-01 | "Start fresh" on a claim carries nothing of the seed | `20261002000000` |
 | 2026-10-01 | Home step 6: the photos bucket takes 2MB and three image types, and is **private** — every face and logo a signed URL, the signing client released before the bucket closed | `20260930040000`, `20261001000000` |
@@ -1613,7 +1614,7 @@ Two rules, both learned the hard way:
 | `chat-member-rooms.sql` | that a member can start a room and is its first member with a topic in it, that another member can read it at once, that two rooms cannot share a name however it is spaced or capitalised, and that nobody — not even an administrator — can rename or delete one |
 | `push-subscriptions.sql` | notifications: step 5 (another member reads none of your devices) and 7 (a phone that changes hands notifies its new holder, not its old) are the ones that matter; no insert or update grant, five off-service endpoints refused, paused can turn off but not on |
 | `topic-removal-and-deletion.sql` | a removed reply stops counting and a removed opening post leaves the replies as replies; the faces on a row are posters still standing; a member cannot delete a topic, even their own; an administrator's delete takes posts, mutes and reads and leaves a report its words (step 6) |
-| `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and no words) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
+| `push-notify.sql` | who a notification goes to: step 1 (a direct message reaches the other member only) and 4 (a reply carries a name and its words — since `20261003000000`; before, none — and names no room or topic) matter most; paused, muted (conversation, topic, room), closed room, taken-back message, wrong secret; the mute tables' policies as members |
 | `push-notify-more.sql` | the six later kinds: step 3 (a report reaches administrators but the reporter and says nothing) and 6 (the badge agrees with `chat_unread_count`) matter most; adding yourself sends nothing, the daily run runs once a day, a device minutes old is not forgotten, the per-kind switches are private |
 | `admin-invites-no-auth-users.sql` | 20260929000000, after Supabase's `auth_users_exposed` email: step 1 (an administrator still sees who has signed up — the first draft of the migration broke it, because Postgres checks a function inside a view against the reader) and 3–5 (a member reads nothing through the view or around it, anon cannot reach the lookup) matter most |
 | `chat-group-rename.sql` | `20260930020000`: step 3 (somebody outside a group can neither rename it nor change its picture), 7 (a member cannot write a notice by hand) and 10 (a picture must be the caller's own upload in the group's folder) matter most; the name's rules, a pair and an event's group refused, paused refused, a notice not edited, not removed by its author, not answered; a reported notice reaches the administrators as a sentence with the picture; a rename queues no notification and a message still does (step 17 makes a `push_notify_url` inside its own transaction when the stack has none) |
@@ -2565,7 +2566,7 @@ under another key), and means `secrets set` again.
 | --- | --- | --- |
 | direct message | the other member | **Direct message from Bo** · the words, cut at 120 characters on a word, or "Sent a photograph." |
 | group message | everybody else in the group | **Group message from Bo** · the words, likewise |
-| reply in a topic | the member who *started* the topic | **Reply to your topic** · "Bo replied to your topic." — never the words, never the room or topic |
+| reply in a topic | the member who *started* the topic | **Bo replied to your topic** · the reply's words, cut at 120 characters, or "Sent a photograph." — never the room or topic. Until 2026-10-01 "Reply to your topic" · "Bo replied to your topic." with no words; the owner changed it (`20261003000000`) |
 
 Nobody paused, not the author, not a starter who can no longer read the room
 (an administrator closed it). **A conversation, a topic and a room can each be
@@ -2576,8 +2577,8 @@ on a lock screen.
 Where each piece is:
 
 - `supabase/migrations/20260927010000_…` — the three mute tables, `push_owed`
-  (who is owed and what it may say; returns **no body for a reply**, so the
-  function could not leak one), `push_forget`, and the trigger. Probe:
+  (who is owed and what it may say; it returned **no body for a reply** until
+  `20261003000000` gave replies their words), `push_forget`, and the trigger. Probe:
   `supabase/tests/push-notify.sql`.
 - `supabase/functions/push-notify/` — `index.ts` (Deno), `compose.ts` (the
   words, Vitest-tested), `webpush.ts` (VAPID + aes128gcm on WebCrypto, and
@@ -2609,7 +2610,7 @@ The owner said yes to the suggestions. Wording is in `compose.ts`; who is in
 | kind | who | lock screen | off switch |
 | --- | --- | --- | --- |
 | `group_add` | somebody added by somebody else — the trigger takes the adder from `auth.uid()`, so joining yourself or creating a group sends nothing, and an event's group never does | **Added to a group** · "Bo added you to a group." | Me |
-| `reply_participant` | everybody who has posted in the topic, but not its starter (they get `reply`) or the replier | **Reply in a topic you posted in** · "Bo replied in a topic you posted in." | Me, and the topic's and room's Mute |
+| `reply_participant` | everybody who has posted in the topic, but not its starter (they get `reply`) or the replier | **Bo replied in a topic you posted in** · the reply's words, cut at 120 (since `20261003000000`) | Me, and the topic's and room's Mute |
 | `report` | every administrator but the reporter | **New report** · "A member reported something. Open Admin to see it." — nobody named, nothing quoted | Me |
 | `invite_joined` | the member whose invite it was | **Somebody you invited joined** · "Ana joined the club." | Me (mentors) |
 | `event_reminder` | members *going*, the day before, by the event's own zone | **Tomorrow: Adaptive handcycling** · "You're going. It starts at 10:00am." | Me |

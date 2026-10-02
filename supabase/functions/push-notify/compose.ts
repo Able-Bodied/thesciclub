@@ -6,21 +6,22 @@
  *
  *   Direct message   "Direct message from Bo"   + the words, cut short
  *   Group message    "Group message from Bo"    + the words, cut short
- *   Topic reply      "Reply to your topic"      + "Bo replied to your topic."
+ *   Topic reply      "Bo replied to your topic" + the words, cut short
  *
  * And the six added the same day (20260927020000):
  *
  *   Added to group   "Added to a group"          + "Bo added you to a group."
- *   Reply elsewhere  "Reply in a topic you posted in" + "Bo replied in it."
+ *   Reply elsewhere  "Bo replied in a topic you posted in" + the words, cut short
  *   Report           "New report"                + nothing about it
  *   Invite joined    "Somebody you invited joined" + "Ana joined the club."
  *   Event reminder   "Tomorrow: <event title>"   + "You're going. It starts at 10:00am."
  *   Org digest       "New from <organization>"   + "3 new events."
  *
- * A reply never carries its words, and this file could not add them if it
- * tried: `push_owed` returns no body for a post. Nor does anything here name a
- * room, a topic or a group — those are named for what they are about, and a
- * lock screen is read by whoever is next to it. Event titles and organization
+ * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
+ * `push_owed` return them), cut as a message's are. Until then it said only
+ * who replied. Nothing here names a room, a topic or a group — those are
+ * named for what they are about, and a lock screen is read by whoever is next
+ * to it. Event titles and organization
  * names are public (CONTEXT.md), which is why those two may.
  */
 
@@ -103,12 +104,18 @@ export function compose(owed: Owed): PushMessage | null {
       return { title: `Direct message from ${name}`, body: words(owed), ...where };
     case 'group':
       return { title: `Group message from ${name}`, body: words(owed), ...where };
+    // A reply with neither words nor photographs cannot be posted, but an
+    // older `push_owed` sends no body at all: then it says what it used to.
     case 'reply':
-      return { title: 'Reply to your topic', body: `${name} replied to your topic.`, ...where };
+      return {
+        title: `${name} replied to your topic`,
+        body: words(owed) || `${name} replied to your topic.`,
+        ...where,
+      };
     case 'reply_participant':
       return {
-        title: 'Reply in a topic you posted in',
-        body: `${name} replied in a topic you posted in.`,
+        title: `${name} replied in a topic you posted in`,
+        body: words(owed) || `${name} replied in a topic you posted in.`,
         ...where,
       };
     case 'group_add':

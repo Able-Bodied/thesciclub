@@ -34,24 +34,39 @@ describe('compose', () => {
     });
   });
 
-  // The owner's rule: a reply says who, and nothing of what.
-  it('says who replied to a topic and nothing else', () => {
+  // The owner, 2026-10-01: a reply says who, and what they replied, cut short.
+  it('says who replied to a topic and what they said', () => {
     const reply = compose(
-      owed({ kind: 'reply', body: null, url: '/chat/rooms/r/topics/t', tag: 'topic:t' }),
+      owed({
+        kind: 'reply',
+        body: 'Try it after breakfast',
+        url: '/chat/rooms/r/topics/t',
+        tag: 'topic:t',
+      }),
     );
     expect(reply).toEqual({
-      title: 'Reply to your topic',
-      body: 'Bo replied to your topic.',
+      title: 'Bo replied to your topic',
+      body: 'Try it after breakfast',
       url: '/chat/rooms/r/topics/t',
       tag: 'topic:t',
     });
   });
 
-  // push_owed never sends a reply's words; if it ever did, they still must
-  // not reach a lock screen.
-  it('drops a reply’s words even if they arrive', () => {
-    const reply = compose(owed({ kind: 'reply', body: 'A private answer about a private thing' }));
-    expect(JSON.stringify(reply)).not.toContain('private');
+  it('cuts a long reply short, as a message is', () => {
+    const shown = compose(owed({ kind: 'reply', body: 'word '.repeat(100) }));
+    expect(Array.from(shown?.body ?? '').length).toBeLessThanOrEqual(PREVIEW_LENGTH);
+    expect(shown?.body.endsWith('…')).toBe(true);
+  });
+
+  it('says a reply sent a photograph when it has no words', () => {
+    expect(compose(owed({ kind: 'reply', body: '', photo_count: 1 }))?.body).toBe(
+      'Sent a photograph.',
+    );
+  });
+
+  // An older push_owed, before 20261003000000, sends no body for a reply.
+  it('falls back to who replied when no words arrive', () => {
+    expect(compose(owed({ kind: 'reply', body: null }))?.body).toBe('Bo replied to your topic.');
   });
 
   it('cuts a long message short', () => {
@@ -81,11 +96,14 @@ describe('compose', () => {
     expect(compose(owed({}))).not.toHaveProperty('badge');
   });
 
-  it('says somebody replied in a topic the member posted in, without the words', () => {
-    expect(compose(owed({ kind: 'reply_participant', body: 'secret' }))).toMatchObject({
-      title: 'Reply in a topic you posted in',
-      body: 'Bo replied in a topic you posted in.',
+  it('says somebody replied in a topic the member posted in, and what they said', () => {
+    expect(compose(owed({ kind: 'reply_participant', body: 'Same here' }))).toMatchObject({
+      title: 'Bo replied in a topic you posted in',
+      body: 'Same here',
     });
+    expect(compose(owed({ kind: 'reply_participant', body: null }))?.body).toBe(
+      'Bo replied in a topic you posted in.',
+    );
   });
 
   it('says who added the member to a group, and not which group', () => {
