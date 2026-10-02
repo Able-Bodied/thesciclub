@@ -520,6 +520,13 @@ describe('a photograph the club cannot hold', () => {
     await userEvent.upload(input, new File(['x'], name, { type: 'image/png' }));
   }
 
+  it('names the photo control, and renames it once there is a photo', async () => {
+    await reachPhoto();
+    expect(screen.getByLabelText('Choose a photo')).toHaveAttribute('type', 'file');
+    await choose();
+    expect(screen.getByLabelText('Change the photo')).toHaveAttribute('type', 'file');
+  });
+
   // The owner, 2026-09-30: stay on the photo step with the sentence.
   it('stays on the photo step and says why, without a preview of what was refused', async () => {
     calls.submitResults = [REFUSED];

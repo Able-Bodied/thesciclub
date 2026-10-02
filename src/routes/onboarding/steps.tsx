@@ -431,6 +431,9 @@ export function PhotoStep({ data, set }: StepProps) {
         <input
           type="file"
           accept="image/*"
+          // The label around it holds only the picture (alt="") or a "+", so
+          // without this the control has no name.
+          aria-label={data.photoPreviewUrl ? 'Change the photo' : 'Choose a photo'}
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0] ?? null;

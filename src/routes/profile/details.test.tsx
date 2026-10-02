@@ -193,6 +193,11 @@ describe('Your details', () => {
     });
   });
 
+  it('names the photo control for what it does', async () => {
+    renderDetails();
+    expect(await screen.findByLabelText('Choose a photo')).toHaveAttribute('type', 'file');
+  });
+
   it('removes the photo', async () => {
     api.details = details({ photoPath: 'u1/profile.jpg' });
     renderDetails();

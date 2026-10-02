@@ -209,6 +209,9 @@ export default function ProfileDetailsPage() {
                     <input
                       type="file"
                       accept="image/*"
+                      // The label around it holds only the picture (alt="")
+                      // or a "+", so without this the control has no name.
+                      aria-label={details.photoPath ? 'Change your photo' : 'Choose a photo'}
                       className="sr-only"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
@@ -229,6 +232,7 @@ export default function ProfileDetailsPage() {
                           else setError(result.error ?? 'The photograph was not removed.');
                         });
                       }}
+                      data-target="small"
                       className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
                     >
                       Remove
