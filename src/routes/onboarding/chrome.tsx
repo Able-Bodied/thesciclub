@@ -135,13 +135,20 @@ export function useAutoFocus<T extends HTMLInputElement>() {
   return ref;
 }
 
+/**
+ * A step's text field. Focused, it takes a navy border and a soft navy glow
+ * around it: the border alone, one shade change on a field the step has just
+ * focused by itself, read as nothing having happened (the owner, 2026-10-01,
+ * about the code box). The border is what carries the contrast; the glow is
+ * there to be seen at a glance.
+ */
 export function Field(props: React.ComponentPropsWithRef<'input'>) {
   const { className, ...rest } = props;
   return (
     <input
       {...rest}
       className={cn(
-        'mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy',
+        'mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none transition-shadow focus:border-navy focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--navy)_18%,transparent)]',
         className,
       )}
     />
