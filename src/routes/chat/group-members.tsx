@@ -211,7 +211,12 @@ export default function GroupMembersPage() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
                     {author?.hasProfile ? (
-                      <Link to={`/peers/${author.id}`} className="text-navy">
+                      // Underlined: beside "— you" a link told apart by
+                      // colour alone fails axe's link-in-text-block.
+                      <Link
+                        to={`/peers/${author.id}`}
+                        className="text-navy underline decoration-line underline-offset-2 hover:decoration-navy"
+                      >
                         {author.displayName}
                       </Link>
                     ) : (
