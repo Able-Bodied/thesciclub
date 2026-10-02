@@ -73,11 +73,14 @@ async function signIn(page) {
   await page.getByRole('button', { name: /already have an account/i }).click();
   await page.waitForTimeout(500);
 
-  await page.locator('input').first().fill(TEST_PHONE);
+  // By autocomplete, not position: onboarding keeps a hidden input ahead of
+  // the phone box to hold the iPhone keyboard open (`keyboardHold`), and
+  // `input` first lands in that.
+  await page.locator('input[autocomplete="tel"]').fill(TEST_PHONE);
   await page.getByRole('button', { name: 'Continue' }).click();
   await page.waitForTimeout(2500);
 
-  await page.locator('input').first().fill(TEST_OTP);
+  await page.locator('input[autocomplete="one-time-code"]').fill(TEST_OTP);
   await page.waitForTimeout(400);
   const verify = page.getByRole('button', { name: /continue|verify/i });
   if (await verify.count()) await verify.first().click();
