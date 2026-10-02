@@ -56,6 +56,25 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
           }}
         />
       </div>
+      {mode === 'signin' ? (
+        /* One line instead of two boxes on the sign-in door, at the owner's
+           word (2026-10-01): a returning member asking for a code to their
+           own account agrees by continuing. The join door keeps the boxes. */
+        <p className="mt-3 text-[0.84375rem] text-ink2 leading-[1.5]">
+          {SIGN_IN_CONSENT} <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
+          <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
+        </p>
+      ) : (
+        <JoinConsent data={data} set={set} />
+      )}
+    </>
+  );
+}
+
+/** The join door's two boxes, and why Continue waits for them. */
+function JoinConsent({ data, set }: StepProps) {
+  return (
+    <>
       <ConsentBox
         id="sms-consent"
         checked={data.smsConsent}
@@ -95,6 +114,10 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
  */
 export const SMS_CONSENT =
   'Text me a one-time sign-in code from The SCI Club. One text each time I ask for a code. Message and data rates may apply. Reply HELP for help, STOP to opt out.';
+
+/** The sign-in door's line, before its two links. Registered as well. */
+export const SIGN_IN_CONSENT =
+  'By continuing, you agree to get a one-time sign-in code by text from The SCI Club (Msg & data rates may apply; reply HELP for help, STOP to opt out) and to the';
 
 /**
  * One of the two boxes on the phone step.

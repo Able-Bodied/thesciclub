@@ -69,7 +69,8 @@ export default function TermsPage() {
           <b>The SCI Club sign-in codes.</b> When you ask for a code to sign in, Able Bodied Inc.
           texts a one-time code to the number you entered. That is the only text the club sends: one
           message each time you ask for a code, and none otherwise. You agree to these texts by
-          ticking the box on the sign-in page.
+          ticking the box when you join, and by continuing past the line that says so when you sign
+          back in.
         </P>
         <P>
           <b>Message and data rates may apply.</b>

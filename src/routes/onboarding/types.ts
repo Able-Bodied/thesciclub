@@ -121,12 +121,14 @@ export function injuryDateOf(
 }
 
 /** Whether the current step has enough to move on. */
-export function canAdvance(step: Step, data: OnboardingData): boolean {
+export function canAdvance(step: Step, data: OnboardingData, signIn = false): boolean {
   switch (step) {
     case 'phone':
-      // No code is sent without both ticks: the text is the one thing the
-      // club sends to a phone, and carriers require agreement before it.
-      return isCompletePhone(data.phone) && data.smsConsent && data.termsAgreed;
+      // No code is sent to somebody joining without both ticks: the text is
+      // the one thing the club sends to a phone, and carriers require
+      // agreement before it. The sign-in door asks with a line instead, and
+      // continuing past it is the agreement.
+      return isCompletePhone(data.phone) && (signIn || (data.smsConsent && data.termsAgreed));
     case 'code':
       return data.code.replace(/\D/g, '').length === 6;
     case 'name':

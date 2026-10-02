@@ -320,7 +320,7 @@ export default function OnboardingPage() {
   const SKIPPABLE: Step[] = ['birthday', 'injury', 'city', 'photo'];
 
   const n = stepNumber(step);
-  const ready = canAdvance(step, data);
+  const ready = canAdvance(step, data, mode === 'signin');
   const previous = back[step];
 
   /** What finishing this step does. Shared by the button and by Enter. */

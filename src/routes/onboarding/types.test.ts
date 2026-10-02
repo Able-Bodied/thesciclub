@@ -61,6 +61,11 @@ describe('canAdvance', () => {
     expect(canAdvance('phone', data({ phone, smsConsent: true, termsAgreed: true }))).toBe(true);
   });
 
+  it('needs no ticks on the sign-in door, only the number', () => {
+    expect(canAdvance('phone', data({ phone: '(408) 555-0112' }), true)).toBe(true);
+    expect(canAdvance('phone', data({ phone: '408555' }), true)).toBe(false);
+  });
+
   it('needs exactly six digits of code', () => {
     expect(canAdvance('code', data({ code: '111111' }))).toBe(true);
     expect(canAdvance('code', data({ code: '11111' }))).toBe(false);

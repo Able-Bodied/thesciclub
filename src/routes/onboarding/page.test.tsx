@@ -328,7 +328,6 @@ describe('the two doors', () => {
     calls.existingMember = null;
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
-    await agree();
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
@@ -394,11 +393,37 @@ describe('agreeing to the texts', () => {
     expect(privacy).toHaveAttribute('target', '_blank');
   });
 
-  it('asks a returning member too', async () => {
+  // The owner, 2026-10-01: one line on the sign-in door, and continuing past
+  // it is the agreement.
+  it('tells a returning member in one line instead of two boxes', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(
+      screen.getByText(/By continuing, you agree to get a one-time sign-in code by text/),
+    ).toHaveTextContent(
+      'By continuing, you agree to get a one-time sign-in code by text from The SCI Club (Msg & data rates may apply; reply HELP for help, STOP to opt out) and to the Terms of Service (opens in a new tab) and Privacy Policy (opens in a new tab).',
+    );
+    expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+    expect(screen.getByRole('link', { name: /Privacy Policy/ })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
+
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('keeps the boxes for somebody who switches from signing in to joining', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: /Don't have an account yet/ }));
     expect(smsBox()).not.toBeChecked();
-    expect(termsBox()).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 });
 
