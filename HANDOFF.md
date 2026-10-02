@@ -32,9 +32,9 @@ stood; the sections "Home, step 1" to "Home, step 6" say what each step
 changed and how it was checked.
 
 **Where everything stands.** `origin/main` and `origin/scaffold-and-peers-deck`
-sit at the same commit, and Netlify builds `main`. The hosted database has 88
+sit at the same commit, and Netlify builds `main`. The hosted database has 90
 migrations applied and none pending (`pnpm exec supabase migration list`).
-1,559 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
+1,561 tests pass; `pnpm check` and `pnpm build` are clean. Check all of that
 rather than trusting it: `git log --oneline origin/main..HEAD` should be
 empty, and a blank Remote column in the migration list is a pending
 migration.
@@ -56,8 +56,8 @@ migration.
 
 | Day | What | Database |
 | --- | --- | --- |
-| 2026-10-01 | A like notifies the post's author, one per like, quoting the start of the post; a switch on Me — **migration and `push-notify` deploy waiting on the owner**, and here the order matters: the migration first queues 'like' events that the old function refuses (a 400, nothing sent, the like unaffected), so deploy the function right after | `20261003010000` |
-| 2026-10-01 | A reply's notification carries its words, cut at 120 — **migration and `push-notify` deploy waiting on the owner**; either order is safe (the new wording falls back to "Bo replied…" when no words arrive, and the old function ignores them) | `20261003000000` |
+| 2026-10-01 | A like notifies the post's author, one per like, quoting the start of the post; a switch on Me. Released in order on 2026-10-01: the owner pushed the migration, `push-notify` version 2 was deployed straight after (it refused 'like' until then), then the client | `20261003010000` |
+| 2026-10-01 | A reply's notification carries its words, cut at 120 — live 2026-10-01, migration then `push-notify` version 2 | `20261003000000` |
 | 2026-10-01 | Onboarding: the code verifies on its sixth digit; "Rather not say" moves on, on the injury step and a new one on the location step; one notifications screen after the profile is saved, however signup finished. The welcome screen fits a short window with no scrollbar; a refused photograph says why in one short sentence | — |
 | 2026-10-01 | "Start fresh" on a claim carries nothing of the seed | `20261002000000` |
 | 2026-10-01 | Home step 6: the photos bucket takes 2MB and three image types, and is **private** — every face and logo a signed URL, the signing client released before the bucket closed | `20260930040000`, `20261001000000` |
@@ -1246,11 +1246,12 @@ rather than trust it. See "What Chat is".
 1,542 tests pass, in 105 files (2026-10-01). `pnpm check` and `pnpm build` are clean. **Keep
 them that way — do not commit with either failing.**
 
-## 88 migrations, all of them on the hosted project
+## 90 migrations, all of them on the hosted project
 
 **As of 2026-10-01 the hosted project (`erijdvqnxavwezsbbojv`) and
-`supabase/migrations/` agree: 88 applied, 0 pending** (75 on 2026-09-23,
-then the thirteen listed below). For weeks before
+`supabase/migrations/` agree: 90 applied, 0 pending** (75 on 2026-09-23,
+then fifteen more: the thirteen listed below, and `20261003000000` and
+`20261003010000` in "What landed, by day"). For weeks before
 2026-09-20 the hosted database was ahead of `origin`; from the 20th to the
 23rd it was the other way round, with the whole of Chat applied locally and
 nowhere else; the owner pushed the twenty-one Chat migrations between
@@ -2080,7 +2081,7 @@ component's own comment says so. Six migration headers still call it
 migration is not edited after it has run, comments included. There is nothing
 to go back to and nothing to trust over this file and the migrations.
 
-**The migrations are on the hosted project since 2026-09-23.** See "88
+**The migrations are on the hosted project since 2026-09-23.** See "90
 migrations, all of them on the hosted project" for how that is checked
 before deploying anything.
 
