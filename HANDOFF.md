@@ -21,8 +21,8 @@ reference only; never commit to it.
   scaffold-and-peers-deck && git push origin HEAD:main`. One remote,
   `origin` = `Able-Bodied/thesciclub` (public); both branches at the same
 commit after every release.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 96 migrations, **six
-  pending** (20261003020000–070000, Open 1). Check with `pnpm exec supabase
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 96 migrations, none
+  pending (the owner pushed 20261003020000–070000 on 2026-10-01). Check with `pnpm exec supabase
   migration list` (a blank Remote column is pending). Edge function
   `push-notify` version 2 is live.
 - **Tests**: 1,606 pass; `pnpm check` and `pnpm build` clean.
@@ -34,24 +34,7 @@ origin/main..HEAD` should be empty.
 
 ## Open, in order
 
-1. **Push the six security migrations** (owner: `pnpm exec supabase db push
-   --linked`; the dry run lists 20261003020000 to 070000). The first closes a
-   live hole: every view in public kept Supabase's default insert/update/
-   delete grant for `authenticated`, and the views run as their owner, so any
-   active member could rewrite or delete another member's row through
-   `browse_members` or `chat_authors` (proved locally: UPDATE 1, DELETE 1).
-   The rest: gated views are `security_barrier`; `before_user_created` and
-   `has_active_invite` no longer answer for any number (the members policy
-   uses `my_number_is_invited()`); `active_strike_count` / `live_invite_count`
-   answer only about yourself, to an administrator or to the server;
-   trigger functions and `nearby_events` (exact distances gave an event's
-   coordinates; nothing calls it) are off the API; nine functions get a fixed
-   `search_path`. No client change depends on them. Probe:
-   `supabase/tests/api-grants.sql`. What the advisor still lists is meant:
-   definer views (gated, each named in 20261003030000), four service-only
-   tables with no policy, member RPCs callable by `authenticated`, and
-   leaked-password protection (phone sign-in only).
-2. **Twilio approval** — the owner is working on it. SMS does not reach
+1. **Twilio approval** — the owner is working on it. SMS does not reach
    anybody in production; real members sign in with fixed codes on the live
    project's test-number list. The owner chose (2026-10-01) to wait for
    Twilio rather than change the codes now: do not raise it each session.
@@ -61,16 +44,16 @@ origin/main..HEAD` should be empty.
    administrator, because the only live administrator is test number
    `11111111111`. Then `pnpm shoot` runs locally only. Ask first: live
    settings change. Recommended provider: Twilio Verify (no A2P 10DLC).
-3. **Phone-only checks**, never done on a real iPhone: VoiceOver for an hour
+2. **Phone-only checks**, never done on a real iPhone: VoiceOver for an hour
    (now including "Saved." and the other confirmations, Your answers, and a
    described photo); notifications end to end (Home Screen app, turn on, tap
    one — each kind opens its own screen); signed photos; the number pad
    staying up from the phone number into the code (`keyboardHold` in
    onboarding); the notifications step after signup.
-4. **Small, noticed, not asked for**: Staying Driven Wheelchair Fitness (29
-   events) has no format — ask NorCal SCI, never guess; the phone step could
-   send the code on its tenth digit (offered, not asked for); the "Rather not
-   say" toggles on Your details are under 44px with no `data-target`;
+3. **Small, noticed, not asked for**: Staying Driven Wheelchair Fitness (23
+   upcoming) has no format, place or city — the feed and its NorCal SCI page
+   never say whether it is Zoom or a gym; ask NorCal SCI, never guess; the
+   "Rather not say" toggles on Your details are under 44px with no `data-target`;
    onboarding's photo step does not ask for a description (Your details
    does).
 
@@ -227,7 +210,9 @@ back from `directory_seed` (remove a test member first).
 
 **Onboarding.** Number, code (verifies on the sixth digit), then the invite
 answer: blocked screen, claim, or the questions. Name and birthday required,
-then "Finish later" anywhere. "Rather not say" moves on (injury, location).
+then "Finish later" anywhere. The phone step never sends the code by itself:
+the owner (2026-10-01) wants Continue pressed, so a mistyped number is seen
+before a code goes to it. "Rather not say" moves on (injury, location).
 After the insert, one notifications screen before Home if the device can be
 asked (`NotificationsStep`). A refused photo stays on the photo step.
 
