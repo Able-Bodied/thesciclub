@@ -173,7 +173,7 @@ export default function ThreadPage() {
   const nameOf = (message: ChatMessage): string => {
     if (message.authorId === account.userId) return 'you';
     return (
-      (message.authorId ? authors.get(message.authorId)?.displayName : null) ?? 'a former member'
+      (message.authorId ? authors.get(message.authorId)?.displayName : null) ?? 'a deleted user'
     );
   };
 
@@ -346,7 +346,7 @@ export default function ThreadPage() {
                     message.authorId === account.userId
                       ? 'You'
                       : ((message.authorId ? authors.get(message.authorId)?.displayName : null) ??
-                        'A former member')
+                        'A deleted user')
                   }
                   // As on a bubble: somebody else's, and not a former member's.
                   canReport={message.authorId !== null && message.authorId !== account.userId}

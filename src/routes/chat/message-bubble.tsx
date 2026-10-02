@@ -132,7 +132,7 @@ export function MessageBubble({
   // an administrator taking it down are different facts, and rolling them
   // together would hide a moderation decision behind second thoughts.
   const gone = message.removedByAdmin ? 'Removed by an administrator.' : 'Removed by its author.';
-  const name = author ? author.displayName : 'a former member';
+  const name = author ? author.displayName : 'a deleted user';
   const whose = mine ? 'your' : `${name}'s`;
   const edited = message.editedAt ? ` · Edited ${chatTime(message.editedAt)}` : '';
   const control =
@@ -287,7 +287,7 @@ export function MessageBubble({
               author.displayName
             )
           ) : (
-            'Former member'
+            'Deleted user'
           )}
           {author?.level ? ` · ${author.level}` : ''} · {chatTime(message.createdAt)}
           {edited}

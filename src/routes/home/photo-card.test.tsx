@@ -160,11 +160,11 @@ describe('a photograph on Home', () => {
     expect(screen.queryByRole('link', { name: 'Jan' })).toBeNull();
   });
 
-  it('says Former member for somebody who has left', () => {
+  it('says Deleted user for somebody who has left', () => {
     renderCard({ topic: photoTopic({ authorId: null }), author: null });
-    expect(screen.getByText('Former member')).toBeInTheDocument();
+    expect(screen.getByText('Deleted user')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Photograph 1 of 2 from Former member. Open it.' }),
+      screen.getByRole('button', { name: 'Photograph 1 of 2 from Deleted user. Open it.' }),
     ).toBeInTheDocument();
   });
 

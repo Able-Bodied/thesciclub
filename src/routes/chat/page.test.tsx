@@ -366,7 +366,7 @@ describe('the chat screen', () => {
     ];
     renderPage();
     expect(screen.getByText('Started by Ada A')).toBeInTheDocument();
-    expect(screen.queryByText(/Started by a former member/)).toBeNull();
+    expect(screen.queryByText(/Started by a deleted user/)).toBeNull();
   });
 
   it('keeps the mock’s promise about history and privacy', () => {

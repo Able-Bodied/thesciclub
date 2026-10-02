@@ -153,7 +153,7 @@ export function Post({
   const [hiddenAt, setHiddenAt] = useState<number | null>(null);
   const hidden = replies > 0 && hiddenAt === replies;
   const repliesId = `replies-${post.id}`;
-  const name = author ? author.displayName : 'a former member';
+  const name = author ? author.displayName : 'a deleted user';
   const whose = canEdit ? 'your' : `${name}'s`;
   const control =
     'font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2';
@@ -198,7 +198,7 @@ export function Post({
                 author.displayName
               )
             ) : (
-              'Former member'
+              'Deleted user'
             )}
             {author?.level ? (
               <span className="ml-[7px] font-semibold text-[0.78125rem] text-grey">
@@ -237,7 +237,7 @@ export function Post({
         </p>
       ) : null}
       {post.attachments.length > 0 ? (
-        <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a former member'} />
+        <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a deleted user'} />
       ) : null}
       {post.editedAt && !editing ? (
         <p className="mt-1 text-[0.78125rem] text-grey">Edited · {chatTime(post.editedAt)}</p>

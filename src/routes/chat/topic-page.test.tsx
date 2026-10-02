@@ -376,7 +376,7 @@ describe('a topic', () => {
   it('names a member who has left the club without linking to them', () => {
     db.posts = [post({ id: '1', authorId: null })];
     renderTopic();
-    const article = screen.getByText('Former member').closest('article');
+    const article = screen.getByText('Deleted user').closest('article');
     if (!article) throw new Error('the post is not drawn as an article');
     expect(within(article).queryByRole('link')).toBeNull();
   });
@@ -805,7 +805,7 @@ describe('reporting a post', () => {
     expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
   });
 
-  it("offers nothing on a former member's post", () => {
+  it("offers nothing on a deleted user's post", () => {
     // A report names who wrote it, and they have already left the club.
     db.posts = [post({ id: '1', authorId: null })];
     renderTopic();

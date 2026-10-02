@@ -224,7 +224,7 @@ export function ReportsSection({
                 <Where report={report} authors={authors} onGoToMember={onGoToMember} />
                 <Snapshot report={report} edits={editsOf(report)} />
                 <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-                  {report.resolvedByName ?? 'A former member'} settled this
+                  {report.resolvedByName ?? 'A deleted user'} settled this
                   {report.resolvedAt ? ` on ${chatTimeLong(report.resolvedAt)}` : ''}:{' '}
                   <span className="text-ink2">{report.resolution}</span>
                 </p>
@@ -297,7 +297,7 @@ function ReportRow({
         <MemberName
           id={report.reporterId}
           name={report.reporterName}
-          gone="a former member"
+          gone="a deleted user"
           authors={authors}
           onGoToMember={onGoToMember}
         />{' '}
@@ -410,7 +410,7 @@ function Where({
       <MemberName
         id={report.reportedAuthorId}
         name={report.reportedAuthorName}
-        gone="Former member"
+        gone="Deleted user"
         authors={authors}
         onGoToMember={onGoToMember}
       />
@@ -486,7 +486,7 @@ function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) 
         <div className="max-w-[20rem]">
           <AttachmentGrid
             paths={report.attachments}
-            from={report.reportedAuthorName ?? 'a former member'}
+            from={report.reportedAuthorName ?? 'a deleted user'}
           />
           <p className="mt-1 text-[0.71875rem] text-grey leading-[1.45]">
             {report.attachments.length === 1
@@ -498,7 +498,7 @@ function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) 
         </div>
       ) : null}
       {edits.length > 0 ? (
-        <EarlierVersions edits={edits} from={report.reportedAuthorName ?? 'a former member'} />
+        <EarlierVersions edits={edits} from={report.reportedAuthorName ?? 'a deleted user'} />
       ) : null}
     </div>
   );

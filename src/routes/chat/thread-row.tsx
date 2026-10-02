@@ -58,7 +58,7 @@ export function ThreadRow({
   const who = mine
     ? 'You: '
     : thread.kind === 'group'
-      ? `${lastAuthor?.displayName ?? 'Former member'}: `
+      ? `${lastAuthor?.displayName ?? 'Deleted user'}: `
       : '';
 
   const last = thread.lastRemoved
@@ -66,7 +66,7 @@ export function ThreadRow({
     : thread.lastNotice
       ? noticeText(
           thread.lastNotice,
-          mine ? 'You' : (lastAuthor?.displayName ?? 'A former member'),
+          mine ? 'You' : (lastAuthor?.displayName ?? 'A deleted user'),
           thread.lastBody ?? '',
           false,
         )

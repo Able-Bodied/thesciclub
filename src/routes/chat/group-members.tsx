@@ -220,7 +220,7 @@ export default function GroupMembersPage() {
                         {author.displayName}
                       </Link>
                     ) : (
-                      (author?.displayName ?? 'Former member')
+                      (author?.displayName ?? 'Deleted user')
                     )}
                     {memberId === viewerId ? (
                       <span className="font-normal text-grey"> — you</span>

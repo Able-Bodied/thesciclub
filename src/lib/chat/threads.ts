@@ -150,7 +150,7 @@ export type ChatWriteResult<T> = { ok: true; value: T } | { ok: false; error: st
  *
  *  - a group is its name;
  *  - a direct thread is the other member's name;
- *  - a direct thread whose other half has left the club is "Former member" —
+ *  - a direct thread whose other half has left the club is "Deleted user" —
  *    their words stay and their name does not, which is the owner's decision;
  *  - a name still loading is an empty string rather than "Unknown", because it
  *    is about to be a name and a row that says Unknown and then says Jan has
@@ -158,7 +158,7 @@ export type ChatWriteResult<T> = { ok: true; value: T } | { ok: false; error: st
  */
 export function threadTitle(thread: ChatThread, otherName: string | null): string {
   if (thread.kind === 'group') return thread.name ?? 'Group';
-  if (!thread.otherMemberId) return 'Former member';
+  if (!thread.otherMemberId) return 'Deleted user';
   return otherName ?? '';
 }
 
@@ -206,7 +206,7 @@ export function quoteText(message: ChatMessage | undefined): string {
 /**
  * What a line about a change to the group says, with who did it in front.
  *
- * `who` is "You", a name, or "A former member", decided by the caller, which
+ * `who` is "You", a name, or "A deleted user", decided by the caller, which
  * knows who is reading. Pure, so the conversation and the list cannot word the
  * same change two ways. `withName` is false in the list, where "Jan renamed
  * the group" is the whole of what fits and the new name is the row's title.

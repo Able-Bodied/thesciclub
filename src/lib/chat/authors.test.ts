@@ -101,7 +101,7 @@ describe('fetchChatAuthors', () => {
   });
 
   // A failed read must not be cached as "no such member", or a moment of bad
-  // signal turns a whole thread into Former member for the rest of the session.
+  // signal turns a whole thread into Deleted user for the rest of the session.
   it('tries again after a failed read', async () => {
     const { fetchChatAuthors } = await loadWithClient([], { message: 'network' });
     await fetchChatAuthors(['a']);

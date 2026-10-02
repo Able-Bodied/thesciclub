@@ -298,8 +298,8 @@ describe('the reports panel', () => {
         reporterName: null,
       }),
     ]);
-    expect(screen.getByText('Former member')).toBeInTheDocument();
-    expect(screen.getByText(/Reported by a former member/)).toBeInTheDocument();
+    expect(screen.getByText('Deleted user')).toBeInTheDocument();
+    expect(screen.getByText(/Reported by a deleted user/)).toBeInTheDocument();
     // Nobody to go to.
     expect(screen.queryByRole('button', { name: /^Go to/ })).toBeNull();
   });
