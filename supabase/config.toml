@@ -263,7 +263,8 @@ template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
 max_frequency = "5s"
 
-# Local-only test numbers, matching the ones configured on the hosted project.
+# Test numbers for the local stack only; they do not belong on the hosted
+# project.
 # These never dispatch an SMS. 12222222222 is deliberately NOT on the invite
 # list in seed.sql, so the blocked path can be exercised.
 [auth.sms.test_otp]

@@ -25,16 +25,14 @@ wins over this file.
 
 ## Open
 
-1. **Twilio** — the owner is waiting on approval; do not raise it each
-   session. Until then real members sign in with fixed codes on the live
-   test-number list. Once texts arrive (ask first, it is a live setting): make
-   the owner's real account an administrator (the only live one is test
-   number `11111111111`), then clear Authentication → Sign In / Providers →
-   Phone → Test phone numbers. Recommended: Twilio Verify. The owner is
-   registering an A2P 10DLC campaign (2FA) quoting `/join`'s two boxes and
-   the sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
+1. **Twilio** — an A2P 10DLC campaign (2FA) was submitted 2026-10-01 and is
+   under review; do not raise it each session. It quotes `/join`'s two boxes
+   and the sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
    `onboarding/steps.tsx`), `/privacy`, `/terms` and
-   `public/sms-opt-in/*.png`: change any of them and the registration with it.
+   `public/sms-opt-in/*.png`: change any of them and the registration with
+   it. Until texts arrive, members sign in with fixed codes set in the
+   dashboard (Authentication → Sign In / Providers → Phone → Test phone
+   numbers). Once they do (ask first, it is a live setting), clear that list.
 2. **Never tried on a real iPhone**: an hour of VoiceOver (including the
    "Saved." confirmations, Your answers, a described photo); notifications
    end to end from the Home Screen app; signed photos; the number pad staying
@@ -54,6 +52,9 @@ wins over this file.
   --project-ref erijdvqnxavwezsbbojv`) at the owner's word. **Never
   `supabase config push`** (placeholder Twilio credentials in config.toml).
 - **Commit small, one change each, each passing check alone.** Comments say why.
+- **The repo is public: no real phone number, and nothing saying who is an
+  administrator**, in any file or commit. Who is one lives only in the live
+  database, changed there directly, never by a migration or the seed.
 - **Accessibility over brand.** Text never shrinks to fit.
 - **No control for a thing the app does not do**; CONTEXT.md's deferred list
   is not built unasked.
@@ -93,8 +94,9 @@ wins over this file.
 - **Fresh stack** for probes: copy `supabase/` to scratch, new `project_id`,
   ports `5432x` → `5532x`, inspector 8183, `start --workdir <dir>`, `stop
   --workdir <dir> --no-backup` after.
-- **Test numbers** (fixed codes): `11111111111`/`111111` (admin on live),
-  `12222222222`/`222222` (owner's own on live), `13333333333`/`333333`.
+- **Test numbers**, local stack only (`supabase/config.toml`, `seed.sql`):
+  `11111111111`/`111111`, `12222222222`/`222222`, `13333333333`/`333333`.
+  They do not belong on the live project's test-number list.
 - **psql**: `docker run --rm -i --network host -e PGPASSWORD=postgres
   postgres:17-alpine psql -h 127.0.0.1 -p 54322 -U postgres -d postgres`.
   Storage rows are deleted through the API, not SQL.
