@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useAttachmentUrls } from '@/lib/chat/attachments';
+import { useDialogFocus } from '@/lib/dialog-focus';
 
 /**
  * The photographs on a message or a post, and the one-at-a-time view of them.
@@ -171,45 +172,24 @@ function Lightbox({
   const touch = useRef<{ x: number; y: number } | null>(null);
   const dialog = useRef<HTMLDivElement | null>(null);
 
+  const picture = useRef<HTMLImageElement | null>(null);
+
+  // In, round and back, as every sheet: focus starts on the picture, Tab goes
+  // round the viewer's own controls (a disabled step control is skipped, and
+  // Shift+Tab from the picture goes to the last control), Escape closes.
+  useDialogFocus(dialog, picture, onClose);
+
+  // The viewer's own keys: the arrows step, as a swipe does.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Tab') keepFocusInside(event);
-      else if (event.key === 'Escape') onClose();
-      else if (event.key === 'ArrowLeft' && hasPrevious) onStep(index - 1);
+      if (event.key === 'ArrowLeft' && hasPrevious) onStep(index - 1);
       else if (event.key === 'ArrowRight' && hasNext) onStep(index + 1);
-    }
-    // Tab goes round the viewer's own controls. Handled on the window, not
-    // the dialog, so that focus which has somehow left it still comes back.
-    // A disabled step control is skipped the way the browser skips it; after
-    // a step, focus is on the new picture, which is not in the Tab order, so
-    // Shift+Tab from there goes to the last control rather than out.
-    function keepFocusInside(event: KeyboardEvent) {
-      const root = dialog.current;
-      if (!root) return;
-      const controls = [
-        ...root.querySelectorAll<HTMLButtonElement>('button:not([disabled]):not([tabindex="-1"])'),
-      ];
-      const first = controls[0];
-      const last = controls.at(-1);
-      if (!first || !last) return;
-      // -1 when focus is on the picture, or outside the viewer altogether.
-      const at = controls.findIndex((control) => control === document.activeElement);
-      if (event.shiftKey && at <= 0) {
-        event.preventDefault();
-        last.focus();
-      } else if (
-        !event.shiftKey &&
-        (at === controls.length - 1 || !root.contains(document.activeElement))
-      ) {
-        event.preventDefault();
-        first.focus();
-      }
     }
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
     };
-  }, [onClose, onStep, index, hasPrevious, hasNext]);
+  }, [onStep, index, hasPrevious, hasNext]);
 
   // 44px round controls in the same white-on-scrim as the close control,
   // clear of the picture's edges and of each other on a phone.
@@ -261,7 +241,10 @@ function Lightbox({
         // land and a screen reader lands on the picture rather than on the
         // close control behind it.
         className="relative z-10 max-h-[92dvh] max-w-full rounded-[8px] object-contain shadow-[0_18px_48px_rgba(0,0,0,.5)]"
+        // The hook focuses the first picture; a step brings a new element,
+        // which takes focus here.
         ref={(element) => {
+          picture.current = element;
           element?.focus();
         }}
         tabIndex={-1}

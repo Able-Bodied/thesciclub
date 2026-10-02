@@ -1,9 +1,10 @@
 import { ThumbsUp } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { likesLabel } from '@/lib/chat/likes';
+import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
 /**
@@ -36,10 +37,11 @@ import { cn } from '@/lib/utils';
  * The list is a dialog
  * ---------------------------------------------------------------------------
  * Built like report-sheet.tsx: `role="dialog"`, `aria-modal`, and three ways
- * out — Close, the backdrop and Escape. Focus goes to its heading when it
- * opens, Tab goes round its own links and buttons, and closing puts focus
- * back on the count that opened it — the photograph viewer's rules, for the
- * same members. `fixed` rather than report-sheet's `absolute`, because it is
+ * out — Close, the backdrop and Escape. Its focus is `useDialogFocus`: to its
+ * heading when it opens, round its own links and buttons, and back on the
+ * count that opened it when it closes. The count is also focused by name on
+ * close, because Safari does not focus a button that is clicked, so the hook
+ * may have nothing to go back to. `fixed` rather than report-sheet's `absolute`, because it is
  * opened from inside a card or a post rather than from the page, as the
  * photograph viewer is. The line under the title says who else can see it,
  * because a name on a list is a thing somebody should know is public to the
@@ -177,46 +179,7 @@ export function LikesSheet({
     return author ? [author] : [];
   });
 
-  useEffect(() => {
-    heading.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose();
-      else if (event.key === 'Tab') keepFocusInside(event);
-    }
-    // As the photograph viewer's: on the window, so focus that has somehow
-    // left the sheet still comes back, and round its own controls. The
-    // heading is not in the Tab order, so Shift+Tab from it goes to the last.
-    function keepFocusInside(event: KeyboardEvent) {
-      const root = dialog.current;
-      if (!root) return;
-      const controls = [
-        ...root.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]):not([tabindex="-1"])',
-        ),
-      ];
-      const first = controls[0];
-      const last = controls.at(-1);
-      if (!first || !last) return;
-      const at = controls.findIndex((control) => control === document.activeElement);
-      if (event.shiftKey && at <= 0) {
-        event.preventDefault();
-        last.focus();
-      } else if (
-        !event.shiftKey &&
-        (at === controls.length - 1 || !root.contains(document.activeElement))
-      ) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
+  useDialogFocus(dialog, heading, onClose);
 
   return (
     <>

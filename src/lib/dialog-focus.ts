@@ -17,8 +17,9 @@ import { type RefObject, useEffect } from 'react';
  * Escape closes. The listener is on the window, so focus that has somehow
  * left the sheet is still caught, and the next Tab brings it back.
  *
- * The likes list (`src/routes/chat/like-button.tsx`) and the photograph
- * viewer keep their own copies of these rules, which came first.
+ * Every sheet and dialog in the app uses it: the filter shell, the report
+ * sheet, the likes list and the photograph viewer (whose picture is its
+ * title, and whose arrow keys are its own).
  */
 export function useDialogFocus(
   dialog: RefObject<HTMLElement | null>,
