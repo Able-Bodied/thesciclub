@@ -433,3 +433,35 @@ export function toggleMany(current: string[], value: string, max?: number): stri
   if (max !== undefined && current.length >= max) return current;
   return [...current, value];
 }
+
+/**
+ * One answer as the overview prints it (src/routes/profile/answers.tsx): the
+ * member's words, the chosen options in a list, Yes or No, or what was decided
+ * instead of an answer. Never blank, so a row cannot look like a bug.
+ */
+export function answerInWords(
+  question: Question,
+  answers: Answers,
+  declined: ReadonlySet<string> = EMPTY_DECLINED,
+): string {
+  if (declined.has(question.key)) return 'Rather not say';
+  if (!isAnswered(question, answers)) return 'Not answered yet';
+  const value = answers[question.key];
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) return value.join(', ');
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+/**
+ * The first screen with a question that applies and is neither answered nor
+ * declined, or null when every one is dealt with — where "Carry on" goes.
+ */
+export function firstOpenScreen(
+  answers: Answers,
+  declined: ReadonlySet<string> = EMPTY_DECLINED,
+): number | null {
+  const index = SCREENS.findIndex((screen) =>
+    questionsOn(screen, answers).some((q) => !isAnswered(q, answers, declined)),
+  );
+  return index === -1 ? null : index;
+}

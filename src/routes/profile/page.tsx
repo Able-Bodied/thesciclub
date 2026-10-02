@@ -1,6 +1,6 @@
 import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
@@ -31,12 +31,19 @@ import {
  * answered. On those there is genuinely nothing left to do, and asking somebody
  * to confirm it is a tap for no reason — the pattern is from the mock and it is
  * the thing that makes a twelve-screen survey feel short.
+ *
+ * Opened from Your answers (answers.tsx) as `?screen=N`, it starts on that
+ * screen, and its way out goes back there instead of to Me: somebody who came
+ * to change one answer is done when it is changed.
  */
 export default function ProfileSurveyPage() {
   const account = useAccount();
   const navigate = useNavigate();
   const announce = useAnnounce();
-  const [index, setIndex] = useState(0);
+  const [params] = useSearchParams();
+  const fromAnswers = params.has('screen');
+  const exitTo = fromAnswers ? '/profile/answers' : '/me';
+  const [index, setIndex] = useState(() => screenFrom(params.get('screen')));
   const [answers, setAnswers] = useState<Answers>({});
   // Loaded and written alongside the answers, because declining is an answer —
   // see 20260917030000. Held as a Set because every use of it is a membership
@@ -73,7 +80,7 @@ export default function ProfileSurveyPage() {
           // Each screen is saved as it is left, which nothing else says.
           if (next >= SCREENS.length) {
             announce('Your answers are saved.');
-            void navigate('/me', { replace: true });
+            void navigate(exitTo, { replace: true });
             return;
           }
           announce('Saved.');
@@ -86,7 +93,7 @@ export default function ProfileSurveyPage() {
           setSaving(false);
         });
     },
-    [screen, account.userId, answers, navigate, announce],
+    [screen, account.userId, answers, navigate, announce, exitTo],
   );
 
   /**
@@ -226,7 +233,7 @@ export default function ProfileSurveyPage() {
             }}
             className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-navy transition-colors hover:bg-tint disabled:opacity-40"
           >
-            Finish later
+            {fromAnswers ? 'Back to your answers' : 'Finish later'}
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -548,4 +555,10 @@ function QuestionBlock({
       ) : null}
     </section>
   );
+}
+
+/** The screen `?screen=` names, or the first when it names none. */
+function screenFrom(param: string | null): number {
+  const n = Number(param);
+  return Number.isInteger(n) && n >= 0 && n < SCREENS.length ? n : 0;
 }

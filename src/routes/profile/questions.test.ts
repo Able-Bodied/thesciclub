@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   type Answers,
   advancesItself,
+  answerInWords,
   applicableQuestions,
   canDecline,
+  firstOpenScreen,
   isAnswered,
   progressOf,
   QUESTIONS,
@@ -197,5 +199,49 @@ describe('declining a question', () => {
     expect(canDecline('birthDate')).toBe(false);
     expect(canDecline('birthday')).toBe(false);
     expect(canDecline('bio')).toBe(true);
+  });
+});
+
+describe('answers in words, for the overview', () => {
+  const q = (key: string) => {
+    const found = questionFor(key);
+    if (!found) throw new Error(`no question: ${key}`);
+    return found;
+  };
+
+  it('prints each kind of answer', () => {
+    const answers: Answers = {
+      bio: '  Rugby on Tuesdays.  ',
+      languages: ['English', 'Spanish'],
+      hasChildren: false,
+    };
+    expect(answerInWords(q('bio'), answers)).toBe('Rugby on Tuesdays.');
+    expect(answerInWords(q('languages'), answers)).toBe('English, Spanish');
+    expect(answerInWords(q('hasChildren'), answers)).toBe('No');
+  });
+
+  it('says so when there is no answer, rather than printing nothing', () => {
+    expect(answerInWords(q('bio'), {})).toBe('Not answered yet');
+    expect(answerInWords(q('languages'), { languages: [] })).toBe('Not answered yet');
+  });
+
+  it('prints a decline as the decision it is', () => {
+    expect(answerInWords(q('bio'), { bio: 'x' }, new Set(['bio']))).toBe('Rather not say');
+  });
+});
+
+describe('the first screen still open', () => {
+  it('is the first with anything unanswered', () => {
+    expect(firstOpenScreen({})).toBe(0);
+    expect(firstOpenScreen({ gender: 'Woman', languages: ['English'] })).toBe(1);
+  });
+
+  it('counts a decline as dealt with', () => {
+    expect(firstOpenScreen({ gender: 'Woman' }, new Set(['languages']))).toBe(1);
+  });
+
+  it('is none once everything is dealt with', () => {
+    const everything = new Set(QUESTIONS.map((question) => question.key));
+    expect(firstOpenScreen({}, everything)).toBeNull();
   });
 });

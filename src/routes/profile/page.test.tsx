@@ -62,6 +62,46 @@ beforeEach(() => {
   api.failWith = null;
 });
 
+describe('opened from Your answers', () => {
+  function renderAt(path: string) {
+    return render(
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/profile" element={<ProfileSurveyPage />} />
+          <Route path="/profile/answers" element={<p>Your answers page</p>} />
+          <Route path="/me" element={<p>The Me tab</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('starts on the screen it was sent to', async () => {
+    renderAt('/profile?screen=4');
+    expect(await screen.findByRole('heading', { name: 'Family' })).toBeInTheDocument();
+    expect(screen.getByText(/5 of 12/)).toBeInTheDocument();
+  });
+
+  it('saves and goes back to the answers, not to Me', async () => {
+    renderAt('/profile?screen=4');
+    await screen.findByRole('heading', { name: 'Family' });
+    await userEvent.click(screen.getByRole('button', { name: /Back to your answers/ }));
+    expect(await screen.findByText('Your answers page')).toBeInTheDocument();
+    expect(api.saves[0]?.keys).toEqual(['maritalStatus', 'hasChildren', 'childrenWhen']);
+  });
+
+  it('starts at the beginning for a screen that is not there', async () => {
+    renderAt('/profile?screen=99');
+    expect(await screen.findByRole('heading', { name: 'About you' })).toBeInTheDocument();
+  });
+
+  it('still says Finish later, and goes to Me, when not opened from there', async () => {
+    renderAt('/profile');
+    await screen.findByRole('heading', { name: 'About you' });
+    await userEvent.click(screen.getByRole('button', { name: /Finish later/ }));
+    expect(await screen.findByText('The Me tab')).toBeInTheDocument();
+  });
+});
+
 describe('the profile survey', () => {
   it('sends a non-member to the welcome screen', async () => {
     account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
