@@ -118,6 +118,20 @@ describe('a discussion room', () => {
     expect(screen.queryByText(/You are in this room/)).toBeNull();
   });
 
+  // A count of zero is not drawn on a topic row.
+  it('draws a topic row’s counts, leaving out a zero', () => {
+    db.topics = [
+      topic({ id: 'a', title: 'Answered', replyCount: 2, viewCount: 0 }),
+      topic({ id: 'b', title: 'Unread', replyCount: 0, viewCount: 0 }),
+    ];
+    renderRoom();
+    const answered = screen.getByRole('link', { name: /Answered/ });
+    expect(answered).toHaveTextContent(/2\s*replies/);
+    expect(answered).not.toHaveTextContent(/views?/);
+    const unread = screen.getByRole('link', { name: /Unread/ });
+    expect(unread).not.toHaveTextContent(/repl|views?/);
+  });
+
   it('sorts by replies and by views when asked', async () => {
     db.topics = [
       topic({ id: 'a', title: 'Older', replyCount: 9, viewCount: 1, lastPostAt: '2026-09-01' }),

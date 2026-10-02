@@ -255,6 +255,7 @@ export default function TopicPage() {
   }
 
   const starter = topic.authorId ? authors.get(topic.authorId) : null;
+  const counts = topicCounts(topic.replyCount, topic.viewCount);
   const nameOf = (post: ChatPost) =>
     (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a former member';
 
@@ -317,8 +318,7 @@ export default function TopicPage() {
             {topic.title}
           </h1>
           <p className="mt-1.5 text-[0.78125rem] text-grey leading-[1.45]">
-            {topic.replyCount} {topic.replyCount === 1 ? 'reply' : 'replies'} · {topic.viewCount}{' '}
-            {topic.viewCount === 1 ? 'view' : 'views'} · started by{' '}
+            {counts ? `${counts} · started by ` : 'Started by '}
             {starter ? starter.displayName : topic.authorId ? '…' : 'a former member'} on{' '}
             {chatTimeLong(topic.createdAt)}
           </p>
@@ -458,4 +458,14 @@ export default function TopicPage() {
       ) : null}
     </div>
   );
+}
+
+/** "3 replies · 1 view", leaving out a count of zero; empty when both are. */
+function topicCounts(replies: number, views: number): string {
+  return [
+    replies ? `${replies} ${replies === 1 ? 'reply' : 'replies'}` : null,
+    views ? `${views} ${views === 1 ? 'view' : 'views'}` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }

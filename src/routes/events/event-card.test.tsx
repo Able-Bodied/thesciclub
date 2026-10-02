@@ -139,6 +139,17 @@ describe('EventCard', () => {
     expect(screen.queryByText(/interested$/)).not.toBeInTheDocument();
   });
 
+  it('draws no zero in the tally', () => {
+    renderCard({ event: makeEvent({ goingCount: 1, interestedCount: 0 }) });
+    expect(screen.getByText('1 going')).toBeInTheDocument();
+    expect(screen.queryByText(/0 interested/)).not.toBeInTheDocument();
+  });
+
+  it('draws both counts when both are there', () => {
+    renderCard({ event: makeEvent({ goingCount: 2, interestedCount: 3 }) });
+    expect(screen.getByText('2 going · 3 interested')).toBeInTheDocument();
+  });
+
   it('opens the event when the body is tapped', async () => {
     const props = renderCard({ event: makeEvent({ title: 'Rugby practice' }) });
     await userEvent.click(screen.getByText('Rugby practice'));

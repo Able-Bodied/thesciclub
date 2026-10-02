@@ -109,6 +109,14 @@ export function EventCard({
 
   const goingOnly = attendees.filter((a) => a.status === 'going');
 
+  // A count of zero is not drawn: "2 going", not "2 going · 0 interested".
+  const rsvpLine = [
+    event.goingCount ? `${event.goingCount} going` : null,
+    event.interestedCount ? `${event.interestedCount} interested` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   // A past event is a line, not a card. Everything the full card carries is
   // there to answer "should I go to this" — the tags, the place, who else is
   // going, and the two buttons — and none of that is a live question once the
@@ -253,10 +261,8 @@ export function EventCard({
             </span>
           ) : null}
 
-          {event.goingCount || event.interestedCount ? (
-            <span className="mt-2 block font-bold text-[0.8125rem] text-navy">
-              {event.goingCount} going · {event.interestedCount} interested
-            </span>
+          {rsvpLine ? (
+            <span className="mt-2 block font-bold text-[0.8125rem] text-navy">{rsvpLine}</span>
           ) : null}
 
           <AttendeeRow attendees={goingOnly} />

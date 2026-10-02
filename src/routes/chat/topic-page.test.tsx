@@ -298,6 +298,26 @@ describe('likes', () => {
 });
 
 describe('a topic', () => {
+  it('says how many replies and views it has', () => {
+    renderTopic();
+    expect(screen.getByText(/^2 replies · 3 views · started by/)).toBeInTheDocument();
+  });
+
+  // A count of zero is not drawn: a topic nobody has answered says who
+  // started it, not "0 replies".
+  it('leaves out a count of zero', () => {
+    db.topic = { ...db.topic, replyCount: 0, viewCount: 1 } as ChatTopic;
+    renderTopic();
+    expect(screen.getByText(/^1 view · started by/)).toBeInTheDocument();
+    expect(screen.queryByText(/0 replies/)).toBeNull();
+  });
+
+  it('starts with who started it when there is no count at all', () => {
+    db.topic = { ...db.topic, replyCount: 0, viewCount: 0 } as ChatTopic;
+    renderTopic();
+    expect(screen.getByText(/^Started by/)).toBeInTheDocument();
+  });
+
   // The owner, 2026-09-27: a removed post is not drawn at all, and the
   // numbers close up over the gap.
   it('leaves removed posts out and numbers the rest among themselves', () => {

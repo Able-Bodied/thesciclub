@@ -70,12 +70,25 @@ export function TopicRow({
         </span>
 
         {/* The mock's `.tstats`: the numbers in the head font and navy, the
-            words beside them in grey, so the row scans as numbers. */}
+            words beside them in grey, so the row scans as numbers. A count of
+            zero is not drawn; the time always is. */}
         <span className="flex flex-wrap items-baseline gap-x-1 text-[0.775rem] text-grey">
-          <b className="font-extrabold font-head text-[0.8375rem] text-navy">{topic.replyCount}</b>
-          <i className="mr-[9px] not-italic">{topic.replyCount === 1 ? 'reply' : 'replies'}</i>
-          <b className="font-extrabold font-head text-[0.8375rem] text-navy">{topic.viewCount}</b>
-          <i className="mr-[9px] not-italic">{topic.viewCount === 1 ? 'view' : 'views'}</i>
+          {topic.replyCount ? (
+            <>
+              <b className="font-extrabold font-head text-[0.8375rem] text-navy">
+                {topic.replyCount}
+              </b>
+              <i className="mr-[9px] not-italic">{topic.replyCount === 1 ? 'reply' : 'replies'}</i>
+            </>
+          ) : null}
+          {topic.viewCount ? (
+            <>
+              <b className="font-extrabold font-head text-[0.8375rem] text-navy">
+                {topic.viewCount}
+              </b>
+              <i className="mr-[9px] not-italic">{topic.viewCount === 1 ? 'view' : 'views'}</i>
+            </>
+          ) : null}
           <b className="font-extrabold font-head text-[0.8375rem] text-navy">
             {chatTime(topic.lastPostAt)}
           </b>
