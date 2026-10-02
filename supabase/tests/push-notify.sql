@@ -87,9 +87,11 @@ select (select display_name from public.members m join public.push_subscriptions
   from public.push_owed(:'secret', 'message', '{"id":"22222222-5555-0000-0000-000000000002"}') o;
 
 \echo ''
-\echo '== 4. THE ONE THAT MATTERS: a reply reaches the starter, with a name and NO words (expect Bo, reply, Author, body null) =='
+\echo '== 4. THE ONE THAT MATTERS: a reply reaches the starter, with a name and its words, and names no room or topic =='
+\echo '   expect: Bo | reply | Author | A private answer about a private thing | 0 | t | /chat/rooms/probe-room/topics/…'
+\echo '   Words since 20261003000000 (the owner, 2026-10-01); before it, body was null.'
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
-       kind, actor_name, body is null as no_words, url
+       kind, actor_name, body, photo_count, subject is null as no_subject, url
   from public.push_owed(:'secret', 'post', '{"id":"44444444-5555-0000-0000-000000000001"}') o;
 
 \echo ''

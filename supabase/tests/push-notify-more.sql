@@ -73,7 +73,8 @@ insert into public.chat_posts (id, topic_id, author_id, body) values
   ('44444444-6666-0000-0000-000000000001', '33333333-6666-0000-0000-000000000001', 'bbbbbbbb-6666-0000-0000-00000000000b', 'The question'),
   ('44444444-6666-0000-0000-000000000002', '33333333-6666-0000-0000-000000000001', 'cccccccc-6666-0000-0000-00000000000c', 'An answer'),
   ('44444444-6666-0000-0000-000000000003', '33333333-6666-0000-0000-000000000001', 'aaaaaaaa-6666-0000-0000-00000000000a', 'Another answer');
-select :whom as to_whom, kind, actor_name, body is null as no_words
+\echo '   expect: Bo | reply | Ana | Another answer, and Cy | reply_participant | Ana | Another answer'
+select :whom as to_whom, kind, actor_name, body
   from public.push_owed(:'secret', 'post', '{"id":"44444444-6666-0000-0000-000000000003"}') o
  order by 1;
 
