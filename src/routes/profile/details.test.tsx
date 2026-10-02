@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
+import { AnnounceProvider } from '@/lib/announce';
 import type * as DetailsApi from '@/routes/profile/details-api';
 import type { MemberDetails } from '@/routes/profile/details-api';
 
@@ -159,6 +160,27 @@ describe('Your details', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('permission denied')).toBeInTheDocument();
     expect(screen.queryByText('Saved.')).not.toBeInTheDocument();
+  });
+
+  // Leaving the page is silent to somebody who cannot see it change, and the
+  // page that said it is gone by the time it is read, so the region is above
+  // the routes (src/lib/announce.tsx).
+  it('says the details are saved, and is still saying it on Me', async () => {
+    render(
+      <AnnounceProvider>
+        <MemoryRouter initialEntries={['/profile/details']}>
+          <Routes>
+            <Route path="/profile/details" element={<ProfileDetailsPage />} />
+            <Route path="/me" element={<p>The Me tab</p>} />
+          </Routes>
+        </MemoryRouter>
+      </AnnounceProvider>,
+    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText('The Me tab')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('Your details are saved.');
+    });
   });
 
   it('returns to Me once it has saved', async () => {

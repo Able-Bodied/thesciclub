@@ -2,12 +2,13 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
+import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
-import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
 import { useBrowseMembers } from '@/lib/members';
@@ -98,6 +99,7 @@ const SOURCES: Record<HomeSegment, Source[]> = {
 export default function HomePage() {
   const navigate = useNavigate();
   const session = useSession();
+  const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
   // In the URL, for the reason Events and Chat keep theirs there: back from a
@@ -214,11 +216,13 @@ export default function HomePage() {
         // Re-read rather than patch, as Events does: the tallies come from
         // the database, and a local edit would leave the number and the
         // button disagreeing.
-        if (result.ok) viewer.reload();
-        else setWriteError(result.error ?? 'Could not save that.');
+        if (result.ok) {
+          viewer.reload();
+          announce(rsvpSaved(next));
+        } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer],
+    [memberId, viewer, announce],
   );
 
   /** What a card's Like needs, or nothing while the likes load. */

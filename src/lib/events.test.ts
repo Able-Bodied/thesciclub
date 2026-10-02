@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTaxonomy, toEvents } from '@/lib/events';
+import { buildTaxonomy, rsvpSaved, toEvents } from '@/lib/events';
 
 const TAG_ROWS = [
   { id: 'cat-sport', slug: 'sport', name: 'Sport & recreation', parent_id: null },
@@ -125,4 +125,12 @@ it('carries the series a repeating event belongs to', () => {
   // recomputes it, so there is one answer to "the same event".
   const events = join({ events: [eventRow({ series_id: 's1' }), eventRow({ id: 'e2' })] });
   expect(events.map((e) => e.seriesId)).toEqual(['s1', null]);
+});
+
+describe('rsvpSaved', () => {
+  it('says what was saved, in words', () => {
+    expect(rsvpSaved('going')).toBe('You are going.');
+    expect(rsvpSaved('interested')).toBe('Marked as interested.');
+    expect(rsvpSaved(null)).toBe('Taken back.');
+  });
 });

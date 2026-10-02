@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { useAnnounce } from '@/lib/announce';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
@@ -43,6 +44,7 @@ export interface FollowsState {
 
 export function useOrganizationFollows(): FollowsState {
   const account = useAccount();
+  const announce = useAnnounce();
   const memberId = account.status === 'member' ? account.userId : null;
 
   const [following, setFollowing] = useState<Set<string>>(new Set());
@@ -129,6 +131,10 @@ export function useOrganizationFollows(): FollowsState {
         .then(({ error: failure }) => {
           if (!failure) {
             setError(null);
+            // The button moved before the write; this says the write held.
+            announce(
+              wasFollowing ? 'You are no longer following them.' : 'You are following them now.',
+            );
             return;
           }
           undo();
@@ -149,7 +155,7 @@ export function useOrganizationFollows(): FollowsState {
           );
         });
     },
-    [memberId, following],
+    [memberId, following, announce],
   );
 
   return { following, loading, error, toggle };

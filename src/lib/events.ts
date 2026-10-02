@@ -396,6 +396,17 @@ export async function setRsvp(
   }
 }
 
+/**
+ * What is said once an RSVP is saved (see src/lib/announce.tsx). The buttons
+ * change only after the re-read, so without this a screen reader hears the
+ * press and then nothing.
+ */
+export function rsvpSaved(status: RsvpStatus | null): string {
+  if (status === 'going') return 'You are going.';
+  if (status === 'interested') return 'Marked as interested.';
+  return 'Taken back.';
+}
+
 /* ------------------------------------------------------------- attendees */
 
 interface AttendeeRow {

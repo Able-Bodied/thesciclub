@@ -2,6 +2,7 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
+import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
@@ -34,6 +35,7 @@ import {
 export default function ProfileSurveyPage() {
   const account = useAccount();
   const navigate = useNavigate();
+  const announce = useAnnounce();
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   // Loaded and written alongside the answers, because declining is an answer —
@@ -68,10 +70,13 @@ export default function ProfileSurveyPage() {
             return;
           }
           setError(null);
+          // Each screen is saved as it is left, which nothing else says.
           if (next >= SCREENS.length) {
+            announce('Your answers are saved.');
             void navigate('/me', { replace: true });
             return;
           }
+          announce('Saved.');
           setIndex(next);
         })
         .catch((e: unknown) => {
@@ -81,7 +86,7 @@ export default function ProfileSurveyPage() {
           setSaving(false);
         });
     },
-    [screen, account.userId, answers, navigate],
+    [screen, account.userId, answers, navigate, announce],
   );
 
   /**

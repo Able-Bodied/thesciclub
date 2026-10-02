@@ -1,7 +1,8 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { useAnnounce } from '@/lib/announce';
+import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,7 @@ export default function EventDetailPage() {
   const location = useLocation();
   const back = backToEvents(location);
   const session = useSession();
+  const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
   const { events, loading, error } = useEvents();
@@ -46,11 +48,13 @@ export default function EventDetailPage() {
       if (!memberId || !id) return;
       setWriteError(null);
       void setRsvp(id, memberId, next).then((result) => {
-        if (result.ok) viewer.reload();
-        else setWriteError(result.error ?? 'Could not save that.');
+        if (result.ok) {
+          viewer.reload();
+          announce(rsvpSaved(next));
+        } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, id, viewer],
+    [memberId, id, viewer, announce],
   );
 
   if (loading) {

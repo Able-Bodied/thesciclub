@@ -2,6 +2,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
+import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
 import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
 import { usePhotoUrl } from '@/lib/photos';
@@ -49,6 +50,7 @@ export default function ProfileDetailsPage() {
 
   // Above the two early returns: a hook runs on every render or none.
   const photo = usePhotoUrl(details?.photoPath ?? null);
+  const announce = useAnnounce();
 
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
   if (account.status !== 'member') return <Navigate to="/join" replace />;
@@ -124,6 +126,9 @@ export default function ProfileDetailsPage() {
         // Back to Me on success. Staying put with a "Saved" note leaves people
         // wondering whether there is anything else to do here; leaving says it
         // plainly. A failure keeps them on the page, where the field is.
+        // Leaving is silent to somebody who cannot see the page change, so
+        // it is said as well.
+        announce('Your details are saved.');
         void navigate('/me');
       })
       .catch((e: unknown) => {

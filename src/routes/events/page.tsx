@@ -2,7 +2,8 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
-import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { useAnnounce } from '@/lib/announce';
+import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
@@ -79,6 +80,7 @@ const SEGMENTS: [EventsSegment, string][] = [
 export default function EventsPage() {
   const navigate = useNavigate();
   const session = useSession();
+  const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
   const { events, loading, error } = useEvents();
@@ -172,11 +174,13 @@ export default function EventsPage() {
         // Re-read rather than patching local state: the tallies on every card
         // come from the database, and a local edit would leave the number and
         // the button disagreeing until the next load.
-        if (result.ok) viewer.reload();
-        else setWriteError(result.error ?? 'Could not save that.');
+        if (result.ok) {
+          viewer.reload();
+          announce(rsvpSaved(next));
+        } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer],
+    [memberId, viewer, announce],
   );
 
   const filterCount = activeFilterCount(filters);

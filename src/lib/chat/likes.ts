@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { useAnnounce } from '@/lib/announce';
 import type { ChatWriteResult } from '@/lib/chat/topics';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
@@ -144,6 +145,7 @@ const EMPTY: LikesByPost = new Map();
 
 export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const account = useAccount();
+  const announce = useAnnounce();
   const memberId = account.status === 'member' ? account.userId : null;
   // The ids as one string, so the effect re-runs when the set changes and not
   // when the caller builds a new array with the same ids in it.
@@ -214,7 +216,11 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
 
       const done = (message: string | null) => {
         pending.current.delete(postId);
-        if (message === null) return;
+        if (message === null) {
+          // The thumb moved before the write; this says the write held.
+          announce(wasLiked ? 'Like taken back.' : 'Liked.');
+          return;
+        }
         setByPost((current) => withLike(current, postId, memberId, wasLiked));
         setFailure({ postId, message });
       };
@@ -228,7 +234,7 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
           done(describeThrown(e, wasLiked ? UNLIKE_FAILED : LIKE_FAILED));
         });
     },
-    [memberId, byPost],
+    [memberId, byPost, announce],
   );
 
   const reload = useCallback(() => {

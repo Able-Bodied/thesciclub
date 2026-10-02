@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider } from '@/lib/accessibility';
+import { AnnounceProvider } from '@/lib/announce';
 import AdminPage from '@/routes/admin/page';
 import GroupMembersPage from '@/routes/chat/group-members';
 import NewGroupPage from '@/routes/chat/new-group';
@@ -114,8 +115,12 @@ function AppShell() {
 export default function App() {
   return (
     <AccessibilityProvider>
-      <RouteChange />
-      <AppRoutes />
+      {/* Above the routes, so a confirmation outlives the screen that sent
+          it — see src/lib/announce.tsx. */}
+      <AnnounceProvider>
+        <RouteChange />
+        <AppRoutes />
+      </AnnounceProvider>
     </AccessibilityProvider>
   );
 }
