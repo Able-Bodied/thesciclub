@@ -21,10 +21,11 @@ reference only; never commit to it.
   scaffold-and-peers-deck && git push origin HEAD:main`. One remote,
   `origin` = `Able-Bodied/thesciclub` (public); both branches at the same
 commit after every release.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 90 migrations, none
-  pending. Check with `pnpm exec supabase migration list` (a blank Remote
-  column is pending). Edge function `push-notify` version 2 is live.
-- **Tests**: 1,561 pass; `pnpm check` and `pnpm build` clean.
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 96 migrations, **six
+  pending** (20261003020000–070000, Open 1). Check with `pnpm exec supabase
+  migration list` (a blank Remote column is pending). Edge function
+  `push-notify` version 2 is live.
+- **Tests**: 1,606 pass; `pnpm check` and `pnpm build` clean.
 - **Surfaces**: Home (opens here), Peers, Events, Onboarding + profile, Chat,
   Me, Admin. All real.
 
@@ -33,7 +34,24 @@ origin/main..HEAD` should be empty.
 
 ## Open, in order
 
-1. **Twilio approval** — the owner is working on it. SMS does not reach
+1. **Push the six security migrations** (owner: `pnpm exec supabase db push
+   --linked`; the dry run lists 20261003020000 to 070000). The first closes a
+   live hole: every view in public kept Supabase's default insert/update/
+   delete grant for `authenticated`, and the views run as their owner, so any
+   active member could rewrite or delete another member's row through
+   `browse_members` or `chat_authors` (proved locally: UPDATE 1, DELETE 1).
+   The rest: gated views are `security_barrier`; `before_user_created` and
+   `has_active_invite` no longer answer for any number (the members policy
+   uses `my_number_is_invited()`); `active_strike_count` / `live_invite_count`
+   answer only about yourself, to an administrator or to the server;
+   trigger functions and `nearby_events` (exact distances gave an event's
+   coordinates; nothing calls it) are off the API; nine functions get a fixed
+   `search_path`. No client change depends on them. Probe:
+   `supabase/tests/api-grants.sql`. What the advisor still lists is meant:
+   definer views (gated, each named in 20261003030000), four service-only
+   tables with no policy, member RPCs callable by `authenticated`, and
+   leaked-password protection (phone sign-in only).
+2. **Twilio approval** — the owner is working on it. SMS does not reach
    anybody in production; real members sign in with fixed codes on the live
    project's test-number list. The owner chose (2026-10-01) to wait for
    Twilio rather than change the codes now: do not raise it each session.
@@ -43,32 +61,18 @@ origin/main..HEAD` should be empty.
    administrator, because the only live administrator is test number
    `11111111111`. Then `pnpm shoot` runs locally only. Ask first: live
    settings change. Recommended provider: Twilio Verify (no A2P 10DLC).
-2. **Phone-only checks**, never done on a real iPhone: VoiceOver for an hour;
-   notifications end to end (Home Screen app, turn on, tap one — each kind
-   opens its own screen); signed photos; the number pad staying up from the
-   phone number into the code (`keyboardHold` in onboarding); the
-   notifications step after signup.
-3. **Supabase advisor findings, not yet a migration**: `before_user_created`
-   is executable by `anon` and answers whether a number is on the invite list
-   (revoke from public/anon/authenticated, grant `supabase_auth_admin`; the
-   hook is not even switched on); `has_active_invite` is the same oracle for
-   any signed-in account; `active_strike_count`, `live_invite_count`,
-   `nearby_events` and five trigger functions are callable by anon (check
-   policy/view use before revoking from authenticated); nine functions lack a
-   fixed `search_path`; ten definer views to confirm gated and
-   `security_barrier`. Run `pnpm exec supabase db advisors --linked --type
-   security --level info`.
-4. **Small, noticed, not asked for**: zero counts still drawn on a topic's
-   header ("0 replies"), an event card ("0 interested") and room topic rows
-   ("0 views"); EventCard's Interested/Going are 40px with no
-   `data-target`; topic and New topic screens light the Chat tab; members list
-   name link fails axe `link-in-text-block`; `photo_alt` is read by every
-   avatar and written by nothing; success is never announced (no live region
-   for "Saved."); the survey is linear with no overview; Peers filter sheet
-   caps topics at 24; Staying Driven Wheelchair Fitness (29 events) has no
-   format — ask NorCal SCI, never guess; the likes list and photo viewer keep
-   old focus code instead of `useDialogFocus`; the phone step could send the
-   code on its tenth digit (offered, not asked for).
+3. **Phone-only checks**, never done on a real iPhone: VoiceOver for an hour
+   (now including "Saved." and the other confirmations, Your answers, and a
+   described photo); notifications end to end (Home Screen app, turn on, tap
+   one — each kind opens its own screen); signed photos; the number pad
+   staying up from the phone number into the code (`keyboardHold` in
+   onboarding); the notifications step after signup.
+4. **Small, noticed, not asked for**: Staying Driven Wheelchair Fitness (29
+   events) has no format — ask NorCal SCI, never guess; the phone step could
+   send the code on its tenth digit (offered, not asked for); the "Rather not
+   say" toggles on Your details are under 44px with no `data-target`;
+   onboarding's photo step does not ask for a description (Your details
+   does).
 
 ## Rules the owner set
 
@@ -89,7 +93,9 @@ origin/main..HEAD` should be empty.
   CONTEXT.md's deferred list is not built without the owner asking.
 - **Look at what you changed**: `pnpm shoot <route>` (needs `SHOOT_BASE`,
   `--scroll=<px>`, `--text=larger`, `--both`) and read the PNG. Every layout
-  bug here was found by eye.
+  bug here was found by eye. It cannot carry router state or open a sheet: a
+  scratch Playwright script can (sign in as `shoot.mjs` does, by the inputs'
+  `autocomplete`).
 - **Probes** (`supabase/tests/`): run as a signed-in role, a savepoint per
   expected refusal, never wrap a multi-transaction file, read every log
   against its own `expect:` lines, count on a fresh stack, and sabotage a fix
@@ -164,6 +170,13 @@ origin/main..HEAD` should be empty.
   past"; a probe run as the superuser (BYPASSRLS, every policy inert).
 - **`pnpm fix`** (eslint then biome, in that order) reformats files: re-read
   before a second string-match edit, and assert every scripted replace applied.
+- **A new view is writable by default.** Supabase grants `authenticated`
+  everything on a new relation; a view runs as its owner, so a single-table
+  view is a way round every policy. `revoke all … from public, anon,
+  authenticated` by name, then `grant select`. `create or replace view` keeps
+  grants but drops `security_barrier`: restate `with (security_barrier =
+  true)`. `api-grants.sql` steps 13–14 catch both. A view's function calls are
+  checked against the reader, so a function it calls must stay executable.
 - **Postgres**: a definer function has RLS off, so it checks visibility itself
   (`chat_room_is_readable`, `chat_can_post_in`, `is_thread_member`,
   `is_active_member`). Insert is granted column by column; a new `events`
@@ -183,9 +196,9 @@ origin/main..HEAD` should be empty.
   one sentence (`describeError`'s STORAGE list, without the caller's lead).
 - **Sizing**: a box holding text is sized in `em` off that text (the text-size
   setting scales rem). Controls under 44px get `data-target="small"`.
-- **Focus**: sheets use `useDialogFocus` (`src/lib/dialog-focus.ts`); the
-  route change retitles and focuses `main` by `main h1`. iOS opens a keyboard
-  only for a focus inside a tap.
+- **Focus**: every sheet and dialog uses `useDialogFocus`
+  (`src/lib/dialog-focus.ts`); the route change retitles and focuses `main`
+  by `main h1`. iOS opens a keyboard only for a focus inside a tap.
 - **Where the app lands** is written in five places: `App.tsx`, onboarding,
   dev-login, not-found, admin.
 - **Realtime**: a table not in the publication delivers nothing;
@@ -270,13 +283,14 @@ is the tag `brand-before-outfit`. Organizations are drawn only by
 `report-sheet.tsx`, `FilterSheetShell`, `useDialogFocus`, `SmallButton` /
 `ReasonField` (`admin/controls.tsx`), `lib/chat/time.ts`, `describeError` /
 `describeThrown` (`src/lib/describe-error.ts`, every refusal becomes a
-sentence).
+sentence), `useAnnounce` (`src/lib/announce.tsx`, every success is said).
 
 ## The probes
 
 SQL in `supabase/tests/`, each rolled back, run by hand:
-`docker run … psql … -f - < supabase/tests/<file>.sql`. 32 files, one per
-area: invites and claims (`invite-lifecycle`, `mentor-invites`,
+`docker run … psql … -f - < supabase/tests/<file>.sql`. 33 files, one per
+area — `api-grants` for what views and functions let a member or nobody
+reach, and: invites and claims (`invite-lifecycle`, `mentor-invites`,
 `blocked-numbers`, `claim-preview`, `claim-carries-profile`,
 `restore-directory`, `admin-vouches-directly`, `admin-is-protected`,
 `admin-invites-no-auth-users`), members (`strikes`, `organization-follows`,
