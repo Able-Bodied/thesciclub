@@ -24,6 +24,8 @@ const calls = vi.hoisted(() => ({
   /** Null is the club unable to send, which is the default for these tests. */
   vapidKey: null as string | null,
   notificationState: 'off',
+  /** What had focus when the code was asked for: see `keyboardHold`. */
+  focusedAtSend: null as Element | null,
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -89,6 +91,7 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       signInWithOtp: () => {
         calls.order.push('signInWithOtp');
+        calls.focusedAtSend = document.activeElement;
         return Promise.resolve({ error: calls.otpError ? { message: calls.otpError } : null });
       },
       verifyOtp: () => {
@@ -777,5 +780,35 @@ describe('notifications, as they enter', () => {
     await finishLater();
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(screen.queryByText('Turn on notifications?')).toBeNull();
+  });
+});
+
+// iOS opens the number pad only for a focus inside a tap. The tap on Continue
+// focuses a hidden numeric field before the code is asked for, and the code
+// field takes focus over from it, which keeps the pad open (the owner,
+// 2026-10-01). jsdom has no keyboard; what it can show is where focus is.
+describe('the number pad stays open into the code', () => {
+  it('holds focus in a numeric field while the code is sent, then gives it to the code box', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    const held = calls.focusedAtSend;
+    expect(held).toBeInstanceOf(HTMLInputElement);
+    expect((held as HTMLInputElement).inputMode).toBe('numeric');
+    expect((held as HTMLInputElement).getAttribute('aria-hidden')).toBe('true');
+    expect(await screen.findByPlaceholderText('000000')).toHaveFocus();
+  });
+
+  it('gives focus back to the number when the code is not sent', async () => {
+    calls.otpError = 'Error sending sms';
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    await screen.findByRole('alert');
+    expect(screen.getByPlaceholderText('(408) 555-0112')).toHaveFocus();
   });
 });

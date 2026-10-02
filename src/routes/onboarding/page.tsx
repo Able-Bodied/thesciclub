@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { describeError } from '@/lib/describe-error';
@@ -98,6 +98,21 @@ export default function OnboardingPage() {
     setData((d) => ({ ...d, ...patch }));
   }, []);
 
+  /**
+   * Holds the phone's number pad open between the number and the code.
+   *
+   * iOS opens the keyboard only for a focus that happens inside a tap, and
+   * the code step appears after `signInWithOtp` has answered — long after the
+   * tap on Continue — so its field took focus with the keyboard shut, and a
+   * member had to tap the box for the pad (the owner, 2026-10-01). Focus
+   * moved *from* one field *to* another keeps the keyboard up, though, so the
+   * tap itself puts focus here, in an invisible numeric field that stays
+   * mounted through the wait, and the code field takes it over when it
+   * appears (`useAutoFocus`). If the code is not sent, focus goes back to the
+   * number. 16px, or iOS zooms the page to it.
+   */
+  const keyboardHold = useRef<HTMLInputElement>(null);
+
   /** Send the code. No invite check here, on purpose — see the file header. */
   async function requestCode() {
     // Supabase wants E.164; the field holds what the person typed.
@@ -112,6 +127,7 @@ export default function OnboardingPage() {
     setBusy(false);
     if (otpError) {
       setError(describeError(otpError, 'The code was not sent.'));
+      document.getElementById('phone')?.focus({ preventScroll: true });
       return;
     }
     setStep('code');
@@ -310,7 +326,11 @@ export default function OnboardingPage() {
   /** What finishing this step does. Shared by the button and by Enter. */
   function advance() {
     if (!ready || busy || phase === 'submitting') return;
-    if (step === 'phone') return void requestCode();
+    if (step === 'phone') {
+      // Inside the tap, before anything is awaited — see `keyboardHold`.
+      keyboardHold.current?.focus({ preventScroll: true });
+      return void requestCode();
+    }
     if (step === 'code') return void verifyCode();
     if (step === 'photo') return void finish();
     const order: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
@@ -443,6 +463,18 @@ export default function OnboardingPage() {
         </>
       }
     >
+      {/* Always rendered, in the same place, so it is still mounted when the
+          code step replaces the phone step. Out of the reading order and
+          the tab order; see `keyboardHold`. */}
+      <input
+        ref={keyboardHold}
+        aria-hidden="true"
+        tabIndex={-1}
+        inputMode="numeric"
+        // Not readOnly: iOS opens no keyboard for a read-only field. What is
+        // typed here in the moment before the code step is never read.
+        className="pointer-events-none fixed top-0 left-0 h-px w-px text-[16px] opacity-0"
+      />
       {step === 'phone' ? <PhoneStep data={data} set={set} mode={mode} /> : null}
       {step === 'code' ? (
         <CodeStep
