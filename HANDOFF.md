@@ -30,7 +30,10 @@ wins over this file.
    test-number list. Once texts arrive (ask first, it is a live setting): make
    the owner's real account an administrator (the only live one is test
    number `11111111111`), then clear Authentication → Sign In / Providers →
-   Phone → Test phone numbers. Recommended: Twilio Verify.
+   Phone → Test phone numbers. Recommended: Twilio Verify. The owner is
+   registering an A2P 10DLC campaign (2FA) quoting `/join`'s two boxes
+   (`SMS_CONSENT` in `onboarding/steps.tsx`), `/privacy`, `/terms` and
+   `public/sms-opt-in/*.png`: change any of them and the registration with it.
 2. **Never tried on a real iPhone**: an hour of VoiceOver (including the
    "Saved." confirmations, Your answers, a described photo); notifications
    end to end from the Home Screen app; signed photos; the number pad staying
