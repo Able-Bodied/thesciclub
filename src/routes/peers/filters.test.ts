@@ -31,26 +31,15 @@ describe('othersOnly', () => {
   });
 });
 
-describe("the club's own account", () => {
-  it('sorts last, not first', () => {
-    // It used to arrive first by accident — the query orders by display_name
-    // and the account is called "Admin" — so the deck opened on a full-height
-    // card for the one member who is not a peer.
+// An administrator is a member and sorts like one (the owner, 2026-10-01).
+// Until then the club's "official account" was moved to the end of the deck.
+describe('an administrator in the deck', () => {
+  it('keeps their place in the order, not moved to the end', () => {
     const deck = [
-      makeMember({ displayName: 'Admin', isAdmin: true }),
+      makeMember({ displayName: 'Ada', isAdmin: true }),
       makeMember({ displayName: 'Bea' }),
-      makeMember({ displayName: 'Cal' }),
     ];
-    expect(filterMembers(deck, none, 'everyone').map((m) => m.displayName)).toEqual([
-      'Bea',
-      'Cal',
-      'Admin',
-    ]);
-  });
-
-  it('is still in the deck, because it is how you reach the club', () => {
-    const deck = [makeMember({ displayName: 'Admin', isAdmin: true })];
-    expect(filterMembers(deck, none, 'everyone')).toHaveLength(1);
+    expect(filterMembers(deck, none, 'everyone').map((m) => m.displayName)).toEqual(['Ada', 'Bea']);
   });
 });
 

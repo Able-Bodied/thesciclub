@@ -234,44 +234,39 @@ describe('MemberDetailPage', () => {
   });
 });
 
-describe('the official account profile', () => {
-  it('explains what the account is instead of showing empty member sections', () => {
-    state.current = ok(makeMember({ displayName: 'admin', isAdmin: true }));
+// The owner, 2026-10-01: an administrator's profile is their own, with an
+// Admin chip. Until then it was the club's "official account" page.
+describe('an administrator’s profile', () => {
+  it('is their own profile, sections and all', () => {
+    state.current = ok(
+      makeMember({
+        displayName: 'Dana',
+        isAdmin: true,
+        type: 'mentor',
+        exactLevel: 'C6',
+        completeness: 'Incomplete',
+        age: 28,
+        city: 'Santa Clara',
+      }),
+    );
     renderDetail();
-    expect(screen.getByText('What this account is')).toBeInTheDocument();
-    expect(screen.queryByText('Details')).not.toBeInTheDocument();
-    expect(screen.queryByText('Happy to talk about')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Dana' })).toBeInTheDocument();
+    expect(screen.getByText('C6 incomplete · 28 · Santa Clara')).toBeInTheDocument();
+    expect(screen.queryByText('Official account')).not.toBeInTheDocument();
+    expect(screen.queryByText('What this account is')).not.toBeInTheDocument();
   });
 
-  // It said "messaging is not switched on yet" until Chat was built. Leaving
-  // that up beside a working Chat tab would have been the more confusing lie.
-  it('offers the same Message button every other profile has', () => {
-    state.current = ok(makeMember({ isAdmin: true }));
+  it('carries an Admin chip beside Peer mentor', () => {
+    state.current = ok(makeMember({ isAdmin: true, type: 'mentor' }));
     renderDetail();
-    expect(screen.getByRole('button', { name: 'Message the club' })).toBeInTheDocument();
-    expect(screen.queryByText(/not switched on/)).not.toBeInTheDocument();
+    expect(screen.getByText('Peer mentor')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
   });
 
-  it('repeats the rule that membership can be lost', () => {
-    state.current = ok(makeMember({ isAdmin: true }));
+  it('does not put the chip on anybody else', () => {
+    state.current = ok(makeMember({ type: 'mentor' }));
     renderDetail();
-    expect(screen.getByText(/Membership can be lost/)).toBeInTheDocument();
-  });
-
-  it('carries the club mark and the official badge', () => {
-    state.current = ok(makeMember({ isAdmin: true }));
-    renderDetail();
-    // Two marks: the big one and the small one in the wordmark.
-    expect(screen.getAllByRole('img', { name: 'The SCI Club' }).length).toBeGreaterThan(0);
-    expect(screen.getByText('Official account')).toBeInTheDocument();
-  });
-
-  it('says what to bring to the account rather than leaving it abstract', () => {
-    state.current = ok(makeMember({ isAdmin: true }));
-    renderDetail();
-    expect(screen.getByText('Invites')).toBeInTheDocument();
-    expect(screen.getByText('The house rules')).toBeInTheDocument();
-    expect(screen.getByText(/Reports come here and are read by a person/)).toBeInTheDocument();
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument();
   });
 });
 

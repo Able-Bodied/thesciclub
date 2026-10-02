@@ -1,7 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ClubMark, ClubWordmark } from '@/components/club-mark';
 import { LinkedText } from '@/components/linked-text';
 import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
@@ -225,17 +224,6 @@ export default function MemberDetailPage() {
     return <Centered>{error ?? 'Could not load this member.'}</Centered>;
   }
 
-  if (member.isAdmin)
-    return (
-      <OfficialProfile
-        member={member}
-        backLabel={backFrom(location.state)}
-        onBack={() => {
-          void navigate(-1);
-        }}
-      />
-    );
-
   const [from, to] = gradientFor(member.id);
   const verifier = member.affiliations[0] ?? null;
   const injury = injuryLine(member);
@@ -265,9 +253,21 @@ export default function MemberDetailPage() {
             <ChevronLeft className="h-4 w-4" />
             {backFrom(location.state)}
           </button>
-          {member.type === 'mentor' ? (
-            <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
-              Peer mentor
+          {/* An administrator's profile is their own, with an Admin chip
+              beside Peer mentor (the owner, 2026-10-01); it was the club's
+              "official account" page until administrators were people. */}
+          {member.type === 'mentor' || member.isAdmin ? (
+            <span className="flex flex-wrap justify-end gap-1.5">
+              {member.type === 'mentor' ? (
+                <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
+                  Peer mentor
+                </span>
+              ) : null}
+              {member.isAdmin ? (
+                <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase tracking-[0.08em] lg:bg-navy lg:text-white">
+                  Admin
+                </span>
+              ) : null}
             </span>
           ) : null}
         </div>
@@ -485,105 +485,6 @@ function Centered({ children, role }: { children: React.ReactNode; role?: 'statu
       <p role={role} className="text-center text-[0.875rem] text-ink2 leading-relaxed">
         {children}
       </p>
-    </div>
-  );
-}
-
-/**
- * The club's own account.
- *
- * None of the sections a member profile shows apply here — there is no injury,
- * no city, no list of topics somebody agreed to be asked about. Rendering them
- * empty would make the account look like an abandoned profile rather than the
- * one that answers you, so this says what the account is instead.
- *
- * The Message button is the same one every other profile has, and it opens the
- * same kind of conversation. It said "messaging is not switched on yet" until
- * Chat was built; leaving that sentence up beside a working Chat tab would have
- * been the more confusing of the two lies.
- */
-function OfficialProfile({
-  member,
-  onBack,
-  backLabel,
-}: {
-  member: BrowseMember;
-  onBack: () => void;
-  backLabel: string;
-}) {
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="relative mx-auto w-full max-w-[760px] bg-navy px-[18px] pt-4 pb-7 lg:rounded-b-[28px]">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-1 rounded-full bg-white/10 py-1.5 pr-3 pl-1.5 font-bold text-[0.8125rem] text-white"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {backLabel}
-          </button>
-          <ClubWordmark />
-        </div>
-
-        <div className="mt-6 flex flex-col items-center">
-          <ClubMark size={104} />
-          <h1 className="mt-5 font-extrabold font-display text-[1.75rem] text-white tracking-[-0.01em]">
-            {member.displayName}
-          </h1>
-          {/* The mock's own badge shape: a white pill with the gold org mark. */}
-          <span className="mt-3 inline-flex items-center gap-[7px] rounded-full bg-white/95 py-[5px] pr-3 pl-[5px] font-extrabold text-[0.75rem] text-navy leading-none">
-            <span className="grid h-[22px] w-[22px] flex-none place-items-center rounded-[7px] bg-gradient-to-br from-gold-dp to-gold font-extrabold font-head text-[0.53125rem] text-white">
-              SCI
-            </span>
-            Official account
-          </span>
-        </div>
-      </div>
-
-      <div className="mx-auto w-full max-w-[760px] px-4 pb-6">
-        <Section title="What this account is">
-          <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
-            The club's own account, run by whoever is administering The SCI Club. It is not a member
-            — there is no injury, no city and no story behind it.
-          </p>
-        </Section>
-
-        <Section title="What to bring here">
-          <div className="rounded-[17px] border border-line bg-paper px-3.5 py-1">
-            {[
-              ['Invites', 'How they work, and getting somebody you know onto the list.'],
-              [
-                'The house rules',
-                'What ends a membership, and what to do if somebody breaks them.',
-              ],
-              [
-                'A profile that looks wrong',
-                'Yours or anybody else’s, including one from the directory.',
-              ],
-              ['Anything that has gone wrong', 'Reports come here and are read by a person.'],
-            ].map(([title, blurb]) => (
-              <div key={title} className="border-line border-b py-3 last:border-b-0">
-                <span className="block font-extrabold font-head text-[0.90625rem]">{title}</span>
-                <span className="mt-0.5 block text-[0.8rem] text-ink2 leading-[1.45]">{blurb}</span>
-              </div>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="Getting in touch">
-          <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
-            Write here and it reaches whoever is administering the club. Nothing you send is visible
-            to any other member.
-          </p>
-          <MessageButton memberId={member.id} name="the club" />
-        </Section>
-
-        <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
-          <b className="font-bold">Membership can be lost.</b> Selling to members, harassing anyone,
-          giving medical advice as fact, or repeating outside a room what was said in it all end it.
-        </div>
-      </div>
     </div>
   );
 }

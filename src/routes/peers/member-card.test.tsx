@@ -183,38 +183,45 @@ describe('MemberCard', () => {
   });
 });
 
-describe('the official account', () => {
-  it('is badged Official and named, without a level or an age', () => {
+// The owner, 2026-10-01: an administrator is a member like any other, with an
+// Admin flag. Until then the card was the club's "official account".
+describe('an administrator', () => {
+  it('keeps their own name, summary and photograph', () => {
     render(
       <MemberCard
-        member={makeMember({ displayName: 'admin', isAdmin: true, exactLevel: 'T4', age: 30 })}
+        member={makeMember({
+          displayName: 'Dana',
+          isAdmin: true,
+          type: 'mentor',
+          exactLevel: 'T4',
+          completeness: 'Complete',
+          age: 30,
+          city: 'Fresno',
+          photoPath: 'u1/profile.webp',
+        })}
         onOpen={() => undefined}
       />,
     );
-    expect(screen.getByText('Official')).toBeInTheDocument();
-    expect(screen.getByText('admin')).toBeInTheDocument();
-    // A level and an age would be fiction on an account that is not a person.
-    expect(screen.queryByText(/T4/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/· 30 ·/)).not.toBeInTheDocument();
-  });
-
-  it('uses the club mark rather than a photograph', () => {
-    render(
-      <MemberCard
-        member={makeMember({ isAdmin: true, photoPath: 'seed/x.webp' })}
-        onOpen={() => undefined}
-      />,
-    );
-    expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
-    // The badge is an <img> itself since the rebrand, so the check is that the
-    // only image is the badge — the photograph path is never drawn.
-    expect(document.querySelectorAll('img')).toHaveLength(1);
-    expect(document.querySelector('img[src*="seed/x.webp"]')).toBeNull();
-  });
-
-  it('does not badge an ordinary member as official', () => {
-    render(<MemberCard member={makeMember({ isAdmin: false })} onOpen={() => undefined} />);
+    expect(screen.getByText('Dana')).toBeInTheDocument();
+    expect(screen.getByText('T4 complete · 30 · Fresno')).toBeInTheDocument();
     expect(screen.queryByText('Official')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'The SCI Club' })).not.toBeInTheDocument();
+  });
+
+  it('is flagged Admin as well as Mentor', () => {
+    render(
+      <MemberCard
+        member={makeMember({ isAdmin: true, type: 'mentor' })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('Mentor')).toBeInTheDocument();
+    expect(screen.getByText('Admin')).toBeInTheDocument();
+  });
+
+  it('does not flag an ordinary member Admin', () => {
+    render(<MemberCard member={makeMember({ type: 'mentor' })} onOpen={() => undefined} />);
+    expect(screen.queryByText('Admin')).not.toBeInTheDocument();
   });
 });
 

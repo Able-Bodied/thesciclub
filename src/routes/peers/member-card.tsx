@@ -1,4 +1,3 @@
-import { ClubMark } from '@/components/club-mark';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
@@ -88,41 +87,15 @@ export interface MemberCardProps {
   onOpen: () => void;
 }
 
-export function MemberCard({ member, onOpen }: MemberCardProps) {
-  if (member.isAdmin) return <OfficialCard member={member} onOpen={onOpen} />;
-  return <PersonCard member={member} onOpen={onOpen} />;
-}
-
 /**
- * The club's own account.
- *
- * Deliberately not a photo card. This account is not a person, and the things
- * a person card shows — a level, an age, a city — would be fiction on it.
+ * An administrator's card is their own, photograph, name and all, with an
+ * Admin flag under the Mentor one (the owner, 2026-10-01). Until then an
+ * administrator was drawn as "the club's own account", a navy card with the
+ * club's mark: right while the only one was the club's account, wrong once
+ * administrators were members running the club as themselves.
  */
-function OfficialCard({ member, onOpen }: MemberCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      // No fixed height, so a single column gives it only the room it needs.
-      // In a grid it stretches to its row, because a short card beside a tall
-      // one looks like a mistake — which is worse than the empty navy that
-      // matching costs. The content stays centred either way.
-      className="relative flex min-h-[20rem] w-full flex-col items-center justify-center overflow-hidden rounded-[26px] bg-navy px-8 py-10 text-center shadow-[0_10px_26px_rgba(10,20,35,.18)]"
-    >
-      <span className="absolute top-[18px] right-[18px] rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
-        Official
-      </span>
-      <ClubMark size={96} />
-      <span className="mt-6 block font-extrabold font-display text-[1.5rem] text-white tracking-[-0.01em]">
-        {member.displayName}
-      </span>
-      <span className="mt-2 block text-[0.84375rem] text-[#B9CADF] leading-[1.5]">
-        The club's own account. Questions about membership, the house rules, or anything that has
-        gone wrong — this is who answers.
-      </span>
-    </button>
-  );
+export function MemberCard({ member, onOpen }: MemberCardProps) {
+  return <PersonCard member={member} onOpen={onOpen} />;
 }
 
 function PersonCard({ member, onOpen }: MemberCardProps) {
@@ -170,10 +143,22 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       <span className="absolute inset-x-0 top-0 h-[120px] bg-gradient-to-b from-[#0A1D3699] via-[#0A1D3640] to-transparent" />
       <span className="absolute inset-x-0 bottom-0 h-[230px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
 
-      {member.type === 'mentor' ? (
-        <span className="absolute top-[18px] right-[18px] z-10 inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
-          <MentorStar />
-          Mentor
+      {/* Stacked, not side by side: the name keeps the same room beside one
+          flag or two. Admin is white on the photograph so it is not read as a
+          second Mentor. */}
+      {member.type === 'mentor' || member.isAdmin ? (
+        <span className="absolute top-[18px] right-[18px] z-10 flex flex-col items-end gap-1.5">
+          {member.type === 'mentor' ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
+              <MentorStar />
+              Mentor
+            </span>
+          ) : null}
+          {member.isAdmin ? (
+            <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
+              Admin
+            </span>
+          ) : null}
         </span>
       ) : null}
 
