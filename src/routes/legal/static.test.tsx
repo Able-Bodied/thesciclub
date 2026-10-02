@@ -28,6 +28,10 @@ describe('the static Privacy Policy', () => {
     expect(html).toContain(
       'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
     );
+    expect(html).toContain(
+      'We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.',
+    );
+    expect(html).toContain('Message and data rates may apply.');
   });
 
   it('is not marked noindex, and still starts the app', () => {

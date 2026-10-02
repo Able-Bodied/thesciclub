@@ -11,13 +11,15 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  * (matching through organization mentors, grant applications a member asks
  * for) is the owner's answer, 2026-10-01.
  *
- * The two bold statements under "Text messages (SMS)" are the wording carriers
- * ask for, and the text-message registration links here: keep them word for
- * word. The first was added after the campaign was rejected on 2026-10-02
- * (Twilio error 30908), whose notice names "mobile information", "messaging
- * consent", "third parties or affiliates" and "marketing or promotional"; the
- * second alone said none of affiliates, promotional or consent. The grant
- * section says it excludes them too, so no sharing clause reads as a conflict.
+ * The bold statements under "Text messages (SMS)" are the wording carriers ask
+ * for, and the text-message registration links here: keep them word for word.
+ * The campaign was rejected on 2026-10-02 (Twilio error 30908). The first
+ * statement is the "passing" sentence from that error's documentation,
+ * verbatim; the page also says a privacy policy behind a website opt-in must
+ * give the message frequency and "message and data rates may apply", which is
+ * the line above it. The older sentence said none of affiliates, promotional or
+ * consent. The grant section says it excludes them too, so no sharing clause
+ * reads as a conflict.
  */
 export default function PrivacyPage() {
   return (
@@ -122,6 +124,16 @@ export default function PrivacyPage() {
         <P>
           We text you a one-time code each time you sign in, and nothing else. Your phone number is
           used to send those codes and to identify your account.
+        </P>
+        <P>
+          <b>Message frequency:</b> one text each time you ask for a sign-in code.{' '}
+          <b>Message and data rates may apply.</b>
+        </P>
+        <P>
+          <b>
+            We do not share, sell, or provide your mobile phone number or messaging consent data to
+            third parties or affiliates for marketing or promotional purposes.
+          </b>
         </P>
         <P>
           <b>

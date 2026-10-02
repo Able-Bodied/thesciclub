@@ -49,6 +49,12 @@ describe('the Privacy Policy', () => {
   // The wording Twilio's rejection (error 30908, 2026-10-02) said was missing.
   it('says mobile information and consent go to no third party or affiliate', () => {
     open('/privacy');
+    // The error documentation's own "passing" sentence, word for word.
+    expect(
+      screen.getByText(
+        'We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.',
+      ),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Text messaging opt-in data and consent will not be shared with any third parties.',
@@ -57,6 +63,13 @@ describe('the Privacy Policy', () => {
     expect(
       screen.getByText(/excludes your text messaging opt-in data and consent/),
     ).toBeInTheDocument();
+  });
+
+  // Required in the policy itself when the opt-in is a web form (error 30908).
+  it('gives the message frequency and the rates line', () => {
+    open('/privacy');
+    expect(screen.getByText(/one text each time you ask for a sign-in code/)).toBeInTheDocument();
+    expect(screen.getByText('Message and data rates may apply.').tagName).toBe('B');
   });
 
   it('links to the Terms of Service', () => {
