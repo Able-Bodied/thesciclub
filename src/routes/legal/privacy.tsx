@@ -11,12 +11,17 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  * (matching through organization mentors, grant applications a member asks
  * for) is the owner's answer, 2026-10-01.
  *
- * The no-sharing sentence under "Text messages" is the wording carriers ask
- * for, and the text-message registration links here: keep it word for word.
+ * The two bold statements under "Text messages (SMS)" are the wording carriers
+ * ask for, and the text-message registration links here: keep them word for
+ * word. The first was added after the campaign was rejected on 2026-10-02
+ * (Twilio error 30908), whose notice names "mobile information", "messaging
+ * consent", "third parties or affiliates" and "marketing or promotional"; the
+ * second alone said none of affiliates, promotional or consent. The grant
+ * section says it excludes them too, so no sharing clause reads as a conflict.
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 1, 2026">
+    <LegalPage title="Privacy Policy" updated="October 2, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -82,11 +87,11 @@ export default function PrivacyPage() {
           <li>
             <b>Mentors and administrators from member organizations</b>, such as hospitals and peer
             support programs, see the same profile inside the app, to help match members with peers
-            and mentors.
+            and mentors. They never see your phone number.
           </li>
           <li>
-            <b>Your phone number</b> is seen only by whoever put it on the invite list (an
-            organization or a mentor) and by the club’s administrators.
+            <b>Your phone number</b> is shown only to the club’s administrators and to whoever added
+            it to the invite list, who already had it. It is never shared outside the club.
           </li>
           <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody
@@ -108,22 +113,33 @@ export default function PrivacyPage() {
         <P>
           If you ask Able Bodied Inc. to help you apply for a grant, such as for equipment or
           adaptive sport, we may share what is on your profile with the grant-maker, only for that
-          application and only because you asked. We never share your phone number.
+          application and only because you asked. This never includes your phone number or your
+          text-message opt-in data and consent.
         </P>
       </Section>
 
-      <Section title="Text messages">
+      <Section title="Text messages (SMS)">
         <P>
           We text you a one-time code each time you sign in, and nothing else. Your phone number is
           used to send those codes and to identify your account.
         </P>
         <P>
           <b>
+            No mobile information will be shared with third parties or affiliates for marketing or
+            promotional purposes. Text messaging opt-in data and consent will not be shared with any
+            third parties.
+          </b>
+        </P>
+        <P>
+          <b>
             We do not sell or share your SMS opt-in data or personal information with third parties
             for marketing purposes.
-          </b>{' '}
-          Your phone number is never shared with anyone outside the club, except the services below
-          that send the texts and run the app, and only so they can do that.
+          </b>
+        </P>
+        <P>
+          Every kind of sharing described in this policy excludes your text messaging opt-in data
+          and consent. The only exception is the service providers below that send the texts and run
+          the app, which handle your phone number only so they can do that.
         </P>
         <P>
           Text <b>HELP</b> for help and <b>STOP</b> to stop the texts. The{' '}

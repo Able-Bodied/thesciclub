@@ -25,6 +25,9 @@ describe('the static Privacy Policy', () => {
       'We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes.',
     );
     expect(html).toContain('Able Bodied Inc.');
+    expect(html).toContain(
+      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
+    );
   });
 
   it('is not marked noindex, and still starts the app', () => {

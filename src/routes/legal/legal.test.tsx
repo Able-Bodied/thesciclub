@@ -46,6 +46,19 @@ describe('the Privacy Policy', () => {
     ).toBeInTheDocument();
   });
 
+  // The wording Twilio's rejection (error 30908, 2026-10-02) said was missing.
+  it('says mobile information and consent go to no third party or affiliate', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(
+        'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes. Text messaging opt-in data and consent will not be shared with any third parties.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/excludes your text messaging opt-in data and consent/),
+    ).toBeInTheDocument();
+  });
+
   it('links to the Terms of Service', () => {
     open('/privacy');
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
