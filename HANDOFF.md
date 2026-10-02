@@ -18,10 +18,10 @@ wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`
   empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 96 migrations, none
-  pending (`pnpm exec supabase migration list`; a blank Remote is pending).
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 97 migrations; check
+  with `pnpm exec supabase migration list` (a blank Remote is pending).
   Edge function `push-notify` v2 live.
-- **Checks**: 1,606 tests, `pnpm check` and `pnpm build` clean; 33 SQL probes.
+- **Checks**: 1,618 tests, `pnpm check` and `pnpm build` clean; 34 SQL probes.
 
 ## Open
 
@@ -64,7 +64,9 @@ wins over this file.
   (a mistyped number must be seen first). Staying Driven Wheelchair Fitness
   is online by the owner's word (`STATED_FORMATS` in
   `jobs/event-ingest/classify.js`) until NorCal SCI says otherwise; for any
-  other event with no format, ask, never guess.
+  other event with no format, ask, never guess. Delete my account (Me)
+  erases the person and keeps their words as "Deleted user" — CONTEXT.md
+  "Leaving"; `delete_my_account()` and `src/routes/me/delete-account*`.
 
 ## Environment
 
