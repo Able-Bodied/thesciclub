@@ -9,6 +9,7 @@ import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
+import { DeleteAccount } from '@/routes/me/delete-account';
 import { MeHero } from '@/routes/me/hero';
 import { NotificationSettings } from '@/routes/me/notification-settings';
 import { StandingCard } from '@/routes/me/standing';
@@ -397,6 +398,10 @@ export default function MePage() {
           <LogOut className="h-4 w-4" />
           {busy ? 'Signing out…' : 'Sign out'}
         </button>
+
+        {/* Last on the page, below Sign out: the one thing here that cannot
+            be taken back. */}
+        {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
       </div>
     </div>
   );
