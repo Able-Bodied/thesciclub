@@ -1,8 +1,9 @@
-import { NavLink } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { cn } from '@/lib/utils';
+import { backToHome } from '@/routes/home/back';
 
 /**
  * The five-tab bottom bar, matching `nav()` in docs/index.html.
@@ -37,11 +38,26 @@ const TABS = [
   { to: '/me', label: 'Me', Icon: MeIcon },
 ] as const;
 
+/**
+ * The tab a screen belongs to. A topic, an event or a profile opened from a
+ * card on Home belongs to Home — its back link says Home and goes there — so
+ * Home is lit rather than Chat, Events or Peers, whose paths those screens
+ * live under. Otherwise a tab is lit on its own path and everything beneath
+ * it, as NavLink would.
+ */
+export function litTab(pathname: string, state: unknown): string | null {
+  if (backToHome(state) !== null) return '/home';
+  const tab = TABS.find(({ to }) => pathname === to || pathname.startsWith(`${to}/`));
+  return tab?.to ?? null;
+}
+
 export function AppNav() {
   // Reading a conversation happens on a screen that is not this one, so the
   // hook listens for `unreadChanged()` rather than this refetching on every
   // navigation. See src/lib/chat/unread.ts.
   const { count, reload } = useUnreadThreads();
+  const location = useLocation();
+  const lit = litTab(location.pathname, location.state);
 
   // The bar is mounted on every screen, which makes it the right place for the
   // one subscription that has to survive navigation: somebody writing to you
@@ -76,45 +92,41 @@ export function AppNav() {
         )}
       >
         {TABS.map(({ to, label, Icon }) => {
+          const isActive = lit === to;
           return (
-            <NavLink
+            <Link
               key={to}
               to={to}
+              aria-current={isActive ? 'page' : undefined}
               // The dot is decorative, so without this the tab is called "Chat"
               // and what it is telling somebody is told only in navy. The label
               // starts with the visible word, so what is said and what is shown
               // still agree.
               aria-label={to === '/chat' && count > 0 ? 'Chat, something new' : undefined}
-              className={({ isActive }) =>
-                cn(
-                  'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
-                  // Icon over label on a phone, beside it on a desktop, where
-                  // the row is wide and the stacked label is needlessly small.
-                  'md:flex-row md:gap-2 md:px-3 md:py-1.5 md:text-[0.875rem]',
-                  isActive ? 'text-navy' : 'text-grey',
-                  !isActive && 'md:hover:bg-tint',
-                )
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Every item gets the same row height, so the five labels
-                      sit on one line. */}
-                  <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
-                    <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
-                    {to === '/chat' && count > 0 ? (
-                      // Ringed in the bar's own colour so it reads as a dot on
-                      // the icon rather than as part of it.
-                      <span
-                        aria-hidden="true"
-                        className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-navy ring-2 ring-paper"
-                      />
-                    ) : null}
-                  </span>
-                  <span>{label}</span>
-                </>
+              className={cn(
+                'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
+                // Icon over label on a phone, beside it on a desktop, where
+                // the row is wide and the stacked label is needlessly small.
+                'md:flex-row md:gap-2 md:px-3 md:py-1.5 md:text-[0.875rem]',
+                isActive ? 'text-navy' : 'text-grey',
+                !isActive && 'md:hover:bg-tint',
               )}
-            </NavLink>
+            >
+              {/* Every item gets the same row height, so the five labels sit
+                  on one line. */}
+              <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
+                <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
+                {to === '/chat' && count > 0 ? (
+                  // Ringed in the bar's own colour so it reads as a dot on
+                  // the icon rather than as part of it.
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-navy ring-2 ring-paper"
+                  />
+                ) : null}
+              </span>
+              <span>{label}</span>
+            </Link>
           );
         })}
       </div>
