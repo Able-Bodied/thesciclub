@@ -2,6 +2,31 @@ import { describe, expect, it } from 'vitest';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 
 describe('classifyFormat', () => {
+  // The owner, 2026-10-01: the feed never says, and the class is online.
+  it('reads Staying Driven Wheelchair Fitness as online when its listing says nothing', () => {
+    expect(classifyFormat({ title: 'Staying Driven Wheelchair Fitness' })).toBe('online');
+    expect(classifyFormat({ title: '  staying driven wheelchair fitness ' })).toBe('online');
+  });
+
+  it('lets the listing overrule what the owner stated, once it names a place', () => {
+    expect(
+      classifyFormat({
+        title: 'Staying Driven Wheelchair Fitness',
+        location: '24 Hour Fitness, San Jose',
+      }),
+    ).toBe('in_person');
+    expect(
+      classifyFormat({
+        title: 'Staying Driven Wheelchair Fitness',
+        description: 'Hybrid this week.',
+      }),
+    ).toBe('hybrid');
+  });
+
+  it('still says nothing for a title it has not been told about', () => {
+    expect(classifyFormat({ title: 'Staying Driven' })).toBeNull();
+  });
+
   it('reads a Zoom venue as online', () => {
     expect(classifyFormat({ location: 'Zoom', title: 'Driving and hand controls' })).toBe('online');
   });

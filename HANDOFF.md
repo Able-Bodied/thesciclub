@@ -50,9 +50,10 @@ origin/main..HEAD` should be empty.
    one — each kind opens its own screen); signed photos; the number pad
    staying up from the phone number into the code (`keyboardHold` in
    onboarding); the notifications step after signup.
-3. **Small, noticed, not asked for**: Staying Driven Wheelchair Fitness (23
-   upcoming) has no format, place or city — the feed and its NorCal SCI page
-   never say whether it is Zoom or a gym; ask NorCal SCI, never guess; the
+3. **Small, noticed, not asked for**: Staying Driven Wheelchair Fitness is
+   online by the owner's word (2026-10-01, `STATED_FORMATS` in
+   `jobs/event-ingest/classify.js`), because its NorCal SCI listing never
+   says; the owner will say if NorCal SCI tells them otherwise. The
    "Rather not say" toggles on Your details are under 44px with no `data-target`;
    onboarding's photo step does not ask for a description (Your details
    does).

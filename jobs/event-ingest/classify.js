@@ -87,6 +87,17 @@ const PLACE_IN_COPY =
  */
 const WHERE_LINE = /^\s*where\s*:\s*(.+?)\s*$/im;
 
+/**
+ * Formats the owner has stated for events whose feed never says, by exact
+ * title. Consulted last, only when nothing in the event itself answers, so a
+ * listing that later names a venue or says "hybrid" overrules it.
+ *
+ * Staying Driven Wheelchair Fitness: NorCal SCI's listing has no venue, no
+ * city and no prose about where. The owner, 2026-10-01: online only, until
+ * NorCal SCI says otherwise.
+ */
+const STATED_FORMATS = new Map([['staying driven wheelchair fitness', 'online']]);
+
 /** Copy that says the event is both at a place and on a screen. */
 const HYBRID = /\b(hybrid|in[- ]person (and|or) (online|virtual|zoom)|both in[- ]person)\b/i;
 
@@ -117,7 +128,7 @@ export function classifyFormat({ location = '', title = '', description = '' } =
   if (ONLINE_IN_COPY.test(copy)) return 'online';
   if (saysPlace(copy)) return 'in_person';
 
-  return null;
+  return STATED_FORMATS.get(title.trim().toLowerCase()) ?? null;
 }
 
 /** Whether the prose names somewhere physical, by either of the two rules. */
