@@ -25,6 +25,13 @@ export interface MemberDetails {
   city: string | null;
   state: string;
   photoPath: string | null;
+  /**
+   * What is in the photograph, in the member's words, for whoever hears it
+   * rather than sees it. Every avatar reads it as `alt`; null is `alt=""`,
+   * decorative, with the name beside it. Belongs to one picture: a new photo
+   * or none clears it.
+   */
+  photoAlt: string | null;
   showInBrowse: boolean;
   /**
    * Things this member has said they would rather not give — see
@@ -66,7 +73,7 @@ export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean 
 }
 
 const COLUMNS =
-  'display_name, birth_date, exact_level, completeness, injury_date, injury_date_precision, city, state, photo_path, show_in_browse, declined';
+  'display_name, birth_date, exact_level, completeness, injury_date, injury_date_precision, city, state, photo_path, photo_alt, show_in_browse, declined';
 
 /* The client types individually selected columns as `any`, so each one is
  * narrowed on the way out rather than cast wholesale. A column that comes back
@@ -146,6 +153,7 @@ export async function loadDetails(): Promise<
       city: asNullableText(row.city),
       state: asText(row.state),
       photoPath: asNullableText(row.photo_path),
+      photoAlt: asNullableText(row.photo_alt),
       showInBrowse: row.show_in_browse !== false,
       declined: Array.isArray(row.declined)
         ? row.declined.filter((v): v is string => typeof v === 'string')
@@ -200,6 +208,8 @@ export async function saveDetails(
       // said. Spelled out rather than leaning on `||`, which reads as a typo.
       city: trimmedOrNull(details.city),
       state: details.state,
+      // Only with a photograph to describe; blank is none, as the city.
+      photo_alt: details.photoPath ? trimmedOrNull(details.photoAlt) : null,
       // `show_in_browse` is deliberately not written here. It is set from Me,
       // on the tap, by `setShowInBrowse` — so a details form opened before
       // somebody hid themselves cannot put them back in the deck when they
@@ -257,7 +267,11 @@ export async function savePhoto(
 
   await removeOtherPhotos(userId, path);
 
-  const { error } = await supabase.from('members').update({ photo_path: path }).eq('id', userId);
+  // The description was of the picture this one replaces.
+  const { error } = await supabase
+    .from('members')
+    .update({ photo_path: path, photo_alt: null })
+    .eq('id', userId);
   if (error) return { ok: false, error: describeError(error, PHOTO_REFUSAL) };
   return { ok: true, path };
 }
@@ -287,7 +301,7 @@ async function removeOtherPhotos(userId: string, keep: string): Promise<void> {
 export async function removePhoto(userId: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase()
     .from('members')
-    .update({ photo_path: null })
+    .update({ photo_path: null, photo_alt: null })
     .eq('id', userId);
   return error
     ? { ok: false, error: describeError(error, 'The photograph was not removed.') }

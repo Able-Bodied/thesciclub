@@ -59,6 +59,7 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   city: 'Santa Clara',
   state: 'CA',
   photoPath: null,
+  photoAlt: null,
   showInBrowse: true,
   declined: [],
   ...o,
@@ -186,6 +187,37 @@ describe('Your details', () => {
     await userEvent.upload(choosePhoto(container), photoFile());
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('describing the photo', () => {
+    it('is not asked without a photo to describe', async () => {
+      renderDetails();
+      await screen.findByLabelText('Name');
+      expect(screen.queryByLabelText('Describe your photo')).not.toBeInTheDocument();
+    });
+
+    it('saves what the member wrote, with a hint that says who it is for', async () => {
+      api.details = details({ photoPath: 'u1/profile.jpg' });
+      renderDetails();
+      const field = await screen.findByLabelText('Describe your photo');
+      expect(field).toHaveAccessibleDescription(/members who use a screen reader/);
+      await userEvent.type(field, 'Me at Ocean Beach');
+      await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+      await waitFor(() => {
+        expect(api.saves[0]?.details.photoAlt).toBe('Me at Ocean Beach');
+      });
+    });
+
+    // A description belongs to one picture.
+    it('empties when a new photo replaces the one it described', async () => {
+      api.details = details({ photoPath: 'u1/profile.jpg', photoAlt: 'Me at Ocean Beach' });
+      const { container } = renderDetails();
+      expect(await screen.findByLabelText('Describe your photo')).toHaveValue('Me at Ocean Beach');
+      await userEvent.upload(choosePhoto(container), photoFile());
+      await waitFor(() => {
+        expect(screen.getByLabelText('Describe your photo')).toHaveValue('');
+      });
     });
   });
 

@@ -143,7 +143,7 @@ export default function ProfileDetailsPage() {
     setError(null);
     savePhoto(account.userId, file)
       .then((result) => {
-        if (result.ok) set({ photoPath: result.path });
+        if (result.ok) set({ photoPath: result.path, photoAlt: null });
         else setError(result.error);
       })
       .catch((e: unknown) => {
@@ -222,7 +222,7 @@ export default function ProfileDetailsPage() {
                       onClick={() => {
                         if (!account.userId) return;
                         void removePhoto(account.userId).then(() => {
-                          set({ photoPath: null });
+                          set({ photoPath: null, photoAlt: null });
                         });
                       }}
                       className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
@@ -236,6 +236,30 @@ export default function ProfileDetailsPage() {
                   )}
                 </div>
               </Field>
+
+              {/* Asked only once there is a picture to describe. Every avatar of
+                  this member reads it; without it they are alt="", with the
+                  name beside them. */}
+              {details.photoPath ? (
+                <Field label="Describe your photo" htmlFor="d-photo-alt">
+                  <Input
+                    id="d-photo-alt"
+                    value={details.photoAlt ?? ''}
+                    maxLength={PHOTO_ALT_MAX}
+                    describedBy="d-photo-alt-hint"
+                    onChange={(v) => {
+                      set({ photoAlt: v });
+                    }}
+                  />
+                  <p
+                    id="d-photo-alt-hint"
+                    className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]"
+                  >
+                    For members who use a screen reader, who hear this instead of seeing the
+                    picture. Optional — “Me in my chair at Ocean Beach” is plenty.
+                  </p>
+                </Field>
+              ) : null}
 
               <Field label="Name" htmlFor="d-name">
                 <Input
@@ -469,16 +493,23 @@ function Field({
 const CONTROL =
   'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy';
 
+/** A sentence, not an essay: enough for a scene, short enough to hear. */
+const PHOTO_ALT_MAX = 200;
+
 function Input({
   id,
   type,
   max,
+  maxLength,
+  describedBy,
   value,
   onChange,
 }: {
   id: string;
   type?: string;
   max?: string;
+  maxLength?: number;
+  describedBy?: string;
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -487,6 +518,8 @@ function Input({
       id={id}
       type={type}
       max={max}
+      maxLength={maxLength}
+      aria-describedby={describedBy}
       value={value}
       onChange={(e) => {
         onChange(e.target.value);
