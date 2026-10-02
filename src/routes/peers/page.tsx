@@ -250,9 +250,10 @@ export default function PeersPage() {
         <FilterSheet
           regions={regionsIn(members)}
           cities={citiesIn(members)}
-          // Capped and frequency-ordered: the long tail of one-person topics
-          // would bury the ones that actually narrow a deck.
-          topics={topicsIn(members, 24)}
+          // Frequency-ordered. The sheet draws the common ones and keeps the
+          // long tail of one-person topics behind "Show all", where it cannot
+          // bury the ones that narrow a deck and is still reachable.
+          topics={topicsIn(members)}
           filters={filters}
           matchCount={visible.length}
           activeCount={filterCount}
