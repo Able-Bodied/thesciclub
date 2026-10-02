@@ -20,6 +20,8 @@ import EventsPage from '@/routes/events/page';
 import HomeNewPage from '@/routes/home/new';
 import HomePage from '@/routes/home/page';
 import InvitesPage from '@/routes/invites/page';
+import PrivacyPage from '@/routes/legal/privacy';
+import TermsPage from '@/routes/legal/terms';
 import MePage from '@/routes/me/page';
 import NotFoundPage from '@/routes/not-found/page';
 import OnboardingPage from '@/routes/onboarding/page';
@@ -193,6 +195,11 @@ function AppRoutes() {
       <Route path="/profile/answers" element={<ProfileAnswersPage />} />
       <Route path="/profile/details" element={<ProfileDetailsPage />} />
       <Route path="/dev-login" element={<DevLoginPage />} />
+      {/* Public, with no account: somebody on the phone step reads them before
+          they have one, and so do the carriers checking the text-message
+          registration. See src/routes/legal/legal-page.tsx. */}
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route
         path="/*"
         element={

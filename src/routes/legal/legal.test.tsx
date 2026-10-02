@@ -1,0 +1,98 @@
+import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+
+/**
+ * The Privacy Policy and the Terms of Service, through the real routes and
+ * signed out: the carriers' reviewers have no account, and neither does
+ * somebody reading them from the phone step.
+ */
+
+vi.mock('@/lib/account', () => ({
+  useAccount: () => ({ status: 'signed-out', userId: null, isAdmin: false, displayName: null }),
+  signOut: () => Promise.resolve({ ok: true }),
+}));
+vi.mock('@/routes/onboarding/page', () => ({ default: () => <h1>Join</h1> }));
+
+const { default: App } = await import('@/App');
+
+function open(path: string) {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
+describe('the Privacy Policy', () => {
+  it('opens with no account, rather than sending the reader to join', () => {
+    open('/privacy');
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Join' })).toBeNull();
+  });
+
+  it('names who runs the club', () => {
+    open('/privacy');
+    expect(screen.getAllByText(/Able Bodied Inc\./).length).toBeGreaterThan(0);
+  });
+
+  // The sentence the carriers look for, word for word.
+  it('says SMS opt-in data is not sold or shared for marketing', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(
+        'We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('links to the Terms of Service', () => {
+    open('/privacy');
+    expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+  });
+});
+
+describe('the Terms of Service', () => {
+  it('opens with no account', () => {
+    open('/terms');
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+  });
+
+  it('lists the four things that end a membership', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'Losing your membership' }).parentElement;
+    if (!section) throw new Error('no section');
+    for (const rule of [
+      'Selling to members.',
+      'Harassing anyone.',
+      'Giving medical advice as fact.',
+      'Repeating outside a room what was said in it.',
+    ]) {
+      expect(within(section).getByText(rule)).toBeInTheDocument();
+    }
+  });
+
+  // What carriers ask of SMS terms, HELP and STOP in bold among it.
+  it('carries the text-message terms', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'Text messages' }).parentElement;
+    if (!section) throw new Error('no section');
+    const s = within(section);
+    expect(s.getByText('The SCI Club sign-in codes.').tagName).toBe('B');
+    expect(s.getByText(/one message each time you ask for a code/)).toBeInTheDocument();
+    expect(s.getByText('Message and data rates may apply.').tagName).toBe('B');
+    expect(s.getByText('Text HELP').tagName).toBe('B');
+    expect(s.getByText('Text STOP').tagName).toBe('B');
+    expect(
+      s.getByText(/Carriers are not liable for delayed or undelivered messages/),
+    ).toBeInTheDocument();
+    expect(s.getByRole('link', { name: 'info@ablebodied.org' })).toHaveAttribute(
+      'href',
+      'mailto:info@ablebodied.org',
+    );
+    expect(s.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+  });
+});
