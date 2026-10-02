@@ -18,10 +18,10 @@ wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`
   empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 97 migrations; check
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 98 migrations; check
   with `pnpm exec supabase migration list` (a blank Remote is pending).
   Edge function `push-notify` v2 live.
-- **Checks**: 1,618 tests, `pnpm check` and `pnpm build` clean; 34 SQL probes.
+- **Checks**: 1,618 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
 
 ## Open
 
@@ -30,12 +30,13 @@ wins over this file.
    and the sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
    `onboarding/steps.tsx`), `/privacy`, `/terms` and
    `public/sms-opt-in/*.png`: change any of them and the registration with
-   it. Until texts arrive, members sign in with fixed codes set in the
+   it. The same two boxes, same words, also stand between a new number that
+   came through the sign-in door and the questions (`AgreeStep`). Until texts arrive, members sign in with fixed codes set in the
    dashboard (Authentication → Sign In / Providers → Phone → Test phone
    numbers). Once they do (ask first, it is a live setting), clear that list.
 2. **Never tried on a real iPhone**: an hour of VoiceOver (including the
-   "Saved." confirmations, Your answers, a described photo); notifications
-   end to end from the Home Screen app; signed photos; the number pad staying
+   "Saved." confirmations, Your answers, a described photo); the date boxes
+   with Voice Control and birthday autofill; notifications end to end from the Home Screen app; signed photos; the number pad staying
    up from phone number into code (`keyboardHold`); the notifications step.
 3. **Small, not asked for**: the "Rather not say" toggles on Your details are
    under 44px with no `data-target`; onboarding's photo step asks for no
@@ -148,4 +149,5 @@ wins over this file.
 `report-sheet.tsx`, `FilterSheetShell`, `useDialogFocus`, `useAnnounce`,
 `SmallButton` / `ReasonField` (`admin/controls.tsx`), `lib/chat/time.ts`,
 `describeError` / `describeThrown`, `organization-badge.tsx`, `ClubMark` /
-`ClubWordmark` (the owner's SVGs, never redrawn).
+`ClubWordmark` (the owner's SVGs, never redrawn), `DateFields` /
+`lib/date-parts.ts` (every date asked for: typed boxes, never a calendar).
