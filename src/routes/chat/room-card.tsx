@@ -118,7 +118,7 @@ export function RoomCard({
           {room.description}
         </span>
         {stats && stats.topicCount > 0 ? (
-          <span className="mt-1.5 block font-semibold text-[0.75rem] text-navy leading-[1.45]">
+          <span className="mt-1.5 block font-semibold text-[0.75rem] text-emphasis leading-[1.45]">
             {stats.topicCount} {stats.topicCount === 1 ? 'topic' : 'topics'} · {stats.postCount}{' '}
             {stats.postCount === 1 ? 'post' : 'posts'}
           </span>

@@ -215,7 +215,7 @@ export default function GroupMembersPage() {
                       // colour alone fails axe's link-in-text-block.
                       <Link
                         to={`/peers/${author.id}`}
-                        className="text-navy underline decoration-line underline-offset-2 hover:decoration-navy"
+                        className="text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
                       >
                         {author.displayName}
                       </Link>
@@ -234,7 +234,7 @@ export default function GroupMembersPage() {
         </div>
 
         {thread.eventId ? (
-          <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+          <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
             This is the group chat for an event. It keeps the event’s name, and everybody going to
             it can join from the event, so nobody is added by hand here.
           </p>

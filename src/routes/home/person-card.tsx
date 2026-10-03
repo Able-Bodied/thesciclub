@@ -22,7 +22,7 @@ export function PersonCard({ member, linkState }: { member: BrowseMember; linkSt
 
   return (
     <article className="relative rounded-[17px] border border-line bg-paper p-3.5">
-      <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-navy-hi uppercase tracking-[0.07em]">
+      <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-emphasis uppercase tracking-[0.07em]">
         <Sparkles aria-hidden="true" className="h-[1.1em] w-[1.1em]" />
         Worth meeting
       </p>
@@ -62,7 +62,7 @@ export function PersonCard({ member, linkState }: { member: BrowseMember; linkSt
           {topics.map((topic) => (
             <li
               key={topic}
-              className="rounded-full bg-tint px-2.5 py-[5px] font-semibold text-[0.75rem] text-navy leading-[1.25]"
+              className="rounded-full bg-tint px-2.5 py-[5px] font-semibold text-[0.75rem] text-emphasis leading-[1.25]"
             >
               {topic}
             </li>

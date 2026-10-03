@@ -16,6 +16,21 @@
     <!-- Member pages are never public (CONTEXT.md). Keep the whole app out of indexes. -->
     <meta name="robots" content="noindex, nofollow" />
     <title>The SCI Club</title>
+    <!-- Light or dark before the first paint, from the setting on Me → Display
+         (src/lib/accessibility.tsx keeps it in step after that). Without this a
+         member who chose Dark sees a white flash on every launch. -->
+    <script>
+      try {
+        const appearance = JSON.parse(
+          localStorage.getItem('thesciclub.accessibility') || '{}',
+        ).appearance;
+        if (appearance === 'light' || appearance === 'dark') {
+          document.documentElement.dataset.appearance = appearance;
+        }
+      } catch {
+        // Storage blocked: the phone's own setting applies, through the CSS.
+      }
+    </script>
     <!-- Both faces are served from this site, never Google Fonts: a private
          club should not tell a third party each time a member opens it.
          Preloaded so the first screen is drawn in them rather than swapped

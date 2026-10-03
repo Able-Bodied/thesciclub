@@ -204,7 +204,7 @@ export default function AdminPage() {
                 data-target="small"
                 className={cn(
                   'whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
-                  tab === value ? 'bg-navy text-white' : 'bg-tint text-ink2',
+                  tab === value ? 'bg-action text-white' : 'bg-tint text-ink2',
                 )}
               >
                 {value}
@@ -820,7 +820,7 @@ function Row({
               setWithdrawReason(e.target.value);
             }}
             placeholder="Wrong member — meant somebody else"
-            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-navy"
+            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
           />
         </ConfirmPanel>
       ) : null}
@@ -859,7 +859,7 @@ function Row({
               setStrikeReason(e.target.value);
             }}
             placeholder="Sold supplements in a room"
-            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-navy"
+            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
           />
         </ConfirmPanel>
       ) : null}
@@ -1041,8 +1041,8 @@ function PanelButton({
       className={cn(
         'min-h-[38px] rounded-full px-3.5 text-[0.78125rem] transition-colors',
         destructive
-          ? 'bg-destructive font-bold font-head text-white hover:bg-destructive/85 disabled:opacity-40 disabled:hover:bg-destructive'
-          : 'bg-tint font-semibold text-navy hover:bg-line disabled:opacity-40 disabled:hover:bg-tint',
+          ? 'bg-destructive-fill font-bold font-head text-white hover:bg-destructive-fill/85 disabled:opacity-40 disabled:hover:bg-destructive-fill'
+          : 'bg-tint font-semibold text-emphasis hover:bg-line disabled:opacity-40 disabled:hover:bg-tint',
       )}
     >
       {children}
@@ -1079,7 +1079,7 @@ function InviteRow({
         <span className="block font-extrabold font-head text-[0.90625rem]">
           {invite.phone}
           {invite.claimableName ? (
-            <span className="ml-2 rounded-full bg-tint px-2 py-0.5 font-bold text-[0.625rem] text-navy">
+            <span className="ml-2 rounded-full bg-tint px-2 py-0.5 font-bold text-[0.625rem] text-emphasis">
               claims {invite.claimableName}
             </span>
           ) : null}
@@ -1092,7 +1092,7 @@ function InviteRow({
               // weight. An invite backing nobody reads like the rest of the
               // list rather than like an alarm — it is not a problem, it is a
               // number somebody can put back on the list.
-              invite.status === 'consumed' && invite.heldBy !== null && 'font-bold text-navy',
+              invite.status === 'consumed' && invite.heldBy !== null && 'font-bold text-emphasis',
               invite.status === 'revoked' && 'text-destructive',
               // Somebody tried and stopped. The only row on this list that
               // asks the reader to do something about it.

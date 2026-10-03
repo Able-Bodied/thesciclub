@@ -48,7 +48,7 @@ export function SegmentPills<T extends string>({
           className={cn(
             'flex-none whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] transition-colors',
             value === segment
-              ? 'bg-navy text-white hover:bg-navy-hi'
+              ? 'bg-action text-white hover:bg-action-hi'
               : 'bg-tint text-ink2 hover:bg-line',
           )}
         >

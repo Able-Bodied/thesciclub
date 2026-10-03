@@ -148,7 +148,7 @@ export default function InvitesPage() {
               downloads the app and verifies that number themselves. */}
           <div className="rounded-[14px] border border-line bg-paper p-3.5">
             <div className="flex items-start gap-2.5">
-              <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-navy">
+              <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-emphasis">
                 <Mail className="h-4 w-4" />
               </span>
               <p className="min-w-0 flex-1 text-[0.78125rem] text-ink2 leading-[1.45]">
@@ -161,7 +161,7 @@ export default function InvitesPage() {
                 with nothing left met a dead form first and the reason for it
                 last. */}
             {left === 0 ? (
-              <p className="mt-3 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.78125rem] text-[#5C4409] leading-[1.45]">
+              <p className="mt-3 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.78125rem] text-gold-ink leading-[1.45]">
                 Withdraw one below to free a slot. An invite somebody has already used stays spent
                 until they leave the club.
               </p>
@@ -184,7 +184,7 @@ export default function InvitesPage() {
                 onChange={(e) => {
                   setPhone(formatPhoneInput(e.target.value));
                 }}
-                className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy disabled:opacity-40"
+                className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
               />
             </div>
 
@@ -203,7 +203,7 @@ export default function InvitesPage() {
                 onChange={(e) => {
                   setNote(e.target.value);
                 }}
-                className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy disabled:opacity-40"
+                className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
               />
             </div>
 
@@ -211,7 +211,7 @@ export default function InvitesPage() {
               type="button"
               disabled={!ready || busyId !== null}
               onClick={add}
-              className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[11px] bg-navy font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
+              className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[11px] bg-action font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
             >
               {busyId === 'new' ? 'Adding…' : 'Add to the list'}
             </button>

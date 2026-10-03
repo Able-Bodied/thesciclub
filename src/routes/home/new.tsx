@@ -72,7 +72,7 @@ const WORDS: Record<Kind, { heading: string; line: string }> = {
 };
 
 const LINK_CLASS =
-  'inline-flex min-h-[2.75rem] items-center font-semibold text-[0.875rem] text-navy underline decoration-line underline-offset-2 hover:decoration-navy';
+  'inline-flex min-h-[2.75rem] items-center font-semibold text-[0.875rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis';
 
 export default function HomeNewPage() {
   const navigate = useNavigate();
@@ -214,7 +214,7 @@ function RoomChoice({
                       what is announced. */}
                   <label
                     htmlFor={id}
-                    className="flex min-h-[2.75rem] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 has-[:checked]:border-navy has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-navy has-[:focus-visible]:outline-offset-2"
+                    className="flex min-h-[2.75rem] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 has-[:checked]:border-emphasis has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-emphasis has-[:focus-visible]:outline-offset-2"
                   >
                     <input
                       id={id}
@@ -227,7 +227,7 @@ function RoomChoice({
                       }}
                       aria-labelledby={`${id}-name`}
                       aria-describedby={`${id}-description`}
-                      className="mt-[0.2em] h-[1.1em] w-[1.1em] flex-none accent-navy outline-none"
+                      className="mt-[0.2em] h-[1.1em] w-[1.1em] flex-none accent-emphasis outline-none"
                     />
                     <span className="min-w-0 flex-1">
                       <span

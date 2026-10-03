@@ -22,7 +22,7 @@ export default function TermsPage() {
           The SCI Club is a private community for adults living with spinal cord injury, run by Able
           Bodied Inc., a nonprofit organization. By joining or using it you agree to these terms and
           to the{' '}
-          <Link to="/privacy" className="font-semibold text-navy underline">
+          <Link to="/privacy" className="font-semibold text-emphasis underline">
             Privacy Policy
           </Link>
           .
@@ -86,7 +86,7 @@ export default function TermsPage() {
         <P>
           Carriers are not liable for delayed or undelivered messages. How we handle your phone
           number is in the{' '}
-          <Link to="/privacy" className="font-semibold text-navy underline">
+          <Link to="/privacy" className="font-semibold text-emphasis underline">
             Privacy Policy
           </Link>
           .

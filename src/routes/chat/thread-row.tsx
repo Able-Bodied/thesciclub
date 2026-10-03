@@ -106,7 +106,7 @@ export function ThreadRow({
                   reader gets "new", which is the whole of what the dot means. */}
               <span
                 aria-hidden="true"
-                className="ml-[7px] inline-block h-[7px] w-[7px] rounded-full bg-navy align-middle"
+                className="ml-[7px] inline-block h-[7px] w-[7px] rounded-full bg-emphasis align-middle"
               />
               <span className="sr-only"> — new</span>
             </>

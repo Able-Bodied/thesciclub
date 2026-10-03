@@ -141,7 +141,7 @@ export function GroupIdentity({
   }
 
   const secondary =
-    'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-navy transition-colors hover:bg-tint disabled:opacity-40';
+    'inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40';
 
   return (
     <section aria-labelledby="group-identity" className="mt-4">
@@ -184,7 +184,7 @@ export function GroupIdentity({
               if (event.key === 'Enter') saveName();
             }}
             aria-describedby="group-name-hint"
-            className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
+            className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
           />
           <p id="group-name-hint" className="mt-1 text-[0.71875rem] text-grey">
             {problem ?? `${GROUP_NAME_MAX - name.length} characters left.`}

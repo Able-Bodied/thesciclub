@@ -80,8 +80,8 @@ export function PhotoPicker({
         title={full ? `${MAX_ATTACHMENTS} photographs is the most` : 'Add a photograph'}
         className={
           compact
-            ? 'grid h-11 w-11 flex-none place-items-center rounded-full bg-tint text-navy transition-colors hover:bg-line disabled:opacity-35'
-            : 'inline-flex min-h-[44px] items-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-navy transition-colors hover:bg-tint disabled:opacity-35'
+            ? 'grid h-11 w-11 flex-none place-items-center rounded-full bg-tint text-emphasis transition-colors hover:bg-line disabled:opacity-35'
+            : 'inline-flex min-h-[44px] items-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-35'
         }
       >
         <ImagePlus className="h-[19px] w-[19px]" aria-hidden="true" />
@@ -152,7 +152,7 @@ export function PhotoStrip({
             }}
             aria-label={`Take back ${file.name}`}
             data-target="small"
-            className="-top-1.5 -right-1.5 absolute grid h-6 w-6 place-items-center rounded-full bg-navy text-white shadow-[0_2px_6px_rgba(10,20,35,.3)]"
+            className="-top-1.5 -right-1.5 absolute grid h-6 w-6 place-items-center rounded-full bg-action text-white shadow-[0_2px_6px_rgba(10,20,35,.3)]"
           >
             <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>

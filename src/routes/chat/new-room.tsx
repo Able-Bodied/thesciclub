@@ -164,7 +164,7 @@ export default function NewRoomPage() {
             <Link
               to={`/chat/rooms/${startedWithout.id}`}
               replace
-              className="mt-1.5 inline-block font-bold text-[0.8125rem] text-navy underline underline-offset-2"
+              className="mt-1.5 inline-block font-bold text-[0.8125rem] text-emphasis underline underline-offset-2"
             >
               Open {name.trim()}
             </Link>
@@ -179,7 +179,7 @@ export default function NewRoomPage() {
             {goTo ? (
               <Link
                 to={`/chat/rooms/${goTo.id}`}
-                className="mt-1.5 inline-block font-bold text-[0.8125rem] text-navy underline underline-offset-2"
+                className="mt-1.5 inline-block font-bold text-[0.8125rem] text-emphasis underline underline-offset-2"
               >
                 Open {goTo.name}
               </Link>
@@ -201,7 +201,7 @@ export default function NewRoomPage() {
             setName(event.target.value);
           }}
           placeholder="Shoulder pain"
-          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
+          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
           {ROOM_NAME_MAX - name.length} characters left. A subject, not a question — the questions
@@ -216,7 +216,7 @@ export default function NewRoomPage() {
                 <li key={room.id} className="mt-0.5">
                   <Link
                     to={`/chat/rooms/${room.id}`}
-                    className="text-[0.8125rem] text-navy underline underline-offset-2"
+                    className="text-[0.8125rem] text-emphasis underline underline-offset-2"
                   >
                     {room.name}
                   </Link>
@@ -261,7 +261,7 @@ export default function NewRoomPage() {
             setDescription(event.target.value);
           }}
           placeholder="Overuse, transfers, injections, and what people did before surgery."
-          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
+          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
           {ROOM_DESCRIPTION_MAX - description.length} characters left. This is the line under the
@@ -288,7 +288,7 @@ export default function NewRoomPage() {
             setTitle(event.target.value);
           }}
           placeholder="Twenty years of pushing"
-          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
+          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
 
         <label
@@ -306,7 +306,7 @@ export default function NewRoomPage() {
             setBody(event.target.value);
           }}
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
-          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
+          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
         />
 
         {/* Under the first post, as on a new topic: the photographs go on it. */}

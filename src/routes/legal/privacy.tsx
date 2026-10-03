@@ -155,7 +155,7 @@ export default function PrivacyPage() {
         </P>
         <P>
           Text <b>HELP</b> for help and <b>STOP</b> to stop the texts. The{' '}
-          <Link to="/terms" className="font-semibold text-navy underline">
+          <Link to="/terms" className="font-semibold text-emphasis underline">
             Terms of Service
           </Link>{' '}
           say more about them.

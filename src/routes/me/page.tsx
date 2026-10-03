@@ -78,14 +78,14 @@ function ProgressRing({ percent }: { percent: number }) {
           cy="22"
           r={radius}
           fill="none"
-          stroke="var(--navy)"
+          stroke="var(--emphasis)"
           strokeWidth="3.4"
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - percent / 100)}
         />
       </svg>
-      <span className="relative font-extrabold font-head text-navy">{percent}%</span>
+      <span className="relative font-extrabold font-head text-emphasis">{percent}%</span>
     </span>
   );
 }
@@ -327,7 +327,7 @@ export default function MePage() {
                 <SectionHeading>Invites</SectionHeading>
                 <div className="rounded-[17px] border border-line bg-paper p-3.5">
                   <div className="flex items-start gap-2.5">
-                    <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-navy">
+                    <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-emphasis">
                       <Mail className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -345,7 +345,7 @@ export default function MePage() {
                       ordinary mentor cannot reach it. */}
                   <Link
                     to="/invites"
-                    className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-[11px] border-[1.6px] border-navy font-bold font-head text-[0.875rem] text-navy"
+                    className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-1 rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis"
                   >
                     Your invites
                     <ChevronRight className="h-4 w-4" />
@@ -362,7 +362,7 @@ export default function MePage() {
                 <SectionHeading>Club tools</SectionHeading>
                 <Link
                   to="/admin"
-                  className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
+                  className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis"
                 >
                   Admin
                 </Link>
@@ -393,7 +393,7 @@ export default function MePage() {
           type="button"
           onClick={leave}
           disabled={busy}
-          className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-tint font-bold font-head text-[0.9375rem] text-navy disabled:opacity-50"
+          className="mt-3 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-tint font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
         >
           <LogOut className="h-4 w-4" />
           {busy ? 'Signing out…' : 'Sign out'}

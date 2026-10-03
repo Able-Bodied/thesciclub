@@ -179,7 +179,7 @@ export function EventFilterSheet({
         ) : null}
       </div>
 
-      <p className="mb-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+      <p className="mb-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
         Events come from the organizations’ own calendars. If something is missing, it is missing
         there too.
       </p>

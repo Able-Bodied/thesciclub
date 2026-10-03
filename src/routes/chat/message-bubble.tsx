@@ -148,7 +148,7 @@ export function MessageBubble({
       data-target="small"
       className={
         'mb-1.5 block w-full rounded-[9px] border-l-2 px-2 py-1 text-left text-[0.78125rem] leading-[1.4] ' +
-        (mine ? 'border-white/50 bg-white/10 text-white/85' : 'border-navy bg-tint text-ink2')
+        (mine ? 'border-white/50 bg-white/10 text-white/85' : 'border-emphasis bg-tint text-ink2')
       }
     >
       <span className="block font-semibold">{quote.name}</span>
@@ -181,7 +181,7 @@ export function MessageBubble({
             onClick={onEdit}
             aria-label="Edit your message"
             data-target="small"
-            className={`${control} hover:text-navy`}
+            className={`${control} hover:text-emphasis`}
           >
             Edit
           </button>
@@ -192,7 +192,7 @@ export function MessageBubble({
             onClick={onReply}
             aria-label={`Reply to ${whose} message`}
             data-target="small"
-            className={`${control} hover:text-navy`}
+            className={`${control} hover:text-emphasis`}
           >
             Reply
           </button>
@@ -240,7 +240,7 @@ export function MessageBubble({
         ) : (
           <div
             className={
-              'max-w-[17rem] rounded-[15px_15px_4px_15px] bg-navy px-3.5 py-2.5 text-[0.875rem] text-white leading-[1.5]' +
+              'max-w-[17rem] rounded-[15px_15px_4px_15px] bg-action px-3.5 py-2.5 text-[0.875rem] text-white leading-[1.5]' +
               (message.pending ? ' opacity-60' : '') +
               (flash ? ' message-flash' : '')
             }

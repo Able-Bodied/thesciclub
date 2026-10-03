@@ -39,7 +39,7 @@ function Stat({ value, label, to }: { value: number; label: string; to: string }
       to={to}
       className="flex min-h-[68px] flex-1 flex-col items-center justify-center rounded-[14px] border border-line bg-paper px-2 py-2.5 transition-colors hover:border-grey"
     >
-      <span className="font-extrabold font-head text-[1.3125rem] text-navy leading-none">
+      <span className="font-extrabold font-head text-[1.3125rem] text-emphasis leading-none">
         {value}
       </span>
       <span className="mt-1 text-center font-semibold text-[0.6875rem] text-grey uppercase tracking-[0.09em]">

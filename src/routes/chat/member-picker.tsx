@@ -88,7 +88,7 @@ export function MemberPicker({
           setFilter(event.target.value);
         }}
         placeholder="Narrow the list by name"
-        className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
+        className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
       />
 
       {offered.length === 0 ? (
@@ -120,7 +120,7 @@ export function MemberPicker({
                   onChange={() => {
                     onToggle(member.id);
                   }}
-                  className="h-[22px] w-[22px] flex-none accent-navy"
+                  className="h-[22px] w-[22px] flex-none accent-emphasis"
                 />
                 <span aria-hidden="true" className="flex-none">
                   <MemberAvatar

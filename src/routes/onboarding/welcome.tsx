@@ -52,7 +52,7 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
             and find <em className="text-gold-dp not-italic">SCI events</em>.
           </h1>
 
-          <p className="mt-4 text-center font-bold text-[0.9375rem] text-navy leading-[1.45]">
+          <p className="mt-4 text-center font-bold text-[0.9375rem] text-emphasis leading-[1.45]">
             An app built by people with SCI for people with SCI.
           </p>
 
@@ -68,14 +68,14 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
         <button
           type="button"
           onClick={onJoin}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
         >
           Join the club
         </button>
         <button
           type="button"
           onClick={onSignIn}
-          className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
+          className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis"
         >
           I already have an account
         </button>

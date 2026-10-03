@@ -333,7 +333,7 @@ function ReportRow({
           <Link
             to={`/chat/rooms/${report.roomId}/topics/${report.topicId}`}
             data-target="small"
-            className="whitespace-nowrap rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-navy transition-colors hover:bg-line"
+            className="whitespace-nowrap rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-emphasis transition-colors hover:bg-line"
           >
             Open the topic
           </Link>
@@ -443,7 +443,8 @@ function MemberName({
 }) {
   if (!id) return <>{name ?? gone}</>;
   const label = name ?? gone;
-  const style = 'underline decoration-line underline-offset-2 transition-colors hover:text-navy';
+  const style =
+    'underline decoration-line underline-offset-2 transition-colors hover:text-emphasis';
   if (authors.get(id)?.hasProfile) {
     return (
       <Link to={`/peers/${id}`} data-target="small" className={style}>

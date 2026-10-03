@@ -35,7 +35,7 @@ export function TopicRow({
             // Decorative — "New" is in the label below, where a screen reader
             // gets it as words.
             aria-hidden="true"
-            className="mt-[7px] h-[7px] w-[7px] flex-none rounded-full bg-navy"
+            className="mt-[7px] h-[7px] w-[7px] flex-none rounded-full bg-emphasis"
           />
         ) : null}
         <span className="min-w-0 flex-1 font-extrabold font-head text-[0.96875rem] text-ink leading-[1.34]">
@@ -75,7 +75,7 @@ export function TopicRow({
         <span className="flex flex-wrap items-baseline gap-x-1 text-[0.775rem] text-grey">
           {topic.replyCount ? (
             <>
-              <b className="font-extrabold font-head text-[0.8375rem] text-navy">
+              <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
                 {topic.replyCount}
               </b>
               <i className="mr-[9px] not-italic">{topic.replyCount === 1 ? 'reply' : 'replies'}</i>
@@ -83,13 +83,13 @@ export function TopicRow({
           ) : null}
           {topic.viewCount ? (
             <>
-              <b className="font-extrabold font-head text-[0.8375rem] text-navy">
+              <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
                 {topic.viewCount}
               </b>
               <i className="mr-[9px] not-italic">{topic.viewCount === 1 ? 'view' : 'views'}</i>
             </>
           ) : null}
-          <b className="font-extrabold font-head text-[0.8375rem] text-navy">
+          <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
             {chatTime(topic.lastPostAt)}
           </b>
         </span>

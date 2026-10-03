@@ -156,7 +156,7 @@ export function PhotoCard({
           state={linkState}
           aria-label={`Reply to ${topic.title}`}
           data-target="small"
-          className="inline-flex min-h-[2.25rem] items-center font-bold text-[0.8125rem] text-navy underline-offset-2 hover:underline"
+          className="inline-flex min-h-[2.25rem] items-center font-bold text-[0.8125rem] text-emphasis underline-offset-2 hover:underline"
         >
           Reply
         </Link>

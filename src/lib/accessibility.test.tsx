@@ -16,6 +16,7 @@ beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute('data-text-size');
   document.documentElement.removeAttribute('data-large-targets');
+  document.documentElement.removeAttribute('data-appearance');
 });
 
 afterEach(() => {
@@ -48,6 +49,18 @@ describe('parsePreferences', () => {
   it('keeps the good fields when one is bad', () => {
     const stored = JSON.stringify({ textSize: 'larger', largeTargets: 'nope' });
     expect(parsePreferences(stored)).toEqual({ textSize: 'larger' });
+  });
+
+  it('reads back a chosen appearance', () => {
+    expect(parsePreferences(JSON.stringify({ appearance: 'dark' }))).toEqual({
+      appearance: 'dark',
+    });
+  });
+
+  it('ignores an appearance that is not one of ours', () => {
+    // As with text size: an unknown value would reach <html> as an attribute
+    // no rule matches, and the theme would silently stop following the choice.
+    expect(parsePreferences(JSON.stringify({ appearance: 'sepia' }))).toEqual({});
   });
 
   it('survives junk', () => {
@@ -97,6 +110,27 @@ describe('AccessibilityProvider', () => {
     );
     expect(document.documentElement.dataset.textSize).toBe('large');
     expect(document.documentElement.dataset.largeTargets).toBe('on');
+  });
+
+  // Match my phone is the default: somebody whose phone is dark gets a dark
+  // club without finding the setting (the owner, 2026-10-02).
+  it('follows the device until somebody chooses', () => {
+    render(
+      <AccessibilityProvider>
+        <Probe />
+      </AccessibilityProvider>,
+    );
+    expect(document.documentElement.dataset.appearance).toBe('system');
+  });
+
+  it('puts a chosen appearance on the document, where the dark colours read it', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ appearance: 'dark' }));
+    render(
+      <AccessibilityProvider>
+        <Probe />
+      </AccessibilityProvider>,
+    );
+    expect(document.documentElement.dataset.appearance).toBe('dark');
   });
 
   it('sets the multiplier the root font size reads', () => {

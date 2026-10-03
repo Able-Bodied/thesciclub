@@ -41,7 +41,7 @@ export function ComposeCard({
           grows with the text-size setting. */}
       <span
         aria-hidden="true"
-        className="grid h-[2.4em] w-[2.4em] flex-none place-items-center rounded-full bg-tint text-navy"
+        className="grid h-[2.4em] w-[2.4em] flex-none place-items-center rounded-full bg-tint text-emphasis"
       >
         <MessageCirclePlus className="h-[1.25em] w-[1.25em]" />
       </span>

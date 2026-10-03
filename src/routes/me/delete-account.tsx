@@ -110,7 +110,7 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
           type="button"
           onClick={confirm}
           disabled={busy}
-          className="flex min-h-[48px] items-center justify-center rounded-[13px] bg-destructive font-bold font-head text-[0.9375rem] text-white disabled:opacity-50"
+          className="flex min-h-[48px] items-center justify-center rounded-[13px] bg-destructive-fill font-bold font-head text-[0.9375rem] text-white disabled:opacity-50"
         >
           {busy ? 'Deleting…' : 'Delete my account'}
         </button>
@@ -121,7 +121,7 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
             setError(null);
           }}
           disabled={busy}
-          className="flex min-h-[48px] items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy disabled:opacity-50"
+          className="flex min-h-[48px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
         >
           Keep my account
         </button>

@@ -48,7 +48,9 @@ export function MuteButton({
         data-target="small"
         className={cn(
           'inline-flex items-center gap-1 rounded-full px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] leading-[1.3] transition-colors disabled:opacity-50',
-          muted ? 'bg-tint text-navy hover:bg-line' : 'border border-line text-navy hover:bg-tint',
+          muted
+            ? 'bg-tint text-emphasis hover:bg-line'
+            : 'border border-line text-emphasis hover:bg-tint',
         )}
       >
         <Icon aria-hidden="true" className="h-[1.1em] w-[1.1em] flex-none" />

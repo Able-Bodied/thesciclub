@@ -121,7 +121,7 @@ export function TopicCard({
             className="relative min-h-[2.25rem] text-[0.8125rem]"
           />
         ) : null}
-        <p className="font-semibold text-[0.78125rem] text-navy">
+        <p className="font-semibold text-[0.78125rem] text-emphasis">
           {topic.replyCount > 0
             ? `${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'}`
             : 'No replies yet.'}
@@ -165,7 +165,7 @@ export function byline(authorId: string | null, author: ChatAuthor | null): stri
  */
 export function RoomTag({ room }: { room: ChatRoom }) {
   return (
-    <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-navy-hi uppercase tracking-[0.07em]">
+    <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-emphasis uppercase tracking-[0.07em]">
       <span
         aria-hidden="true"
         className={`w-[1.2em] flex-none text-center text-[1rem] normal-case leading-none ${ROOM_ICON_COLOUR[room.category]}`}

@@ -152,7 +152,7 @@ export default function RoomPage() {
                   all" is not a promise to make about a closed room, which is
                   open to nobody — the banner below says so instead. */}
               {count && count.topicCount > 0 ? (
-                <p className="mt-[5px] font-semibold text-[0.78125rem] text-navy">
+                <p className="mt-[5px] font-semibold text-[0.78125rem] text-emphasis">
                   {count.topicCount} {count.topicCount === 1 ? 'topic' : 'topics'} ·{' '}
                   {count.postCount} {count.postCount === 1 ? 'post' : 'posts'}
                   {closed ? '' : ' · open to all, full history'}
@@ -222,7 +222,7 @@ export default function RoomPage() {
           {canPost ? (
             <Link
               to={`/chat/rooms/${room.id}/new`}
-              className="mt-1 block w-full rounded-[12px] border-[1.6px] border-navy px-4 py-3 text-center font-bold font-head text-[0.9375rem] text-navy"
+              className="mt-1 block w-full rounded-[12px] border-[1.6px] border-emphasis px-4 py-3 text-center font-bold font-head text-[0.9375rem] text-emphasis"
             >
               + New topic
             </Link>

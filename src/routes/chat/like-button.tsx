@@ -74,7 +74,7 @@ export function LikeButton({
       className={cn(
         CONTROL,
         'transition-colors',
-        liked ? 'text-navy' : 'text-ink2 hover:text-navy',
+        liked ? 'text-emphasis' : 'text-ink2 hover:text-emphasis',
         className,
       )}
     >
@@ -140,7 +140,7 @@ export function PostLikes({
           {/* The mock's `.thumbmini`: the count's picture, not a control. */}
           <span
             aria-hidden="true"
-            className="grid h-[1.3em] w-[1.3em] flex-none place-items-center rounded-full bg-navy text-white"
+            className="grid h-[1.3em] w-[1.3em] flex-none place-items-center rounded-full bg-action text-white"
           >
             <ThumbsUp className="h-[0.72em] w-[0.72em] fill-current" strokeWidth={0} />
           </span>
@@ -267,7 +267,7 @@ export function LikesSheet({
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[48px] flex-1 rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-line"
+            className="min-h-[48px] flex-1 rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line"
           >
             Close
           </button>

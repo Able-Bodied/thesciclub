@@ -57,7 +57,7 @@ export default function ProfileAnswersPage() {
           onClick={() => {
             void navigate('/me');
           }}
-          className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
+          className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
         >
           <ChevronLeft className="h-4 w-4" />
           Me
@@ -101,7 +101,7 @@ export default function ProfileAnswersPage() {
                     // The word on screen first, then which one.
                     aria-label={`Change ${screen.title}`}
                     data-target="small"
-                    className="flex-none font-semibold text-[0.8125rem] text-navy underline decoration-line underline-offset-2 hover:decoration-navy"
+                    className="flex-none font-semibold text-[0.8125rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
                   >
                     Change
                   </Link>

@@ -132,7 +132,7 @@ export function FilterSheet({
                 setAllTopics(true);
               }}
               data-target="small"
-              className="-mt-2 mb-4 font-semibold text-[0.8125rem] text-navy underline decoration-line underline-offset-2 hover:decoration-navy"
+              className="-mt-2 mb-4 font-semibold text-[0.8125rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis"
             >
               Show all {topics.length} topics
             </button>
@@ -140,7 +140,7 @@ export function FilterSheet({
         </div>
       ) : null}
 
-      <p className="mb-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+      <p className="mb-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
         Step-free access is assumed everywhere in the club, so it is not a filter.
       </p>
     </FilterSheetShell>

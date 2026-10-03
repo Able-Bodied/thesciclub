@@ -50,7 +50,7 @@ export function StepFrame({
         ) : (
           <div className="flex-none px-[18px] pt-4">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-[0.78125rem] text-navy tracking-wide">
+              <span className="font-bold text-[0.78125rem] text-emphasis tracking-wide">
                 THE SCI CLUB
               </span>
               <span className="text-[0.78125rem] text-grey">
@@ -59,7 +59,7 @@ export function StepFrame({
             </div>
             <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
               <div
-                className="h-full rounded-full bg-navy transition-[width] duration-300"
+                className="h-full rounded-full bg-emphasis transition-[width] duration-300"
                 style={{ width: `${(stepNumber / totalSteps) * 100}%` }}
               />
             </div>
@@ -71,7 +71,7 @@ export function StepFrame({
             <button
               type="button"
               onClick={onBack}
-              className="-ml-1.5 mt-2 inline-flex items-center gap-0.5 py-2 font-semibold text-[0.875rem] text-navy"
+              className="-ml-1.5 mt-2 inline-flex items-center gap-0.5 py-2 font-semibold text-[0.875rem] text-emphasis"
             >
               <ChevronLeft className="h-4 w-4" />
               Back
@@ -148,7 +148,7 @@ export function Field(props: React.ComponentPropsWithRef<'input'>) {
     <input
       {...rest}
       className={cn(
-        'mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none transition-shadow focus:border-navy focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--navy)_18%,transparent)]',
+        'mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none transition-shadow focus:border-emphasis focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--navy)_18%,transparent)]',
         className,
       )}
     />
@@ -177,7 +177,7 @@ export function LinkButton({ children, ...props }: React.ButtonHTMLAttributes<HT
     <button
       type="button"
       {...props}
-      className="mt-1 flex min-h-[40px] w-full items-center justify-center font-bold text-[0.875rem] text-navy"
+      className="mt-1 flex min-h-[40px] w-full items-center justify-center font-bold text-[0.875rem] text-emphasis"
     >
       {children}
     </button>
@@ -199,7 +199,7 @@ export function Chip({
         'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem] leading-[1.25]',
         'transition-colors',
         selected
-          ? 'bg-navy text-white hover:bg-navy-hi'
+          ? 'bg-action text-white hover:bg-action-hi'
           : 'border border-line bg-paper text-ink2 hover:bg-tint',
       )}
     >

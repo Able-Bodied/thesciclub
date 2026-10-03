@@ -85,7 +85,7 @@ export default function EventDetailPage() {
           onClick={() => {
             void navigate(back);
           }}
-          className="mt-4 font-bold font-head text-[0.9375rem] text-navy"
+          className="mt-4 font-bold font-head text-[0.9375rem] text-emphasis"
         >
           Back to Events
         </button>
@@ -178,7 +178,7 @@ export default function EventDetailPage() {
                 className={cn(
                   'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
                   going
-                    ? 'bg-tint text-navy hover:bg-line'
+                    ? 'bg-tint text-emphasis hover:bg-line'
                     : 'bg-gold text-on-gold hover:bg-gold-hi',
                 )}
               >
@@ -201,7 +201,7 @@ export default function EventDetailPage() {
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
         {writeError ? (
-          <p className="mt-3 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[#8C1D18] text-[0.7875rem]">
+          <p className="mt-3 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
             {writeError}
           </p>
         ) : null}
@@ -209,7 +209,7 @@ export default function EventDetailPage() {
         <EventDescription
           html={event.descriptionHtml}
           text={event.description}
-          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-navy [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
+          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
         />
 
         {event.registrationUrl || event.url ? (
@@ -217,7 +217,7 @@ export default function EventDetailPage() {
             href={event.registrationUrl ?? event.url ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint"
+            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
           >
             {event.registrationUrl ? 'Register' : 'Details on their site'}
             <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />

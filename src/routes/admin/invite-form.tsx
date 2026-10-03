@@ -90,7 +90,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setPhone(formatPhoneInput(e.target.value));
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
           />
         </div>
 
@@ -104,7 +104,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setOrganizationId(e.target.value);
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
           >
             <option value="">The club — you are vouching</option>
             {organizations.map((o) => (
@@ -127,7 +127,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setClaimMemberId(e.target.value);
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
           >
             <option value="">No — a new member</option>
             {claimable.map((m) => (
@@ -150,13 +150,13 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
             onChange={(e) => {
               setNote(e.target.value);
             }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-navy"
+            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
           />
         </div>
       </div>
 
       {claimMemberId ? (
-        <p className="mt-2.5 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.75rem] text-[#5C4409] leading-[1.45]">
+        <p className="mt-2.5 rounded-r-[9px] border-gold border-l-[3px] bg-gold-lt px-3 py-2 text-[0.75rem] text-gold-ink leading-[1.45]">
           Whoever verifies this number will be offered that profile. Attach it only if you know the
           number belongs to them.
         </p>
@@ -172,7 +172,7 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
         type="button"
         disabled={!ready || busy}
         onClick={submit}
-        className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] bg-navy font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
+        className="mt-3 flex min-h-[42px] w-full items-center justify-center rounded-[11px] bg-action font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
       >
         {busy ? 'Adding…' : 'Add to the list'}
       </button>

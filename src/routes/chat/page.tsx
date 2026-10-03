@@ -313,7 +313,7 @@ function NewRoomLink() {
   return (
     <Link
       to="/chat/rooms/new"
-      className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy border-dashed font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint"
+      className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis border-dashed font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
     >
       Start a room
     </Link>
@@ -333,7 +333,7 @@ function NewGroupLink() {
   return (
     <Link
       to="/chat/new-group"
-      className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy border-dashed font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint"
+      className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis border-dashed font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
     >
       Start a group
     </Link>

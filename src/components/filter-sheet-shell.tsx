@@ -124,7 +124,7 @@ export function FilterSheetShell({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="hidden h-11 w-11 flex-none place-items-center rounded-full bg-tint font-bold text-[1.0625rem] text-navy lg:grid"
+            className="hidden h-11 w-11 flex-none place-items-center rounded-full bg-tint font-bold text-[1.0625rem] text-emphasis lg:grid"
           >
             ✕
           </button>
@@ -139,14 +139,14 @@ export function FilterSheetShell({
             disabled={clearCount === 0}
             // Sized to its text rather than to half the sheet: Clear is the
             // rarer action and should not be half the target area.
-            className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-line disabled:opacity-40 disabled:hover:bg-tint"
+            className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line disabled:opacity-40 disabled:hover:bg-tint"
           >
             Clear{clearCount ? ` (${clearCount})` : ''}
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-[48px] flex-1 rounded-xl bg-navy px-5 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-navy-hi"
+            className="min-h-[48px] flex-1 rounded-xl bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi"
           >
             {applyLabel}
           </button>
@@ -190,7 +190,7 @@ export function FilterChip({
         'min-h-[38px] rounded-full px-3 font-semibold text-[0.8125rem] leading-[1.25]',
         'transition-colors',
         on
-          ? 'bg-navy text-white hover:bg-navy-hi'
+          ? 'bg-action text-white hover:bg-action-hi'
           : 'border border-line bg-paper text-ink2 hover:bg-tint',
       )}
     >

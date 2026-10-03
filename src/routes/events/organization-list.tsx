@@ -146,7 +146,7 @@ export function OrganizationList({
           onOpen={onOpen}
         />
       ))}
-      <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+      <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
         Organizations are one of the two ways a new member gets in. The other is a mentor.
       </p>
     </>

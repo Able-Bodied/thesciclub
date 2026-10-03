@@ -261,7 +261,7 @@ export function Post({
               onClick={onEdit}
               aria-label="Edit your post"
               data-target="small"
-              className={`${control} hover:text-navy`}
+              className={`${control} hover:text-emphasis`}
             >
               Edit
             </button>
@@ -272,7 +272,7 @@ export function Post({
               onClick={onReply}
               aria-label={`Reply to ${whose} post`}
               data-target="small"
-              className={`${control} hover:text-navy`}
+              className={`${control} hover:text-emphasis`}
             >
               Reply
             </button>
@@ -315,7 +315,7 @@ export function Post({
           aria-controls={repliesId}
           aria-label={`${hidden ? 'Show' : 'Hide'} ${replies} ${replies === 1 ? 'reply' : 'replies'} to ${whose} post`}
           data-target="small"
-          className={`mt-2 ${control} hover:text-navy`}
+          className={`mt-2 ${control} hover:text-emphasis`}
         >
           {hidden ? 'Show' : 'Hide'} {replies} {replies === 1 ? 'reply' : 'replies'}
         </button>

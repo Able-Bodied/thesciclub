@@ -57,6 +57,20 @@ export const TEXT_SIZE_LABELS: Record<TextSize, string> = {
 };
 
 /**
+ * Light or dark. "system" follows the phone or computer, and is the default:
+ * somebody whose phone is already dark gets a dark club without looking for
+ * the setting. The colours are in src/index.css, under "dark".
+ */
+export const APPEARANCES = ['system', 'light', 'dark'] as const;
+export type Appearance = (typeof APPEARANCES)[number];
+
+export const APPEARANCE_LABELS: Record<Appearance, string> = {
+  system: 'Match my phone',
+  light: 'Light',
+  dark: 'Dark',
+};
+
+/**
  * The multiplier each step applies to the root font size.
  *
  * A multiplier rather than an absolute size, so it compounds with whatever the
@@ -87,11 +101,14 @@ export interface AccessibilityPreferences {
    * and not the other.
    */
   largeTargets: boolean;
+  /** Light, dark, or whatever the device is set to. */
+  appearance: Appearance;
 }
 
 export const DEFAULT_PREFERENCES: AccessibilityPreferences = {
   textSize: 'normal',
   largeTargets: false,
+  appearance: 'system',
 };
 
 const STORAGE_KEY = 'thesciclub.accessibility';
@@ -133,6 +150,9 @@ export function parsePreferences(raw: string | null): Partial<AccessibilityPrefe
       out.textSize = candidate.textSize as TextSize;
     }
     if (typeof candidate.largeTargets === 'boolean') out.largeTargets = candidate.largeTargets;
+    if (APPEARANCES.includes(candidate.appearance as Appearance)) {
+      out.appearance = candidate.appearance as Appearance;
+    }
     return out;
   } catch {
     return {};
@@ -162,6 +182,11 @@ function applyToDocument(preferences: AccessibilityPreferences): void {
   root.dataset.textSize = preferences.textSize;
   root.dataset.largeTargets = preferences.largeTargets ? 'on' : 'off';
   root.style.setProperty('--text-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
+  // index.html sets this before the first paint, from the same stored value,
+  // so the page is never drawn light and then switched.
+  // The browser bar needs nothing: it is the brand navy in both themes, which
+  // in dark is the page itself.
+  root.dataset.appearance = preferences.appearance;
 }
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {

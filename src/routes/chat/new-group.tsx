@@ -108,7 +108,7 @@ export default function NewGroupPage() {
             setName(event.target.value);
           }}
           placeholder="Saturday ride"
-          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
+          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
           {GROUP_NAME_MAX - name.length} characters left. This is the name everybody in it sees.

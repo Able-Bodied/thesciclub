@@ -173,7 +173,7 @@ function Chips({ items, tone }: { items: string[]; tone: 'solid' | 'outline' | '
       ? 'bg-gold-lt text-gold-dp'
       : tone === 'outline'
         ? 'border border-line text-ink2'
-        : 'bg-tint text-navy';
+        : 'bg-tint text-emphasis';
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((item) => (
@@ -247,7 +247,7 @@ export default function MemberDetailPage() {
             onClick={() => {
               void navigate(-1);
             }}
-            className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] lg:text-navy lg:drop-shadow-none"
+            className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] lg:text-emphasis lg:drop-shadow-none"
             data-target="small"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -264,7 +264,7 @@ export default function MemberDetailPage() {
                 </span>
               ) : null}
               {member.isAdmin ? (
-                <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase tracking-[0.08em] lg:bg-navy lg:text-white">
+                <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase tracking-[0.08em] lg:bg-action lg:text-white">
                   Admin
                 </span>
               ) : null}
@@ -461,7 +461,7 @@ export default function MemberDetailPage() {
             telling them they did is a small lie that undermines every other
             claim on the page. The contact promise applies to everybody, so it
             is the half that always shows. */}
-            <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-[#5C4409] leading-[1.5]">
+            <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-gold-ink leading-[1.5]">
               {member.isSeed ? (
                 <>
                   Everything here is what {member.displayName} chose to publish in the NorCal SCI

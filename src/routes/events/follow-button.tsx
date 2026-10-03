@@ -60,8 +60,8 @@ export function FollowButton({
             ? 'bg-white/15 text-white hover:bg-white/25'
             : 'bg-white text-navy hover:bg-[#E8EFF7]'
           : following
-            ? 'bg-tint text-navy hover:bg-line'
-            : 'border-[1.6px] border-navy text-navy hover:bg-tint',
+            ? 'bg-tint text-emphasis hover:bg-line'
+            : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
         className,
       )}
     >

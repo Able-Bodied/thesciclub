@@ -195,7 +195,7 @@ export default function NewTopicPage() {
           placeholder={
             sharing ? 'The cushion that finally worked' : 'Travelling with a bowel programme'
           }
-          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-navy"
+          className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
           {140 - title.length} characters left. This is the line people see in the list.
@@ -222,7 +222,7 @@ export default function NewTopicPage() {
             setBody(event.target.value);
           }}
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
-          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-navy"
+          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
         />
 
         {sharing ? null : photos}

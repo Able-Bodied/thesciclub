@@ -33,7 +33,7 @@ export default function NotFoundPage() {
         </p>
         <Link
           to="/home"
-          className="mt-2 inline-flex min-h-[44px] items-center rounded-[13px] bg-navy px-5 font-bold font-head text-[0.9375rem] text-white"
+          className="mt-2 inline-flex min-h-[44px] items-center rounded-[13px] bg-action px-5 font-bold font-head text-[0.9375rem] text-white"
         >
           Go to Home
         </Link>

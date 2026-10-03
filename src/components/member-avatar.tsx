@@ -112,7 +112,7 @@ export function GroupAvatar({
     <span
       aria-hidden="true"
       className={cn(
-        'relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] bg-tint text-[1.0625rem] text-navy leading-none',
+        'relative grid h-[34px] w-[34px] flex-none place-items-center overflow-hidden rounded-[11px] bg-tint text-[1.0625rem] text-emphasis leading-none',
         className,
       )}
     >

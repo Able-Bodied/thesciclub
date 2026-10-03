@@ -34,7 +34,7 @@ export function ReasonField({
         onChange={(e) => {
           onChange(e.target.value);
         }}
-        className="mt-1 w-full rounded-[10px] border-[1.6px] border-line bg-paper px-2.5 py-1.5 font-normal text-[0.84375rem] outline-none focus:border-navy"
+        className="mt-1 w-full rounded-[10px] border-[1.6px] border-line bg-paper px-2.5 py-1.5 font-normal text-[0.84375rem] outline-none focus:border-emphasis"
       />
     </label>
   );
@@ -56,7 +56,7 @@ export function SmallButton({
         'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[0.75rem] transition-colors',
         destructive
           ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
-          : 'bg-tint text-navy hover:bg-line',
+          : 'bg-tint text-emphasis hover:bg-line',
       )}
     >
       {children}

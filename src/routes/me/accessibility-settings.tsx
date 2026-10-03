@@ -1,12 +1,20 @@
-import { TEXT_SIZE_LABELS, TEXT_SIZES, type TextSize, useAccessibility } from '@/lib/accessibility';
+import {
+  APPEARANCE_LABELS,
+  APPEARANCES,
+  type Appearance,
+  TEXT_SIZE_LABELS,
+  TEXT_SIZES,
+  type TextSize,
+  useAccessibility,
+} from '@/lib/accessibility';
 import { cn } from '@/lib/utils';
 
 /**
  * Display settings, on the Me tab.
  *
- * Two controls, because two is what this app can currently make good on. A
- * third — reduce motion — was here and was removed: it governed six spinners
- * and nothing else. A longer list of toggles that each half-work is the
+ * Three controls: Appearance (light or dark, 2026-10-02), Text size and Bigger
+ * tap targets. A fourth — reduce motion — was here and was removed: it
+ * governed six spinners and nothing else. A longer list of toggles that each half-work is the
  * overlay-widget failure mode in miniature, and the point of not using one of
  * those was to avoid exactly that.
  *
@@ -58,7 +66,7 @@ function OnOff({ value, onChange }: { value: boolean; onChange: (next: boolean) 
           className={cn(
             'min-h-[48px] min-w-[88px] rounded-xl px-4 font-bold font-head text-[0.9375rem]',
             value === option.on
-              ? 'bg-navy text-white'
+              ? 'bg-action text-white'
               : 'border-[1.6px] border-line bg-paper text-ink2',
           )}
         >
@@ -84,6 +92,31 @@ export function AccessibilitySettings() {
       </h2>
 
       <div className="rounded-[17px] border border-line bg-paper px-3.5">
+        {/* Match my phone first, and the default: most people never open this
+            screen, and their phone already says which they prefer. */}
+        <Row title="Appearance">
+          <div className="flex flex-wrap gap-2">
+            {APPEARANCES.map((appearance: Appearance) => (
+              <button
+                key={appearance}
+                type="button"
+                aria-pressed={preferences.appearance === appearance}
+                onClick={() => {
+                  setPreference('appearance', appearance);
+                }}
+                className={cn(
+                  'min-h-[48px] min-w-[88px] rounded-xl px-4 font-bold font-head text-[0.9375rem]',
+                  preferences.appearance === appearance
+                    ? 'bg-action text-white'
+                    : 'border-[1.6px] border-line bg-paper text-ink2',
+                )}
+              >
+                {APPEARANCE_LABELS[appearance]}
+              </button>
+            ))}
+          </div>
+        </Row>
+
         <Row title="Text size">
           <div className="flex flex-wrap gap-2">
             {TEXT_SIZES.map((size: TextSize) => (
@@ -102,7 +135,7 @@ export function AccessibilitySettings() {
                   size === 'large' && 'text-[1.0625rem]',
                   size === 'larger' && 'text-[1.25rem]',
                   preferences.textSize === size
-                    ? 'bg-navy text-white'
+                    ? 'bg-action text-white'
                     : 'border-[1.6px] border-line bg-paper text-ink2',
                 )}
               >
@@ -125,7 +158,7 @@ export function AccessibilitySettings() {
       <button
         type="button"
         onClick={reset}
-        className="mt-3 min-h-[48px] rounded-xl px-4 font-bold font-head text-[0.875rem] text-navy underline"
+        className="mt-3 min-h-[48px] rounded-xl px-4 font-bold font-head text-[0.875rem] text-emphasis underline"
       >
         Reset to my device settings
       </button>

@@ -150,7 +150,7 @@ export function ReportSheet({
             }}
             // Sized in em, so the box grows with the text rather than clipping
             // it at the larger text sizes.
-            className="mt-2 min-h-[5em] w-full resize-y rounded-[13px] border-[1.6px] border-line bg-canvas px-[13px] py-[10px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-navy focus:bg-paper"
+            className="mt-2 min-h-[5em] w-full resize-y rounded-[13px] border-[1.6px] border-line bg-canvas px-[13px] py-[10px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-emphasis focus:bg-paper"
           />
           {problem ? (
             <p role="alert" className="mt-1.5 text-[0.75rem] text-destructive leading-[1.45]">
@@ -172,7 +172,7 @@ export function ReportSheet({
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-line"
+            className="min-h-[48px] rounded-xl bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line"
           >
             Cancel
           </button>
@@ -180,7 +180,7 @@ export function ReportSheet({
             type="button"
             onClick={send}
             disabled={sending || problem !== null}
-            className="min-h-[48px] flex-1 rounded-xl bg-navy px-5 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-navy-hi disabled:opacity-40"
+            className="min-h-[48px] flex-1 rounded-xl bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi disabled:opacity-40"
           >
             {sending ? 'Sending…' : 'Send report'}
           </button>

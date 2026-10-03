@@ -89,7 +89,7 @@ function NotificationKinds({
                     aria-hidden="true"
                     className={cn(
                       'flex-none rounded-full px-[0.8em] py-[0.3em] font-bold font-head text-[0.75rem]',
-                      on ? 'bg-navy text-white' : 'border border-line text-ink2',
+                      on ? 'bg-action text-white' : 'border border-line text-ink2',
                     )}
                   >
                     {on ? 'On' : 'Off'}
@@ -142,7 +142,7 @@ export function NotificationSettings({
             type="button"
             onClick={state === 'off' ? turnOn : turnOff}
             disabled={busy}
-            className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-navy font-bold font-head text-[0.875rem] text-navy transition-colors hover:bg-tint disabled:opacity-50"
+            className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-50"
           >
             {busy ? 'One moment…' : state === 'off' ? 'Turn on notifications' : 'Turn off'}
           </button>

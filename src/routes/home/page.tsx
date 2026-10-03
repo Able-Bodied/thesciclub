@@ -306,7 +306,7 @@ export default function HomePage() {
             data-target="small"
             className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
           >
-            <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
+            <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
             {filterCount ? (
               <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
             ) : null}
@@ -396,7 +396,7 @@ function Problem({ sentences }: { sentences: string[] }) {
 }
 
 const LINK_CLASS =
-  'inline-flex min-h-[2.75rem] items-center font-semibold text-[0.875rem] text-navy underline decoration-line underline-offset-2 hover:decoration-navy';
+  'inline-flex min-h-[2.75rem] items-center font-semibold text-[0.875rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis';
 
 /** Where the rest of a single-kind list lives. Everything has no "rest". */
 function SeeMore({ segment }: { segment: HomeSegment }) {

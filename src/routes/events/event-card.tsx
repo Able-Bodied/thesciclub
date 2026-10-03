@@ -135,7 +135,7 @@ export function EventCard({
       >
         <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
           <span className="block w-[3.25rem] flex-none rounded-[9px] bg-tint px-0 py-1 text-center">
-            <span className="block font-extrabold font-head text-[0.875rem] text-navy leading-[1.1]">
+            <span className="block font-extrabold font-head text-[0.875rem] text-emphasis leading-[1.1]">
               {tile.day}
             </span>
             <span className="block font-extrabold text-[0.5625rem] text-ink2 tracking-[0.08em]">
@@ -161,7 +161,7 @@ export function EventCard({
       >
         <button type="button" onClick={onOpen} className="flex w-full items-center gap-3 text-left">
           <span className="block w-[3.25rem] flex-none rounded-[10px] bg-tint px-0 py-1 text-center">
-            <span className="block font-extrabold font-head text-[0.9375rem] text-navy leading-[1.1]">
+            <span className="block font-extrabold font-head text-[0.9375rem] text-emphasis leading-[1.1]">
               {tile.day}
             </span>
             <span className="block font-extrabold text-[0.625rem] text-ink2 tracking-[0.08em]">
@@ -211,7 +211,7 @@ export function EventCard({
             <span className="block font-extrabold text-[0.65625rem] text-ink2 tracking-[0.09em]">
               {tile.dow}
             </span>
-            <span className="block font-extrabold font-display text-[1.4375rem] text-navy leading-[1.15]">
+            <span className="block font-extrabold font-display text-[1.4375rem] text-emphasis leading-[1.15]">
               {tile.day}
             </span>
             <span className="block font-extrabold text-[0.65625rem] text-ink2 tracking-[0.09em]">
@@ -238,7 +238,7 @@ export function EventCard({
             {event.tags.map((tag) => (
               <span
                 key={tag.slug}
-                className="rounded-full bg-tint px-2.5 py-[5px] font-semibold text-[0.7375rem] text-navy leading-[1.25]"
+                className="rounded-full bg-tint px-2.5 py-[5px] font-semibold text-[0.7375rem] text-emphasis leading-[1.25]"
               >
                 {tag.name}
               </span>
@@ -262,7 +262,7 @@ export function EventCard({
           ) : null}
 
           {rsvpLine ? (
-            <span className="mt-2 block font-bold text-[0.8125rem] text-navy">{rsvpLine}</span>
+            <span className="mt-2 block font-bold text-[0.8125rem] text-emphasis">{rsvpLine}</span>
           ) : null}
 
           <AttendeeRow attendees={goingOnly} />
@@ -286,8 +286,8 @@ export function EventCard({
           className={cn(
             'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
             interested
-              ? 'bg-tint text-navy hover:bg-line'
-              : 'border-[1.6px] border-navy text-navy hover:bg-tint',
+              ? 'bg-tint text-emphasis hover:bg-line'
+              : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
           )}
         >
           {interested ? 'Interested ✓' : 'Interested'}
@@ -300,7 +300,9 @@ export function EventCard({
           aria-pressed={going}
           className={cn(
             'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
-            going ? 'bg-tint text-navy hover:bg-line' : 'bg-navy text-white hover:bg-navy-hi',
+            going
+              ? 'bg-tint text-emphasis hover:bg-line'
+              : 'bg-action text-white hover:bg-action-hi',
           )}
         >
           {going ? 'Going ✓' : 'Going'}

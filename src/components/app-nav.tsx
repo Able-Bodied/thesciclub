@@ -108,7 +108,7 @@ export function AppNav() {
                 // Icon over label on a phone, beside it on a desktop, where
                 // the row is wide and the stacked label is needlessly small.
                 'md:flex-row md:gap-2 md:px-3 md:py-1.5 md:text-[0.875rem]',
-                isActive ? 'text-navy' : 'text-grey',
+                isActive ? 'text-emphasis' : 'text-grey',
                 !isActive && 'md:hover:bg-tint',
               )}
             >
@@ -121,7 +121,7 @@ export function AppNav() {
                   // the icon rather than as part of it.
                   <span
                     aria-hidden="true"
-                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-navy ring-2 ring-paper"
+                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-emphasis ring-2 ring-paper"
                   />
                 ) : null}
               </span>

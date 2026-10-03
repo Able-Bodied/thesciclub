@@ -26,7 +26,7 @@ export function EarlierVersions({ edits, from }: { edits: ChatEdit[]; from: stri
     <details className="mt-1.5 text-[0.78125rem]">
       <summary
         data-target="small"
-        className="inline-block cursor-pointer font-semibold text-grey underline decoration-line underline-offset-2 hover:text-navy"
+        className="inline-block cursor-pointer font-semibold text-grey underline decoration-line underline-offset-2 hover:text-emphasis"
       >
         Earlier versions
       </summary>

@@ -77,8 +77,20 @@
  * because they cost nothing and because adding a shadcn component later would
  * want them — not because a <Button> somewhere is quietly using them.
  *
- * Deliberately light-only for now. The mock has no dark palette, and a
- * half-guessed one is worse than none — see CONTEXT.md.
+ * Light and dark, from 2026-10-02. The dark values are the brand's own Navy
+ * theme (sci-club-logo/tokens.json: navy-900 page, navy-700 cards, white ink,
+ * ink-muted #b9c4d4, gold accents), measured pair by pair in
+ * theme-contrast.test.ts. They live in the dark block at the end of this file.
+ *
+ * Navy does two jobs in light mode that come apart on a navy page, so it is
+ * split by role:
+ *   --navy      the brand plate: header bands, and navy words on a white chip
+ *               over a photograph. The same in both themes.
+ *   --action    filled buttons and selected options. Brighter in dark, so a
+ *               button still reads as one on a navy page.
+ *   --emphasis  links, outlines, focus borders, eyebrows, unread dots and
+ *               progress. Gold in dark, as the brand sets links there.
+ * In light mode all three are the same navy, so nothing there changed.
  */
 
 :root {
@@ -122,6 +134,20 @@
   --grey: #667283;
   --line: #cbd3de;
   --tint: #e4e9f1;
+
+  /* Roles navy used to play alone; see the note above. Light values are the
+     navy they replaced, so light mode is unchanged. */
+  --action: #102a4c;
+  --action-hi: #1b3a66;
+  --emphasis: #102a4c;
+  /* The keyboard focus ring. Navy on light grounds (15:1), gold-300 in dark. */
+  --focus: #102a4c;
+  /* Brown words on a pale gold note (the notes in the filter sheets, the
+     invite form, the event cards). Was #5C4409 written into nine places. */
+  --gold-ink: #5c4409;
+  /* The pale red "Cancelled" badge and its words. Were written in place. */
+  --danger-lt: #fbe9e7;
+  --danger-ink: #8c1d18;
 
   /* Display is Outfit; head and body are both Atkinson Hyperlegible Next.
      --head stays a separate token because 170-odd labels, names and buttons
@@ -186,6 +212,10 @@
   --accent: var(--gold);
   --accent-foreground: var(--on-gold);
   --destructive: #b3261e;
+  /* The red of a filled button (Delete my account, the admin's removals).
+     Separate from --destructive, which is red words: dark mode lightens the
+     words, and white on that lighter red would be 2:1. */
+  --destructive-fill: #b3261e;
   --border: var(--line);
   --input: var(--paper);
   --ring: var(--navy);
@@ -207,6 +237,13 @@
   --color-grey: var(--grey);
   --color-line: var(--line);
   --color-tint: var(--tint);
+  --color-action: var(--action);
+  --color-action-hi: var(--action-hi);
+  --color-emphasis: var(--emphasis);
+  --color-gold-ink: var(--gold-ink);
+  --color-danger-lt: var(--danger-lt);
+  --color-danger-ink: var(--danger-ink);
+  --color-destructive-fill: var(--destructive-fill);
   --color-room-body: var(--room-body);
   --color-room-mind: var(--room-mind);
   --color-room-life: var(--room-life);
@@ -257,11 +294,12 @@
      "interactive elements are easy to identify", and this club drives with a
      keyboard, a switch or a head pointer more often than most. */
   :focus-visible {
-    outline: 3px solid var(--navy);
+    outline: 3px solid var(--focus);
     outline-offset: 2px;
   }
   .bg-navy :focus-visible,
-  .bg-navy-dp :focus-visible {
+  .bg-navy-dp :focus-visible,
+  .bg-action :focus-visible {
     outline-color: var(--gold-hi);
   }
   body {
@@ -420,4 +458,75 @@
 }
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
+}
+
+/* ================================================================ dark */
+/*
+ * The dark theme, chosen on Me → Display: Match my phone (the default), Light
+ * or Dark. src/lib/accessibility.tsx writes the choice onto <html> as
+ * data-appearance, and index.html does the same before the first paint so a
+ * dark phone never flashes white.
+ *
+ * Written twice, because CSS cannot share a block between a media query and an
+ * attribute selector: once for "Dark", once for "Match my phone" on a phone in
+ * dark mode. theme-contrast.test.ts fails if the two ever differ, and measures
+ * every pair below that meets on a screen.
+ *
+ * --navy, --navy-hi, --navy-dp, --gold, --gold-hi and --on-gold are absent on
+ * purpose: they are the brand's fixed colours and mean the same in both.
+ */
+:root[data-appearance="dark"] {
+  color-scheme: dark;
+  --canvas: #102a4c;
+  --paper: #1b3a66;
+  --ink: #ffffff;
+  --ink2: #b9c4d4;
+  --grey: #aebbcf;
+  --line: #31507f;
+  --tint: #24477a;
+  --gold-dp: #e0b54a;
+  --gold-lt: #3a3115;
+  --gold-ink: #f2d68a;
+  --action: #27508c;
+  --action-hi: #2f5c9c;
+  --emphasis: #e9cc72;
+  --focus: #e9cc72;
+  --destructive: #ff9a90;
+  --danger-lt: #4a1f1c;
+  --danger-ink: #ffb4ab;
+  --room-body: #9cbcf0;
+  --room-mind: #c7aef2;
+  --room-life: #e0b54a;
+  --room-family: #f2a7c3;
+  --room-kit: #86d1b2;
+  --room-places: #83cde3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance="light"]) {
+    color-scheme: dark;
+    --canvas: #102a4c;
+    --paper: #1b3a66;
+    --ink: #ffffff;
+    --ink2: #b9c4d4;
+    --grey: #aebbcf;
+    --line: #31507f;
+    --tint: #24477a;
+    --gold-dp: #e0b54a;
+    --gold-lt: #3a3115;
+    --gold-ink: #f2d68a;
+    --action: #27508c;
+    --action-hi: #2f5c9c;
+    --emphasis: #e9cc72;
+    --focus: #e9cc72;
+    --destructive: #ff9a90;
+    --danger-lt: #4a1f1c;
+    --danger-ink: #ffb4ab;
+    --room-body: #9cbcf0;
+    --room-mind: #c7aef2;
+    --room-life: #e0b54a;
+    --room-family: #f2a7c3;
+    --room-kit: #86d1b2;
+    --room-places: #83cde3;
+  }
 }

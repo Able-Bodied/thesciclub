@@ -77,7 +77,7 @@ export function EventGroupCard({
 
   if (!existing && !going) {
     return (
-      <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+      <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
         Going? There is a group chat for everyone who is.
       </p>
     );
@@ -85,7 +85,7 @@ export function EventGroupCard({
 
   if (!existing && past) {
     return (
-      <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+      <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
         This event is over. Its group chat stays open to whoever was already in it.
       </p>
     );
@@ -97,7 +97,7 @@ export function EventGroupCard({
         type="button"
         onClick={open}
         disabled={opening}
-        className="flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy transition-colors hover:bg-tint disabled:opacity-40"
+        className="flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
       >
         {opening ? 'Opening…' : existing ? 'Open group chat' : 'Join the group chat'}
       </button>
@@ -107,7 +107,7 @@ export function EventGroupCard({
           : 'Everyone going to this can read it, including what was said before you joined. You can leave it at any time.'}
       </p>
       {failure ? (
-        <p className="mt-2 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[#8C1D18] text-[0.7875rem]">
+        <p className="mt-2 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
           {failure}
         </p>
       ) : null}

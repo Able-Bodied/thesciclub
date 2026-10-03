@@ -278,7 +278,7 @@ export default function ThreadPage() {
                 <Link
                   to={`/chat/t/${thread.id}/members`}
                   data-target="small"
-                  className="block truncate text-[0.78125rem] text-navy underline"
+                  className="block truncate text-[0.78125rem] text-emphasis underline"
                 >
                   {thread.memberCount} {thread.memberCount === 1 ? 'member' : 'members'}
                 </Link>
@@ -290,7 +290,7 @@ export default function ThreadPage() {
               <Link
                 to={`/peers/${other.id}`}
                 data-target="small"
-                className="flex-none rounded-full border border-line px-3 py-1.5 font-bold text-[0.75rem] text-navy"
+                className="flex-none rounded-full border border-line px-3 py-1.5 font-bold text-[0.75rem] text-emphasis"
               >
                 Profile
               </Link>
@@ -416,7 +416,7 @@ export default function ThreadPage() {
             onClick={() => {
               toBottom('smooth');
             }}
-            className="-translate-y-2 pointer-events-auto min-h-[36px] rounded-full bg-navy px-4 font-bold text-[0.78125rem] text-white shadow-[0_6px_16px_rgba(10,20,35,.22)]"
+            className="-translate-y-2 pointer-events-auto min-h-[36px] rounded-full bg-action px-4 font-bold text-[0.78125rem] text-white shadow-[0_6px_16px_rgba(10,20,35,.22)]"
             data-target="small"
           >
             New messages ↓

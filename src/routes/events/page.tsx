@@ -205,7 +205,7 @@ export default function EventsPage() {
               data-target="small"
               className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
             >
-              <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
+              <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
               {filterCount ? (
                 <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
               ) : null}
@@ -224,7 +224,7 @@ export default function EventsPage() {
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {writeError ? (
-            <p className="mb-2.5 rounded-xl bg-[#FBE9E7] px-3.5 py-2.5 text-[0.7875rem] text-[#8C1D18]">
+            <p className="mb-2.5 rounded-xl bg-danger-lt px-3.5 py-2.5 text-[0.7875rem] text-danger-ink">
               {writeError}
             </p>
           ) : null}

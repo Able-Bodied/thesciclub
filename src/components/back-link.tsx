@@ -16,7 +16,7 @@ export function BackLink({ to, label }: { to: string; label: string }) {
     <Link
       to={to}
       data-target="small"
-      className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-navy"
+      className="-ml-1.5 inline-flex min-h-[36px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-emphasis"
     >
       <ChevronLeft className="h-4 w-4" />
       {label}

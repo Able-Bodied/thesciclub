@@ -107,7 +107,7 @@ export default function PeersPage() {
             data-target="small"
             className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
           >
-            <SlidersHorizontal className="h-[17px] w-[17px] text-navy" strokeWidth={2} />
+            <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
             {filterCount ? (
               <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
             ) : null}
@@ -151,7 +151,7 @@ export default function PeersPage() {
               // it is what gives the field the searchbox role and the right
               // keyboard, and a screenshot is the only thing that would ever
               // have shown the duplicate.
-              className="min-h-[40px] w-full rounded-full border-[1.6px] border-line bg-canvas py-2 pr-9 pl-9 text-[0.875rem] text-ink outline-none transition-colors placeholder:text-grey focus:border-navy [&::-webkit-search-cancel-button]:appearance-none"
+              className="min-h-[40px] w-full rounded-full border-[1.6px] border-line bg-canvas py-2 pr-9 pl-9 text-[0.875rem] text-ink outline-none transition-colors placeholder:text-grey focus:border-emphasis [&::-webkit-search-cancel-button]:appearance-none"
             />
             {filters.search ? (
               <button

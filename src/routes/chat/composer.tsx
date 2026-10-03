@@ -235,7 +235,7 @@ export function Composer({
           send();
         }
       }}
-      className="max-h-[150px] min-h-[44px] flex-1 resize-none rounded-[22px] border-[1.6px] border-line bg-canvas px-[15px] py-[11px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-navy focus:bg-paper"
+      className="max-h-[150px] min-h-[44px] flex-1 resize-none rounded-[22px] border-[1.6px] border-line bg-canvas px-[15px] py-[11px] text-[0.9375rem] text-ink leading-[1.45] outline-none focus:border-emphasis focus:bg-paper"
     />
   );
 
@@ -258,7 +258,7 @@ export function Composer({
             type="button"
             onClick={send}
             disabled={cannotSend}
-            className="min-h-[2.75rem] rounded-full bg-navy px-[1.1em] font-bold font-head text-[0.875rem] text-white transition-opacity disabled:opacity-35"
+            className="min-h-[2.75rem] rounded-full bg-action px-[1.1em] font-bold font-head text-[0.875rem] text-white transition-opacity disabled:opacity-35"
           >
             {sending ? 'Saving…' : 'Save'}
           </button>
@@ -266,7 +266,7 @@ export function Composer({
             type="button"
             onClick={edit.onCancel}
             disabled={sending}
-            className="min-h-[2.75rem] rounded-full border border-line px-[1.1em] font-bold font-head text-[0.875rem] text-navy"
+            className="min-h-[2.75rem] rounded-full border border-line px-[1.1em] font-bold font-head text-[0.875rem] text-emphasis"
           >
             Cancel
           </button>
@@ -313,7 +313,7 @@ export function Composer({
           aria-label={sendLabel}
           // 44px, and never data-target="small": this is the control the whole
           // screen exists for.
-          className="grid h-11 w-11 flex-none place-items-center rounded-full bg-navy text-white transition-opacity disabled:opacity-35"
+          className="grid h-11 w-11 flex-none place-items-center rounded-full bg-action text-white transition-opacity disabled:opacity-35"
         >
           <SendHorizontal className="h-[19px] w-[19px]" aria-hidden="true" />
         </button>

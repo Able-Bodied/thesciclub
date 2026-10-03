@@ -60,7 +60,7 @@ function AppShell() {
         // Off the top of the shell until focused, then slid in. Not sr-only:
         // `not-sr-only` on focus makes it static and it became a strip that
         // pushed the screen down.
-        className="-translate-y-[150%] absolute top-2 left-2 z-50 rounded-full bg-navy px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
+        className="-translate-y-[150%] absolute top-2 left-2 z-50 rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
       >
         Skip to content
       </a>

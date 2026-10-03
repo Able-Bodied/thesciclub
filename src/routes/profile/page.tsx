@@ -210,7 +210,7 @@ export default function ProfileSurveyPage() {
               onClick={() => {
                 setIndex(index - 1);
               }}
-              className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
+              className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
             >
               <ChevronLeft className="h-4 w-4" />
               Back
@@ -231,7 +231,7 @@ export default function ProfileSurveyPage() {
             onClick={() => {
               commit(SCREENS.length);
             }}
-            className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-navy transition-colors hover:bg-tint disabled:opacity-40"
+            className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
           >
             {fromAnswers ? 'Back to your answers' : 'Finish later'}
             <ChevronRight className="h-4 w-4" />
@@ -239,7 +239,7 @@ export default function ProfileSurveyPage() {
         </div>
         <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
           <div
-            className="h-full rounded-full bg-navy transition-[width] duration-300"
+            className="h-full rounded-full bg-emphasis transition-[width] duration-300"
             style={{ width: `${((index + 1) / SCREENS.length) * 100}%` }}
           />
         </div>
@@ -418,7 +418,7 @@ function QuestionBlock({
           onChange={(e) => {
             onChange(e.target.value);
           }}
-          className="min-h-[120px] w-full resize-none rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] leading-[1.5] outline-none focus:border-navy"
+          className="min-h-[120px] w-full resize-none rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] leading-[1.5] outline-none focus:border-emphasis"
         />
       ) : null}
 
@@ -434,7 +434,7 @@ function QuestionBlock({
               }}
               className={cn(
                 'rounded-full px-4 py-2 font-semibold text-[0.84375rem]',
-                value === option ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
+                value === option ? 'bg-action text-white' : 'border border-line bg-paper text-ink2',
               )}
             >
               {option ? 'Yes' : 'No'}
@@ -455,7 +455,7 @@ function QuestionBlock({
               }}
               className={cn(
                 'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
-                value === option ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
+                value === option ? 'bg-action text-white' : 'border border-line bg-paper text-ink2',
               )}
             >
               {option}
@@ -485,7 +485,7 @@ function QuestionBlock({
                   }}
                   className={cn(
                     'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
-                    on ? 'bg-navy text-white' : 'border border-line bg-paper text-ink2',
+                    on ? 'bg-action text-white' : 'border border-line bg-paper text-ink2',
                     !on && atCap && 'opacity-40',
                   )}
                 >
@@ -506,7 +506,7 @@ function QuestionBlock({
                 onClick={() => {
                   setOtherOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line border-dashed bg-paper px-3.5 py-2 font-semibold text-[0.84375rem] text-navy"
+                className="inline-flex items-center gap-1.5 rounded-full border border-line border-dashed bg-paper px-3.5 py-2 font-semibold text-[0.84375rem] text-emphasis"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add your own
@@ -533,13 +533,13 @@ function QuestionBlock({
                   if (e.key === 'Escape') closeOther();
                 }}
                 placeholder={question.otherPlaceholder ?? 'In your own words'}
-                className="min-h-[44px] min-w-0 flex-1 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] outline-none focus:border-navy"
+                className="min-h-[44px] min-w-0 flex-1 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] outline-none focus:border-emphasis"
               />
               <button
                 type="button"
                 onClick={addOther}
                 disabled={!otherDraft.trim()}
-                className="min-h-[44px] flex-none rounded-[13px] bg-navy px-4 font-bold font-head text-[0.875rem] text-paper disabled:opacity-40"
+                className="min-h-[44px] flex-none rounded-[13px] bg-action px-4 font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
               >
                 Add
               </button>

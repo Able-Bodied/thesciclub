@@ -47,7 +47,7 @@ export default function OrganizationDetailPage() {
           onClick={() => {
             void navigate(back);
           }}
-          className="mt-4 font-bold font-head text-[0.9375rem] text-navy"
+          className="mt-4 font-bold font-head text-[0.9375rem] text-emphasis"
         >
           Back to Events
         </button>
@@ -145,7 +145,7 @@ export default function OrganizationDetailPage() {
                   className="mb-[11px] flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
                 >
                   <span className="block w-[46px] flex-none rounded-[12px] bg-tint py-1.5 text-center">
-                    <span className="block font-extrabold font-head text-[1.1875rem] text-navy leading-[1.15]">
+                    <span className="block font-extrabold font-head text-[1.1875rem] text-emphasis leading-[1.15]">
                       {tile.day}
                     </span>
                     <span className="block font-extrabold text-[0.625rem] text-ink2 tracking-[0.09em]">
@@ -206,7 +206,7 @@ export default function OrganizationDetailPage() {
         ) : null}
 
         {organization.canInvite ? (
-          <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[#5C4409] text-[0.7875rem] leading-[1.5]">
+          <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
             {organization.name} can put a phone number on the club's list. Membership is granted by
             a person, never claimed by a form.
           </p>
