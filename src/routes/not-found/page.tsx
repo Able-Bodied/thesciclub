@@ -29,7 +29,10 @@ export default function NotFoundPage() {
           That address does not go anywhere. The link may be old, or it may have a typo in it.
         </p>
         <p className="text-[0.78125rem] text-grey leading-relaxed">
-          Everything in the club is reachable from the tabs below.
+          {/* The tabs are under the screen on a phone and above it from `md`
+              (app-nav.tsx), so the sentence says whichever is true. */}
+          Everything in the club is reachable from the tabs <span className="md:hidden">below</span>
+          <span className="hidden md:inline">above</span>.
         </p>
         <Link
           to="/home"
