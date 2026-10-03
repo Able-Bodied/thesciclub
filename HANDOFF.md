@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-01. What is true now, the rules, the traps; nothing
+Last updated 2026-10-03. What is true now, the rules, the traps; nothing
 else. Why anything is the way it is: `git log`, migration headers, code
 comments, and the old long handoff (`git show 4b1673b:HANDOFF.md`, which is
 what comments citing a HANDOFF section by name mean). A one-page summary of
@@ -13,10 +13,11 @@ wins over this file.
 - **The SCI Club**: private, invite-only PWA for people with spinal cord
   injury. Vite 8, React 19, TypeScript strict, Tailwind 4, Supabase, Vitest,
   pnpm, Node 24. Live at https://thesciclub.com (Netlify builds `main`;
-  Let's Encrypt certificate for the bare domain and www, which redirects).
-  https://thesciclub.netlify.app/ still answers, and the page sends people on
-  to thesciclub.com (index.html); the Twilio registration links there, so
-  give it thesciclub.com addresses when it is resubmitted. The design mock (`docs/`) was removed 2026-10-03.
+  www redirects to it; certificate from Let's Encrypt). The old
+  https://thesciclub.netlify.app/ still answers, and the page itself sends
+  people on to thesciclub.com (index.html says why not a server redirect).
+  GitHub Pages is off and the design mock (`docs/`) is gone; CONTEXT.md
+  "Working model" says where it went.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`
@@ -24,9 +25,14 @@ wins over this file.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, 98 migrations; check
   with `pnpm exec supabase migration list` (a blank Remote is pending).
   Edge function `push-notify` v2 live.
-- **Checks**: 1,700 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
+- **Checks**: 1,701 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
   Known noise: the events tests' `@/lib/events` mock lacks `rsvpSaved`, which
   prints 5 unhandled errors while every test passes.
+- **Not ours, uncommitted**: another session's onboarding and date work is in
+  the working copy (`src/lib/injury*`, `src/lib/date-parts*`,
+  `components/date-fields.tsx`, `onboarding/page|steps|types`,
+  `profile/details*`). Stage your own files by name; never `git add -A`.
+  Its colour classes were already moved to the new roles on 2026-10-03.
 
 ## Open
 
@@ -37,7 +43,9 @@ wins over this file.
    the registration is ablebodied.org, whose policy conflicts; the owner sent
    its manager three edits (an SMS section pointing at the club's policy, a
    no-sharing line in its section 4, its two Kelly Brush links). Resubmit once
-   those are live. The registration quotes `/join`'s two boxes and the
+   those are live, with thesciclub.com addresses for the privacy and terms
+   URLs, the message flow and the opt-in proof (the registration still
+   names thesciclub.netlify.app, which only forwards). The registration quotes `/join`'s two boxes and the
    sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
    `onboarding/steps.tsx`), `/privacy`, `/terms` and
    `public/sms-opt-in/*.png` (retake them from committed code if `/join`
@@ -50,8 +58,9 @@ wins over this file.
 2. **Domain** — thesciclub.com is live on Netlify and GitHub Pages is off
    (2026-10-03). Left, if the owner wants it: point thesciclub.org at the
    club too (a Netlify domain alias, plus `@` and `www` A records to
-   `75.2.60.5` on Spaceship). Members on the old netlify.app address sign in
-   and add the app to their Home Screen again once.
+   `75.2.60.5` on Spaceship). Members who installed the app from the old
+   address are moved to thesciclub.com, where they sign in and add it to
+   their Home Screen again once.
 3. **Supabase is on the free plan**, which pauses a project after a quiet
    week and has small limits. Plan the paid tier before real members arrive.
 4. **Never tried on a real iPhone**: an hour of VoiceOver (including the
@@ -159,8 +168,6 @@ wins over this file.
   Dark is charcoal with gold, not navy (the owner found navy too blue).
   `/join` is always light (`useForceLight`), so nobody sees dark before they
   have agreed to the terms, and the opt-in matches the registered screenshots.
-  `components/date-fields.tsx` is another session's uncommitted file; its one
-  colour class was renamed in place on 2026-10-03.
 - **Sizing**: text boxes in `em`; controls under 44px get
   `data-target="small"`.
 - **Focus and speech**: sheets use `useDialogFocus`; success is said with
