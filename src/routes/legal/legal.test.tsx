@@ -72,6 +72,19 @@ describe('the Privacy Policy', () => {
     expect(screen.getByText('Message and data rates may apply.').tagName).toBe('B');
   });
 
+  // Kinds of provider, which is what the law asks for, and not which companies
+  // (the owner, 2026-10-03).
+  it('says what kinds of provider receive information, without naming companies', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(/hosting, our database and sign-in, text messages, location lookup/),
+    ).toBeInTheDocument();
+    const page = document.body.textContent;
+    for (const company of ['Supabase', 'Twilio', 'Netlify', 'OpenStreetMap']) {
+      expect(page).not.toContain(company);
+    }
+  });
+
   it('links to the Terms of Service', () => {
     open('/privacy');
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(

@@ -23,7 +23,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 2, 2026">
+    <LegalPage title="Privacy Policy" updated="October 3, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -150,8 +150,9 @@ export default function PrivacyPage() {
         </P>
         <P>
           Every kind of sharing described in this policy excludes your text messaging opt-in data
-          and consent. The only exception is the service providers below that send the texts and run
-          the app, which handle your phone number only so they can do that.
+          and consent. The only exception is the service providers that send the texts and run the
+          app (see Service providers, below), which handle your phone number only so they can do
+          that.
         </P>
         <P>
           Text <b>HELP</b> for help and <b>STOP</b> to stop the texts. The{' '}
@@ -162,21 +163,16 @@ export default function PrivacyPage() {
         </P>
       </Section>
 
-      <Section title="Services we use">
+      {/* Kinds of provider, not their names (the owner, 2026-10-03). The
+          kinds are what California's CalOPPA asks a policy to list, and the
+          text-message exception above leans on this section being here. */}
+      <Section title="Service providers">
         <P>
-          We do not sell your information, and we do not share it for advertising. These services
-          handle it only to run the club:
+          We do not sell your information or share it for advertising. We share it only with the
+          service providers that run the club for us: hosting, our database and sign-in, text
+          messages, location lookup, and device notifications. They receive only what they need to
+          do that work.
         </P>
-        <List>
-          <li>Supabase stores the club’s data and photographs and runs sign-in.</li>
-          <li>Twilio sends the sign-in texts.</li>
-          <li>Netlify hosts the app.</li>
-          <li>OpenStreetMap turns a ZIP code or a location into a city, when you ask it to.</li>
-          <li>
-            Your device’s notification service (Apple, Google or Mozilla) delivers notifications, if
-            you turn them on.
-          </li>
-        </List>
       </Section>
 
       <Section title="Adults only">
