@@ -193,7 +193,6 @@ function AppRoutes() {
           club before it became the door. The manifest's start_url stays "/",
           so an installed app follows this line too. */}
       <Route path="/" element={<Navigate to="/home" replace />} />
-      {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
       {/* Outside the shell: onboarding has its own footer and no tab bar. */}
       {/* Always light: see useForceLight. */}
       <Route
@@ -208,7 +207,11 @@ function AppRoutes() {
       <Route path="/profile" element={<ProfileSurveyPage />} />
       <Route path="/profile/answers" element={<ProfileAnswersPage />} />
       <Route path="/profile/details" element={<ProfileDetailsPage />} />
-      <Route path="/dev-login" element={<DevLoginPage />} />
+      {/* Development only: the live project's Auth accepts fixed test codes
+          until texts are approved, and this page printed one. In a build the
+          condition is false, so the route and the page itself are dropped
+          from the bundle. See the page's file header. */}
+      {import.meta.env.DEV && <Route path="/dev-login" element={<DevLoginPage />} />}
       {/* Public, with no account: somebody on the phone step reads them before
           they have one, and so do the carriers checking the text-message
           registration. See src/routes/legal/legal-page.tsx. */}
