@@ -31,8 +31,8 @@ function block(selector: string): string {
   return CSS.slice(start + selector.length + 2, end);
 }
 
-const DARK = block(':root[data-appearance="dark"]');
-const DARK_BY_DEVICE = block(':root:not([data-appearance="light"])');
+const DARK = block(':root[data-appearance="dark"]:not([data-force-light])');
+const DARK_BY_DEVICE = block(':root:not([data-appearance="light"]):not([data-force-light])');
 
 /**
  * A token's dark value: the dark block's own, or the light value where the dark

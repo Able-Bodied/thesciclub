@@ -9,6 +9,7 @@ import {
   systemDefaults,
   TEXT_SIZE_SCALE,
   useAccessibility,
+  useForceLight,
 } from '@/lib/accessibility';
 
 const STORAGE_KEY = 'thesciclub.accessibility';
@@ -18,6 +19,7 @@ beforeEach(() => {
   document.documentElement.removeAttribute('data-text-size');
   document.documentElement.removeAttribute('data-large-targets');
   document.documentElement.removeAttribute('data-appearance');
+  document.documentElement.removeAttribute('data-force-light');
 });
 
 afterEach(() => {
@@ -218,5 +220,28 @@ describe('useAccessibility without a provider', () => {
     // So a component can be rendered in isolation without being wrapped.
     render(<Probe />);
     expect(screen.getByTestId('size')).toHaveTextContent('normal');
+  });
+});
+
+function JoinScreen() {
+  useForceLight();
+  return <p>joining</p>;
+}
+
+// The owner, 2026-10-03: nobody sees dark until they are in the club, and the
+// opt-in matches the light screenshots registered with the carriers.
+describe('useForceLight', () => {
+  it('draws its screen in light over a Dark choice, without changing the choice', () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ appearance: 'dark' }));
+    const { unmount } = render(
+      <AccessibilityProvider>
+        <JoinScreen />
+      </AccessibilityProvider>,
+    );
+    expect(document.documentElement.dataset.forceLight).toBe('');
+    expect(document.documentElement.dataset.appearance).toBe('dark');
+    expect(parsePreferences(localStorage.getItem(STORAGE_KEY)).appearance).toBe('dark');
+    unmount();
+    expect(document.documentElement.dataset.forceLight).toBeUndefined();
   });
 });

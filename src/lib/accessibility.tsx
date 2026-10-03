@@ -1,4 +1,12 @@
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from 'react';
 
 /**
  * Display and input preferences.
@@ -203,9 +211,38 @@ function prefersDark(appearance: Appearance): boolean {
 }
 
 function paintBrowserBar(appearance: Appearance): void {
+  const light = document.documentElement.dataset.forceLight !== undefined;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', prefersDark(appearance) ? BROWSER_BAR.dark : BROWSER_BAR.light);
+    ?.setAttribute(
+      'content',
+      !light && prefersDark(appearance) ? BROWSER_BAR.dark : BROWSER_BAR.light,
+    );
+}
+
+/**
+ * Light, whatever the setting, for as long as the calling screen is up.
+ *
+ * For /join (the owner, 2026-10-03): dark is for members, and somebody joining
+ * or signing in has not agreed to anything yet. It also keeps the opt-in a
+ * carrier's reviewer opens identical to the light screenshots registered with
+ * them. An attribute of its own rather than a change to `appearance`, so the
+ * member's choice is neither overwritten nor stored, and comes back by itself
+ * when they leave. index.html sets the same attribute before the first paint
+ * on /join, so a dark device never flashes dark there.
+ */
+export function useForceLight(): void {
+  const { preferences } = useAccessibility();
+  const appearance = preferences.appearance;
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.dataset.forceLight = '';
+    paintBrowserBar(appearance);
+    return () => {
+      delete root.dataset.forceLight;
+      paintBrowserBar(appearance);
+    };
+  }, [appearance]);
 }
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { RequireMember } from '@/components/require-member';
-import { AccessibilityProvider } from '@/lib/accessibility';
+import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
 import AdminPage from '@/routes/admin/page';
 import GroupMembersPage from '@/routes/chat/group-members';
@@ -176,6 +176,12 @@ export function RouteChange() {
   return null;
 }
 
+/** Its children are drawn in light whatever the member chose (useForceLight). */
+function InLight({ children }: { children: React.ReactNode }) {
+  useForceLight();
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -189,7 +195,15 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/home" replace />} />
       {/* Outside the shell: no tab bar, and unlisted. See the file header. */}
       {/* Outside the shell: onboarding has its own footer and no tab bar. */}
-      <Route path="/join" element={<OnboardingPage />} />
+      {/* Always light: see useForceLight. */}
+      <Route
+        path="/join"
+        element={
+          <InLight>
+            <OnboardingPage />
+          </InLight>
+        }
+      />
       {/* Outside the shell: its own footer, no tab bar. */}
       <Route path="/profile" element={<ProfileSurveyPage />} />
       <Route path="/profile/answers" element={<ProfileAnswersPage />} />

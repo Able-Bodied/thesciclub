@@ -27,9 +27,13 @@
         if (appearance === 'light' || appearance === 'dark') {
           document.documentElement.dataset.appearance = appearance;
         }
+        // /join is always light: see useForceLight in src/lib/accessibility.tsx.
+        const joining = location.pathname === '/join';
+        if (joining) document.documentElement.dataset.forceLight = '';
         const dark =
-          appearance === 'dark' ||
-          (appearance !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          !joining &&
+          (appearance === 'dark' ||
+            (appearance !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches));
         if (dark) document.querySelector('meta[name="theme-color"]').content = '#141619';
       } catch {
         // Storage blocked: the phone's own setting applies, through the CSS.

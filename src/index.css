@@ -483,6 +483,11 @@
  * data-appearance, and index.html does the same before the first paint so a
  * dark phone never flashes white.
  *
+ * Never on /join (data-force-light, set by useForceLight): somebody joining or
+ * signing in sees the club in light until they are in it, and the opt-in they
+ * agree to looks exactly like the screenshots in the text-message registration
+ * (the owner, 2026-10-03).
+ *
  * Written twice, because CSS cannot share a block between a media query and an
  * attribute selector: once for "Dark", once for "Match my device" on a device
  * set to dark. theme-contrast.test.ts fails if the two ever differ, and measures
@@ -491,7 +496,7 @@
  * --navy, --navy-hi, --navy-dp, --gold, --gold-hi and --on-gold are absent on
  * purpose: they are the brand's fixed colours and mean the same in both.
  */
-:root[data-appearance="dark"] {
+:root[data-appearance="dark"]:not([data-force-light]) {
   color-scheme: dark;
   --plate: #1e2126;
   --plate-chip: #33383f;
@@ -523,7 +528,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-appearance="light"]) {
+  :root:not([data-appearance="light"]):not([data-force-light]) {
     color-scheme: dark;
     --plate: #1e2126;
     --plate-chip: #33383f;

@@ -134,10 +134,11 @@ wins over this file.
   for links, outlines, eyebrows, dots and progress; `bg-action` for filled
   buttons and selected options; `bg-plate` (and `-chip`, `-edge`, `-hover`)
   for header bands; `navy` only for navy words on a white chip over a photo.
-  Dark is charcoal with gold, not navy (the owner found navy too blue). `text-navy` or a hex on a card vanishes
-  in dark. Every new pair goes in `theme-contrast.test.ts`, both themes. Still
-  on the old names, being another session's work in progress on 2026-10-02:
-  `onboarding/steps.tsx`, `profile/details.tsx`, `components/date-fields.tsx`.
+  Dark is charcoal with gold, not navy (the owner found navy too blue).
+  `/join` is always light (`useForceLight`), so nobody sees dark before they
+  have agreed to the terms, and the opt-in matches the registered screenshots.
+  `components/date-fields.tsx` is another session's uncommitted file; its one
+  colour class was renamed in place on 2026-10-03.
 - **Sizing**: text boxes in `em`; controls under 44px get
   `data-target="small"`.
 - **Focus and speech**: sheets use `useDialogFocus`; success is said with
