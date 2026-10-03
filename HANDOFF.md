@@ -130,6 +130,13 @@ wins over this file.
   `my_claimable_profile()`, `photo_is_my_claimable()`, `my_number_is_invited()`.
 - **Photos**: private buckets; every face is a signed URL (`usePhotoUrl`,
   `MemberAvatar`). `photo_alt` belongs to one picture; a new one clears it.
+- **Colours by role, for light and dark**: `text-emphasis`/`border-emphasis`
+  for links, outlines, eyebrows, dots and progress; `bg-action` for filled
+  buttons and selected options; `bg-navy` only for header plates and navy
+  words on a white chip over a photo. `text-navy` or a hex on a card vanishes
+  in dark. Every new pair goes in `theme-contrast.test.ts`, both themes. Still
+  on the old names, being another session's work in progress on 2026-10-02:
+  `onboarding/steps.tsx`, `profile/details.tsx`, `components/date-fields.tsx`.
 - **Sizing**: text boxes in `em`; controls under 44px get
   `data-target="small"`.
 - **Focus and speech**: sheets use `useDialogFocus`; success is said with
