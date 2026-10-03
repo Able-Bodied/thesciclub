@@ -46,12 +46,11 @@ wins over this file.
    (`AgreeStep`). Until texts arrive, members sign in with fixed codes set in
    the dashboard (Authentication → Sign In / Providers → Phone → Test phone
    numbers). Once they do (ask first, it is a live setting), clear that list.
-2. **Domain** — thesciclub.com is live on Netlify (2026-10-03). Left:
-   switch off GitHub Pages, which served the deleted mock and still claims
-   the domain in the repo's settings (ask first); point thesciclub.org at it
-   too if the owner wants (a Netlify domain alias, plus `@` and `www` A
-   records to `75.2.60.5` on Spaceship). Members on the old netlify.app
-   address sign in and add the app to their Home Screen again once.
+2. **Domain** — thesciclub.com is live on Netlify and GitHub Pages is off
+   (2026-10-03). Left, if the owner wants it: point thesciclub.org at the
+   club too (a Netlify domain alias, plus `@` and `www` A records to
+   `75.2.60.5` on Spaceship). Members on the old netlify.app address sign in
+   and add the app to their Home Screen again once.
 3. **Supabase is on the free plan**, which pauses a project after a quiet
    week and has small limits. Plan the paid tier before real members arrive.
 4. **Never tried on a real iPhone**: an hour of VoiceOver (including the
