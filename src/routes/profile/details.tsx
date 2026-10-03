@@ -178,7 +178,7 @@ export default function ProfileDetailsPage() {
             onClick={() => {
               void navigate('/me');
             }}
-            className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-navy"
+            className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
           >
             <ChevronLeft className="h-4 w-4" />
             Me
@@ -205,11 +205,13 @@ export default function ProfileDetailsPage() {
                 }}
               >
                 <div className="flex items-center gap-3.5">
-                  <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-navy border-dashed bg-paper">
+                  <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-emphasis border-dashed bg-paper">
                     {photo ? (
                       <img src={photo} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <span className="font-extrabold font-display text-[1.5rem] text-navy">+</span>
+                      <span className="font-extrabold font-display text-[1.5rem] text-emphasis">
+                        +
+                      </span>
                     )}
                     <input
                       type="file"
@@ -238,7 +240,7 @@ export default function ProfileDetailsPage() {
                         });
                       }}
                       data-target="small"
-                      className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-navy"
+                      className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-emphasis"
                     >
                       Remove
                     </button>
@@ -435,7 +437,7 @@ export default function ProfileDetailsPage() {
           <button
             type="submit"
             disabled={saving || loading || !details || !isAdult(details.birthDate)}
-            className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-navy-hi disabled:opacity-40 disabled:hover:bg-navy"
+            className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi disabled:opacity-40 disabled:hover:bg-action"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
           </button>
@@ -490,7 +492,7 @@ function Field({
             className={cn(
               'rounded-full px-2 py-0.5 font-semibold text-[0.75rem] transition-colors',
               declined
-                ? 'bg-tint text-navy hover:bg-line'
+                ? 'bg-tint text-emphasis hover:bg-line'
                 : 'text-grey hover:bg-tint hover:text-ink2',
             )}
           >
@@ -504,7 +506,7 @@ function Field({
 }
 
 const CONTROL =
-  'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy';
+  'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-emphasis';
 
 /** A sentence, not an essay: enough for a scene, short enough to hear. */
 const PHOTO_ALT_MAX = 200;
@@ -585,7 +587,7 @@ function Chip({
         'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
         'transition-colors',
         selected
-          ? 'bg-navy text-white hover:bg-navy-hi'
+          ? 'bg-action text-white hover:bg-action-hi'
           : 'border border-line bg-paper text-ink2 hover:bg-tint',
       )}
     >

@@ -150,7 +150,7 @@ function ConsentBox({
         onChange={(e) => {
           onChange(e.target.checked);
         }}
-        className="mt-[0.1em] h-[1.375em] w-[1.375em] flex-none accent-navy"
+        className="mt-[0.1em] h-[1.375em] w-[1.375em] flex-none accent-emphasis"
       />
       <span>{children}</span>
     </label>
@@ -164,7 +164,12 @@ function ConsentBox({
  */
 function NewTabLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <a href={href} target="_blank" rel="noopener" className="font-semibold text-navy underline">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener"
+      className="font-bold text-emphasis underline decoration-2 underline-offset-2"
+    >
       {children}
       <span className="sr-only"> (opens in a new tab)</span>
     </a>
@@ -256,7 +261,7 @@ export function BirthdayStep({ data, set }: StepProps) {
       ) : null}
       {entered && adult && age !== null ? (
         <div className="mt-3.5 flex items-center gap-3 rounded-[17px] border border-line bg-paper p-3.5">
-          <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-navy font-extrabold font-head text-[0.9375rem] text-white">
+          <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-action font-extrabold font-head text-[0.9375rem] text-white">
             {age}
           </span>
           <span className="text-[0.8375rem] text-ink2 leading-[1.45]">
@@ -294,7 +299,7 @@ export function InjuryStep({ data, set }: StepProps) {
         onChange={(e) => {
           set({ exactLevel: (e.target.value || null) as OnboardingData['exactLevel'] });
         }}
-        className="w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy"
+        className="w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-emphasis"
       >
         <option value="">Select a level</option>
         {EXACT_LEVELS.map((level) => (
@@ -496,7 +501,7 @@ export function CityStep({ data, set }: StepProps) {
         onChange={(e) => {
           set({ state: e.target.value });
         }}
-        className="mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-navy"
+        className="mt-2.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-emphasis"
       >
         <option value="">Select a state</option>
         {US_STATES.map(([code, name]) => (
@@ -532,11 +537,11 @@ export function PhotoStep({ data, set }: StepProps) {
         face makes the first meet-up much easier.
       </Sub>
 
-      <label className="mx-auto mt-6 grid h-[150px] w-[150px] cursor-pointer place-items-center overflow-hidden rounded-[44px] border-[2.5px] border-navy border-dashed bg-paper">
+      <label className="mx-auto mt-6 grid h-[150px] w-[150px] cursor-pointer place-items-center overflow-hidden rounded-[44px] border-[2.5px] border-emphasis border-dashed bg-paper">
         {data.photoPreviewUrl ? (
           <img src={data.photoPreviewUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <span className="font-extrabold font-display text-[2.125rem] text-navy">+</span>
+          <span className="font-extrabold font-display text-[2.125rem] text-emphasis">+</span>
         )}
         <input
           type="file"
@@ -599,14 +604,14 @@ export function ClaimStep({
         <button
           type="button"
           onClick={onAccept}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-navy font-bold font-head text-[0.9375rem] text-white"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
         >
           Yes, that's me
         </button>
         <button
           type="button"
           onClick={onDecline}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-navy font-bold font-head text-[0.9375rem] text-navy"
+          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis"
         >
           Start fresh
         </button>
