@@ -205,6 +205,10 @@ derived from it.
 
 ## Working model
 
-One repo, shipping to `www.thesciclub.com`. The design mock in `docs/index.html` is the reference
-for how screens should look and read — it is a prototype, not a spec, and where it conflicts with
-this document, this document wins.
+One repo, shipping to https://thesciclub.com (Netlify builds `main`; www and the old
+thesciclub.netlify.app address lead to the same app). The app itself is the reference for how
+screens look and read, and where it conflicts with this document, this document wins.
+
+The design mock that used to be the reference, and was published at www.thesciclub.com, was
+removed on 2026-10-03 once the domain served the real app; it had fallen out of date. Code comments
+that name `docs/index.html` mean that mock: `git show 3a9ddd0:docs/index.html`.

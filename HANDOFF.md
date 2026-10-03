@@ -12,9 +12,10 @@ wins over this file.
 
 - **The SCI Club**: private, invite-only PWA for people with spinal cord
   injury. Vite 8, React 19, TypeScript strict, Tailwind 4, Supabase, Vitest,
-  pnpm, Node 24. Live at https://thesciclub.netlify.app/ (Netlify builds
-  `main`), moving to thesciclub.com (Open 2). The old mock, `docs/`, is
-  still on GitHub Pages, though www.thesciclub.com no longer points there.
+  pnpm, Node 24. Live at https://thesciclub.com (Netlify builds `main`;
+  Let's Encrypt certificate for the bare domain and www, which redirects).
+  https://thesciclub.netlify.app/ still answers, and the Twilio registration
+  links there. The design mock (`docs/`) was removed 2026-10-03.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`
@@ -45,16 +46,12 @@ wins over this file.
    (`AgreeStep`). Until texts arrive, members sign in with fixed codes set in
    the dashboard (Authentication → Sign In / Providers → Phone → Test phone
    numbers). Once they do (ask first, it is a live setting), clear that list.
-2. **Domain** — moving thesciclub.com from GitHub Pages to Netlify, and
-   **www.thesciclub.com is broken until it is done**. Netlify's custom domain
-   is `thesciclub.com`, with www redirecting to it; Spaceship has `www` A →
-   `75.2.60.5` but no `@` record, so the bare domain does not resolve and
-   Netlify cannot issue the certificate. Next: the domain owner adds `@` A
-   `75.2.60.5`; then check `/join`, `/privacy`, `/terms` over HTTPS, delete
-   `docs/`, turn off GitHub Pages, and update CONTEXT.md ("Working model"),
-   `netlify.toml`'s header comment and this file. thesciclub.org is
-   registered on the same Spaceship account; the owner leans to .com as the
-   main address with .org forwarding to it (a Netlify domain alias).
+2. **Domain** — thesciclub.com is live on Netlify (2026-10-03). Left:
+   switch off GitHub Pages, which served the deleted mock and still claims
+   the domain in the repo's settings (ask first); point thesciclub.org at it
+   too if the owner wants (a Netlify domain alias, plus `@` and `www` A
+   records to `75.2.60.5` on Spaceship). Members on the old netlify.app
+   address sign in and add the app to their Home Screen again once.
 3. **Supabase is on the free plan**, which pauses a project after a quiet
    week and has small limits. Plan the paid tier before real members arrive.
 4. **Never tried on a real iPhone**: an hour of VoiceOver (including the

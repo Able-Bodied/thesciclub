@@ -1,8 +1,7 @@
-# Netlify, for showing the club to one or two people before it is real.
-#
-# The mock stays on GitHub Pages at www.thesciclub.com — that is the public
-# shopfront and this is not. Nothing here touches docs/, so the two are
-# independent: Pages serves docs/, Netlify serves the built app from dist/.
+# Netlify serves the club at https://thesciclub.com (www redirects to it), and
+# still answers at thesciclub.netlify.app, which the text-message registration
+# links to. Builds `main`. Until 2026-10-03 the domain served the design mock
+# from docs/ on GitHub Pages; that mock is gone (CONTEXT.md, "Working model").
 
 [build]
   command = "pnpm build"

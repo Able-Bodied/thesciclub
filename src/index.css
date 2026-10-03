@@ -66,8 +66,8 @@
  * the design mock's values: gold-500 #d4a83a for #c9a227, the navy-tinted
  * inks, and Outfit for display type (with Atkinson Hyperlegible Next for
  * everything else — see the @font-face comment above). Where a token kept the
- * mock's value, its comment says why. docs/index.html keeps the old look on
- * purpose — it is the published mock, not the app. The app as it looked
+ * mock's value, its comment says why. The mock itself was removed on
+ * 2026-10-03 (`git show 3a9ddd0:docs/index.html`). The app as it looked
  * before is the git tag `brand-before-outfit`.
  *
  * The shadcn half below maps those same colours onto shadcn's semantic names.
