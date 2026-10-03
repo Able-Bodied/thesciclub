@@ -13,7 +13,8 @@ wins over this file.
 - **The SCI Club**: private, invite-only PWA for people with spinal cord
   injury. Vite 8, React 19, TypeScript strict, Tailwind 4, Supabase, Vitest,
   pnpm, Node 24. Live at https://thesciclub.netlify.app/ (Netlify builds
-  `main`); the mock `docs/` is GitHub Pages at www.thesciclub.com.
+  `main`), moving to thesciclub.com (Open 2). The old mock, `docs/`, is
+  still on GitHub Pages, though www.thesciclub.com no longer points there.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`
@@ -21,24 +22,46 @@ wins over this file.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, 98 migrations; check
   with `pnpm exec supabase migration list` (a blank Remote is pending).
   Edge function `push-notify` v2 live.
-- **Checks**: 1,618 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
+- **Checks**: 1,700 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
+  Known noise: the events tests' `@/lib/events` mock lacks `rsvpSaved`, which
+  prints 5 unhandled errors while every test passes.
 
 ## Open
 
-1. **Twilio** — an A2P 10DLC campaign (2FA) was submitted 2026-10-01 and is
-   under review; do not raise it each session. It quotes `/join`'s two boxes
-   and the sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
+1. **Twilio** — the A2P 10DLC campaign (2FA) was rejected 2026-10-02, error
+   30908 (privacy policy); do not raise it each session. The club's
+   `/privacy` is fixed and live: Twilio's own passing sentence, message
+   frequency and rates, providers by kind not name. The brand's website on
+   the registration is ablebodied.org, whose policy conflicts; the owner sent
+   its manager three edits (an SMS section pointing at the club's policy, a
+   no-sharing line in its section 4, its two Kelly Brush links). Resubmit once
+   those are live. The registration quotes `/join`'s two boxes and the
+   sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
    `onboarding/steps.tsx`), `/privacy`, `/terms` and
-   `public/sms-opt-in/*.png`: change any of them and the registration with
-   it. The same two boxes, same words, also stand between a new number that
-   came through the sign-in door and the questions (`AgreeStep`). Until texts arrive, members sign in with fixed codes set in the
-   dashboard (Authentication → Sign In / Providers → Phone → Test phone
+   `public/sms-opt-in/*.png` (retake them from committed code if `/join`
+   changes): change any of them and the registration with it. Its opt-in
+   proof field takes 500 characters. The same two boxes also stand between a
+   new number that came through the sign-in door and the questions
+   (`AgreeStep`). Until texts arrive, members sign in with fixed codes set in
+   the dashboard (Authentication → Sign In / Providers → Phone → Test phone
    numbers). Once they do (ask first, it is a live setting), clear that list.
-2. **Never tried on a real iPhone**: an hour of VoiceOver (including the
+2. **Domain** — moving thesciclub.com from GitHub Pages to Netlify, and
+   **www.thesciclub.com is broken until it is done**. Netlify's custom domain
+   is `thesciclub.com`, with www redirecting to it; Spaceship has `www` A →
+   `75.2.60.5` but no `@` record, so the bare domain does not resolve and
+   Netlify cannot issue the certificate. Next: the domain owner adds `@` A
+   `75.2.60.5`; then check `/join`, `/privacy`, `/terms` over HTTPS, delete
+   `docs/`, turn off GitHub Pages, and update CONTEXT.md ("Working model"),
+   `netlify.toml`'s header comment and this file. thesciclub.org is
+   registered on the same Spaceship account; the owner leans to .com as the
+   main address with .org forwarding to it (a Netlify domain alias).
+3. **Supabase is on the free plan**, which pauses a project after a quiet
+   week and has small limits. Plan the paid tier before real members arrive.
+4. **Never tried on a real iPhone**: an hour of VoiceOver (including the
    "Saved." confirmations, Your answers, a described photo); the date boxes
    with Voice Control and birthday autofill; notifications end to end from the Home Screen app; signed photos; the number pad staying
    up from phone number into code (`keyboardHold`); the notifications step.
-3. **Small, not asked for**: the "Rather not say" toggles on Your details are
+5. **Small, not asked for**: the "Rather not say" toggles on Your details are
    under 44px with no `data-target`; onboarding's photo step asks for no
    description (Your details does).
 
@@ -73,6 +96,8 @@ wins over this file.
   other event with no format, ask, never guess. Delete my account (Me)
   erases the person and keeps their words as "Deleted user" — CONTEXT.md
   "Leaving"; `delete_my_account()` and `src/routes/me/delete-account*`.
+  No colour-blind mode: nothing in the app relies on colour alone. Netlify's
+  hidden "hosted on Netlify" HTML comment stays; there is no setting for it.
 
 ## Environment
 
