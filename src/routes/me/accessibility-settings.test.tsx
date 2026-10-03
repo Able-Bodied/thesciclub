@@ -19,9 +19,9 @@ function renderSettings() {
 }
 
 describe('Appearance, on Me → Display', () => {
-  it('offers Match my phone, Light and Dark, with Match my phone chosen', () => {
+  it('offers Match my device, Light and Dark, with Match my device chosen', () => {
     const appearance = renderSettings();
-    expect(appearance.getByRole('button', { name: 'Match my phone' })).toHaveAttribute(
+    expect(appearance.getByRole('button', { name: 'Match my device' })).toHaveAttribute(
       'aria-pressed',
       'true',
     );

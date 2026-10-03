@@ -27,6 +27,10 @@
         if (appearance === 'light' || appearance === 'dark') {
           document.documentElement.dataset.appearance = appearance;
         }
+        const dark =
+          appearance === 'dark' ||
+          (appearance !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.querySelector('meta[name="theme-color"]').content = '#141619';
       } catch {
         // Storage blocked: the phone's own setting applies, through the CSS.
       }

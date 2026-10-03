@@ -133,7 +133,7 @@ describe('palette contrast', () => {
 });
 
 /*
- * The dark theme (Me → Display → Appearance), the brand's Navy theme. The pairs
+ * The dark theme (Me → Display → Appearance): charcoal with gold accents. The pairs
  * are the light ones in their dark roles: links, outlines and eyebrows are
  * --emphasis, filled buttons are --action, and words on a pale note are
  * --gold-ink. A pair that only exists in light (gold-dp on canvas is the
@@ -162,7 +162,11 @@ describe('dark palette contrast', () => {
     ['--ink2 on --gold-lt (the note in Home’s filter sheet)', 'ink2', 'gold-lt'],
     ['--gold-ink on --gold-lt (a pale gold note)', 'gold-ink', 'gold-lt'],
     ['--on-gold on --gold (every gold button and tag)', 'on-gold', 'gold'],
-    ['--gold-hi on --navy (gold words on a navy header)', 'gold-hi', 'navy'],
+    ['--gold-hi on --plate (gold words on a header band)', 'gold-hi', 'plate'],
+    ['--ink on --plate (a header band’s title)', 'ink', 'plate'],
+    // The chip's words are #DDE7F3, written in place and lighter than --ink2,
+    // so --ink2 passing here is the floor they stand on.
+    ['--ink2 on --plate-chip (a topic chip on a header band)', 'ink2', 'plate-chip'],
     ['--destructive on --paper (an error under a field)', 'destructive', 'paper'],
     ['--destructive on --canvas', 'destructive', 'canvas'],
     ['--danger-ink on --danger-lt (the Cancelled badge)', 'danger-ink', 'danger-lt'],
@@ -188,11 +192,13 @@ describe('dark palette contrast', () => {
   it.each([
     ['--emphasis dot on --canvas', 'emphasis', 'canvas'],
     ['--emphasis dot on --paper', 'emphasis', 'paper'],
+    // The edge is all that marks the outline button on a band as a button.
+    ['--plate-edge on --plate (an outline button on a header band)', 'plate-edge', 'plate'],
   ])('%s clears 3:1', (_label, fg, bg) => {
     expect(contrast(darkToken(fg), darkToken(bg))).toBeGreaterThanOrEqual(3);
   });
 
-  // Written twice in index.css — once for Dark, once for Match my phone on a
+  // Written twice in index.css — once for Dark, once for Match my device on a
   // dark phone — because CSS cannot share one block between the two. A value
   // changed in one and not the other would make the two settings disagree.
   it('is the same whether chosen or taken from the phone', () => {

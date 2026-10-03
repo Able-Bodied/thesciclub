@@ -65,7 +65,7 @@ export const APPEARANCES = ['system', 'light', 'dark'] as const;
 export type Appearance = (typeof APPEARANCES)[number];
 
 export const APPEARANCE_LABELS: Record<Appearance, string> = {
-  system: 'Match my phone',
+  system: 'Match my device',
   light: 'Light',
   dark: 'Dark',
 };
@@ -184,9 +184,28 @@ function applyToDocument(preferences: AccessibilityPreferences): void {
   root.style.setProperty('--text-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
   // index.html sets this before the first paint, from the same stored value,
   // so the page is never drawn light and then switched.
-  // The browser bar needs nothing: it is the brand navy in both themes, which
-  // in dark is the page itself.
   root.dataset.appearance = preferences.appearance;
+  paintBrowserBar(preferences.appearance);
+}
+
+/**
+ * The browser bar's colour: brand navy in light, as it has always been, and
+ * the charcoal page in dark, so the top of the screen is not a strip of navy
+ * over a dark page. index.html does the same before the first paint.
+ */
+export const BROWSER_BAR = { light: '#102A4C', dark: '#141619' } as const;
+
+function prefersDark(appearance: Appearance): boolean {
+  if (appearance !== 'system') return appearance === 'dark';
+  return typeof window.matchMedia === 'function'
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : false;
+}
+
+function paintBrowserBar(appearance: Appearance): void {
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', prefersDark(appearance) ? BROWSER_BAR.dark : BROWSER_BAR.light);
 }
 
 export function AccessibilityProvider({ children }: { children: ReactNode }) {
@@ -202,6 +221,21 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     }
     return { ...systemDefaults(), ...parsePreferences(stored) };
   });
+
+  // Match my device follows the device while the app is open, not only when
+  // it starts: somebody whose computer turns dark at sunset gets the bar to
+  // match. The page colours need no help; the CSS media query does that.
+  useEffect(() => {
+    if (preferences.appearance !== 'system' || typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const repaint = () => {
+      paintBrowserBar('system');
+    };
+    query.addEventListener('change', repaint);
+    return () => {
+      query.removeEventListener('change', repaint);
+    };
+  }, [preferences.appearance]);
 
   useEffect(() => {
     applyToDocument(preferences);

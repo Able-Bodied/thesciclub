@@ -92,8 +92,10 @@ export function AccessibilitySettings() {
       </h2>
 
       <div className="rounded-[17px] border border-line bg-paper px-3.5">
-        {/* Match my phone first, and the default: most people never open this
-            screen, and their phone already says which they prefer. */}
+        {/* Match my device first, and the default: most people never open this
+            screen, and their phone or computer already says which they
+            prefer. Not "phone": the club is used on computers too (the
+            owner, 2026-10-03). */}
         <Row title="Appearance">
           <div className="flex flex-wrap gap-2">
             {APPEARANCES.map((appearance: Appearance) => (

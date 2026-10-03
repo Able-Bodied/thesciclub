@@ -77,19 +77,21 @@
  * because they cost nothing and because adding a shadcn component later would
  * want them — not because a <Button> somewhere is quietly using them.
  *
- * Light and dark, from 2026-10-02. The dark values are the brand's own Navy
- * theme (sci-club-logo/tokens.json: navy-900 page, navy-700 cards, white ink,
- * ink-muted #b9c4d4, gold accents), measured pair by pair in
- * theme-contrast.test.ts. They live in the dark block at the end of this file.
+ * Light and dark, from 2026-10-02. Dark is a soft charcoal with the brand's
+ * gold for links and accents, measured pair by pair in theme-contrast.test.ts;
+ * it lives in the dark block at the end of this file. It was first the
+ * brand's Navy theme (sci-club-logo/tokens.json), navy page and navy cards,
+ * and the owner found it too blue to be easy on the eyes (2026-10-03).
  *
- * Navy does two jobs in light mode that come apart on a navy page, so it is
+ * Navy does jobs in light mode that come apart on a dark page, so it is
  * split by role:
- *   --navy      the brand plate: header bands, and navy words on a white chip
- *               over a photograph. The same in both themes.
- *   --action    filled buttons and selected options. Brighter in dark, so a
- *               button still reads as one on a navy page.
+ *   --plate     the header bands on Me, an event, an organization and a
+ *               profile: brand navy in light, the card colour in dark.
+ *   --navy      the brand navy itself, for navy words on a white chip over a
+ *               photograph. The same in both themes.
+ *   --action    filled buttons and selected options; a muted slate in dark.
  *   --emphasis  links, outlines, focus borders, eyebrows, unread dots and
- *               progress. Gold in dark, as the brand sets links there.
+ *               progress. Gold in dark, as the brand sets links on dark.
  * In light mode all three are the same navy, so nothing there changed.
  */
 
@@ -137,6 +139,15 @@
 
   /* Roles navy used to play alone; see the note above. Light values are the
      navy they replaced, so light mode is unchanged. */
+  /* The header bands on Me, an event, an organization and a profile. Brand
+     navy in light; in dark the card colour, so a band is not a slab of blue
+     on a charcoal page (the owner, 2026-10-03). */
+  --plate: #102a4c;
+  /* On a band: a topic chip, and the edge and hover of an outline button
+     (an event's Interested). Were written in place for the navy band. */
+  --plate-chip: #22406b;
+  --plate-edge: #5c7ba5;
+  --plate-hover: #1e3a63;
   --action: #102a4c;
   --action-hi: #1b3a66;
   --emphasis: #102a4c;
@@ -237,6 +248,10 @@
   --color-grey: var(--grey);
   --color-line: var(--line);
   --color-tint: var(--tint);
+  --color-plate: var(--plate);
+  --color-plate-chip: var(--plate-chip);
+  --color-plate-edge: var(--plate-edge);
+  --color-plate-hover: var(--plate-hover);
   --color-action: var(--action);
   --color-action-hi: var(--action-hi);
   --color-emphasis: var(--emphasis);
@@ -299,6 +314,7 @@
   }
   .bg-navy :focus-visible,
   .bg-navy-dp :focus-visible,
+  .bg-plate :focus-visible,
   .bg-action :focus-visible {
     outline-color: var(--gold-hi);
   }
@@ -462,14 +478,14 @@
 
 /* ================================================================ dark */
 /*
- * The dark theme, chosen on Me → Display: Match my phone (the default), Light
+ * The dark theme, chosen on Me → Display: Match my device (the default), Light
  * or Dark. src/lib/accessibility.tsx writes the choice onto <html> as
  * data-appearance, and index.html does the same before the first paint so a
  * dark phone never flashes white.
  *
  * Written twice, because CSS cannot share a block between a media query and an
- * attribute selector: once for "Dark", once for "Match my phone" on a phone in
- * dark mode. theme-contrast.test.ts fails if the two ever differ, and measures
+ * attribute selector: once for "Dark", once for "Match my device" on a device
+ * set to dark. theme-contrast.test.ts fails if the two ever differ, and measures
  * every pair below that meets on a screen.
  *
  * --navy, --navy-hi, --navy-dp, --gold, --gold-hi and --on-gold are absent on
@@ -477,26 +493,30 @@
  */
 :root[data-appearance="dark"] {
   color-scheme: dark;
-  --canvas: #102a4c;
-  --paper: #1b3a66;
-  --ink: #ffffff;
-  --ink2: #b9c4d4;
-  --grey: #aebbcf;
-  --line: #31507f;
-  --tint: #24477a;
-  --gold-dp: #e0b54a;
-  --gold-lt: #3a3115;
-  --gold-ink: #f2d68a;
-  --action: #27508c;
-  --action-hi: #2f5c9c;
-  --emphasis: #e9cc72;
-  --focus: #e9cc72;
+  --plate: #1e2126;
+  --plate-chip: #33383f;
+  --plate-edge: #707884;
+  --plate-hover: #2a2e35;
+  --canvas: #141619;
+  --paper: #1e2126;
+  --ink: #eef0f3;
+  --ink2: #b8bec7;
+  --grey: #a3abb6;
+  --line: #3a3f47;
+  --tint: #2a2e35;
+  --gold-dp: #dcb24c;
+  --gold-lt: #2f2918;
+  --gold-ink: #f0d68e;
+  --action: #3a4f72;
+  --action-hi: #45608a;
+  --emphasis: #e6c46a;
+  --focus: #e6c46a;
   --destructive: #ff9a90;
-  --danger-lt: #4a1f1c;
+  --danger-lt: #3d1f1d;
   --danger-ink: #ffb4ab;
   --room-body: #9cbcf0;
   --room-mind: #c7aef2;
-  --room-life: #e0b54a;
+  --room-life: #dcb24c;
   --room-family: #f2a7c3;
   --room-kit: #86d1b2;
   --room-places: #83cde3;
@@ -505,26 +525,30 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-appearance="light"]) {
     color-scheme: dark;
-    --canvas: #102a4c;
-    --paper: #1b3a66;
-    --ink: #ffffff;
-    --ink2: #b9c4d4;
-    --grey: #aebbcf;
-    --line: #31507f;
-    --tint: #24477a;
-    --gold-dp: #e0b54a;
-    --gold-lt: #3a3115;
-    --gold-ink: #f2d68a;
-    --action: #27508c;
-    --action-hi: #2f5c9c;
-    --emphasis: #e9cc72;
-    --focus: #e9cc72;
+    --plate: #1e2126;
+    --plate-chip: #33383f;
+    --plate-edge: #707884;
+    --plate-hover: #2a2e35;
+    --canvas: #141619;
+    --paper: #1e2126;
+    --ink: #eef0f3;
+    --ink2: #b8bec7;
+    --grey: #a3abb6;
+    --line: #3a3f47;
+    --tint: #2a2e35;
+    --gold-dp: #dcb24c;
+    --gold-lt: #2f2918;
+    --gold-ink: #f0d68e;
+    --action: #3a4f72;
+    --action-hi: #45608a;
+    --emphasis: #e6c46a;
+    --focus: #e6c46a;
     --destructive: #ff9a90;
-    --danger-lt: #4a1f1c;
+    --danger-lt: #3d1f1d;
     --danger-ink: #ffb4ab;
     --room-body: #9cbcf0;
     --room-mind: #c7aef2;
-    --room-life: #e0b54a;
+    --room-life: #dcb24c;
     --room-family: #f2a7c3;
     --room-kit: #86d1b2;
     --room-places: #83cde3;

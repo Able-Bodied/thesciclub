@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AccessibilityProvider,
+  BROWSER_BAR,
   DEFAULT_PREFERENCES,
   parsePreferences,
   systemDefaults,
@@ -112,7 +113,7 @@ describe('AccessibilityProvider', () => {
     expect(document.documentElement.dataset.largeTargets).toBe('on');
   });
 
-  // Match my phone is the default: somebody whose phone is dark gets a dark
+  // Match my device is the default: somebody whose phone is dark gets a dark
   // club without finding the setting (the owner, 2026-10-02).
   it('follows the device until somebody chooses', () => {
     render(
@@ -131,6 +132,29 @@ describe('AccessibilityProvider', () => {
       </AccessibilityProvider>,
     );
     expect(document.documentElement.dataset.appearance).toBe('dark');
+  });
+
+  it('colours the browser bar to match: charcoal for Dark, navy for Light', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'theme-color';
+    meta.content = '#102A4C';
+    document.head.append(meta);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ appearance: 'dark' }));
+    const { unmount } = render(
+      <AccessibilityProvider>
+        <Probe />
+      </AccessibilityProvider>,
+    );
+    expect(meta.content).toBe(BROWSER_BAR.dark);
+    unmount();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ appearance: 'light' }));
+    render(
+      <AccessibilityProvider>
+        <Probe />
+      </AccessibilityProvider>,
+    );
+    expect(meta.content).toBe(BROWSER_BAR.light);
+    meta.remove();
   });
 
   it('sets the multiplier the root font size reads', () => {

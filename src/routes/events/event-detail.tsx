@@ -106,7 +106,7 @@ export default function EventDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="bg-navy px-4 pt-[18px] pb-5 text-white">
+      <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           <button
             type="button"
@@ -145,7 +145,7 @@ export default function EventDetailPage() {
               {event.tags.map((tag) => (
                 <span
                   key={tag.slug}
-                  className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
+                  className="rounded-full bg-plate-chip px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
                 >
                   {tag.name}
                 </span>
@@ -190,7 +190,7 @@ export default function EventDetailPage() {
                   onRsvp(interested ? null : 'interested');
                 }}
                 aria-pressed={interested}
-                className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-[#5C7BA5] font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-[#1E3A63]"
+                className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-plate-edge font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-plate-hover"
               >
                 {interested ? 'Interested ✓' : 'Interested'}
               </button>

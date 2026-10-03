@@ -66,7 +66,7 @@ export default function OrganizationDetailPage() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="bg-navy px-4 pt-[18px] pb-5 text-white">
+      <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           <button
             type="button"
@@ -107,7 +107,7 @@ export default function OrganizationDetailPage() {
             {organization.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-[#22406B] px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
+                className="rounded-full bg-plate-chip px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
               >
                 {tag}
               </span>

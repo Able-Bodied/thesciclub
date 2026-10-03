@@ -343,7 +343,7 @@ export default function MemberDetailPage() {
                   name reads on a light photograph and on the gradient alike. */}
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0),rgba(10,29,54,0.8)_60%,#102a4c)]"
+                className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--plate)_80%,transparent)_60%,var(--plate))]"
               />
               <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
                 <h1 className="font-extrabold font-display text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
@@ -362,7 +362,7 @@ export default function MemberDetailPage() {
                 so the one it has takes the width. Not drawn at all on your own
                 card, where there is nothing to press. */}
             {canMessage ? (
-              <div className="bg-navy px-[18px] pt-3.5 pb-4">
+              <div className="bg-plate px-[18px] pt-3.5 pb-4">
                 <MessageButton memberId={member.id} name={member.displayName} onDark />
               </div>
             ) : null}
