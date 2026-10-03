@@ -1,10 +1,12 @@
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
+import { BIRTHDAY_ORDER, DateFields, YEAR_FIRST_ORDER } from '@/components/date-fields';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
+import { type DateParts, EMPTY_DATE_PARTS, partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
-import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
+import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import {
@@ -38,12 +40,21 @@ export default function ProfileDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // What is typed in the date boxes, kept apart from `details` because a
+  // half-typed date is not one yet — see `setDate`.
+  const [birthParts, setBirthParts] = useState<DateParts>(EMPTY_DATE_PARTS);
+  const [injuryParts, setInjuryParts] = useState<DateParts>(EMPTY_DATE_PARTS);
 
   useEffect(() => {
     if (account.status !== 'member') return;
     void loadDetails().then((result) => {
-      if (result.ok) setDetails(result.details);
-      else setError(result.error);
+      if (result.ok) {
+        setDetails(result.details);
+        setBirthParts(partsFromIso(result.details.birthDate));
+        setInjuryParts(
+          partsFromIso(result.details.injuryDate, result.details.injuryDatePrecision ?? 'day'),
+        );
+      } else setError(result.error);
       setLoading(false);
     });
   }, [account.status]);
@@ -160,6 +171,14 @@ export default function ProfileDetailsPage() {
   }
 
   const age = details ? ageFrom(details.birthDate) : null;
+  const birthReading = readDate(birthParts, { needs: 'day' });
+  const injuryReading = readDate(injuryParts, { needs: 'year' });
+  // Save waits for a birthday the club accepts and for an injury date that is
+  // finished or left empty. Saving a half-typed one would either keep the old
+  // date while showing a new one or wipe it, and neither is what was asked.
+  const injuryReady = injuryReading.kind === 'date' || injuryReading.kind === 'empty';
+  const canSave =
+    !saving && !loading && details !== null && isAdult(details.birthDate) && injuryReady;
 
   return (
     // A form, so Enter saves — the same as onboarding. Somebody who learns the
@@ -168,7 +187,7 @@ export default function ProfileDetailsPage() {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (!saving && !loading && details && isAdult(details.birthDate)) submit();
+          if (canSave) submit();
         }}
         className="flex min-h-0 flex-1 flex-col"
       >
@@ -286,17 +305,27 @@ export default function ProfileDetailsPage() {
                 />
               </Field>
 
-              <Field label="Birthday" htmlFor="d-birthday">
-                <Input
+              <Field label="Birthday" labelId="d-birthday-label">
+                <DateFields
                   id="d-birthday"
-                  type="date"
-                  max={latestAdultBirthDate()}
-                  value={details.birthDate}
-                  onChange={(v) => {
-                    set({ birthDate: v });
+                  labelledBy="d-birthday-label"
+                  order={BIRTHDAY_ORDER}
+                  birthday
+                  parts={birthParts}
+                  reading={birthReading}
+                  onChange={(next) => {
+                    setBirthParts(next);
+                    const read = readDate(next, { needs: 'day' });
+                    set({ birthDate: read.kind === 'date' ? read.iso : '' });
                   }}
                 />
-                {!isAdult(details.birthDate) ? (
+                {birthReading.kind === 'invalid' ? null : birthReading.kind !== 'date' ? (
+                  <p className="mt-1.5 text-[0.75rem] text-grey">
+                    {birthReading.kind === 'partial'
+                      ? birthReading.need
+                      : 'Add the month, day and year.'}
+                  </p>
+                ) : !isAdult(details.birthDate) ? (
                   <p
                     role="alert"
                     className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]"
@@ -305,7 +334,7 @@ export default function ProfileDetailsPage() {
                   </p>
                 ) : age !== null ? (
                   <p className="mt-1.5 text-[0.75rem] text-grey">
-                    Members see {age}, never the date itself.
+                    {dateLabel(details.birthDate, 'day')}. Members see {age}, never the date itself.
                   </p>
                 ) : null}
               </Field>
@@ -357,28 +386,36 @@ export default function ProfileDetailsPage() {
 
               <Field
                 label="When were you injured?"
-                htmlFor="d-injury"
+                labelId="d-injury-label"
                 declined={details.declined.includes('injuryDate')}
                 onToggleDecline={() => {
                   toggleDecline('injuryDate');
                 }}
               >
-                <Input
+                <DateFields
                   id="d-injury"
-                  type="date"
-                  value={details.injuryDate ?? ''}
-                  onChange={(v) => {
-                    set({
-                      injuryDate: v || null,
-                      // Editing here gives a full date, so the precision follows.
-                      injuryDatePrecision: v ? 'day' : null,
-                    });
+                  labelledBy="d-injury-label"
+                  hint="The year on its own is a complete answer."
+                  order={YEAR_FIRST_ORDER}
+                  parts={injuryParts}
+                  reading={injuryReading}
+                  onChange={(next) => {
+                    setInjuryParts(next);
+                    const read = readDate(next, { needs: 'year' });
+                    // Only a finished date or a cleared one is recorded; one
+                    // still being typed leaves the record alone and holds Save.
+                    if (read.kind === 'date') {
+                      set({ injuryDate: read.iso, injuryDatePrecision: read.precision });
+                    } else if (read.kind === 'empty') {
+                      set({ injuryDate: null, injuryDatePrecision: null });
+                    }
                   }}
                 />
-                {details.injuryDatePrecision === 'year' && details.injuryDate ? (
+                {injuryReading.kind === 'partial' ? (
+                  <p className="mt-1.5 text-[0.75rem] text-grey">{injuryReading.need}</p>
+                ) : injuryReading.kind === 'date' ? (
                   <p className="mt-1.5 text-[0.75rem] text-grey">
-                    You gave {details.injuryDate.slice(0, 4)} only. Changing this records an exact
-                    date.
+                    {dateLabel(injuryReading.iso, injuryReading.precision)}
                   </p>
                 ) : null}
               </Field>
@@ -436,7 +473,7 @@ export default function ProfileDetailsPage() {
           ) : null}
           <button
             type="submit"
-            disabled={saving || loading || !details || !isAdult(details.birthDate)}
+            disabled={!canSave}
             className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi disabled:opacity-40 disabled:hover:bg-action"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}
@@ -463,12 +500,15 @@ export default function ProfileDetailsPage() {
 function Field({
   label,
   htmlFor,
+  labelId,
   declined,
   onToggleDecline,
   children,
 }: {
   label: string;
   htmlFor?: string;
+  /** For a group of controls, which name themselves by pointing at the label. */
+  labelId?: string;
   /** Absent where the field cannot be declined at all. */
   declined?: boolean;
   onToggleDecline?: () => void;
@@ -482,7 +522,9 @@ function Field({
             {label}
           </label>
         ) : (
-          <span className="font-bold text-[0.8125rem] text-ink">{label}</span>
+          <span id={labelId} className="font-bold text-[0.8125rem] text-ink">
+            {label}
+          </span>
         )}
         {onToggleDecline ? (
           <button
@@ -513,16 +555,12 @@ const PHOTO_ALT_MAX = 200;
 
 function Input({
   id,
-  type,
-  max,
   maxLength,
   describedBy,
   value,
   onChange,
 }: {
   id: string;
-  type?: string;
-  max?: string;
   maxLength?: number;
   describedBy?: string;
   value: string;
@@ -531,8 +569,6 @@ function Input({
   return (
     <input
       id={id}
-      type={type}
-      max={max}
       maxLength={maxLength}
       aria-describedby={describedBy}
       value={value}

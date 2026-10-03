@@ -54,7 +54,7 @@ export function isNewlyInjured(member: InjuryDated, now?: Date): boolean | null 
   return months === null ? null : months < 12;
 }
 
-const MONTHS = [
+export const MONTHS = [
   'January',
   'February',
   'March',
@@ -69,16 +69,21 @@ const MONTHS = [
   'December',
 ];
 
+/** A date in words at exactly the precision it was given, never more. */
+export function dateLabel(iso: string, precision: DatePrecision): string | null {
+  const [y, m, d] = iso.split('-');
+  if (!y) return null;
+  if (precision === 'year') return y;
+  const monthName = MONTHS[Number(m) - 1];
+  if (!monthName) return y;
+  if (precision === 'month') return `${monthName} ${y}`;
+  return `${monthName} ${Number(d)}, ${y}`;
+}
+
 /** The injury date at exactly the precision it was given, never more. */
 export function injuryDateLabel(member: InjuryDated): string | null {
   if (!member.injuryDate || !member.injuryDatePrecision) return null;
-  const [y, m, d] = member.injuryDate.split('-');
-  if (!y) return null;
-  if (member.injuryDatePrecision === 'year') return y;
-  const monthName = MONTHS[Number(m) - 1];
-  if (!monthName) return y;
-  if (member.injuryDatePrecision === 'month') return `${monthName} ${y}`;
-  return `${monthName} ${Number(d)}, ${y}`;
+  return dateLabel(member.injuryDate, member.injuryDatePrecision);
 }
 
 /** "3 years post-injury", or null when there is no date to say it from. */
@@ -112,16 +117,4 @@ export const MINIMUM_AGE = 18;
 export function isAdult(birthDate: string | null, now?: Date): boolean {
   const age = ageFrom(birthDate, now);
   return age !== null && age >= MINIMUM_AGE;
-}
-
-/**
- * The latest birth date that is old enough, as an ISO date — for the `max` on
- * a date input. Computed rather than hard-coded, because a year written into
- * the markup is correct for about twelve months.
- */
-export function latestAdultBirthDate(now: Date = new Date()): string {
-  const d = new Date(
-    Date.UTC(now.getUTCFullYear() - MINIMUM_AGE, now.getUTCMonth(), now.getUTCDate()),
-  );
-  return d.toISOString().slice(0, 10);
 }

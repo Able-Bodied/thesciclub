@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -108,7 +108,10 @@ describe('Your details', () => {
   it('loads what onboarding recorded, so a mistake can be seen', async () => {
     renderDetails();
     expect(await screen.findByLabelText('Name')).toHaveValue('Nicole');
-    expect(screen.getByLabelText('Birthday')).toHaveValue('1998-04-02');
+    const birthday = within(screen.getByRole('group', { name: 'Birthday' }));
+    expect(birthday.getByLabelText('Month')).toHaveValue('4');
+    expect(birthday.getByLabelText('Day')).toHaveValue('2');
+    expect(birthday.getByLabelText('Year')).toHaveValue('1998');
     expect(screen.getByLabelText('City or town')).toHaveValue('Santa Clara');
     expect(screen.getByLabelText('Level of injury')).toHaveValue('C6');
   });
@@ -139,9 +142,91 @@ describe('Your details', () => {
     expect(await screen.findByText(/never the date itself/)).toBeInTheDocument();
   });
 
-  it('warns that editing a year-only injury date records an exact one', async () => {
+  // Somebody who said "2016" is shown 2016, and saving something else on the
+  // page does not turn it into a January 1st they never gave.
+  it('keeps a year-only injury date to the year', async () => {
     renderDetails();
-    expect(await screen.findByText(/Changing this records an exact date/)).toBeInTheDocument();
+    const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
+    expect(injury.getByLabelText('Year')).toHaveValue('2016');
+    expect(injury.getByLabelText('Month')).toHaveValue('');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(api.saves[0]?.details.injuryDatePrecision).toBe('year');
+    });
+    expect(api.saves[0]?.details.injuryDate).toBe('2016-01-01');
+  });
+
+  it('records a month added to the injury date as exactly that much', async () => {
+    renderDetails();
+    const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
+    await userEvent.type(injury.getByLabelText('Month'), 'March');
+    expect(screen.getByText('March 2016')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(api.saves[0]?.details.injuryDate).toBe('2016-03-01');
+    });
+    expect(api.saves[0]?.details.injuryDatePrecision).toBe('month');
+  });
+
+  it('records no injury date once the boxes are cleared', async () => {
+    renderDetails();
+    const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
+    await userEvent.clear(injury.getByLabelText('Year'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(api.saves[0]?.details.injuryDate).toBeNull();
+    });
+    expect(api.saves[0]?.details.injuryDatePrecision).toBeNull();
+  });
+
+  // Saving half a year would either keep the old date under a new one on
+  // screen or wipe it; neither was asked for.
+  it('holds Save while the injury year is half typed, and says what is missing', async () => {
+    renderDetails();
+    const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
+    await userEvent.clear(injury.getByLabelText('Year'));
+    await userEvent.type(injury.getByLabelText('Year'), '20');
+    expect(screen.getByText('Add the year, in four digits.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+
+  // Mid-typing is not a mistake, so it is said quietly, not as an alert about
+  // the club being 18+.
+  it('holds Save while the birthday is half typed, without calling it under-age', async () => {
+    renderDetails();
+    const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
+    await userEvent.clear(birthday.getByLabelText('Year'));
+    await userEvent.type(birthday.getByLabelText('Year'), '19');
+    expect(screen.getByText(/Add the month, day and year/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+
+  it('moves from a full injury year to the month', async () => {
+    renderDetails();
+    const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
+    await userEvent.clear(injury.getByLabelText('Year'));
+    await userEvent.type(injury.getByLabelText('Year'), '2013');
+    expect(injury.getByLabelText('Month')).toHaveFocus();
+  });
+
+  // Somebody correcting the start of a box is not done with it.
+  it('stays put while a box is edited in the middle', async () => {
+    renderDetails();
+    const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
+    const day = birthday.getByLabelText('Day');
+    await userEvent.type(day, '1', { initialSelectionStart: 0, initialSelectionEnd: 0 });
+    expect(day).toHaveValue('12');
+    expect(day).toHaveFocus();
+  });
+
+  it('still refuses a corrected birthday under 18', async () => {
+    renderDetails();
+    const birthday = within(await screen.findByRole('group', { name: 'Birthday' }));
+    await userEvent.clear(birthday.getByLabelText('Year'));
+    await userEvent.type(birthday.getByLabelText('Year'), String(new Date().getFullYear() - 10));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/The club is 18\+/);
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
   });
 
   it('does not carry the deck switch, which lives on Me', async () => {

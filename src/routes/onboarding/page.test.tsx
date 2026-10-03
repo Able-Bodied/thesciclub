@@ -159,6 +159,22 @@ async function reachCodeStep() {
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 }
 
+/** Fills the birthday's three boxes from an ISO date, all at once. */
+async function enterBirthday(iso: string) {
+  const [year = '', month = '', day = ''] = iso.split('-');
+  fireEvent.change(await screen.findByLabelText('Month'), { target: { value: month } });
+  fireEvent.change(screen.getByLabelText('Day'), { target: { value: day } });
+  fireEvent.change(screen.getByLabelText('Year'), { target: { value: year } });
+}
+
+/** Types an ISO date into the birthday's boxes a key at a time, as a person would. */
+async function typeBirthday(iso: string) {
+  const [year = '', month = '', day = ''] = iso.split('-');
+  await userEvent.type(await screen.findByLabelText('Month'), month);
+  await userEvent.type(screen.getByLabelText('Day'), day);
+  await userEvent.type(screen.getByLabelText('Year'), year);
+}
+
 beforeEach(() => {
   calls.order = [];
   calls.otpError = null;
@@ -326,8 +342,89 @@ describe('the two doors', () => {
 
   it('hands the questions to somebody who signed in but never finished joining', async () => {
     calls.existingMember = null;
+    await signInWithNewNumber();
+    await agreeToBoth();
+    expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
+  });
+});
+
+async function signInWithNewNumber() {
+  renderJoin();
+  await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+  await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+  await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+}
+
+async function agreeToBoth() {
+  await screen.findByText('Before you join');
+  await agree();
+  await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+}
+
+// The sign-in door asks for no ticks. Somebody new who came through it was
+// handed the questions with neither box ever shown, until the owner found it
+// (2026-10-01): joining asks for both, whichever door.
+describe('joining through the sign-in door', () => {
+  const smsBox = () => screen.getByRole('checkbox', { name: /Text me a one-time sign-in code/ });
+  const termsBox = () => screen.getByRole('checkbox', { name: /I agree to the Terms of Service/ });
+
+  it('shows both boxes, unticked, before any question', async () => {
+    await signInWithNewNumber();
+    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(smsBox()).not.toBeChecked();
+    expect(termsBox()).not.toBeChecked();
+    expect(screen.queryByText(/What should people call you/i)).toBeNull();
+  });
+
+  it('goes no further on one tick, and says why', async () => {
+    await signInWithNewNumber();
+    await screen.findByText('Before you join');
+    await userEvent.click(smsBox());
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByText(/Both boxes need a tick before you go on/)).toBeInTheDocument();
+    await userEvent.keyboard('{Enter}');
+    expect(screen.queryByText(/What should people call you/i)).toBeNull();
+  });
+
+  it('offers no way out but the ticks, not even Finish later', async () => {
+    await signInWithNewNumber();
+    await screen.findByText('Before you join');
+    expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+  });
+
+  it('hands a seeded profile to claim once both are ticked', async () => {
+    calls.claimableId = ajay.id;
+    calls.claimable = ajay;
+    await signInWithNewNumber();
+    await agreeToBoth();
+    expect(await screen.findByText('Is this you?')).toBeInTheDocument();
+  });
+
+  it('still lets a member signing in straight through, with no boxes', async () => {
+    calls.existingMember = { id: 'u1' };
+    await signInWithNewNumber();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Before you join')).toBeNull();
+  });
+
+  it('turns away a number not on the list before asking for ticks', async () => {
+    calls.invited = false;
+    await signInWithNewNumber();
+    await waitFor(() => {
+      expect(calls.order).toContain('my_invite_status');
+    });
+    expect(screen.queryByText('Before you join')).toBeNull();
+  });
+
+  // Somebody who ticked both on the join door and then switched doors has
+  // already agreed, and is not asked twice.
+  it('does not ask again of somebody who ticked both before switching doors', async () => {
     renderJoin();
-    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await agree();
+    await userEvent.click(screen.getByRole('button', { name: 'Already a member? Sign in' }));
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
@@ -450,22 +547,113 @@ describe('the club is adults only', () => {
 
   it('explains rather than just disabling, when the date is under 18', async () => {
     await reachBirthday();
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    await userEvent.clear(input);
-    await userEvent.type(input, yearsAgo(15));
+    await typeBirthday(yearsAgo(15));
     expect(await screen.findByText(/The SCI Club is for adults/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   it('lets an adult through, and shows the age it will publish', async () => {
     await reachBirthday();
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    await userEvent.clear(input);
-    await userEvent.type(input, yearsAgo(30));
+    await typeBirthday(yearsAgo(30));
     expect(await screen.findByText(/never your birthday/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+});
+
+// Typed boxes, not a calendar: many members use voice control, a mouth stick
+// or a head pointer, and a calendar's small cells and long paging are hardest
+// of all for them. See lib/date-parts.ts.
+describe('the birthday boxes', () => {
+  async function reachBirthday() {
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Sam');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('When is your birthday?');
+  }
+
+  it('reads the date back in words, the month typed as its name', async () => {
+    await reachBirthday();
+    await userEvent.type(screen.getByLabelText('Month'), 'may');
+    await userEvent.type(screen.getByLabelText('Day'), '27');
+    await userEvent.type(screen.getByLabelText('Year'), '1996');
+    expect(await screen.findByText('May 27, 1996')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  // Dictation and a paste both arrive as one insertion, not key by key.
+  it('spreads a whole date said into one box across all three', async () => {
+    await reachBirthday();
+    await userEvent.click(screen.getByLabelText('Month'));
+    await userEvent.paste('5/27/1996');
+    expect(screen.getByLabelText('Month')).toHaveValue('5');
+    expect(screen.getByLabelText('Day')).toHaveValue('27');
+    expect(screen.getByLabelText('Year')).toHaveValue('1996');
+  });
+
+  it('says why a date that does not exist goes no further', async () => {
+    await reachBirthday();
+    await enterBirthday('1996-04-31');
+    expect(await screen.findByRole('alert')).toHaveTextContent('April 1996 has 30 days.');
+    expect(screen.getByLabelText('Day')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  // At the owner's word: a box filled is a tap saved.
+  it('moves on by itself as each box fills, and stops at the last', async () => {
+    await reachBirthday();
+    await userEvent.click(screen.getByLabelText('Month'));
+    await userEvent.keyboard('05');
+    expect(screen.getByLabelText('Day')).toHaveFocus();
+    await userEvent.keyboard('27');
+    expect(screen.getByLabelText('Year')).toHaveFocus();
+    await userEvent.keyboard('1996');
+    expect(screen.getByLabelText('Year')).toHaveFocus();
+    expect(await screen.findByText('May 27, 1996')).toBeInTheDocument();
+  });
+
+  it('waits after a 1, which may be heading for 12', async () => {
+    await reachBirthday();
+    await userEvent.type(screen.getByLabelText('Month'), '1');
+    expect(screen.getByLabelText('Month')).toHaveFocus();
+    await userEvent.keyboard('2');
+    expect(screen.getByLabelText('Day')).toHaveFocus();
+  });
+
+  it('moves on from a single digit nothing could follow', async () => {
+    await reachBirthday();
+    await userEvent.type(screen.getByLabelText('Month'), '5');
+    expect(screen.getByLabelText('Day')).toHaveFocus();
+  });
+
+  // The problem is said beside the cursor, not one box behind it.
+  it('stays on a box that is wrong', async () => {
+    await reachBirthday();
+    await userEvent.type(screen.getByLabelText('Month'), '13');
+    expect(screen.getByLabelText('Month')).toHaveFocus();
+    expect(screen.getByRole('alert')).toHaveTextContent(/1 to 12/);
+  });
+
+  it('goes back a box on Backspace in an empty one, so a slip can be fixed', async () => {
+    await reachBirthday();
+    await userEvent.type(screen.getByLabelText('Month'), '05');
+    expect(screen.getByLabelText('Day')).toHaveFocus();
+    await userEvent.keyboard('{Backspace}');
+    expect(screen.getByLabelText('Month')).toHaveFocus();
+    await userEvent.keyboard('{Backspace}6');
+    expect(screen.getByLabelText('Month')).toHaveValue('06');
+  });
+
+  it('lets a saved birthday be filled in for them', async () => {
+    await reachBirthday();
+    expect(screen.getByLabelText('Month')).toHaveAttribute('autocomplete', 'bday-month');
+    expect(screen.getByLabelText('Day')).toHaveAttribute('autocomplete', 'bday-day');
+    expect(screen.getByLabelText('Year')).toHaveAttribute('autocomplete', 'bday-year');
+  });
+
+  it('names the three boxes together as the birthday', async () => {
+    await reachBirthday();
+    expect(screen.getByRole('group', { name: 'Your birthday' })).toBeInTheDocument();
   });
 });
 
@@ -508,9 +696,7 @@ describe('finishing later', () => {
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
   }
 
@@ -540,9 +726,7 @@ describe('finishing later', () => {
     await reachBirthdayStep();
     expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
 
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
 
     expect(await screen.findByRole('button', { name: /Finish later/ })).toBeInTheDocument();
   });
@@ -551,18 +735,14 @@ describe('finishing later', () => {
   // refuses, and the refusal would arrive as a sentence about a trigger.
   it('stays hidden for a birthday the club cannot accept', async () => {
     await reachBirthdayStep();
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '2020-01-01' } });
+    await enterBirthday('2020-01-01');
 
     expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
   });
 
   it('enters the club straight from the birthday', async () => {
     await reachBirthdayStep();
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
 
     await waitFor(() => {
@@ -606,9 +786,7 @@ describe('a photograph the club cannot hold', () => {
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    const birthday = document.querySelector('#birthday');
-    if (!(birthday instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(birthday, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -680,20 +858,21 @@ describe('a photograph the club cannot hold', () => {
   });
 });
 
-describe('claiming a seeded profile', () => {
-  const ajay = {
-    id: 'c85c10bf-0226-394f-8c91-2a2ffc40a147',
-    display_name: 'Ajay',
-    photo_path: null,
-    photo_alt: null,
-    city: 'San Jose',
-    state: 'CA',
-    level_range: 'C5–C8',
-    exact_level: 'C7',
-    completeness: 'Incomplete',
-    affiliations: ['NorCal SCI'],
-  };
+/** A seeded profile an invite can claim. */
+const ajay = {
+  id: 'c85c10bf-0226-394f-8c91-2a2ffc40a147',
+  display_name: 'Ajay',
+  photo_path: null,
+  photo_alt: null,
+  city: 'San Jose',
+  state: 'CA',
+  level_range: 'C5–C8',
+  exact_level: 'C7',
+  completeness: 'Incomplete',
+  affiliations: ['NorCal SCI'],
+};
 
+describe('claiming a seeded profile', () => {
   // The bug: this step never appeared. The profile was read from
   // `browse_members`, which requires the viewer to be an active member, and
   // somebody part-way through onboarding is not one — so it resolved to
@@ -727,9 +906,7 @@ describe('claiming a seeded profile', () => {
     await userEvent.click(screen.getByRole('button', { name: "Yes, that's me" }));
     expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
 
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // And from the next screen they are one link away from the club, with
@@ -768,12 +945,7 @@ describe('claiming a seeded profile', () => {
 
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Sam');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    const input = await waitFor(() => {
-      const el = document.querySelector('#birthday');
-      if (!(el instanceof HTMLInputElement)) throw new Error('no birthday input');
-      return el;
-    });
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
 
@@ -804,9 +976,7 @@ describe('steps that move on by themselves', () => {
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
   }
 
@@ -847,9 +1017,7 @@ describe('notifications, as they enter', () => {
     await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
     await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    const input = document.querySelector('#birthday');
-    if (!(input instanceof HTMLInputElement)) throw new Error('no birthday input');
-    fireEvent.change(input, { target: { value: '1990-04-02' } });
+    await enterBirthday('1990-04-02');
     await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
   }
 

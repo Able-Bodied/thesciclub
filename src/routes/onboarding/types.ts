@@ -1,3 +1,4 @@
+import { readDate } from '@/lib/date-parts';
 import { isAdult } from '@/lib/injury';
 import { isCompletePhone } from '@/lib/phone';
 import type { Completeness, DatePrecision, ExactLevel, LevelRange } from '@/types/domain';
@@ -14,7 +15,15 @@ export interface OnboardingData {
   phone: string;
   code: string;
   displayName: string;
+  /**
+   * The ISO date, or '' until the three boxes below make a real one. Kept
+   * beside them so everything past the birthday step reads one value.
+   */
   birthDate: string;
+  /** Exactly what was typed — see `lib/date-parts.ts`. */
+  birthMonth: string;
+  birthDay: string;
+  birthYear: string;
   exactLevel: ExactLevel | null;
   completeness: Completeness;
   /** Stored as a date; asked as a year, refined only if somebody wants to. */
@@ -57,6 +66,9 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   code: '',
   displayName: '',
   birthDate: '',
+  birthMonth: '',
+  birthDay: '',
+  birthYear: '',
   exactLevel: null,
   completeness: 'Do not know',
   injuryYear: '',
@@ -75,14 +87,16 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
 
 /**
  * `claim` appears only when the invite points at a seeded profile, and `blocked`
- * only when the verified number turns out not to be on the list. Neither is a
- * step somebody walks through in order, so neither is counted in the progress
- * bar.
+ * only when the verified number turns out not to be on the list. `agree`
+ * appears only for somebody who came through the sign-in door and turned out
+ * to be joining. None is a step somebody walks through in order, so none is
+ * counted in the progress bar.
  */
 export const STEPS = [
   'welcome',
   'phone',
   'code',
+  'agree',
   'claim',
   'name',
   'birthday',
@@ -107,17 +121,16 @@ export function stepNumber(step: Step): number | null {
 export function injuryDateOf(
   data: OnboardingData,
 ): { date: string; precision: DatePrecision } | null {
-  const year = data.injuryYear.trim();
-  if (!/^\d{4}$/.test(year)) return null;
+  const reading = readDate(injuryPartsOf(data), { needs: 'year' });
+  return reading.kind === 'date' ? { date: reading.iso, precision: reading.precision } : null;
+}
 
-  const month = data.injuryMonth.trim();
-  if (!month) return { date: `${year}-01-01`, precision: 'year' };
+export function injuryPartsOf(data: OnboardingData) {
+  return { year: data.injuryYear, month: data.injuryMonth, day: data.injuryDay };
+}
 
-  const mm = month.padStart(2, '0');
-  const day = data.injuryDay.trim();
-  if (!day) return { date: `${year}-${mm}-01`, precision: 'month' };
-
-  return { date: `${year}-${mm}-${day.padStart(2, '0')}`, precision: 'day' };
+export function birthPartsOf(data: OnboardingData) {
+  return { year: data.birthYear, month: data.birthMonth, day: data.birthDay };
 }
 
 /** Whether the current step has enough to move on. */
@@ -131,6 +144,8 @@ export function canAdvance(step: Step, data: OnboardingData, signIn = false): bo
       return isCompletePhone(data.phone) && (signIn || (data.smsConsent && data.termsAgreed));
     case 'code':
       return data.code.replace(/\D/g, '').length === 6;
+    case 'agree':
+      return data.smsConsent && data.termsAgreed;
     case 'name':
       return data.displayName.trim().length > 0;
     case 'birthday':

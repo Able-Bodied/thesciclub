@@ -1,12 +1,14 @@
 import { Loader2, LocateFixed } from 'lucide-react';
 import { useState } from 'react';
+import { BIRTHDAY_ORDER, DateFields, YEAR_FIRST_ORDER } from '@/components/date-fields';
+import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
-import { ageFrom, isAdult, latestAdultBirthDate, MINIMUM_AGE } from '@/lib/injury';
+import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import { usePhotoUrl } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { ClaimableProfile, OnboardingData } from '@/routes/onboarding/types';
-import { injuryDateOf } from '@/routes/onboarding/types';
+import { birthPartsOf, injuryDateOf, injuryPartsOf } from '@/routes/onboarding/types';
 import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
 
 /**
@@ -71,8 +73,31 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
   );
 }
 
+/**
+ * The two boxes again, for somebody who came through the sign-in door with a
+ * number that is not a member yet.
+ *
+ * The sign-in line agrees to the code text, and that text has been sent. But
+ * this is joining, and joining asks for both ticks (the Terms say so), so the
+ * questions wait for them. Until 2026-10-01 they did not: a new member could
+ * tap "I already have an account" and be handed the questions with neither box
+ * ever shown (the owner found it).
+ */
+export function AgreeStep({ data, set }: StepProps) {
+  return (
+    <>
+      <Question>Before you join</Question>
+      <Sub>
+        This number is not a member yet, so this is joining rather than signing in. Joining asks for
+        both of these.
+      </Sub>
+      <JoinConsent data={data} set={set} before="you go on" />
+    </>
+  );
+}
+
 /** The join door's two boxes, and why Continue waits for them. */
-function JoinConsent({ data, set }: StepProps) {
+function JoinConsent({ data, set, before = 'the code is sent' }: StepProps & { before?: string }) {
   return (
     <>
       <ConsentBox
@@ -99,8 +124,8 @@ function JoinConsent({ data, set }: StepProps) {
           in, so it is not the first thing read on an empty screen. */}
       {isCompletePhone(data.phone) && !(data.smsConsent && data.termsAgreed) ? (
         <Fine>
-          Both boxes need a tick before the code is sent: the club signs you in by text, and using
-          it means agreeing to its terms.
+          Both boxes need a tick before {before}: the club signs you in by text, and using it means
+          agreeing to its terms.
         </Fine>
       ) : null}
     </>
@@ -230,9 +255,22 @@ export function NameStep({ data, set }: StepProps) {
 }
 
 export function BirthdayStep({ data, set }: StepProps) {
+  const monthRef = useAutoFocus();
+  const parts = birthPartsOf(data);
+  const reading = readDate(parts, { needs: 'day' });
   const age = ageFrom(data.birthDate || null);
   const entered = data.birthDate !== '';
   const adult = isAdult(data.birthDate || null);
+
+  function onChange(next: DateParts) {
+    const read = readDate(next, { needs: 'day' });
+    set({
+      birthMonth: next.month,
+      birthDay: next.day,
+      birthYear: next.year,
+      birthDate: read.kind === 'date' ? read.iso : '',
+    });
+  }
 
   return (
     <>
@@ -241,17 +279,19 @@ export function BirthdayStep({ data, set }: StepProps) {
         Age matters for matching — a 28-year-old and a 68-year-old with the same injury are living
         different days. The club is {MINIMUM_AGE}+.
       </Sub>
-      <Field
-        id="birthday"
-        type="date"
-        // Computed, not hard-coded: a year written into the markup is right for
-        // about twelve months.
-        max={latestAdultBirthDate()}
-        value={data.birthDate}
-        onChange={(e) => {
-          set({ birthDate: e.target.value });
-        }}
-      />
+      <div className="mt-5">
+        <DateFields
+          id="birthday"
+          legend="Your birthday"
+          hint="For example, 5 27 1996."
+          order={BIRTHDAY_ORDER}
+          birthday
+          parts={parts}
+          reading={reading}
+          onChange={onChange}
+          firstRef={monthRef}
+        />
+      </div>
       {entered && !adult ? (
         <div className="mt-3.5 rounded-[17px] border border-destructive/30 bg-destructive/5 p-3.5 text-[0.8375rem] text-ink2 leading-[1.5]">
           <b className="font-bold text-ink">The SCI Club is for adults.</b> Everything inside it is
@@ -264,8 +304,11 @@ export function BirthdayStep({ data, set }: StepProps) {
           <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-action font-extrabold font-head text-[0.9375rem] text-white">
             {age}
           </span>
+          {/* The date read back in words, so it is checked at a glance rather
+              than box by box. */}
           <span className="text-[0.8375rem] text-ink2 leading-[1.45]">
-            Other members see your age, never your birthday.
+            <b className="text-ink">{dateLabel(data.birthDate, 'day')}</b>. Other members see your
+            age, never your birthday.
           </span>
         </div>
       ) : null}
@@ -331,65 +374,30 @@ export function InjuryStep({ data, set }: StepProps) {
         ))}
       </div>
 
-      <h2 className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+      <h2
+        id="injury-date-heading"
+        className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+      >
         When were you injured?
       </h2>
-      <p className="text-[0.78125rem] text-grey leading-[1.5]">
-        The year on its own is a complete answer. Add more only if you want to.
-      </p>
-      <div className="mt-2.5 flex items-end gap-2">
-        <div className="flex-1">
-          <label htmlFor="injury-year" className="text-[0.75rem] text-grey">
-            Year
-          </label>
-          <Field
-            ref={injuryYearRef}
-            id="injury-year"
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="2013"
-            value={data.injuryYear}
-            onChange={(e) => {
-              set({ injuryYear: e.target.value.replace(/\D/g, '') });
-            }}
-          />
-        </div>
-        <div className="w-[88px]">
-          <label htmlFor="injury-month" className="text-[0.75rem] text-grey">
-            Month
-          </label>
-          <Field
-            id="injury-month"
-            inputMode="numeric"
-            maxLength={2}
-            placeholder="—"
-            value={data.injuryMonth}
-            onChange={(e) => {
-              set({ injuryMonth: e.target.value.replace(/\D/g, '') });
-            }}
-          />
-        </div>
-        <div className="w-[88px]">
-          <label htmlFor="injury-day" className="text-[0.75rem] text-grey">
-            Day
-          </label>
-          <Field
-            id="injury-day"
-            inputMode="numeric"
-            maxLength={2}
-            placeholder="—"
-            value={data.injuryDay}
-            onChange={(e) => {
-              set({ injuryDay: e.target.value.replace(/\D/g, '') });
-            }}
-          />
-        </div>
-      </div>
+      <DateFields
+        id="injury"
+        labelledBy="injury-date-heading"
+        hint="The year on its own is a complete answer. Add more only if you want to."
+        order={YEAR_FIRST_ORDER}
+        parts={injuryPartsOf(data)}
+        reading={readDate(injuryPartsOf(data), { needs: 'year' })}
+        onChange={(next) => {
+          set({ injuryYear: next.year, injuryMonth: next.month, injuryDay: next.day });
+        }}
+        firstRef={injuryYearRef}
+      />
 
-      {injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (
+      {injury && injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (
         <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
-          You were injured at <b className="text-ink">{injuredAt}</b>. We use that to put you next
-          to people injured around the same age, not just at the same level.
+          <b className="text-ink">{dateLabel(injury.date, injury.precision)}</b>: you were injured
+          at <b className="text-ink">{injuredAt}</b>. We use that to put you next to people injured
+          around the same age, not just at the same level.
         </div>
       ) : null}
     </>

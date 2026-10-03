@@ -10,6 +10,7 @@ import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, StepFrame } from '@/routes/onboarding/chrome';
 import { NotificationsStep } from '@/routes/onboarding/notifications-step';
 import {
+  AgreeStep,
   BirthdayStep,
   CityStep,
   ClaimStep,
@@ -188,6 +189,9 @@ export default function OnboardingPage() {
       return;
     }
 
+    // The sign-in door asked for no ticks, and this is a join. See AgreeStep.
+    const agreed = data.smsConsent && data.termsAgreed;
+
     if (row.claimable_member_id) {
       // Not `browse_members`. That view requires the viewer to be an active
       // member — correctly, since 20260911110000 — and somebody part-way
@@ -210,11 +214,11 @@ export default function OnboardingPage() {
           completeness: profile.completeness,
           affiliations: profile.affiliations ?? [],
         });
-        setStep('claim');
+        setStep(agreed ? 'claim' : 'agree');
         return;
       }
     }
-    setStep('name');
+    setStep(agreed ? 'name' : 'agree');
   }
 
   /**
@@ -299,6 +303,7 @@ export default function OnboardingPage() {
     phone: 'welcome',
     code: 'phone',
     // No way back past a verified number: the account already exists.
+    agree: undefined,
     claim: undefined,
     name: undefined,
     birthday: 'name',
@@ -332,6 +337,11 @@ export default function OnboardingPage() {
       return void requestCode();
     }
     if (step === 'code') return void verifyCode();
+    // On to whatever verifying found: the claim, if there is one to offer.
+    if (step === 'agree') {
+      setStep(claimable ? 'claim' : 'name');
+      return;
+    }
     if (step === 'photo') return void finish();
     const order: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
     const next = order[order.indexOf(step) + 1];
@@ -485,6 +495,7 @@ export default function OnboardingPage() {
           }}
         />
       ) : null}
+      {step === 'agree' ? <AgreeStep data={data} set={set} /> : null}
       {step === 'claim' && claimable ? (
         <ClaimStep
           profile={claimable}

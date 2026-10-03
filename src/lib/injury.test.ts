@@ -4,7 +4,6 @@ import {
   injuryDateLabel,
   isAdult,
   isNewlyInjured,
-  latestAdultBirthDate,
   timeSinceLabel,
   yearsSinceInjury,
 } from '@/lib/injury';
@@ -119,9 +118,5 @@ describe('the age gate', () => {
   it('refuses a missing date rather than letting it through', () => {
     expect(isAdult(null, NOW)).toBe(false);
     expect(isAdult('', NOW)).toBe(false);
-  });
-
-  it('computes the cut-off date rather than hard-coding a year', () => {
-    expect(latestAdultBirthDate(NOW)).toBe('2008-09-11');
   });
 });
