@@ -33,3 +33,9 @@
     # Nothing here needs a camera, a microphone, or a location beyond the one
     # the location step asks for explicitly.
     Permissions-Policy = "camera=(), microphone=(), geolocation=(self)"
+    # No other site may show the club inside a frame, where it could dress
+    # the sign-in page in its own clothes (an external audit, 2026-10-03,
+    # framed /join from another origin). Nothing embeds the club. The second
+    # header is the same rule for browsers that predate frame-ancestors.
+    Content-Security-Policy = "frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
