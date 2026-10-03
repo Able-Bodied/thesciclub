@@ -25,14 +25,9 @@ wins over this file.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, 98 migrations; check
   with `pnpm exec supabase migration list` (a blank Remote is pending).
   Edge function `push-notify` v2 live.
-- **Checks**: 1,701 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
+- **Checks**: 1,755 tests, `pnpm check` and `pnpm build` clean; 35 SQL probes.
   Known noise: the events tests' `@/lib/events` mock lacks `rsvpSaved`, which
   prints 5 unhandled errors while every test passes.
-- **Not ours, uncommitted**: another session's onboarding and date work is in
-  the working copy (`src/lib/injury*`, `src/lib/date-parts*`,
-  `components/date-fields.tsx`, `onboarding/page|steps|types`,
-  `profile/details*`). Stage your own files by name; never `git add -A`.
-  Its colour classes were already moved to the new roles on 2026-10-03.
 
 ## Open
 
@@ -49,7 +44,8 @@ wins over this file.
    sign-in door's line (`SMS_CONSENT`, `SIGN_IN_CONSENT` in
    `onboarding/steps.tsx`), `/privacy`, `/terms` and
    `public/sms-opt-in/*.png` (retake them from committed code if `/join`
-   changes): change any of them and the registration with it. Its opt-in
+   changes, and compare: on 2026-10-03 they matched byte for byte): change
+   any of them and the registration with it. Its opt-in
    proof field takes 500 characters. The same two boxes also stand between a
    new number that came through the sign-in door and the questions
    (`AgreeStep`). Until texts arrive, members sign in with fixed codes set in
