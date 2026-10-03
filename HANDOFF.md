@@ -132,8 +132,9 @@ wins over this file.
   `MemberAvatar`). `photo_alt` belongs to one picture; a new one clears it.
 - **Colours by role, for light and dark**: `text-emphasis`/`border-emphasis`
   for links, outlines, eyebrows, dots and progress; `bg-action` for filled
-  buttons and selected options; `bg-navy` only for header plates and navy
-  words on a white chip over a photo. `text-navy` or a hex on a card vanishes
+  buttons and selected options; `bg-plate` (and `-chip`, `-edge`, `-hover`)
+  for header bands; `navy` only for navy words on a white chip over a photo.
+  Dark is charcoal with gold, not navy (the owner found navy too blue). `text-navy` or a hex on a card vanishes
   in dark. Every new pair goes in `theme-contrast.test.ts`, both themes. Still
   on the old names, being another session's work in progress on 2026-10-02:
   `onboarding/steps.tsx`, `profile/details.tsx`, `components/date-fields.tsx`.
