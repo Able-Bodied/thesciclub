@@ -14,8 +14,9 @@ wins over this file.
   injury. Vite 8, React 19, TypeScript strict, Tailwind 4, Supabase, Vitest,
   pnpm, Node 24. Live at https://thesciclub.com (Netlify builds `main`;
   Let's Encrypt certificate for the bare domain and www, which redirects).
-  https://thesciclub.netlify.app/ still answers, and the Twilio registration
-  links there. The design mock (`docs/`) was removed 2026-10-03.
+  https://thesciclub.netlify.app/ still answers, and the page sends people on
+  to thesciclub.com (index.html); the Twilio registration links there, so
+  give it thesciclub.com addresses when it is resubmitted. The design mock (`docs/`) was removed 2026-10-03.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`

@@ -1,6 +1,6 @@
-# Netlify serves the club at https://thesciclub.com (www redirects to it), and
-# still answers at thesciclub.netlify.app, which the text-message registration
-# links to. Builds `main`. Until 2026-10-03 the domain served the design mock
+# Netlify serves the club at https://thesciclub.com (www redirects to it). The
+# old thesciclub.netlify.app address still answers, and the page itself sends
+# people on to thesciclub.com (index.html says why it is not a redirect here). Builds `main`. Until 2026-10-03 the domain served the design mock
 # from docs/ on GitHub Pages; that mock is gone (CONTEXT.md, "Working model").
 
 [build]

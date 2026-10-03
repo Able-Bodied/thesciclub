@@ -56,3 +56,13 @@ describe('a shell that has changed shape', () => {
     expect(() => withPage(changed, privacy.title, privacy.Page)).toThrow();
   });
 });
+
+// The old Netlify address sends people to thesciclub.com from inside the page
+// (index.html), and the static pages carry the same shell, so they do too.
+describe('the old Netlify address', () => {
+  it('moves a reader of the static privacy page to thesciclub.com', () => {
+    const html = withPage(shell, privacy.title, privacy.Page);
+    expect(html).toContain("location.hostname === 'thesciclub.netlify.app'");
+    expect(html).toContain("'https://thesciclub.com' + location.pathname");
+  });
+});

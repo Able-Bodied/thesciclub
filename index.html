@@ -16,6 +16,22 @@
     <!-- Member pages are never public (CONTEXT.md). Keep the whole app out of indexes. -->
     <meta name="robots" content="noindex, nofollow" />
     <title>The SCI Club</title>
+    <!-- The club's address is thesciclub.com (2026-10-03). Anybody on the old
+         Netlify address, in a browser or in a Home Screen app installed from
+         it, is moved to the same page there. In the page and not a Netlify
+         redirect: an installed app's service worker answers from its own copy
+         and never sees a server redirect, and redirecting /sw.js across
+         domains would stop that copy from ever updating. The static /privacy
+         and /terms still answer here for checkers that run no script, which
+         the text-message registration's links rely on. Deploy previews have
+         other host names and are left alone. -->
+    <script>
+      if (location.hostname === 'thesciclub.netlify.app') {
+        location.replace(
+          'https://thesciclub.com' + location.pathname + location.search + location.hash,
+        );
+      }
+    </script>
     <!-- Light or dark before the first paint, from the setting on Me → Display
          (src/lib/accessibility.tsx keeps it in step after that). Without this a
          member who chose Dark sees a white flash on every launch. -->
