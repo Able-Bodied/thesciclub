@@ -299,6 +299,30 @@ describe('EventDetailPage', () => {
       expect(screen.getByRole('link', { name: /their site/ })).toBeInTheDocument();
     });
 
+    it('drops a registration link that is not a web address, and uses the event page', () => {
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          registrationUrl: 'javascript:alert(1)',
+          url: 'https://example.org/event',
+        }),
+      ];
+      renderDetail();
+      expect(screen.queryByRole('link', { name: /Register/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /their site/ })).toHaveAttribute(
+        'href',
+        'https://example.org/event',
+      );
+    });
+
+    it('offers no link when neither address is a web address', () => {
+      state.events = [
+        makeEvent({ id: 'rugby', registrationUrl: 'data:text/html,hi', url: 'javascript:void 0' }),
+      ];
+      renderDetail();
+      expect(screen.queryByRole('link', { name: /Register|their site/ })).not.toBeInTheDocument();
+    });
+
     it('opens an outbound link safely', () => {
       state.events = [makeEvent({ id: 'rugby', registrationUrl: 'https://example.org/signup' })];
       renderDetail();

@@ -13,7 +13,7 @@ import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { placeLine } from '@/routes/events/place';
-import { EventDescription } from '@/routes/events/rich-text';
+import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
 /**
@@ -97,6 +97,12 @@ export default function EventDetailPage() {
   const going = status === 'going';
   const interested = status === 'interested';
   const attendees = byEvent.get(event.id) ?? [];
+  // Both addresses come from another organization's website, through the
+  // ingest job, which resolves the registration button's href without asking
+  // what scheme it has. The description's links already pass through safeHref;
+  // these two are links on the same page from the same source.
+  const registerHref = safeHref(event.registrationUrl);
+  const pageHref = safeHref(event.url);
   const goingList = attendees.filter((a) => a.status === 'going');
   const interestedList = attendees.filter((a) => a.status === 'interested');
   const organization = event.organizationId
@@ -212,14 +218,14 @@ export default function EventDetailPage() {
           className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
         />
 
-        {event.registrationUrl || event.url ? (
+        {registerHref || pageHref ? (
           <a
-            href={event.registrationUrl ?? event.url ?? undefined}
+            href={registerHref ?? pageHref ?? undefined}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
           >
-            {event.registrationUrl ? 'Register' : 'Details on their site'}
+            {registerHref ? 'Register' : 'Details on their site'}
             <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
           </a>
         ) : null}
