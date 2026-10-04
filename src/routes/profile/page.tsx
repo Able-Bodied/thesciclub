@@ -4,6 +4,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
+import { MEMBER_LIST_ITEM_MAX, memberTextMax } from '@/lib/member-limits';
 import { cn } from '@/lib/utils';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
 import {
@@ -414,6 +415,7 @@ function QuestionBlock({
         <textarea
           aria-label={question.title}
           placeholder={question.placeholder}
+          maxLength={memberTextMax(question.column)}
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => {
             onChange(e.target.value);
@@ -521,6 +523,7 @@ function QuestionBlock({
               <input
                 ref={otherInputRef}
                 aria-label={`Your own answer — ${question.title}`}
+                maxLength={MEMBER_LIST_ITEM_MAX}
                 value={otherDraft}
                 onChange={(e) => {
                   setOtherDraft(e.target.value);

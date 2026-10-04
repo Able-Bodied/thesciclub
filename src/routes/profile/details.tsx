@@ -7,6 +7,7 @@ import { useAnnounce } from '@/lib/announce';
 import { type DateParts, EMPTY_DATE_PARTS, partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
+import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import {
@@ -279,7 +280,7 @@ export default function ProfileDetailsPage() {
                   <Input
                     id="d-photo-alt"
                     value={details.photoAlt ?? ''}
-                    maxLength={PHOTO_ALT_MAX}
+                    maxLength={MEMBER_TEXT_MAX.photo_alt}
                     describedBy="d-photo-alt-hint"
                     onChange={(v) => {
                       set({ photoAlt: v });
@@ -298,6 +299,7 @@ export default function ProfileDetailsPage() {
               <Field label="Name" htmlFor="d-name">
                 <Input
                   id="d-name"
+                  maxLength={MEMBER_TEXT_MAX.display_name}
                   value={details.displayName}
                   onChange={(v) => {
                     set({ displayName: v });
@@ -453,6 +455,7 @@ export default function ProfileDetailsPage() {
               >
                 <Input
                   id="d-city"
+                  maxLength={MEMBER_TEXT_MAX.city}
                   value={details.city ?? ''}
                   onChange={(v) => {
                     set({ city: v });
@@ -549,9 +552,6 @@ function Field({
 
 const CONTROL =
   'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-emphasis';
-
-/** A sentence, not an essay: enough for a scene, short enough to hear. */
-const PHOTO_ALT_MAX = 200;
 
 function Input({
   id,

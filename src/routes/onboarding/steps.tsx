@@ -4,6 +4,7 @@ import { BIRTHDAY_ORDER, DateFields, YEAR_FIRST_ORDER } from '@/components/date-
 import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
+import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import { usePhotoUrl } from '@/lib/photos';
 import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
@@ -245,6 +246,7 @@ export function NameStep({ data, set }: StepProps) {
         id="name"
         autoComplete="given-name"
         placeholder="Alex"
+        maxLength={MEMBER_TEXT_MAX.display_name}
         value={data.displayName}
         onChange={(e) => {
           set({ displayName: e.target.value });
@@ -526,6 +528,7 @@ export function CityStep({ data, set }: StepProps) {
         id="city"
         autoComplete="address-level2"
         placeholder="San Jose"
+        maxLength={MEMBER_TEXT_MAX.city}
         value={data.city}
         onChange={(e) => {
           set({ city: e.target.value });
