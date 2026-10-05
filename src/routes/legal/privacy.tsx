@@ -188,7 +188,9 @@ export default function PrivacyPage() {
           That erases your name, phone number, photograph, birthday, injury and everything you
           answered about yourself, and takes your number off the invite list. What you wrote in Chat
           stays, so other people’s conversations still make sense, but it says “Deleted member”
-          instead of your name. A report keeps its copy of the reported words, with nobody named.
+          instead of your name. The other person in a one-to-one conversation can then delete it,
+          with everything both of you wrote and every photograph in it. A report keeps its copy of
+          the reported words, with nobody named.
         </P>
         <P>
           Administrators cannot delete their own account in the app, and anybody can ask us to

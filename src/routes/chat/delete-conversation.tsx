@@ -1,22 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
-import { deleteMyAccount } from '@/routes/me/delete-account-api';
+import { deleteConversation } from '@/routes/chat/delete-conversation-api';
 
 /**
- * "Delete my account", at the foot of Me.
+ * "Delete this conversation", under a conversation whose other member has
+ * deleted their account (the owner, 2026-10-05). Only there: one with
+ * somebody still in the club is half theirs, and the database refuses it.
  *
- * Two presses, and the second is after reading what happens. The first opens
- * the explanation in place rather than in a sheet: it is a paragraph and two
- * buttons, and a member reading it with a screen reader is taken to its
- * heading, from which everything else follows in order. "Keep my account" is
- * as large as the other button, so backing out is never the harder thing.
- *
- * An administrator is told why there is no button, rather than given one the
- * database refuses (20261003080000: no administrator is removed from the app).
+ * Two presses, as "Delete my account" is, and for the same reasons: the first
+ * opens the explanation in place and takes a screen reader to its heading,
+ * and "Keep it" is as large as the button that deletes.
  */
-export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: boolean }) {
+export function DeleteConversation({ threadId }: { threadId: string }) {
   const announce = useAnnounce();
+  const navigate = useNavigate();
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,31 +30,22 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
     opened.current = asking;
   }, [asking]);
 
-  if (isAdmin) {
-    return (
-      <p className="mt-6 text-[0.8125rem] text-grey leading-[1.5]">
-        An administrator’s account cannot be deleted from the app. Ask another administrator.
-      </p>
-    );
-  }
-
   function confirm() {
     setBusy(true);
     setError(null);
-    deleteMyAccount(userId)
+    deleteConversation(threadId)
       .then((result) => {
         if (!result.ok) {
-          setError(result.error ?? 'Your account was not deleted.');
+          setError(result.error ?? 'The conversation was not deleted.');
+          setBusy(false);
           return;
         }
-        // Said above the routes, so it is still heard on the welcome screen
-        // the signed-out guard goes to next.
-        announce('Your account is deleted.');
+        // Said above the routes, so it is still heard on the list it goes to.
+        announce('The conversation is deleted.');
+        void navigate('/chat', { replace: true });
       })
       .catch((e: unknown) => {
-        setError(describeThrown(e, 'Your account was not deleted.'));
-      })
-      .finally(() => {
+        setError(describeThrown(e, 'The conversation was not deleted.'));
         setBusy(false);
       });
   }
@@ -68,35 +58,29 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
         onClick={() => {
           setAsking(true);
         }}
-        className="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] text-destructive transition-colors hover:bg-destructive/10"
+        className="mx-auto mt-1.5 flex min-h-[44px] items-center justify-center rounded-[13px] px-4 font-bold font-head text-[0.875rem] text-destructive transition-colors hover:bg-destructive/10"
       >
-        Delete my account
+        Delete this conversation
       </button>
     );
   }
 
   return (
     <section
-      aria-labelledby="delete-account-heading"
-      className="mt-6 rounded-[17px] border-[1.6px] border-destructive/40 bg-paper p-4"
+      aria-labelledby="delete-conversation-heading"
+      className="mx-auto mt-3 w-full max-w-[720px] rounded-[17px] border-[1.6px] border-destructive/40 bg-paper p-4 text-left"
     >
       <h2
-        id="delete-account-heading"
+        id="delete-conversation-heading"
         ref={heading}
         tabIndex={-1}
         className="font-extrabold font-head text-[1.0625rem] text-ink outline-none"
       >
-        Delete your account?
+        Delete this conversation?
       </h2>
       <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.55]">
-        This erases your name, phone number, photo, birthday, injury details and everything you told
-        the club about yourself. Your number comes off the club’s list, so coming back would take a
-        new invite.
-      </p>
-      <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.55]">
-        What you wrote in Chat stays, so other people’s conversations still make sense, but it will
-        say “Deleted member” instead of your name. The other person in a one-to-one conversation can
-        delete it.
+        Every message in it goes, yours and theirs, with every photograph. Nobody else can see it:
+        the other member deleted their account.
       </p>
       <p className="mt-2 font-bold text-[0.875rem] text-ink">This cannot be undone.</p>
 
@@ -113,7 +97,7 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
           disabled={busy}
           className="flex min-h-[48px] items-center justify-center rounded-[13px] bg-destructive-fill font-bold font-head text-[0.9375rem] text-white disabled:opacity-50"
         >
-          {busy ? 'Deleting…' : 'Delete my account'}
+          {busy ? 'Deleting…' : 'Delete conversation'}
         </button>
         <button
           type="button"
@@ -124,7 +108,7 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
           disabled={busy}
           className="flex min-h-[48px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
         >
-          Keep my account
+          Keep it
         </button>
       </div>
     </section>

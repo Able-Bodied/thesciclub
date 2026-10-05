@@ -22,15 +22,16 @@ wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`; both branches sit
   on the same commit after each one. `git log --oneline origin/main..HEAD`
   empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 99 migrations; check
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 100 migrations; check
   with `pnpm exec supabase migration list` (a blank Remote is pending).
-  `20261003100000` (length limits on a member's row) is pending: push it
-  before the client that carries the matching `maxLength`s is released.
+  `20261005000000` (deleting a conversation with a deleted member) is
+  pending: push it before the client with the Delete button is released.
   Edge function `push-notify` v2 live.
 - **CSP**: `netlify.toml` allows `index.html`'s two inline scripts by hash and
   names the Supabase host; `src/csp.test.ts` fails with the new hash when a
   script changes. A new outside host (images, fetches) needs adding there.
-- **Checks**: 1,765 tests, `pnpm check` and `pnpm build` clean; 36 SQL probes.
+- **Checks**: 1,776 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
+  plus `pnpm check-chat-photo-policy` for chat storage deletes.
   Known noise: the events tests' `@/lib/events` mock lacks `rsvpSaved`, which
   prints 5 unhandled errors while every test passes.
 

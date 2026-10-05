@@ -35,6 +35,17 @@ const db = vi.hoisted(() => ({
   reportFails: null as string | null,
   /** Signed URLs by path, for the group's picture. */
   urls: new Map<string, string>(),
+  deletedConversations: [] as string[],
+  deleteFailure: null as string | null,
+}));
+
+vi.mock('@/routes/chat/delete-conversation-api', () => ({
+  deleteConversation: (threadId: string) => {
+    db.deletedConversations.push(threadId);
+    return Promise.resolve(
+      db.deleteFailure ? { ok: false, error: db.deleteFailure } : { ok: true },
+    );
+  },
 }));
 
 // Signing is a storage call under the reader's token.
@@ -182,6 +193,8 @@ beforeEach(() => {
   db.reports = [];
   db.reportFails = null;
   db.urls = new Map();
+  db.deletedConversations = [];
+  db.deleteFailure = null;
 });
 
 describe('a conversation', () => {
@@ -572,5 +585,74 @@ describe('a change to the group', () => {
     const pictures = [...document.querySelectorAll('img')].map((img) => img.getAttribute('src'));
     // Once in the header's tile, once beside the line.
     expect(pictures.filter((src) => src === 'https://signed/p')).toHaveLength(2);
+  });
+});
+
+describe('deleting a conversation with a deleted member', () => {
+  function renderWithList() {
+    return render(
+      <MemoryRouter initialEntries={['/chat/t/th1']}>
+        <Routes>
+          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+          <Route path="/chat" element={<p>The list of conversations</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('is not offered while the other member is still in the club, nor in a group', () => {
+    db.thread = thread();
+    const { unmount } = renderThread();
+    expect(screen.queryByRole('button', { name: 'Delete this conversation' })).toBeNull();
+    unmount();
+
+    db.thread = thread({
+      kind: 'group',
+      name: 'Saturday ride',
+      otherMemberId: null,
+      memberCount: 1,
+    });
+    db.authors = new Map();
+    renderThread();
+    expect(screen.queryByRole('button', { name: 'Delete this conversation' })).toBeNull();
+  });
+
+  it('asks first, and keeping it deletes nothing', async () => {
+    db.thread = thread({ otherMemberId: null });
+    db.authors = new Map();
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete this conversation' }));
+    // A screen reader is taken to the question, and everything follows it.
+    expect(screen.getByRole('heading', { name: 'Delete this conversation?' })).toHaveFocus();
+    expect(screen.getByText(/the other member deleted their account/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(screen.queryByRole('heading', { name: 'Delete this conversation?' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete this conversation' })).toHaveFocus();
+    expect(db.deletedConversations).toEqual([]);
+  });
+
+  it('deletes it and goes back to the list', async () => {
+    db.thread = thread({ otherMemberId: null });
+    db.authors = new Map();
+    renderWithList();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete this conversation' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete conversation' }));
+    expect(db.deletedConversations).toEqual(['th1']);
+    expect(await screen.findByText('The list of conversations')).toBeInTheDocument();
+  });
+
+  it('says why when it could not, and stays', async () => {
+    db.thread = thread({ otherMemberId: null });
+    db.authors = new Map();
+    db.deleteFailure = 'That conversation is not there any more.';
+    renderWithList();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete this conversation' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Delete conversation' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That conversation is not there any more.',
+    );
+    expect(screen.queryByText('The list of conversations')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete conversation' })).toBeEnabled();
   });
 });

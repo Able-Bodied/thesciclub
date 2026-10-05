@@ -61,8 +61,10 @@ photo, birthday, injury and everything they answered, the sign-in account, and
 every invite holding their number — coming back takes a new invite. What they
 wrote in Chat stays, so other people's conversations still make sense, and says
 "Deleted member" where their name was; a report keeps its copy of reported words
-with nobody named. An administrator cannot delete their own account from the
-app. The same "Deleted member" stands for anybody whose account is gone,
+with nobody named. The member left in a direct conversation with a deleted
+member can delete it (2026-10-05): every message from both of them and every
+photograph go, and a report keeps its copy. An administrator cannot delete
+their own account from the app. The same "Deleted member" stands for anybody whose account is gone,
 including somebody an administrator removed.
 
 ## Vocabulary

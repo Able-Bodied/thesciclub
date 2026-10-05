@@ -16,6 +16,7 @@ import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@
 import type { ChatMessage } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { Composer } from '@/routes/chat/composer';
+import { DeleteConversation } from '@/routes/chat/delete-conversation';
 import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { NoticeLine } from '@/routes/chat/notice-line';
@@ -429,6 +430,7 @@ export default function ThreadPage() {
           <p className="mx-auto w-full max-w-[720px] text-center text-[0.78125rem] text-grey leading-[1.45]">
             This member has left the club. What they wrote stays; there is nobody to reply to.
           </p>
+          <DeleteConversation threadId={thread.id} />
         </div>
       ) : (
         <Composer
