@@ -287,7 +287,7 @@ describe('a conversation', () => {
     db.thread = thread({ otherMemberId: null });
     db.authors = new Map();
     renderThread();
-    expect(screen.getByRole('heading', { name: 'Deleted user' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Deleted member' })).toBeInTheDocument();
     expect(screen.getByText(/This member has left the club/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Send this message' })).toBeNull();
   });
@@ -347,7 +347,7 @@ describe('reporting a message', () => {
     expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
   });
 
-  it("offers nothing on a deleted user's message", () => {
+  it("offers nothing on a deleted member's message", () => {
     db.messages = [message({ id: 'm1', authorId: null })];
     renderThread();
     expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();

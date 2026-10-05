@@ -38,7 +38,7 @@ export function NoticeLine({
 }: {
   message: ChatMessage;
   notice: ChatNotice;
-  /** "You", the member's name, or "A deleted user". */
+  /** "You", the member's name, or "A deleted member". */
   who: string;
   canReport: boolean;
   reported: boolean;

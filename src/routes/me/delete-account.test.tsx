@@ -36,7 +36,7 @@ describe('Delete my account', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Delete my account' }));
     expect(screen.getByRole('heading', { name: 'Delete your account?' })).toHaveFocus();
     expect(screen.getByText(/erases your name, phone number, photo/)).toBeInTheDocument();
-    expect(screen.getByText(/say “Deleted user” instead of your name/)).toBeInTheDocument();
+    expect(screen.getByText(/say “Deleted member” instead of your name/)).toBeInTheDocument();
     expect(api.calls).toEqual([]);
   });
 

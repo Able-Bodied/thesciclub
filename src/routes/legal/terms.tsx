@@ -59,7 +59,7 @@ export default function TermsPage() {
         <P>
           What you write is yours. Members cannot rename or delete a room once it is started;
           administrators can close a room, and can remove a post or a topic that should not be
-          there. If you delete your account, what you wrote in Chat stays and says “Deleted user”
+          there. If you delete your account, what you wrote in Chat stays and says “Deleted member”
           instead of your name.
         </P>
       </Section>

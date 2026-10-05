@@ -22,7 +22,7 @@ import { getSupabase } from '@/lib/supabase';
  * rules.
  *
  * A null author is not in here at all: that is a removed member, and the
- * screens render "Deleted user" rather than looking anybody up.
+ * screens render "Deleted member" rather than looking anybody up.
  *
  * ---------------------------------------------------------------------------
  * The cache is module-level on purpose
@@ -106,7 +106,7 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
  * The authors behind a set of ids, as a map, filling in as they arrive.
  *
  * Callers pass whatever ids they have and read `byId.get(id) ?? null`. Nulls
- * and unknowns are the same thing to them: both render as "Deleted user".
+ * and unknowns are the same thing to them: both render as "Deleted member".
  */
 export function useChatAuthors(ids: (string | null)[]): Map<string, ChatAuthor> {
   const [byId, setById] = useState<Map<string, ChatAuthor>>(() => new Map(cache));

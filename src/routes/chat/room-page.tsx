@@ -143,7 +143,7 @@ export default function RoomPage() {
                   the club and have nobody to name. */}
               {room.createdBy ? (
                 <p className="mt-[3px] text-[0.75rem] text-grey leading-[1.45]">
-                  Started by {starter?.displayName ?? 'a deleted user'}
+                  Started by {starter?.displayName ?? 'a deleted member'}
                 </p>
               ) : null}
               {/* Left off entirely until there is something to count, for the

@@ -44,10 +44,10 @@ describe('threadTitle', () => {
     );
   });
 
-  it('says Deleted user when the other half has left the club', () => {
+  it('says Deleted member when the other half has left the club', () => {
     // Their words stay and their name does not — the owner's decision. The
     // roster row goes with the member, so a null other member is the fact.
-    expect(threadTitle(thread({ otherMemberId: null }), null)).toBe('Deleted user');
+    expect(threadTitle(thread({ otherMemberId: null }), null)).toBe('Deleted member');
   });
 
   it('says nothing at all while the name is still loading', () => {
@@ -133,8 +133,8 @@ describe('noticeText', () => {
   });
 
   it('says a picture changed, or was taken away, and by whom', () => {
-    expect(noticeText('pictured', 'A deleted user', '')).toBe(
-      'A deleted user changed the group’s picture',
+    expect(noticeText('pictured', 'A deleted member', '')).toBe(
+      'A deleted member changed the group’s picture',
     );
     expect(noticeText('unpictured', 'Jan', '')).toBe('Jan took the group’s picture away');
   });

@@ -242,7 +242,7 @@ describe('a room a member started', () => {
 
   // The room outlived them, which is a fact about the room. Dropping the line
   // would make it look like one of the seeded twelve.
-  it('says a deleted user where the starter has left the club', () => {
+  it('says a deleted member where the starter has left the club', () => {
     api.rooms = [
       room({
         id: 'shoulder-pain-1a2b',
@@ -257,7 +257,7 @@ describe('a room a member started', () => {
         <RoomsSection />
       </MemoryRouter>,
     );
-    expect(screen.getByText(/started by a deleted user/)).toBeInTheDocument();
+    expect(screen.getByText(/started by a deleted member/)).toBeInTheDocument();
   });
 
   it('says nothing about a starter on one of the seeded twelve', () => {

@@ -187,7 +187,7 @@ export default function PrivacyPage() {
           You can delete your account yourself, from <b>Delete my account</b> at the foot of Me.
           That erases your name, phone number, photograph, birthday, injury and everything you
           answered about yourself, and takes your number off the invite list. What you wrote in Chat
-          stays, so other people’s conversations still make sense, but it says “Deleted user”
+          stays, so other people’s conversations still make sense, but it says “Deleted member”
           instead of your name. A report keeps its copy of the reported words, with nobody named.
         </P>
         <P>

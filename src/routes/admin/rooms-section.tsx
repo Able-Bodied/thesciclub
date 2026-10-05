@@ -168,7 +168,7 @@ export function RoomsSection() {
                         })}`
                       : 'nobody can see this room yet'}
                     {room.createdBy
-                      ? ` · started by ${starters.get(room.createdBy)?.displayName ?? 'a deleted user'}`
+                      ? ` · started by ${starters.get(room.createdBy)?.displayName ?? 'a deleted member'}`
                       : ''}
                   </span>
                 </Link>

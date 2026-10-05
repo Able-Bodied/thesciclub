@@ -224,7 +224,7 @@ export function ReportsSection({
                 <Where report={report} authors={authors} onGoToMember={onGoToMember} />
                 <Snapshot report={report} edits={editsOf(report)} />
                 <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
-                  {report.resolvedByName ?? 'A deleted user'} settled this
+                  {report.resolvedByName ?? 'A deleted member'} settled this
                   {report.resolvedAt ? ` on ${chatTimeLong(report.resolvedAt)}` : ''}:{' '}
                   <span className="text-ink2">{report.resolution}</span>
                 </p>
@@ -297,7 +297,7 @@ function ReportRow({
         <MemberName
           id={report.reporterId}
           name={report.reporterName}
-          gone="a deleted user"
+          gone="a deleted member"
           authors={authors}
           onGoToMember={onGoToMember}
         />{' '}
@@ -410,7 +410,7 @@ function Where({
       <MemberName
         id={report.reportedAuthorId}
         name={report.reportedAuthorName}
-        gone="Deleted user"
+        gone="Deleted member"
         authors={authors}
         onGoToMember={onGoToMember}
       />
@@ -487,7 +487,7 @@ function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) 
         <div className="max-w-[20rem]">
           <AttachmentGrid
             paths={report.attachments}
-            from={report.reportedAuthorName ?? 'a deleted user'}
+            from={report.reportedAuthorName ?? 'a deleted member'}
           />
           <p className="mt-1 text-[0.71875rem] text-grey leading-[1.45]">
             {report.attachments.length === 1
@@ -499,7 +499,7 @@ function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) 
         </div>
       ) : null}
       {edits.length > 0 ? (
-        <EarlierVersions edits={edits} from={report.reportedAuthorName ?? 'a deleted user'} />
+        <EarlierVersions edits={edits} from={report.reportedAuthorName ?? 'a deleted member'} />
       ) : null}
     </div>
   );

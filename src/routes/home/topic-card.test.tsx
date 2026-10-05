@@ -70,12 +70,12 @@ describe('a topic on Home', () => {
     expect(screen.getByText(/^Alex · C6 · /)).toBeInTheDocument();
   });
 
-  it('says Deleted user for somebody who has left, and not while a name is loading', () => {
+  it('says Deleted member for somebody who has left, and not while a name is loading', () => {
     const { unmount } = renderCard({ topic: makeHomeTopic({ authorId: null }), starter: null });
-    expect(screen.getByText(/^Deleted user · /)).toBeInTheDocument();
+    expect(screen.getByText(/^Deleted member · /)).toBeInTheDocument();
     unmount();
     renderCard({ topic: makeHomeTopic({ authorId: 'somebody' }), starter: null });
-    expect(screen.queryByText(/Deleted user/)).toBeNull();
+    expect(screen.queryByText(/Deleted member/)).toBeNull();
     expect(screen.getByText(/^… · /)).toBeInTheDocument();
   });
 

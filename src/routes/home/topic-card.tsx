@@ -146,15 +146,15 @@ export interface CardLikes {
 }
 
 /**
- * A name, "Deleted user", or an ellipsis while the name is on its way.
+ * A name, "Deleted member", or an ellipsis while the name is on its way.
  *
- * The last is not "Deleted user": an author id that has not been looked up
+ * The last is not "Deleted member": an author id that has not been looked up
  * yet is somebody still in the club, and calling them former for half a
  * second says something untrue about a real person.
  */
 export function byline(authorId: string | null, author: ChatAuthor | null): string {
   if (author) return author.displayName;
-  return authorId ? '…' : 'Deleted user';
+  return authorId ? '…' : 'Deleted member';
 }
 
 /**

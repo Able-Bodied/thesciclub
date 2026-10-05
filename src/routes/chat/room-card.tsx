@@ -130,7 +130,7 @@ export function RoomCard({
 
         {room.createdBy ? (
           <span className="mt-1 block text-[0.75rem] text-grey leading-[1.45]">
-            Started by {starter?.displayName ?? 'a deleted user'}
+            Started by {starter?.displayName ?? 'a deleted member'}
           </span>
         ) : null}
 

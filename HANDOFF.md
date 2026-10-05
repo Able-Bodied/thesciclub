@@ -101,7 +101,7 @@ wins over this file.
   is online by the owner's word (`STATED_FORMATS` in
   `jobs/event-ingest/classify.js`) until NorCal SCI says otherwise; for any
   other event with no format, ask, never guess. Delete my account (Me)
-  erases the person and keeps their words as "Deleted user" — CONTEXT.md
+  erases the person and keeps their words as "Deleted member" — CONTEXT.md
   "Leaving"; `delete_my_account()` and `src/routes/me/delete-account*`.
   No colour-blind mode: nothing in the app relies on colour alone. Netlify's
   hidden "hosted on Netlify" HTML comment stays; there is no setting for it.

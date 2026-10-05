@@ -185,7 +185,7 @@ export interface ChatThread {
    *
    * Null for a group, and null for a direct thread whose other half has left
    * the club — the roster row goes with the member, so the absence is the fact
-   * and the screen draws "Deleted user".
+   * and the screen draws "Deleted member".
    */
   otherMemberId: string | null;
   /** Null when nothing has been said yet; blank when the last one was removed. */

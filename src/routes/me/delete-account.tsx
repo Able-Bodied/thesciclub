@@ -95,7 +95,7 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
       </p>
       <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.55]">
         What you wrote in Chat stays, so other people’s conversations still make sense, but it will
-        say “Deleted user” instead of your name.
+        say “Deleted member” instead of your name.
       </p>
       <p className="mt-2 font-bold text-[0.875rem] text-ink">This cannot be undone.</p>
 

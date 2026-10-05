@@ -60,9 +60,9 @@ privacy and Twilio's requirements). It erases the person: name, phone number,
 photo, birthday, injury and everything they answered, the sign-in account, and
 every invite holding their number — coming back takes a new invite. What they
 wrote in Chat stays, so other people's conversations still make sense, and says
-"Deleted user" where their name was; a report keeps its copy of reported words
+"Deleted member" where their name was; a report keeps its copy of reported words
 with nobody named. An administrator cannot delete their own account from the
-app. The same "Deleted user" stands for anybody whose account is gone,
+app. The same "Deleted member" stands for anybody whose account is gone,
 including somebody an administrator removed.
 
 ## Vocabulary

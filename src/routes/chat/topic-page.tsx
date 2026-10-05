@@ -257,7 +257,7 @@ export default function TopicPage() {
   const starter = topic.authorId ? authors.get(topic.authorId) : null;
   const counts = topicCounts(topic.replyCount, topic.viewCount);
   const nameOf = (post: ChatPost) =>
-    (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a deleted user';
+    (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a deleted member';
 
   /** What every post is handed, top level or reply. `under` is the post a
       reply to this one files beneath: itself for a top-level post, its post
@@ -319,7 +319,7 @@ export default function TopicPage() {
           </h1>
           <p className="mt-1.5 text-[0.78125rem] text-grey leading-[1.45]">
             {counts ? `${counts} · started by ` : 'Started by '}
-            {starter ? starter.displayName : topic.authorId ? '…' : 'a deleted user'} on{' '}
+            {starter ? starter.displayName : topic.authorId ? '…' : 'a deleted member'} on{' '}
             {chatTimeLong(topic.createdAt)}
           </p>
           {/* Only the member who started a topic is notified of its replies,
