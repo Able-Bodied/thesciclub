@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
+import { AskOnOpening } from '@/components/ask-on-opening';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
@@ -221,7 +222,10 @@ function AppRoutes() {
         path="/*"
         element={
           <RequireMember>
-            <AppShell />
+            {/* Once, the first time the installed app opens: see AskOnOpening. */}
+            <AskOnOpening>
+              <AppShell />
+            </AskOnOpening>
           </RequireMember>
         }
       />

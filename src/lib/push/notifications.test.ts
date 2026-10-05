@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  askOnOpening,
   base64UrlToBytes,
   type DeviceFacts,
+  markNotificationsAsked,
   notificationState,
+  notificationsAskedHere,
+  type OpeningFacts,
   turnOffNotifications,
   turnOnNotifications,
 } from '@/lib/push/notifications';
@@ -73,6 +77,65 @@ describe('notificationState', () => {
     ['a desktop browser tab', { standalone: false, permission: 'default' }, 'off'],
   ])('%s is %s', (_, over, expected) => {
     expect(notificationState(facts(over))).toBe(expected);
+  });
+});
+
+const opening = (over: Partial<OpeningFacts>): OpeningFacts => ({
+  enabled: true,
+  standalone: true,
+  permission: 'default',
+  askedHere: false,
+  ...over,
+});
+
+describe('askOnOpening', () => {
+  it.each<[string, Partial<OpeningFacts>, boolean]>([
+    ['the installed app, never asked on this phone', {}, true],
+    // Signing up in Safari said how to install; nothing could be asked there.
+    ['a Safari tab', { standalone: false }, false],
+    ['while the club cannot send', { enabled: false }, false],
+    ['a phone that said yes', { permission: 'granted' }, false],
+    // The system will not show its prompt again, so the button would do nothing.
+    ['a phone that said no', { permission: 'denied' }, false],
+    [
+      'an installed app with no notifications at all (iOS before 16.4)',
+      { permission: null },
+      false,
+    ],
+    ['a phone that answered Not now', { askedHere: true }, false],
+  ])('%s: %s', (_, over, expected) => {
+    expect(askOnOpening(opening(over))).toBe(expected);
+  });
+});
+
+describe('remembering that this phone was asked', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('has not been asked, until it is', () => {
+    expect(notificationsAskedHere()).toBe(false);
+    markNotificationsAsked();
+    expect(notificationsAskedHere()).toBe(true);
+  });
+
+  it('counts as asked when it cannot remember, rather than asking every time', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(notificationsAskedHere()).toBe(true);
+  });
+
+  it('does not throw when it cannot write', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(() => {
+      markNotificationsAsked();
+    }).not.toThrow();
   });
 });
 

@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react';
-import { useEffect } from 'react';
-import { useDeviceNotifications } from '@/lib/push/notifications';
+import { useCallback, useEffect } from 'react';
+import { markNotificationsAsked, useDeviceNotifications } from '@/lib/push/notifications';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 
 /**
@@ -22,6 +22,11 @@ import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/on
  *
  * "Turn on notifications" is the form's submit, so the permission request is
  * inside the tap, which iOS requires — see `turnOnNotifications`.
+ *
+ * Also the screen the installed app opens on, once, before the club
+ * (AskOnOpening, 2026-10-05). Whichever way this screen ends, unless it only
+ * said how to install, this phone has been asked, so neither place asks it
+ * again.
  */
 export function NotificationsStep({
   userId,
@@ -32,11 +37,16 @@ export function NotificationsStep({
 }) {
   const { state, busy, error, turnOn } = useDeviceNotifications(userId);
 
+  const finish = useCallback(() => {
+    if (state !== null && state !== 'install') markNotificationsAsked();
+    onDone();
+  }, [state, onDone]);
+
   // Nothing to ask: on already, refused before, or a device that cannot. And
   // once asked, the answer — yes or no — is the end of this screen.
   useEffect(() => {
-    if (state === 'on' || state === 'refused' || state === 'unsupported') onDone();
-  }, [state, onDone]);
+    if (state === 'on' || state === 'refused' || state === 'unsupported') finish();
+  }, [state, finish]);
 
   const install = state === 'install';
   const loading = state === null && error === null;
@@ -47,7 +57,7 @@ export function NotificationsStep({
       totalSteps={0}
       onSubmit={() => {
         if (busy || loading) return;
-        if (install || state !== 'off') onDone();
+        if (install || state !== 'off') finish();
         else turnOn();
       }}
       footer={
@@ -66,7 +76,7 @@ export function NotificationsStep({
               'Continue'
             )}
           </PrimaryButton>
-          {state === 'off' ? <LinkButton onClick={onDone}>Not now</LinkButton> : null}
+          {state === 'off' ? <LinkButton onClick={finish}>Not now</LinkButton> : null}
         </>
       }
     >

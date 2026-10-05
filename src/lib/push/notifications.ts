@@ -87,7 +87,73 @@ function canPush(): boolean {
 function isStandalone(): boolean {
   // `navigator.standalone` is Safari's own, and older than the media query.
   const safari = (navigator as Navigator & { standalone?: boolean }).standalone;
-  return safari === true || window.matchMedia('(display-mode: standalone)').matches;
+  // Guarded: AskOnOpening reads this on the way into the club, and a missing
+  // matchMedia must cost a question, not the club.
+  return (
+    safari === true ||
+    (typeof window.matchMedia === 'function' &&
+      window.matchMedia('(display-mode: standalone)').matches)
+  );
+}
+
+/**
+ * ---------------------------------------------------------------------------
+ * Asking again, the first time the club is opened from the Home Screen
+ * ---------------------------------------------------------------------------
+ * The owner, 2026-10-05. On an iPhone, signing up happens in Safari, where
+ * nothing can be asked: NotificationsStep says to add the club to the Home
+ * Screen instead. Opened from there, the member signs in once more and used
+ * to land on Home with nobody asking, the switch on Me their only way in. An
+ * iPhone neither says when a web app is installed nor shows its permission
+ * prompt without a tap, so the club asks when it can: the first time it is
+ * running as the installed app and this phone has never been asked.
+ *
+ * "Never been asked" is two things. The system's own permission is still
+ * `default`: a yes or a no is the system's to remember, and asking after a no
+ * does nothing. And this phone has not already been shown the question and
+ * answered "Not now", which only the club can remember, here, per device.
+ * When it cannot remember (storage blocked), it does not ask: asking on every
+ * launch would be worse than not asking.
+ */
+const ASKED_KEY = 'thesciclub.notificationsAsked';
+
+export function notificationsAskedHere(): boolean {
+  try {
+    return localStorage.getItem(ASKED_KEY) !== null;
+  } catch {
+    return true;
+  }
+}
+
+export function markNotificationsAsked(): void {
+  try {
+    localStorage.setItem(ASKED_KEY, new Date().toISOString());
+  } catch {
+    // Nothing to do: notificationsAskedHere says yes when it cannot read.
+  }
+}
+
+export interface OpeningFacts {
+  /** The club can send: `VITE_VAPID_PUBLIC_KEY` is set. */
+  enabled: boolean;
+  standalone: boolean;
+  /** The system's permission, or null where there are no notifications at all. */
+  permission: NotificationPermission | null;
+  askedHere: boolean;
+}
+
+/** Pure: whether opening the club should ask first. Tested as a table. */
+export function askOnOpening(facts: OpeningFacts): boolean {
+  return facts.enabled && facts.standalone && facts.permission === 'default' && !facts.askedHere;
+}
+
+export function openingFacts(): OpeningFacts {
+  return {
+    enabled: vapidPublicKey() !== null,
+    standalone: isStandalone(),
+    permission: canPush() ? Notification.permission : null,
+    askedHere: notificationsAskedHere(),
+  };
 }
 
 async function currentSubscription(): Promise<PushSubscription | null> {

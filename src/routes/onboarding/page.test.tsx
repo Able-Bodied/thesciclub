@@ -75,6 +75,9 @@ vi.mock('@/lib/account', () => ({
 // are what is tested here. See notifications-step.tsx.
 vi.mock('@/lib/push/notifications', () => ({
   vapidPublicKey: () => calls.vapidKey,
+  markNotificationsAsked: () => {
+    calls.order.push('asked');
+  },
   useDeviceNotifications: () => ({
     state: calls.notificationState,
     busy: false,
@@ -1028,6 +1031,8 @@ describe('notifications, as they enter', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(calls.order).not.toContain('turnOn');
+    // So the installed app does not ask this phone again (AskOnOpening).
+    expect(calls.order).toContain('asked');
   });
 
   it('asks the device when they say yes', async () => {
@@ -1044,6 +1049,8 @@ describe('notifications, as they enter', () => {
     expect(await screen.findByText('Get notifications on your iPhone')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    // Nothing was asked, only how to install: the installed app still asks.
+    expect(calls.order).not.toContain('asked');
   });
 
   it('does not ask a device that has already answered', async () => {

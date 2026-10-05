@@ -30,7 +30,7 @@ wins over this file.
 - **CSP**: `netlify.toml` allows `index.html`'s two inline scripts by hash and
   names the Supabase host; `src/csp.test.ts` fails with the new hash when a
   script changes. A new outside host (images, fetches) needs adding there.
-- **Checks**: 1,776 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
+- **Checks**: 1,795 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
   plus `pnpm check-chat-photo-policy` for chat storage deletes.
   Known noise: the events tests' `@/lib/events` mock lacks `rsvpSaved`, which
   prints 5 unhandled errors while every test passes.
@@ -68,7 +68,9 @@ wins over this file.
 4. **Never tried on a real iPhone**: an hour of VoiceOver (including the
    "Saved." confirmations, Your answers, a described photo); the date boxes
    with Voice Control and birthday autofill; notifications end to end from the Home Screen app; signed photos; the number pad staying
-   up from phone number into code (`keyboardHold`); the notifications step.
+   up from phone number into code (`keyboardHold`); the notifications step,
+   and the same question the first time the Home Screen app opens
+   (`AskOnOpening`).
 5. **Small, not asked for**: the "Rather not say" toggles on Your details are
    under 44px with no `data-target`; onboarding's photo step asks for no
    description (Your details does).
