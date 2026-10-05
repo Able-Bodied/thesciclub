@@ -191,6 +191,96 @@ check('and the administrator can read it, because the report names it', await ca
 await root.from('chat_reports').delete().eq('message_id', sent.data.id);
 await root.storage.from('chat').remove([path]);
 
+// A conversation whose other half deleted their account (20261005000000).
+// The member left in it deletes it, photographs first, while it still exists:
+// theirs, the gone member's, everything in the folder but what a report holds.
+const KEEPER = 'eeeeeeee-5555-0000-0000-00000000000e';
+const LEAVER = 'ffffffff-5555-0000-0000-00000000000f';
+await root.from('members').delete().in('id', [KEEPER, LEAVER]);
+await root
+  .from('members')
+  .insert([member(KEEPER, 'Policy Keeper', false), member(LEAVER, 'Policy Leaver', false)]);
+const pair = await as(KEEPER).rpc('chat_open_direct', { other: LEAVER });
+if (pair.error || !pair.data) {
+  console.error(`Could not open the second conversation: ${pair.error?.message}`);
+  process.exit(1);
+}
+const folder = `threads/${pair.data}`;
+const inFolder = async () => {
+  const { data } = await root.storage.from('chat').list(folder);
+  return (data ?? []).map((o) => o.name).sort();
+};
+await as(KEEPER)
+  .storage.from('chat')
+  .upload(`${folder}/kept.webp`, WEBP, { contentType: 'image/webp' });
+await as(LEAVER)
+  .storage.from('chat')
+  .upload(`${folder}/left.webp`, WEBP, { contentType: 'image/webp' });
+await as(LEAVER)
+  .storage.from('chat')
+  .upload(`${folder}/flagged.webp`, WEBP, { contentType: 'image/webp' });
+const flagged = await root
+  .from('chat_messages')
+  .insert({
+    thread_id: pair.data,
+    author_id: LEAVER,
+    body: 'This one',
+    attachments: [`${folder}/flagged.webp`],
+  })
+  .select('id')
+  .single();
+const flaggedReport = await as(KEEPER).rpc('chat_report_message', {
+  message: flagged.data?.id,
+  report_note: 'The picture.',
+});
+if (flagged.error || flaggedReport.error) {
+  console.error(
+    `Could not write or report the message: ${(flagged.error ?? flaggedReport.error)?.message}`,
+  );
+  process.exit(1);
+}
+
+console.log('\nA conversation with a deleted member, through the storage API:\n');
+
+await as(KEEPER)
+  .storage.from('chat')
+  .remove([`${folder}/left.webp`]);
+check(
+  "while the other member is in the club, their photograph is not the keeper's to delete",
+  (await inFolder()).includes('left.webp'),
+  true,
+);
+
+await root.from('members').delete().eq('id', LEAVER);
+
+await as(STRANGER)
+  .storage.from('chat')
+  .remove([`${folder}/left.webp`]);
+check(
+  '*** once they have gone, somebody who was never in it still cannot ***',
+  (await inFolder()).includes('left.webp'),
+  true,
+);
+
+// What the app does: list the folder, remove all of it, then delete.
+const listed = await as(KEEPER).storage.from('chat').list(folder);
+await as(KEEPER)
+  .storage.from('chat')
+  .remove((listed.data ?? []).map((o) => `${folder}/${o.name}`));
+check(
+  "the keeper deletes both their own and the gone member's; a reported one stays",
+  (await inFolder()).join(','),
+  'flagged.webp',
+);
+const deleted = await as(KEEPER).rpc('chat_delete_conversation', { thread: pair.data });
+check('and then the conversation itself', deleted.error?.message ?? 'deleted', 'deleted');
+const after = await root.from('chat_threads').select('id').eq('id', pair.data);
+check('which is gone', after.data?.length, 0);
+
+await root.from('chat_reports').delete().eq('reporter_id', KEEPER);
+await root.storage.from('chat').remove([`${folder}/flagged.webp`]);
+await root.from('members').delete().eq('id', KEEPER);
+
 // Tidy up: the conversation, its roster and the members. Files are gone.
 await root.from('chat_threads').delete().eq('id', dm);
 await root.from('members').delete().in('id', ids);

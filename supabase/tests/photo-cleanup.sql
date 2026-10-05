@@ -67,10 +67,13 @@ select current_user;
 
 \echo ''
 \echo '== 1. the delete policies, and the roles they apply to =='
-\echo '   expect three, in this order:'
+\echo '   expect four, in this order:'
 \echo '           "an administrator can delete any photo" {authenticated}'
 \echo '           "members can delete their own photo" {public}'
+\echo '           "the last one in a conversation deletes its photographs" {authenticated}'
 \echo '           "the uploader or an administrator deletes a chat photograph" {authenticated}'
+\echo '   The third is 20261005000000''s: a conversation whose other member has'
+\echo '   gone, emptied by the one left in it before it is deleted.'
 \echo '   The member policy stays {public}: it calls auth.uid() and'
 \echo '   storage.foldername(), which anon may execute, so it names nothing.'
 \echo ''
@@ -85,7 +88,7 @@ select policyname, roles::text, cmd
 
 \echo ''
 \echo '== 1b. every policy on the chat bucket names authenticated =='
-\echo '   expect three rows — DELETE, INSERT, SELECT — each {authenticated}.'
+\echo '   expect four rows — DELETE, DELETE, INSERT, SELECT — each {authenticated}.'
 \echo '   Every one calls a function only authenticated may execute. Read by'
 \echo '   the bucket its expression names rather than by policy name, so a'
 \echo '   fourth chat policy written without a role shows up here too.'
