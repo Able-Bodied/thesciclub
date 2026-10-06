@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
@@ -21,6 +21,7 @@ import {
 } from '@/lib/chat/topics';
 import type { ChatPost } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { useHoldScroll } from '@/lib/hold-scroll';
 import { backFromTopic } from '@/routes/chat/back';
 import { Composer } from '@/routes/chat/composer';
 import { MuteButton } from '@/routes/chat/mute-button';
@@ -158,16 +159,43 @@ export default function TopicPage() {
 
   // Where the reader had got to, captured on the first load and not recomputed:
   // once they are reading, the page must stay where they put it.
+  //
+  // Or the post a notification was about: a reply or a like links to
+  // ?post=<id> (20261006000000), and the page opens on that post, centred and
+  // lit up once, rather than at the first unread one. A post since removed is
+  // not drawn, so the page falls back to where it would have opened anyway.
+  //
+  // Either way the place is held while photographs above it load and push it
+  // down, until the reader scrolls (lib/hold-scroll.ts).
+  const [searchParams] = useSearchParams();
+  const wanted = searchParams.get('post');
+  const [flashId, setFlashId] = useState<string | null>(null);
   const scrolled = useRef(false);
+  const scroller = useRef<HTMLDivElement | null>(null);
   const list = useRef<HTMLDivElement | null>(null);
+  const drawn = !loading && !roomsLoading && topic !== null;
+  const place = useHoldScroll(scroller, list, drawn);
   useEffect(() => {
-    if (loading || scrolled.current || threads.length === 0) return;
+    if (!drawn || scrolled.current || threads.length === 0) return;
     scrolled.current = true;
+    const target = wanted ? document.getElementById(`post-${wanted}`) : null;
+    if (target) {
+      place.hold(() => {
+        target.scrollIntoView({ block: 'center' });
+      });
+      target.focus({ preventScroll: true });
+      setFlashId(wanted);
+      return;
+    }
     const index = firstUnreadThread(threads, lastReadAt);
     if (index === 0) return;
     const element = list.current?.children.item(index);
-    element?.scrollIntoView({ block: 'start' });
-  }, [loading, threads, lastReadAt]);
+    if (element) {
+      place.hold(() => {
+        element.scrollIntoView({ block: 'start' });
+      });
+    }
+  }, [drawn, threads, lastReadAt, wanted, place]);
 
   function removeTopic() {
     if (!topicId) return;
@@ -360,7 +388,7 @@ export default function TopicPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-3 pb-[18px] md:px-6">
+      <div ref={scroller} className="flex-1 overflow-y-auto px-4 pt-3 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[720px]" ref={list}>
           {removalFailure ? (
             <p
@@ -377,9 +405,15 @@ export default function TopicPage() {
               number={index + 1}
               total={threads.length}
               replies={replies.length}
+              flash={flashId === post.id}
             >
               {replies.map((reply) => (
-                <Post key={reply.id} {...postProps(reply, post)} nested />
+                <Post
+                  key={reply.id}
+                  {...postProps(reply, post)}
+                  nested
+                  flash={flashId === reply.id}
+                />
               ))}
             </Post>
           ))}

@@ -4,6 +4,7 @@ import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
+import { cn } from '@/lib/utils';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
@@ -99,6 +100,7 @@ export function Post({
   edits,
   likes,
   replies = 0,
+  flash = false,
   children,
 }: {
   post: ChatPost;
@@ -146,6 +148,8 @@ export function Post({
     | undefined;
   /** How many replies `children` holds, for the hide control. */
   replies?: number;
+  /** Lit up once: the post a notification or a link was about. */
+  flash?: boolean;
   /** The replies, as `<Post nested>` elements. */
   children?: ReactNode;
 }) {
@@ -160,11 +164,18 @@ export function Post({
 
   return (
     <article
-      className={
+      // The address a notification points into: ?post=<id> on the topic.
+      id={`post-${post.id}`}
+      // Focusable from script only, so a screen reader arriving from a
+      // notification starts on the post it was about. The flash marks it.
+      tabIndex={-1}
+      className={cn(
         nested
           ? 'mt-2.5 border-line border-l-2 pl-3'
-          : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]'
-      }
+          : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]',
+        'outline-none',
+        flash && 'message-flash',
+      )}
     >
       <div className="flex items-center gap-2.5">
         {/* Decorative: the name is the next thing in the row, and the link to

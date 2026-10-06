@@ -188,9 +188,9 @@ const post = (o: Partial<ChatPost> & { id: string }): ChatPost => ({
   ...o,
 });
 
-function renderTopic() {
+function renderTopic(path = '/chat/rooms/bowel/topics/t') {
   return render(
-    <MemoryRouter initialEntries={['/chat/rooms/bowel/topics/t']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
         <Route path="/chat/rooms/:roomId" element={<p>The room</p>} />
@@ -244,6 +244,38 @@ beforeEach(() => {
   db.likesAskedFor = [];
   db.liked = [];
   db.likeFailure = null;
+});
+
+// A reply or a like notification links to ?post=<id> (20261006000000).
+describe('opening on the post a notification was about', () => {
+  it('centres that post, lights it up once and gives it focus', async () => {
+    const scrolled: [string, ScrollIntoViewOptions | boolean | undefined][] = [];
+    // jsdom draws nothing, so it has no scrollIntoView; this one records.
+    Element.prototype.scrollIntoView = function (this: Element, options) {
+      scrolled.push([this.id, options]);
+    };
+    db.posts = [post({ id: '1' }), post({ id: '2', replyTo: '1', body: 'The reply' })];
+    renderTopic('/chat/rooms/bowel/topics/t?post=2');
+
+    const target = document.getElementById('post-2');
+    await waitFor(() => {
+      expect(target).toHaveFocus();
+    });
+    expect(target).toHaveClass('message-flash');
+    expect(document.getElementById('post-1')).not.toHaveClass('message-flash');
+    expect(scrolled).toContainEqual(['post-2', { block: 'center' }]);
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
+
+  it('opens as it would have when that post has been taken back', async () => {
+    const spy = vi.fn();
+    Element.prototype.scrollIntoView = spy;
+    renderTopic('/chat/rooms/bowel/topics/t?post=gone');
+    expect(await screen.findByText(db.posts[0]?.body ?? '')).toBeInTheDocument();
+    expect(document.querySelector('.message-flash')).toBeNull();
+    expect(spy).not.toHaveBeenCalled();
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
 });
 
 describe('likes', () => {
