@@ -115,9 +115,9 @@ export default function OnboardingPage() {
   const keyboardHold = useRef<HTMLInputElement>(null);
 
   /** Send the code. No invite check here, on purpose — see the file header. */
-  async function requestCode() {
+  async function requestCode(typed: string = data.phone) {
     // Supabase wants E.164; the field holds what the person typed.
-    const phone = toE164(data.phone);
+    const phone = toE164(typed);
     if (!phone) {
       setError('That does not look like a ten-digit US number.');
       return;
@@ -485,7 +485,25 @@ export default function OnboardingPage() {
         // typed here in the moment before the code step is never read.
         className="pointer-events-none fixed top-0 left-0 h-px w-px text-[16px] opacity-0"
       />
-      {step === 'phone' ? <PhoneStep data={data} set={set} mode={mode} /> : null}
+      {step === 'phone' ? (
+        <PhoneStep
+          data={data}
+          set={set}
+          mode={mode}
+          onComplete={
+            mode === 'signin'
+              ? (phone) => {
+                  if (busy) return;
+                  // Inside the keystroke or the autofill, as advance() does
+                  // inside the tap — see `keyboardHold`. The number is passed
+                  // in because `data` here is from before this change.
+                  keyboardHold.current?.focus({ preventScroll: true });
+                  void requestCode(phone);
+                }
+              : undefined
+          }
+        />
+      ) : null}
       {step === 'code' ? (
         <CodeStep
           data={data}

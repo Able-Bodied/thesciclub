@@ -317,11 +317,15 @@ describe('the two doors', () => {
     expect(screen.getByText('Welcome back')).toBeInTheDocument();
   });
 
-  it('keeps the number typed when switching doors', async () => {
-    await openSignIn();
+  // Switching is not typing: a number already complete on the join door is
+  // carried to the sign-in door and waits there, with no code sent.
+  it('keeps the number typed when switching doors, and sends nothing for it', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-    await userEvent.click(screen.getByRole('button', { name: /Don't have an account yet/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Already a member? Sign in' }));
     expect(screen.getByPlaceholderText('(408) 555-0112')).toHaveValue('(408) 555-0112');
+    expect(calls.order).not.toContain('signInWithOtp');
   });
 
   it('lets an existing member straight in, even through the Join door', async () => {
@@ -354,9 +358,9 @@ describe('the two doors', () => {
 async function signInWithNewNumber() {
   renderJoin();
   await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+  // The tenth digit sends the code on the sign-in door; there is no Continue to press.
   await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-  await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-  await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+  await userEvent.type(await screen.findByPlaceholderText('000000'), '111111');
 }
 
 async function agreeToBoth() {
@@ -429,8 +433,7 @@ describe('joining through the sign-in door', () => {
     await agree();
     await userEvent.click(screen.getByRole('button', { name: 'Already a member? Sign in' }));
     await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.type(await screen.findByPlaceholderText('000000'), '111111');
     expect(await screen.findByText(/What should people call you/i)).toBeInTheDocument();
   });
 });
@@ -512,18 +515,50 @@ describe('agreeing to the texts', () => {
       'href',
       '/privacy',
     );
+  });
 
-    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  // The owner, 2026-10-06: signing in goes on by itself once the number is
+  // complete, typed or autofilled. Joining does not (the next tests).
+  it('sends a returning member the code on the tenth digit, without Continue', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '408555011');
+    expect(calls.order).not.toContain('signInWithOtp');
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '2');
+    expect(await screen.findByPlaceholderText('000000')).toHaveFocus();
+    expect(calls.order.filter((c) => c === 'signInWithOtp')).toHaveLength(1);
+  });
+
+  it('sends it when the whole number arrives at once, as autofill does', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.click(screen.getByPlaceholderText('(408) 555-0112'));
+    await userEvent.paste('(408) 555-0112');
+    expect(await screen.findByPlaceholderText('000000')).toBeInTheDocument();
+    expect(calls.order.filter((c) => c === 'signInWithOtp')).toHaveLength(1);
   });
 
   it('keeps the boxes for somebody who switches from signing in to joining', async () => {
     renderJoin();
     await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
-    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '408555011');
     await userEvent.click(screen.getByRole('button', { name: /Don't have an account yet/ }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '2');
     expect(smsBox()).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(calls.order).not.toContain('signInWithOtp');
+  });
+
+  // The join door is the opt-in the carriers' registration describes, and
+  // its code goes only on a press of Continue, even with both boxes ticked.
+  it('never sends a joiner the code without Continue', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await userEvent.click(smsBox());
+    await userEvent.click(termsBox());
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    expect(calls.order).not.toContain('signInWithOtp');
+    expect(screen.queryByPlaceholderText('000000')).toBeNull();
   });
 });
 

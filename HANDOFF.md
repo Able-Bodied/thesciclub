@@ -78,9 +78,11 @@ the product definition and wins over this file.
 - **Probes** (`supabase/tests/`, each rolled back, header says how to run):
   as a signed-in role, a savepoint per expected refusal, read every log
   against its `expect` lines, count on a fresh stack, sabotage a fix once.
-- **Decided, do not reopen**: the phone step never sends the code by itself
-  (consent is pressing Continue, as registered with Twilio; a mistyped number
-  must be seen first). Staying Driven Wheelchair Fitness is online
+- **Decided, do not reopen**: the join door's phone step never sends the code
+  by itself (consent is the two boxes and Continue, as registered with
+  Twilio). The sign-in door sends it on the tenth digit, typed or autofilled
+  (the owner, 2026-10-06): its "By continuing" line is on screen before the
+  number is typed. Staying Driven Wheelchair Fitness is online
   (`STATED_FORMATS` in `jobs/event-ingest/classify.js`) until NorCal SCI says
   otherwise; any other event with no format, ask. Deleting an account keeps
   the person's words as "Deleted member" (CONTEXT.md "Leaving"); the member

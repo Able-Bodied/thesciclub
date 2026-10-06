@@ -27,7 +27,22 @@ interface StepProps {
   set: (patch: Partial<OnboardingData>) => void;
 }
 
-export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'signin' }) {
+export function PhoneStep({
+  data,
+  set,
+  mode,
+  onComplete,
+}: StepProps & {
+  mode: 'join' | 'signin';
+  /**
+   * Called with the number when it becomes complete, typed or autofilled.
+   * Passed on the sign-in door only (the owner, 2026-10-06): a returning
+   * member has agreed by the line under the field, which is on screen before
+   * they type. The join door waits for its two boxes and a press of Continue,
+   * as registered with the carriers.
+   */
+  onComplete?: ((phone: string) => void) | undefined;
+}) {
   const phoneRef = useAutoFocus();
   return (
     <>
@@ -55,7 +70,14 @@ export function PhoneStep({ data, set, mode }: StepProps & { mode: 'join' | 'sig
           placeholder="(408) 555-0112"
           value={data.phone}
           onChange={(e) => {
-            set({ phone: formatPhoneInput(e.target.value) });
+            const phone = formatPhoneInput(e.target.value);
+            set({ phone });
+            // Only as the number becomes complete, not on every change to a
+            // complete one: correcting a digit in the middle should not send
+            // a code before the correction is finished.
+            if (onComplete && isCompletePhone(phone) && !isCompletePhone(data.phone)) {
+              onComplete(phone);
+            }
           }}
         />
       </div>
