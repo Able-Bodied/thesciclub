@@ -76,9 +76,10 @@ async function signIn(page) {
   // By autocomplete, not position: onboarding keeps a hidden input ahead of
   // the phone box to hold the iPhone keyboard open (`keyboardHold`), and
   // `input` first lands in that.
+  // The sign-in door sends the code on the tenth digit (2026-10-06), so
+  // there is no Continue to press: wait for the code box instead.
   await page.locator('input[autocomplete="tel"]').fill(TEST_PHONE);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.waitForTimeout(2500);
+  await page.locator('input[autocomplete="one-time-code"]').waitFor({ timeout: 10_000 });
 
   await page.locator('input[autocomplete="one-time-code"]').fill(TEST_OTP);
   await page.waitForTimeout(400);
