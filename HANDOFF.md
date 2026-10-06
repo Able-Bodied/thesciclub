@@ -16,10 +16,11 @@ the product definition and wins over this file.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 100 migrations, all
-  live (`pnpm exec supabase migration list`; a blank Remote is pending). Edge
-  function `push-notify` v2 live.
-- **Checks**: 1,795 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 100 migrations live;
+  `20261006000000` (reply and like notifications link to their post) is
+  committed and waits for db push (`pnpm exec supabase migration list`; a
+  blank Remote is pending). Edge function `push-notify` v2 live.
+- **Checks**: 1,807 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
   plus `pnpm check-chat-photo-policy` for chat storage deletes. Known noise:
   the events tests' `@/lib/events` mock lacks `rsvpSaved` (5 unhandled
   errors, every test passes).
@@ -184,4 +185,5 @@ the product definition and wins over this file.
 `describeError` / `describeThrown`, `organization-badge.tsx`, `ClubMark` /
 `ClubWordmark` (the owner's SVGs, never redrawn), `DateFields` /
 `lib/date-parts.ts` (every date: typed boxes, never a calendar),
-`NotificationsStep` (sign-up and `AskOnOpening`).
+`NotificationsStep` (sign-up and `AskOnOpening`), `useHoldScroll` (keeps a list
+where it was put while photographs load; conversation and topic).
