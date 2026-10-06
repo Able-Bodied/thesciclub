@@ -16,10 +16,11 @@ the product definition and wins over this file.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 100 migrations live;
-  `20261006000000` (reply and like notifications link to their post) is
-  committed and waits for db push (`pnpm exec supabase migration list`; a
-  blank Remote is pending). Edge function `push-notify` v2 live.
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 103 migrations, all
+  live (`pnpm exec supabase migration list`; a blank Remote is pending). Edge
+  function `push-notify` v2 live. `20261005010000` and `20261005020000`
+  (events added by hand) went live 2026-10-06 ahead of their client, which is
+  uncommitted in the working tree: nothing calls them yet.
 - **Checks**: 1,807 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
   plus `pnpm check-chat-photo-policy` for chat storage deletes. Known noise:
   the events tests' `@/lib/events` mock lacks `rsvpSaved` (5 unhandled
