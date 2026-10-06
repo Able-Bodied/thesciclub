@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -338,6 +338,51 @@ describe('a conversation', () => {
     db.thread = null;
     renderThread();
     expect(screen.getByText('This conversation cannot be shown.')).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-10-06: a conversation opened on a photograph, because the
+// photographs loaded after the jump to the bottom and pushed the newest
+// message down. jsdom has no layout, so the list is given a height by hand and
+// a photograph loading is the ResizeObserver firing.
+describe('staying on the newest message while photographs load', () => {
+  it('follows the list down as it grows, until the reader scrolls', async () => {
+    let resized: (() => void) | null = null;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resized = callback;
+        }
+        observe() {
+          // The test calls `resized` itself.
+        }
+        disconnect() {
+          // Nothing was watched.
+        }
+      },
+    );
+    renderThread();
+    const box = (await screen.findByRole('log')).parentElement;
+    if (!box) throw new Error('The log has no scrolling box around it.');
+    let height = 1000;
+    Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => height });
+
+    height = 1400;
+    act(() => {
+      resized?.();
+    });
+    expect(box.scrollTop).toBe(1400);
+
+    // The reader scrolls up to read; a photograph landing now leaves them there.
+    fireEvent.wheel(box);
+    box.scrollTop = 300;
+    height = 1800;
+    act(() => {
+      resized?.();
+    });
+    expect(box.scrollTop).toBe(300);
+    vi.unstubAllGlobals();
   });
 });
 

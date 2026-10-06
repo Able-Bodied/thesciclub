@@ -15,6 +15,7 @@ import { reportMessage, useMyReports } from '@/lib/chat/reports';
 import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
 import type { ChatMessage } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { useHoldScroll } from '@/lib/hold-scroll';
 import { Composer } from '@/routes/chat/composer';
 import { DeleteConversation } from '@/routes/chat/delete-conversation';
 import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
@@ -132,23 +133,39 @@ export default function ThreadPage() {
   const gone = thread?.kind === 'direct' && thread.otherMemberId === null;
 
   const scroller = useRef<HTMLDivElement | null>(null);
+  const log = useRef<HTMLDivElement | null>(null);
   const opened = useRef(false);
   const seen = useRef(0);
+  // Held at the bottom while photographs load, until the reader scrolls; see
+  // lib/hold-scroll.ts. Taken up again whenever they come back down.
+  const pin = useHoldScroll(scroller, log, !loading && thread !== null);
 
-  const toBottom = useCallback((behaviour: ScrollBehavior) => {
+  /** Straight to the bottom, with no animation: what a hold re-applies. */
+  const snapToBottom = useCallback(() => {
     const element = scroller.current;
-    if (!element) return;
-    // Two ways down, because `scrollTo` on an element is not everywhere — jsdom
-    // has no implementation of it at all, and a screen whose tests cannot render
-    // it is a screen with no tests. Setting scrollTop is what both understand;
-    // scrollTo is only there for the smooth one.
-    if (typeof element.scrollTo === 'function') {
-      element.scrollTo({ top: element.scrollHeight, behavior: behaviour });
-    } else {
-      element.scrollTop = element.scrollHeight;
-    }
-    setBehind(false);
+    if (element) element.scrollTop = element.scrollHeight;
   }, []);
+
+  const toBottom = useCallback(
+    (behaviour: ScrollBehavior) => {
+      const element = scroller.current;
+      if (!element) return;
+      // Two ways down, because `scrollTo` on an element is not everywhere — jsdom
+      // has no implementation of it at all, and a screen whose tests cannot render
+      // it is a screen with no tests. Setting scrollTop is what both understand;
+      // scrollTo is only there for the smooth one.
+      if (behaviour === 'smooth' && typeof element.scrollTo === 'function') {
+        element.scrollTo({ top: element.scrollHeight, behavior: behaviour });
+        // Held without a jump, so the smooth scroll is what the reader sees; a
+        // photograph that lands later snaps to the bottom from wherever it is.
+        pin.hold(snapToBottom, { now: false });
+      } else {
+        pin.hold(snapToBottom);
+      }
+      setBehind(false);
+    },
+    [pin, snapToBottom],
+  );
 
   // Open at the bottom, once, on the first load that has anything in it.
   useEffect(() => {
@@ -166,10 +183,23 @@ export default function ThreadPage() {
     if (!grew) return;
     const element = scroller.current;
     if (!element) return;
+    // Held means the reader is at the bottom, whatever the arithmetic says now
+    // that the new message has already made the list taller.
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
-    if (shouldFollowScroll(distance)) toBottom('smooth');
+    if (pin.holding() || shouldFollowScroll(distance)) toBottom('smooth');
     else setBehind(true);
-  }, [messages.length, toBottom]);
+  }, [messages.length, toBottom, pin]);
+
+  /** Coming back down to the newest message takes the hold up again. */
+  function onScroll() {
+    const element = scroller.current;
+    if (!element || pin.holding()) return;
+    const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+    if (shouldFollowScroll(distance)) {
+      pin.hold(snapToBottom);
+      setBehind(false);
+    }
+  }
 
   const nameOf = (message: ChatMessage): string => {
     if (message.authorId === account.userId) return 'you';
@@ -307,8 +337,13 @@ export default function ThreadPage() {
         </div>
       </header>
 
-      <div ref={scroller} className="relative flex-1 overflow-y-auto px-4 pt-3 pb-2 md:px-6">
+      <div
+        ref={scroller}
+        onScroll={onScroll}
+        className="relative flex-1 overflow-y-auto px-4 pt-3 pb-2 md:px-6"
+      >
         <div
+          ref={log}
           // Pushed to the bottom rather than stacked from the top: a
           // conversation with three messages in it belongs above the composer
           // where the next one will appear, not floating under the header with
