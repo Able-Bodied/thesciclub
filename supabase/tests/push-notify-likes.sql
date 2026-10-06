@@ -56,7 +56,7 @@ insert into public.chat_post_likes (post_id, member_id) values
 
 \echo ''
 \echo '== 1. THE ONE THAT MATTERS: Ana likes Bo''s reply; Bo is told who, and which post, and nobody else is =='
-\echo '   expect: Bo | like | Ana | Evenings, after a warm drink | post | t | /chat/rooms/probe-likes/topics/… | like:44444444-…-000000000002'
+\echo '   expect: Bo | like | Ana | Evenings, after a warm drink | post | t | /chat/rooms/probe-likes/topics/…?post=44444444-…-000000000002 | like:44444444-…-000000000002'
 select :whom as to_whom, kind, actor_name, body, detail, subject is null as no_subject, url, tag
   from public.push_owed(:'secret', 'like',
     '{"post_id":"44444444-7777-0000-0000-000000000002","member_id":"aaaaaaaa-7777-0000-0000-00000000000a"}') o;

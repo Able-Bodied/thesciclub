@@ -88,7 +88,7 @@ select (select display_name from public.members m join public.push_subscriptions
 
 \echo ''
 \echo '== 4. THE ONE THAT MATTERS: a reply reaches the starter, with a name and its words, and names no room or topic =='
-\echo '   expect: Bo | reply | Author | A private answer about a private thing | 0 | t | /chat/rooms/probe-room/topics/…'
+\echo '   expect: Bo | reply | Author | A private answer about a private thing | 0 | t | /chat/rooms/probe-room/topics/…?post=<the reply>'
 \echo '   Words since 20261003000000 (the owner, 2026-10-01); before it, body was null.'
 select (select display_name from public.members m join public.push_subscriptions s on s.member_id = m.id where s.endpoint = o.endpoint) as to_whom,
        kind, actor_name, body, photo_count, subject is null as no_subject, url
