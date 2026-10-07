@@ -148,10 +148,10 @@ describe('the installed app', () => {
     expect(swipe().defaultPrevented).toBe(false);
   });
 
-  it('goes to the previous screen on a rightward swipe from the left edge', () => {
+  it('leaves a rightward swipe from the left edge to the phone', () => {
     open();
-    expect(swipe().defaultPrevented).toBe(true);
-    expect(screen.getByTestId('path')).toHaveTextContent('/home');
+    expect(swipe().defaultPrevented).toBe(false);
+    expect(screen.getByTestId('path')).toHaveTextContent('/detail');
   });
 
   it.each([
