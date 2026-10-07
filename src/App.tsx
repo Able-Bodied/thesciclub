@@ -17,6 +17,7 @@ import ThreadPage from '@/routes/chat/thread-page';
 import TopicPage from '@/routes/chat/topic-page';
 import DevLoginPage from '@/routes/dev-login/page';
 import EventDetailPage from '@/routes/events/event-detail';
+import EventFormPage from '@/routes/events/event-form';
 import OrganizationDetailPage from '@/routes/events/organization-detail';
 import EventsPage from '@/routes/events/page';
 import HomeNewPage from '@/routes/home/new';
@@ -98,7 +99,12 @@ function AppShell() {
           <Route path="/chat/t/:threadId/members" element={<GroupMembersPage />} />
           <Route path="/chat/new-group" element={<NewGroupPage />} />
           <Route path="/events" element={<EventsPage />} />
+          {/* Adding and changing an event by hand: administrators, and members
+            who speak for an organization. The page sends anybody else back to
+            Events. No event id can be "new": they are uuids. */}
+          <Route path="/events/new" element={<EventFormPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
+          <Route path="/events/:id/edit" element={<EventFormPage />} />
           <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
           <Route path="/me" element={<MePage />} />
           {/* Unlisted in the tab bar; the page redirects a non-mentor away.

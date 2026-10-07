@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { describeError, describeThrown } from '@/lib/describe-error';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
-import type { ClubEvent, EventAttendee, EventTag, RsvpStatus } from '@/types/domain';
+import type { ClubEvent, EventAttendee, EventFormat, EventTag, RsvpStatus } from '@/types/domain';
 
 /**
  * Reading and writing events.
@@ -32,6 +32,9 @@ import type { ClubEvent, EventAttendee, EventTag, RsvpStatus } from '@/types/dom
  * omit them. Every query here names its columns. That is the intended cost.
  */
 
+/** The zone a hand-added event's times are typed and read in. */
+export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
+
 const EVENT_COLUMNS =
   'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id';
 
@@ -49,7 +52,8 @@ interface EventRow {
   event_format: string | null;
   organization_id: string | null;
   host_name: string | null;
-  feed_id: string;
+  /** Null for an event added by hand (20261005020000). */
+  feed_id: string | null;
   series_id: string | null;
 }
 
@@ -125,10 +129,11 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       descriptionHtml: row.description_html,
       startTime: row.start_time,
       endTime: row.end_time,
-      // A feed with no row here cannot happen (feed_id is NOT NULL and
-      // references data_feeds), but Pacific is the right answer for every
-      // organization the club has, so guessing it beats rendering nothing.
-      timezone: inputs.timezones.get(row.feed_id) ?? 'America/Los_Angeles',
+      // A hand-added event has no feed, and is read in Pacific: the form says
+      // so, and it is the right answer for every organization the club has,
+      // which is also why it stands in for a feed with no row here.
+      timezone:
+        (row.feed_id ? inputs.timezones.get(row.feed_id) : undefined) ?? HAND_ADDED_TIMEZONE,
       location: row.location,
       city: row.city,
       url: row.url,
@@ -136,6 +141,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       format: row.event_format as ClubEvent['format'],
       organizationId: row.organization_id,
       hostName: row.host_name,
+      handAdded: row.feed_id === null,
       seriesId: row.series_id,
       // Sorted so a card's chips do not reshuffle between renders.
       tags: (tagsByEvent.get(row.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
@@ -405,6 +411,76 @@ export function rsvpSaved(status: RsvpStatus | null): string {
   if (status === 'going') return 'You are going.';
   if (status === 'interested') return 'Marked as interested.';
   return 'Taken back.';
+}
+
+/* ------------------------------------------------------ added by hand */
+
+/** What the event form hands to `save_event`; the database checks all of it again. */
+export interface EventDraftPayload {
+  /** Null to add a new event. */
+  id: string | null;
+  organizationId: string | null;
+  /** Who hosts it when no organization does. Ignored by the database when one does. */
+  hostName: string;
+  title: string;
+  description: string;
+  /** ISO, already converted from the Pacific wall-clock time typed. */
+  startTime: string;
+  endTime: string | null;
+  format: EventFormat;
+  location: string;
+  city: string;
+  url: string;
+  registrationUrl: string;
+}
+
+const SAVE_EVENT_REFUSAL = {
+  attempt: 'The event was not saved.',
+  refused: 'You cannot add or change this event.',
+  missing: 'That event is not on the calendar any more.',
+};
+
+/** Adds or changes a hand-added event, through `save_event` (20261005020000). Resolves to its id. */
+export async function saveEvent(
+  draft: EventDraftPayload,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { data, error } = (await getSupabase().rpc('save_event', {
+      event: draft.id,
+      organization: draft.organizationId,
+      host: draft.hostName,
+      title: draft.title,
+      description: draft.description,
+      starts: draft.startTime,
+      ends: draft.endTime,
+      format: draft.format,
+      place: draft.location,
+      city: draft.city,
+      link: draft.url,
+      registration: draft.registrationUrl,
+    })) as { data: string | null; error: Failure | null };
+    if (error || !data) {
+      return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
+    }
+    return { ok: true, id: data };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
+  }
+}
+
+/** Deletes a hand-added event, with its RSVPs. Its group chat stays. */
+export async function deleteEvent(eventId: string): Promise<WriteResult> {
+  const refusal = {
+    attempt: 'The event was not deleted.',
+    refused: 'You cannot delete this event.',
+    missing: 'That event is not on the calendar any more.',
+  };
+  try {
+    const { error } = await getSupabase().rpc('delete_event', { event: eventId });
+    return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
 }
 
 /* ------------------------------------------------------------- attendees */

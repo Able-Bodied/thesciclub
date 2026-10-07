@@ -22,10 +22,11 @@ the product definition and wins over this file.
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
   the earlier-links backfill ran (Open 1). `20261005010000` and
   `20261005020000` (events added by hand) went live 2026-10-06 ahead of their
-  client, which is uncommitted in the working tree: nothing calls them yet.
-- **Checks**: 1,892 tests on the isolated PWA feature, no unhandled errors;
-  `pnpm check` and `pnpm build` clean. The unrelated events work also passed
-  its full working-tree run before the five Amazon-picture tests were added.
+  client; the client is included in this release (Open 8).
+- **Checks**: 1,922 tests on the combined release, no unhandled errors;
+  `pnpm check` and `pnpm build` clean. Local browser checks covered creating,
+  editing and deleting an event, the organization-management screen, and
+  the event form in dark mode with larger text.
   The RSVP screen tests keep the real `rsvpSaved` alongside
   their mocked reads and writes. The link-preview SQL probe passed on a
   fresh local stack, including earlier messages and posts, removed rows,
@@ -78,24 +79,26 @@ the product definition and wins over this file.
 6. **Small, not asked for**: the "Rather not say" toggles on Your details are
    under 44px with no `data-target`; onboarding's photo step asks for no
    description (Your details does).
-7. **Installed-app gestures** (2026-10-06): ready for the owner's word to
-   publish. `InstalledApp` handles the Home Screen app only: pinch and
-   double-tap page zoom are suppressed, and a rightward swipe starting in
-   the leftmost 28px goes back if React Router has an earlier screen.
-   Controls, selections, sideways scrollers and open dialogs keep their
-   gestures; a fresh deep link cannot swipe out of the app. Safari's
-   gesture events are cancelled too, and text boxes have a 16px floor to
-   avoid focus zoom. Me's text sizes still apply. The shell accounts for
-   top and side safe areas as well as the tab bar's existing bottom inset.
-   Standalone detection is shared with notifications in `lib/standalone.ts`.
-   Sixteen gesture tests; the isolated feature passed 1,892 tests, check
-   and build (the full working tree passed 1,922). Local Chromium touch
-   input confirmed back and vertical scrolling; portrait, landscape and
-   larger-text dark screens were inspected. Headless pinch emulation also
-   leaves an ordinary tab at scale 1, so that is not proof of phone zoom
-   behaviour. Try installed iOS and Android: pinch, double tap, focus a text
-   box, swipe back, and turn the phone beside its notch. The unfinished
-   events work remains outside this change.
+7. **Installed-app zoom** (2026-10-06): the owner asked to remove the
+   custom edge-swipe back handler, and it is gone. `InstalledApp` suppresses
+   page zoom only on the Home Screen app, including Safari's gesture events.
+   Text boxes have a 16px floor to avoid focus zoom; Me's text sizes still
+   apply. The shell accounts for top and side safe areas as well as the tab
+   bar's existing bottom inset. Standalone detection is shared with
+   notifications in `lib/standalone.ts`. Phone zoom still needs a real
+   installed iOS and Android check; headless pinch emulation is inconclusive.
+8. **Events added by hand** (2026-10-06): the owner authorized publishing
+   this work along with the corrected installed-app behaviour; both are
+   included in the published client. Administrators
+   add, change and delete hand-added events; members designated on Admin →
+   Organizations do so for their organizations alone. Administrators can
+   also name a community host. Scraped events are changed on their source
+   calendar. Typed dates and Pacific times, optional descriptions and links;
+   deleting keeps the group conversation. The two migrations are already
+   live, confirmed by a linked dry run. All 1,922 tests and check passed.
+   The SQL probe matched all 17 sections and 20 expected refusals on both
+   the local and a fresh stack; weakening organization permission removed
+   the expected refusal in section 5. The fresh stack was stopped afterwards.
 
 ## Rules the owner set
 

@@ -1,13 +1,16 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
+import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useOrganizationFollows } from '@/lib/organization-follows';
+import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { EventCard } from '@/routes/events/event-card';
+import { mayAddEvents } from '@/routes/events/event-draft';
 import { EventFilterSheet } from '@/routes/events/filter-sheet';
 import {
   activeFilterCount,
@@ -51,9 +54,10 @@ import {
  * at a comfortable reading measure: wider than the phone, nowhere near the
  * window, and the same shape on every screen.
  *
- * Nothing on this screen is written by the club. Every event here was published
- * by somebody else and ingested (jobs/event-ingest), which is why there is no
- * "create an event" affordance and no plan for one.
+ * Most events here were published by somebody else and ingested
+ * (jobs/event-ingest). From 2026-10-05 an administrator, or a member who
+ * speaks for an organization, can also add one by hand, and only they are
+ * shown "Add an event" (event-form.tsx).
  *
  * The segments are the mock's, from `evPage()`. Organizations is the odd one:
  * it is not a narrowing of the list but a different body entirely, because the
@@ -88,6 +92,9 @@ export default function EventsPage() {
   const { organizations, byId: organizationsById } = useOrganizations();
   const follows = useOrganizationFollows();
   const viewer = useViewerEvents(memberId);
+  const account = useAccount();
+  const mine = useMyOrganizations(memberId);
+  const canAdd = account.status === 'member' && mayAddEvents(account.isAdmin, mine.ids);
 
   // The segment lives in the URL, not in component state. Opening an
   // organization and pressing back used to land on Upcoming, because the state
@@ -191,26 +198,38 @@ export default function EventsPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
+        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] flex-wrap items-center justify-between gap-2.5">
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Events
           </h1>
-          {showingList ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSheetOpen(true);
-              }}
-              aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-              data-target="small"
-              className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-            >
-              <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
-              {filterCount ? (
-                <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-              ) : null}
-            </button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {canAdd ? (
+              <Link
+                to="/events/new"
+                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-tint px-3.5 font-semibold text-[0.84375rem] text-emphasis transition-colors hover:bg-line"
+                data-target="small"
+              >
+                <Plus className="h-[15px] w-[15px]" strokeWidth={2.4} aria-hidden="true" />
+                Add an event
+              </Link>
+            ) : null}
+            {showingList ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSheetOpen(true);
+                }}
+                aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
+                data-target="small"
+                className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
+              >
+                <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
+                {filterCount ? (
+                  <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
+                ) : null}
+              </button>
+            ) : null}
+          </div>
         </div>
 
         <SegmentPills

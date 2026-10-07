@@ -454,6 +454,12 @@ export interface ClubEvent {
   organizationId: string | null;
   /** The feed's own name for the host, when it is not a club organization. */
   hostName: string | null;
+  /**
+   * Added in the app by an administrator or a member who speaks for its
+   * organization, rather than read from a calendar. Only these can be changed
+   * or deleted here; a scraped one is changed on its organization's own site.
+   */
+  handAdded: boolean;
   tags: EventTag[];
   goingCount: number;
   interestedCount: number;

@@ -1,3 +1,6 @@
+import { LinkedText } from '@/components/linked-text';
+import { cn } from '@/lib/utils';
+
 /**
  * Rendering an event description that came from somebody else's website.
  *
@@ -131,7 +134,15 @@ export function EventDescription({
   className?: string;
 }) {
   const trimmed = html.trim();
-  if (!trimmed) return <p className={className}>{text}</p>;
+  // A hand-added event has only this: its line breaks are the writer's
+  // paragraphs, and its addresses are links, as they are in Chat.
+  if (!trimmed) {
+    return (
+      <p className={cn(className, 'whitespace-pre-line')}>
+        <LinkedText text={text} />
+      </p>
+    );
+  }
   return (
     <div
       className={className}

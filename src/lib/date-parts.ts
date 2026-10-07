@@ -133,11 +133,16 @@ const pad = (n: number) => String(n).padStart(2, '0');
  * the injury date does — a day with no month is left out rather than refused,
  * since the year it sits beside is already an answer.
  *
- * Nothing after today: neither question has an answer in the future.
+ * Nothing after today: neither of the profile's questions has an answer in
+ * the future. An event's date is the other way round, and passes `future`.
  */
 export function readDate(
   parts: DateParts,
-  { needs, now = new Date() }: { needs: 'day' | 'year'; now?: Date },
+  {
+    needs,
+    now = new Date(),
+    future = false,
+  }: { needs: 'day' | 'year'; now?: Date; future?: boolean },
 ): DateReading {
   const month = parts.month.trim();
   const day = parts.day.trim();
@@ -205,7 +210,7 @@ export function readDate(
   const today = now.toISOString().slice(0, 10);
   // A year or month on record is compared by its first day, so this year, or
   // this month, is not "in the future".
-  if (iso > today) {
+  if (!future && iso > today) {
     return { kind: 'invalid', part: 'year', problem: 'That date has not happened yet.' };
   }
   return { kind: 'date', iso, precision };

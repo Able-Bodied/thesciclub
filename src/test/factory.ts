@@ -54,6 +54,7 @@ export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
     descriptionHtml: '',
     startTime: '2026-09-05T17:00:00.000Z',
     seriesId: null,
+    handAdded: false,
     endTime: null,
     timezone: 'America/Los_Angeles',
     location: 'Somewhere',

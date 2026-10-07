@@ -32,6 +32,7 @@ import {
   withdrawStrike,
 } from '@/routes/admin/members-admin';
 import { ReportsSection } from '@/routes/admin/reports-section';
+import { RepresentativesSection } from '@/routes/admin/representatives-section';
 import { RoomsSection } from '@/routes/admin/rooms-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
@@ -54,7 +55,9 @@ export default function AdminPage() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
-  const [tab, setTab] = useState<'members' | 'invites' | 'rooms' | 'reports'>('members');
+  const [tab, setTab] = useState<'members' | 'invites' | 'rooms' | 'reports' | 'organizations'>(
+    'members',
+  );
   // Read here rather than inside the panel, because the tab's own label
   // carries the open count and has to know it before anybody opens the panel.
   // A complaint waiting unseen behind a tab that looks like every other tab is
@@ -193,7 +196,7 @@ export default function AdminPage() {
               pills is the honest answer. Found in a screenshot, as every layout
               problem in this project has been. */}
           <div className="mt-3 flex flex-wrap gap-[7px]">
-            {(['members', 'invites', 'rooms', 'reports'] as const).map((value) => (
+            {(['members', 'invites', 'rooms', 'reports', 'organizations'] as const).map((value) => (
               <button
                 key={value}
                 type="button"
@@ -240,6 +243,8 @@ export default function AdminPage() {
         ) : (
           <div className="mx-auto w-full max-w-[760px]">
             {tab === 'rooms' ? <RoomsSection /> : null}
+
+            {tab === 'organizations' ? <RepresentativesSection members={members} /> : null}
 
             {tab === 'reports' ? (
               <ReportsSection

@@ -1,13 +1,23 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import {
+  deleteEvent,
+  rsvpSaved,
+  setRsvp,
+  useAttendeesByEvent,
+  useEvents,
+  useViewerEvents,
+} from '@/lib/events';
+import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
@@ -39,6 +49,8 @@ export default function EventDetailPage() {
   const { byEvent } = useAttendeesByEvent();
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
+  const account = useAccount();
+  const mine = useMyOrganizations(memberId);
   const [writeError, setWriteError] = useState<string | null>(null);
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
@@ -109,6 +121,7 @@ export default function EventDetailPage() {
     ? (organizationsById.get(event.organizationId) ?? null)
     : null;
   const host = organization?.name ?? event.hostName;
+  const canChange = account.status === 'member' && mayChangeEvent(event, account.isAdmin, mine.ids);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -288,6 +301,17 @@ export default function EventDetailPage() {
             )}
           </>
         ) : null}
+
+        {canChange ? (
+          <ChangeEvent
+            eventId={event.id}
+            going={event.goingCount}
+            onDeleted={() => {
+              announce('The event is deleted.');
+              void navigate('/events', { replace: true });
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );
@@ -352,6 +376,102 @@ function AttendeeSection({
             : `and ${unnamed} more who ${unnamed === 1 ? 'is' : 'are'} not shown by choice`}
         </p>
       ) : null}
+    </>
+  );
+}
+
+/**
+ * Changing or deleting an event added by hand, for whoever may: an
+ * administrator, or a member who speaks for its organization. A scraped event
+ * never shows this — it is changed on its organization's own calendar.
+ *
+ * Deleting asks first, in place, and says what goes with it: the RSVPs. The
+ * event's group chat stays (delete_event's header says why), so the question
+ * does not claim otherwise.
+ */
+function ChangeEvent({
+  eventId,
+  going,
+  onDeleted,
+}: {
+  eventId: string;
+  going: number;
+  onDeleted: () => void;
+}) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function confirm() {
+    setBusy(true);
+    setError(null);
+    void deleteEvent(eventId).then((result) => {
+      setBusy(false);
+      if (result.ok) onDeleted();
+      else setError(result.error ?? 'The event was not deleted.');
+    });
+  }
+
+  return (
+    <>
+      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+        Added in the club
+      </h2>
+      {asking ? (
+        <div className="rounded-[14px] border border-destructive/30 bg-destructive/5 p-3.5">
+          <p className="text-[0.875rem] text-ink leading-[1.45]">
+            Delete this event?{' '}
+            {going > 0
+              ? `${going} member${going === 1 ? ' has' : 's have'} said they are going, and will find it gone.`
+              : 'Nobody has said they are going yet.'}{' '}
+            Its group chat, if it has one, stays.
+          </p>
+          {error ? (
+            <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-3 grid grid-cols-2 gap-[9px]">
+            <button
+              type="button"
+              onClick={confirm}
+              disabled={busy}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] bg-destructive-fill font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
+            >
+              {busy ? 'Deleting…' : 'Delete'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAsking(false);
+                setError(null);
+              }}
+              disabled={busy}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-line font-bold font-head text-[0.9375rem] text-ink"
+            >
+              Keep it
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-[9px]">
+          <Link
+            to={`/events/${eventId}/edit`}
+            className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
+          >
+            Change
+          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              setAsking(true);
+            }}
+            className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-destructive/60 font-bold font-head text-[0.9375rem] text-destructive transition-colors hover:bg-destructive/5"
+          >
+            Delete
+          </button>
+        </div>
+      )}
     </>
   );
 }
