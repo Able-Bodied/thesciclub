@@ -102,6 +102,43 @@ describe('readMeta', () => {
     });
   });
 
+  it('reads Amazon’s main product picture when there are no preview tags', () => {
+    const html = `<title>A commode</title>
+      <img id="logo" src="/logo.png">
+      <img data-old-hires="https://m.media-amazon.com/images/I/product.jpg"
+        id="landingImage" src="/small.jpg">`;
+    expect(readMeta(html, 'https://www.amazon.com/dp/example').image).toBe(
+      'https://m.media-amazon.com/images/I/product.jpg',
+    );
+  });
+
+  it('uses the product picture’s src when Amazon has no larger one', () => {
+    const html = "<img id='imgBlkFront' data-old-hires='' src='/product.jpg'>";
+    expect(readMeta(html, 'https://www.amazon.com/dp/example').image).toBe(
+      'https://www.amazon.com/product.jpg',
+    );
+  });
+
+  it('keeps preview tags ahead of the product picture', () => {
+    const html = `<meta property="og:image" content="/share.jpg">
+      <img id="landingImage" src="/product.jpg">`;
+    expect(readMeta(html, 'https://www.amazon.com/dp/example').image).toBe(
+      'https://www.amazon.com/share.jpg',
+    );
+  });
+
+  it('takes no arbitrary image or another site’s imitation of Amazon’s markup', () => {
+    expect(readMeta('<img id="logo" src="/logo.jpg">', 'https://www.amazon.com/').image).toBeNull();
+    expect(
+      readMeta('<img id="landingImage" src="/product.jpg">', 'https://notamazon.com/').image,
+    ).toBeNull();
+  });
+
+  it('refuses a product picture a browser would run', () => {
+    const html = '<img id="landingImage" src="javascript:alert(1)">';
+    expect(readMeta(html, 'https://www.amazon.com/').image).toBeNull();
+  });
+
   it('takes no picture a browser would run', () => {
     const html = '<meta property="og:image" content="javascript:alert(1)">';
     expect(readMeta(html, 'https://example.com/').image).toBeNull();

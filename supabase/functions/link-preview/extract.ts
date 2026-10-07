@@ -180,6 +180,29 @@ function clean(value: string | undefined, max: number): string | null {
 const ATTRIBUTE = /([a-zA-Z_:][-\w:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
 
 /**
+ * Amazon's product pages supply no picture in preview tags. Their main
+ * product image has a named element instead; taking that one avoids turning
+ * a logo or a recommended product into the picture under somebody's link.
+ * Only on Amazon's own pages, after redirects have been checked by index.ts.
+ */
+function amazonPicture(html: string, pageUrl: string): string | undefined {
+  if (!/(^|\.)amazon\.com$/i.test(new URL(pageUrl).hostname)) return undefined;
+  for (const tag of html.matchAll(/<img\b[^>]*>/gi)) {
+    const attributes = new Map(
+      [...tag[0].matchAll(ATTRIBUTE)].map((attribute) => [
+        (attribute[1] ?? '').toLowerCase(),
+        attribute[2] ?? attribute[3] ?? attribute[4] ?? '',
+      ]),
+    );
+    if (!['landingImage', 'imgBlkFront'].includes(attributes.get('id') ?? '')) continue;
+    const large = attributes.get('data-old-hires')?.trim();
+    if (large) return large;
+    return attributes.get('src')?.trim();
+  }
+  return undefined;
+}
+
+/**
  * The page's own description of itself: Open Graph first, then Twitter's
  * tags, then the plain <title> and description. Attributes in either order
  * and either quote, because pages write them every way (Instagram puts
@@ -203,13 +226,9 @@ export function readMeta(html: string, pageUrl: string): PageMeta {
   const titleTag = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1];
   const pick = (...keys: string[]) => keys.map((k) => tags.get(k)).find((v) => v?.trim());
 
-  const rawImage = pick(
-    'og:image:secure_url',
-    'og:image',
-    'og:image:url',
-    'twitter:image',
-    'twitter:image:src',
-  );
+  const rawImage =
+    pick('og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src') ??
+    amazonPicture(html, pageUrl);
   let image: string | null = null;
   if (rawImage) {
     try {
