@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Events from '@/lib/events';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -16,7 +17,8 @@ const state = vi.hoisted(() => ({
   reload: vi.fn(),
 }));
 
-vi.mock('@/lib/events', () => ({
+vi.mock('@/lib/events', async (importOriginal) => ({
+  rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
   useEvents: () => ({ events: state.events, loading: state.loading, error: state.error }),
   useAttendeesByEvent: () => ({ byEvent: state.attendees, loading: false, error: null }),
   useViewerEvents: () => ({

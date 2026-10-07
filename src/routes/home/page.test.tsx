@@ -7,6 +7,7 @@ import type * as Likes from '@/lib/chat/likes';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/types';
+import type * as Events from '@/lib/events';
 import type * as HomeTopics from '@/lib/home/topics';
 import type { HomeTopicSummary } from '@/lib/home/types';
 import { makeEvent, makeMember, makePost, makeRoom, makeTag } from '@/test/factory';
@@ -95,7 +96,8 @@ vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
     new Map(paths.map((path) => [path, `https://signed/${path}`])),
 }));
 
-vi.mock('@/lib/events', () => ({
+vi.mock('@/lib/events', async (importOriginal) => ({
+  rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
   useEvents: () => ({ events: db.events, loading: db.eventsLoading, error: db.eventsError }),
   useAttendeesByEvent: () => ({ byEvent: new Map(), loading: false, error: null }),
   useViewerEvents: () => ({ rsvps: db.rsvps, loading: false, error: null, reload: db.reload }),
