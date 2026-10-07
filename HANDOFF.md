@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-05. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-06. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments, and the old long handoff
 (`git show 4b1673b:HANDOFF.md`, which comments citing a HANDOFF section mean).
 Product decisions in one page: `git show 932a809:HANDOFF.md`. `CONTEXT.md` is
@@ -17,26 +17,42 @@ the product definition and wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, 103 migrations live;
-  `20261006010000` (link previews) waits for db push (`pnpm exec supabase
-  migration list`; a blank Remote is pending). Edge function `push-notify` v2
+  `20261006010000` (link previews) and `20261006020000` (earlier links)
+  wait for db push (`pnpm exec supabase migration list`; a blank Remote is
+  pending). The linked dry run lists only those two. Edge function `push-notify` v2
   live; `link-preview` not deployed yet (Open 1). `20261005010000` and
   `20261005020000` (events added by hand) went live 2026-10-06 ahead of their
   client, which is uncommitted in the working tree: nothing calls them yet.
-- **Checks**: 1,911 tests, `pnpm check` and `pnpm build` clean; 38 SQL probes,
-  plus `pnpm check-chat-photo-policy` for chat storage deletes. Known noise:
-  the events tests' `@/lib/events` mock lacks `rsvpSaved` (5 unhandled
-  errors, every test passes).
+- **Checks**: 1,871 tests on the committed feature, 1,901 with the events
+  work in the working tree; no unhandled errors. `pnpm check` and `pnpm
+  build` clean. The RSVP screen tests keep the real `rsvpSaved` alongside
+  their mocked reads and writes. The link-preview SQL probe passed on a
+  fresh local stack, including earlier messages and posts, removed rows,
+  saved cards, a second run, and member/anon refusals; dropping the removed
+  message check made it fail. The other SQL probes and
+  `pnpm check-chat-photo-policy` remain available for their own changes.
 
 ## Open
 
-1. **Link previews, switched on in three steps** (built 2026-10-06): db push
-   `20261006010000`; deploy the function (`pnpm exec supabase functions
+1. **Link previews, switched on in four steps** (built 2026-10-06): the
+   owner runs `pnpm exec supabase db push --linked --dry-run`, then
+   `pnpm exec supabase db push --linked` for `20261006010000` and
+   `20261006020000`; deploy the function (`pnpm exec supabase functions
    deploy link-preview --project-ref erijdvqnxavwezsbbojv`); then, in the
    dashboard's SQL editor, `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/link-preview',
-   'link_preview_url');`. Until the third, nothing is sent and links stay
-   plain. Only links written after it get a card. The Privacy Policy does not
-   yet say the club reads a linked page, or that pressing play reaches
-   YouTube: the owner's call, and the Twilio registration quotes `/privacy`.
+   'link_preview_url');` (once only); finally run
+   `select public.link_preview_backfill();` there. Until the third, nothing
+   is sent and links stay plain. The fourth asks about older links in both
+   conversations and room posts, which also supplies their cards on Home.
+   It returns requests queued, not cards saved: they run after the SQL
+   transaction commits. Wait for them to finish before retrying; saved cards
+   and taken-back content are skipped. A page that refuses the fetch or has
+   no usable title or picture stays a plain link. YouTube plays in place;
+   Instagram shows what its page supplies and opens the page on a press.
+   Publish the committed client to make the cards visible (the Git release
+   commands above). The Privacy Policy does not yet say the club reads a
+   linked page, or that pressing play reaches YouTube: the owner's call,
+   and the Twilio registration quotes `/privacy`.
 2. **Twilio**: the A2P 10DLC campaign was rejected 2026-10-02 (30908,
    privacy policy); do not raise it each session. `/privacy` is fixed and
    live. Resubmit once ablebodied.org (the brand's site on the registration)
