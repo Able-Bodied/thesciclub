@@ -24,6 +24,10 @@
 
 begin;
 
+-- A probe starts with the switch off, even on a local stack used to try it.
+-- The rollback restores whatever the developer had set.
+delete from vault.secrets where name = 'link_preview_url';
+
 insert into public.members (id, type, status, display_name, phone, birth_date, level_range, state)
 values
   ('aaaaaaaa-8888-0000-0000-00000000000a', 'peer', 'active', 'Ana', '19990000080', '1980-01-01', 'C5–C8', 'CA'),
@@ -141,6 +145,80 @@ insert into public.chat_messages (thread_id, author_id, body) values
   ('11111111-8888-0000-0000-000000000001', 'aaaaaaaa-8888-0000-0000-00000000000a', 'see www.reeve.org'),
   ('11111111-8888-0000-0000-000000000001', 'aaaaaaaa-8888-0000-0000-00000000000a', 'no link here');
 select count(*) - :queued_before as queued from net.http_request_queue where headers ? 'x-preview-secret';
+
+\echo ''
+\echo '== 10b. switched on, the backfill asks once about each standing link with no card (expect 2, then 2, then t) =='
+\echo '   One message from 10 and one room post; no words without a link, taken-back rows, or cards already saved.'
+update public.chat_messages set link_preview = jsonb_build_object('url', 'https://reeve.org/', 'title', 'Already')
+ where body = 'https://reeve.org again';
+-- Keep a link in the removed rows: otherwise checking removed_at would not
+-- be tested, because an empty body would skip them for a different reason.
+insert into public.chat_messages (thread_id, author_id, body, removed_at) values
+  ('11111111-8888-0000-0000-000000000001', 'aaaaaaaa-8888-0000-0000-00000000000a', 'https://reeve.org/removed', now());
+insert into public.chat_topics (id, room_id, author_id, title) values
+  ('22222222-8888-0000-0000-000000000001', 'bowel', 'aaaaaaaa-8888-0000-0000-00000000000a', 'Earlier links');
+insert into public.chat_posts (id, topic_id, author_id, body, removed_at, link_preview) values
+  ('33333333-8888-0000-0000-000000000001', '22222222-8888-0000-0000-000000000001',
+   'aaaaaaaa-8888-0000-0000-00000000000a', 'https://reeve.org/earlier', null, null),
+  ('33333333-8888-0000-0000-000000000002', '22222222-8888-0000-0000-000000000001',
+   'aaaaaaaa-8888-0000-0000-00000000000a', 'https://reeve.org/removed', now(), null),
+  ('33333333-8888-0000-0000-000000000003', '22222222-8888-0000-0000-000000000001',
+   'aaaaaaaa-8888-0000-0000-00000000000a', 'https://reeve.org/already', null,
+   jsonb_build_object('url', 'https://reeve.org/already', 'title', 'Already')),
+  ('33333333-8888-0000-0000-000000000004', '22222222-8888-0000-0000-000000000001',
+   'aaaaaaaa-8888-0000-0000-00000000000a', 'no link here', null, null);
+select count(*) as queued_before, coalesce(max(id), 0) as last_request
+  from net.http_request_queue where headers ? 'x-preview-secret' \gset
+set local role service_role;
+select public.link_preview_backfill() as asked;
+reset role;
+select count(*) - :queued_before as queued from net.http_request_queue where headers ? 'x-preview-secret';
+select count(*) = 2 and count(distinct convert_from(body, 'UTF8')::jsonb ->> 'table') = 2 as both_tables
+  from net.http_request_queue where headers ? 'x-preview-secret'
+   and id > :last_request;
+
+\echo ''
+\echo '== 10b2. once both cards are saved, running it again asks nothing (expect t, t, 0, 0) =='
+select id as earlier_message from public.chat_messages where body = 'see www.reeve.org' \gset
+set local role service_role;
+select public.link_preview_save(:'secret', 'chat_messages', :'earlier_message',
+  'see www.reeve.org', jsonb_build_object('url', 'https://www.reeve.org/', 'title', 'Reeve'));
+select public.link_preview_save(:'secret', 'chat_posts', '33333333-8888-0000-0000-000000000001',
+  'https://reeve.org/earlier', jsonb_build_object('url', 'https://reeve.org/earlier', 'title', 'Reeve'));
+reset role;
+select count(*) as queued_before from net.http_request_queue where headers ? 'x-preview-secret' \gset
+set local role service_role;
+select public.link_preview_backfill() as asked;
+reset role;
+select count(*) - :queued_before as queued from net.http_request_queue where headers ? 'x-preview-secret';
+
+\echo ''
+\echo '== 10c. a member cannot run the backfill or queue requests themselves (expect permission denied twice) =='
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-8888-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
+set local role authenticated;
+savepoint member_backfill;
+select public.link_preview_backfill();
+rollback to savepoint member_backfill;
+savepoint member_request;
+select public.link_preview_request('chat_messages', :'earlier_message');
+rollback to savepoint member_request;
+reset role;
+
+\echo ''
+\echo '== 10c2. somebody signed out cannot run it either (expect permission denied) =='
+set local role anon;
+savepoint anon_backfill;
+select public.link_preview_backfill();
+rollback to savepoint anon_backfill;
+reset role;
+
+\echo ''
+\echo '== 10d. switched off, it says so rather than asking nothing (expect ERROR: Link previews are switched off: set link_preview_url first.) =='
+delete from vault.secrets where name = 'link_preview_url';
+savepoint switched_off;
+select public.link_preview_backfill();
+rollback to savepoint switched_off;
 
 \echo ''
 \echo '== 11. the bucket is private and only an active member reads it (expect f, then the policy) =='
