@@ -6,6 +6,7 @@ import type { ChatAuthor } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { PostLikes } from '@/routes/chat/like-button';
+import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import { byline, type CardLikes, RoomTag } from '@/routes/home/topic-card';
 
 /**
@@ -125,6 +126,7 @@ export function PhotoCard({
           <LinkedText text={opening.body} />
         </p>
       ) : null}
+      {opening?.linkPreview ? <LinkPreviewCard preview={opening.linkPreview} /> : null}
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-line border-t pt-2">
         {opening && likes ? (

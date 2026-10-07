@@ -5,6 +5,7 @@ import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
 import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
 import { PostLikes } from '@/routes/chat/like-button';
+import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 
 /**
  * A topic on Home, from the mock's `qCard`.
@@ -81,6 +82,12 @@ export function TopicCard({
         {starter?.level ? ` · ${starter.level}` : ''} · {chatTime(topic.createdAt)}
       </p>
 
+      {/* `relative`, like the Like control: above the title's stretched
+          link, so the card's own link and play button can be pressed. */}
+      {opening?.linkPreview ? (
+        <LinkPreviewCard preview={opening.linkPreview} className="relative" />
+      ) : null}
+
       {reply ? (
         <div className="mt-[11px] border-tint border-l-[2.5px] py-0.5 pl-3">
           <p className="flex items-center gap-[9px]">
@@ -106,6 +113,9 @@ export function TopicCard({
           <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52]">
             {reply.body || 'Replied with a photograph.'}
           </p>
+          {reply.linkPreview ? (
+            <LinkPreviewCard preview={reply.linkPreview} className="relative" />
+          ) : null}
         </div>
       ) : null}
 

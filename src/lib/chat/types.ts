@@ -127,6 +127,21 @@ export interface ChatTopic {
 export const ROOM_SORTS = ['activity', 'replies', 'views'] as const;
 export type RoomSort = (typeof ROOM_SORTS)[number];
 
+/**
+ * The card under a link (20261006010000): what the club read from the page
+ * when the words were written, never fetched by the reader's phone.
+ */
+export interface LinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  siteName: string | null;
+  /** A file in the private `link-previews` bucket, the page's picture. */
+  imagePath: string | null;
+  /** Set for a YouTube video: the card plays it, on a press. */
+  youtubeId: string | null;
+}
+
 /** One post in a topic. */
 export interface ChatPost {
   id: string;
@@ -150,6 +165,8 @@ export interface ChatPost {
    * the database when the parent is removed, so the reply stands on its own.
    */
   replyTo: string | null;
+  /** The first link's page, filled in by the club a moment after posting. */
+  linkPreview: LinkPreview | null;
 }
 
 /**
@@ -239,6 +256,8 @@ export interface ChatMessage {
   replyTo: string | null;
   /** Set on a line about a change to the group; null on anything said. */
   notice: ChatNotice | null;
+  /** The first link's page, filled in by the club a moment after sending. */
+  linkPreview: LinkPreview | null;
   /**
    * True while this is a bubble the reader has sent and the database has not
    * confirmed. Never set on a row that came back from a read.

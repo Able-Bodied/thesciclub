@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
+import { toLinkPreview } from '@/lib/chat/link-preview';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
@@ -80,10 +81,11 @@ export interface PostRow {
   removed_by_admin: boolean;
   edited_at: string | null;
   reply_to: string | null;
+  link_preview: unknown;
 }
 
 export const POST_COLUMNS =
-  'id, topic_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to';
+  'id, topic_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, link_preview';
 
 export function toPost(row: PostRow): ChatPost {
   return {
@@ -97,6 +99,7 @@ export function toPost(row: PostRow): ChatPost {
     removedByAdmin: row.removed_by_admin,
     editedAt: row.edited_at,
     replyTo: row.reply_to,
+    linkPreview: toLinkPreview(row.link_preview),
   };
 }
 

@@ -153,6 +153,7 @@ const message = (o: Partial<ChatMessage> & { id: string }): ChatMessage => ({
   editedAt: null,
   replyTo: null,
   notice: null,
+  linkPreview: null,
   ...o,
 });
 

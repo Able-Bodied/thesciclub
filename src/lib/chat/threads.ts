@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { deleteAttachments, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
+import { toLinkPreview } from '@/lib/chat/link-preview';
 import { CHAT_NOTICES, type ChatMessage, type ChatNotice, type ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
@@ -119,10 +120,11 @@ interface MessageRow {
   edited_at: string | null;
   reply_to: string | null;
   notice: string | null;
+  link_preview: unknown;
 }
 
 const MESSAGE_COLUMNS =
-  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice';
+  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice, link_preview';
 
 function toMessage(row: MessageRow): ChatMessage {
   return {
@@ -137,6 +139,7 @@ function toMessage(row: MessageRow): ChatMessage {
     editedAt: row.edited_at,
     replyTo: row.reply_to,
     notice: toNotice(row.notice),
+    linkPreview: toLinkPreview(row.link_preview),
   };
 }
 
@@ -419,6 +422,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           editedAt: null,
           replyTo,
           notice: null,
+          linkPreview: null,
           pending: true,
         },
       ]);

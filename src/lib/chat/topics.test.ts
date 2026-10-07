@@ -30,6 +30,7 @@ const post = (o: Partial<ChatPost> & { id: string }): ChatPost => ({
   removedByAdmin: false,
   editedAt: null,
   replyTo: null,
+  linkPreview: null,
   ...o,
 });
 

@@ -5,6 +5,7 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
+import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import { ReportControl } from '@/routes/chat/report-control';
 
 /**
@@ -169,6 +170,7 @@ export function MessageBubble({
       {message.attachments.length > 0 ? (
         <AttachmentGrid paths={message.attachments} from={mine ? 'you' : name} />
       ) : null}
+      {message.linkPreview ? <LinkPreviewCard preview={message.linkPreview} /> : null}
     </>
   );
 

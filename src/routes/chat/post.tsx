@@ -9,6 +9,7 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
+import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import { ReportControl } from '@/routes/chat/report-control';
 
 /**
@@ -250,6 +251,7 @@ export function Post({
       {post.attachments.length > 0 ? (
         <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a deleted member'} />
       ) : null}
+      {post.linkPreview && !editing ? <LinkPreviewCard preview={post.linkPreview} /> : null}
       {post.editedAt && !editing ? (
         <p className="mt-1 text-[0.78125rem] text-grey">Edited · {chatTime(post.editedAt)}</p>
       ) : null}

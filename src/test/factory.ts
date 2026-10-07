@@ -118,6 +118,7 @@ export function makePost(overrides: Partial<ChatPost> = {}): ChatPost {
     removedByAdmin: false,
     editedAt: null,
     replyTo: null,
+    linkPreview: null,
     ...overrides,
   };
 }

@@ -1,0 +1,98 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import type { LinkPreview } from '@/lib/chat/types';
+import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+
+const signed = vi.hoisted(() => ({ asked: [] as [string[], string][] }));
+
+// Signing is a read of the club; the card only has to ask the right bucket.
+vi.mock('@/lib/chat/attachments', () => ({
+  useAttachmentUrls: (paths: string[], bucket: string) => {
+    signed.asked.push([paths, bucket]);
+    return new Map(paths.map((path) => [path, `https://signed.example/${path}`]));
+  },
+}));
+
+const page: LinkPreview = {
+  url: 'https://www.reeve.org/',
+  title: 'The Christopher & Dana Reeve Foundation',
+  description: 'Curing spinal cord injury.',
+  siteName: 'Reeve',
+  imagePath: `${'b'.repeat(64)}.webp`,
+  youtubeId: null,
+};
+
+const video: LinkPreview = {
+  url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+  title: 'A song',
+  description: 'Rick Astley',
+  siteName: 'YouTube',
+  imagePath: `${'c'.repeat(64)}.jpg`,
+  youtubeId: 'dQw4w9WgXcQ',
+};
+
+describe('a page', () => {
+  it('is one link to the page, named by its site and title, opening elsewhere', () => {
+    render(<LinkPreviewCard preview={page} />);
+    const link = screen.getByRole('link', {
+      name: /Reeve.*The Christopher & Dana Reeve Foundation/,
+    });
+    expect(link).toHaveAttribute('href', 'https://www.reeve.org/');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer nofollow ugc');
+    expect(screen.getByText('Curing spinal cord injury.')).toBeInTheDocument();
+  });
+
+  it("draws the club's own copy of the picture, from the link-previews bucket", () => {
+    signed.asked = [];
+    const { container } = render(<LinkPreviewCard preview={page} />);
+    expect(signed.asked).toContainEqual([[page.imagePath], 'link-previews']);
+    // Decorative: the link is named by its words.
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      `https://signed.example/${page.imagePath}`,
+    );
+    expect(container.querySelector('img')).toHaveAttribute('alt', '');
+  });
+
+  it('names the site from the address when the page did not', () => {
+    render(<LinkPreviewCard preview={{ ...page, siteName: null }} />);
+    expect(screen.getByText('reeve.org')).toBeInTheDocument();
+  });
+});
+
+describe('a YouTube video', () => {
+  it('loads nothing from YouTube until play is pressed, then plays in place', async () => {
+    const { container } = render(<LinkPreviewCard preview={video} />);
+    expect(container.querySelector('iframe')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Play video: A song' }));
+
+    const player = container.querySelector('iframe');
+    expect(player).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1',
+    );
+    expect(player).toHaveAttribute('title', 'YouTube video: A song');
+    expect(screen.queryByRole('button', { name: /Play video/ })).toBeNull();
+  });
+
+  it('still links to the video on YouTube by its title', () => {
+    render(<LinkPreviewCard preview={video} />);
+    expect(screen.getByRole('link', { name: /A song/ })).toHaveAttribute('href', video.url);
+  });
+});
+
+describe('a small picture', () => {
+  it('becomes a thumbnail beside the words once it turns out to be small', () => {
+    const { container } = render(<LinkPreviewCard preview={page} />);
+    const img = container.querySelector('img');
+    if (!img) throw new Error('no picture');
+    expect(img.parentElement).toHaveClass('aspect-[1.91/1]');
+    Object.defineProperty(img, 'naturalWidth', { value: 100 });
+    fireEvent.load(img);
+    expect(img.parentElement).toHaveClass('w-[4.5rem]');
+    expect(img.parentElement).not.toHaveClass('aspect-[1.91/1]');
+  });
+});

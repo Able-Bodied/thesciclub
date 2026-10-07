@@ -54,6 +54,12 @@ describe('the Content-Security-Policy', () => {
     expect(policy).not.toContain("'unsafe-eval'");
   });
 
+  // A video plays from YouTube's privacy-enhanced host; nothing else may be
+  // framed inside the club, Instagram included (the owner, 2026-10-06).
+  it("frames only YouTube's privacy-enhanced player", () => {
+    expect(directive('frame-src')).toEqual(['https://www.youtube-nocookie.com']);
+  });
+
   it('still lets no other site frame the club', () => {
     expect(directive('frame-ancestors')).toEqual(["'none'"]);
   });
