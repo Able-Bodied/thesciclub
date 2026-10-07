@@ -93,7 +93,8 @@ the product definition and wins over this file.
    add, change and delete hand-added events; members designated on Admin →
    Organizations do so for their organizations alone. Administrators can
    also name a community host. Scraped events are changed on their source
-   calendar. Typed dates and Pacific times, optional descriptions and links;
+   calendar. The date opens the phone/browser calendar (the owner,
+   2026-10-06); times are typed in Pacific, with optional descriptions and links;
    deleting keeps the group conversation. The two migrations are already
    live, confirmed by a linked dry run. All 1,922 tests and check passed.
    The SQL probe matched all 17 sections and 20 expected refusals on both

@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
-import { DateFields } from '@/components/date-fields';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { readDate } from '@/lib/date-parts';
+import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
 import { saveEvent, useEvents } from '@/lib/events';
 import { useMyOrganizations } from '@/lib/organization-representatives';
@@ -37,8 +36,8 @@ import { EVENT_FORMAT_LABELS, EVENT_FORMATS, type EventFormat } from '@/types/do
  *
  * Times are typed in Pacific and the form says so: a hand-added event has no
  * feed to say what zone it is in, and every organization the club has is in
- * California (lib/events.ts, HAND_ADDED_TIMEZONE). The date is three boxes
- * and the times are typed, for the reason lib/date-parts.ts gives.
+ * California (lib/events.ts, HAND_ADDED_TIMEZONE). The owner chose the
+ * phone/browser calendar for the date (2026-10-06); times remain typed.
  *
  * What is missing is said under the button before it is pressed, one thing
  * at a time in the order the form asks, rather than as a wall of red after.
@@ -238,21 +237,22 @@ function EventForm({
         />
 
         {/* ------------------------------------------------------ when */}
-        <h2 id="event-date-heading" className={LABEL}>
+        <label htmlFor="event-date" className={LABEL}>
           What day?
-        </h2>
-        <div className="mt-1.5">
-          <DateFields
-            id="event-date"
-            parts={draft.date}
-            onChange={(parts) => {
-              set('date', parts);
-            }}
-            reading={dateReading}
-            order={['month', 'day', 'year']}
-            labelledBy="event-date-heading"
-          />
-        </div>
+        </label>
+        <input
+          id="event-date"
+          type="date"
+          min="1900-01-01"
+          max="9999-12-31"
+          value={dateReading.kind === 'date' ? dateReading.iso : ''}
+          onChange={(e) => {
+            // Keep the calendar's day as written, without a UTC conversion
+            // that could move it to yesterday in Pacific time.
+            set('date', partsFromIso(e.target.value));
+          }}
+          className={FIELD}
+        />
 
         <div className="mt-1 flex flex-wrap gap-2.5">
           <div className="min-w-[9em] flex-1">
