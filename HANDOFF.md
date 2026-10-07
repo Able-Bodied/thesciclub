@@ -16,19 +16,28 @@ the product definition and wins over this file.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 103 migrations, all
-  live (`pnpm exec supabase migration list`; a blank Remote is pending). Edge
-  function `push-notify` v2 live. `20261005010000` and `20261005020000`
-  (events added by hand) went live 2026-10-06 ahead of their client, which is
-  uncommitted in the working tree: nothing calls them yet.
-- **Checks**: 1,807 tests, `pnpm check` and `pnpm build` clean; 37 SQL probes,
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, 103 migrations live;
+  `20261006010000` (link previews) waits for db push (`pnpm exec supabase
+  migration list`; a blank Remote is pending). Edge function `push-notify` v2
+  live; `link-preview` not deployed yet (Open 1). `20261005010000` and
+  `20261005020000` (events added by hand) went live 2026-10-06 ahead of their
+  client, which is uncommitted in the working tree: nothing calls them yet.
+- **Checks**: 1,911 tests, `pnpm check` and `pnpm build` clean; 38 SQL probes,
   plus `pnpm check-chat-photo-policy` for chat storage deletes. Known noise:
   the events tests' `@/lib/events` mock lacks `rsvpSaved` (5 unhandled
   errors, every test passes).
 
 ## Open
 
-1. **Twilio**: the A2P 10DLC campaign was rejected 2026-10-02 (30908,
+1. **Link previews, switched on in three steps** (built 2026-10-06): db push
+   `20261006010000`; deploy the function (`pnpm exec supabase functions
+   deploy link-preview --project-ref erijdvqnxavwezsbbojv`); then, in the
+   dashboard's SQL editor, `select vault.create_secret('https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/link-preview',
+   'link_preview_url');`. Until the third, nothing is sent and links stay
+   plain. Only links written after it get a card. The Privacy Policy does not
+   yet say the club reads a linked page, or that pressing play reaches
+   YouTube: the owner's call, and the Twilio registration quotes `/privacy`.
+2. **Twilio**: the A2P 10DLC campaign was rejected 2026-10-02 (30908,
    privacy policy); do not raise it each session. `/privacy` is fixed and
    live. Resubmit once ablebodied.org (the brand's site on the registration)
    has the owner's three edits live, with thesciclub.com URLs (the
@@ -41,16 +50,16 @@ the product definition and wins over this file.
    numbers; each number 11 digits starting with 1, or it falls through to
    Twilio as "could not be sent"). When texts work, ask, then: clear that
    list, set Twilio's geo permissions to US only, and set a spend cap.
-2. **Supabase free plan**: pauses after a quiet week, small limits, **no
+3. **Supabase free plan**: pauses after a quiet week, small limits, **no
    backups**. Move to the paid tier (daily backups) and test a restore before
    real members arrive.
-3. **thesciclub.org**, if the owner wants it: a Netlify domain alias, plus `@`
+4. **thesciclub.org**, if the owner wants it: a Netlify domain alias, plus `@`
    and `www` A records to `75.2.60.5` on Spaceship.
-4. **Never tried on a real iPhone**: an hour of VoiceOver (the "Saved."
+5. **Never tried on a real iPhone**: an hour of VoiceOver (the "Saved."
    confirmations, Your answers, a described photo); the date boxes with Voice
    Control and birthday autofill; a notification arriving end to end; signed
    photos; the number pad staying up from phone into code (`keyboardHold`).
-5. **Small, not asked for**: the "Rather not say" toggles on Your details are
+6. **Small, not asked for**: the "Rather not say" toggles on Your details are
    under 44px with no `data-target`; onboarding's photo step asks for no
    description (Your details does).
 
@@ -187,4 +196,5 @@ the product definition and wins over this file.
 `ClubWordmark` (the owner's SVGs, never redrawn), `DateFields` /
 `lib/date-parts.ts` (every date: typed boxes, never a calendar),
 `NotificationsStep` (sign-up and `AskOnOpening`), `useHoldScroll` (keeps a list
-where it was put while photographs load; conversation and topic).
+where it was put while photographs load; conversation and topic),
+`LinkPreviewCard` (a link's card, in a message, a post and on Home).
