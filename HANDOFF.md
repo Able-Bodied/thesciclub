@@ -232,7 +232,9 @@ the product definition and wins over this file.
 `SmallButton` / `ReasonField` (`admin/controls.tsx`), `lib/chat/time.ts`,
 `describeError` / `describeThrown`, `organization-badge.tsx`, `ClubMark` /
 `ClubWordmark` (the owner's SVGs, never redrawn), `DateFields` /
-`lib/date-parts.ts` (every date: typed boxes, never a calendar),
+`lib/date-parts.ts` (every date: typed boxes, never a calendar; the one
+exception is the event form, which opens the phone's calendar at the owner's
+word, 2026-10-06),
 `NotificationsStep` (sign-up and `AskOnOpening`), `useHoldScroll` (keeps a list
 where it was put while photographs load; conversation and topic),
 `LinkPreviewCard` (a link's card, in a message, a post and on Home).
