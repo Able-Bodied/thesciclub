@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -82,18 +83,6 @@ function sameBytes(a: ArrayBuffer | null, b: Uint8Array): boolean {
 
 function canPush(): boolean {
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
-}
-
-function isStandalone(): boolean {
-  // `navigator.standalone` is Safari's own, and older than the media query.
-  const safari = (navigator as Navigator & { standalone?: boolean }).standalone;
-  // Guarded: AskOnOpening reads this on the way into the club, and a missing
-  // matchMedia must cost a question, not the club.
-  return (
-    safari === true ||
-    (typeof window.matchMedia === 'function' &&
-      window.matchMedia('(display-mode: standalone)').matches)
-  );
 }
 
 /**

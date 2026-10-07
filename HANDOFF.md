@@ -23,7 +23,7 @@ the product definition and wins over this file.
   the earlier-links backfill ran (Open 1). `20261005010000` and
   `20261005020000` (events added by hand) went live 2026-10-06 ahead of their
   client, which is uncommitted in the working tree: nothing calls them yet.
-- **Checks**: 1,876 tests on the committed feature, no unhandled errors;
+- **Checks**: 1,892 tests on the isolated PWA feature, no unhandled errors;
   `pnpm check` and `pnpm build` clean. The unrelated events work also passed
   its full working-tree run before the five Amazon-picture tests were added.
   The RSVP screen tests keep the real `rsvpSaved` alongside
@@ -78,6 +78,24 @@ the product definition and wins over this file.
 6. **Small, not asked for**: the "Rather not say" toggles on Your details are
    under 44px with no `data-target`; onboarding's photo step asks for no
    description (Your details does).
+7. **Installed-app gestures** (2026-10-06): ready for the owner's word to
+   publish. `InstalledApp` handles the Home Screen app only: pinch and
+   double-tap page zoom are suppressed, and a rightward swipe starting in
+   the leftmost 28px goes back if React Router has an earlier screen.
+   Controls, selections, sideways scrollers and open dialogs keep their
+   gestures; a fresh deep link cannot swipe out of the app. Safari's
+   gesture events are cancelled too, and text boxes have a 16px floor to
+   avoid focus zoom. Me's text sizes still apply. The shell accounts for
+   top and side safe areas as well as the tab bar's existing bottom inset.
+   Standalone detection is shared with notifications in `lib/standalone.ts`.
+   Sixteen gesture tests; the isolated feature passed 1,892 tests, check
+   and build (the full working tree passed 1,922). Local Chromium touch
+   input confirmed back and vertical scrolling; portrait, landscape and
+   larger-text dark screens were inspected. Headless pinch emulation also
+   leaves an ordinary tab at scale 1, so that is not proof of phone zoom
+   behaviour. Try installed iOS and Android: pinch, double tap, focus a text
+   box, swipe back, and turn the phone beside its notch. The unfinished
+   events work remains outside this change.
 
 ## Rules the owner set
 

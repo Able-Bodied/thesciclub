@@ -559,3 +559,25 @@
     --room-places: #83cde3;
   }
 }
+
+/* Installed phones keep the page at its layout scale. Panning still belongs
+ * to the scrollers; browser tabs and the system's magnifier stay untouched. */
+:root[data-installed-app],
+:root[data-installed-app] body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
+/* A small text box must not make Safari zoom the whole app when it takes
+ * focus. This is a floor, so Me's larger text still wins. */
+:root[data-installed-app] :is(input, textarea, select) {
+  font-size: max(1rem, 16px);
+}
+
+/* The tab bar already accounts for the home indicator. The shell also needs
+ * space for the notch and for the side insets when the phone is turned. */
+:root[data-installed-app] .app-shell {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}

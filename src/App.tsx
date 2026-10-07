@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskOnOpening } from '@/components/ask-on-opening';
+import { InstalledApp } from '@/components/installed-app';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
@@ -51,7 +52,7 @@ function AppShell() {
   // phone layout. Reported as a Firefox bug; it was neither Firefox nor a bug,
   // it was this number, and both engines measured identically.
   return (
-    <div className="relative mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
+    <div className="app-shell relative mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
       {/* First in the DOM, painted last on a phone and first on a desktop —
           see the ordering note in app-nav.tsx. */}
       {/* The first thing a keyboard reaches: a way past the five tabs to the
@@ -122,6 +123,7 @@ export default function App() {
       {/* Above the routes, so a confirmation outlives the screen that sent
           it — see src/lib/announce.tsx. */}
       <AnnounceProvider>
+        <InstalledApp />
         <RouteChange />
         <AppRoutes />
       </AnnounceProvider>
