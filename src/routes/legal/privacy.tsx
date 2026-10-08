@@ -23,7 +23,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 3, 2026">
+    <LegalPage title="Privacy Policy" updated="October 7, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -58,17 +58,35 @@ export default function PrivacyPage() {
           <li>
             <b>Your notification settings</b>, if you turn notifications on for a device.
           </li>
+          <li>
+            <b>If you link a Google account</b> to sign in with: the name, email address and account
+            number Google sends us. Linking is optional, and your phone number stays your account.
+          </li>
         </List>
         <P>
           If you look up your city by ZIP code or by your device’s location, that is used once to
           find a city and state and is not kept. There is no advertising, analytics or tracking in
           the app.
         </P>
+        <P>
+          The sign-in screen and Me show Google’s sign-in button, which is loaded from Google, so
+          Google can see that the page was opened, under{' '}
+          <a
+            href="https://policies.google.com/privacy"
+            className="font-semibold text-emphasis underline"
+          >
+            Google’s Privacy Policy
+          </a>
+          . No other part of the app loads anything from Google.
+        </P>
       </Section>
 
       <Section title="How we use it">
         <List>
-          <li>To sign you in, and to check that your number is on the club’s invite list.</li>
+          <li>
+            To sign you in, with your phone number or a Google account you have linked, and to check
+            that your number is on the club’s invite list.
+          </li>
           <li>
             To show your profile to other members and to suggest peers and mentors to you, using
             things like your injury, your age and where you live.
@@ -105,6 +123,11 @@ export default function PrivacyPage() {
             administrators can read it. Nobody else can, you included.
           </li>
           <li>
+            <b>What Google sends us</b> when you link it is used only to sign you in. It is not
+            shown to other members or to organizations, and it is never shared. Unlink Google on Me
+            and it is no longer used to sign you in.
+          </li>
+          <li>
             <b>Photographs</b> are only shown to people signed in to the club. Nobody outside it can
             open them, even with a copied link.
           </li>
@@ -122,8 +145,8 @@ export default function PrivacyPage() {
 
       <Section title="Text messages (SMS)">
         <P>
-          We text you a one-time code each time you sign in, and nothing else. Your phone number is
-          used to send those codes and to identify your account.
+          We text you a one-time code each time you sign in with your phone number, and nothing
+          else. Your phone number is used to send those codes and to identify your account.
         </P>
         <P>
           <b>Message frequency:</b> one text each time you ask for a sign-in code.{' '}
@@ -170,8 +193,8 @@ export default function PrivacyPage() {
         <P>
           We do not sell your information or share it for advertising. We share it only with the
           service providers that run the club for us: hosting, our database and sign-in, text
-          messages, location lookup, and device notifications. They receive only what they need to
-          do that work.
+          messages, location lookup, device notifications, and Google, if you sign in with it. They
+          receive only what they need to do that work.
         </P>
       </Section>
 
@@ -185,12 +208,12 @@ export default function PrivacyPage() {
       <Section title="Deleting your account">
         <P>
           You can delete your account yourself, from <b>Delete my account</b> at the foot of Me.
-          That erases your name, phone number, photograph, birthday, injury and everything you
-          answered about yourself, and takes your number off the invite list. What you wrote in Chat
-          stays, so other people’s conversations still make sense, but it says “Deleted member”
-          instead of your name. The other person in a one-to-one conversation can then delete it,
-          with everything both of you wrote and every photograph in it. A report keeps its copy of
-          the reported words, with nobody named.
+          That erases your name, phone number, photograph, birthday, injury, any Google account you
+          linked, and everything you answered about yourself, and takes your number off the invite
+          list. What you wrote in Chat stays, so other people’s conversations still make sense, but
+          it says “Deleted member” instead of your name. The other person in a one-to-one
+          conversation can then delete it, with everything both of you wrote and every photograph in
+          it. A report keeps its copy of the reported words, with nobody named.
         </P>
         <P>
           Administrators cannot delete their own account in the app, and anybody can ask us to
