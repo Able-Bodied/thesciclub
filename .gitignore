@@ -39,3 +39,6 @@ sci-club-logo/
 
 # Netlify CLI — `netlify link` keeps the site id and local state here.
 .netlify
+
+# The owner's own audit notes, kept out of the repository (2026-10-07).
+AUDIT.md
