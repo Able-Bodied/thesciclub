@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { GoogleButton } from '@/components/google-button';
 import { signOut, useAccount } from '@/lib/account';
 import { describeError } from '@/lib/describe-error';
 import {
@@ -8,6 +9,7 @@ import {
   GOOGLE_RETURN_PARAM,
   isPhoneless,
   signInWithGoogle,
+  signInWithGoogleToken,
 } from '@/lib/google-sign-in';
 import { toE164 } from '@/lib/phone';
 import { vapidPublicKey } from '@/lib/push/notifications';
@@ -148,6 +150,22 @@ export default function OnboardingPage() {
       controller.abort();
     };
   }, [account.status, fromGoogle, setParams]);
+
+  /**
+   * Google's widget picked an account. A linked one becomes a session, and the
+   * guard below takes it to Home; an unlinked one is refused by the database
+   * and gets the same sentence as the redirect.
+   */
+  async function signInWithToken(token: string, nonce: string) {
+    setBusy(true);
+    setError(null);
+    const result = await signInWithGoogleToken(token, nonce).catch(() => ({
+      ok: false as const,
+      error: GOOGLE_NOT_LINKED,
+    }));
+    setBusy(false);
+    if (!result.ok) setError(result.error);
+  }
 
   async function continueWithGoogle() {
     setBusy(true);
@@ -522,16 +540,20 @@ export default function OnboardingPage() {
               here with a sentence saying so. Not on the join door: nobody
               joins through Google. */}
           {step === 'phone' && mode === 'signin' ? (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                void continueWithGoogle();
-              }}
-              className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
-            >
-              Sign in with Google
-            </button>
+            <div className="mt-2">
+              <GoogleButton
+                text="signin_with"
+                prompt
+                disabled={busy}
+                fallbackLabel="Sign in with Google"
+                onToken={(token, nonce) => {
+                  void signInWithToken(token, nonce);
+                }}
+                onFallback={() => {
+                  void continueWithGoogle();
+                }}
+              />
+            </div>
           ) : null}
           {/* Landing on the wrong door should not mean starting over. The two
               flows share every screen up to here, so switching costs nothing

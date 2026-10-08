@@ -9,6 +9,19 @@ const google = vi.hoisted(() => ({
   identity: null as Record<string, unknown> | null,
   calls: [] as string[],
   unlinkError: null as string | null,
+  linkTokenError: null as string | null,
+  /** Whether Google's script loaded; 'unavailable' shows the club's button. */
+  widget: 'unavailable',
+  onToken: null as ((token: string, nonce: string) => void) | null,
+}));
+
+// Google's widget is Google's page in a frame; what is tested here is what the
+// card does with the token it hands back.
+vi.mock('@/lib/google-identity', () => ({
+  useGoogleButton: ({ onToken }: { onToken: (token: string, nonce: string) => void }) => {
+    google.onToken = onToken;
+    return { ref: { current: null }, state: google.widget };
+  },
 }));
 
 vi.mock('@/lib/google-sign-in', async (importOriginal) => ({
@@ -16,6 +29,14 @@ vi.mock('@/lib/google-sign-in', async (importOriginal) => ({
   loadGoogleIdentity: () => Promise.resolve({ ok: true, identity: google.identity }),
   linkGoogle: () => {
     google.calls.push('link');
+    return Promise.resolve({ ok: true });
+  },
+  linkGoogleToken: (token: string, nonce: string) => {
+    google.calls.push(`linkToken:${token}:${nonce}`);
+    if (google.linkTokenError) {
+      return Promise.resolve({ ok: false, error: google.linkTokenError });
+    }
+    google.identity = LINKED;
     return Promise.resolve({ ok: true });
   },
   unlinkGoogle: () => {
@@ -64,6 +85,9 @@ beforeEach(() => {
   google.identity = null;
   google.calls = [];
   google.unlinkError = null;
+  google.linkTokenError = null;
+  google.widget = 'unavailable';
+  google.onToken = null;
 });
 
 describe('Signing in, on Me', () => {
@@ -115,5 +139,39 @@ describe('Signing in, on Me', () => {
     renderIt('/me?google=linked');
     expect(await screen.findByRole('button', { name: 'Unlink Google' })).toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('linking with the account picked in Google’s widget', () => {
+  it('links it without leaving Me, and names it', async () => {
+    google.widget = 'ready';
+    renderIt();
+    await screen.findByRole('button', { name: /Use Google’s sign-in page/ });
+    google.onToken?.('id-token', 'raw-nonce');
+    expect(
+      await screen.findByText(
+        'You can sign in with Google as nicole@gmail.com, or with your phone number.',
+      ),
+    ).toBeInTheDocument();
+    expect(google.calls).toEqual(['linkToken:id-token:raw-nonce']);
+  });
+
+  it('says so when that Google account belongs to somebody else', async () => {
+    google.widget = 'ready';
+    google.linkTokenError = 'That Google account already signs in to another member.';
+    renderIt();
+    await screen.findByRole('button', { name: /Use Google’s sign-in page/ });
+    google.onToken?.('id-token', 'raw-nonce');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'already signs in to another member',
+    );
+  });
+
+  // The way that does not depend on Google's window, for wherever it fails.
+  it('still offers Google’s own page', async () => {
+    google.widget = 'ready';
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: /Use Google’s sign-in page/ }));
+    expect(google.calls).toEqual(['link']);
   });
 });

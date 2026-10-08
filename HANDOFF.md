@@ -103,15 +103,20 @@ the product definition and wins over this file.
 9. **Google sign-in** (2026-10-07, released at the owner's word): a member
    links Google on Me; the sign-in door offers Google to everybody (the
    owner's choice) and lets in only a linked account. Nobody joins through
-   Google. The owner set up the Google OAuth client, the Google provider,
-   manual linking, the thesciclub.com redirect and the Before User Created
-   hook (`only_a_phone_makes_an_account`, migration `20261007010000`, live;
-   not `before_user_created`, which stays off). Confirmed from outside:
-   Google is enabled and /authorize redirects with the client ID. Still to
-   do: the owner's phone test (link, sign in, an unlinked account refused
-   and absent from Users), in the browser and the installed iPhone app. The
-   probe passed locally in a rolled-back transaction, not on a fresh stack.
-   The privacy policy does not yet mention a linked Google email.
+   Google. Both use Google's own widget (`lib/google-identity.ts`: the
+   accounts already in the browser, a "Sign in as" prompt on the sign-in
+   door), with Google's redirect page as the fallback link under it. The CSP
+   allows Google's `/gsi/` files only. The owner set up the OAuth client
+   (JavaScript origin `https://thesciclub.com`), the Google provider, manual
+   linking, the redirect URL and the Before User Created hook
+   (`only_a_phone_makes_an_account`, migration `20261007010000`, live; not
+   `before_user_created`, which stays off). Google's branding review (to show
+   "The SCI Club" instead of the Supabase address on Google's page) is the
+   owner's, pending. `/privacy` covers Google (2026-10-07); the SMS
+   statements are unchanged. Still to do: the owner's phone test (link, sign
+   in, an unlinked account refused and absent from Users), in Chrome and in
+   the installed iPhone app. The probe passed locally in a rolled-back
+   transaction, not on a fresh stack.
 
 ## Rules the owner set
 

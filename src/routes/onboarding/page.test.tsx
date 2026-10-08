@@ -28,6 +28,25 @@ const calls = vi.hoisted(() => ({
   focusedAtSend: null as Element | null,
   /** The signed-in account's phone; empty is an account Google made. */
   sessionPhone: '14085550112',
+  /** Whether Google's script loaded; 'unavailable' shows the club's button. */
+  widget: 'unavailable',
+  onToken: null as ((token: string, nonce: string) => void) | null,
+  promptAsked: false,
+  idTokenError: null as string | null,
+}));
+
+vi.mock('@/lib/google-identity', () => ({
+  useGoogleButton: ({
+    onToken,
+    prompt,
+  }: {
+    onToken: (token: string, nonce: string) => void;
+    prompt?: boolean;
+  }) => {
+    calls.onToken = onToken;
+    calls.promptAsked = Boolean(prompt);
+    return { ref: { current: null }, state: calls.widget };
+  },
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -101,6 +120,12 @@ vi.mock('@/lib/supabase', () => ({
       signInWithOAuth: (options: { provider: string }) => {
         calls.order.push(`signInWithOAuth:${options.provider}`);
         return Promise.resolve({ error: null });
+      },
+      signInWithIdToken: (options: { provider: string; token: string; nonce: string }) => {
+        calls.order.push(`signInWithIdToken:${options.provider}:${options.token}:${options.nonce}`);
+        return Promise.resolve({
+          error: calls.idTokenError ? { message: calls.idTokenError } : null,
+        });
       },
       getUser: () => Promise.resolve({ data: { user: { phone: calls.sessionPhone } } }),
       signInWithOtp: () => {
@@ -203,6 +228,10 @@ beforeEach(() => {
   calls.vapidKey = null;
   calls.notificationState = 'off';
   calls.sessionPhone = '14085550112';
+  calls.widget = 'unavailable';
+  calls.onToken = null;
+  calls.promptAsked = false;
+  calls.idTokenError = null;
 });
 
 describe('joining', () => {
@@ -1190,5 +1219,43 @@ describe('signing in with Google', () => {
     });
     expect(calls.order).not.toContain('signOut');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('signing in with the account picked in Google’s widget', () => {
+  async function reachSignIn() {
+    calls.widget = 'ready';
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+  }
+
+  it('asks Google for its “Sign in as” box on the sign-in door', async () => {
+    await reachSignIn();
+    expect(calls.promptAsked).toBe(true);
+  });
+
+  it('hands Supabase the token with the nonce it was made with', async () => {
+    await reachSignIn();
+    calls.onToken?.('id-token', 'raw-nonce');
+    await waitFor(() => {
+      expect(calls.order).toEqual(['signInWithIdToken:google:id-token:raw-nonce']);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  // The database's hook refuses an account it would have to make.
+  it('says what to do when the account picked is linked to nobody', async () => {
+    calls.idTokenError = 'Sign in with your phone number first, then link Google from Me.';
+    await reachSignIn();
+    calls.onToken?.('id-token', 'raw-nonce');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'If you have not linked Google yet, sign in with your phone number',
+    );
+  });
+
+  it('still offers Google’s own page', async () => {
+    await reachSignIn();
+    await userEvent.click(screen.getByRole('button', { name: /Use Google’s sign-in page/ }));
+    expect(calls.order).toEqual(['signInWithOAuth:google']);
   });
 });

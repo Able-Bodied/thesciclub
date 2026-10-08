@@ -70,6 +70,40 @@ export async function signInWithGoogle(): Promise<{ ok: false; error: string } |
 }
 
 /**
+ * Signs in with the ID token Google's widget handed back (src/lib/google-identity.ts).
+ *
+ * A Google account linked to nobody is refused by the database's hook, and
+ * that refusal is the sentence every other way in gives.
+ */
+export async function signInWithGoogleToken(
+  token: string,
+  nonce: string,
+): Promise<{ ok: false; error: string } | { ok: true }> {
+  const { error } = await getSupabase().auth.signInWithIdToken({
+    provider: 'google',
+    token,
+    nonce,
+  });
+  return error ? { ok: false, error: GOOGLE_NOT_LINKED } : { ok: true };
+}
+
+/** Links the Google account picked in Google's widget to the signed-in member. */
+export async function linkGoogleToken(
+  token: string,
+  nonce: string,
+): Promise<{ ok: false; error: string } | { ok: true }> {
+  const { error } = await getSupabase().auth.linkIdentity({ provider: 'google', token, nonce });
+  if (!error) return { ok: true };
+  // GoTrue's code for a Google account already on another member's sign-in.
+  if (error.code === 'identity_already_exists') return { ok: false, error: GOOGLE_TAKEN };
+  return { ok: false, error: describeError(error, 'Google was not linked.') };
+}
+
+/** Said when the Google account picked already signs in to somebody else. */
+export const GOOGLE_TAKEN =
+  'That Google account already signs in to another member. Choose a different one.';
+
+/**
  * Whether the session is an account Google made on its own.
  *
  * Every real account has a phone number, because the only way to make one is

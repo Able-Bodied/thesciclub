@@ -1,12 +1,14 @@
 import type { UserIdentity } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { GoogleButton } from '@/components/google-button';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
 import {
   GOOGLE_RETURN_PARAM,
   googleEmail,
   linkGoogle,
+  linkGoogleToken,
   loadGoogleIdentity,
   unlinkGoogle,
 } from '@/lib/google-sign-in';
@@ -84,6 +86,28 @@ export function GoogleSignIn() {
     }
   }
 
+  /** Google's widget picked an account: link it here, without leaving Me. */
+  async function linkWithToken(token: string, nonce: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await linkGoogleToken(token, nonce);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      const reread = await loadGoogleIdentity();
+      if (reread.ok && reread.identity) {
+        setIdentity(reread.identity);
+        announce('Google is linked.');
+      } else setError(reread.ok ? 'Google was not linked.' : reread.error);
+    } catch (e: unknown) {
+      setError(describeThrown(e, 'Google was not linked.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function unlink(current: UserIdentity) {
     setBusy(true);
     setError(null);
@@ -119,17 +143,32 @@ export function GoogleSignIn() {
             : 'You sign in with your phone number. Link Google to sign in with it instead, without waiting for a code.'}
         </p>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (identity) void unlink(identity);
-            else void link();
-          }}
-          disabled={busy}
-          className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-50"
-        >
-          {busy ? 'One moment…' : identity ? 'Unlink Google' : 'Link Google'}
-        </button>
+        {identity ? (
+          <button
+            type="button"
+            onClick={() => {
+              void unlink(identity);
+            }}
+            disabled={busy}
+            className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-50"
+          >
+            {busy ? 'One moment…' : 'Unlink Google'}
+          </button>
+        ) : (
+          <div className="mt-3">
+            <GoogleButton
+              text="continue_with"
+              disabled={busy}
+              fallbackLabel="Link Google"
+              onToken={(token, nonce) => {
+                void linkWithToken(token, nonce);
+              }}
+              onFallback={() => {
+                void link();
+              }}
+            />
+          </div>
+        )}
 
         {error ? (
           <p role="alert" className="mt-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
