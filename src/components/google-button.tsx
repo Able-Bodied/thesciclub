@@ -31,12 +31,14 @@ export function GoogleButton({
   return (
     <div>
       {/* Google draws into this. Hidden rather than removed when it fails, so
-          the ref stays put. Centred, because Google's button stops at 400px. */}
+          the ref stays put. Centred, because Google's button stops at 400px.
+          A fixed height, clipped: whatever Google draws, and in whatever
+          state of styling, it cannot be bigger than a button. */}
       <div
         ref={ref}
         hidden={state === 'unavailable'}
         aria-busy={state === 'loading'}
-        className="flex min-h-[44px] w-full items-center justify-center"
+        className="flex h-[44px] w-full items-center justify-center overflow-hidden"
       />
       {state === 'unavailable' ? (
         <button

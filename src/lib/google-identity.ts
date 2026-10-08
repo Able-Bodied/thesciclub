@@ -27,6 +27,7 @@ export const GOOGLE_CLIENT_ID =
   '897577409345-nc71l72e76am47futhggopvqg6k7fc90.apps.googleusercontent.com';
 
 const SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
+const STYLE_HREF = 'https://accounts.google.com/gsi/style';
 
 /** How long to wait for Google's script before showing the fallback. */
 const LOAD_TIMEOUT_MS = 6000;
@@ -104,6 +105,42 @@ export function loadGoogleScript(): Promise<GoogleAccountsId> {
   return loading;
 }
 
+let styling: Promise<void> | null = null;
+
+/**
+ * Loads Google's stylesheet for the button, once, before the button is drawn.
+ *
+ * Google draws a plain HTML button first and lays its own frame over it, and
+ * that plain button is styled by this sheet. Drawn before the sheet arrived,
+ * it was a bare SVG: a Google "G" the width of the page, for the moment the
+ * sheet took (the owner, 2026-10-07, on a computer and a phone). Never
+ * rejects: a button without Google's styling is still a button, and the box
+ * it is drawn into is clipped to a button's height anyway.
+ */
+function loadGoogleStyle(): Promise<void> {
+  if (styling) return styling;
+  styling = new Promise<void>((resolve) => {
+    const existing = document.querySelector<HTMLLinkElement>(`link[href="${STYLE_HREF}"]`);
+    const link = existing ?? document.createElement('link');
+    const timer = window.setTimeout(resolve, LOAD_TIMEOUT_MS);
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
+    link.addEventListener('load', done);
+    link.addEventListener('error', () => {
+      styling = null;
+      done();
+    });
+    if (!existing) {
+      link.rel = 'stylesheet';
+      link.href = STYLE_HREF;
+      document.head.appendChild(link);
+    } else if (existing.sheet) done();
+  });
+  return styling;
+}
+
 /** A fresh nonce, and the hash Google is given in its place. */
 export async function makeNonce(): Promise<{ raw: string; hashed: string }> {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -150,7 +187,11 @@ export function useGoogleButton({
 
     void (async () => {
       try {
-        const [accounts, nonce] = await Promise.all([loadGoogleScript(), makeNonce()]);
+        const [accounts, nonce] = await Promise.all([
+          loadGoogleScript(),
+          makeNonce(),
+          loadGoogleStyle(),
+        ]);
         const parent = ref.current;
         if (aborted() || !parent) return;
         id = accounts;
