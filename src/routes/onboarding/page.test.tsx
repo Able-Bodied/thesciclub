@@ -26,6 +26,8 @@ const calls = vi.hoisted(() => ({
   notificationState: 'off',
   /** What had focus when the code was asked for: see `keyboardHold`. */
   focusedAtSend: null as Element | null,
+  /** The signed-in account's phone; empty is an account Google made. */
+  sessionPhone: '14085550112',
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -69,6 +71,10 @@ vi.mock('@/routes/onboarding/submit-onboarding', () => ({
 
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: calls.status, userId: null, isAdmin: false, displayName: null }),
+  signOut: () => {
+    calls.order.push('signOut');
+    return Promise.resolve({ ok: true });
+  },
 }));
 
 // The device and the push service are the network; the screen's own choices
@@ -92,6 +98,11 @@ vi.mock('@/lib/push/notifications', () => ({
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     auth: {
+      signInWithOAuth: (options: { provider: string }) => {
+        calls.order.push(`signInWithOAuth:${options.provider}`);
+        return Promise.resolve({ error: null });
+      },
+      getUser: () => Promise.resolve({ data: { user: { phone: calls.sessionPhone } } }),
       signInWithOtp: () => {
         calls.order.push('signInWithOtp');
         calls.focusedAtSend = document.activeElement;
@@ -137,9 +148,9 @@ const { default: OnboardingPage } = await import('@/routes/onboarding/page');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
 // of HANDOFF.md "What Home is". Until then it was Peers.
-function renderJoin() {
+function renderJoin(path = '/join') {
   return render(
-    <MemoryRouter initialEntries={['/join']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/join" element={<OnboardingPage />} />
         <Route path="/home" element={<h1>Home</h1>} />
@@ -191,6 +202,7 @@ beforeEach(() => {
   calls.status = 'signed-out';
   calls.vapidKey = null;
   calls.notificationState = 'off';
+  calls.sessionPhone = '14085550112';
 });
 
 describe('joining', () => {
@@ -1132,5 +1144,51 @@ describe('the number pad stays open into the code', () => {
 
     await screen.findByRole('alert');
     expect(screen.getByPlaceholderText('(408) 555-0112')).toHaveFocus();
+  });
+});
+
+describe('signing in with Google', () => {
+  it('is offered on the sign-in door', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
+    expect(calls.order).toEqual(['signInWithOAuth:google']);
+  });
+
+  // Nobody joins through Google: invites name phone numbers.
+  it('is not offered on the join door', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    expect(screen.queryByRole('button', { name: 'Sign in with Google' })).not.toBeInTheDocument();
+  });
+
+  // Cancel at Google, or a Google account nobody linked with the hook on:
+  // back with no session, and owed a sentence.
+  it('says what to do when Google comes back without signing anybody in', async () => {
+    renderJoin('/join?google=signin');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'If you have not linked Google yet, sign in with your phone number',
+    );
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+  });
+
+  // The hook off: Google made an account. It has no number, so it can never
+  // be a member, and is signed back out rather than handed the questions.
+  it('signs out an account Google made, rather than asking it the questions', async () => {
+    calls.status = 'signed-up';
+    calls.sessionPhone = '';
+    renderJoin('/join?google=signin');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Google did not sign you in.');
+    expect(calls.order).toContain('signOut');
+  });
+
+  it('leaves somebody part-way through joining alone', async () => {
+    calls.status = 'signed-up';
+    renderJoin();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+    });
+    expect(calls.order).not.toContain('signOut');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });

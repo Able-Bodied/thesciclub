@@ -10,6 +10,7 @@ import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
+import { GoogleSignIn } from '@/routes/me/google-sign-in';
 import { MeHero } from '@/routes/me/hero';
 import { NotificationSettings } from '@/routes/me/notification-settings';
 import { StandingCard } from '@/routes/me/standing';
@@ -374,6 +375,7 @@ export default function MePage() {
                 hardest thing to reach with a head pointer or a mouth stick.
                 Notifications sit above it for the same reason, and beside it
                 because both are about this device rather than the member. */}
+            <GoogleSignIn />
             <NotificationSettings
               userId={userId}
               isMentor={member?.type === 'mentor'}

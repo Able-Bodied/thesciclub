@@ -1,8 +1,14 @@
 import { Loader2 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { useAccount } from '@/lib/account';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { signOut, useAccount } from '@/lib/account';
 import { describeError } from '@/lib/describe-error';
+import {
+  GOOGLE_NOT_LINKED,
+  GOOGLE_RETURN_PARAM,
+  isPhoneless,
+  signInWithGoogle,
+} from '@/lib/google-sign-in';
 import { toE164 } from '@/lib/phone';
 import { vapidPublicKey } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
@@ -98,6 +104,61 @@ export default function OnboardingPage() {
   const set = useCallback((patch: Partial<OnboardingData>) => {
     setData((d) => ({ ...d, ...patch }));
   }, []);
+
+  /**
+   * Back from Google without getting in.
+   *
+   * A member whose Google is linked comes back signed in, and the guard below
+   * sends them to Home. Anybody else comes back to the sign-in door with a
+   * sentence: they pressed Cancel, or the Google account is linked to nobody.
+   * In that second case the account Google made is signed back out — it has
+   * no phone number, so it can never be a member (src/lib/google-sign-in.ts).
+   * That is checked whenever an account is signed up, not only on the way
+   * back, so one left over from an earlier visit is not walked into the
+   * questions.
+   */
+  const [params, setParams] = useSearchParams();
+  const fromGoogle = params.get(GOOGLE_RETURN_PARAM) === 'signin';
+  useEffect(() => {
+    if (account.status === 'loading' || account.status === 'member') return;
+    if (account.status === 'suspended') return;
+    const controller = new AbortController();
+    const cancelled = () => controller.signal.aborted;
+    void (async () => {
+      // A failed check is not a stray: the questions are the safe default
+      // for a signed-up account, and the database refuses the rest.
+      const stray = account.status === 'signed-up' && (await isPhoneless().catch(() => false));
+      if (cancelled() || (!stray && !fromGoogle)) return;
+      if (stray) await signOut();
+      if (cancelled()) return;
+      setMode('signin');
+      setStep('phone');
+      setError(GOOGLE_NOT_LINKED);
+      if (fromGoogle) {
+        setParams(
+          (p) => {
+            p.delete(GOOGLE_RETURN_PARAM);
+            return p;
+          },
+          { replace: true },
+        );
+      }
+    })();
+    return () => {
+      controller.abort();
+    };
+  }, [account.status, fromGoogle, setParams]);
+
+  async function continueWithGoogle() {
+    setBusy(true);
+    setError(null);
+    const result = await signInWithGoogle();
+    // On success the page is already on its way to Google.
+    if (!result.ok) {
+      setBusy(false);
+      setError(result.error);
+    }
+  }
 
   /**
    * Holds the phone's number pad open between the number and the code.
@@ -454,6 +515,23 @@ export default function OnboardingPage() {
             >
               {step === 'photo' ? 'Skip for now' : 'Finish later — enter the club'}
             </LinkButton>
+          ) : null}
+          {/* Offered to everybody on the sign-in door, because nothing here
+              knows who is signing in until they have. It opens only an
+              account Google has been linked to from Me; any other comes back
+              here with a sentence saying so. Not on the join door: nobody
+              joins through Google. */}
+          {step === 'phone' && mode === 'signin' ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                void continueWithGoogle();
+              }}
+              className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
+            >
+              Sign in with Google
+            </button>
           ) : null}
           {/* Landing on the wrong door should not mean starting over. The two
               flows share every screen up to here, so switching costs nothing

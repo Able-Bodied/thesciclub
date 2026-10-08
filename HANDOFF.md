@@ -100,6 +100,18 @@ the product definition and wins over this file.
    The SQL probe matched all 17 sections and 20 expected refusals on both
    the local and a fresh stack; weakening organization permission removed
    the expected refusal in section 5. The fresh stack was stopped afterwards.
+9. **Google sign-in** (2026-10-07, released at the owner's word): a member
+   links Google on Me; the sign-in door offers Google to everybody (the
+   owner's choice) and lets in only a linked account. Nobody joins through
+   Google. The owner set up the Google OAuth client, the Google provider,
+   manual linking, the thesciclub.com redirect and the Before User Created
+   hook (`only_a_phone_makes_an_account`, migration `20261007010000`, live;
+   not `before_user_created`, which stays off). Confirmed from outside:
+   Google is enabled and /authorize redirects with the client ID. Still to
+   do: the owner's phone test (link, sign in, an unlinked account refused
+   and absent from Users), in the browser and the installed iPhone app. The
+   probe passed locally in a rolled-back transaction, not on a fresh stack.
+   The privacy policy does not yet mention a linked Google email.
 
 ## Rules the owner set
 
