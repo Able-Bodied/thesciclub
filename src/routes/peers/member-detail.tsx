@@ -379,11 +379,6 @@ export default function MemberDetailPage() {
                   What {member.displayName} offered to be asked about.
                 </p>
                 <Chips items={member.topics} tone="solid" />
-                {/* Under the chips, not instead of them: the chips are what
-                    this member said, and the room is where the club is already
-                    saying it. Draws nothing unless a topic reaches a room that
-                    is open, which for most of this club's life is nothing. */}
-                <ContinueInRooms topics={member.topics} />
               </Section>
             ) : null}
 
@@ -455,6 +450,17 @@ export default function MemberDetailPage() {
                 ))}
               </Section>
             ) : null}
+
+            {/* The rooms this member's topics reach, after everything about
+                the member: the page is for reading the person, and these were
+                taking the first screen of it on a phone (owner, 2026-10-07).
+                Draws nothing — heading included — unless a topic reaches a
+                room that is open, which for most of this club's life is
+                nothing. */}
+            <ContinueInRooms
+              topics={member.topics}
+              wrap={(links) => <Section title="Talk about it in the club">{links}</Section>}
+            />
 
             {/* The provenance sentence is only true of the seeded directory rows.
             Somebody who signed up never published anything in a directory, and

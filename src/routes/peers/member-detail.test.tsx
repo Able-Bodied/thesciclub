@@ -309,6 +309,17 @@ describe('the rooms a member’s topics already live in', () => {
     expect(screen.queryByText(/Continue in/)).not.toBeInTheDocument();
   });
 
+  // The page is for reading the person; the rooms are a way on from it, and
+  // at the top they took a phone's first screen.
+  it('comes after what the member wrote about themselves', () => {
+    chatRooms.rooms = [room('bowel', 'Bowel management', '2026-09-18T10:00:00Z')];
+    state.current = ok(makeMember({ topics: ['Bowel programme'] }));
+    renderDetail();
+    const details = screen.getByRole('heading', { name: 'Details' });
+    const link = screen.getByRole('link', { name: /Continue in Bowel management/ });
+    expect(details.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   // It is the second door, not a replacement for the first. Some questions are
   // for one person.
   it('does not take the place of the Message button', () => {
