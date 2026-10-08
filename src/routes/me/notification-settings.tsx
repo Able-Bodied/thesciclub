@@ -1,3 +1,5 @@
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 import {
   NOTIFICATION_KINDS,
   type NotificationState,
@@ -52,60 +54,93 @@ function NotificationKinds({
   isAdmin: boolean;
 }) {
   const { muted, busy, error, toggle } = useNotificationKinds(userId);
+  const [open, setOpen] = useState(false);
   if (muted === null && error === null) return null;
   const shown = NOTIFICATION_KINDS.filter(
     (k) => k.who === 'all' || (k.who === 'mentor' && isMentor) || (k.who === 'admin' && isAdmin),
   );
 
+  const onCount = muted ? shown.filter(({ kind }) => !muted.has(kind)).length : null;
+
+  // Folded away behind one button (the owner, 2026-10-07): ten switches under
+  // "On for this device" filled a phone screen for something most members set
+  // once. The count says what is behind it without opening it.
   return (
-    <fieldset className="mt-3.5 border-line border-t pt-3">
-      <legend className="sr-only">Also notify me about</legend>
-      <p aria-hidden="true" className="font-bold font-head text-[0.8125rem] text-ink">
-        Also notify me about
-      </p>
-      <p className="mt-0.5 text-[0.75rem] text-grey leading-[1.45]">
-        Messages and replies to your topics always notify; mute a conversation, topic or room where
-        it is.
-      </p>
-      {muted ? (
-        <ul className="mt-2">
-          {shown.map(({ kind, label }) => {
-            const on = !muted.has(kind);
-            return (
-              <li key={kind}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  disabled={busy === kind}
-                  onClick={() => {
-                    toggle(kind);
-                  }}
-                  className="flex min-h-[44px] w-full items-center gap-3 py-1.5 text-left disabled:opacity-50"
-                >
-                  <span className="min-w-0 flex-1 text-[0.875rem] text-ink leading-[1.4]">
-                    {label}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className={cn(
-                      'flex-none rounded-full px-[0.8em] py-[0.3em] font-bold font-head text-[0.75rem]',
-                      on ? 'bg-action text-white' : 'border border-line text-ink2',
-                    )}
-                  >
-                    {on ? 'On' : 'Off'}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+    <div className="mt-3.5 border-line border-t pt-1.5">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls="notification-kinds"
+        onClick={() => {
+          setOpen(!open);
+        }}
+        className="flex min-h-[44px] w-full items-center gap-3 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block font-bold font-head text-[0.875rem] text-ink">
+            Choose which notifications
+          </span>
+          {onCount !== null ? (
+            <span className="block text-[0.75rem] text-grey">
+              {onCount} of {shown.length} on
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn('h-4 w-4 flex-none text-grey transition-transform', open && 'rotate-180')}
+        />
+      </button>
+
+      {open ? (
+        <fieldset id="notification-kinds" className="pt-1">
+          <legend className="sr-only">Also notify me about</legend>
+          <p className="text-[0.75rem] text-grey leading-[1.45]">
+            Messages and replies to your topics always notify; mute a conversation, topic or room
+            where it is.
+          </p>
+          {muted ? (
+            <ul className="mt-2">
+              {shown.map(({ kind, label }) => {
+                const on = !muted.has(kind);
+                return (
+                  <li key={kind}>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      disabled={busy === kind}
+                      onClick={() => {
+                        toggle(kind);
+                      }}
+                      className="flex min-h-[44px] w-full items-center gap-3 py-1.5 text-left disabled:opacity-50"
+                    >
+                      <span className="min-w-0 flex-1 text-[0.875rem] text-ink leading-[1.4]">
+                        {label}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          'flex-none rounded-full px-[0.8em] py-[0.3em] font-bold font-head text-[0.75rem]',
+                          on ? 'bg-action text-white' : 'border border-line text-ink2',
+                        )}
+                      >
+                        {on ? 'On' : 'Off'}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </fieldset>
       ) : null}
+      {/* Outside the fold: a failed switch must be seen even once it is shut. */}
       {error ? (
         <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
           {error}
         </p>
       ) : null}
-    </fieldset>
+    </div>
   );
 }
 

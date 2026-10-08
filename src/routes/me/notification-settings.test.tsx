@@ -126,10 +126,25 @@ describe('NotificationSettings', () => {
       expect(screen.queryByRole('button', { name: /Being added to a group/ })).toBeNull();
     });
 
+    // Folded away: the list filled a phone screen (the owner, 2026-10-07).
+    it('are folded behind one button that says how many are on', async () => {
+      hook.state = 'on';
+      kinds.muted = new Set(['group_add']);
+      render(<NotificationSettings userId="u1" />);
+      expect(screen.queryByRole('button', { name: /Events I am going to/ })).toBeNull();
+      const fold = screen.getByRole('button', { name: /Choose which notifications/ });
+      expect(fold).toHaveAttribute('aria-expanded', 'false');
+      expect(fold).toHaveTextContent(/\d+ of \d+ on/);
+      await userEvent.click(fold);
+      expect(fold).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByRole('button', { name: /Events I am going to/ })).toBeInTheDocument();
+    });
+
     it('offer each kind as a switch that says whether it is on', async () => {
       hook.state = 'on';
       kinds.muted = new Set(['group_add']);
       render(<NotificationSettings userId="u1" />);
+      await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
       expect(screen.getByRole('button', { name: /Events I am going to/ })).toHaveAttribute(
         'aria-pressed',
         'true',
@@ -141,13 +156,15 @@ describe('NotificationSettings', () => {
     });
 
     // Do not spend a switch on something that cannot happen to this member.
-    it('show invites to mentors only and reports to administrators only', () => {
+    it('show invites to mentors only and reports to administrators only', async () => {
       hook.state = 'on';
       const { unmount } = render(<NotificationSettings userId="u1" />);
+      await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
       expect(screen.queryByRole('button', { name: /Somebody I invited/ })).toBeNull();
       expect(screen.queryByRole('button', { name: /New reports/ })).toBeNull();
       unmount();
       render(<NotificationSettings userId="u1" isMentor isAdmin />);
+      await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
       expect(screen.getByRole('button', { name: /Somebody I invited/ })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /New reports/ })).toBeInTheDocument();
     });
