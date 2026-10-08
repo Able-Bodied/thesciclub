@@ -50,8 +50,19 @@ describe('the Content-Security-Policy', () => {
   });
 
   it('never allows inline script or eval wholesale', () => {
-    expect(policy).not.toContain("'unsafe-inline'");
+    expect(directive('script-src')).not.toContain("'unsafe-inline'");
     expect(policy).not.toContain("'unsafe-eval'");
+  });
+
+  // Inline styles are allowed for Google's button. Their reach is what img-src
+  // and font-src allow, so those must stay the club's own and Supabase.
+  it('lets an inline style load nothing from anywhere new', () => {
+    expect(directive('img-src')).toEqual([
+      "'self'",
+      'blob:',
+      'https://erijdvqnxavwezsbbojv.supabase.co',
+    ]);
+    expect(directive('font-src')).toEqual(["'self'"]);
   });
 
   // A video plays from YouTube's privacy-enhanced host; nothing else may be
