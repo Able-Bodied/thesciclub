@@ -31,7 +31,7 @@ registration form do not produce a community; they produce a directory of abando
 So membership is granted by a person, not claimed by a form:
 
 - A **member organization** (NorCal SCI, SCVMC SCI Peer Support) adds numbers.
-- A **peer mentor** can add ten.
+- A **peer mentor** can add ten. Administrators, organization accounts, and members linked to speak for an organization can invite without a limit (2026-10-09).
 - The QR code gets somebody the app. It does not get them in. Somebody still has to add the number.
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
   fact, or repeating outside a room what was said in it — any of those end it.
@@ -74,7 +74,7 @@ Use these words exactly. Do not invent synonyms.
 - **Member** — anybody in the club. Everybody is one.
 - **Mentor** — a member who has agreed to be one, and appears first to newly injured members. An
   attribute of a member, not a separate kind of person.
-- **Organization** — a hospital, foundation or programme that can vouch for numbers and run events.
+- **Organization** — a hospital, foundation or programme that can vouch for numbers and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09).
 - **Invite** — one phone number, placed on the list by an organization or a mentor.
 
 There is no "user", no "peer" as an identity (the Peers tab is a surface, not a class of person),
@@ -109,9 +109,9 @@ Five surfaces are real, and everything else is deliberately not yet.
 | --- | --- | --- |
 | **Home** | Real | Where the app opens (2026-09-30). A second way in to rooms, events and members that already exist, not a new kind of content: recent topics and photographs from the open rooms, upcoming events with their RSVPs, and members worth meeting, under Everything · Topics · Photos · Events · People, narrowed by room and place. Asking a question there starts a topic in a room; sharing a photograph starts a topic whose first post has it; a comment is a reply on the topic page. Likes, with the names shown to every member who can read the room, and a notification to the post's author for each (2026-10-01, at the owner's word). Built in eight steps, 2026-09-29 to 2026-10-01. No anonymous asking, no search across it, no notification centre, no comments sheet. |
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
-| **Events** | Real | Ingested from partner organization calendars, with RSVPs. Administrators and designated organization representatives can also add, change and delete events entered in the club (2026-10-06); a representative acts only for their organizations. Administrators can name a community host. Scraped events are changed on their source calendar. |
+| **Events** | Real | Ingested from partner organization calendars, with RSVPs. Administrators add, edit and remove organizations in Admin, and link accounts that speak for them (2026-10-09). Administrators and designated organization representatives can also add, change and delete events entered in the club (2026-10-06); a representative acts only for their organizations. Administrators can name a community host. Scraped events are changed on their source calendar. |
 | **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
-| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. Any member writes in any open room, no joining (2026-09-29). A member edits their own post or message, readers see "Edited", and administrators can read every earlier version; a reply to a post sits under it, and a reply to a message quotes it (all 2026-09-29). Anybody in a group can rename it or give it a picture, and the conversation says who; an event's group keeps the event's name (2026-09-30). No search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. A link shows its page's picture and title, read once by the club so a reader's phone contacts nobody (earlier links are caught up when previews are switched on), and a YouTube video plays in place on a press; Instagram and everything else open their page (2026-10-06). Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
+| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. Any member writes in any open room, no joining (2026-09-29). A member edits their own post or message, readers see "Edited", and administrators can read every earlier version; a reply to a post sits under it, and a reply to a message quotes it (all 2026-09-29). Replies can answer specific replies at any depth, with each conversation branch independently collapsible; like counts say "5 likes" without a thumbs-up icon (2026-10-09). Sent messages show "Read" in direct conversations and "Read by X of Y" in groups, updating live when other participants open the conversation (2026-10-08). Anybody in a group can rename it or give it a picture, and the conversation says who; an event's group keeps the event's name (2026-09-30). No search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. A link shows its page's picture and title, read once by the club so a reader's phone contacts nobody (earlier links are caught up when previews are switched on), and a YouTube video plays in place on a press; Instagram and everything else open their page (2026-10-06). Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that
 looks finished and does nothing gets demoed, believed, and then explained. **That rule governed Home
@@ -162,19 +162,12 @@ included.
 
 ## What is public, and what is not
 
-Two tiers, and the line sits between content and people.
+The club's events and organization pages require membership too (the owner's
+choice, 2026-10-08). Shared links resume after sign-in; they do not provide
+public access. Legal and sign-in pages remain available without an account.
+The club's content is not intended for search indexing.
 
-| Public, no account | Behind sign-in |
-| --- | --- |
-| Events, including online ones | Every member profile |
-| Organization pages | Photos, names, bios, topics, levels |
-| Marketing pages | Messages, rooms and rosters |
-
-Events are the public shopfront: they are already public on the organizations' own calendars, they
-are genuinely useful to somebody without an account, and somebody searching "adaptive handcycling
-near me" should land on a real event.
-
-Members are not. A public directory of disabled people with names, photos, injury levels and
+A public directory of disabled people with names, photos, injury levels and
 catheter preferences is a scraping target and a training-data donation. Member pages carry
 `noindex`, and the API requires a session. `browse_members` is the single projection through which
 one member is visible to another, and it does not select `phone` or `birth_date` at all.

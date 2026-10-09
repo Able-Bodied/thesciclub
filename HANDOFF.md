@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-06. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-09. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments, and the old long handoff
 (`git show 4b1673b:HANDOFF.md`, which comments citing a HANDOFF section mean).
 Product decisions in one page: `git show 932a809:HANDOFF.md`. `CONTEXT.md` is
@@ -16,14 +16,15 @@ the product definition and wins over this file.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, 105 migrations live,
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, all repository migrations live
+  (linked dry run confirmed 2026-10-09),
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
   the earlier-links backfill ran (Open 1). `20261005010000` and
   `20261005020000` (events added by hand) went live 2026-10-06 ahead of their
   client; the client is included in this release (Open 8).
-- **Checks**: 1,922 tests on the combined release, no unhandled errors;
+- **Checks**: 2,015 tests on the combined release, no unhandled errors;
   `pnpm check` and `pnpm build` clean. Local browser checks covered creating,
   editing and deleting an event, the organization-management screen, and
   the event form in dark mode with larger text.
@@ -35,6 +36,39 @@ the product definition and wins over this file.
   `pnpm check-chat-photo-policy` remain available for their own changes.
 
 ## Open
+
+0. **Audit fixes, released** (2026-10-09): findings 1–5, 7 and 8 in AUDIT.md
+   are corrected in this release. Events and organizations stay behind membership
+   at the owner's word; the old public-events requirement is withdrawn. The owner
+   applied these migrations before authorizing the client release; all four are
+   confirmed live by the linked dry run:
+
+   - `20261008010000_only_delivered_chat_is_read.sql`
+   - `20261008020000_conversation_read_receipts_are_live.sql`
+   - `20261009010000_topic_replies_can_be_nested.sql`
+   - `20261009020000_organizations_accounts_and_unlimited_invites.sql`
+
+   Messages now show outgoing "Read" in a direct conversation and "Read by X of Y"
+   in groups, using the current roster, excluding the sender. Roster read markers
+   are published under existing participant RLS; updates refresh receipts without
+   marking the reader again. Hidden tabs do not advance conversation reads and
+   catch up when visible. Counts say "5 likes", with no icon beside the count.
+   Topic replies answer the specific selected reply at any depth, and each branch
+   can be hidden separately; indentation stops after four levels on phones.
+   The trigger still refuses missing, removed and cross-topic parents. Removing
+   a parent frees direct children and preserves their descendants.
+   The client is included in this release. Chat now reads every page, and marks only through the last delivered
+   row; a future change to load history on demand is separate. Read-marker probes
+   passed on local and fresh stacks, and failed when their timestamp boundary was
+   weakened. Browser checks cover long conversations, an accumulated calendar,
+   delayed sends, composition Enter, destination-preserving sign-in, and outage retry.
+   All 1,994 tests, `pnpm check` (run alone), and the production build passed.
+   Receipt and nested-reply SQL probes passed on local and fresh stacks. Removing
+   the publication and reinstating the old one-level trigger made the probes fail;
+   disabling receipts, visibility checks, reply selection or nesting failed the
+   corresponding regression tests. Mobile browser checks covered live direct/group
+   receipts, nested branch hiding, sending to a specific reply, and plain counts
+   opening the names list. Local fixtures and the fresh stack were cleaned up.
 
 1. **Link previews are live** (2026-10-06, at the owner's word): both
    migrations applied, function deployed, `link_preview_url` set once, and
@@ -117,6 +151,34 @@ the product definition and wins over this file.
    in, an unlinked account refused and absent from Users), in Chrome and in
    the installed iPhone app. The probe passed locally in a rolled-back
    transaction, not on a fresh stack.
+
+10. **Organization accounts and management, released** (2026-10-09): Admin →
+    Organizations adds, edits and removes directory entries, and links accounts
+    that speak for them. Admin → Members can assign the `organization` account
+    type. Me shows that role and links to `/organizations/manage`, where an
+    organization account edits only its linked entries. Existing representative
+    links still grant event management. Only club administrators create/remove
+    organizations, change vouching permission, designate roles or manage links.
+    Removal hides the directory entry, disables vouching and removes links;
+    historical events and invites retain the organization record.
+    Administrators, organization accounts and linked representatives have unlimited
+    invites through Me and `/invites`; ordinary mentors still have ten. Both the
+    screen and RLS ask `my_invite_permissions()`, which refuses inactive accounts.
+    Unlinking stops a representative's access immediately; existing invites stay.
+    Invite history is paginated, and role reads wait for the current account before
+    deciding whether to redirect. The admin roster reports linked mentors without
+    a cap too. Migration `20261009020000` is live, confirmed by the linked dry run.
+    All 2,015 tests, `pnpm check` run alone, and the build pass. The organization
+    probe has 12 true assertions and 16 expected refusals on local and fresh stacks;
+    the mentor probe still matches its 17 sections. Weakening organization scope
+    removed an expected refusal, and disabling unlimited UI, role assignment,
+    scoped lists, saving, complete history or loading guards failed regressions.
+    Mobile checks covered directory creation/editing, role assignment, linking,
+    the organization badge, scoped directory access and unlimited-invite wording.
+    The browser automation host was intermittent during further actions; sending
+    past ten and scoped saving are verified by UI tests and signed-in SQL probes.
+    Local fixtures were removed and the scratch stack was stopped. The owner applied
+    the hosted migrations and authorized this client release on 2026-10-09.
 
 ## Rules the owner set
 
