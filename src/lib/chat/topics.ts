@@ -4,6 +4,7 @@ import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -138,7 +139,7 @@ export function firstUnreadIndex(posts: ChatPost[], lastReadAt: string | null): 
 /** A top-level post and the replies filed under it, each in time order. */
 export interface PostThread {
   post: ChatPost;
-  replies: ChatPost[];
+  replies: PostThread[];
 }
 
 /** Earliest first, with the id to break a tie so two reads agree. */
@@ -146,72 +147,47 @@ function byPostTime(a: ChatPost, b: ChatPost): number {
   return a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id);
 }
 
-/**
- * The posts of a topic as the screen draws them: top-level posts in time
- * order, each with its replies in time order under it.
- *
- * Pure, and the one place the nesting rule is written for the screen. One
- * level: a reply is filed under the post its `replyTo` names. A reply whose
- * parent is not in the list — the parent was removed, and the screen leaves
- * removed posts out, or the database has nulled `replyTo` and this read is
- * older than that — stands as a top-level post in its own time order, and
- * nothing says "reply to a removed post". A reply whose parent is itself a
- * reply, which the trigger refuses and an older row could still hold, is
- * filed under that reply's post.
- */
+/** Each reply stays under the post it answers. Missing parents become roots.
+ * Break malformed cycles rather than losing their posts or recursing forever. */
 export function threadPosts(posts: readonly ChatPost[]): PostThread[] {
   const sorted = [...posts].sort(byPostTime);
-  const byId = new Map(sorted.map((post) => [post.id, post]));
-  const threads: PostThread[] = [];
-  const threadOf = new Map<string, PostThread>();
-
-  // The post a reply is filed under: follow replyTo up to a post that is
-  // top level here, or give up where the chain leaves the list.
-  const rootOf = (post: ChatPost): ChatPost | null => {
-    let current = post;
-    // Bounded by the list's length, so a cycle an older row could hold
-    // cannot spin.
-    let hops = sorted.length;
-    while (hops > 0) {
-      if (current.replyTo === null) return current;
-      const parent = byId.get(current.replyTo);
-      if (!parent) return null;
-      current = parent;
-      hops -= 1;
-    }
-    return null;
-  };
-
+  const nodes = new Map<string, PostThread>(sorted.map((post) => [post.id, { post, replies: [] }]));
+  const parents = new Map<string, string>();
+  const roots: PostThread[] = [];
   for (const post of sorted) {
-    const root = rootOf(post);
-    if (root === null || root.id === post.id) {
-      const thread = { post, replies: [] };
-      threads.push(thread);
-      threadOf.set(post.id, thread);
+    const node = nodes.get(post.id);
+    if (!node) continue;
+    const parent = post.replyTo ? nodes.get(post.replyTo) : undefined;
+    let ancestor = parent?.post.id;
+    const seen = new Set([post.id]);
+    while (ancestor && !seen.has(ancestor)) {
+      seen.add(ancestor);
+      ancestor = parents.get(ancestor);
+    }
+    if (parent && !ancestor) {
+      parents.set(post.id, parent.post.id);
+      parent.replies.push(node);
+    } else {
+      roots.push(node);
     }
   }
-  for (const post of sorted) {
-    const root = rootOf(post);
-    if (root === null || root.id === post.id) continue;
-    threadOf.get(root.id)?.replies.push(post);
-  }
-  return threads;
+  return roots;
 }
 
-/**
- * Which thread to open at: the first whose post, or any reply under it, was
- * written since the reader last looked. 0 for a reader who has never opened
- * the topic, or when nothing is new — see firstUnreadIndex.
- */
+/** Count all descendants, including those inside another reply's branch. */
+export function replyCount(thread: PostThread): number {
+  return thread.replies.reduce((count, reply) => count + 1 + replyCount(reply), 0);
+}
+
+/** The first root with unread words anywhere in its conversation. */
 export function firstUnreadThread(
   threads: readonly PostThread[],
   lastReadAt: string | null,
 ): number {
   if (!lastReadAt) return 0;
-  const index = threads.findIndex(
-    ({ post, replies }) =>
-      post.createdAt > lastReadAt || replies.some((reply) => reply.createdAt > lastReadAt),
-  );
+  const unread = (thread: PostThread): boolean =>
+    thread.post.createdAt > lastReadAt || thread.replies.some(unread);
+  const index = threads.findIndex(unread);
   return index === -1 ? 0 : index;
 }
 
@@ -329,12 +305,16 @@ export function useTopicPosts(
     try {
       const [topics, postRows, reads] = (await Promise.all([
         supabase.rpc('chat_topics_for', { room: roomId }).abortSignal(controller.signal),
-        supabase
-          .from('chat_posts')
-          .select(POST_COLUMNS)
-          .eq('topic_id', topicId)
-          .order('created_at')
-          .abortSignal(controller.signal),
+        readPages<PostRow>((from, to) =>
+          supabase
+            .from('chat_posts')
+            .select(POST_COLUMNS)
+            .eq('topic_id', topicId)
+            .order('created_at')
+            .order('id')
+            .range(from, to)
+            .abortSignal(controller.signal),
+        ),
         memberId
           ? supabase
               .from('chat_topic_reads')
@@ -375,7 +355,9 @@ export function useTopicPosts(
       // After the read, not before: the value above is where the reader had
       // got to, and this is the visit that moves it. A failure here is silent —
       // the topic is on screen and unread is a convenience.
-      if (found) void supabase.rpc('chat_mark_topic_read', { topic: topicId });
+      const through = postRows.data?.at(-1)?.id;
+      if (found && through)
+        void supabase.rpc('chat_mark_topic_read_through', { topic: topicId, post: through });
     } catch (e) {
       if (aborted()) return;
       setError(describeThrown(e, 'Could not load the topic.'));

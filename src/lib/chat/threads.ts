@@ -5,6 +5,7 @@ import { toLinkPreview } from '@/lib/chat/link-preview';
 import { CHAT_NOTICES, type ChatMessage, type ChatNotice, type ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -340,12 +341,16 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
     try {
       const [threads, messageRows] = (await Promise.all([
         supabase.rpc('chat_my_threads').abortSignal(controller.signal),
-        supabase
-          .from('chat_messages')
-          .select(MESSAGE_COLUMNS)
-          .eq('thread_id', threadId)
-          .order('created_at')
-          .abortSignal(controller.signal),
+        readPages<MessageRow>((from, to) =>
+          supabase
+            .from('chat_messages')
+            .select(MESSAGE_COLUMNS)
+            .eq('thread_id', threadId)
+            .order('created_at')
+            .order('id')
+            .range(from, to)
+            .abortSignal(controller.signal),
+        ),
       ])) as [Result<ThreadRow[]>, Result<MessageRow[]>];
       if (aborted()) return;
 
@@ -371,10 +376,13 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
       // on screen and unread is a convenience. The dot in the tab bar is told
       // either way — it is about to be wrong, and it is not on this screen to
       // notice.
-      if (found) {
-        void supabase.rpc('chat_mark_thread_read', { thread: threadId }).then(() => {
-          unreadChanged();
-        });
+      const through = fresh.at(-1)?.id;
+      if (found && through && document.visibilityState === 'visible') {
+        void supabase
+          .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
+          .then(() => {
+            unreadChanged();
+          });
       }
     } catch (e) {
       if (aborted()) return;
@@ -385,7 +393,12 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
 
   useEffect(() => {
     void load();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void load();
+    };
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       inFlight.current?.abort();
     };
   }, [load]);

@@ -160,8 +160,8 @@ export interface ChatPost {
   editedAt: string | null;
   /**
    * The post this one answers, in the same topic, or null for a post at the
-   * top level. One level only: a reply to a reply is filed under the same
-   * post, and the trigger refuses anything else (20260930000000). Nulled by
+   * top level. Replies can answer specific replies at any depth (2026-10-09).
+   * The trigger requires a standing parent in the same topic. Nulled by
    * the database when the parent is removed, so the reply stands on its own.
    */
   replyTo: string | null;

@@ -109,9 +109,16 @@ describe('threadPosts', () => {
   const underQ = post({ id: 'r1', replyTo: 'q', createdAt: '2026-09-01T12:00:00Z' });
   const underA1 = post({ id: 'r2', replyTo: 'a1', createdAt: '2026-09-01T14:00:00Z' });
 
+  it('breaks a malformed cycle while preserving every post once', () => {
+    const threads = threadPosts([post({ id: 'a', replyTo: 'b' }), post({ id: 'b', replyTo: 'a' })]);
+    expect(threads).toHaveLength(1);
+    expect(threads[0]?.replies).toHaveLength(1);
+    expect(threads[0]?.replies[0]?.replies).toEqual([]);
+  });
+
   it('files each reply under its post, top-level posts and replies both in time order', () => {
     const threads = threadPosts([underA1, later, underQ, answer, opener]);
-    expect(threads.map((t) => [t.post.id, t.replies.map((r) => r.id)])).toEqual([
+    expect(threads.map((t) => [t.post.id, t.replies.map((r) => r.post.id)])).toEqual([
       ['q', ['r1']],
       ['a1', ['r2']],
       ['a2', []],
@@ -127,12 +134,13 @@ describe('threadPosts', () => {
     expect(threads.every((t) => t.replies.length === 0)).toBe(true);
   });
 
-  it('files a reply to a reply under the same post, one level deep', () => {
+  it('keeps a reply to a reply beneath that specific reply', () => {
     const deeper = post({ id: 'r3', replyTo: 'r2', createdAt: '2026-09-01T15:00:00Z' });
     const threads = threadPosts([opener, answer, underA1, deeper]);
-    expect(threads.map((t) => [t.post.id, t.replies.map((r) => r.id)])).toEqual([
+    expect(threads[1]?.replies[0]?.replies[0]?.post.id).toBe('r3');
+    expect(threads.map((t) => [t.post.id, t.replies.map((r) => r.post.id)])).toEqual([
       ['q', []],
-      ['a1', ['r2', 'r3']],
+      ['a1', ['r2']],
     ]);
   });
 
@@ -149,6 +157,16 @@ describe('firstUnreadThread', () => {
     post({ id: 'r1', replyTo: 'q', createdAt: '2026-09-03T10:00:00Z' }),
     post({ id: 'a1', createdAt: '2026-09-02T10:00:00Z' }),
   ]);
+
+  it('finds unread words several replies deep', () => {
+    const nested = threadPosts([
+      post({ id: 'q', createdAt: '2026-09-01T10:00:00Z' }),
+      post({ id: 'a', createdAt: '2026-09-01T11:00:00Z' }),
+      post({ id: 'r', replyTo: 'a', createdAt: '2026-09-01T12:00:00Z' }),
+      post({ id: 'deep', replyTo: 'r', createdAt: '2026-09-03T12:00:00Z' }),
+    ]);
+    expect(firstUnreadThread(nested, '2026-09-02T12:00:00Z')).toBe(1);
+  });
 
   it('starts at the top for a reader who has never opened it', () => {
     expect(firstUnreadThread(threads, null)).toBe(0);

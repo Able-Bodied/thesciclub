@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
+import type * as ReadReceipts from '@/lib/chat/read-receipts';
 import type * as Reports from '@/lib/chat/reports';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatMessage, ChatThread } from '@/lib/chat/types';
@@ -19,6 +20,7 @@ import ThreadPage from '@/routes/chat/thread-page';
  */
 
 const db = vi.hoisted(() => ({
+  reads: new Map<string, string>(),
   thread: null as ChatThread | null,
   messages: [] as ChatMessage[],
   loading: false,
@@ -97,6 +99,11 @@ vi.mock('@/lib/chat/threads', async (importOriginal) => ({
       return Promise.resolve(null);
     },
   }),
+}));
+
+vi.mock('@/lib/chat/read-receipts', async (importOriginal) => ({
+  ...(await importOriginal<typeof ReadReceipts>()),
+  useThreadReadReceipts: () => db.reads,
 }));
 
 vi.mock('@/lib/chat/authors', () => ({
@@ -179,6 +186,7 @@ function renderThread() {
 }
 
 beforeEach(() => {
+  db.reads = new Map();
   db.thread = thread();
   db.messages = [];
   db.loading = false;
@@ -700,5 +708,37 @@ describe('deleting a conversation with a deleted member', () => {
     );
     expect(screen.queryByText('The list of conversations')).toBeNull();
     expect(screen.getByRole('button', { name: 'Delete conversation' })).toBeEnabled();
+  });
+});
+
+describe('read receipts', () => {
+  it('shows Read on a sent message after the other member reads it', () => {
+    db.messages = [message({ id: 'read', authorId: 'me' })];
+    db.reads = new Map([
+      ['me', '2026-09-18T10:01:00Z'],
+      ['jan', '2026-09-18T10:00:00Z'],
+    ]);
+    renderThread();
+    expect(screen.getByText(/You · .* · Read$/)).toBeInTheDocument();
+  });
+  it('shows the number of readers in a group', () => {
+    db.thread = thread({ kind: 'group', name: 'Friends', otherMemberId: null, memberCount: 3 });
+    db.messages = [message({ id: 'read', authorId: 'me' })];
+    db.reads = new Map([
+      ['me', '2026-09-18T10:01:00Z'],
+      ['jan', '2026-09-18T10:00:00Z'],
+      ['bo', '-infinity'],
+    ]);
+    renderThread();
+    expect(screen.getByText(/Read by 1 of 2$/)).toBeInTheDocument();
+  });
+  it('does not display receipts on incoming messages', () => {
+    db.messages = [message({ id: 'incoming' })];
+    db.reads = new Map([
+      ['me', '2026-09-18T10:01:00Z'],
+      ['jan', '2026-09-18T10:00:00Z'],
+    ]);
+    renderThread();
+    expect(screen.queryByText(/ · Read/)).toBeNull();
   });
 });

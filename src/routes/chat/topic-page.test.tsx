@@ -624,19 +624,15 @@ describe('a topic', () => {
       });
     });
 
-    // One level. Reply on a reply goes under the reply's post, and the bar
-    // names that post's author.
-    it('files a reply to a reply under the same post', async () => {
+    // Reply on a reply names and answers that particular reply.
+    it('files a reply to a reply under that specific reply', async () => {
       renderTopic();
       await userEvent.click(screen.getByRole('button', { name: "Reply to Jake's post" }));
-      expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Nicole');
-      await userEvent.type(
-        screen.getByLabelText('Reply to this topic'),
-        'Also under the question.',
-      );
+      expect(screen.getByText(/Replying to/)).toHaveTextContent('Replying to Jake');
+      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Under this reply.');
       await userEvent.click(screen.getByRole('button', { name: 'Post this reply' }));
       await waitFor(() => {
-        expect(db.sent).toEqual([['Also under the question.', 'q']]);
+        expect(db.sent).toEqual([['Under this reply.', 'r1']]);
       });
     });
 
@@ -696,6 +692,32 @@ describe('a topic', () => {
       expect(screen.getByText('A reply under the question.')).not.toBeVisible();
       await userEvent.click(show);
       expect(screen.getByText('A reply under the question.')).toBeVisible();
+    });
+
+    it('collapses a reply conversation independently of its siblings and parent', async () => {
+      db.posts = [
+        ...folded(),
+        post({ id: 'deep', authorId: 'me', replyTo: 'r1', body: 'Nested conversation.' }),
+        post({ id: 'sibling', replyTo: 'q', body: 'A sibling conversation.' }),
+      ];
+      renderTopic();
+      const parent = document.getElementById('post-r1');
+      expect(parent).toContainElement(document.getElementById('post-deep'));
+      await userEvent.click(screen.getByRole('button', { name: "Hide 1 reply to Jake's post" }));
+      expect(screen.getByText('Nested conversation.')).not.toBeVisible();
+      expect(screen.getByText('A reply under the question.')).toBeVisible();
+      expect(screen.getByText('A sibling conversation.')).toBeVisible();
+      await userEvent.click(
+        screen.getByRole('button', { name: "Hide 3 replies to Nicole's post" }),
+      );
+      expect(screen.getByText('A sibling conversation.')).not.toBeVisible();
+      await userEvent.click(
+        screen.getByRole('button', { name: "Show 3 replies to Nicole's post" }),
+      );
+      expect(screen.getByText('A sibling conversation.')).toBeVisible();
+      expect(screen.getByText('Nested conversation.')).not.toBeVisible();
+      await userEvent.click(screen.getByRole('button', { name: "Show 1 reply to Jake's post" }));
+      expect(screen.getByText('Nested conversation.')).toBeVisible();
     });
 
     it('draws no hide control on a post with no replies', () => {

@@ -65,8 +65,8 @@ import { ReportControl } from '@/routes/chat/report-control';
  * Replies sit under the post they answer
  * ---------------------------------------------------------------------------
  * The topic page hands a top-level post its replies as `children`, drawn
- * inside the article, indented and unnumbered. A reply's own Reply files
- * under the same post — one level is the rule, and the trigger enforces it.
+ * inside the article, indented and unnumbered. Each reply can hold its own
+ * conversation, and Reply answers that specific post (owner, 2026-10-09).
  *
  * **They can be hidden** — the owner, 2026-09-29, for the day a thread of
  * replies gets long. "Hide 3 replies" over the replies folds them away and
@@ -85,6 +85,7 @@ export function Post({
   number,
   total,
   nested = false,
+  depth = 1,
   canEdit,
   editing,
   onEdit,
@@ -112,6 +113,8 @@ export function Post({
   total?: number;
   /** A reply, drawn under its post: no number, no border of its own. */
   nested?: boolean;
+  /** Indentation stops after four levels to leave room for words on phones. */
+  depth?: number;
   /** The reader's own standing post. */
   canEdit: boolean;
   /** The composer is in place of the words. */
@@ -172,7 +175,9 @@ export function Post({
       tabIndex={-1}
       className={cn(
         nested
-          ? 'mt-2.5 border-line border-l-2 pl-3'
+          ? depth <= 4
+            ? 'mt-2.5 rounded-bl-xl border-line border-l-2 pl-3'
+            : 'mt-2.5'
           : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]',
         'outline-none',
         flash && 'message-flash',

@@ -137,13 +137,6 @@ export function PostLikes({
             className,
           )}
         >
-          {/* The mock's `.thumbmini`: the count's picture, not a control. */}
-          <span
-            aria-hidden="true"
-            className="grid h-[1.3em] w-[1.3em] flex-none place-items-center rounded-full bg-action text-white"
-          >
-            <ThumbsUp className="h-[0.72em] w-[0.72em] fill-current" strokeWidth={0} />
-          </span>
           {likesLabel(total)}
         </button>
       ) : null}

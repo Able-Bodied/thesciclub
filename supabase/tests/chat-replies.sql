@@ -11,8 +11,7 @@
 --
 -- Two steps carry the feature and are marked in place:
 --
---   3  — a reply to a reply is refused. One level is the rule, the client
---        makes the guard unnecessary in ordinary use, and this is the guard.
+--   3  — replies to replies retain their specific parent at every depth.
 --   5  — removing the parent leaves the reply standing with reply_to null,
 --        and it still counts. Nothing says "reply to a removed post".
 --
@@ -96,11 +95,22 @@ insert into public.chat_posts (topic_id, author_id, body, reply_to) values
 rollback to savepoint nowhere;
 
 \echo ''
-\echo '== 3. THE STEP: a reply to a reply is refused =='
-\echo '   expect: ERROR, under the post, not under another reply.'
+\echo '== 3. replies can answer specific replies at several levels =='
 savepoint nested;
 insert into public.chat_posts (topic_id, author_id, body, reply_to) values
-  (:'topic_id', 'bbbbbbbb-7777-1111-0000-000000000002', 'Two levels down.', :'reply_id');
+  (:'topic_id', 'bbbbbbbb-7777-1111-0000-000000000002', 'Two levels down.', :'reply_id')
+returning id as nested_id \gset
+select reply_to = :'reply_id' as nested_parent from public.chat_posts where id = :'nested_id';
+insert into public.chat_posts (topic_id, author_id, body, reply_to) values
+  (:'topic_id', 'bbbbbbbb-7777-1111-0000-000000000002', 'Three levels down.', :'nested_id')
+returning id as deeper_id \gset
+insert into public.chat_posts (topic_id, author_id, body, reply_to) values
+  (:'topic_id', 'bbbbbbbb-7777-1111-0000-000000000002', 'Four levels down.', :'deeper_id')
+returning id as deepest_id \gset
+select reply_to = :'nested_id' as deeper_parent from public.chat_posts where id = :'deeper_id';
+select public.chat_remove_post(:'nested_id');
+select reply_to is null as freed_child from public.chat_posts where id = :'deeper_id';
+select reply_to = :'deeper_id' as grandchild_stays_nested from public.chat_posts where id = :'deepest_id';
 rollback to savepoint nested;
 
 \echo ''
@@ -128,8 +138,7 @@ select reply_count from public.chat_topics where id = :'topic_id';
 
 \echo ''
 \echo '== 5b. and it is now somewhere a reply can go =='
-\echo '   expect: INSERT — top-level since its parent went, so one level'
-\echo '   holds — then reply_count 2.'
+\echo '   expect: INSERT — top-level since its parent went — then reply_count 2.'
 set local request.jwt.claims = '{"sub":"cccccccc-7777-1111-0000-000000000003","role":"authenticated"}';
 insert into public.chat_posts (topic_id, author_id, body, reply_to) values
   (:'topic_id', 'cccccccc-7777-1111-0000-000000000003', 'Under the freed one.', :'reply_id');

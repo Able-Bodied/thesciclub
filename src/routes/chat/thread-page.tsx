@@ -10,6 +10,7 @@ import {
   useAttachmentUrls,
 } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { readReceipt, useThreadReadReceipts } from '@/lib/chat/read-receipts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
 import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
@@ -95,6 +96,7 @@ export default function ThreadPage() {
   const account = useAccount();
   const { thread, messages, loading, error, reload, send, edit, remove } =
     useThreadMessages(threadId);
+  const reads = useThreadReadReceipts(threadId);
 
   // Live. The reload also re-marks the thread read, which is right: the reader
   // is looking at it. Removal arrives here as an UPDATE, so a message taken
@@ -397,6 +399,7 @@ export default function ThreadPage() {
                   message={message}
                   author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
                   mine={message.authorId === account.userId}
+                  receipt={readReceipt(message, thread.kind, reads)}
                   quote={quoteOf(message)}
                   onQuoteTap={showQuoted}
                   flash={flashId === message.id}

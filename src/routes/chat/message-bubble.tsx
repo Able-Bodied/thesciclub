@@ -82,6 +82,7 @@ export function MessageBubble({
   message,
   author,
   mine,
+  receipt = null,
   quote,
   onQuoteTap,
   flash,
@@ -103,6 +104,8 @@ export function MessageBubble({
   /** Null for a removed member, and also while the name is still loading. */
   author: ChatAuthor | null;
   mine: boolean;
+  /** A saved outgoing message read by another member, or no receipt yet. */
+  receipt?: string | null;
   /** The message this one answers, or null. */
   quote: Quote | null;
   onQuoteTap: (messageId: string) => void;
@@ -252,7 +255,9 @@ export function MessageBubble({
           </div>
         )}
         <p className="mt-1 font-semibold text-[0.71875rem] text-grey">
-          {message.pending ? 'Sending…' : `You · ${chatTime(message.createdAt)}${edited}`}
+          {message.pending
+            ? 'Sending…'
+            : `You · ${chatTime(message.createdAt)}${edited}${receipt && !removed ? ` · ${receipt}` : ''}`}
         </p>
         {controls}
       </div>

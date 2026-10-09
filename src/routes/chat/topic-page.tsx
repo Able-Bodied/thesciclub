@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
@@ -14,7 +14,9 @@ import {
   deleteTopic,
   editPost,
   firstUnreadThread,
+  type PostThread,
   removePost,
+  replyCount,
   sendPost,
   threadPosts,
   useTopicPosts,
@@ -110,7 +112,7 @@ export default function TopicPage() {
   const [removalFailure, setRemovalFailure] = useState<string | null>(null);
   /** The post whose words are in the composer, or null. See the header. */
   const [editingId, setEditingId] = useState<string | null>(null);
-  /** The top-level post the next reply goes under, or null. */
+  /** The specific post the next reply goes under, or null. */
   const [replyingTo, setReplyingTo] = useState<ChatPost | null>(null);
   const reports = useMyReports();
   // Which post the sheet is open over, or null. One at a time, and the id
@@ -287,10 +289,8 @@ export default function TopicPage() {
   const nameOf = (post: ChatPost) =>
     (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a deleted member';
 
-  /** What every post is handed, top level or reply. `under` is the post a
-      reply to this one files beneath: itself for a top-level post, its post
-      for a reply — one level, decided here as well as by the trigger. */
-  const postProps = (post: ChatPost, under: ChatPost) => ({
+  /** Controls act on this specific post, including replies to replies. */
+  const postProps = (post: ChatPost) => ({
     post,
     author: post.authorId ? (authors.get(post.authorId) ?? null) : null,
     // The author's own, and nobody else's — not an administrator's either.
@@ -306,7 +306,7 @@ export default function TopicPage() {
     },
     canReply: canPost,
     onReply: () => {
-      setReplyingTo(under);
+      setReplyingTo(post);
     },
     // An administrator can remove anybody's; everybody else only their own.
     // chat_remove_post decides — this only asks.
@@ -336,6 +336,22 @@ export default function TopicPage() {
           failure: likes.failure?.postId === post.id ? likes.failure.message : null,
         },
   });
+
+  function renderThread(thread: PostThread, depth: number, index?: number): ReactNode {
+    return (
+      <Post
+        key={thread.post.id}
+        {...postProps(thread.post)}
+        {...(index === undefined ? {} : { number: index + 1, total: threads.length })}
+        nested={depth > 0}
+        depth={depth}
+        replies={replyCount(thread)}
+        flash={flashId === thread.post.id}
+      >
+        {thread.replies.map((reply) => renderThread(reply, depth + 1))}
+      </Post>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -398,25 +414,7 @@ export default function TopicPage() {
               {removalFailure}
             </p>
           ) : null}
-          {threads.map(({ post, replies }, index) => (
-            <Post
-              key={post.id}
-              {...postProps(post, post)}
-              number={index + 1}
-              total={threads.length}
-              replies={replies.length}
-              flash={flashId === post.id}
-            >
-              {replies.map((reply) => (
-                <Post
-                  key={reply.id}
-                  {...postProps(reply, post)}
-                  nested
-                  flash={flashId === reply.id}
-                />
-              ))}
-            </Post>
-          ))}
+          {threads.map((thread, index) => renderThread(thread, 0, index))}
         </div>
       </div>
 
