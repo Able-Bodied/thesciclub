@@ -25,6 +25,7 @@ import {
   CodeStep,
   InjuryStep,
   NameStep,
+  PHONE_BUTTON,
   PhoneStep,
   PhotoStep,
 } from '@/routes/onboarding/steps';
@@ -183,7 +184,7 @@ export default function OnboardingPage() {
    *
    * iOS opens the keyboard only for a focus that happens inside a tap, and
    * the code step appears after `signInWithOtp` has answered — long after the
-   * tap on Continue — so its field took focus with the keyboard shut, and a
+   * tap on Text me my code — so its field took focus with the keyboard shut, and a
    * member had to tap the box for the pad (the owner, 2026-10-01). Focus
    * moved *from* one field *to* another keeps the keyboard up, though, so the
    * tap itself puts focus here, in an invisible numeric field that stays
@@ -452,6 +453,11 @@ export default function OnboardingPage() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : step === 'photo' ? (
                 'Enter the club'
+              ) : step === 'phone' ? (
+                // Says what the press does, as the carriers' web-form example
+                // asks of a submit button (the owner, 2026-10-08). The
+                // registration's message flow names it: change both.
+                PHONE_BUTTON
               ) : (
                 'Continue'
               )}

@@ -38,7 +38,7 @@ export function PhoneStep({
    * Called with the number when it becomes complete, typed or autofilled.
    * Passed on the sign-in door only (the owner, 2026-10-06): a returning
    * member has agreed by the line under the field, which is on screen before
-   * they type. The join door waits for its two boxes and a press of Continue,
+   * they type. The join door waits for its two boxes and a press of Text me my code,
    * as registered with the carriers.
    */
   onComplete?: ((phone: string) => void) | undefined;
@@ -119,7 +119,7 @@ export function AgreeStep({ data, set }: StepProps) {
   );
 }
 
-/** The join door's two boxes, and why Continue waits for them. */
+/** The join door's two boxes, and why the button waits for them. */
 function JoinConsent({ data, set, before = 'the code is sent' }: StepProps & { before?: string }) {
   return (
     <>
@@ -164,8 +164,16 @@ export const SMS_CONSENT =
   'Text me a one-time sign-in code from The SCI Club. One text each time I ask for a code. Message and data rates may apply. Reply HELP for help, STOP to opt out.';
 
 /** The sign-in door's line, before its two links. Registered as well. */
+/** The phone step's button, on both doors: it says what pressing it does. */
+export const PHONE_BUTTON = 'Text me my code';
+
+/**
+ * "By entering your number", not by pressing anything: the sign-in door sends
+ * the code on the tenth digit, before any button (see `onComplete` above), and
+ * this line is on screen before the first digit is typed (2026-10-08).
+ */
 export const SIGN_IN_CONSENT =
-  'By continuing, you agree to get a one-time sign-in code by text from The SCI Club (Msg & data rates may apply; reply HELP for help, STOP to opt out) and to the';
+  'By entering your number, you agree to get a one-time sign-in code by text from The SCI Club (Msg & data rates may apply; reply HELP for help, STOP to opt out) and to the';
 
 /**
  * One of the two boxes on the phone step.
