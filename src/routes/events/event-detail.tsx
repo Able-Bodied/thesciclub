@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -17,6 +17,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { GOING_SHARES_NUMBER } from '@/routes/events/event-card';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
@@ -52,6 +53,7 @@ export default function EventDetailPage() {
   const account = useAccount();
   const mine = useMyOrganizations(memberId);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const goingNote = useId();
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
 
@@ -194,6 +196,7 @@ export default function EventDetailPage() {
                   onRsvp(going ? null : 'going');
                 }}
                 aria-pressed={going}
+                aria-describedby={goingNote}
                 className={cn(
                   'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
                   going
@@ -213,6 +216,12 @@ export default function EventDetailPage() {
               >
                 {interested ? 'Interested ✓' : 'Interested'}
               </button>
+              <p
+                id={goingNote}
+                className="col-span-2 text-[0.78125rem] text-[#B9CADF] leading-[1.45]"
+              >
+                {GOING_SHARES_NUMBER}
+              </p>
             </div>
           )}
         </div>

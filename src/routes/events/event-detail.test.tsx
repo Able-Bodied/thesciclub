@@ -148,6 +148,13 @@ describe('EventDetailPage', () => {
       state.events = [makeEvent({ id: 'rugby', startTime: aheadByDays(21) })];
     });
 
+    it('says beside Going that the host gets your number, before it is pressed', () => {
+      renderDetail();
+      expect(screen.getByRole('button', { name: 'Going' })).toHaveAccessibleDescription(
+        'Going shares your phone number with the host, for this event only.',
+      );
+    });
+
     it('records going', async () => {
       renderDetail();
       await userEvent.click(screen.getByRole('button', { name: 'Going' }));

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { isOnline } from '@/routes/events/filters';
@@ -82,6 +83,15 @@ export interface EventCardProps {
   past?: boolean;
 }
 
+/**
+ * Said beside every Going button, before it is pressed (the owner, 2026-10-08):
+ * an event's host receives the phone numbers of the members going, for that
+ * event only. The Privacy Policy's "Event hosts" says the same at length; keep
+ * the two in step.
+ */
+export const GOING_SHARES_NUMBER =
+  'Going shares your phone number with the host, for this event only.';
+
 export function EventCard({
   event,
   status,
@@ -94,6 +104,7 @@ export function EventCard({
   footer,
   occurrence = false,
 }: EventCardProps) {
+  const goingNote = useId();
   const tile = dateTileParts(event.startTime, event.timezone);
   const going = status === 'going';
   const interested = status === 'interested';
@@ -298,6 +309,7 @@ export function EventCard({
             onRsvp(going ? null : 'going');
           }}
           aria-pressed={going}
+          aria-describedby={goingNote}
           className={cn(
             'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
             going
@@ -308,6 +320,9 @@ export function EventCard({
           {going ? 'Going ✓' : 'Going'}
         </button>
       </div>
+      <p id={goingNote} className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
+        {GOING_SHARES_NUMBER}
+      </p>
 
       {footer ? <div className="mt-2.5 border-line border-t pt-1">{footer}</div> : null}
     </div>
