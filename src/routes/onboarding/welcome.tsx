@@ -1,4 +1,5 @@
 import { ClubMark } from '@/components/club-mark';
+import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
  * The first screen, matching the published demo: the mark, then the promise,
@@ -81,6 +82,14 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
         </button>
         <p className="mt-2.5 text-center text-[0.78125rem] text-grey">
           Members only. Nothing inside the club is public.
+        </p>
+        {/* On the first screen, not only beside the boxes a press later: /join
+            is the opt-in page the text-message registration names, and the
+            carriers' reviewers look for the Privacy Policy linked from it
+            (Twilio error 30908, rejected again 2026-10-09). */}
+        <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
+          <NewTabLink href="/privacy">Privacy Policy</NewTabLink> ·{' '}
+          <NewTabLink href="/terms">Terms of Service</NewTabLink>
         </p>
       </footer>
     </main>

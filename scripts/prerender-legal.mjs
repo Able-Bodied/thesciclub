@@ -1,6 +1,7 @@
 /**
- * After `vite build`: write dist/privacy.html and dist/terms.html, the two
- * pages with their words in the HTML. Why, in src/routes/legal/static.tsx.
+ * After `vite build`: write dist/privacy.html, dist/terms.html and
+ * dist/join.html, the pages with their words in the HTML. Why, in
+ * src/routes/legal/static.tsx.
  *
  * Loaded through Vite so the page components resolve exactly as the app's
  * do (the `@/` paths, TSX). Netlify serves dist/privacy.html for /privacy
@@ -19,8 +20,8 @@ const vite = await createServer({
 try {
   const { STATIC_PAGES, withPage } = await vite.ssrLoadModule('/src/routes/legal/static.tsx');
   const shell = await readFile('dist/index.html', 'utf8');
-  for (const { file, title, Page } of STATIC_PAGES) {
-    await writeFile(`dist/${file}`, withPage(shell, title, Page));
+  for (const { file, title, Page, indexed } of STATIC_PAGES) {
+    await writeFile(`dist/${file}`, withPage(shell, title, Page, indexed));
     console.log(`  dist/${file}`);
   }
 } finally {

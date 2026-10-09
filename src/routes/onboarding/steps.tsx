@@ -218,7 +218,7 @@ function ConsentBox({
  * reading the terms would throw away the number and the ticks, and the way
  * back would start again at the welcome screen.
  */
-function NewTabLink({ href, children }: { href: string; children: React.ReactNode }) {
+export function NewTabLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <a
       href={href}

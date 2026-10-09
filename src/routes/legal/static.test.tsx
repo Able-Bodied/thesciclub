@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { STATIC_PAGES, withPage } from '@/routes/legal/static';
+import { PHONE_BUTTON, SIGN_IN_CONSENT, SMS_CONSENT } from '@/routes/onboarding/steps';
 import shell from '../../../index.html?raw';
 
 /**
@@ -10,7 +11,8 @@ import shell from '../../../index.html?raw';
 
 const privacy = STATIC_PAGES.find((p) => p.file === 'privacy.html');
 const terms = STATIC_PAGES.find((p) => p.file === 'terms.html');
-if (!privacy || !terms) throw new Error('a static page is missing');
+const join = STATIC_PAGES.find((p) => p.file === 'join.html');
+if (!privacy || !terms || !join) throw new Error('a static page is missing');
 
 describe('the static Privacy Policy', () => {
   const html = withPage(shell, privacy.title, privacy.Page);
@@ -47,6 +49,38 @@ describe('the static Terms of Service', () => {
     expect(html).toContain('<title>Terms of Service · The SCI Club</title>');
     expect(html).toContain('Carriers are not liable for delayed or undelivered messages');
     expect(html).toContain('<b>Text STOP</b>');
+  });
+});
+
+/**
+ * The opt-in page the registration names. Rejected a second time on
+ * 2026-10-09 while it was an empty shell: a reviewer that did not run the app
+ * found no Privacy Policy linked from it.
+ */
+describe('the static join page', () => {
+  const html = withPage(shell, join.title, join.Page, join.indexed);
+  const escaped = (s: string) => s.replaceAll('&', '&amp;').replaceAll("'", '&#x27;');
+
+  it('links the Privacy Policy and the Terms from the first screen', () => {
+    const welcome = html.slice(0, html.indexOf('<noscript>'));
+    expect(welcome).toContain('Join the club');
+    expect(welcome).toContain('href="/privacy"');
+    expect(welcome).toContain('href="/terms"');
+  });
+
+  it('carries the join door and the sign-in line as registered, with the boxes unticked', () => {
+    const form = html.slice(html.indexOf('<noscript>'));
+    expect(form).toContain(escaped(SMS_CONSENT));
+    expect(form).toContain(escaped(SIGN_IN_CONSENT));
+    expect(form).toContain(PHONE_BUTTON);
+    expect(form).toContain('id="sms-consent"');
+    expect(form).toContain('id="terms-agreed"');
+    expect(form).not.toMatch(/checked/);
+  });
+
+  it('keeps its noindex and still starts the app', () => {
+    expect(html).toContain('name="robots"');
+    expect(html).toContain('<script type="module"');
   });
 });
 
