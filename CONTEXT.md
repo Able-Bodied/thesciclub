@@ -187,6 +187,13 @@ photograph; anybody signed in sees the organizations' logos, which are public on
 anyway, and their own upload; somebody part-way through joining sees the face on the profile they
 may claim. Nobody signed out sees any of them.
 
+Phone numbers stay inside the club with one exception, the owner's practice from 2026-10-08:
+**when a member chooses Going for an event, that event's host receives their phone number**, for
+that event only, to tell them about changes, remind them and look after the people who come, and
+never for marketing, fundraising or promotions. Choosing Interested shares nothing. The Going button
+says so before it is pressed, and the Privacy Policy's "Event hosts" says so at length; the two are
+kept in step. The app does not hand the numbers over itself.
+
 ## How injury is recorded
 
 **Level, completeness, and date of injury.** Not a disability type, not a duration bucket.

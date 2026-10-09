@@ -107,11 +107,14 @@ export default function PrivacyPage() {
           <li>
             <b>Mentors and administrators from member organizations</b>, such as hospitals and peer
             support programs, see the same profile inside the app, to help match members with peers
-            and mentors. They never see your phone number.
+            and mentors. They do not see your phone number in the app; a host receives it only as
+            described under Event hosts, below.
           </li>
           <li>
             <b>Your phone number</b> is shown only to the club’s administrators and to whoever added
-            it to the invite list, who already had it. It is never shared outside the club.
+            it to the invite list, who already had it. Outside the club it goes only to the host of
+            an event you choose Going for (see Event hosts) and to the service providers that run
+            the club.
           </li>
           <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody
@@ -132,6 +135,20 @@ export default function PrivacyPage() {
             open them, even with a copied link.
           </li>
         </List>
+      </Section>
+
+      {/* The owner's practice, 2026-10-08: hosts receive the numbers of the
+          members going to their event. The Going button says so before it is
+          pressed (GOING_SHARES_NUMBER in events/event-card.tsx); keep the two
+          in step. */}
+      <Section title="Event hosts">
+        <P>
+          When you choose <b>Going</b> for an event, the organization hosting it receives your phone
+          number, for that event only: to tell you about changes, to remind you, and to look after
+          the people who come. Choosing Interested shares nothing. Hosts agree not to use your
+          number for marketing, fundraising or promotions, and not to pass it on. The Going button
+          says this before you press it.
+        </P>
       </Section>
 
       <Section title="Grant applications">
@@ -173,9 +190,11 @@ export default function PrivacyPage() {
         </P>
         <P>
           Every kind of sharing described in this policy excludes your text messaging opt-in data
-          and consent. The only exception is the service providers that send the texts and run the
-          app (see Service providers, below), which handle your phone number only so they can do
-          that.
+          and consent: the record that you agreed to the texts is never shared. Your phone number
+          itself reaches the service providers that send the texts and run the app (see Service
+          providers, below), so they can do that, and, if you choose Going for an event, that
+          event’s host, for that event only (see Event hosts). Neither may use it for marketing or
+          promotional purposes.
         </P>
         <P>
           Text <b>HELP</b> for help and <b>STOP</b> to stop the texts. The{' '}

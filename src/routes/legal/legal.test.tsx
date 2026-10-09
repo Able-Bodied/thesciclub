@@ -85,6 +85,18 @@ describe('the Privacy Policy', () => {
     }
   });
 
+  // The owner, 2026-10-08: an event's host receives the phone numbers of the
+  // members going. The policy has to say so, plainly, and never for marketing.
+  it('says an event host receives the number of a member going, and only for that', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Event hosts' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/receives your phone number, for that event only/);
+    expect(section).toHaveTextContent(/Choosing Interested shares nothing/);
+    expect(section).toHaveTextContent(/not to use your number for marketing/);
+    expect(screen.queryByText(/It is never shared outside the club/)).toBeNull();
+  });
+
   it('links to the Terms of Service', () => {
     open('/privacy');
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
