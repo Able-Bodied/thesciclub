@@ -1,5 +1,6 @@
 import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
+import { memberType } from '@/types/domain';
 
 /**
  * The administrative view of the roster, and the two things an administrator
@@ -14,7 +15,7 @@ export interface AdminMember {
   id: string;
   displayName: string;
   phone: string;
-  type: 'peer' | 'mentor';
+  type: 'peer' | 'mentor' | 'organization';
   status: 'active' | 'suspended' | 'removed';
   isAdmin: boolean;
   isSeed: boolean;
@@ -27,6 +28,7 @@ export interface AdminMember {
    * `undefined` where the view does not report it yet.
    */
   invitesUsed: number | undefined;
+  unlimitedInvites?: boolean;
   /**
    * Strikes that still count: not withdrawn, and inside `strike_window()`.
    * Counted by the database rather than here, so the roster, the member's own
@@ -47,6 +49,7 @@ interface AdminMemberRow {
   state: string;
   created_at: string;
   invites_used: number | null;
+  unlimited_invites?: boolean;
   strikes: number | null;
 }
 
@@ -55,7 +58,7 @@ function toAdminMember(row: AdminMemberRow): AdminMember {
     id: row.id,
     displayName: row.display_name,
     phone: row.phone,
-    type: row.type === 'mentor' ? 'mentor' : 'peer',
+    type: memberType(row.type),
     status: row.status as AdminMember['status'],
     isAdmin: row.is_admin,
     isSeed: row.is_seed,
@@ -63,6 +66,7 @@ function toAdminMember(row: AdminMemberRow): AdminMember {
     state: row.state,
     createdAt: row.created_at,
     invitesUsed: row.invites_used ?? undefined,
+    unlimitedInvites: row.unlimited_invites ?? false,
     // A database that predates 20260916040000 reports nothing here, and no
     // strikes is the honest reading of that rather than a blank.
     strikes: row.strikes ?? 0,
@@ -234,6 +238,7 @@ export async function fetchInvitingOrganizations(): Promise<InvitingOrganization
     .from('organizations')
     .select('id, name, short_code')
     .eq('can_invite', true)
+    .is('removed_at', null)
     .order('name');
   if (result.error) return [];
   return (result.data as { id: string; name: string; short_code: string }[]).map((o) => ({
@@ -289,7 +294,7 @@ export async function revokeInvite(target: string): Promise<{ ok: boolean; error
 
 export async function setMemberType(
   target: string,
-  type: 'peer' | 'mentor',
+  type: 'peer' | 'mentor' | 'organization',
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase().rpc('admin_set_member_type', {
     target,

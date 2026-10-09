@@ -256,11 +256,16 @@ export default function MemberDetailPage() {
           {/* An administrator's profile is their own, with an Admin chip
               beside Peer mentor (the owner, 2026-10-01); it was the club's
               "official account" page until administrators were people. */}
-          {member.type === 'mentor' || member.isAdmin ? (
+          {member.type !== 'peer' || member.isAdmin ? (
             <span className="flex flex-wrap justify-end gap-1.5">
               {member.type === 'mentor' ? (
                 <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
                   Peer mentor
+                </span>
+              ) : null}
+              {member.type === 'organization' ? (
+                <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
+                  Organization
                 </span>
               ) : null}
               {member.isAdmin ? (

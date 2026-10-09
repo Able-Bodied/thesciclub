@@ -1,5 +1,6 @@
 import { describeError, type Failure } from '@/lib/describe-error';
 import { toE164 } from '@/lib/phone';
+import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -50,15 +51,19 @@ export const MENTOR_ALLOWANCE = 10;
 export async function fetchMyInvites(): Promise<
   { ok: true; invites: MentorInvite[] } | { ok: false; error: string }
 > {
-  const result = await getSupabase()
-    .from('invites')
-    .select('id, phone, status, note, created_at')
-    .order('created_at', { ascending: false });
+  const result = await readPages<MentorInviteRow>((from, to) =>
+    getSupabase()
+      .from('invites')
+      .select('id, phone, status, note, created_at')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(from, to),
+  );
   if (result.error)
     return { ok: false, error: describeError(result.error, 'Could not load your invites.') };
   return {
     ok: true,
-    invites: (result.data as MentorInviteRow[]).map((row) => ({
+    invites: (result.data ?? []).map((row) => ({
       id: row.id,
       phone: row.phone,
       status: row.status as MentorInvite['status'],
@@ -72,6 +77,7 @@ export async function createMyInvite(input: {
   phone: string;
   memberId: string;
   note: string | null;
+  unlimited?: boolean;
 }): Promise<{ ok: boolean; error?: string }> {
   const { error } = await getSupabase()
     .from('invites')
@@ -80,7 +86,9 @@ export async function createMyInvite(input: {
       invited_by_member_id: input.memberId,
       note: input.note,
     });
-  return error ? { ok: false, error: describeFailure(error) } : { ok: true };
+  return error
+    ? { ok: false, error: describeFailure(error, 'The invite was not added.', input.unlimited) }
+    : { ok: true };
 }
 
 /**
@@ -152,10 +160,16 @@ export function canWithdraw(invite: MentorInvite): boolean {
  * 42501 is the insert policy. At this point that means the allowance, since
  * the form supplies the mentor's own id and never a claim.
  */
-export function describeFailure(error: Failure, attempt = 'The invite was not added.'): string {
+export function describeFailure(
+  error: Failure,
+  attempt = 'The invite was not added.',
+  unlimited = false,
+): string {
   return describeError(error, {
     attempt,
     duplicate: 'That number is already on the club’s list.',
-    refused: `You have used all ${MENTOR_ALLOWANCE} of your invites.`,
+    refused: unlimited
+      ? 'You can no longer issue this invite. Your role or organization link may have changed.'
+      : `You have used all ${MENTOR_ALLOWANCE} of your invites.`,
   });
 }

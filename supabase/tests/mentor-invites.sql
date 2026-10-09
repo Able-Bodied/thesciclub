@@ -223,10 +223,8 @@ rollback to savepoint suspended;
 
 \echo ''
 \echo '== 17. a signed-out visitor cannot invite anybody =='
-\echo '   expect: ERROR, permission denied for function live_invite_count'
-\echo '   The policy calls it, and anon may not since 20261003050000 — a null'
-\echo '   auth.uid() there means the server. Before, this was refused by the'
-\echo '   policy itself (new row violates row-level security); either is a no.'
+\echo '   expect: ERROR, permission denied for function my_invite_permissions'
+\echo '   The policy asks the permission helper, which anon cannot call.'
 savepoint anon;
 set local role postgres;
 set local request.jwt.claims = '';

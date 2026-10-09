@@ -15,6 +15,22 @@ const api = vi.hoisted(() => ({
   failWith: null as string | null,
 }));
 
+const privileges = vi.hoisted(() => ({ representative: false }));
+vi.mock('@/lib/invite-permissions', () => ({
+  useInvitePermissions: () => ({
+    canInvite:
+      own.type === 'mentor' ||
+      own.type === 'organization' ||
+      Boolean(account.current?.isAdmin) ||
+      privileges.representative,
+    unlimited:
+      own.type === 'organization' || Boolean(account.current?.isAdmin) || privileges.representative,
+    loading: own.loading,
+    error: null,
+    reload: vi.fn(),
+  }),
+}));
+
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
 vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({
@@ -70,6 +86,7 @@ function renderInvites() {
 
 beforeEach(() => {
   account.current = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Todd' };
+  privileges.representative = false;
   own.type = 'mentor';
   own.loading = false;
   api.invites = [];
@@ -232,4 +249,26 @@ describe('the list', () => {
     });
     expect(await screen.findByText('withdrawn')).toBeInTheDocument();
   });
+});
+
+describe('unlimited invites', () => {
+  it.each(['admin', 'organization', 'representative'])(
+    'allows an eleventh invite for %s without showing a cap',
+    async (role) => {
+      if (account.current) account.current.isAdmin = role === 'admin';
+      own.type = role === 'organization' ? 'organization' : 'peer';
+      privileges.representative = role === 'representative';
+      api.invites = Array.from({ length: 10 }, (_, index) => invite({ id: `invite-${index}` }));
+      renderInvites();
+      expect(await screen.findByText('You can invite people without a limit.')).toBeInTheDocument();
+      expect(screen.queryByText(/of your 10|All 10/)).toBeNull();
+      await userEvent.type(screen.getByLabelText(/Phone number/), '9990009101');
+      const send = screen.getByRole('button', { name: /Add.*list|Add invite|Invite them/i });
+      expect(send).toBeEnabled();
+      await userEvent.click(send);
+      await waitFor(() => {
+        expect(api.created).toHaveLength(1);
+      });
+    },
+  );
 });

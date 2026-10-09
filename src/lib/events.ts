@@ -3,6 +3,7 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 import type { ClubEvent, EventAttendee, EventFormat, EventTag, RsvpStatus } from '@/types/domain';
+import { memberType } from '@/types/domain';
 
 /**
  * Reading and writing events.
@@ -579,7 +580,7 @@ export function toAttendee(row: AttendeeRow): EventAttendee {
     city: row.city,
     levelRange: row.level_range,
     exactLevel: row.exact_level,
-    type: row.type === 'mentor' ? 'mentor' : 'peer',
+    type: memberType(row.type),
   };
 }
 

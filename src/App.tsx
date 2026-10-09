@@ -6,6 +6,7 @@ import { InstalledApp } from '@/components/installed-app';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
+import OrganizationManagementPage from '@/routes/admin/organization-management-page';
 import AdminPage from '@/routes/admin/page';
 import GroupMembersPage from '@/routes/chat/group-members';
 import NewGroupPage from '@/routes/chat/new-group';
@@ -112,6 +113,7 @@ function AppShell() {
             to find out what their membership lets them do. */}
           <Route path="/invites" element={<InvitesPage />} />
           {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
+          <Route path="/organizations/manage" element={<OrganizationManagementPage />} />
           <Route path="/admin" element={<AdminPage />} />
           {/* Last, and inside the shell on purpose: an unknown path used to match
             the outer `/*`, reach this switch, match nothing, and leave the tab

@@ -236,8 +236,12 @@ export function stateCodeForName(name: string): string | null {
 
 /* ------------------------------------------------------------------ member */
 
-export const MEMBER_TYPES = ['peer', 'mentor'] as const;
+export const MEMBER_TYPES = ['peer', 'mentor', 'organization'] as const;
 export type MemberType = (typeof MEMBER_TYPES)[number];
+
+export function memberType(value: unknown): MemberType {
+  return value === 'organization' ? 'organization' : value === 'mentor' ? 'mentor' : 'peer';
+}
 
 /**
  * Membership can be lost — see CONTEXT.md. `suspended` and `removed` both drop somebody out

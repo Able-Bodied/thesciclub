@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { describeThrown } from '@/lib/describe-error';
-import { useOwnMember } from '@/lib/members';
+import { useInvitePermissions } from '@/lib/invite-permissions';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import {
   canWithdraw,
@@ -43,7 +43,7 @@ function displayPhone(e164: string): string {
 export default function InvitesPage() {
   const account = useAccount();
   const userId = account.status === 'member' ? account.userId : null;
-  const { member, loading: memberLoading } = useOwnMember(userId);
+  const permissions = useInvitePermissions(userId);
   const [invites, setInvites] = useState<MentorInvite[]>([]);
   const [phone, setPhone] = useState('');
   const [note, setNote] = useState('');
@@ -62,14 +62,31 @@ export default function InvitesPage() {
     if (account.status === 'member') void load();
   }, [account.status, load]);
 
-  if (account.status === 'loading' || memberLoading) return <div className="min-h-dvh bg-canvas" />;
+  if (account.status === 'loading' || permissions.loading)
+    return <div className="min-h-dvh bg-canvas" />;
   if (account.status !== 'member') return <Navigate to="/join" replace />;
   // Not the permission check — the insert policy refuses a peer either way.
   // This is so somebody who follows a stale link sees the club rather than a
   // form that would fail on submit.
-  if (member && member.type !== 'mentor') return <Navigate to="/me" replace />;
+  if (permissions.error)
+    return (
+      <div className="p-4">
+        <BackLink to="/me" label="Me" />
+        <p role="alert" className="mt-3 text-destructive">
+          {permissions.error}
+        </p>
+        <button
+          type="button"
+          onClick={permissions.reload}
+          className="min-h-[44px] text-emphasis underline"
+        >
+          Retry invite permissions
+        </button>
+      </div>
+    );
+  if (!permissions.canInvite) return <Navigate to="/me" replace />;
 
-  const left = slotsLeft(invites);
+  const left = permissions.unlimited ? Infinity : slotsLeft(invites);
   const ready = isCompletePhone(phone) && left > 0 && userId !== null;
 
   /**
@@ -103,6 +120,7 @@ export default function InvitesPage() {
         phone,
         memberId: userId,
         note: note.trim() || null,
+        ...(permissions.unlimited ? { unlimited: true } : {}),
       });
       if (result.ok) {
         setPhone('');
@@ -124,9 +142,11 @@ export default function InvitesPage() {
             Your invites
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
-            {left === 0
-              ? `All ${MENTOR_ALLOWANCE} of your invites are in use.`
-              : `${left} of your ${MENTOR_ALLOWANCE} invites ${left === 1 ? 'is' : 'are'} free.`}
+            {permissions.unlimited
+              ? 'You can invite people without a limit.'
+              : left === 0
+                ? `All ${MENTOR_ALLOWANCE} of your invites are in use.`
+                : `${left} of your ${MENTOR_ALLOWANCE} invites ${left === 1 ? 'is' : 'are'} free.`}
           </p>
         </div>
       </header>

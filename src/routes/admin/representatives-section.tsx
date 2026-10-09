@@ -15,8 +15,8 @@ import type { AdminMember } from '@/routes/admin/members-admin';
  * Who speaks for which organization (20261005010000), for an administrator.
  *
  * A member linked here can add events for that organization, and change or
- * delete the ones added in the club. It reaches nothing else: not invites,
- * not members, not other organizations' events. The owner chose an in-app
+ * delete the ones added in the club, and invite without a cap. Organization
+ * accounts can also edit their linked organizations' details. The owner chose an in-app
  * control for it, where the administrator flag is set only in the database.
  *
  * Unlinking leaves the organization's events where they are. They are the
@@ -89,8 +89,8 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
       </h2>
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
         A member linked to an organization can add events for it from Events, and change or delete
-        the ones added in the club. Nothing else. Unlinking somebody leaves the events where they
-        are.
+        the ones added in the club, and invite people without a limit. Organization accounts can
+        also edit their linked organizations. Unlinking leaves existing events and invites intact.
       </p>
 
       {error ? (

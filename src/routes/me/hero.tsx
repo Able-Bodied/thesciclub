@@ -69,7 +69,11 @@ export function MeHero({ member }: { member: OwnMember }) {
           {summary ? <p className="mt-[3px] text-[#B9CADF] text-[0.8125rem]">{summary}</p> : null}
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Chip>Member since {memberSince(member.createdAt)}</Chip>
-            {member.type === 'mentor' ? <Chip>Mentor</Chip> : null}
+            {member.type === 'mentor' ? (
+              <Chip>Mentor</Chip>
+            ) : member.type === 'organization' ? (
+              <Chip>Organization</Chip>
+            ) : null}
             {/* Not decoration: this app is tested by switching between
                 accounts, and the club's own account looks like any other
                 member until something says otherwise. */}

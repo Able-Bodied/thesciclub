@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { signOut, useAccount } from '@/lib/account';
 import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
+import { useInvitePermissions } from '@/lib/invite-permissions';
 import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
@@ -94,6 +95,7 @@ function ProgressRing({ percent }: { percent: number }) {
 export default function MePage() {
   const { userId, displayName, isAdmin } = useAccount();
   const { member, invitedBy } = useOwnMember(userId);
+  const invitePermissions = useInvitePermissions(userId);
   const viewer = useViewerEvents(userId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -300,6 +302,14 @@ export default function MePage() {
               />
             ) : null}
 
+            {member?.type === 'organization' ? (
+              <Link
+                to="/organizations/manage"
+                className="mt-3 flex min-h-[44px] items-center rounded-[17px] border border-line bg-paper p-3.5 font-bold text-emphasis"
+              >
+                Manage your organizations
+              </Link>
+            ) : null}
             <SectionHeading>Standing</SectionHeading>
             <StandingCard invitedBy={invitedBy} strikes={strikes} />
           </div>
@@ -323,7 +333,21 @@ export default function MePage() {
              * where it stands, and silence there reads as a broken app rather
              * than as a deferred one. The rule is about permission, not about
              * absence — see CONTEXT.md, which defers both deliberately. */}
-            {member?.type === 'mentor' ? (
+            {invitePermissions.error ? (
+              <div className="mt-3">
+                <p role="alert" className="text-destructive">
+                  {invitePermissions.error}
+                </p>
+                <button
+                  type="button"
+                  className="min-h-[44px] text-emphasis underline"
+                  onClick={invitePermissions.reload}
+                >
+                  Retry invite permissions
+                </button>
+              </div>
+            ) : null}
+            {invitePermissions.canInvite ? (
               <>
                 <SectionHeading>Invites</SectionHeading>
                 <div className="rounded-[17px] border border-line bg-paper p-3.5">
@@ -336,7 +360,9 @@ export default function MePage() {
                         You can invite people
                       </span>
                       <span className="mt-0.5 block text-[0.78125rem] text-ink2 leading-[1.45]">
-                        As a mentor you can put {MENTOR_ALLOWANCE} numbers on the club's list.
+                        {invitePermissions.unlimited
+                          ? 'You can invite people without a limit.'
+                          : `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club’s list.`}
                       </span>
                     </span>
                   </div>

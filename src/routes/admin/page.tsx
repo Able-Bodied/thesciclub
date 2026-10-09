@@ -31,6 +31,7 @@ import {
   withdrawnNumbers,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { OrganizationsSection } from '@/routes/admin/organizations-section';
 import { ReportsSection } from '@/routes/admin/reports-section';
 import { RepresentativesSection } from '@/routes/admin/representatives-section';
 import { RoomsSection } from '@/routes/admin/rooms-section';
@@ -55,6 +56,7 @@ export default function AdminPage() {
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
+  const [organizationRevision, setOrganizationRevision] = useState(0);
   const [tab, setTab] = useState<'members' | 'invites' | 'rooms' | 'reports' | 'organizations'>(
     'members',
   );
@@ -244,7 +246,16 @@ export default function AdminPage() {
           <div className="mx-auto w-full max-w-[760px]">
             {tab === 'rooms' ? <RoomsSection /> : null}
 
-            {tab === 'organizations' ? <RepresentativesSection members={members} /> : null}
+            {tab === 'organizations' ? (
+              <>
+                <OrganizationsSection
+                  onChange={() => {
+                    setOrganizationRevision((value) => value + 1);
+                  }}
+                />
+                <RepresentativesSection key={organizationRevision} members={members} />
+              </>
+            ) : null}
 
             {tab === 'reports' ? (
               <ReportsSection
@@ -373,8 +384,11 @@ export default function AdminPage() {
                   onResume={() => {
                     act(m.id, () => setMemberStatus(m.id, 'active'));
                   }}
+                  onMakeOrganization={() => {
+                    act(m.id, () => setMemberType(m.id, 'organization'));
+                  }}
                   onToggleMentor={() => {
-                    act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
+                    act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
                   onRemove={(block, reason) => {
                     // Blocking deletes the member as part of blocking, inside
@@ -469,8 +483,11 @@ export default function AdminPage() {
                   onResume={() => {
                     act(m.id, () => setMemberStatus(m.id, 'active'));
                   }}
+                  onMakeOrganization={() => {
+                    act(m.id, () => setMemberType(m.id, 'organization'));
+                  }}
                   onToggleMentor={() => {
-                    act(m.id, () => setMemberType(m.id, m.type === 'mentor' ? 'peer' : 'mentor'));
+                    act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
                   onRemove={(block, reason) => {
                     // Blocking deletes the member as part of blocking, inside
@@ -548,6 +565,7 @@ function Row({
   onResume,
   onRemove,
   onToggleMentor,
+  onMakeOrganization,
   onStrike,
   strikes,
   onWithdrawStrike,
@@ -562,6 +580,7 @@ function Row({
   /** One call either way: blocking deletes the member as part of blocking. */
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
+  onMakeOrganization: () => void;
   onStrike: (reason: string) => void;
   /** This member's strikes that still count. Withdrawn and expired ones are not here. */
   strikes: Strike[];
@@ -602,6 +621,9 @@ function Row({
       <span className="min-w-0 flex-1 basis-[13rem]">
         <span className="block font-extrabold font-head text-[0.90625rem]">
           {member.displayName}
+          {member.type === 'organization' ? (
+            <span className="ml-2 text-[0.75rem] text-grey">Organization</span>
+          ) : null}
           {member.isAdmin ? (
             <span className="ml-2 rounded-full bg-gold-lt px-2 py-0.5 font-bold text-[0.625rem] text-gold-dp uppercase tracking-wider">
               Admin
@@ -641,10 +663,14 @@ function Row({
           {member.invitesUsed !== undefined &&
           !member.isSeed &&
           !member.isAdmin &&
+          member.type !== 'organization' &&
           (member.type === 'mentor' || member.invitesUsed > 0) ? (
             <>
               {' '}
-              · {member.invitesUsed} of {MENTOR_ALLOWANCE} invites used
+              ·{' '}
+              {member.unlimitedInvites
+                ? `${member.invitesUsed} invites used · no limit`
+                : `${member.invitesUsed} of ${MENTOR_ALLOWANCE} invites used`}
             </>
           ) : null}
         </span>
@@ -664,8 +690,11 @@ function Row({
           {member.isAdmin ? null : (
             <>
               <SmallButton onClick={onToggleMentor}>
-                {member.type === 'mentor' ? 'Make peer' : 'Make mentor'}
+                {member.type === 'peer' ? 'Make mentor' : 'Make peer'}
               </SmallButton>
+              {member.type !== 'organization' && !member.isSeed ? (
+                <SmallButton onClick={onMakeOrganization}>Make organization</SmallButton>
+              ) : null}
               {/* "Pause" rather than "Suspend", matching the screen the member
                   actually sees. The column still stores 'suspended'; renaming a
                   check constraint and the rows under it is churn for a word

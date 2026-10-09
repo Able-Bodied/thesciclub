@@ -1,20 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 import type { Organization } from '@/types/domain';
 
-/**
- * Reading organizations.
- *
- * Public, unlike almost everything else in the club: an organization is part of
- * the shopfront (CONTEXT.md, "What is public"), it publishes itself
- * elsewhere already, and an organization page is a reasonable thing to reach
- * from a search engine.
- *
- * Six rows, changing about never, so the Events tab loads all of them once and
- * looks up hosts in memory rather than joining per event.
- */
-
+/** The member directory, excluding entries an administrator removed. */
 interface OrganizationRow {
   id: string;
   short_code: string;
@@ -77,16 +67,23 @@ export interface OrganizationsState {
   byId: Map<string, Organization>;
   loading: boolean;
   error: string | null;
+  reload: () => void;
 }
 
 export function useOrganizations(): OrganizationsState {
-  const [state, setState] = useState<OrganizationsState>({
+  const [state, setState] = useState<Omit<OrganizationsState, 'reload'>>({
     organizations: [],
     byId: new Map(),
     loading: true,
     error: null,
   });
 
+  const [revision, setRevision] = useState(0);
+  const reload = useCallback(() => {
+    setRevision((value) => value + 1);
+  }, []);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: The reload revision intentionally starts a new read.
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
@@ -94,11 +91,16 @@ export function useOrganizations(): OrganizationsState {
 
     async function load() {
       try {
-        const { data, error } = await getSupabase()
-          .from('organizations')
-          .select('id, short_code, name, city, description, tags, can_invite, logo_path')
-          .order('name')
-          .abortSignal(signal);
+        const { data, error } = await readPages<OrganizationRow>((from, to) =>
+          getSupabase()
+            .from('organizations')
+            .select('id, short_code, name, city, description, tags, can_invite, logo_path')
+            .is('removed_at', null)
+            .order('name')
+            .order('id')
+            .range(from, to)
+            .abortSignal(signal),
+        );
         if (aborted()) return;
         if (error) {
           setState({
@@ -109,7 +111,7 @@ export function useOrganizations(): OrganizationsState {
           });
           return;
         }
-        const organizations = (data as OrganizationRow[]).map(toOrganization);
+        const organizations = (data ?? []).map(toOrganization);
         setState({
           organizations,
           byId: new Map(organizations.map((o) => [o.id, o])),
@@ -131,7 +133,7 @@ export function useOrganizations(): OrganizationsState {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [revision]);
 
-  return state;
+  return { ...state, reload };
 }

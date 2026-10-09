@@ -1155,3 +1155,20 @@ describe('the Reports tab', () => {
     expect(await screen.findByRole('button', { name: 'reports 2' })).toBeInTheDocument();
   });
 });
+
+describe('organization account roles', () => {
+  it('lets an administrator designate an organization account', async () => {
+    api.members = [member({ id: 'organization-account', displayName: 'Organization account' })];
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make organization' }));
+    await waitFor(() => {
+      expect(api.typeCalls).toContainEqual(['organization-account', 'organization']);
+    });
+  });
+  it('shows a linked mentor’s invite usage without a cap', async () => {
+    api.members = [member({ type: 'mentor', invitesUsed: 11, unlimitedInvites: true })];
+    renderAdmin();
+    expect(await screen.findByText(/11 invites used · no limit/)).toBeInTheDocument();
+    expect(screen.queryByText(/11 of 10/)).toBeNull();
+  });
+});

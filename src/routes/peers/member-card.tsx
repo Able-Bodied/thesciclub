@@ -146,12 +146,17 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       {/* Stacked, not side by side: the name keeps the same room beside one
           flag or two. Admin is white on the photograph so it is not read as a
           second Mentor. */}
-      {member.type === 'mentor' || member.isAdmin ? (
+      {member.type !== 'peer' || member.isAdmin ? (
         <span className="absolute top-[18px] right-[18px] z-10 flex flex-col items-end gap-1.5">
           {member.type === 'mentor' ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
               <MentorStar />
               Mentor
+            </span>
+          ) : null}
+          {member.type === 'organization' ? (
+            <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
+              Organization
             </span>
           ) : null}
           {member.isAdmin ? (

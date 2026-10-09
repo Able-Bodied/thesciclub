@@ -3,12 +3,17 @@ import { GENERIC_FAILURE } from '@/lib/describe-error';
 import {
   canWithdraw,
   describeFailure,
+  fetchMyInvites,
   inviteState,
   liveCount,
   MENTOR_ALLOWANCE,
   type MentorInvite,
   slotsLeft,
 } from '@/routes/invites/mentor-invites';
+import { pagedDatabase } from '@/test/paged-database';
+
+const rows = vi.hoisted(() => ({ invites: [] as Record<string, unknown>[] }));
+vi.mock('@/lib/supabase', () => ({ getSupabase: () => pagedDatabase({ invites: rows.invites }) }));
 
 const invite = (o: Partial<MentorInvite> = {}): MentorInvite => ({
   id: 'i1',
@@ -115,4 +120,16 @@ describe('explaining a refusal', () => {
     expect(describeFailure(error)).toBe(`The invite was not added. ${GENERIC_FAILURE}`);
     expect(consoleError).toHaveBeenCalledWith(error);
   });
+});
+
+it('reads the complete history for an account with more than a thousand invites', async () => {
+  rows.invites = Array.from({ length: 1005 }, (_, index) => ({
+    id: `invite-${index}`,
+    phone: '19990009999',
+    status: 'pending',
+    note: null,
+    created_at: '2026-10-09T10:00:00Z',
+  }));
+  const result = await fetchMyInvites();
+  expect(result.ok && result.invites.length).toBe(1005);
 });

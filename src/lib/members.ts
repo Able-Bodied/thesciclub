@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 import type { BrowseMember, MemberType } from '@/types/domain';
+import { memberType } from '@/types/domain';
 
 /**
  * Reading members.
@@ -58,7 +59,7 @@ export interface BrowseMemberRow {
 export function toMember(row: BrowseMemberRow): BrowseMember {
   return {
     id: row.id,
-    type: row.type === 'mentor' ? 'mentor' : 'peer',
+    type: memberType(row.type),
     displayName: row.display_name,
     photoPath: row.photo_path,
     photoAlt: row.photo_alt,
@@ -371,7 +372,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
             ? {
                 id: row.id as string,
                 displayName: row.display_name as string,
-                type: row.type === 'mentor' ? 'mentor' : 'peer',
+                type: memberType(row.type),
                 photoPath: (row.photo_path as string | null) ?? null,
                 photoAlt: (row.photo_alt as string | null) ?? null,
                 city: (row.city as string | null) ?? null,

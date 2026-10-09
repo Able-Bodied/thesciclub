@@ -44,6 +44,24 @@ const survey = vi.hoisted(() => ({
   declined: new Set<string>(),
 }));
 
+const privileges = vi.hoisted(() => ({ representative: false }));
+vi.mock('@/lib/invite-permissions', () => ({
+  useInvitePermissions: () => ({
+    canInvite:
+      own.member?.type === 'mentor' ||
+      own.member?.type === 'organization' ||
+      Boolean(account.current?.isAdmin) ||
+      privileges.representative,
+    unlimited:
+      own.member?.type === 'organization' ||
+      Boolean(account.current?.isAdmin) ||
+      privileges.representative,
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+  }),
+}));
+
 vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({
     member: own.member,
@@ -136,6 +154,7 @@ function ownMember(overrides: Record<string, unknown> = {}) {
 }
 
 beforeEach(() => {
+  privileges.representative = false;
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Nicole' };
   own.member = ownMember();
   own.invitedBy = 'NorCal SCI';
@@ -467,4 +486,31 @@ describe('being findable', () => {
     expect(wroteVisibility.calls).toHaveLength(1);
     expect(wroteVisibility.calls[0]?.[1]).toBe(false);
   });
+});
+
+describe('unlimited invite card', () => {
+  it.each(['admin', 'organization', 'representative'])(
+    'shows no ten-invite limit for %s',
+    async (role) => {
+      if (account.current) account.current.isAdmin = role === 'admin';
+      own.member = { ...own.member, type: role === 'organization' ? 'organization' : 'peer' };
+      privileges.representative = role === 'representative';
+      render(
+        <MemoryRouter>
+          <MePage />
+        </MemoryRouter>,
+      );
+      expect(await screen.findByText('You can invite people without a limit.')).toBeInTheDocument();
+      expect(screen.queryByText(/put 10 numbers/)).toBeNull();
+      expect(screen.getByRole('link', { name: /Your invites/ })).toHaveAttribute(
+        'href',
+        '/invites',
+      );
+      if (role === 'organization')
+        expect(screen.getByRole('link', { name: 'Manage your organizations' })).toHaveAttribute(
+          'href',
+          '/organizations/manage',
+        );
+    },
+  );
 });
