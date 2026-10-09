@@ -48,7 +48,9 @@ export default function EventFormPage() {
   const memberId = account.status === 'member' ? account.userId : null;
   const mine = useMyOrganizations(memberId);
   const { organizations, loading: organizationsLoading } = useOrganizations();
-  const { events, loading: eventsLoading } = useEvents();
+  const { events, loading: eventsLoading } = useEvents({
+    id: id ?? '00000000-0000-0000-0000-000000000000',
+  });
 
   if (
     account.status === 'loading' ||
@@ -167,7 +169,7 @@ function EventForm({
           {isNew ? 'Add an event' : 'Change this event'}
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-          Events are public: anybody can read this one, with or without an account.
+          Club members can read this event.
           {isNew ? ' It goes on the calendar as soon as you add it.' : ''}
         </p>
 

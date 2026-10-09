@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 import type { ClubEvent, EventAttendee, EventFormat, EventTag, RsvpStatus } from '@/types/domain';
 
@@ -163,10 +164,17 @@ export interface EventsState {
 /**
  * Every event, with its tags and its public tallies.
  *
- * Deliberately unfiltered and unpaged: src/routes/events/filters.ts narrows the
- * result in memory, and its header says why and when that stops being right.
+ * Date and detail restrictions run on the server. Each read is paged so neither
+ * accumulated history nor supporting tags and counts can truncate the result.
  */
-export function useEvents(): EventsState {
+export interface EventQuery {
+  from?: string;
+  to?: string;
+  id?: string;
+  organizationId?: string;
+}
+
+export function useEvents({ from, to, id, organizationId }: EventQuery = {}): EventsState {
   const [state, setState] = useState<EventsState>({ events: [], loading: true, error: null });
 
   useEffect(() => {
@@ -178,17 +186,79 @@ export function useEvents(): EventsState {
     const aborted = () => signal.aborted;
 
     async function load() {
+      setState({ events: [], loading: true, error: null });
       try {
         const supabase = getSupabase();
-        const [events, links, tags, counts, feeds] = await Promise.all([
-          supabase.from('events').select(EVENT_COLUMNS).order('start_time').abortSignal(signal),
-          supabase.from('event_tags').select('event_id, tag_id').abortSignal(signal),
-          supabase.from('tags').select('id, slug, name, parent_id').abortSignal(signal),
-          supabase
-            .from('event_rsvp_counts')
-            .select('event_id, going_count, interested_count')
-            .abortSignal(signal),
-          supabase.from('data_feeds').select('id, timezone').abortSignal(signal),
+        const events = await readPages<EventRow>((first, last) => {
+          let query = supabase.from('events').select(EVENT_COLUMNS).order('start_time').order('id');
+          if (from) query = query.gte('start_time', from);
+          if (to) query = query.lte('start_time', to);
+          if (id) query = query.eq('id', id);
+          if (organizationId) query = query.eq('organization_id', organizationId);
+          return query.range(first, last).abortSignal(signal);
+        });
+        if (aborted()) return;
+        if (events.error) {
+          setState({
+            events: [],
+            loading: false,
+            error: describeError(events.error, 'Could not load events.'),
+          });
+          return;
+        }
+        const ids = (events.data ?? []).map((event) => event.id);
+        // Keep URLs bounded, and fetch tags/counts only for the events just read.
+        async function supporting<T>(
+          table: string,
+          columns: string,
+          order: string[],
+          map: (rows: unknown[]) => T[],
+        ) {
+          const data: T[] = [];
+          for (let offset = 0; offset < ids.length; offset += 100) {
+            const batch = ids.slice(offset, offset + 100);
+            const result = await readPages<T>((first, last) => {
+              let query = supabase.from(table).select(columns).in('event_id', batch);
+              for (const column of order) query = query.order(column);
+              return query
+                .range(first, last)
+                .abortSignal(signal)
+                .overrideTypes<T[], { merge: false }>();
+            });
+            if (result.error) return result;
+            data.push(...map(result.data ?? []));
+          }
+          return { data, error: null };
+        }
+        const [links, tags, counts, feeds] = await Promise.all([
+          supporting<{ event_id: string; tag_id: string }>(
+            'event_tags',
+            'event_id, tag_id',
+            ['event_id', 'tag_id'],
+            (rows) => rows as { event_id: string; tag_id: string }[],
+          ),
+          readPages<TagRow>((first, last) =>
+            supabase
+              .from('tags')
+              .select('id, slug, name, parent_id')
+              .order('id')
+              .range(first, last)
+              .abortSignal(signal),
+          ),
+          supporting<CountRow>(
+            'event_rsvp_counts',
+            'event_id, going_count, interested_count',
+            ['event_id'],
+            (rows) => rows as CountRow[],
+          ),
+          readPages<{ id: string; timezone: string }>((first, last) =>
+            supabase
+              .from('data_feeds')
+              .select('id, timezone')
+              .order('id')
+              .range(first, last)
+              .abortSignal(signal),
+          ),
         ]);
         if (aborted()) return;
 
@@ -232,7 +302,7 @@ export function useEvents(): EventsState {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [from, to, id, organizationId]);
 
   return state;
 }

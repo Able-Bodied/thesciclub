@@ -33,8 +33,7 @@ import type { EventAttendee, RsvpStatus } from '@/types/domain';
  * who is hosting.
  *
  * The group chat card the mock shows is real as of Phase 5 of Chat, and is
- * `EventGroupCard` — rendered only for a signed-in member, because an event
- * page is public and the card reads the viewer's own conversations to know
+ * `EventGroupCard` — rendered only for a signed-in member, because the card reads the viewer's own conversations to know
  * whether they are already in the group.
  */
 export default function EventDetailPage() {
@@ -46,7 +45,9 @@ export default function EventDetailPage() {
   const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
-  const { events, loading, error } = useEvents();
+  const { events, loading, error } = useEvents({
+    id: id ?? '00000000-0000-0000-0000-000000000000',
+  });
   const { byEvent } = useAttendeesByEvent();
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);

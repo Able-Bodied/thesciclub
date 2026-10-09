@@ -15,6 +15,7 @@ import { EventFilterSheet } from '@/routes/events/filter-sheet';
 import {
   activeFilterCount,
   citiesIn,
+  dateWindowRange,
   filterEvents,
   formatsIn,
   isPastEvent,
@@ -87,7 +88,6 @@ export default function EventsPage() {
   const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
-  const { events, loading, error } = useEvents();
   const { byEvent: attendeesByEvent } = useAttendeesByEvent();
   const { organizations, byId: organizationsById } = useOrganizations();
   const follows = useOrganizationFollows();
@@ -115,6 +115,10 @@ export default function EventsPage() {
     [setSearchParams],
   );
   const [filters, setFilters] = useState<EventFilters>(EMPTY_EVENT_FILTERS);
+  const dateRange = dateWindowRange(
+    isRsvpSegment(segment) ? (segment === 'been-to' ? 'past' : 'any') : filters.when,
+  );
+  const { events, loading, error } = useEvents(dateRange ?? {});
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
 

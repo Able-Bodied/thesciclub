@@ -4,20 +4,9 @@
  * Pure functions over plain data, the same shape as src/routes/peers/filters.ts,
  * so the rules can be tested without a database or a component.
  *
- * ---------------------------------------------------------------------------
- * Why this filters in the client where ab-peers filtered in the query
- * ---------------------------------------------------------------------------
- * ab-peers pushed every filter into the Supabase query because its feed paged:
- * filtering after the fact would have meant fetching a page of fifty, dropping
- * forty-six, and showing four. There is no paging here. The corpus is two
- * California calendars — a few hundred rows, of which the default window shows
- * a month — so the list fetches the window once and narrows it in memory, which
- * makes every chip instant and every rule testable as a function.
- *
- * That trade has a limit and it is worth naming: it stops being right when the
- * club adds enough feeds that a month does not fit in one fetch. The fix then
- * is paging plus query-side filters, and `dateWindowRange` is already the piece
- * the query would need.
+ * Date windows are applied in the server query and each result is paged.
+ * The remaining filters narrow that complete window in memory so changing
+ * chips stays instant. RSVP segments fetch their own past or upcoming range.
  */
 
 import type {

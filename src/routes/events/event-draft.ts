@@ -200,25 +200,35 @@ export function wallClock(iso: string, zone: string): WallClock {
 }
 
 /**
- * The instant at which the clock in `zone` reads this date and time.
- *
- * Guess as if the zone were UTC, see how far the zone's clock is from that,
- * and correct; twice, so a guess that lands across a daylight-saving change
- * settles on the offset that applies at the answer rather than at the guess.
+ * Resolve a wall time by checking the offsets on either side of the date.
+ * A spring gap has no matching instant; an autumn repeat uses the first one.
  */
 export function wallTimeToIso(
   date: { year: number; month: number; day: number },
   time: TimeOfDay,
   zone: string,
-): string {
+): string | null {
   const target = Date.UTC(date.year, date.month - 1, date.day, time.hour, time.minute);
-  const offsetAt = (instant: number) => {
+  const offsets = new Set<number>();
+  for (const delta of [-86400000, 0, 86400000]) {
+    const instant = target + delta;
     const w = wallClock(new Date(instant).toISOString(), zone);
-    return Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute) - instant;
-  };
-  let instant = target - offsetAt(target);
-  instant = target - offsetAt(instant);
-  return new Date(instant).toISOString();
+    offsets.add(Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute) - instant);
+  }
+  const candidates = [...offsets].map((offset) => target - offset).sort((a, b) => a - b);
+  for (const candidate of candidates) {
+    const iso = new Date(candidate).toISOString();
+    const w = wallClock(iso, zone);
+    if (
+      w.year === date.year &&
+      w.month === date.month &&
+      w.day === date.day &&
+      w.hour === time.hour &&
+      w.minute === time.minute
+    )
+      return iso;
+  }
+  return null;
 }
 
 /* ---------------------------------------------------------------- links */
@@ -273,6 +283,12 @@ export function readDraft(
   if (end.kind === 'invalid') return { ok: false, problem: `Ends: ${end.problem}` };
 
   const startTime = wallTimeToIso({ year, month, day }, start.time, HAND_ADDED_TIMEZONE);
+  if (!startTime)
+    return {
+      ok: false,
+      problem:
+        'Starts: that time does not exist because the clocks move forward. Choose another time.',
+    };
   let endTime: string | null = null;
   if (end.kind === 'time') {
     const startMinutes = start.time.hour * 60 + start.time.minute;
@@ -288,6 +304,12 @@ export function readDraft(
       end.time,
       HAND_ADDED_TIMEZONE,
     );
+    if (!endTime)
+      return {
+        ok: false,
+        problem:
+          'Ends: that time does not exist because the clocks move forward. Choose another time.',
+      };
   }
   if (isNew && new Date(startTime) < now) {
     return { ok: false, problem: 'That time has already passed.' };

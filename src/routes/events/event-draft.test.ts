@@ -236,3 +236,34 @@ describe('draftFromEvent', () => {
     });
   });
 });
+
+describe('daylight-saving boundaries', () => {
+  it.each([
+    { startTime: '2:30 am', endTime: '' },
+    { startTime: '1:30 am', endTime: '2:30 am' },
+  ])('rejects a nonexistent start or end (%o)', (times) => {
+    const reading = readDraft(draft({ date: { year: '2027', month: '3', day: '14' }, ...times }), {
+      isNew: true,
+      now: NOW,
+    });
+    expect(reading.ok).toBe(false);
+    if (!reading.ok) expect(reading.problem).toMatch(/clock.*forward/i);
+  });
+  it('rejects a nonexistent end on the following morning', () => {
+    expect(
+      readDraft(
+        draft({
+          date: { year: '2027', month: '3', day: '13' },
+          startTime: '11 pm',
+          endTime: '2:30 am',
+        }),
+        { isNew: true, now: NOW },
+      ).ok,
+    ).toBe(false);
+  });
+  it('chooses the first occurrence of a repeated autumn time', () => {
+    expect(wallTimeToIso({ year: 2027, month: 11, day: 7 }, { hour: 1, minute: 30 }, PACIFIC)).toBe(
+      '2027-11-07T08:30:00.000Z',
+    );
+  });
+});

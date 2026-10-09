@@ -26,7 +26,7 @@ export default function OrganizationDetailPage() {
   const back = backToEvents(location);
   const { byId, loading } = useOrganizations();
   const follows = useOrganizationFollows();
-  const { events } = useEvents();
+  const { events } = useEvents({ organizationId: id ?? '00000000-0000-0000-0000-000000000000' });
   const { members } = useBrowseMembers();
 
   const organization = id ? (byId.get(id) ?? null) : null;
