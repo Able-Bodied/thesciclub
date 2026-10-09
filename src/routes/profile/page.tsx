@@ -1,10 +1,12 @@
 import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { AccountProblem } from '@/components/account-problem';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
 import { MEMBER_LIST_ITEM_MAX, memberTextMax } from '@/lib/member-limits';
+import { signInDoor } from '@/lib/sign-in-destination';
 import { cn } from '@/lib/utils';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
 import {
@@ -39,6 +41,7 @@ import {
  */
 export default function ProfileSurveyPage() {
   const account = useAccount();
+  const location = useLocation();
   const navigate = useNavigate();
   const announce = useAnnounce();
   const [params] = useSearchParams();
@@ -184,8 +187,12 @@ export default function ProfileSurveyPage() {
     };
   }, [screen, answers, declined, loading, saving, index, commit]);
 
+  if (account.status === 'error') return <AccountProblem account={account} />;
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
-  if (account.status !== 'member') return <Navigate to="/join" replace />;
+  if (account.status !== 'member')
+    return (
+      <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
+    );
   if (!screen) return <Navigate to="/me" replace />;
 
   const questions = questionsOn(screen, answers);

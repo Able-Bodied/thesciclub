@@ -1,5 +1,6 @@
 import type { UserIdentity } from '@supabase/supabase-js';
 import { describeError } from '@/lib/describe-error';
+import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -60,9 +61,11 @@ export async function unlinkGoogle(
 
 /** Off to Google, back to the sign-in screen. Only resolves if it could not leave. */
 export async function signInWithGoogle(): Promise<{ ok: false; error: string } | { ok: true }> {
+  const next = signInDestination(window.location.search);
+  const query = new URLSearchParams({ [GOOGLE_RETURN_PARAM]: 'signin', next });
   const { error } = await getSupabase().auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${window.location.origin}/join?${GOOGLE_RETURN_PARAM}=signin` },
+    options: { redirectTo: `${window.location.origin}/join?${query}` },
   });
   return error
     ? { ok: false, error: describeError(error, 'Could not reach Google.') }

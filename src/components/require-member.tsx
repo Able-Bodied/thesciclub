@@ -1,6 +1,8 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
+import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
 import { useAccount } from '@/lib/account';
+import { signInDoor } from '@/lib/sign-in-destination';
 
 /**
  * The door.
@@ -16,14 +18,20 @@ import { useAccount } from '@/lib/account';
  * insecure.
  */
 export function RequireMember({ children }: { children: React.ReactNode }) {
-  const { status } = useAccount();
+  const account = useAccount();
+  const { status } = account;
+  const location = useLocation();
+
+  if (status === 'error') return <AccountProblem account={account} />;
 
   if (status === 'loading') {
     return <div className="min-h-dvh bg-canvas" />;
   }
   if (status === 'signed-out' || status === 'signed-up') {
     // Someone part-way through signup goes back to finish it, not to a wall.
-    return <Navigate to="/join" replace />;
+    return (
+      <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
+    );
   }
   // Not a redirect: there is nowhere to send them that is truer than this, and
   // bouncing a suspended member around the app while every screen comes back

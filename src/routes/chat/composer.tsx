@@ -158,6 +158,7 @@ export function Composer({
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
+  const draftVersion = useRef(0);
   // Whether this box was born as an editor. A ref, because the effect below
   // runs once, on mount, and `edit` is stable for the life of an editor.
   const bornEditing = useRef(edit !== undefined);
@@ -193,6 +194,7 @@ export function Composer({
 
   function send() {
     if (cannotSend) return;
+    const submittedVersion = draftVersion.current;
     setSending(true);
     setFailure(null);
     void onSend(body, files)
@@ -201,7 +203,8 @@ export function Composer({
           setFailure(problem);
           return;
         }
-        setDraft('');
+        // A member may already be writing the next message while this one saves.
+        if (draftVersion.current === submittedVersion) setDraft('');
         setFiles([]);
         // The box shrinks back only once the words have actually gone.
         requestAnimationFrame(resize);
@@ -219,7 +222,9 @@ export function Composer({
       maxLength={maxLength}
       placeholder={placeholder}
       aria-label={placeholder}
+      readOnly={Boolean(edit) && sending}
       onChange={(event) => {
+        draftVersion.current += 1;
         setDraft(event.target.value);
         resize();
       }}
@@ -229,6 +234,9 @@ export function Composer({
           edit.onCancel();
           return;
         }
+        // Safari can report composition Enter only through legacy keyCode.
+        // eslint-disable-next-line @typescript-eslint/no-deprecated
+        if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
         if (event.key !== 'Enter') return;
         if (sendOnEnter && !event.shiftKey) {
           event.preventDefault();

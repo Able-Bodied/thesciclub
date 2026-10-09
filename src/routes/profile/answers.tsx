@@ -1,7 +1,9 @@
 import { ChevronLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { AccountProblem } from '@/components/account-problem';
 import { useAccount } from '@/lib/account';
+import { signInDoor } from '@/lib/sign-in-destination';
 import { loadAnswers } from '@/routes/profile/profile-api';
 import {
   type Answers,
@@ -27,6 +29,7 @@ import {
  */
 export default function ProfileAnswersPage() {
   const account = useAccount();
+  const location = useLocation();
   const navigate = useNavigate();
   const [answers, setAnswers] = useState<Answers>({});
   const [declined, setDeclined] = useState<Set<string>>(new Set());
@@ -44,8 +47,12 @@ export default function ProfileAnswersPage() {
     });
   }, [account.status]);
 
+  if (account.status === 'error') return <AccountProblem account={account} />;
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
-  if (account.status !== 'member') return <Navigate to="/join" replace />;
+  if (account.status !== 'member')
+    return (
+      <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
+    );
 
   const open = loading ? null : firstOpenScreen(answers, declined);
 

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
-import { describeError } from '@/lib/describe-error';
+import { describeError, describeThrown } from '@/lib/describe-error';
 import { forgetThisDevice } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
 
@@ -23,6 +23,7 @@ import { getSupabase } from '@/lib/supabase';
 
 export type AccountStatus =
   | 'loading'
+  | 'error'
   | 'signed-out'
   | 'signed-up'
   | 'member'
@@ -45,6 +46,8 @@ export interface Account {
   isAdmin: boolean;
   /** Who you are signed in as. Null until the member row is read. */
   displayName: string | null;
+  error?: string;
+  retry?: () => void;
 }
 
 /**
@@ -71,39 +74,68 @@ export function useAccount(): Account {
     displayName: null,
   });
 
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => {
+    setAccount((current) => ({ ...current, status: 'loading' }));
+    setAttempt((current) => current + 1);
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
     const supabase = getSupabase();
 
+    let revision = attempt;
     async function resolve(userId: string | null) {
+      const request = ++revision;
       if (!userId) {
         if (!aborted()) {
           setAccount({ status: 'signed-out', userId: null, isAdmin: false, displayName: null });
         }
         return;
       }
-      const result = await supabase
-        .from('members')
-        .select('id, is_admin, display_name, status')
-        .eq('id', userId)
-        .maybeSingle();
-      if (aborted()) return;
-      const row = result.data;
-      setAccount({
-        status: statusFor(row),
-        userId,
-        // Coerced rather than passed through: the client types individual
-        // selected columns as `any`, and this one decides whether somebody
-        // sees the admin tools.
-        isAdmin: Boolean(row?.is_admin),
-        displayName: row?.display_name ? String(row.display_name) : null,
-      });
+      try {
+        const result = await supabase
+          .from('members')
+          .select('id, is_admin, display_name, status')
+          .eq('id', userId)
+          .abortSignal(controller.signal)
+          .maybeSingle();
+        if (aborted() || request !== revision) return;
+        if (result.error) throw result.error;
+        const row = result.data;
+        setAccount({
+          status: statusFor(row),
+          userId,
+          isAdmin: Boolean(row?.is_admin),
+          displayName: row?.display_name ? String(row.display_name) : null,
+        });
+      } catch (error) {
+        if (aborted() || request !== revision) return;
+        setAccount({
+          status: 'error',
+          userId,
+          isAdmin: false,
+          displayName: null,
+          error: describeThrown(error, 'Could not check your membership.'),
+        });
+      }
     }
 
-    void supabase.auth.getSession().then(({ data }) => {
-      void resolve(data.session?.user.id ?? null);
-    });
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) {
+          if (!aborted())
+            setAccount({ status: 'error', userId: null, isAdmin: false, displayName: null });
+          return;
+        }
+        void resolve(data.session?.user.id ?? null);
+      })
+      .catch(() => {
+        if (!aborted())
+          setAccount({ status: 'error', userId: null, isAdmin: false, displayName: null });
+      });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       void resolve(session?.user.id ?? null);
@@ -113,9 +145,9 @@ export function useAccount(): Account {
       controller.abort();
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [attempt]);
 
-  return account;
+  return { ...account, retry };
 }
 
 /**

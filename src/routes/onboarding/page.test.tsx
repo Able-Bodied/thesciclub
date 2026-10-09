@@ -179,6 +179,7 @@ function renderJoin(path = '/join') {
       <Routes>
         <Route path="/join" element={<OnboardingPage />} />
         <Route path="/home" element={<h1>Home</h1>} />
+        <Route path="/chat/t/shared" element={<h1>Shared conversation</h1>} />
       </Routes>
     </MemoryRouter>,
   );
@@ -1257,5 +1258,26 @@ describe('signing in with the account picked in Google’s widget', () => {
     await reachSignIn();
     await userEvent.click(screen.getByRole('button', { name: /Use Google’s sign-in page/ }));
     expect(calls.order).toEqual(['signInWithOAuth:google']);
+  });
+});
+
+describe('returning to shared links', () => {
+  it('returns a phone sign-in to its conversation', async () => {
+    calls.existingMember = { id: 'u1' };
+    renderJoin('/join?next=%2Fchat%2Ft%2Fshared');
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.type(await screen.findByPlaceholderText('000000'), '111111');
+    expect(await screen.findByRole('heading', { name: 'Shared conversation' })).toBeInTheDocument();
+  });
+  it('resumes the destination when Google returns an existing member', async () => {
+    calls.status = 'member';
+    renderJoin('/join?google=signin&next=%2Fchat%2Ft%2Fshared');
+    expect(await screen.findByRole('heading', { name: 'Shared conversation' })).toBeInTheDocument();
+  });
+  it('keeps suspended members at the shell rather than looping through a profile link', async () => {
+    calls.status = 'suspended';
+    renderJoin('/join?next=%2Fprofile%2Fdetails');
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { AccountProblem } from '@/components/account-problem';
 import { GoogleButton } from '@/components/google-button';
 import { signOut, useAccount } from '@/lib/account';
 import { describeError } from '@/lib/describe-error';
@@ -13,6 +14,7 @@ import {
 } from '@/lib/google-sign-in';
 import { toE164 } from '@/lib/phone';
 import { vapidPublicKey } from '@/lib/push/notifications';
+import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, StepFrame } from '@/routes/onboarding/chrome';
@@ -121,9 +123,11 @@ export default function OnboardingPage() {
    * questions.
    */
   const [params, setParams] = useSearchParams();
+  const destination = signInDestination(params.toString());
   const fromGoogle = params.get(GOOGLE_RETURN_PARAM) === 'signin';
   useEffect(() => {
-    if (account.status === 'loading' || account.status === 'member') return;
+    if (account.status === 'loading' || account.status === 'error' || account.status === 'member')
+      return;
     if (account.status === 'suspended') return;
     const controller = new AbortController();
     const cancelled = () => controller.signal.aborted;
@@ -250,9 +254,14 @@ export default function OnboardingPage() {
     // Checked before the invite list, because somebody who has joined does not
     // need to be re-vetted — and because their invite is consumed, not pending.
     const existing = await supabase.from('members').select('id').maybeSingle();
+    if (existing.error) {
+      setBusy(false);
+      setError(describeError(existing.error, 'Could not check your membership. Try again.'));
+      return;
+    }
     if (existing.data) {
       setBusy(false);
-      void navigate('/home', { replace: true });
+      void navigate(destination, { replace: true });
       return;
     }
 
@@ -308,7 +317,7 @@ export default function OnboardingPage() {
    * once the bucket refused files, would have kept Skip on the photo step.
    */
   function enterTheClub() {
-    void navigate('/home', { replace: true });
+    void navigate(destination, { replace: true });
   }
 
   async function finish(patch: Partial<OnboardingData> = {}) {
@@ -332,8 +341,10 @@ export default function OnboardingPage() {
       setPhase('notifications');
       return;
     }
-    void navigate('/home', { replace: true });
+    void navigate(destination, { replace: true });
   }
+
+  if (account.status === 'error') return <AccountProblem account={account} />;
 
   // Before the check below: the row now exists, and should the account be
   // read again meanwhile, this screen must not vanish under a tap.
@@ -347,8 +358,9 @@ export default function OnboardingPage() {
   // bounced to the welcome screen — which invites them to join a club they are
   // already in. Sending them into the shell lands them on the screen that
   // explains the pause.
-  if (account.status === 'member' || account.status === 'suspended') {
-    return <Navigate to="/home" replace />;
+  if (account.status === 'suspended') return <Navigate to="/home" replace />;
+  if (account.status === 'member') {
+    return <Navigate to={destination} replace />;
   }
 
   if (phase === 'blocked') {

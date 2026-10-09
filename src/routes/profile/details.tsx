@@ -1,6 +1,7 @@
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { AccountProblem } from '@/components/account-problem';
 import { BIRTHDAY_ORDER, DateFields, YEAR_FIRST_ORDER } from '@/components/date-fields';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -9,6 +10,7 @@ import { describeThrown } from '@/lib/describe-error';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { usePhotoUrl } from '@/lib/photos';
+import { signInDoor } from '@/lib/sign-in-destination';
 import { cn } from '@/lib/utils';
 import {
   DECLINABLE_DETAILS,
@@ -36,6 +38,7 @@ import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/do
  */
 export default function ProfileDetailsPage() {
   const account = useAccount();
+  const location = useLocation();
   const navigate = useNavigate();
   const [details, setDetails] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -64,8 +67,12 @@ export default function ProfileDetailsPage() {
   const photo = usePhotoUrl(details?.photoPath ?? null);
   const announce = useAnnounce();
 
+  if (account.status === 'error') return <AccountProblem account={account} />;
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
-  if (account.status !== 'member') return <Navigate to="/join" replace />;
+  if (account.status !== 'member')
+    return (
+      <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
+    );
 
   function set(patch: Partial<MemberDetails>) {
     setDetails((d) => (d ? { ...d, ...patch } : d));

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from '@/routes/chat/composer';
@@ -203,4 +203,40 @@ describe('the reply bar', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Stop replying' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+});
+
+describe('sending while writing', () => {
+  it('preserves a changed draft when an earlier send completes', async () => {
+    let complete!: (problem: string | null) => void;
+    const onSend = vi.fn<OnSend>(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    renderComposer(onSend);
+    const box = screen.getByRole('textbox');
+    fireEvent.change(box, { target: { value: 'First message' } });
+    fireEvent.keyDown(box, { key: 'Enter' });
+    fireEvent.change(box, { target: { value: 'Next unsent draft' } });
+    await act(async () => {
+      complete(null);
+      await Promise.resolve();
+    });
+    expect(box).toHaveValue('Next unsent draft');
+    expect(onSend).toHaveBeenCalledTimes(1);
+    expect(onSend).toHaveBeenCalledWith('First message', []);
+  });
+
+  it.each([{ isComposing: true }, { keyCode: 229 }])(
+    'does not send composition Enter (%o)',
+    (composition) => {
+      const onSend = renderComposer();
+      const box = screen.getByRole('textbox');
+      fireEvent.change(box, { target: { value: 'Composed words' } });
+      fireEvent.keyDown(box, { key: 'Enter', ...composition });
+      expect(onSend).not.toHaveBeenCalled();
+      expect(box).toHaveValue('Composed words');
+    },
+  );
 });
