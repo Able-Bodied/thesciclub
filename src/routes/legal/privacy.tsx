@@ -23,7 +23,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 7, 2026">
+    <LegalPage title="Privacy Policy" updated="October 8, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
