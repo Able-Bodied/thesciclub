@@ -16,8 +16,9 @@ the product definition and wins over this file.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, all repository migrations live
-  (linked dry run confirmed 2026-10-09),
+- **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
+  `20261009020000` live (linked dry run confirmed 2026-10-09);
+  `20261009030000` is pending (Open 12),
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -179,6 +180,34 @@ the product definition and wins over this file.
     past ten and scoped saving are verified by UI tests and signed-in SQL probes.
     Local fixtures were removed and the scratch stack was stopped. The owner applied
     the hosted migrations and authorized this client release on 2026-10-09.
+
+11. **Profile and admin organization, unreleased** (2026-10-09): Me groups profile
+    editing/preview, club tools, device settings and account actions, with accessible
+    section shortcuts. Display stays expanded and comes before notifications.
+    Your details groups identity, injury and location, retaining one Save changes
+    action. Admin navigation wraps into two rows on phones; the whole page scrolls
+    so its header does not reserve half a small screen at larger text sizes.
+    Member search matches names, formatted phone numbers, location, account type
+    and status across joined and directory entries. Opening a member from a report
+    clears search first. Member actions separate account type from membership,
+    with 44px targets and the existing destructive confirmations. No migration.
+    All 2,017 tests, check and build pass; browser checks cover 375px and desktop,
+    larger text, dark appearance, focusable section shortcuts and member search.
+
+12. **Linked organization profile tags, unreleased** (2026-10-09): visible member
+    profiles show `Represents <organization>` tags for administrator-linked
+    organizations. Each tag opens that organization's page and uses its logo or
+    short code. Self-described “Member of” affiliations stay separate and do not
+    earn representative tags. `browse_members` appends linked organization
+    identities, retaining its active-viewer/profile gate, security barrier and
+    read-only grants. Archived organizations are excluded; unlinking removes the
+    badge on the next profile read. The private representatives table stays private.
+    Migration `20261009030000_profiles_show_represented_organizations.sql` is local
+    only and confirmed pending by linked dry run. All 2,021 tests, check and build
+    pass. The signed-in SQL probe has ten true assertions and two expected refusals
+    on local and fresh stacks; removing the archive filter fails an assertion.
+    Using self-described affiliations as badges fails both profile regressions.
+    Browser checks cover the badge on phones and desktop, larger text and the organization link. Local preview fixtures were removed and the fresh stack stopped.
 
 ## Rules the owner set
 

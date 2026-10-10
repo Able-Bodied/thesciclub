@@ -1172,3 +1172,43 @@ describe('organization account roles', () => {
     expect(screen.queryByText(/11 of 10/)).toBeNull();
   });
 });
+
+describe('finding members', () => {
+  it('searches joined and directory members by name, location and account type', async () => {
+    api.members = [
+      member({ id: 'joined', displayName: 'Morgan Example', city: 'Oakland', type: 'mentor' }),
+      member({ id: 'directory', displayName: 'Taylor Example', city: 'Sacramento', isSeed: true }),
+    ];
+    renderAdmin();
+    const input = await screen.findByRole('searchbox', { name: 'Find a member' });
+    await userEvent.type(input, 'MENTOR');
+    expect(screen.getByText('Morgan Example')).toBeInTheDocument();
+    expect(screen.queryByText('Taylor Example')).toBeNull();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'sacramento');
+    expect(screen.getByText('Taylor Example')).toBeInTheDocument();
+    expect(screen.queryByText('Morgan Example')).toBeNull();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'morgan');
+    expect(screen.getByText('Morgan Example')).toBeInTheDocument();
+    expect(screen.queryByText('Taylor Example')).toBeNull();
+    // Searching never changes membership or account type.
+    expect(api.typeCalls).toEqual([]);
+    expect(api.statusCalls).toEqual([]);
+  });
+
+  it('matches a formatted phone number and offers a way out of no matches', async () => {
+    api.members = [member({ displayName: 'Phone Example', phone: '19990001234' })];
+    renderAdmin();
+    const input = await screen.findByRole('searchbox', { name: 'Find a member' });
+    await userEvent.type(input, '(999) 000-1234');
+    expect(screen.getByText('Phone Example')).toBeInTheDocument();
+    await userEvent.clear(input);
+    await userEvent.type(input, 'absent');
+    expect(screen.getByText('No joined members match your search.')).toBeInTheDocument();
+    expect(screen.queryByText('Phone Example')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(screen.getByText('Phone Example')).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+});

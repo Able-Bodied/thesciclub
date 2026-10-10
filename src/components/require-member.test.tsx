@@ -3,7 +3,13 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 
-const account = vi.hoisted(() => ({ current: null as Account | null }));
+const account = vi.hoisted(() => ({
+  current: null as Account | null,
+  restore: vi.fn(() => Promise.resolve('off')),
+}));
+vi.mock('@/lib/push/notifications', () => ({
+  restoreDeviceNotifications: account.restore,
+}));
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
   signOut: () => Promise.resolve({ ok: true }),
@@ -33,6 +39,7 @@ function renderGuarded() {
 }
 
 beforeEach(() => {
+  account.restore.mockClear();
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Test' };
 });
 
@@ -40,6 +47,7 @@ describe('RequireMember', () => {
   it('lets a member in', () => {
     renderGuarded();
     expect(screen.getByText('Inside the club')).toBeInTheDocument();
+    expect(account.restore).toHaveBeenCalledWith('u1');
   });
 
   // Suspension did nothing a member could perceive: the row was read without
@@ -49,6 +57,7 @@ describe('RequireMember', () => {
     account.current = { status: 'suspended', userId: 'u1', isAdmin: false, displayName: 'Dana' };
     renderGuarded();
     expect(screen.getByText('Your membership is paused')).toBeInTheDocument();
+    expect(account.restore).not.toHaveBeenCalled();
     expect(screen.queryByText('Inside the club')).toBeNull();
   });
 
@@ -70,6 +79,7 @@ describe('RequireMember', () => {
     account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: 'Test' };
     renderGuarded();
     expect(screen.getByText('Welcome screen')).toBeInTheDocument();
+    expect(account.restore).not.toHaveBeenCalled();
     expect(screen.queryByText('Inside the club')).not.toBeInTheDocument();
   });
 

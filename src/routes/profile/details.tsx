@@ -205,7 +205,7 @@ export default function ProfileDetailsPage() {
             onClick={() => {
               void navigate('/me');
             }}
-            className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
+            className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
           >
             <ChevronLeft className="h-4 w-4" />
             Me
@@ -213,6 +213,9 @@ export default function ProfileDetailsPage() {
           <h1 className="mt-1 font-extrabold font-display text-[1.4375rem] text-ink tracking-[-0.01em]">
             Your details
           </h1>
+          <p className="mt-1 text-[0.8125rem] text-ink2">
+            Update any section, then save your changes.
+          </p>
         </header>
 
         <div className="flex-1 overflow-y-auto px-[18px] py-4">
@@ -224,253 +227,259 @@ export default function ProfileDetailsPage() {
             <p className="py-10 text-center text-[0.875rem] text-ink2">{error}</p>
           ) : (
             <>
-              <Field
-                label="Photo"
-                declined={details.declined.includes('photo')}
-                onToggleDecline={() => {
-                  toggleDecline('photo');
-                }}
-              >
-                <div className="flex items-center gap-3.5">
-                  <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-emphasis border-dashed bg-paper">
-                    {photo ? (
-                      <img src={photo} alt="" className="h-full w-full object-cover" />
+              <DetailsSection title="About you">
+                <Field
+                  label="Photo"
+                  declined={details.declined.includes('photo')}
+                  onToggleDecline={() => {
+                    toggleDecline('photo');
+                  }}
+                >
+                  <div className="flex items-center gap-3.5">
+                    <label className="grid h-[72px] w-[72px] flex-none cursor-pointer place-items-center overflow-hidden rounded-[22px] border-[1.6px] border-emphasis border-dashed bg-paper">
+                      {photo ? (
+                        <img src={photo} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="font-extrabold font-display text-[1.5rem] text-emphasis">
+                          +
+                        </span>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        // The label around it holds only the picture (alt="")
+                        // or a "+", so without this the control has no name.
+                        aria-label={details.photoPath ? 'Change your photo' : 'Choose a photo'}
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) onPhoto(file);
+                        }}
+                      />
+                    </label>
+                    {details.photoPath ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!account.userId) return;
+                          setError(null);
+                          void removePhoto(account.userId).then((result) => {
+                            // Only once it is gone: a refusal keeps the photo on
+                            // screen, where it still is.
+                            if (result.ok) set({ photoPath: null, photoAlt: null });
+                            else setError(result.error ?? 'The photograph was not removed.');
+                          });
+                        }}
+                        data-target="small"
+                        className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-emphasis"
+                      >
+                        Remove
+                      </button>
                     ) : (
-                      <span className="font-extrabold font-display text-[1.5rem] text-emphasis">
-                        +
+                      <span className="text-[0.78125rem] text-grey leading-[1.45]">
+                        Without one, your card is made from your initials.
                       </span>
                     )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      // The label around it holds only the picture (alt="")
-                      // or a "+", so without this the control has no name.
-                      aria-label={details.photoPath ? 'Change your photo' : 'Choose a photo'}
-                      className="sr-only"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) onPhoto(file);
-                      }}
-                    />
-                  </label>
-                  {details.photoPath ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!account.userId) return;
-                        setError(null);
-                        void removePhoto(account.userId).then((result) => {
-                          // Only once it is gone: a refusal keeps the photo on
-                          // screen, where it still is.
-                          if (result.ok) set({ photoPath: null, photoAlt: null });
-                          else setError(result.error ?? 'The photograph was not removed.');
-                        });
-                      }}
-                      data-target="small"
-                      className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.78125rem] text-emphasis"
-                    >
-                      Remove
-                    </button>
-                  ) : (
-                    <span className="text-[0.78125rem] text-grey leading-[1.45]">
-                      Without one, your card is made from your initials.
-                    </span>
-                  )}
-                </div>
-              </Field>
+                  </div>
+                </Field>
 
-              {/* Asked only once there is a picture to describe. Every avatar of
+                {/* Asked only once there is a picture to describe. Every avatar of
                   this member reads it; without it they are alt="", with the
                   name beside them. */}
-              {details.photoPath ? (
-                <Field label="Describe your photo" htmlFor="d-photo-alt">
+                {details.photoPath ? (
+                  <Field label="Describe your photo" htmlFor="d-photo-alt">
+                    <Input
+                      id="d-photo-alt"
+                      value={details.photoAlt ?? ''}
+                      maxLength={MEMBER_TEXT_MAX.photo_alt}
+                      describedBy="d-photo-alt-hint"
+                      onChange={(v) => {
+                        set({ photoAlt: v });
+                      }}
+                    />
+                    <p
+                      id="d-photo-alt-hint"
+                      className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]"
+                    >
+                      For members who use a screen reader, who hear this instead of seeing the
+                      picture. Optional — “Me in my chair at Ocean Beach” is plenty.
+                    </p>
+                  </Field>
+                ) : null}
+
+                <Field label="Name" htmlFor="d-name">
                   <Input
-                    id="d-photo-alt"
-                    value={details.photoAlt ?? ''}
-                    maxLength={MEMBER_TEXT_MAX.photo_alt}
-                    describedBy="d-photo-alt-hint"
+                    id="d-name"
+                    maxLength={MEMBER_TEXT_MAX.display_name}
+                    value={details.displayName}
                     onChange={(v) => {
-                      set({ photoAlt: v });
+                      set({ displayName: v });
                     }}
                   />
-                  <p
-                    id="d-photo-alt-hint"
-                    className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]"
-                  >
-                    For members who use a screen reader, who hear this instead of seeing the
-                    picture. Optional — “Me in my chair at Ocean Beach” is plenty.
-                  </p>
                 </Field>
-              ) : null}
 
-              <Field label="Name" htmlFor="d-name">
-                <Input
-                  id="d-name"
-                  maxLength={MEMBER_TEXT_MAX.display_name}
-                  value={details.displayName}
-                  onChange={(v) => {
-                    set({ displayName: v });
-                  }}
-                />
-              </Field>
-
-              <Field label="Birthday" labelId="d-birthday-label">
-                <DateFields
-                  id="d-birthday"
-                  labelledBy="d-birthday-label"
-                  order={BIRTHDAY_ORDER}
-                  birthday
-                  parts={birthParts}
-                  reading={birthReading}
-                  onChange={(next) => {
-                    setBirthParts(next);
-                    const read = readDate(next, { needs: 'day' });
-                    set({ birthDate: read.kind === 'date' ? read.iso : '' });
-                  }}
-                />
-                {birthReading.kind === 'invalid' ? null : birthReading.kind !== 'date' ? (
-                  <p className="mt-1.5 text-[0.75rem] text-grey">
-                    {birthReading.kind === 'partial'
-                      ? birthReading.need
-                      : 'Add the month, day and year.'}
-                  </p>
-                ) : !isAdult(details.birthDate) ? (
-                  <p
-                    role="alert"
-                    className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]"
-                  >
-                    The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than that.
-                  </p>
-                ) : age !== null ? (
-                  <p className="mt-1.5 text-[0.75rem] text-grey">
-                    {dateLabel(details.birthDate, 'day')}. Members see {age}, never the date itself.
-                  </p>
-                ) : null}
-              </Field>
-
-              <Field
-                label="Level of injury"
-                htmlFor="d-level"
-                declined={details.declined.includes('exactLevel')}
-                onToggleDecline={() => {
-                  toggleDecline('exactLevel');
-                }}
-              >
-                <Select
-                  id="d-level"
-                  value={details.exactLevel ?? ''}
-                  onChange={(v) => {
-                    set({ exactLevel: (v || null) as MemberDetails['exactLevel'] });
-                  }}
-                >
-                  <option value="">Not set</option>
-                  {EXACT_LEVELS.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                </Select>
-                {details.exactLevel && details.exactLevel !== 'Do not know' ? (
-                  <p className="mt-1.5 text-[0.75rem] text-grey">
-                    Browsed under {rangeForExact(details.exactLevel)}.
-                  </p>
-                ) : null}
-              </Field>
-
-              <Field label="Complete or incomplete">
-                <div className="flex flex-wrap gap-2">
-                  {COMPLETENESS.map((c) => (
-                    <Chip
-                      key={c}
-                      selected={details.completeness === c}
-                      onClick={() => {
-                        set({ completeness: c });
-                      }}
+                <Field label="Birthday" labelId="d-birthday-label">
+                  <DateFields
+                    id="d-birthday"
+                    labelledBy="d-birthday-label"
+                    order={BIRTHDAY_ORDER}
+                    birthday
+                    parts={birthParts}
+                    reading={birthReading}
+                    onChange={(next) => {
+                      setBirthParts(next);
+                      const read = readDate(next, { needs: 'day' });
+                      set({ birthDate: read.kind === 'date' ? read.iso : '' });
+                    }}
+                  />
+                  {birthReading.kind === 'invalid' ? null : birthReading.kind !== 'date' ? (
+                    <p className="mt-1.5 text-[0.75rem] text-grey">
+                      {birthReading.kind === 'partial'
+                        ? birthReading.need
+                        : 'Add the month, day and year.'}
+                    </p>
+                  ) : !isAdult(details.birthDate) ? (
+                    <p
+                      role="alert"
+                      className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]"
                     >
-                      {c}
-                    </Chip>
-                  ))}
-                </div>
-              </Field>
-
-              <Field
-                label="When were you injured?"
-                labelId="d-injury-label"
-                declined={details.declined.includes('injuryDate')}
-                onToggleDecline={() => {
-                  toggleDecline('injuryDate');
-                }}
-              >
-                <DateFields
-                  id="d-injury"
-                  labelledBy="d-injury-label"
-                  hint="The year on its own is a complete answer."
-                  order={YEAR_FIRST_ORDER}
-                  parts={injuryParts}
-                  reading={injuryReading}
-                  onChange={(next) => {
-                    setInjuryParts(next);
-                    const read = readDate(next, { needs: 'year' });
-                    // Only a finished date or a cleared one is recorded; one
-                    // still being typed leaves the record alone and holds Save.
-                    if (read.kind === 'date') {
-                      set({ injuryDate: read.iso, injuryDatePrecision: read.precision });
-                    } else if (read.kind === 'empty') {
-                      set({ injuryDate: null, injuryDatePrecision: null });
-                    }
-                  }}
-                />
-                {injuryReading.kind === 'partial' ? (
-                  <p className="mt-1.5 text-[0.75rem] text-grey">{injuryReading.need}</p>
-                ) : injuryReading.kind === 'date' ? (
-                  <p className="mt-1.5 text-[0.75rem] text-grey">
-                    {dateLabel(injuryReading.iso, injuryReading.precision)}
-                  </p>
-                ) : null}
-              </Field>
-
-              <Field
-                label="State"
-                htmlFor="d-state"
-                declined={details.declined.includes('state')}
-                onToggleDecline={() => {
-                  toggleDecline('state');
-                }}
-              >
-                <Select
-                  id="d-state"
-                  value={details.state}
-                  onChange={(v) => {
-                    set({ state: v });
+                      The club is {MINIMUM_AGE}+. A correction cannot make somebody younger than
+                      that.
+                    </p>
+                  ) : age !== null ? (
+                    <p className="mt-1.5 text-[0.75rem] text-grey">
+                      {dateLabel(details.birthDate, 'day')}. Members see {age}, never the date
+                      itself.
+                    </p>
+                  ) : null}
+                </Field>
+              </DetailsSection>
+              <DetailsSection title="Your injury">
+                <Field
+                  label="Level of injury"
+                  htmlFor="d-level"
+                  declined={details.declined.includes('exactLevel')}
+                  onToggleDecline={() => {
+                    toggleDecline('exactLevel');
                   }}
                 >
-                  {US_STATES.map(([code, name]) => (
-                    <option key={code} value={code}>
-                      {name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+                  <Select
+                    id="d-level"
+                    value={details.exactLevel ?? ''}
+                    onChange={(v) => {
+                      set({ exactLevel: (v || null) as MemberDetails['exactLevel'] });
+                    }}
+                  >
+                    <option value="">Not set</option>
+                    {EXACT_LEVELS.map((l) => (
+                      <option key={l} value={l}>
+                        {l}
+                      </option>
+                    ))}
+                  </Select>
+                  {details.exactLevel && details.exactLevel !== 'Do not know' ? (
+                    <p className="mt-1.5 text-[0.75rem] text-grey">
+                      Browsed under {rangeForExact(details.exactLevel)}.
+                    </p>
+                  ) : null}
+                </Field>
 
-              <Field
-                label="City or town"
-                htmlFor="d-city"
-                declined={details.declined.includes('city')}
-                onToggleDecline={() => {
-                  toggleDecline('city');
-                }}
-              >
-                <Input
-                  id="d-city"
-                  maxLength={MEMBER_TEXT_MAX.city}
-                  value={details.city ?? ''}
-                  onChange={(v) => {
-                    set({ city: v });
+                <Field label="Complete or incomplete">
+                  <div className="flex flex-wrap gap-2">
+                    {COMPLETENESS.map((c) => (
+                      <Chip
+                        key={c}
+                        selected={details.completeness === c}
+                        onClick={() => {
+                          set({ completeness: c });
+                        }}
+                      >
+                        {c}
+                      </Chip>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field
+                  label="When were you injured?"
+                  labelId="d-injury-label"
+                  declined={details.declined.includes('injuryDate')}
+                  onToggleDecline={() => {
+                    toggleDecline('injuryDate');
                   }}
-                />
-              </Field>
+                >
+                  <DateFields
+                    id="d-injury"
+                    labelledBy="d-injury-label"
+                    hint="The year on its own is a complete answer."
+                    order={YEAR_FIRST_ORDER}
+                    parts={injuryParts}
+                    reading={injuryReading}
+                    onChange={(next) => {
+                      setInjuryParts(next);
+                      const read = readDate(next, { needs: 'year' });
+                      // Only a finished date or a cleared one is recorded; one
+                      // still being typed leaves the record alone and holds Save.
+                      if (read.kind === 'date') {
+                        set({ injuryDate: read.iso, injuryDatePrecision: read.precision });
+                      } else if (read.kind === 'empty') {
+                        set({ injuryDate: null, injuryDatePrecision: null });
+                      }
+                    }}
+                  />
+                  {injuryReading.kind === 'partial' ? (
+                    <p className="mt-1.5 text-[0.75rem] text-grey">{injuryReading.need}</p>
+                  ) : injuryReading.kind === 'date' ? (
+                    <p className="mt-1.5 text-[0.75rem] text-grey">
+                      {dateLabel(injuryReading.iso, injuryReading.precision)}
+                    </p>
+                  ) : null}
+                </Field>
+              </DetailsSection>
+              <DetailsSection title="Where you live">
+                <Field
+                  label="State"
+                  htmlFor="d-state"
+                  declined={details.declined.includes('state')}
+                  onToggleDecline={() => {
+                    toggleDecline('state');
+                  }}
+                >
+                  <Select
+                    id="d-state"
+                    value={details.state}
+                    onChange={(v) => {
+                      set({ state: v });
+                    }}
+                  >
+                    {US_STATES.map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
 
-              <div className="h-4" />
+                <Field
+                  label="City or town"
+                  htmlFor="d-city"
+                  declined={details.declined.includes('city')}
+                  onToggleDecline={() => {
+                    toggleDecline('city');
+                  }}
+                >
+                  <Input
+                    id="d-city"
+                    maxLength={MEMBER_TEXT_MAX.city}
+                    value={details.city ?? ''}
+                    onChange={(v) => {
+                      set({ city: v });
+                    }}
+                  />
+                </Field>
+
+                <div className="h-4" />
+              </DetailsSection>
             </>
           )}
         </div>
@@ -491,6 +500,18 @@ export default function ProfileDetailsPage() {
         </footer>
       </form>
     </main>
+  );
+}
+
+function DetailsSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section
+      aria-label={title}
+      className="mb-4 rounded-[17px] border border-line bg-paper p-4 last:mb-0"
+    >
+      <h2 className="mb-4 font-extrabold font-head text-[1rem] text-ink">{title}</h2>
+      <div>{children}</div>
+    </section>
   );
 }
 
@@ -542,7 +563,7 @@ function Field({
             onClick={onToggleDecline}
             aria-pressed={declined === true}
             className={cn(
-              'rounded-full px-2 py-0.5 font-semibold text-[0.75rem] transition-colors',
+              'min-h-[44px] rounded-full px-3 py-2 font-semibold text-[0.75rem] transition-colors',
               declined
                 ? 'bg-tint text-emphasis hover:bg-line'
                 : 'text-grey hover:bg-tint hover:text-ink2',

@@ -52,6 +52,7 @@ import { STRIKE_LIMIT } from '@/routes/me/standing-api';
  */
 export default function AdminPage() {
   const account = useAccount();
+  const [search, setSearch] = useState('');
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
@@ -120,6 +121,7 @@ export default function AdminPage() {
    * yet.
    */
   function goToMember(memberId: string) {
+    setSearch('');
     setTab('members');
     requestAnimationFrame(() => {
       document.getElementById(`member-${memberId}`)?.scrollIntoView({ block: 'center' });
@@ -163,8 +165,27 @@ export default function AdminPage() {
       });
   }
 
-  const real = members.filter((m) => !m.isSeed);
-  const seeded = members.filter((m) => m.isSeed);
+  const query = search.trim().toLocaleLowerCase();
+  const phoneQuery = /^[+\d\s()-]+$/.test(query) ? query.replace(/\D/g, '') : '';
+  const matching = members.filter((member) => {
+    const words = [
+      member.displayName,
+      member.phone,
+      member.city,
+      member.state,
+      member.type,
+      member.status,
+      member.isAdmin ? 'admin' : '',
+    ]
+      .join(' ')
+      .toLocaleLowerCase();
+    return (
+      words.includes(query) ||
+      (phoneQuery.length > 0 && member.phone.replace(/\D/g, '').includes(phoneQuery))
+    );
+  });
+  const real = matching.filter((m) => !m.isSeed);
+  const seeded = matching.filter((m) => m.isSeed);
   const pending = invites.filter((i) => i.status === 'pending');
   // Three lists, because "The list" should mean the numbers that are on it.
   // Withdrawn rows used to sit among them and accumulate forever, which is
@@ -177,7 +198,7 @@ export default function AdminPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex flex-1 flex-col overflow-y-auto">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
         {/* The same measure as the list below. Left at the page edge, the
             heading and the tabs sat well to the left of the rows they
@@ -188,16 +209,15 @@ export default function AdminPage() {
             Admin
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
-            {real.length} joined · {seeded.length} from the directory · {pending.length} invite
+            {members.filter((member) => !member.isSeed).length} joined ·{' '}
+            {members.filter((member) => member.isSeed).length} from the directory · {pending.length}{' '}
+            invite
             {pending.length === 1 ? '' : 's'} waiting
           </p>
-          {/* Wrapping, since Reports made a fourth. Three pills fitted 430px at
-              every text size and four do not: at `larger` the row ran off the
-              screen and took the heading with it, because a flex row that
-              cannot fit does not scroll, it stretches the page. A second row of
-              pills is the honest answer. Found in a screenshot, as every layout
-              problem in this project has been. */}
-          <div className="mt-3 flex flex-wrap gap-[7px]">
+          <nav
+            aria-label="Admin sections"
+            className="mt-4 flex flex-wrap gap-2 sm:grid sm:grid-cols-5"
+          >
             {(['members', 'invites', 'rooms', 'reports', 'organizations'] as const).map((value) => (
               <button
                 key={value}
@@ -206,9 +226,8 @@ export default function AdminPage() {
                   setTab(value);
                 }}
                 aria-pressed={tab === value}
-                data-target="small"
                 className={cn(
-                  'whitespace-nowrap rounded-full px-3.5 py-[7px] font-semibold text-[0.84375rem] capitalize',
+                  'min-h-[44px] flex-auto whitespace-nowrap rounded-[11px] px-3 py-2 font-semibold text-[0.84375rem] capitalize transition-colors',
                   tab === value ? 'bg-action text-white' : 'bg-tint text-ink2',
                 )}
               >
@@ -218,11 +237,11 @@ export default function AdminPage() {
                 {value === 'reports' && reports.openCount > 0 ? ` ${reports.openCount}` : ''}
               </button>
             ))}
-          </div>
+          </nav>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3.5">
+      <div className="flex-none px-4 py-3.5">
         {error ? (
           <p
             role="alert"
@@ -244,6 +263,43 @@ export default function AdminPage() {
           <p className="py-10 text-center text-[0.875rem] text-grey">Loading the roster…</p>
         ) : (
           <div className="mx-auto w-full max-w-[760px]">
+            {tab === 'members' ? (
+              <div className="rounded-[14px] border border-line bg-paper p-3.5">
+                <label
+                  htmlFor="admin-member-search"
+                  className="block font-bold font-head text-[0.875rem] text-ink"
+                >
+                  Find a member
+                </label>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <input
+                    id="admin-member-search"
+                    type="search"
+                    value={search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                    }}
+                    placeholder="Name, phone, location or account type"
+                    className="min-h-[44px] min-w-0 flex-1 basis-[14rem] rounded-[10px] border border-line bg-canvas px-3 text-[0.875rem] text-ink outline-none focus:border-emphasis"
+                  />
+                  {search ? (
+                    <SmallButton
+                      onClick={() => {
+                        setSearch('');
+                      }}
+                    >
+                      Clear search
+                    </SmallButton>
+                  ) : null}
+                </div>
+                {query ? (
+                  <p role="status" className="mt-2 text-[0.8125rem] text-grey">
+                    {matching.length} matching member{matching.length === 1 ? '' : 's'}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {tab === 'rooms' ? <RoomsSection /> : null}
 
             {tab === 'organizations' ? (
@@ -369,7 +425,7 @@ export default function AdminPage() {
 
             <Section
               title="Joined"
-              subtitle="People who signed up. These can be removed."
+              subtitle="Manage account types and membership for people who signed up."
               hidden={tab !== 'members'}
             >
               {real.map((m) => (
@@ -423,7 +479,7 @@ export default function AdminPage() {
               ))}
               {real.length === 0 ? (
                 <p className="py-6 text-center text-[0.8125rem] text-grey">
-                  Nobody has joined yet.
+                  {query ? 'No joined members match your search.' : 'Nobody has joined yet.'}
                 </p>
               ) : null}
             </Section>
@@ -608,7 +664,7 @@ function Row({
   return (
     <div
       // What "Go to <name>" on a report scrolls to. scroll-mt keeps the row
-      // clear of the sticky header it would otherwise land under.
+      // clear of the top edge when arriving from a report.
       id={`member-${member.id}`}
       className="flex scroll-mt-4 flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
     >
@@ -621,8 +677,14 @@ function Row({
       <span className="min-w-0 flex-1 basis-[13rem]">
         <span className="block font-extrabold font-head text-[0.90625rem]">
           {member.displayName}
-          {member.type === 'organization' ? (
-            <span className="ml-2 text-[0.75rem] text-grey">Organization</span>
+          {!member.isAdmin ? (
+            <span className="ml-2 text-[0.75rem] text-grey">
+              {member.type === 'organization'
+                ? 'Organization'
+                : member.type === 'mentor'
+                  ? 'Mentor'
+                  : 'Peer'}
+            </span>
           ) : null}
           {member.isAdmin ? (
             <span className="ml-2 rounded-full bg-gold-lt px-2 py-0.5 font-bold text-[0.625rem] text-gold-dp uppercase tracking-wider">
@@ -677,28 +739,31 @@ function Row({
       </span>
 
       {busy ? (
-        <Loader2 className="h-4 w-4 animate-spin text-grey" />
-      ) : (
-        <span className="flex flex-wrap gap-1.5">
-          {/* Nothing at all beside an administrator. Their membership cannot be
-              ended from the application and their type is a rule rather than a
-              choice — an administrator is a mentor, enforced by a trigger since
-              20260916030000 — so every control this row could offer is one the
-              database would refuse. A sentence explaining that was worse than
-              silence: it put an apology where an action goes, on the row an
-              administrator sees every time they open the page. */}
-          {member.isAdmin ? null : (
-            <>
+        <p role="status" className="flex w-full items-center gap-2 text-[0.8125rem] text-grey">
+          <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+          Saving changes…
+        </p>
+      ) : member.isAdmin ? null : (
+        <div className="grid w-full gap-3 border-line border-t pt-3 sm:grid-cols-2">
+          <fieldset className="min-w-0">
+            <legend className="mb-2 font-bold text-[0.75rem] text-grey">Account type</legend>
+            <div className="flex flex-wrap gap-2">
               <SmallButton onClick={onToggleMentor}>
                 {member.type === 'peer' ? 'Make mentor' : 'Make peer'}
               </SmallButton>
               {member.type !== 'organization' && !member.isSeed ? (
                 <SmallButton onClick={onMakeOrganization}>Make organization</SmallButton>
               ) : null}
-              {/* "Pause" rather than "Suspend", matching the screen the member
-                  actually sees. The column still stores 'suspended'; renaming a
-                  check constraint and the rows under it is churn for a word
-                  nobody outside the schema reads. */}
+            </div>
+          </fieldset>
+          <fieldset className="min-w-0">
+            <legend className="mb-2 font-bold text-[0.75rem] text-grey">Membership</legend>
+            <div className="flex flex-wrap gap-2">
+              {member.status === 'active' ? (
+                <SmallButton onClick={onPause}>Pause</SmallButton>
+              ) : (
+                <SmallButton onClick={onResume}>Resume</SmallButton>
+              )}
               {atLimit ? null : (
                 <SmallButton
                   onClick={() => {
@@ -708,11 +773,6 @@ function Row({
                   Strike
                 </SmallButton>
               )}
-              {member.status === 'active' ? (
-                <SmallButton onClick={onPause}>Pause</SmallButton>
-              ) : (
-                <SmallButton onClick={onResume}>Resume</SmallButton>
-              )}
               <SmallButton
                 destructive
                 onClick={() => {
@@ -721,9 +781,9 @@ function Row({
               >
                 Remove
               </SmallButton>
-            </>
-          )}
-        </span>
+            </div>
+          </fieldset>
+        </div>
       )}
 
       {deciding ? (
@@ -1073,7 +1133,7 @@ function PanelButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'min-h-[38px] rounded-full px-3.5 text-[0.78125rem] transition-colors',
+        'min-h-[44px] rounded-full px-3.5 text-[0.78125rem] transition-colors',
         destructive
           ? 'bg-destructive-fill font-bold font-head text-white hover:bg-destructive-fill/85 disabled:opacity-40 disabled:hover:bg-destructive-fill'
           : 'bg-tint font-semibold text-emphasis hover:bg-line disabled:opacity-40 disabled:hover:bg-tint',

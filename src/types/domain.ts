@@ -256,6 +256,9 @@ export type MemberStatus = (typeof MEMBER_STATUSES)[number];
  * `phone` and `birthDate` are absent by construction, not by omission. The database view makes the
  * same cut in SQL, so neither this type nor that view is load-bearing on its own.
  */
+/** An administrator-linked organization identity, read with the visible profile. */
+export type RepresentedOrganization = Pick<Organization, 'id' | 'name' | 'shortCode' | 'logoPath'>;
+
 export interface BrowseMember {
   id: string;
   type: MemberType;
@@ -303,6 +306,8 @@ export interface BrowseMember {
   selfCare: string[];
 
   affiliations: string[];
+  /** Set by administrators; distinct from self-described affiliations. */
+  representedOrganizations: RepresentedOrganization[];
   /** Null until the survey asks. Not the same as a no. */
   wantsToMentor: boolean | null;
   /** Seeded from the NorCal SCI directory rather than entered by the member. */

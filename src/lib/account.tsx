@@ -160,7 +160,8 @@ export function useAccount(): Account {
 export async function signOut(): Promise<{ ok: boolean; error?: string }> {
   // While the session still exists, since the row can only be deleted by its
   // owner: the next person to sign in on this phone must not get this
-  // member's notifications. Best effort, and bounded — see forgetThisDevice.
+  // member's notifications. Its saved preference and browser subscription
+  // survive so this member can resume on login. See forgetThisDevice.
   await forgetThisDevice();
   const { error } = await getSupabase().auth.signOut();
   // Signed photograph URLs are kept across reloads (src/lib/chat/attachments.ts)

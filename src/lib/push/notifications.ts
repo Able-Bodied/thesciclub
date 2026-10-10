@@ -145,6 +145,37 @@ export function openingFacts(): OpeningFacts {
   };
 }
 
+// A device preference belongs to an account, not everyone using this phone.
+// Keep it through logout; browser permission alone is not consent for a new account.
+const PREFERENCE_KEY = 'thesciclub.deviceNotifications.';
+
+function rememberedPreference(userId: string): string | null {
+  try {
+    return localStorage.getItem(PREFERENCE_KEY + userId);
+  } catch {
+    return null;
+  }
+}
+
+function rememberPreference(userId: string, enabled: boolean): void {
+  try {
+    localStorage.setItem(PREFERENCE_KEY + userId, enabled ? 'on' : 'off');
+  } catch {
+    // Restoring without a saved preference would opt in the wrong account.
+  }
+}
+
+// Finish a subscription write before logout removes it. Likewise, a delayed
+// logout cleanup must finish before the next login restores delivery.
+let deviceWork: Promise<unknown> = Promise.resolve();
+let revision = 0;
+
+function inDeviceOrder<T>(action: () => Promise<T>): Promise<T> {
+  const pending = deviceWork.then(action);
+  deviceWork = pending.catch(() => undefined);
+  return pending;
+}
+
 async function currentSubscription(): Promise<PushSubscription | null> {
   const registration = await navigator.serviceWorker.getRegistration();
   return (await registration?.pushManager.getSubscription()) ?? null;
@@ -175,13 +206,15 @@ export async function readDeviceState(userId: string): Promise<NotificationState
       // The browser can hold a subscription the club does not have for this
       // member: the sender deleted it after the push service said it was dead,
       // or somebody else signed in on this phone and took it over.
-      const { data } = await getSupabase()
+      const { data, error } = await getSupabase()
         .from('push_subscriptions')
         .select('endpoint')
         .eq('member_id', userId)
         .eq('endpoint', subscription.endpoint)
         .maybeSingle();
+      if (error) throw error;
       subscribed = data !== null;
+      if (subscribed) rememberPreference(userId, true);
     }
   }
   return notificationState({
@@ -196,15 +229,24 @@ export type Outcome = { ok: true; state: NotificationState } | { ok: false; erro
 
 const NOT_TURNED_ON = 'Notifications were not turned on.';
 
-export async function turnOnNotifications(): Promise<Outcome> {
+export async function turnOnNotifications(userId: string): Promise<Outcome> {
   const key = vapidPublicKey();
   if (!key) return { ok: false, error: NOT_TURNED_ON };
 
+  const requestedRevision = revision;
   // First, and before any await — see the header.
   const permission = await Notification.requestPermission();
   if (permission === 'denied') return { ok: true, state: 'refused' };
   if (permission !== 'granted') return { ok: true, state: 'off' };
 
+  return inDeviceOrder(() =>
+    requestedRevision === revision
+      ? subscribeDevice(userId, key)
+      : Promise.resolve<Outcome>({ ok: false, error: NOT_TURNED_ON }),
+  );
+}
+
+async function subscribeDevice(userId: string, key: string): Promise<Outcome> {
   const registration = await readyWorker();
   if (!registration) {
     return {
@@ -239,6 +281,18 @@ export async function turnOnNotifications(): Promise<Outcome> {
     };
   }
 
+  return registerSubscription(userId, subscription);
+}
+
+async function registerSubscription(
+  userId: string,
+  subscription: PushSubscription,
+): Promise<Outcome> {
+  // The account may have changed while waiting for the worker or the network.
+  const { data, error: sessionError } = await getSupabase().auth.getSession();
+  if (sessionError) throw sessionError;
+  if (data.session?.user.id !== userId) return { ok: false, error: NOT_TURNED_ON };
+
   const { endpoint, keys } = subscription.toJSON();
   const { error } = await getSupabase().rpc('push_subscribe', {
     sub_endpoint: endpoint ?? '',
@@ -257,21 +311,31 @@ export async function turnOnNotifications(): Promise<Outcome> {
       }),
     };
   }
+  rememberPreference(userId, true);
   return { ok: true, state: 'on' };
 }
 
-export async function turnOffNotifications(): Promise<Outcome> {
+export function turnOffNotifications(userId: string): Promise<Outcome> {
+  return inDeviceOrder(() => disableDevice(userId));
+}
+
+async function disableDevice(userId: string): Promise<Outcome> {
   const subscription = await currentSubscription();
-  if (!subscription) return { ok: true, state: 'off' };
+  if (!subscription) {
+    rememberPreference(userId, false);
+    return { ok: true, state: 'off' };
+  }
 
   // The row first: while it exists the sender can reach this phone, and if
   // deleting it fails the member must be told rather than shown "off".
   const { error } = await getSupabase()
     .from('push_subscriptions')
     .delete()
-    .eq('endpoint', subscription.endpoint);
+    .eq('endpoint', subscription.endpoint)
+    .eq('member_id', userId);
   if (error) return { ok: false, error: describeError(error, 'Notifications are still on.') };
 
+  rememberPreference(userId, false);
   try {
     await subscription.unsubscribe();
   } catch (e) {
@@ -283,16 +347,63 @@ export async function turnOffNotifications(): Promise<Outcome> {
 }
 
 /**
- * On sign-out: this phone stops notifying the member leaving it.
- *
- * Best effort and quick — it must never be the reason sign-out hangs or fails,
- * so it gives up after a few seconds and swallows every error.
- * `push_subscribe` taking the endpoint over is the backstop for the times this
- * does not run at all.
+ * Resume only this account's saved opt-in. Reuse the browser subscription:
+ * Safari requires a tap to create a new one, even after permission was granted.
+ * Never request permission or create a subscription during automatic restoration.
+ */
+export function restoreDeviceNotifications(userId: string): Promise<NotificationState> {
+  const requestedRevision = revision;
+  return inDeviceOrder(async () => {
+    if (!vapidPublicKey() || !canPush() || requestedRevision !== revision) return 'off';
+    // On a cold PWA launch registration can still be starting. Wait only
+    // for a saved opt-in, rather than missing its subscription on this visit.
+    if (
+      Notification.permission === 'granted' &&
+      rememberedPreference(userId) === 'on' &&
+      !(await readyWorker())
+    )
+      return 'off';
+    if (requestedRevision !== revision) return 'off';
+    const state = await readDeviceState(userId);
+    if (state === 'on' || Notification.permission !== 'granted') return state;
+    if (rememberedPreference(userId) !== 'on') return state;
+    const subscription = await currentSubscription();
+    if (!subscription || requestedRevision !== revision) return state;
+    const key = vapidPublicKey();
+    if (!key || !sameBytes(subscription.options.applicationServerKey, base64UrlToBytes(key))) {
+      return state;
+    }
+    const outcome = await registerSubscription(userId, subscription);
+    if (!outcome.ok) throw new Error(outcome.error);
+    return outcome.state;
+  });
+}
+
+/**
+ * Pause delivery while signed out without undoing the account's device opt-in
+ * or destroying its browser subscription. Bounded and best effort as before.
  */
 export async function forgetThisDevice(): Promise<void> {
+  revision += 1;
   if (!canPush()) return;
-  const attempt = turnOffNotifications().catch((e: unknown) => {
+  const attempt = inDeviceOrder(async () => {
+    const { data, error: sessionError } = await getSupabase().auth.getSession();
+    if (sessionError) throw sessionError;
+    const userId = data.session?.user.id;
+    if (!userId) return;
+    // Also preserves subscriptions enabled before device preferences existed.
+    await readDeviceState(userId).catch((e: unknown) => {
+      console.error(e);
+    });
+    const subscription = await currentSubscription();
+    if (!subscription) return;
+    const { error } = await getSupabase()
+      .from('push_subscriptions')
+      .delete()
+      .eq('endpoint', subscription.endpoint)
+      .eq('member_id', userId);
+    if (error) throw error;
+  }).catch((e: unknown) => {
     console.error(e);
   });
   await Promise.race([attempt, new Promise((resolve) => setTimeout(resolve, 3_000))]);
@@ -307,7 +418,7 @@ export function useDeviceNotifications(userId: string | null) {
   useEffect(() => {
     if (!userId || !vapidPublicKey()) return;
     let live = true;
-    readDeviceState(userId)
+    restoreDeviceNotifications(userId)
       .then((next) => {
         if (live) setState(next);
       })
@@ -341,10 +452,10 @@ export function useDeviceNotifications(userId: string | null) {
     busy,
     error,
     turnOn: () => {
-      run(turnOnNotifications);
+      if (userId) run(() => turnOnNotifications(userId));
     },
     turnOff: () => {
-      run(turnOffNotifications);
+      if (userId) run(() => turnOffNotifications(userId));
     },
   };
 }
