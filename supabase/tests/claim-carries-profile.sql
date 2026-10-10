@@ -25,6 +25,22 @@
 
 begin;
 
+-- The seeded directory was removed (20261010020000), so the seeded profile
+-- this exercises is made here, inside the transaction, with what the steps
+-- below expect of it. Made-up details; not a real person's.
+insert into public.members (id, is_seed, type, display_name, phone, birth_date, level_range,
+                            exact_level, completeness, city, state, photo_path, bio,
+                            interests, topics, self_care, affiliations, languages)
+select 'aaaaaaaa-5eed-0000-0000-00000000a1a1', true, 'peer', 'Ajay', '15555550999', '1990-01-01',
+       'C5–C8', 'C7', 'Incomplete', 'San Jose', 'CA',
+       'seed/c85c10bf-0226-394f-8c91-2a2ffc40a147.webp', 'A made-up profile for this probe.',
+       array['Adaptive sport', 'Travel', 'Cooking'],
+       array['Bowel', 'Bladder', 'Skin', 'Pain', 'Work'],
+       array['Stretching', 'Standing frame'],
+       array['NorCal SCI'],
+       array['English']
+ where not exists (select 1 from public.members where display_name = 'Ajay' and is_seed);
+
 -- NorCal SCI invites a number and says it belongs to Ajay.
 insert into public.invites (phone_raw, invited_by_organization_id, seed_member_id)
 select '4085551100', o.id, m.id
@@ -78,6 +94,22 @@ rollback;
 -- ---------------------------------------------------------------------------
 begin;
 
+-- The seeded directory was removed (20261010020000), so the seeded profile
+-- this exercises is made here, inside the transaction, with what the steps
+-- below expect of it. Made-up details; not a real person's.
+insert into public.members (id, is_seed, type, display_name, phone, birth_date, level_range,
+                            exact_level, completeness, city, state, photo_path, bio,
+                            interests, topics, self_care, affiliations, languages)
+select 'aaaaaaaa-5eed-0000-0000-00000000a1a1', true, 'peer', 'Ajay', '15555550999', '1990-01-01',
+       'C5–C8', 'C7', 'Incomplete', 'San Jose', 'CA',
+       'seed/c85c10bf-0226-394f-8c91-2a2ffc40a147.webp', 'A made-up profile for this probe.',
+       array['Adaptive sport', 'Travel', 'Cooking'],
+       array['Bowel', 'Bladder', 'Skin', 'Pain', 'Work'],
+       array['Stretching', 'Standing frame'],
+       array['NorCal SCI'],
+       array['English']
+ where not exists (select 1 from public.members where display_name = 'Ajay' and is_seed);
+
 insert into public.invites (phone_raw, invited_by_organization_id, seed_member_id)
 select '4085551200', o.id, m.id
 from public.organizations o, public.members m
@@ -107,6 +139,22 @@ rollback;
 -- ---------------------------------------------------------------------------
 begin;
 
+-- The seeded directory was removed (20261010020000), so the seeded profile
+-- this exercises is made here, inside the transaction, with what the steps
+-- below expect of it. Made-up details; not a real person's.
+insert into public.members (id, is_seed, type, display_name, phone, birth_date, level_range,
+                            exact_level, completeness, city, state, photo_path, bio,
+                            interests, topics, self_care, affiliations, languages)
+select 'aaaaaaaa-5eed-0000-0000-00000000a1a1', true, 'peer', 'Ajay', '15555550999', '1990-01-01',
+       'C5–C8', 'C7', 'Incomplete', 'San Jose', 'CA',
+       'seed/c85c10bf-0226-394f-8c91-2a2ffc40a147.webp', 'A made-up profile for this probe.',
+       array['Adaptive sport', 'Travel', 'Cooking'],
+       array['Bowel', 'Bladder', 'Skin', 'Pain', 'Work'],
+       array['Stretching', 'Standing frame'],
+       array['NorCal SCI'],
+       array['English']
+ where not exists (select 1 from public.members where display_name = 'Ajay' and is_seed);
+
 -- An invite with no claim on it must carry nothing from anywhere.
 insert into public.invites (phone_raw, invited_by_organization_id)
 select '4085551300', id from public.organizations where short_code = 'NCS';
@@ -123,13 +171,29 @@ select photo_path is not null as has_photo,
   from public.members where id = '99999999-0000-0000-0000-000000000009';
 
 \echo ''
-\echo '== 8. and the directory is untouched (expect 23) =='
+\echo '== 8. and the seeded row is untouched (expect 1, this probe''s own) =='
 select count(*) as seeded from public.members where is_seed;
 
 rollback;
 
 -- ---------------------------------------------------------------------------
 begin;
+
+-- The seeded directory was removed (20261010020000), so the seeded profile
+-- this exercises is made here, inside the transaction, with what the steps
+-- below expect of it. Made-up details; not a real person's.
+insert into public.members (id, is_seed, type, display_name, phone, birth_date, level_range,
+                            exact_level, completeness, city, state, photo_path, bio,
+                            interests, topics, self_care, affiliations, languages)
+select 'aaaaaaaa-5eed-0000-0000-00000000a1a1', true, 'peer', 'Ajay', '15555550999', '1990-01-01',
+       'C5–C8', 'C7', 'Incomplete', 'San Jose', 'CA',
+       'seed/c85c10bf-0226-394f-8c91-2a2ffc40a147.webp', 'A made-up profile for this probe.',
+       array['Adaptive sport', 'Travel', 'Cooking'],
+       array['Bowel', 'Bladder', 'Skin', 'Pain', 'Work'],
+       array['Stretching', 'Standing frame'],
+       array['NorCal SCI'],
+       array['English']
+ where not exists (select 1 from public.members where display_name = 'Ajay' and is_seed);
 
 -- The same invite naming Ajay, and the person signing up says it is not
 -- them: "Start fresh". Onboarding sends start_fresh and only what the

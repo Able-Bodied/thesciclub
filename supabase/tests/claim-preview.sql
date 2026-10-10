@@ -30,6 +30,22 @@
 
 begin;
 
+-- The seeded directory was removed (20261010020000), so the seeded profile
+-- this exercises is made here, inside the transaction, with what the steps
+-- below expect of it. Made-up details; not a real person's.
+insert into public.members (id, is_seed, type, display_name, phone, birth_date, level_range,
+                            exact_level, completeness, city, state, photo_path, bio,
+                            interests, topics, self_care, affiliations, languages)
+select 'aaaaaaaa-5eed-0000-0000-00000000a1a1', true, 'peer', 'Ajay', '15555550999', '1990-01-01',
+       'C5–C8', 'C7', 'Incomplete', 'San Jose', 'CA',
+       'seed/c85c10bf-0226-394f-8c91-2a2ffc40a147.webp', 'A made-up profile for this probe.',
+       array['Adaptive sport', 'Travel', 'Cooking'],
+       array['Bowel', 'Bladder', 'Skin', 'Pain', 'Work'],
+       array['Stretching', 'Standing frame'],
+       array['NorCal SCI'],
+       array['English']
+ where not exists (select 1 from public.members where display_name = 'Ajay' and is_seed);
+
 -- A real member, to prove the is_seed guard is doing something.
 insert into public.members (id, type, status, display_name, phone, birth_date, level_range, state)
 values ('99999999-0000-0000-0000-000000000009', 'peer', 'active', 'A Real Member',

@@ -17,19 +17,22 @@
 -- negative case is the test that actually proves anything.
 -- ============================================================================
 
--- Invited by an organization, and pointed at a seeded profile: this is the
--- claim path. Bob is one of the 23 seeded NorCal SCI members.
-insert into public.invites (phone_raw, invited_by_organization_id, seed_member_id, note)
-select '(111) 111-1111', o.id, m.id, 'Local test: organization invite with a claim'
-from public.organizations o, public.members m
-where o.short_code = 'NCS' and m.display_name = 'Bob' and m.is_seed
+-- Invited by an organization. It used to point at a seeded profile (the
+-- claim path); the seeded directory was removed (20261010020000), so it is a
+-- plain invite now. The claim probes make their own seeded row.
+insert into public.invites (phone_raw, invited_by_organization_id, note)
+select '(111) 111-1111', o.id, 'Local test: organization invite'
+from public.organizations o
+where o.short_code = 'NCS'
 on conflict do nothing;
 
--- Invited by a mentor. Uses one of the seeded mentors, so the two-invite
--- allowance has something real to count against.
-insert into public.invites (phone_raw, invited_by_member_id, note)
-select '13333333333', id, 'Local test: mentor invite'
-from public.members where display_name = 'Todd' and type = 'mentor'
+-- Invited by NorCal SCI too. This was one of the seeded mentors, so the
+-- allowance had something to count against; with the directory removed
+-- (20261010020000) the mentor allowance is exercised by mentor-invites.sql.
+insert into public.invites (phone_raw, invited_by_organization_id, note)
+select '13333333333', o.id, 'Local test: second invite'
+from public.organizations o
+where o.short_code = 'NCS'
 on conflict do nothing;
 
 -- 12222222222 is deliberately absent. Do not add it.
