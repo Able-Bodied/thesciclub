@@ -309,6 +309,15 @@ describe('Home', () => {
       expect(screen.getByRole('status')).toHaveTextContent('Loading…');
       expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
     });
+
+    // A box to ask the club on top of a list of events read as part of it.
+    it('is not on the Events pill, and is on Topics', () => {
+      const { unmount } = renderPage('/home?segment=events');
+      expect(screen.queryByRole('textbox', { name: 'Ask or post to the club' })).toBeNull();
+      unmount();
+      renderPage('/home?segment=topics');
+      expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
+    });
   });
 
   describe('the pills', () => {
