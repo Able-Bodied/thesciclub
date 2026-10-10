@@ -1,7 +1,9 @@
-import { Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
+import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAdminReports } from '@/lib/chat/reports';
 import { describeThrown } from '@/lib/describe-error';
@@ -38,6 +40,13 @@ import { RoomsSection } from '@/routes/admin/rooms-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
 
+const ADMIN_TAB_VALUES = ['members', 'reports', 'invites', 'organizations', 'rooms'] as const;
+
+type MemberFilter = 'all' | 'joined' | 'directory' | 'attention';
+
+/** Wide enough for the form beside the list on a desktop; a phone is narrower anyway. */
+const ADMIN_MEASURE = 'max-w-[960px]';
+
 /**
  * The roster, for an administrator.
  *
@@ -58,9 +67,12 @@ export default function AdminPage() {
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
   const [organizationRevision, setOrganizationRevision] = useState(0);
-  const [tab, setTab] = useState<'members' | 'invites' | 'rooms' | 'reports' | 'organizations'>(
-    'members',
-  );
+  const [tab, setTab] = useTabParam(ADMIN_TAB_VALUES, 'members');
+  const [filter, setFilter] = useState<MemberFilter>('all');
+  // One row open at a time. Every row carrying all seven of its controls made
+  // the roster six phone screens long, to find one person; closed, each is a
+  // name and a line, and the controls are a tap on the row you mean.
+  const [openMember, setOpenMember] = useState<string | null>(null);
   // Read here rather than inside the panel, because the tab's own label
   // carries the open count and has to know it before anybody opens the panel.
   // A complaint waiting unseen behind a tab that looks like every other tab is
@@ -122,6 +134,8 @@ export default function AdminPage() {
    */
   function goToMember(memberId: string) {
     setSearch('');
+    setFilter('all');
+    setOpenMember(memberId);
     setTab('members');
     requestAnimationFrame(() => {
       document.getElementById(`member-${memberId}`)?.scrollIntoView({ block: 'center' });
@@ -184,8 +198,13 @@ export default function AdminPage() {
       (phoneQuery.length > 0 && member.phone.replace(/\D/g, '').includes(phoneQuery))
     );
   });
-  const real = matching.filter((m) => !m.isSeed);
+  const needsAttention = (m: AdminMember) => !m.isSeed && (m.status !== 'active' || m.strikes > 0);
+  const real = matching.filter((m) => !m.isSeed && (filter !== 'attention' || needsAttention(m)));
   const seeded = matching.filter((m) => m.isSeed);
+  const showJoined = filter !== 'directory';
+  const showDirectory = filter === 'all' || filter === 'directory';
+  const joinedCount = members.filter((m) => !m.isSeed).length;
+  const attentionCount = members.filter(needsAttention).length;
   const pending = invites.filter((i) => i.status === 'pending');
   // Three lists, because "The list" should mean the numbers that are on it.
   // Withdrawn rows used to sit among them and accumulate forever, which is
@@ -199,49 +218,41 @@ export default function AdminPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
-        {/* The same measure as the list below. Left at the page edge, the
-            heading and the tabs sat well to the left of the rows they
-            govern on a desktop — the same mismatch fixed on /invites. */}
-        <div className="mx-auto w-full max-w-[760px]">
+      <header className="flex-none bg-paper px-[18px] pt-[18px] pb-3">
+        {/* The same measure as the panels below, so the heading and the tabs
+            line up with the rows they govern on a desktop. */}
+        <div className={cn('mx-auto w-full', ADMIN_MEASURE)}>
           <BackLink to="/me" label="Me" />
           <h1 className="mt-1 font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Admin
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
-            {members.filter((member) => !member.isSeed).length} joined ·{' '}
-            {members.filter((member) => member.isSeed).length} from the directory · {pending.length}{' '}
-            invite
+            {joinedCount} joined · {members.length - joinedCount} from the directory ·{' '}
+            {pending.length} invite
             {pending.length === 1 ? '' : 's'} waiting
           </p>
-          <nav
-            aria-label="Admin sections"
-            className="mt-4 flex flex-wrap gap-2 sm:grid sm:grid-cols-5"
-          >
-            {(['members', 'invites', 'rooms', 'reports', 'organizations'] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => {
-                  setTab(value);
-                }}
-                aria-pressed={tab === value}
-                className={cn(
-                  'min-h-[44px] flex-auto whitespace-nowrap rounded-[11px] px-3 py-2 font-semibold text-[0.84375rem] capitalize transition-colors',
-                  tab === value ? 'bg-action text-white' : 'bg-tint text-ink2',
-                )}
-              >
-                {value}
-                {/* A count of zero is not drawn — the rule the room cards and
-                    the nav dot already follow. */}
-                {value === 'reports' && reports.openCount > 0 ? ` ${reports.openCount}` : ''}
-              </button>
-            ))}
-          </nav>
         </div>
       </header>
+      {/* Out of the header so it can stick: on a long roster or a long list
+          of reports the other tabs stay one tap away. Ordered by what an
+          administrator comes here to do, so Reports and its count are on
+          screen on the narrowest phone. */}
+      <PageTabs
+        id="admin"
+        label="Admin sections"
+        measure={ADMIN_MEASURE}
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          { value: 'members', label: 'Members' },
+          { value: 'reports', label: 'Reports', count: reports.openCount, countLabel: 'waiting' },
+          { value: 'invites', label: 'Invites' },
+          { value: 'organizations', label: 'Organizations' },
+          { value: 'rooms', label: 'Rooms' },
+        ]}
+      />
 
-      <div className="flex-none px-4 py-3.5">
+      <div className={cn('mx-auto w-full flex-none px-4 pt-3.5 pb-8', ADMIN_MEASURE)}>
         {error ? (
           <p
             role="alert"
@@ -262,7 +273,7 @@ export default function AdminPage() {
         {loading ? (
           <p className="py-10 text-center text-[0.875rem] text-grey">Loading the roster…</p>
         ) : (
-          <div className="mx-auto w-full max-w-[760px]">
+          <TabPanel id="admin" value={tab}>
             {tab === 'members' ? (
               <div className="rounded-[14px] border border-line bg-paper p-3.5">
                 <label
@@ -297,20 +308,41 @@ export default function AdminPage() {
                     {matching.length} matching member{matching.length === 1 ? '' : 's'}
                   </p>
                 ) : null}
+                {/* Which part of the roster, beside the search rather than as
+                    two sections to scroll between: the directory is twenty-odd
+                    rows nobody signs in as, and it sat between an administrator
+                    and the bottom of every search. */}
+                <SegmentPills
+                  className="mt-1 pb-0"
+                  value={filter}
+                  onChange={setFilter}
+                  segments={[
+                    ['all', `All · ${members.length}`],
+                    ['joined', `Joined · ${joinedCount}`],
+                    ['directory', `Directory · ${members.length - joinedCount}`],
+                    ['attention', `Paused or struck · ${attentionCount}`],
+                  ]}
+                />
               </div>
             ) : null}
 
             {tab === 'rooms' ? <RoomsSection /> : null}
 
             {tab === 'organizations' ? (
-              <>
-                <OrganizationsSection
-                  onChange={() => {
-                    setOrganizationRevision((value) => value + 1);
-                  }}
-                />
-                <RepresentativesSection key={organizationRevision} members={members} />
-              </>
+              // Side by side on a desktop: the directory is long, and linking
+              // a member to one of its entries was below all of it.
+              <div className="grid items-start gap-x-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+                <div className="min-w-0">
+                  <OrganizationsSection
+                    onChange={() => {
+                      setOrganizationRevision((value) => value + 1);
+                    }}
+                  />
+                </div>
+                <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
+                  <RepresentativesSection key={organizationRevision} members={members} />
+                </div>
+              </div>
             ) : null}
 
             {tab === 'reports' ? (
@@ -324,53 +356,33 @@ export default function AdminPage() {
             ) : null}
 
             {tab === 'invites' ? (
-              <>
-                <Section title="Add to the list" subtitle="Nobody can join without a number on it.">
-                  <div className="p-3">
-                    <InviteForm
-                      onCreated={() => {
-                        void load();
-                      }}
-                    />
-                  </div>
-                </Section>
-
-                <Section
-                  title="The list"
-                  subtitle="A number nobody is on can be taken off the list."
-                >
-                  {onTheList.map((invite) => (
-                    <InviteRow
-                      key={invite.id}
-                      invite={invite}
-                      busy={busyId === invite.id}
-                      onRevoke={() => {
-                        act(invite.id, () => revokeInvite(invite.id));
-                      }}
-                      onBlock={(reason) => {
-                        act(invite.id, () => blockNumber(invite.phone, reason));
-                      }}
-                    />
-                  ))}
-                  {onTheList.length === 0 ? (
-                    <p className="py-6 text-center text-[0.8125rem] text-grey">
-                      Nobody is on the list yet.
-                    </p>
-                  ) : null}
-                </Section>
-
-                {/* Only when there are any. An empty "Withdrawn" heading is a
-                    section about nothing on a screen that is mostly lists. */}
-                {withdrawn.length > 0 ? (
+              // The form beside the list on a desktop, and held in view while
+              // the list scrolls: adding a number and checking the list for it
+              // are done together.
+              <div className="grid items-start gap-x-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+                <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
                   <Section
-                    title="Withdrawn"
-                    subtitle="Off the list, and free to be invited again. Kept for the record of who vouched."
+                    title="Add to the list"
+                    subtitle="Nobody can join without a number on it."
                   >
-                    {withdrawn.map(({ invite, times }) => (
+                    <div className="p-3">
+                      <InviteForm
+                        onCreated={() => {
+                          void load();
+                        }}
+                      />
+                    </div>
+                  </Section>
+                </div>
+                <div className="min-w-0">
+                  <Section
+                    title="The list"
+                    subtitle="A number nobody is on can be taken off the list."
+                  >
+                    {onTheList.map((invite) => (
                       <InviteRow
                         key={invite.id}
                         invite={invite}
-                        times={times}
                         busy={busyId === invite.id}
                         onRevoke={() => {
                           act(invite.id, () => revokeInvite(invite.id));
@@ -380,53 +392,82 @@ export default function AdminPage() {
                         }}
                       />
                     ))}
+                    {onTheList.length === 0 ? (
+                      <p className="py-6 text-center text-[0.8125rem] text-grey">
+                        Nobody is on the list yet.
+                      </p>
+                    ) : null}
                   </Section>
-                ) : null}
 
-                {blocked.length > 0 ? (
-                  <Section
-                    title="Blocked"
-                    subtitle="Cannot be invited by anybody, including a mentor, until unblocked."
-                  >
-                    {blocked.map((row) => (
-                      <div
-                        key={row.id}
-                        className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-extrabold font-head text-[0.90625rem]">
-                            {row.phone}
+                  {/* Only when there are any. An empty "Withdrawn" heading is a
+                    section about nothing on a screen that is mostly lists. */}
+                  {withdrawn.length > 0 ? (
+                    <Section
+                      title="Withdrawn"
+                      subtitle="Off the list, and free to be invited again. Kept for the record of who vouched."
+                    >
+                      {withdrawn.map(({ invite, times }) => (
+                        <InviteRow
+                          key={invite.id}
+                          invite={invite}
+                          times={times}
+                          busy={busyId === invite.id}
+                          onRevoke={() => {
+                            act(invite.id, () => revokeInvite(invite.id));
+                          }}
+                          onBlock={(reason) => {
+                            act(invite.id, () => blockNumber(invite.phone, reason));
+                          }}
+                        />
+                      ))}
+                    </Section>
+                  ) : null}
+
+                  {blocked.length > 0 ? (
+                    <Section
+                      title="Blocked"
+                      subtitle="Cannot be invited by anybody, including a mentor, until unblocked."
+                    >
+                      {blocked.map((row) => (
+                        <div
+                          key={row.id}
+                          className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-extrabold font-head text-[0.90625rem]">
+                              {row.phone}
+                            </span>
+                            <span className="mt-0.5 block text-[0.75rem] text-grey">
+                              {row.reason ?? 'No reason recorded'}
+                              {row.blockedBy ? ` · blocked by ${row.blockedBy}` : ''}
+                            </span>
                           </span>
-                          <span className="mt-0.5 block text-[0.75rem] text-grey">
-                            {row.reason ?? 'No reason recorded'}
-                            {row.blockedBy ? ` · blocked by ${row.blockedBy}` : ''}
-                          </span>
-                        </span>
-                        {busyId === row.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-grey" />
-                        ) : (
-                          <SmallButton
-                            onClick={() => {
-                              const ok = window.confirm(
-                                `Unblock ${row.phone}?\n\nThey can be invited again. It does not bring their profile back — that was deleted when the number was blocked.`,
-                              );
-                              if (ok) act(row.id, () => unblockNumber(row.phone));
-                            }}
-                          >
-                            Unblock
-                          </SmallButton>
-                        )}
-                      </div>
-                    ))}
-                  </Section>
-                ) : null}
-              </>
+                          {busyId === row.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-grey" />
+                          ) : (
+                            <SmallButton
+                              onClick={() => {
+                                const ok = window.confirm(
+                                  `Unblock ${row.phone}?\n\nThey can be invited again. It does not bring their profile back — that was deleted when the number was blocked.`,
+                                );
+                                if (ok) act(row.id, () => unblockNumber(row.phone));
+                              }}
+                            >
+                              Unblock
+                            </SmallButton>
+                          )}
+                        </div>
+                      ))}
+                    </Section>
+                  ) : null}
+                </div>
+              </div>
             ) : null}
 
             <Section
               title="Joined"
               subtitle="Manage account types and membership for people who signed up."
-              hidden={tab !== 'members'}
+              hidden={tab !== 'members' || !showJoined}
             >
               {real.map((m) => (
                 <Row
@@ -475,11 +516,19 @@ export default function AdminPage() {
                   onCloseDecision={() => {
                     setDeciding(null);
                   }}
+                  expanded={openMember === m.id}
+                  onToggle={() => {
+                    setOpenMember((open) => (open === m.id ? null : m.id));
+                  }}
                 />
               ))}
               {real.length === 0 ? (
                 <p className="py-6 text-center text-[0.8125rem] text-grey">
-                  {query ? 'No joined members match your search.' : 'Nobody has joined yet.'}
+                  {query
+                    ? 'No joined members match your search.'
+                    : filter === 'attention'
+                      ? 'Nobody is paused or on a strike.'
+                      : 'Nobody has joined yet.'}
                 </p>
               ) : null}
             </Section>
@@ -487,7 +536,7 @@ export default function AdminPage() {
             <Section
               title="From the directory"
               subtitle="Seeded from NorCal SCI. Pausing one hides it from the deck."
-              hidden={tab !== 'members'}
+              hidden={tab !== 'members' || !showDirectory}
               // Rehearsing the claim flow retires a seeded profile every
               // time — that is what claiming does — so putting the directory
               // back needs to be a button rather than a migration written by
@@ -574,10 +623,14 @@ export default function AdminPage() {
                   onCloseDecision={() => {
                     setDeciding(null);
                   }}
+                  expanded={openMember === m.id}
+                  onToggle={() => {
+                    setOpenMember((open) => (open === m.id ? null : m.id));
+                  }}
                 />
               ))}
             </Section>
-          </div>
+          </TabPanel>
         )}
       </div>
     </div>
@@ -627,6 +680,8 @@ function Row({
   onWithdrawStrike,
   deciding,
   onCloseDecision,
+  expanded,
+  onToggle,
 }: {
   member: AdminMember;
   busy: boolean;
@@ -644,6 +699,9 @@ function Row({
   /** Whether the strike just issued was the last one, and the membership is owed an answer. */
   deciding: boolean;
   onCloseDecision: () => void;
+  /** Whether this row's controls are showing. */
+  expanded: boolean;
+  onToggle: () => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [block, setBlock] = useState(false);
@@ -663,10 +721,10 @@ function Row({
 
   return (
     <div
-      // What "Go to <name>" on a report scrolls to. scroll-mt keeps the row
-      // clear of the top edge when arriving from a report.
+      // What "Go to <name>" on a report scrolls to.
       id={`member-${member.id}`}
-      className="flex scroll-mt-4 flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
+      // Clear of the sticky tabs when arriving from a report.
+      className="flex scroll-mt-20 flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
     >
       {/* A basis rather than a bare flex-1. With only `flex-1` this column
           shrank towards nothing to keep three buttons on one line, so at the
@@ -738,13 +796,39 @@ function Row({
         </span>
       </span>
 
+      {/* None on an administrator's row: every control it could carry is one
+          the database refuses. */}
+      {member.isAdmin ? null : (
+        <button
+          type="button"
+          onClick={onToggle}
+          // Begins with the word on the button, for voice control.
+          aria-label={`Manage ${member.displayName}`}
+          aria-expanded={expanded}
+          aria-controls={`member-controls-${member.id}`}
+          className={cn(
+            'flex min-h-[44px] flex-none items-center gap-1 rounded-[10px] px-3 font-semibold text-[0.8125rem] transition-colors',
+            expanded ? 'bg-action text-white' : 'bg-tint text-emphasis hover:bg-line',
+          )}
+        >
+          Manage
+          <ChevronDown
+            aria-hidden="true"
+            className={cn('h-4 w-4 transition-transform', expanded && 'rotate-180')}
+          />
+        </button>
+      )}
+
       {busy ? (
         <p role="status" className="flex w-full items-center gap-2 text-[0.8125rem] text-grey">
           <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
           Saving changes…
         </p>
-      ) : member.isAdmin ? null : (
-        <div className="grid w-full gap-3 border-line border-t pt-3 sm:grid-cols-2">
+      ) : member.isAdmin || !expanded ? null : (
+        <div
+          id={`member-controls-${member.id}`}
+          className="grid w-full gap-3 border-line border-t pt-3 sm:grid-cols-2"
+        >
           <fieldset className="min-w-0">
             <legend className="mb-2 font-bold text-[0.75rem] text-grey">Account type</legend>
             <div className="flex flex-wrap gap-2">

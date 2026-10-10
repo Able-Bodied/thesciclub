@@ -156,9 +156,9 @@ const member = (o: Partial<AdminMember> = {}): AdminMember => ({
   ...o,
 });
 
-function renderAdmin() {
+function renderAdmin(entry = '/admin') {
   return render(
-    <MemoryRouter initialEntries={['/admin']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/home" element={<p>Home</p>} />
@@ -166,6 +166,16 @@ function renderAdmin() {
       </Routes>
     </MemoryRouter>,
   );
+}
+
+/**
+ * Opens a member's row, as an administrator does before acting on it. Only
+ * opens: a second call on an open row must not close it again.
+ */
+async function manage(name: string | RegExp = /^Manage /) {
+  const [button] = await screen.findAllByRole('button', { name });
+  if (!button) throw new Error(`No ${String(name)} button`);
+  if (button.getAttribute('aria-expanded') !== 'true') await userEvent.click(button);
 }
 
 beforeEach(() => {
@@ -237,6 +247,7 @@ describe('AdminPage', () => {
 
   it('pauses a member', async () => {
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Pause' }));
     await waitFor(() => {
       expect(api.statusCalls).toEqual([['m1', 'suspended']]);
@@ -246,6 +257,7 @@ describe('AdminPage', () => {
   it('offers to resume somebody already paused', async () => {
     api.members = [member({ status: 'suspended' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Resume' }));
     await waitFor(() => {
       expect(api.statusCalls).toEqual([['m1', 'active']]);
@@ -255,6 +267,7 @@ describe('AdminPage', () => {
   it('asks before removing, because a real person loses their profile', async () => {
     const user = userEvent.setup();
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     // The panel, not a native dialog: nothing has happened yet.
     expect(screen.getByText(/Remove Alfred S from the club\?/)).toBeInTheDocument();
@@ -269,6 +282,7 @@ describe('AdminPage', () => {
   it('does nothing when the panel is cancelled', async () => {
     const user = userEvent.setup();
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(api.deleted).toEqual([]);
@@ -279,6 +293,7 @@ describe('AdminPage', () => {
     const user = userEvent.setup();
     api.failWith = 'An administrator cannot be deleted from the application';
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     await user.click(screen.getByRole('button', { name: 'Remove them' }));
     expect(
@@ -297,6 +312,9 @@ describe('AdminPage', () => {
     ];
     renderAdmin();
     await screen.findByText('Co-admin');
+    // One row to open, and it is not the administrator's.
+    expect(screen.getAllByRole('button', { name: /^Manage / })).toHaveLength(1);
+    await manage('Manage Ordinary');
     // One of each, all belonging to the member they can actually be done to.
     expect(screen.getAllByRole('button', { name: 'Pause' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Remove' })).toHaveLength(1);
@@ -428,8 +446,8 @@ describe('somebody who started and stopped', () => {
 describe('blocking a number', () => {
   async function openInvites(user: ReturnType<typeof userEvent.setup>) {
     renderAdmin();
-    await screen.findByRole('button', { name: 'invites' });
-    await user.click(screen.getByRole('button', { name: 'invites' }));
+    await screen.findByRole('tab', { name: 'Invites' });
+    await user.click(screen.getByRole('tab', { name: 'Invites' }));
   }
 
   // The checkbox is the whole difference between removing somebody and
@@ -439,6 +457,7 @@ describe('blocking a number', () => {
     const user = userEvent.setup();
     api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
 
     expect(screen.getByRole('checkbox', { name: /Block this number too/ })).not.toBeChecked();
@@ -454,6 +473,7 @@ describe('blocking a number', () => {
     const user = userEvent.setup();
     api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
 
@@ -474,6 +494,7 @@ describe('blocking a number', () => {
     const user = userEvent.setup();
     api.members = [member({ id: 'm9', phone: '14085550150' })];
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
     await user.type(screen.getByLabelText(/Reason/), '   ');
@@ -490,6 +511,7 @@ describe('blocking a number', () => {
     // the invite.
     api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
     expect(screen.getByText(/Everything they said they were going to/)).toBeInTheDocument();
     expect(screen.getByText(/the organizations they follow/)).toBeInTheDocument();
@@ -504,6 +526,7 @@ describe('blocking a number', () => {
     // with whoever wrote it.
     api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
     expect(
       screen.getByText(/What they wrote in the discussion rooms and in conversations stays/),
@@ -514,6 +537,7 @@ describe('blocking a number', () => {
   it('asks for no reason until there is something to give one for', async () => {
     const user = userEvent.setup();
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
     expect(screen.queryByLabelText(/Reason/)).toBeNull();
   });
@@ -530,6 +554,7 @@ describe('blocking a number', () => {
       member({ id: 's1', displayName: 'Seeded Sam', phone: '15555550000', isSeed: true }),
     ];
     renderAdmin();
+    await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
 
     await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
@@ -657,8 +682,8 @@ describe('the withdrawn list', () => {
       revoked('14085550113', 'c', '2026-09-02T00:00:00Z'),
     ];
     renderAdmin();
-    await screen.findByRole('button', { name: 'invites' });
-    await user.click(screen.getByRole('button', { name: 'invites' }));
+    await screen.findByRole('tab', { name: 'Invites' });
+    await user.click(screen.getByRole('tab', { name: 'Invites' }));
 
     expect(await screen.findByText(/withdrawn 2 times/)).toBeInTheDocument();
     expect(screen.getAllByText('14085550112')).toHaveLength(1);
@@ -676,8 +701,8 @@ describe('the three lists', () => {
       invite({ id: 'gone', phone: '14085550002', status: 'revoked' }),
     ];
     renderAdmin();
-    await screen.findByRole('button', { name: 'invites' });
-    await user.click(screen.getByRole('button', { name: 'invites' }));
+    await screen.findByRole('tab', { name: 'Invites' });
+    await user.click(screen.getByRole('tab', { name: 'Invites' }));
 
     // Section renders a heading row, a subtitle, then the rows. The heading
     // sits inside a flex wrapper so a section-level action can sit beside it,
@@ -695,8 +720,8 @@ describe('the three lists', () => {
     const user = userEvent.setup();
     api.invites = [invite({ id: 'live', status: 'pending' })];
     renderAdmin();
-    await screen.findByRole('button', { name: 'invites' });
-    await user.click(screen.getByRole('button', { name: 'invites' }));
+    await screen.findByRole('tab', { name: 'Invites' });
+    await user.click(screen.getByRole('tab', { name: 'Invites' }));
 
     await screen.findByText('The list');
     expect(screen.queryByText('Withdrawn')).toBeNull();
@@ -723,7 +748,7 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
 describe('the invite list', () => {
   const openInvites = async () => {
     renderAdmin();
-    await userEvent.click(await screen.findByRole('button', { name: 'invites' }));
+    await userEvent.click(await screen.findByRole('tab', { name: 'Invites' }));
   };
 
   it('counts who is waiting, in the header', async () => {
@@ -882,6 +907,7 @@ describe('who vouched, on the list', () => {
 describe('mentor status', () => {
   it('promotes a peer', async () => {
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Make mentor' }));
     await waitFor(() => {
       expect(api.typeCalls).toEqual([['m1', 'mentor']]);
@@ -891,6 +917,7 @@ describe('mentor status', () => {
   it('demotes a mentor', async () => {
     api.members = [member({ type: 'mentor' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Make peer' }));
     await waitFor(() => {
       expect(api.typeCalls).toEqual([['m1', 'peer']]);
@@ -904,6 +931,7 @@ describe('giving somebody a strike', () => {
     // cause of is unanswerable — so the button does not offer to try.
     api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     expect(screen.getByRole('button', { name: 'Give the strike' })).toBeDisabled();
     expect(api.strikes).toEqual([]);
@@ -912,6 +940,7 @@ describe('giving somebody a strike', () => {
   it('sends the reason the administrator typed', async () => {
     api.members = [member({ id: 'm1', displayName: 'Ordinary' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), '  Sold supplements  ');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -934,6 +963,8 @@ describe('giving somebody a strike', () => {
     api.members = [member({ id: 'a1', displayName: 'Co-admin', isAdmin: true })];
     renderAdmin();
     await screen.findByText('Co-admin');
+    // Not even a row to open, so no strike behind it.
+    expect(screen.queryByRole('button', { name: /^Manage / })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Strike' })).not.toBeInTheDocument();
   });
 });
@@ -947,6 +978,7 @@ describe('three strikes is the limit', () => {
     api.members = [member({ id: 'm1', displayName: 'Ordinary', strikes: 3 })];
     renderAdmin();
     await screen.findByText('Ordinary');
+    await manage();
     expect(screen.queryByRole('button', { name: 'Strike' })).not.toBeInTheDocument();
     // The other two ways of ending a membership stay: the point of the limit
     // is that it hands the question over, not that the row goes quiet.
@@ -976,6 +1008,7 @@ describe('three strikes is the limit', () => {
   it('asks what to do with the membership on the strike that reaches it', async () => {
     onTwo();
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), 'Third thing');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -987,6 +1020,7 @@ describe('three strikes is the limit', () => {
   it('asks nothing on the first two', async () => {
     api.members = [member({ id: 'm1', displayName: 'Ordinary', strikes: 1 })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), 'Second thing');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -999,6 +1033,7 @@ describe('three strikes is the limit', () => {
   it('pauses them from the panel', async () => {
     onTwo();
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), 'Third thing');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -1012,6 +1047,7 @@ describe('three strikes is the limit', () => {
     // ban is that tick.
     onTwo();
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), 'Third thing');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -1027,6 +1063,7 @@ describe('three strikes is the limit', () => {
     // and the member where they were.
     onTwo();
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), 'Third thing');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -1043,6 +1080,7 @@ describe('three strikes is the limit', () => {
     api.reportsStrikeCount = false;
     onTwo();
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Strike' }));
     await userEvent.type(screen.getByLabelText('What happened?'), 'Third thing');
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
@@ -1144,7 +1182,7 @@ describe('withdrawing a strike', () => {
 describe('the Reports tab', () => {
   it('carries the number waiting, and no number when nothing is', async () => {
     renderAdmin();
-    await screen.findByRole('button', { name: 'reports' });
+    expect(await screen.findByRole('tab', { name: 'Reports' })).toBeInTheDocument();
 
     cleanup();
     api.openReports = 2;
@@ -1152,7 +1190,7 @@ describe('the Reports tab', () => {
     // The count is in the tab's own label, because a complaint waiting unseen
     // behind a tab that looks like every other tab is what it is there to
     // prevent.
-    expect(await screen.findByRole('button', { name: 'reports 2' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: /^Reports,\s*2 waiting$/ })).toBeInTheDocument();
   });
 });
 
@@ -1160,6 +1198,7 @@ describe('organization account roles', () => {
   it('lets an administrator designate an organization account', async () => {
     api.members = [member({ id: 'organization-account', displayName: 'Organization account' })];
     renderAdmin();
+    await manage();
     await userEvent.click(await screen.findByRole('button', { name: 'Make organization' }));
     await waitFor(() => {
       expect(api.typeCalls).toContainEqual(['organization-account', 'organization']);
@@ -1210,5 +1249,75 @@ describe('finding members', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
     expect(screen.getByText('Phone Example')).toBeInTheDocument();
     expect(input).toHaveValue('');
+  });
+});
+
+describe('a roster that fits on a phone', () => {
+  it('shows each member closed, with their controls one tap away', async () => {
+    renderAdmin();
+    const manageButton = await screen.findByRole('button', { name: 'Manage Alfred S' });
+    expect(manageButton).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
+    await userEvent.click(manageButton);
+    expect(manageButton).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Pause' })).toBeInTheDocument();
+    await userEvent.click(manageButton);
+    expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument();
+  });
+
+  it('keeps one row open at a time', async () => {
+    api.members = [member(), member({ id: 'm2', displayName: 'Todd' })];
+    renderAdmin();
+    await manage('Manage Alfred S');
+    await manage('Manage Todd');
+    expect(screen.getByRole('button', { name: 'Manage Alfred S' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.getAllByRole('button', { name: 'Pause' })).toHaveLength(1);
+  });
+
+  it('narrows to the directory, or to who is paused or struck', async () => {
+    api.members = [
+      member({ id: 'fine', displayName: 'Fine Member' }),
+      member({ id: 'paused', displayName: 'Paused Member', status: 'suspended' }),
+      member({ id: 'struck', displayName: 'Struck Member', strikes: 1 }),
+      member({ id: 'seed', displayName: 'Seed Member', isSeed: true, status: 'suspended' }),
+    ];
+    renderAdmin();
+    await screen.findByText('Fine Member');
+    await userEvent.click(screen.getByRole('button', { name: 'Directory · 1' }));
+    expect(screen.getByText('Seed Member')).toBeInTheDocument();
+    expect(screen.queryByText('Fine Member')).toBeNull();
+    // A paused directory row is a hidden profile, not a problem with a person.
+    await userEvent.click(screen.getByRole('button', { name: 'Paused or struck · 2' }));
+    expect(screen.getByText('Paused Member')).toBeInTheDocument();
+    expect(screen.getByText('Struck Member')).toBeInTheDocument();
+    expect(screen.queryByText('Fine Member')).toBeNull();
+    expect(screen.queryByText('Seed Member')).toBeNull();
+  });
+});
+
+describe('the tabs', () => {
+  it('opens the tab the address names', async () => {
+    renderAdmin('/admin?tab=invites');
+    expect(await screen.findByRole('tab', { name: 'Invites' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(await screen.findByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox', { name: 'Find a member' })).toBeNull();
+  });
+
+  it('puts Reports second, so its count is on screen on a narrow phone', async () => {
+    renderAdmin();
+    const tabs = await screen.findAllByRole('tab');
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      'Members',
+      'Reports',
+      'Invites',
+      'Organizations',
+      'Rooms',
+    ]);
   });
 });

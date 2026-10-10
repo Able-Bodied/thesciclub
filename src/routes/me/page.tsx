@@ -1,9 +1,11 @@
 import { ChevronRight, LogOut } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { type PageTab, PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { signOut, useAccount } from '@/lib/account';
 import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
+import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
 import { useInvitePermissions } from '@/lib/invite-permissions';
 import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
@@ -27,11 +29,30 @@ import { loadAnswers } from '@/routes/profile/profile-api';
 import { progressOf } from '@/routes/profile/questions';
 import type { RsvpStatus } from '@/types/domain';
 
-/** Me keeps profile editing, club participation and account settings together
- * by purpose. Settings stay expanded so display controls are easy to reach. */
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-3 font-extrabold font-head text-[1rem] text-ink">{children}</h2>;
+/**
+ * Me in three tabs: Profile (what the club knows about you, what you can do in
+ * it, and Sign out), Settings (this device), Account (how you sign in, and
+ * deleting the account).
+ *
+ * One scroll held all three and ran past two and a half phone screens, so
+ * Sign out and Display were found by scrolling past everything else. Most
+ * members use the club on a phone, so each part is now one tap from the top.
+ */
+function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
+  return (
+    <h2 id={id} className="mb-3 font-extrabold font-head text-[1rem] text-ink">
+      {children}
+    </h2>
+  );
 }
+
+const ME_TAB_VALUES = ['profile', 'settings', 'account'] as const;
+type MeTab = (typeof ME_TAB_VALUES)[number];
+const ME_TABS = [
+  { value: 'profile', label: 'Profile' },
+  { value: 'settings', label: 'Settings' },
+  { value: 'account', label: 'Account' },
+] as const satisfies readonly PageTab<MeTab>[];
 
 function ProfileLink({
   to,
@@ -117,6 +138,14 @@ export default function MePage() {
   const { member, invitedBy } = useOwnMember(userId);
   const invitePermissions = useInvitePermissions(userId);
   const viewer = useViewerEvents(userId);
+  // Google sends a member back to /me?google=linked, and the answer is shown
+  // where the button was. That parameter is not changed to add a tab: the
+  // return address is on Supabase's allowed list, as written.
+  const [params] = useSearchParams();
+  const [initialTab] = useState<MeTab | undefined>(() =>
+    params.has(GOOGLE_RETURN_PARAM) ? 'account' : undefined,
+  );
+  const [tab, setTab] = useTabParam(ME_TAB_VALUES, 'profile', initialTab);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
@@ -177,6 +206,12 @@ export default function MePage() {
     });
   }, [userId]);
 
+  const hasClubTools =
+    isAdmin ||
+    member?.type === 'organization' ||
+    invitePermissions.canInvite ||
+    Boolean(invitePermissions.error);
+
   function leave() {
     setBusy(true);
     setError(null);
@@ -207,168 +242,164 @@ export default function MePage() {
         </header>
       )}
 
-      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 py-5">
-        <nav aria-label="On this page" className="mb-5 flex flex-wrap gap-2">
-          {[
-            ['me-profile', 'Your profile'],
-            ...(isAdmin || member?.type === 'organization' || invitePermissions.canInvite
-              ? [['me-club', 'Club tools']]
-              : []),
-            ['me-settings', 'Settings'],
-            ['me-account', 'Account'],
-          ].map(([id, label]) => (
-            <a
-              key={id}
-              href={`#${id}`}
-              className="flex min-h-[44px] items-center rounded-full border border-line bg-paper px-4 font-semibold text-[0.8125rem] text-emphasis hover:bg-tint"
-            >
-              {label}
-            </a>
-          ))}
-        </nav>
-        <MeStats going={going} interested={interested} beenTo={beenTo} />
-        <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
-          <section id="me-profile" tabIndex={-1} className="min-w-0 scroll-mt-4">
-            <SectionHeading>Your profile</SectionHeading>
-            <div className="space-y-2.5">
-              <ProfileLink
-                to={percent ? '/profile/answers' : '/profile'}
-                title={percent === 100 ? 'Profile complete' : 'Complete your profile'}
-                description="Your interests, experience and what you want to share."
-                percent={percent}
-              />
-              <ProfileLink
-                to="/profile/details"
-                title="Your details"
-                description={
-                  missing.length > 0
-                    ? `Still to add: ${listInWords(missing)}.`
-                    : 'Your name, photo, injury and location.'
-                }
-                percent={detailsDone}
-              />
-              {userId ? (
-                <ProfileLink
-                  to={`/peers/${userId}`}
-                  state={{ from: 'me' }}
-                  title="My profile view"
-                  description="See how your profile looks to other members."
-                />
-              ) : null}
-            </div>
-            {userId && showInBrowse !== null ? (
-              <DeckVisibility
-                userId={userId}
-                showInBrowse={showInBrowse}
-                onChange={setShowInBrowse}
-              />
-            ) : null}
-          </section>
-          <div className="min-w-0 space-y-6">
-            {isAdmin ||
-            member?.type === 'organization' ||
-            invitePermissions.canInvite ||
-            invitePermissions.error ? (
-              <section id="me-club" tabIndex={-1} className="scroll-mt-4">
-                <SectionHeading>Club tools</SectionHeading>
+      <PageTabs id="me" label="Me" fill tabs={ME_TABS} value={tab} onChange={setTab} />
+
+      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pt-5 pb-8">
+        {tab === 'profile' ? (
+          <TabPanel id="me" value="profile">
+            <MeStats going={going} interested={interested} beenTo={beenTo} />
+            <div className="mt-6 grid items-start gap-6 lg:grid-cols-2">
+              <section aria-labelledby="me-profile-heading" className="min-w-0">
+                <SectionHeading id="me-profile-heading">Your profile</SectionHeading>
                 <div className="space-y-2.5">
-                  {isAdmin ? (
+                  <ProfileLink
+                    to={percent ? '/profile/answers' : '/profile'}
+                    title={percent === 100 ? 'Profile complete' : 'Complete your profile'}
+                    description="Your interests, experience and what you want to share."
+                    percent={percent}
+                  />
+                  <ProfileLink
+                    to="/profile/details"
+                    title="Your details"
+                    description={
+                      missing.length > 0
+                        ? `Still to add: ${listInWords(missing)}.`
+                        : 'Your name, photo, injury and location.'
+                    }
+                    percent={detailsDone}
+                  />
+                  {userId ? (
                     <ProfileLink
-                      to="/admin"
-                      title="Admin"
-                      description="Members, invites, organizations and moderation."
+                      to={`/peers/${userId}`}
+                      state={{ from: 'me' }}
+                      title="My profile view"
+                      description="See how your profile looks to other members."
                     />
-                  ) : null}
-                  {member?.type === 'organization' ? (
-                    <ProfileLink
-                      to="/organizations/manage"
-                      title="Manage your organizations"
-                      description="Update the organizations linked to your account."
-                    />
-                  ) : null}
-                  {invitePermissions.canInvite ? (
-                    <div className="rounded-[14px] border border-line bg-paper p-3.5">
-                      <h3 className="font-extrabold font-head text-[0.9375rem] text-ink">
-                        You can invite people
-                      </h3>
-                      <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.5]">
-                        {invitePermissions.unlimited
-                          ? 'You can invite people without a limit.'
-                          : `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club’s list.`}
-                      </p>
-                      <Link
-                        to="/invites"
-                        className="mt-3 flex min-h-[44px] items-center justify-between gap-2 rounded-[11px] bg-tint px-3 font-bold font-head text-[0.875rem] text-emphasis"
-                      >
-                        Your invites
-                        <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                      </Link>
-                    </div>
-                  ) : null}
-                  {invitePermissions.error ? (
-                    <div>
-                      <p role="alert" className="text-destructive">
-                        {invitePermissions.error}
-                      </p>
-                      <button
-                        type="button"
-                        className="min-h-[44px] text-emphasis underline"
-                        onClick={invitePermissions.reload}
-                      >
-                        Retry invite permissions
-                      </button>
-                    </div>
                   ) : null}
                 </div>
+                {userId && showInBrowse !== null ? (
+                  <DeckVisibility
+                    userId={userId}
+                    showInBrowse={showInBrowse}
+                    onChange={setShowInBrowse}
+                  />
+                ) : null}
               </section>
+              <div className="min-w-0 space-y-6">
+                {hasClubTools ? (
+                  <section aria-labelledby="me-club-heading">
+                    <SectionHeading id="me-club-heading">Club tools</SectionHeading>
+                    <div className="space-y-2.5">
+                      {isAdmin ? (
+                        <ProfileLink
+                          to="/admin"
+                          title="Admin"
+                          description="Members, invites, organizations and moderation."
+                        />
+                      ) : null}
+                      {member?.type === 'organization' ? (
+                        <ProfileLink
+                          to="/organizations/manage"
+                          title="Manage your organizations"
+                          description="Update the organizations linked to your account."
+                        />
+                      ) : null}
+                      {invitePermissions.canInvite ? (
+                        <ProfileLink
+                          to="/invites"
+                          title="Your invites"
+                          description={
+                            invitePermissions.unlimited
+                              ? 'You can invite people without a limit.'
+                              : `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club’s list.`
+                          }
+                        />
+                      ) : null}
+                      {invitePermissions.error ? (
+                        <div>
+                          <p role="alert" className="text-destructive">
+                            {invitePermissions.error}
+                          </p>
+                          <button
+                            type="button"
+                            className="min-h-[44px] text-emphasis underline"
+                            onClick={invitePermissions.reload}
+                          >
+                            Retry invite permissions
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </section>
+                ) : null}
+                <section aria-labelledby="me-standing-heading">
+                  <SectionHeading id="me-standing-heading">Standing</SectionHeading>
+                  <StandingCard invitedBy={invitedBy} strikes={strikes} />
+                </section>
+              </div>
+            </div>
+            {/* On the tab Me opens on, at the owner's word: signing out is
+                done in a hurry, on a shared or borrowed phone, and should not
+                wait on finding the right tab. Deleting stays on Account. */}
+            {error ? (
+              <p role="alert" className="mt-6 text-[0.8125rem] text-destructive leading-[1.45]">
+                {error}
+              </p>
             ) : null}
-            <section>
-              <SectionHeading>Standing</SectionHeading>
-              <StandingCard invitedBy={invitedBy} strikes={strikes} />
-            </section>
-          </div>
-        </div>
-        <section
-          id="me-settings"
-          tabIndex={-1}
-          className="mt-7 scroll-mt-4 border-line border-t pt-5"
-        >
-          <SectionHeading>Settings</SectionHeading>
-          <p className="text-[0.8125rem] text-ink2">
-            Make the club comfortable to use on this device.
-          </p>
-          <div className="grid items-start gap-x-6 lg:grid-cols-2">
-            <AccessibilitySettings />
-            <NotificationSettings
-              userId={userId}
-              isMentor={member?.type === 'mentor'}
-              isAdmin={isAdmin}
-            />
-          </div>
-        </section>
-        <section
-          id="me-account"
-          tabIndex={-1}
-          className="mt-7 scroll-mt-4 border-line border-t pt-5"
-        >
-          <SectionHeading>Account</SectionHeading>
-          <GoogleSignIn />
-          {error ? (
-            <p role="alert" className="mt-4 text-[0.8125rem] text-destructive leading-[1.45]">
-              {error}
+            <button
+              type="button"
+              onClick={leave}
+              disabled={busy}
+              className="mt-6 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] border border-line bg-paper font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50 lg:mx-auto lg:max-w-[22rem]"
+            >
+              <LogOut aria-hidden="true" className="h-4 w-4" />
+              {busy ? 'Signing out…' : 'Sign out'}
+            </button>
+          </TabPanel>
+        ) : null}
+
+        {tab === 'settings' ? (
+          <TabPanel id="me" value="settings">
+            <p className="text-[0.875rem] text-ink2 leading-[1.5]">
+              These apply to this phone or computer only.
             </p>
-          ) : null}
-          <button
-            type="button"
-            onClick={leave}
-            disabled={busy}
-            className="mt-4 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] border border-line bg-paper font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
-          >
-            <LogOut aria-hidden="true" className="h-4 w-4" />
-            {busy ? 'Signing out…' : 'Sign out'}
-          </button>
-          {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
-        </section>
+            {/* Display first and always open: it is what somebody who finds
+                the club hard to read comes here for. */}
+            <div className="grid items-start gap-x-6 lg:grid-cols-2 [&>section:first-child]:mt-4 lg:[&>section]:mt-4">
+              <AccessibilitySettings />
+              <NotificationSettings
+                userId={userId}
+                isMentor={member?.type === 'mentor'}
+                isAdmin={isAdmin}
+              />
+            </div>
+          </TabPanel>
+        ) : null}
+
+        {tab === 'account' ? (
+          <TabPanel id="me" value="account" className="max-w-[560px]">
+            <p className="text-[0.875rem] text-ink2 leading-[1.5]">
+              Signed in as {member?.displayName ?? displayName ?? '—'}.
+            </p>
+            {/* Kept mounted on this tab alone, which is why Google's return
+                opens Me here: see `initialTab`. */}
+            <GoogleSignIn />
+            <section
+              aria-labelledby="me-leaving-heading"
+              // DeleteAccount brings its own top margin, sized for following
+              // a button; under this heading it only needs a line's gap.
+              className="mt-6 [&>:not(h2)]:mt-2.5"
+            >
+              <h2
+                id="me-leaving-heading"
+                className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+              >
+                Deleting your account
+              </h2>
+              {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
+            </section>
+          </TabPanel>
+        ) : null}
       </div>
     </div>
   );

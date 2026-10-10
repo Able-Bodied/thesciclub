@@ -35,8 +35,14 @@ import { cn } from '@/lib/utils';
 function Row({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <fieldset className="border-line border-b py-4 last:border-b-0">
-      <legend className="font-extrabold font-head text-[0.9375rem] text-ink">{title}</legend>
-      <div className="mt-2.5">{children}</div>
+      {/* Floated, so the legend sits inside the padding like any heading. A
+          plain legend is drawn on the fieldset's top edge, which put each
+          setting's name hard against the line above it and left the padding
+          as a gap under the name instead. */}
+      <legend className="float-left w-full font-extrabold font-head text-[0.9375rem] text-ink">
+        {title}
+      </legend>
+      <div className="clear-both pt-2.5">{children}</div>
     </fieldset>
   );
 }

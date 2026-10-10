@@ -126,9 +126,9 @@ vi.mock('@/lib/account', () => ({
 
 const { default: MePage } = await import('@/routes/me/page');
 
-function renderMe() {
+function renderMe(entry = '/me') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <MePage />
     </MemoryRouter>,
   );
@@ -288,8 +288,9 @@ describe('MePage', () => {
   it('tells a mentor they can, and offers the way in', () => {
     own.member = ownMember({ type: 'mentor' });
     renderMe();
-    expect(screen.getByText('You can invite people')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Your invites/ })).toHaveAttribute('href', '/invites');
+    const invites = screen.getByRole('link', { name: /Your invites/ });
+    expect(invites).toHaveAttribute('href', '/invites');
+    expect(invites).toHaveAccessibleDescription(/As a mentor you can put \d+ numbers/);
   });
 
   it('keeps what can end a membership reachable, without printing it', () => {
@@ -301,8 +302,9 @@ describe('MePage', () => {
     expect(screen.getByRole('button', { name: /what can end a membership/i })).toBeInTheDocument();
   });
 
-  it('signs out', async () => {
+  it('signs out from the tab Me opens on, without looking for it', async () => {
     renderMe();
+    expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
     await userEvent.click(screen.getByRole('button', { name: /Sign out/ }));
     await waitFor(() => {
       expect(auth.signedOut).toBe(1);
@@ -513,4 +515,35 @@ describe('unlimited invite card', () => {
         );
     },
   );
+});
+
+describe('the three tabs', () => {
+  it('opens on Profile, with Settings and Account a tap away', () => {
+    renderMe();
+    expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('Profile');
+    expect(screen.queryByRole('heading', { name: 'Display' })).not.toBeInTheDocument();
+  });
+
+  it('opens the tab the address names, so the installed app reopens where it was', () => {
+    renderMe('/me?tab=settings');
+    expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: 'Display' })).toBeInTheDocument();
+  });
+
+  it('moves between tabs with the arrow keys, as tabs do', async () => {
+    const user = userEvent.setup();
+    renderMe();
+    await user.click(screen.getByRole('tab', { name: 'Profile' }));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('tab', { name: 'Settings' })).toHaveFocus();
+    expect(screen.getByRole('heading', { name: 'Display' })).toBeInTheDocument();
+    await user.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(screen.getByRole('tab', { name: 'Account' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('comes back from Google on Account, where the answer is shown', () => {
+    renderMe('/me?google=linked');
+    expect(screen.getByRole('tab', { name: 'Account' })).toHaveAttribute('aria-selected', 'true');
+  });
 });

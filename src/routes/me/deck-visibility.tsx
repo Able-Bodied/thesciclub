@@ -85,6 +85,14 @@ export function DeckVisibility({
           <p className="font-extrabold font-head text-[0.96875rem] text-ink">
             {showInBrowse ? 'Visible' : 'Hidden'}
           </p>
+          {/* What the word means, once. "Visible" alone left the question of
+              to whom, on the one switch that decides whether anybody can find
+              you. */}
+          <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            {showInBrowse
+              ? 'Other members can find you in Peers.'
+              : 'Other members cannot find you in Peers.'}
+          </p>
         </div>
         <button
           type="button"
