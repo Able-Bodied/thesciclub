@@ -12,7 +12,7 @@ import {
   signInWithGoogle,
   signInWithGoogleToken,
 } from '@/lib/google-sign-in';
-import { toE164 } from '@/lib/phone';
+import { formatPhoneInput, toE164 } from '@/lib/phone';
 import { vapidPublicKey } from '@/lib/push/notifications';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
@@ -366,6 +366,7 @@ export default function OnboardingPage() {
   if (phase === 'blocked') {
     return (
       <BlockedScreen
+        phone={formatPhoneInput(data.phone)}
         onTryAnother={() => {
           setPhase('wizard');
           setStep('phone');

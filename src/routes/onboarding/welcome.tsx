@@ -1,4 +1,5 @@
 import { ClubMark } from '@/components/club-mark';
+import { CONSULTATION_URL } from '@/lib/invite-request';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
@@ -82,6 +83,12 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
         </button>
         <p className="mt-2.5 text-center text-[0.78125rem] text-grey">
           Members only. Nothing inside the club is public.
+        </p>
+        {/* For somebody with no invite and nobody to ask (the owner,
+            2026-10-10). Somebody who verifies a number not on the list gets
+            the same offer, with a way to ask people they know. */}
+        <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
+          No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
         </p>
         {/* On the first screen, not only beside the boxes a press later: /join
             is the opt-in page the text-message registration names, and the

@@ -14,6 +14,7 @@ import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
+import { FindableSwitch } from '@/routes/me/findable-switch';
 import { GoogleSignIn } from '@/routes/me/google-sign-in';
 import { MeHero } from '@/routes/me/hero';
 import { NotificationSettings } from '@/routes/me/notification-settings';
@@ -315,6 +316,9 @@ export default function MePage() {
                               : `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club’s list.`
                           }
                         />
+                      ) : null}
+                      {invitePermissions.canInvite && userId ? (
+                        <FindableSwitch userId={userId} />
                       ) : null}
                       {invitePermissions.error ? (
                         <div>

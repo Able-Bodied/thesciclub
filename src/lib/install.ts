@@ -133,31 +133,34 @@ export function snoozeNudge(now = Date.now()): void {
 
 /** The steps for each browser, in the words its own menus use. */
 export const INSTALL_STEPS: Record<InstallPlatform, { intro?: string; steps: string[] }> = {
+  // The iPhone share sheet can hide "Add to Home Screen" behind View More, the
+  // round down-arrow button at the right of its row of actions (the owner's
+  // screenshots, 2026-10-10). Said in every iPhone browser's steps.
   'ios-safari': {
     steps: [
       'Tap Share, the square with an arrow pointing up, at the bottom of the screen (at the top on an iPad).',
-      'Scroll down and choose “Add to Home Screen”.',
+      'If you see View More, the round button with a down arrow on the right, tap it. Then scroll down and choose “Add to Home Screen”.',
       'Tap Add, then open The SCI Club from your Home Screen.',
     ],
   },
   'ios-chrome': {
     steps: [
-      'Tap Share, the square with an arrow, in the address bar. Or open the menu (•••) and choose Share.',
-      'Choose “Add to Home Screen”.',
+      'Tap Share, the square with an arrow, in the address bar at the top.',
+      'Tap View More, the round button with a down arrow on the right. “Add to Home Screen” is at the bottom of the list that opens; choose it.',
       'Tap Add, then open The SCI Club from your Home Screen.',
     ],
   },
   'ios-firefox': {
     steps: [
-      'Tap the menu (☰) at the bottom of the screen.',
-      'Choose Share, then “Add to Home Screen”.',
+      'Tap Share, the square with an arrow, at the top left beside the address.',
+      'Tap View More, the round button with a down arrow on the right, then choose “Add to Home Screen”.',
       'Tap Add, then open The SCI Club from your Home Screen.',
     ],
   },
   'ios-edge': {
     steps: [
-      'Tap the menu (•••) at the bottom of the screen.',
-      'Choose Share, then “Add to Home Screen”.',
+      'Tap the menu (•••) at the bottom of the screen, then Share.',
+      'If you see View More, the round button with a down arrow on the right, tap it. Then choose “Add to Home Screen”.',
       'Tap Add, then open The SCI Club from your Home Screen.',
     ],
   },
@@ -165,7 +168,7 @@ export const INSTALL_STEPS: Record<InstallPlatform, { intro?: string; steps: str
     intro: 'This browser may not offer it. Safari always does.',
     steps: [
       'Open thesciclub.com in Safari.',
-      'Tap Share, then “Add to Home Screen”.',
+      'Tap Share, then View More (the down arrow on the right) if you see it, then “Add to Home Screen”.',
       'Tap Add, then open The SCI Club from your Home Screen.',
     ],
   },

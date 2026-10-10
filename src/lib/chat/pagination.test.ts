@@ -4,7 +4,10 @@ import { useThreadMessages } from '@/lib/chat/threads';
 import { useTopicPosts } from '@/lib/chat/topics';
 import { pagedDatabase } from '@/test/paged-database';
 
-const state = vi.hoisted(() => ({ tables: {}, rpc: vi.fn() }));
+// `rpc` is when a request is built; `sent` is when it is actually sent, which a
+// Supabase request only is once awaited or `.then`ed. The topic's read marker
+// was built and never sent for a month, and a test of `rpc` alone passed.
+const state = vi.hoisted(() => ({ tables: {}, rpc: vi.fn(), sent: vi.fn() }));
 vi.mock('@/lib/account', () => ({ useAccount: () => ({ status: 'member', userId: 'me' }) }));
 vi.mock('@/lib/chat/unread', () => ({ unreadChanged: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({
@@ -19,9 +22,14 @@ vi.mock('@/lib/supabase', () => ({
             ? [{ id: 'topic', room_id: 'room' }]
             : null;
       return {
-        abortSignal: () => Promise.resolve({ data, error: null }),
-        then: (resolve: (value: unknown) => unknown) =>
-          Promise.resolve(resolve({ data, error: null })),
+        abortSignal: () => {
+          state.sent(name, args);
+          return Promise.resolve({ data, error: null });
+        },
+        then: (resolve: (value: unknown) => unknown) => {
+          state.sent(name, args);
+          return Promise.resolve(resolve({ data, error: null }));
+        },
       };
     },
   }),
@@ -29,6 +37,7 @@ vi.mock('@/lib/supabase', () => ({
 
 beforeEach(() => {
   state.rpc.mockClear();
+  state.sent.mockClear();
   const rows = Array.from({ length: 1005 }, (_, id) => ({
     id: `row-${String(id).padStart(4, '0')}`,
     created_at: new Date(Date.UTC(2026, 0, 1, 0, 0, id)).toISOString(),
@@ -52,9 +61,11 @@ describe('long conversations and topics', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.messages).toHaveLength(1005);
     expect(result.current.messages.at(-1)?.body).toBe('Message 1004');
-    expect(state.rpc).toHaveBeenCalledWith('chat_mark_thread_read_through', {
-      thread: 'thread',
-      message: 'row-1004',
+    await waitFor(() => {
+      expect(state.sent).toHaveBeenCalledWith('chat_mark_thread_read_through', {
+        thread: 'thread',
+        message: 'row-1004',
+      });
     });
     expect(state.rpc).not.toHaveBeenCalledWith('chat_mark_thread_read', expect.anything());
   });
@@ -65,9 +76,13 @@ describe('long conversations and topics', () => {
     });
     expect(result.current.error).toBeNull();
     expect(result.current.posts).toHaveLength(1005);
-    expect(state.rpc).toHaveBeenCalledWith('chat_mark_topic_read_through', {
-      topic: 'topic',
-      post: 'row-1004',
+    // Sent, not merely built: a view is recorded only if this reaches the
+    // database.
+    await waitFor(() => {
+      expect(state.sent).toHaveBeenCalledWith('chat_mark_topic_read_through', {
+        topic: 'topic',
+        post: 'row-1004',
+      });
     });
   });
 });
