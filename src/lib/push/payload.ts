@@ -130,3 +130,31 @@ export function pickWindow(
   const focused = windows.findIndex((w) => w.focused);
   return focused !== -1 ? focused : 0;
 }
+
+/**
+ * The service worker asks the app to open a notification's address itself,
+ * with these two messages, rather than reloading the window at it.
+ *
+ * `WindowClient.navigate()` reloads the whole app (and has not been reliable
+ * in Safari, which is most of the club's installed apps), so a press on a
+ * notification while the club was already open could focus it and leave it
+ * where it was. The app's router changes screen instantly instead, and says
+ * so; only when it does not answer does the worker fall back to navigate().
+ *
+ * PENDING is the other way round, for a window that is only now starting: an
+ * installed iPhone app opened from a notification can start on its home
+ * screen rather than the address it was given, so a starting app asks the
+ * worker whether a press is waiting for it.
+ */
+export const NAVIGATE = 'club:navigate';
+export const PENDING = 'club:pending-navigation';
+/** How long a press waits for a starting window to collect it. */
+export const PENDING_FOR_MS = 20_000;
+
+/** The address a message from the service worker asks the app to open, or null. */
+export function navigationRequest(data: unknown, origin: string): string | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const { type, path } = data as { type?: unknown; path?: unknown };
+  if (type !== NAVIGATE || typeof path !== 'string') return null;
+  return safePath(path, origin);
+}

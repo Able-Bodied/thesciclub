@@ -10,6 +10,7 @@ import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/type
 import type * as Events from '@/lib/events';
 import type * as HomeTopics from '@/lib/home/topics';
 import type { HomeTopicSummary } from '@/lib/home/types';
+import type * as NotificationsModule from '@/lib/notifications';
 import { makeEvent, makeMember, makePost, makeRoom, makeTag } from '@/test/factory';
 import type { BrowseMember, ClubEvent, RsvpStatus } from '@/types/domain';
 
@@ -43,6 +44,11 @@ const db = vi.hoisted(() => ({
 }));
 
 // Likes are a read and a write of the club; the hook has its own test.
+// The bell reads its number from the database; stubbed so this test reads nothing.
+vi.mock('@/lib/notifications', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotificationsModule>()),
+  useUnseenNotifications: () => ({ count: 0, refresh: () => undefined }),
+}));
 vi.mock('@/lib/chat/likes', async (importOriginal) => ({
   ...(await importOriginal<typeof Likes>()),
   usePostLikes: (ids: readonly string[]) => {
@@ -132,6 +138,7 @@ function soon(days: number): string {
 }
 
 const summary = (o: Partial<HomeTopicSummary> & { id: string }): HomeTopicSummary => ({
+  isQuestion: false,
   roomId: 'bowel',
   title: `Topic ${o.id}`,
   authorId: 'alex',
@@ -258,23 +265,20 @@ describe('Home', () => {
   });
 
   describe('asking or sharing', () => {
-    it('comes before the list, and opens /home/new with the way back', async () => {
-      const user = userEvent.setup();
+    it('comes before the list, typed into where it is', () => {
       renderPage('/home?segment=topics');
-      const ask = screen.getByRole('link', { name: 'Ask something, or share something' });
+      const ask = screen.getByRole('textbox', { name: 'Ask or post to the club' });
       const [first] = feed();
       if (!first) throw new Error('the list should have a card in it');
       expect(ask.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      await user.click(ask);
-      expect(
-        screen.getByText('at /home/new with {"from":"home","segment":"topics"}'),
-      ).toBeInTheDocument();
+      // Nothing but the box until something is typed.
+      expect(screen.queryByRole('button', { name: 'Post' })).toBeNull();
     });
 
     it('opens on sharing from the Photos pill', async () => {
       const user = userEvent.setup();
       renderPage('/home?segment=photos');
-      await user.click(screen.getByRole('link', { name: 'Ask something, or share something' }));
+      await user.click(screen.getByRole('link', { name: 'Share a photograph' }));
       expect(
         screen.getByText('at /home/new?kind=share with {"from":"home","segment":"photos"}'),
       ).toBeInTheDocument();
@@ -285,9 +289,7 @@ describe('Home', () => {
       db.membersLoading = true;
       renderPage();
       expect(screen.getByRole('status')).toHaveTextContent('Loading…');
-      expect(
-        screen.getByRole('link', { name: 'Ask something, or share something' }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
     });
   });
 
@@ -423,10 +425,14 @@ describe('Home', () => {
       if (link) {
         expect(screen.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
       } else {
-        // The one link is the way to ask or share, which is on every pill.
-        expect(screen.getAllByRole('link').map((a) => a.textContent)).toEqual([
-          'Ask something, or share something',
-        ]);
+        // No link in the list: the way to ask is a box, and the bell is in
+        // the header.
+        expect(
+          screen.getAllByRole('link').filter((a) => a.getAttribute('href') !== '/notifications'),
+        ).toEqual([]);
+        expect(
+          screen.getByRole('textbox', { name: 'Ask or post to the club' }),
+        ).toBeInTheDocument();
       }
     });
   });

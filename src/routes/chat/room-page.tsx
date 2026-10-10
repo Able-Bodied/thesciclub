@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
@@ -8,7 +8,9 @@ import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
 import { ROOM_SORTS, type RoomCategory, type RoomSort } from '@/lib/chat/types';
+import { ChatBreadcrumb } from '@/routes/chat/breadcrumb';
 import { MuteButton } from '@/routes/chat/mute-button';
+import { QuickAsk } from '@/routes/chat/quick-ask';
 import { roomInitial } from '@/routes/chat/room-card';
 import { TopicRow } from '@/routes/chat/topic-row';
 
@@ -49,6 +51,8 @@ const SORT_LABELS: Record<RoomSort, string> = {
 };
 
 const CATEGORY_ICON: Record<RoomCategory, string> = {
+  General: 'text-emphasis',
+  Other: 'text-emphasis',
   Body: 'text-room-body',
   Mind: 'text-room-mind',
   Life: 'text-room-life',
@@ -61,6 +65,8 @@ export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
+  // Home's pill, when the room was opened from a card's room name there.
+  const location = useLocation();
   const { topics, loading: topicsLoading, error, reload } = useRoomTopics(roomId);
   const { stats, reload: reloadStats } = useRoomStats();
 
@@ -124,7 +130,7 @@ export default function RoomPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-3">
         <div className="mx-auto w-full max-w-[720px]">
-          <BackLink to="/chat" label="Chat" />
+          <ChatBreadcrumb state={location.state as unknown} />
           <div className="mt-1 flex items-start gap-[11px]">
             <span
               aria-hidden="true"
@@ -197,6 +203,10 @@ export default function RoomPage() {
 
       <div className="flex-1 overflow-y-auto px-4 pt-2.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[720px]">
+          {/* At the top, where it is seen first, rather than after every
+              topic (the owner, 2026-10-09): typed into and posted from here,
+              with "Add details or a photo" for the full form. */}
+          {canPost ? <QuickAsk rooms={rooms} fixedRoom={room} className="mb-2.5" /> : null}
           {topicsLoading ? (
             <p className="py-10 text-center text-[0.875rem] text-grey">Loading the topics…</p>
           ) : error ? (
@@ -218,15 +228,6 @@ export default function RoomPage() {
           ) : (
             sorted.map((topic) => <TopicRow key={topic.id} topic={topic} authors={authors} />)
           )}
-
-          {canPost ? (
-            <Link
-              to={`/chat/rooms/${room.id}/new`}
-              className="mt-1 block w-full rounded-[12px] border-[1.6px] border-emphasis px-4 py-3 text-center font-bold font-head text-[0.9375rem] text-emphasis"
-            >
-              + New topic
-            </Link>
-          ) : null}
         </div>
       </div>
     </div>

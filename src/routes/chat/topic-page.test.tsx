@@ -33,6 +33,7 @@ const db = vi.hoisted(() => ({
   likesAskedFor: [] as string[][],
   liked: [] as string[],
   likeFailure: null as { postId: string; message: string } | null,
+  movedTo: null as string | null,
 }));
 
 // Likes are a read and a write of the club; the hook has its own test. The
@@ -107,6 +108,7 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     loading: false,
     error: null,
     reload: () => undefined,
+    movedTo: db.movedTo,
   }),
   deleteTopic: (id: string) => {
     if (db.deleteFails) return Promise.resolve({ ok: false as const, error: db.deleteFails });
@@ -245,6 +247,7 @@ beforeEach(() => {
   db.likesAskedFor = [];
   db.liked = [];
   db.likeFailure = null;
+  db.movedTo = null;
 });
 
 // A reply or a like notification links to ?post=<id> (20261006000000).
@@ -262,7 +265,10 @@ describe('opening on the post a notification was about', () => {
     await waitFor(() => {
       expect(target).toHaveFocus();
     });
-    expect(target).toHaveClass('message-flash');
+    // A frame later: off and on, so a second press lights it again.
+    await waitFor(() => {
+      expect(target).toHaveClass('message-flash');
+    });
     expect(document.getElementById('post-1')).not.toHaveClass('message-flash');
     expect(scrolled).toContainEqual(['post-2', { block: 'center' }]);
     Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
@@ -544,8 +550,10 @@ describe('a topic', () => {
       const disclosure = screen.getByText('Earlier versions');
       expect(disclosure.closest('details')).not.toHaveAttribute('open');
       await userEvent.click(disclosure);
-      expect(disclosure.closest('details')).toHaveAttribute('open');
-      const items = screen.getAllByRole('listitem');
+      const details = disclosure.closest('details');
+      expect(details).toHaveAttribute('open');
+      if (!(details instanceof HTMLElement)) throw new Error('the disclosure should be a details');
+      const items = within(details).getAllByRole('listitem');
       expect(items.map((item) => item.textContent)).toEqual([
         expect.stringContaining('First draft.'),
         expect.stringContaining('Second draft.'),
@@ -932,5 +940,118 @@ describe('reporting a post', () => {
     // Not a disabled button: a disabled control reads out as one and invites a
     // second try.
     expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
+  });
+});
+
+describe('a topic moved to another room', () => {
+  it('follows it there, keeping the post the link was about', async () => {
+    db.topic = null;
+    db.movedTo = 'general';
+    render(
+      <MemoryRouter initialEntries={['/chat/rooms/bowel/topics/t?post=2']}>
+        <Routes>
+          <Route path="/chat/rooms/bowel/topics/:topicId" element={<TopicPage />} />
+          <Route path="/chat/rooms/general/topics/:topicId" element={<p>In General</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByText('In General')).toBeInTheDocument();
+  });
+
+  it('offers moving to whoever started it', () => {
+    const current = db.topic;
+    if (!current) throw new Error('the fixture should have a topic');
+    db.topic = { ...current, authorId: 'me' };
+    renderTopic();
+    expect(screen.getByRole('button', { name: 'Move to another room' })).toBeInTheDocument();
+  });
+
+  it('offers moving to an administrator', () => {
+    db.isAdmin = true;
+    renderTopic();
+    expect(screen.getByRole('button', { name: 'Move to another room' })).toBeInTheDocument();
+  });
+
+  it('offers it to nobody else', () => {
+    renderTopic();
+    expect(screen.queryByRole('button', { name: 'Move to another room' })).toBeNull();
+  });
+});
+
+describe('a question asked with no details', () => {
+  it('says the question once, as the title, not again as the first post', () => {
+    db.posts = [post({ id: '1', body: 'Travelling with a bowel programme' })];
+    renderTopic();
+    expect(screen.getAllByText('Travelling with a bowel programme')).toHaveLength(1);
+    expect(screen.getByText('No answers yet. Yours can be the first.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Travelling with a bowel programme' }),
+    ).toBeInTheDocument();
+  });
+
+  it('still draws a first post that says more', () => {
+    db.posts = [post({ id: '1', body: 'More about it.' })];
+    renderTopic();
+    expect(screen.getByText('More about it.')).toBeInTheDocument();
+  });
+});
+
+describe('the way out of a topic', () => {
+  it('offers Home, every room, and this room’s other topics', () => {
+    renderTopic();
+    const crumbs = within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getAllByRole(
+      'link',
+    );
+    expect(crumbs.map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['Home', '/home'],
+      ['Rooms', '/chat?segment=rooms'],
+      ['Bowel management', '/chat/rooms/bowel'],
+    ]);
+  });
+
+  it('goes back to the Home pill it was opened from', () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/chat/rooms/bowel/topics/t', state: { from: 'home', segment: 'topics' } },
+        ]}
+      >
+        <Routes>
+          <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
+      'href',
+      '/home?segment=topics',
+    );
+  });
+});
+
+describe('the header’s controls', () => {
+  // Mute is stubbed in this file (useMute answers nothing), so the row is
+  // checked with the two that draw.
+  it('sit in one evenly spaced row, with no margins of their own', () => {
+    db.isAdmin = true;
+    renderTopic();
+    const move = screen.getByRole('button', { name: 'Move to another room' });
+    const remove = screen.getByRole('button', { name: 'Delete topic' });
+    expect(move.parentElement).toBe(remove.parentElement);
+    expect(move.parentElement).toHaveClass('flex', 'gap-2');
+    expect(move.className).not.toMatch(/\bm[trl]?-/);
+    expect(remove.className).not.toMatch(/\bm[trl]?-/);
+  });
+});
+
+describe('a question with no details, answered', () => {
+  it('counts the answers from 1, and does not repeat the asker over nothing', () => {
+    db.posts = [
+      post({ id: '1', body: 'Travelling with a bowel programme' }),
+      post({ id: '2', authorId: 'jan', body: 'First answer', createdAt: '2026-09-02T10:00:00Z' }),
+    ];
+    renderTopic();
+    expect(screen.getByText('1/1')).toBeInTheDocument();
+    expect(screen.queryByText('2/2')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
   });
 });

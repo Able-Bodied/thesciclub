@@ -9,6 +9,7 @@ import { makePost, makeRoom } from '@/test/factory';
  */
 
 const summary = (o: Partial<HomeTopicSummary> & { id: string }): HomeTopicSummary => ({
+  isQuestion: false,
   roomId: 'bowel',
   title: 'A question',
   authorId: 'a',

@@ -6,6 +6,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
+import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { backToHome } from '@/routes/home/back';
 
 /**
@@ -64,8 +65,14 @@ export default function NewTopicPage() {
   const home = fromHome(location.state);
   const sharing = home?.kind === 'share';
   const { rooms, loading } = useChatRooms();
-  const [title, setTitle] = useState('');
+  // Carried from the quick box on Home or a room ("Add details or a photo"),
+  // so nothing typed there is typed twice.
+  const carried = carriedDraft(location.state);
+  const [title, setTitle] = useState(carried.draft);
   const [body, setBody] = useState('');
+  // Asked, not guessed (the owner, 2026-10-09). Off in a room unless the quick
+  // box said otherwise: much of what starts there is not a question.
+  const [isQuestion, setIsQuestion] = useState(carried.question);
   const [files, setFiles] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -108,7 +115,15 @@ export default function NewTopicPage() {
         if (!up.ok) return up;
         paths = up.value;
       }
-      const result = await createTopic(roomId, title.trim(), body.trim(), paths);
+      const result = await createTopic(
+        roomId,
+        title.trim(),
+        // The first post is optional: with none, it repeats the title, which
+        // the topic page draws once.
+        body.trim() || (paths.length > 0 ? '' : title.trim()),
+        paths,
+        !sharing && isQuestion,
+      );
       if (!result.ok) void deleteAttachments(paths);
       return result;
     })()
@@ -205,7 +220,8 @@ export default function NewTopicPage() {
           htmlFor="topic-body"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          The first post
+          The first post{' '}
+          {sharing ? null : <span className="font-normal text-grey">(optional)</span>}
         </label>
         {sharing ? (
           <p id="topic-body-hint" className="mt-0.5 text-[0.71875rem] text-grey">
@@ -224,6 +240,8 @@ export default function NewTopicPage() {
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
           className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
         />
+
+        {sharing ? null : <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />}
 
         {sharing ? null : photos}
 
@@ -265,9 +283,10 @@ function fromHome(
 /**
  * Why Post is not ready yet, or null when it is.
  *
- * Asking wants a title and words. Sharing wants a title and either words or a
- * photograph, which is the database's own rule for a post. Pure, and exported
- * for its test.
+ * Asking wants a title; its first post is optional and repeats the title
+ * when left empty. Sharing wants a title and either words or a photograph,
+ * which is the database's own rule for a post. Pure, and exported for its
+ * test.
  */
 export function topicProblem(
   title: string,
@@ -280,6 +299,17 @@ export function topicProblem(
     if (body.trim().length === 0 && photographs === 0) return 'Add a photograph, or some words.';
     return null;
   }
-  if (title.trim().length === 0 || body.trim().length === 0) return 'A title and a first post.';
+  // The first post is optional since 2026-10-09: a title alone is a topic.
+  if (title.trim().length === 0) return 'A title.';
   return null;
+}
+
+/** What the quick box handed over, or nothing. Router state is not trusted. */
+function carriedDraft(state: unknown): { draft: string; question: boolean } {
+  if (typeof state !== 'object' || state === null) return { draft: '', question: false };
+  const { draft, question } = state as { draft?: unknown; question?: unknown };
+  return {
+    draft: typeof draft === 'string' ? draft.slice(0, 140) : '',
+    question: question === true,
+  };
 }

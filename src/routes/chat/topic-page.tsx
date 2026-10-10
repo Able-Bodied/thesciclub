@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
@@ -25,7 +25,9 @@ import type { ChatPost } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { useHoldScroll } from '@/lib/hold-scroll';
 import { backFromTopic } from '@/routes/chat/back';
+import { ChatBreadcrumb } from '@/routes/chat/breadcrumb';
 import { Composer } from '@/routes/chat/composer';
+import { MoveTopic } from '@/routes/chat/move-topic';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
 import { ReportSheet } from '@/routes/chat/report-sheet';
@@ -98,7 +100,10 @@ export default function TopicPage() {
   const { roomId, topicId } = useParams<{ roomId: string; topicId: string }>();
   const account = useAccount();
   const { rooms, loading: roomsLoading } = useChatRooms();
-  const { topic, posts, lastReadAt, loading, error, reload } = useTopicPosts(roomId, topicId);
+  const { topic, posts, lastReadAt, loading, error, reload, movedTo } = useTopicPosts(
+    roomId,
+    topicId,
+  );
   // What the reader sees and counts: removed posts are left out, and the
   // rest are filed under the post they answer. See the header.
   const threads = useMemo(
@@ -172,23 +177,30 @@ export default function TopicPage() {
   const [searchParams] = useSearchParams();
   const wanted = searchParams.get('post');
   const [flashId, setFlashId] = useState<string | null>(null);
-  const scrolled = useRef(false);
+  // Which ?post= the page last opened on; undefined before the first. A
+  // second notification pressed while the topic is open names another post.
+  const scrolledFor = useRef<string | null | undefined>(undefined);
   const scroller = useRef<HTMLDivElement | null>(null);
   const list = useRef<HTMLDivElement | null>(null);
   const drawn = !loading && !roomsLoading && topic !== null;
   const place = useHoldScroll(scroller, list, drawn);
   useEffect(() => {
-    if (!drawn || scrolled.current || threads.length === 0) return;
-    scrolled.current = true;
+    if (!drawn || threads.length === 0 || scrolledFor.current === wanted) return;
+    const first = scrolledFor.current === undefined;
+    scrolledFor.current = wanted;
     const target = wanted ? document.getElementById(`post-${wanted}`) : null;
     if (target) {
       place.hold(() => {
         target.scrollIntoView({ block: 'center' });
       });
       target.focus({ preventScroll: true });
-      setFlashId(wanted);
+      setFlashId(null);
+      requestAnimationFrame(() => {
+        setFlashId(wanted);
+      });
       return;
     }
+    if (!first) return;
     const index = firstUnreadThread(threads, lastReadAt);
     if (index === 0) return;
     const element = list.current?.children.item(index);
@@ -268,6 +280,18 @@ export default function TopicPage() {
     );
   }
 
+  // Moved to another room since this address was made: follow it there,
+  // keeping ?post= and the way back.
+  if (movedTo && topicId && movedTo !== roomId) {
+    return (
+      <Navigate
+        replace
+        to={`/chat/rooms/${movedTo}/topics/${topicId}${location.search}`}
+        state={location.state as unknown}
+      />
+    );
+  }
+
   if (error || !topic) {
     return (
       <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6">
@@ -285,6 +309,7 @@ export default function TopicPage() {
   }
 
   const starter = topic.authorId ? authors.get(topic.authorId) : null;
+  const topicTitle = topic.title.trim();
   const counts = topicCounts(topic.replyCount, topic.viewCount);
   const nameOf = (post: ChatPost) =>
     (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a deleted member';
@@ -337,16 +362,27 @@ export default function TopicPage() {
         },
   });
 
+  // A question asked with no details: its first post only repeats the title,
+  // so it is drawn as the question's row of actions rather than as post 1,
+  // and the answers are counted from 1.
+  const opening = threads[0]?.post;
+  const questionOnly = opening?.attachments.length === 0 && opening.body.trim() === topicTitle;
+  const skip = questionOnly ? 1 : 0;
+
   function renderThread(thread: PostThread, depth: number, index?: number): ReactNode {
+    const onlyTitle = questionOnly && depth === 0 && index === 0;
     return (
       <Post
         key={thread.post.id}
         {...postProps(thread.post)}
-        {...(index === undefined ? {} : { number: index + 1, total: threads.length })}
+        {...(index === undefined || onlyTitle
+          ? {}
+          : { number: index + 1 - skip, total: threads.length - skip })}
         nested={depth > 0}
         depth={depth}
         replies={replyCount(thread)}
         flash={flashId === thread.post.id}
+        hideBody={onlyTitle}
       >
         {thread.replies.map((reply) => renderThread(reply, depth + 1))}
       </Post>
@@ -357,7 +393,7 @@ export default function TopicPage() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-3 pb-3">
         <div className="mx-auto w-full max-w-[720px]">
-          <BackLink to={back.to} label={back.label} />
+          <ChatBreadcrumb state={location.state as unknown} room={room} />
           <h1 className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3]">
             {topic.title}
           </h1>
@@ -366,15 +402,6 @@ export default function TopicPage() {
             {starter ? starter.displayName : topic.authorId ? '…' : 'a deleted member'} on{' '}
             {chatTimeLong(topic.createdAt)}
           </p>
-          {/* Only the member who started a topic is notified of its replies,
-              so only they are offered a way to stop that. */}
-          {topic.authorId !== null && topic.authorId === account.userId ? (
-            <MuteButton
-              target={{ kind: 'topic', id: topic.id }}
-              what="replies to this topic"
-              className="mt-2"
-            />
-          ) : null}
           {/* An administrator seeding a room reaches this screen with a
               working composer and no other sign that nobody can read what
               they are writing. The room page says the same thing; forgetting
@@ -385,17 +412,45 @@ export default function TopicPage() {
               This room is closed. No member can see this topic yet.
             </p>
           ) : null}
-          {account.isAdmin ? (
-            <button
-              type="button"
-              onClick={removeTopic}
-              disabled={deleting}
-              data-target="small"
-              className="mt-2 rounded-full bg-destructive/10 px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-50"
-            >
-              {deleting ? 'Deleting…' : 'Delete topic'}
-            </button>
-          ) : null}
+          {/* One row, evenly spaced and the same height: Mute, Move, Delete.
+              Each used to carry its own margin, so they sat at different
+              heights and two of them touched. */}
+          <div className="flex flex-wrap items-start gap-2 empty:hidden [&:not(:empty)]:mt-2.5">
+            {/* Only the member who started a topic is notified of its
+                replies, so only they are offered a way to stop that. */}
+            {topic.authorId !== null && topic.authorId === account.userId ? (
+              <MuteButton target={{ kind: 'topic', id: topic.id }} what="replies to this topic" />
+            ) : null}
+            {/* Filing it where it belongs, after it was asked: an
+                administrator, or whoever started it (20261010010000). */}
+            {roomId &&
+            (account.isAdmin || (topic.authorId !== null && topic.authorId === account.userId)) ? (
+              <MoveTopic
+                topicId={topic.id}
+                roomId={roomId}
+                rooms={rooms}
+                isAdmin={account.isAdmin}
+                onMoved={(to) => {
+                  void navigate(`/chat/rooms/${to}/topics/${topic.id}`, {
+                    replace: true,
+                    state: location.state as unknown,
+                  });
+                }}
+              />
+            ) : null}
+            {account.isAdmin ? (
+              <button
+                type="button"
+                onClick={removeTopic}
+                disabled={deleting}
+                data-target="small"
+                // A transparent border, so it is exactly Mute's height.
+                className="rounded-full border border-transparent bg-destructive/10 px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-destructive leading-[1.3] transition-colors hover:bg-destructive/20 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting…' : 'Delete topic'}
+              </button>
+            ) : null}
+          </div>
           {deleteFailure ? (
             <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
               {deleteFailure}
@@ -415,6 +470,13 @@ export default function TopicPage() {
             </p>
           ) : null}
           {threads.map((thread, index) => renderThread(thread, 0, index))}
+          {/* The question's row alone reads as unfinished; say what it is
+              waiting for. */}
+          {questionOnly && threads.length === 1 && (threads[0]?.replies.length ?? 0) === 0 ? (
+            <p className="py-6 text-center text-[0.875rem] text-grey">
+              No answers yet. Yours can be the first.
+            </p>
+          ) : null}
         </div>
       </div>
 

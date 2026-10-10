@@ -56,6 +56,9 @@ import { SmallButton } from '@/routes/admin/controls';
  */
 
 const CATEGORY_DOT: Record<RoomCategory, string> = {
+  // No colour of its own: General is about nothing in particular.
+  General: 'bg-emphasis',
+  Other: 'bg-emphasis',
   Body: 'bg-room-body',
   Mind: 'bg-room-mind',
   Life: 'bg-room-life',

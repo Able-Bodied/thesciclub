@@ -37,6 +37,8 @@ export interface HomeTopicSummary {
   lastPostAt: string;
   /** Standing replies only. A removed one stops counting (20260927030000). */
   replyCount: number;
+  /** Asked as a question (20261010010000), and drawn larger on Home. */
+  isQuestion: boolean;
 }
 
 /** One topic, with what a card needs to draw it. */

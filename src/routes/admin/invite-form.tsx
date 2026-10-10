@@ -117,27 +117,32 @@ export function InviteForm({ onCreated }: { onCreated: () => void }) {
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2.5">
-        <div className="min-w-[200px] flex-1">
-          <label htmlFor="invite-claim" className="block font-bold text-[0.75rem] text-ink">
-            Is this someone already in the directory?
-          </label>
-          <select
-            id="invite-claim"
-            value={claimMemberId}
-            onChange={(e) => {
-              setClaimMemberId(e.target.value);
-            }}
-            className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
-          >
-            <option value="">No — a new member</option>
-            {claimable.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.displayName}
-                {m.city ? ` — ${m.city}` : ''}
-              </option>
-            ))}
-          </select>
-        </div>
+        {/* Only while there is somebody to claim: the seeded directory was
+            removed on 2026-10-10 (20261010020000), and a question with one
+            answer is not a question. */}
+        {claimable.length > 0 ? (
+          <div className="min-w-[200px] flex-1">
+            <label htmlFor="invite-claim" className="block font-bold text-[0.75rem] text-ink">
+              Is this someone already in the directory?
+            </label>
+            <select
+              id="invite-claim"
+              value={claimMemberId}
+              onChange={(e) => {
+                setClaimMemberId(e.target.value);
+              }}
+              className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis"
+            >
+              <option value="">No — a new member</option>
+              {claimable.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.displayName}
+                  {m.city ? ` — ${m.city}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
 
         <div className="min-w-[160px] flex-1">
           <label htmlFor="invite-note" className="block font-bold text-[0.75rem] text-ink">

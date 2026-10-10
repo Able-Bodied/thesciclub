@@ -1,6 +1,7 @@
 import { ChevronRight, LogOut } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { InstallSettings } from '@/components/install-nudge';
 import { type PageTab, PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { signOut, useAccount } from '@/lib/account';
 import { describeThrown } from '@/lib/describe-error';
@@ -372,6 +373,7 @@ export default function MePage() {
                 isMentor={member?.type === 'mentor'}
                 isAdmin={isAdmin}
               />
+              <InstallSettings />
             </div>
           </TabPanel>
         ) : null}

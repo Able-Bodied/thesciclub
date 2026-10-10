@@ -16,9 +16,21 @@
  * headings sized for twelve rooms the club wrote itself were a short list to
  * pick from for a room about grief, about parenting from a chair, or about
  * which airports have a working lift. What each is for is in
- * 20260918180000's header.
+ * 20260918180000's header. General (2026-10-09, 20261010010000) is first: a
+ * room about nothing in particular, and where a question asked from Home
+ * with no room chosen goes. Other (20261010030000) is last: a heading of its
+ * own for what fits no room at all.
  */
-export const ROOM_CATEGORIES = ['Body', 'Mind', 'Life', 'Family', 'Kit', 'Places'] as const;
+export const ROOM_CATEGORIES = [
+  'General',
+  'Body',
+  'Mind',
+  'Life',
+  'Family',
+  'Kit',
+  'Places',
+  'Other',
+] as const;
 export type RoomCategory = (typeof ROOM_CATEGORIES)[number];
 
 export interface ChatRoom {

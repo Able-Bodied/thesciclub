@@ -44,6 +44,8 @@ import { roomsForTopics } from '@/routes/chat/room-map';
 
 /** A room's glyph colour by heading. Exported for Home's cards rather than copied a fourth time. */
 export const ROOM_ICON_COLOUR: Record<RoomCategory, string> = {
+  General: 'text-emphasis',
+  Other: 'text-emphasis',
   Body: 'text-room-body',
   Mind: 'text-room-mind',
   Life: 'text-room-life',

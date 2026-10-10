@@ -6,6 +6,7 @@ import type { HomeTopic } from '@/lib/home/types';
 import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+import { AnswerBox } from '@/routes/home/answer-box';
 
 /**
  * A topic on Home, from the mock's `qCard`.
@@ -52,6 +53,7 @@ export function TopicCard({
   replier,
   linkState,
   likes,
+  answerAs,
 }: {
   topic: HomeTopic;
   /** Null for a former member, and while the name is still loading. */
@@ -61,21 +63,44 @@ export function TopicCard({
   linkState: unknown;
   /** Who likes the opening post, or nothing while the likes load. */
   likes?: CardLikes | undefined;
+  /** The member reading, who can answer a question from here. */
+  answerAs?: string | null | undefined;
 }) {
   const reply = topic.firstReply;
   const opening = topic.opening;
 
   return (
     <article className="relative rounded-[17px] border border-line bg-paper p-3.5">
-      <RoomTag room={topic.room} />
+      <RoomTag room={topic.room} linkState={linkState} />
 
-      <Link
-        to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
-        state={linkState}
-        className="mt-2 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] after:absolute after:inset-0 after:rounded-[17px]"
-      >
-        {topic.title}
-      </Link>
+      {topic.isQuestion ? (
+        /* A question asked as one, drawn the way the owner pointed at
+           (Facebook's coloured posts): large, centred, on the header band's
+           colour, so it reads as something to answer rather than a headline
+           to scroll past. White on the plate in both appearances; the text
+           size is the member's, never shrunk to fit. */
+        <Link
+          to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
+          state={linkState}
+          // The outline is for dark, where the band is close to the card.
+          className="mt-2.5 block rounded-[14px] bg-gradient-to-br from-plate to-plate-hover px-4 pt-3.5 pb-6 text-center text-white ring-1 ring-plate-edge/50 ring-inset after:absolute after:inset-0 after:rounded-[17px]"
+        >
+          <span className="block text-left font-bold text-[0.6875rem] text-gold-hi uppercase tracking-[0.12em]">
+            Question
+          </span>
+          <span className="mt-3 block font-extrabold font-head text-[1.375rem] leading-[1.3] [overflow-wrap:anywhere]">
+            {topic.title}
+          </span>
+        </Link>
+      ) : (
+        <Link
+          to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
+          state={linkState}
+          className="mt-2 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] after:absolute after:inset-0 after:rounded-[17px]"
+        >
+          {topic.title}
+        </Link>
+      )}
 
       <p className="mt-[7px] text-[0.8125rem] text-ink2 leading-[1.42]">
         {byline(topic.authorId, starter)}
@@ -136,6 +161,16 @@ export function TopicCard({
             ? `${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'}`
             : 'No replies yet.'}
         </p>
+        {/* A question can be answered from Home, in the card. */}
+        {topic.isQuestion && answerAs ? (
+          <AnswerBox
+            topicId={topic.id}
+            roomId={topic.roomId}
+            title={topic.title}
+            answerAs={answerAs}
+            linkState={linkState}
+          />
+        ) : null}
       </div>
       {opening && likes?.failure ? (
         <p role="alert" className="mt-1 text-[0.78125rem] text-destructive leading-[1.45]">
@@ -173,7 +208,7 @@ export function byline(authorId: string | null, author: ChatAuthor | null): stri
  * A room a member started has no glyph, and gets the first letter of its name
  * in the same place, as its card in Chat does.
  */
-export function RoomTag({ room }: { room: ChatRoom }) {
+export function RoomTag({ room, linkState }: { room: ChatRoom; linkState?: unknown }) {
   return (
     <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-emphasis uppercase tracking-[0.07em]">
       <span
@@ -182,7 +217,19 @@ export function RoomTag({ room }: { room: ChatRoom }) {
       >
         {room.icon ?? room.name.charAt(0)}
       </span>
-      <span className="min-w-0">{room.name}</span>
+      {/* To the room, and its other topics (the owner, 2026-10-09).
+          The title's link is stretched over the whole card by an ::after
+          that comes later in the page, so it is drawn on top of anything
+          earlier with no z-index: `relative` alone left the name under it,
+          and a press opened the topic. z-[1] puts the name above it. */}
+      <Link
+        to={`/chat/rooms/${room.id}`}
+        state={linkState}
+        data-target="small"
+        className="relative z-[1] min-w-0 rounded py-1 underline-offset-2 hover:underline"
+      >
+        {room.name}
+      </Link>
     </p>
   );
 }

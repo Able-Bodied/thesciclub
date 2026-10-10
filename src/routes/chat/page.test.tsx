@@ -455,3 +455,15 @@ describe('the chat screen', () => {
     expect(screen.getByText('relation "public.chat_rooms" does not exist')).toBeInTheDocument();
   });
 });
+
+describe('starting something from Chat', () => {
+  it('offers a new message to one person, always, at the top', () => {
+    renderPage();
+    expect(screen.getByRole('link', { name: 'New message' })).toHaveAttribute('href', '/chat/new');
+  });
+
+  it('has the ask box, as Home does', () => {
+    renderPage();
+    expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
+  });
+});

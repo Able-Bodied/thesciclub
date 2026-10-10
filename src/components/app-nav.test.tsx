@@ -2,7 +2,13 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { AppNav, litTab } from '@/components/app-nav';
+import type * as NotificationsModule from '@/lib/notifications';
 
+// The bell reads its number from the database; stubbed so this test reads nothing.
+vi.mock('@/lib/notifications', async (importOriginal) => ({
+  ...(await importOriginal<typeof NotificationsModule>()),
+  useUnseenNotifications: () => ({ count: 0, refresh: () => undefined }),
+}));
 vi.mock('@/lib/chat/unread', () => ({ useUnreadThreads: () => ({ count: 0, reload: vi.fn() }) }));
 vi.mock('@/lib/chat/realtime', () => ({ useRealtimeRows: vi.fn() }));
 

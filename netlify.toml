@@ -16,6 +16,16 @@
 # browser. Without this, /peers and /join 404 on a refresh or a shared link —
 # they work when you navigate to them and break when you reload, which is the
 # confusing half of the bug.
+# Android's "Share to The SCI Club" posts here. The service worker answers it
+# (src/sw.ts); this is only for a share that reaches the server because the
+# worker was not running yet. A 302, so the browser follows with a GET and
+# /share says nothing was kept, rather than a 404.
+[[redirects]]
+  from = "/share-target"
+  to = "/share"
+  status = 302
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

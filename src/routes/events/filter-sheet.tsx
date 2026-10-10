@@ -31,6 +31,13 @@ import {
  * the same problem here.
  */
 
+const RSVP_CHOICES: ['going' | 'interested' | 'been-to' | null, string][] = [
+  [null, 'All events'],
+  ['going', "I'm going"],
+  ['interested', 'Interested'],
+  ['been-to', 'Been to'],
+];
+
 export interface EventFilterSheetProps {
   tags: EventTag[];
   formats: EventFormat[];
@@ -39,6 +46,9 @@ export interface EventFilterSheetProps {
   /** Organization ids the viewer follows. Used for the "Ones you follow" chip. */
   following: ReadonlySet<string>;
   filters: EventFilters;
+  /** The member's own RSVP list, or null for every event. */
+  rsvp: 'going' | 'interested' | 'been-to' | null;
+  onRsvpChange: (next: 'going' | 'interested' | 'been-to' | null) => void;
   matchCount: number;
   activeCount: number;
   onChange: (next: EventFilters) => void;
@@ -53,6 +63,8 @@ export function EventFilterSheet({
   organizations,
   following,
   filters,
+  rsvp,
+  onRsvpChange,
   matchCount,
   activeCount,
   onChange,
@@ -83,18 +95,37 @@ export function EventFilterSheet({
       {/* When is first and full width: it is the filter that changes the answer
           most, and a single choice rather than a set — "this week and past
           events" is not a window anybody means. */}
-      <FilterGroup title="When">
-        {DATE_WINDOWS.map((when: DateWindow) => (
+      {/* First: whose events, before which ones. One choice. These were
+          pills on the page until 2026-10-10. */}
+      <FilterGroup title="Your RSVP">
+        {RSVP_CHOICES.map(([value, label]) => (
           <FilterChip
-            key={when}
-            label={DATE_WINDOW_LABELS[when]}
-            on={filters.when === when}
+            key={label}
+            label={label}
+            on={rsvp === value}
             onClick={() => {
-              onChange({ ...filters, when });
+              onRsvpChange(value);
             }}
           />
         ))}
       </FilterGroup>
+
+      {/* Not while an RSVP list is chosen: those lists are every date the
+          member answered for (Been to, every past one), whatever the window. */}
+      {rsvp ? null : (
+        <FilterGroup title="When">
+          {DATE_WINDOWS.map((when: DateWindow) => (
+            <FilterChip
+              key={when}
+              label={DATE_WINDOW_LABELS[when]}
+              on={filters.when === when}
+              onClick={() => {
+                onChange({ ...filters, when });
+              }}
+            />
+          ))}
+        </FilterGroup>
+      )}
 
       {/* Columns rather than a stack: most groups hold one to three chips, and
           stacked they made a tall sheet out of mostly empty space. */}

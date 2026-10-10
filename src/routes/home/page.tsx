@@ -1,6 +1,7 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { NotificationBell } from '@/components/notification-bell';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -14,6 +15,7 @@ import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
+import { QuickAsk } from '@/routes/chat/quick-ask';
 import { EventCard } from '@/routes/events/event-card';
 import { ComposeCard } from '@/routes/home/compose-card';
 import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
@@ -252,6 +254,7 @@ export default function HomePage() {
             }
             linkState={linkState}
             likes={likesFor(item.topic.opening)}
+            answerAs={memberId}
           />
         );
       case 'photo':
@@ -297,20 +300,24 @@ export default function HomePage() {
           {/* Events' button, the same size and the same dot. There is no row of
               chosen chips under the pills (the mock has one): Events and Peers
               draw none, and the dot and the name say a filter is on. */}
-          <button
-            type="button"
-            onClick={() => {
-              setSheetOpen(true);
-            }}
-            aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-            data-target="small"
-            className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-          >
-            <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
-            {filterCount ? (
-              <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-            ) : null}
-          </button>
+          <span className="flex items-center gap-2">
+            {/* A phone's way to the list; a desktop has it in the top bar. */}
+            <NotificationBell variant="round" className="md:hidden" />
+            <button
+              type="button"
+              onClick={() => {
+                setSheetOpen(true);
+              }}
+              aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
+              data-target="small"
+              className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
+            >
+              <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
+              {filterCount ? (
+                <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
+              ) : null}
+            </button>
+          </span>
         </div>
         <SegmentPills
           segments={SEGMENTS}
@@ -322,9 +329,15 @@ export default function HomePage() {
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
-          {/* On every pill, and before anything has loaded: it reads nothing,
-              and asking should not wait for the list. */}
-          <ComposeCard segment={segment} linkState={linkState} />
+          {/* On every pill, and before anything has loaded: asking should
+              not wait for the list. Typed into here and posted from here
+              (the owner, 2026-10-09: the least friction there can be); the
+              Photos pill keeps its card to the photograph picker. */}
+          {segment === 'photos' ? (
+            <ComposeCard segment={segment} linkState={linkState} />
+          ) : (
+            <QuickAsk rooms={rooms.rooms} linkState={linkState} className="mb-[11px]" />
+          )}
           {writeError ? <Problem sentences={[writeError]} /> : null}
 
           {!settled ? (

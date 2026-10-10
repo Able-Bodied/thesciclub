@@ -260,6 +260,11 @@ export interface TopicPostsState {
   loading: boolean;
   error: string | null;
   reload: () => void;
+  /**
+   * The room the topic is in now, when the address names another: it was
+   * moved (chat_move_topic) after the link was made. Null otherwise.
+   */
+  movedTo: string | null;
 }
 
 /**
@@ -289,6 +294,7 @@ export function useTopicPosts(
   const [lastReadAt, setLastReadAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [movedTo, setMovedTo] = useState<string | null>(null);
   const inFlight = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
@@ -337,6 +343,18 @@ export function useTopicPosts(
       }
 
       const found = (topics.data ?? []).find((row) => row.id === topicId) ?? null;
+      if (!found) {
+        // Not in this room: moved since the address was made, or gone.
+        const where = (await supabase
+          .rpc('chat_topic_room', { topic: topicId })
+          .abortSignal(controller.signal)) as Result<string | null>;
+        if (aborted()) return;
+        if (where.data && where.data !== roomId) {
+          setMovedTo(where.data);
+          return;
+        }
+      }
+      setMovedTo(null);
       // The counts were read a moment before this visit was recorded, so a
       // first-time reader would be looking at a topic that says "0 views".
       // Marking read below inserts exactly one row when there was none, so
@@ -376,7 +394,7 @@ export function useTopicPosts(
     void load();
   }, [load]);
 
-  return { topic, posts, lastReadAt, loading, error, reload };
+  return { topic, posts, lastReadAt, loading, error, reload, movedTo };
 }
 
 export type ChatWriteResult<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -392,12 +410,16 @@ export async function createTopic(
   title: string,
   body: string,
   attachments: string[] = [],
+  /** Asked as a question, drawn larger on Home (20261010010000). */
+  question = false,
 ): Promise<ChatWriteResult<string>> {
   const { data, error } = (await getSupabase().rpc('chat_create_topic', {
     room: roomId,
     title,
     body,
     attachments,
+    // Only when true, so an ordinary topic is the same call it always was.
+    ...(question ? { question: true } : {}),
   })) as Result<string>;
   if (error) {
     return {
@@ -518,4 +540,22 @@ export async function deleteTopic(topicId: string): Promise<ChatWriteResult<stri
     };
   }
   return { ok: true, value: data ?? [] };
+}
+
+/**
+ * Moves a topic to another room: an administrator, or whoever started it
+ * (chat_move_topic, 20261010010000). The database decides; the page only
+ * offers it to those two.
+ */
+export async function moveTopic(topicId: string, roomId: string): Promise<ChatWriteResult<null>> {
+  try {
+    const { error } = await getSupabase().rpc('chat_move_topic', {
+      topic: topicId,
+      to_room: roomId,
+    });
+    if (error) return { ok: false, error: describeError(error, 'The topic was not moved.') };
+    return { ok: true, value: null };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'The topic was not moved.') };
+  }
 }

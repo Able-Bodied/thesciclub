@@ -31,7 +31,15 @@ import {
   precacheAndRoute,
 } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
-import { pickWindow, readPushPayload, safePath } from './lib/push/payload';
+import {
+  NAVIGATE,
+  PENDING,
+  PENDING_FOR_MS,
+  pickWindow,
+  readPushPayload,
+  safePath,
+} from './lib/push/payload';
+import { SHARE_CACHE, SHARE_MAX_FILES, SHARE_META, shareFileKey } from './lib/share-target';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -48,6 +56,62 @@ cleanupOutdatedCaches();
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/\.[a-z0-9]+$/i] }),
 );
+
+// "Share to The SCI Club" (manifest share_target, Android). The share is a
+// POST the app cannot read, so it is kept in a cache of its own, photographs
+// and all, and the app is opened on /share, which reads it once. A 303, so
+// the browser goes there with a GET and a refresh does not post again.
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'POST' || url.pathname !== '/share-target') return;
+  event.respondWith(
+    (async () => {
+      try {
+        const form = await event.request.formData();
+        const text = (name: string) => {
+          const value = form.get(name);
+          return typeof value === 'string' ? value : '';
+        };
+        const photos = form
+          .getAll('photos')
+          .filter(
+            (value): value is File => value instanceof File && value.type.startsWith('image/'),
+          )
+          .slice(0, SHARE_MAX_FILES);
+        await caches.delete(SHARE_CACHE);
+        const cache = await caches.open(SHARE_CACHE);
+        await Promise.all(
+          photos.map((photo, index) =>
+            cache.put(
+              shareFileKey(index),
+              new Response(photo, {
+                headers: {
+                  'Content-Type': photo.type,
+                  'x-file-name': encodeURIComponent(photo.name),
+                },
+              }),
+            ),
+          ),
+        );
+        await cache.put(
+          SHARE_META,
+          new Response(
+            JSON.stringify({
+              title: text('title'),
+              text: text('text'),
+              url: text('url'),
+              files: photos.length,
+            }),
+            { headers: { 'Content-Type': 'application/json' } },
+          ),
+        );
+      } catch {
+        // Whatever could not be read is simply not there on /share.
+      }
+      return Response.redirect('/share', 303);
+    })(),
+  );
+});
 
 self.addEventListener('push', (event) => {
   // Always a notification, whatever arrived — see the payload file's header.
@@ -66,27 +130,58 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// The last press, for a window that is only starting and asks for it. See
+// PENDING in lib/push/payload.ts.
+let pending: { path: string; at: number } | null = null;
+
+/** Asks a running app to open `path` itself; true if it said it did. */
+function askToOpen(client: Client, path: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel();
+    const timer = setTimeout(() => {
+      resolve(false);
+    }, 1500);
+    channel.port1.onmessage = () => {
+      clearTimeout(timer);
+      resolve(true);
+    };
+    client.postMessage({ type: NAVIGATE, path }, [channel.port2]);
+  });
+}
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const origin = self.location.origin;
   const data = event.notification.data as { url?: unknown } | null;
   const path = safePath(data?.url, origin);
-
+  pending = { path, at: Date.now() };
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const index = pickWindow(windows, path, origin);
       const target = index === null ? undefined : windows[index];
       if (!target) {
+        // A starting app collects `pending` if it does not open at `path`.
         await self.clients.openWindow(path);
         return;
       }
       const focused = await target.focus();
-      // `navigate` only works on a window this worker controls; `clientsClaim`
-      // above makes that every window after the first load. A full navigation
-      // rather than an in-app route change, which is fine for a tap from the
-      // lock screen: the app is being brought forward, not used.
-      if (safePath(focused.url, origin) !== path) await focused.navigate(path);
+      if (await askToOpen(focused, path)) {
+        pending = null;
+        return;
+      }
+      // An app too old to answer, or one still starting.
+      if (safePath(focused.url, origin) !== path) await focused.navigate(path).catch(() => null);
     })(),
   );
+});
+
+self.addEventListener('message', (event) => {
+  const data = event.data as { type?: unknown } | null;
+  if (data?.type !== PENDING || !(event.source instanceof Client)) return;
+  const waiting = pending;
+  pending = null;
+  if (waiting && Date.now() - waiting.at < PENDING_FOR_MS) {
+    event.source.postMessage({ type: NAVIGATE, path: waiting.path });
+  }
 });

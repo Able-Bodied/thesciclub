@@ -136,6 +136,7 @@ export function makeHomeTopic(overrides: Partial<HomeTopic> = {}): HomeTopic {
     createdAt: '2026-09-20T10:00:00Z',
     lastPostAt: '2026-09-20T10:00:00Z',
     replyCount: 0,
+    isQuestion: false,
     room: makeRoom(),
     opening: makePost({ topicId: id }),
     firstReply: null,

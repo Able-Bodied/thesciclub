@@ -36,8 +36,7 @@ const api = vi.hoisted(() => ({
   }[],
   blockCalls: [] as [string, string | null][],
   unblocked: [] as string[],
-  restores: 0,
-  restoredCount: 4,
+  claimable: [] as { id: string; displayName: string; city: string; state: string }[],
   failWith: null as string | null,
   /**
    * Whether admin_add_strike reports the new count.
@@ -74,11 +73,6 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
   fetchBlockedNumbers: () => Promise.resolve(api.blocked),
-  restoreDirectory: () => {
-    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
-    api.restores += 1;
-    return Promise.resolve({ ok: true, restored: api.restoredCount });
-  },
   blockNumber: (phone: string, reason: string | null) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
     api.blockCalls.push([phone, reason]);
@@ -91,8 +85,7 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
   fetchInvitingOrganizations: () =>
     Promise.resolve([{ id: 'org1', name: 'NorCal SCI', shortCode: 'NCS' }]),
-  fetchClaimableProfiles: () =>
-    Promise.resolve([{ id: 'seed1', displayName: 'Bob', city: 'Aptos', state: 'CA' }]),
+  fetchClaimableProfiles: () => Promise.resolve(api.claimable),
   createInvite: (input: unknown) => {
     api.created.push(input);
     return Promise.resolve({ ok: true });
@@ -194,8 +187,7 @@ beforeEach(() => {
   api.blocked = [];
   api.blockCalls = [];
   api.unblocked = [];
-  api.restores = 0;
-  api.restoredCount = 4;
+  api.claimable = [{ id: 'seed1', displayName: 'Bob', city: 'Aptos', state: 'CA' }];
   api.failWith = null;
   api.openReports = 0;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -585,46 +577,37 @@ describe('blocking a number', () => {
   });
 });
 
-describe('restoring the directory', () => {
-  // Every rehearsal of the claim flow retires a seeded profile, so this is
-  // the button that makes the flow rehearsable more than once.
-  it('restores after confirming, and says how many came back', async () => {
-    const user = userEvent.setup();
+describe('with the seeded directory removed (20261010020000)', () => {
+  it('offers no way to put it back', async () => {
+    api.members = [member(), member({ id: 'm2', displayName: 'Todd', isSeed: true })];
     renderAdmin();
-    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
-
-    expect(confirmSpy).toHaveBeenCalled();
-    await waitFor(() => {
-      expect(api.restores).toBe(1);
-    });
-    // A count rather than "done" — the difference between putting four
-    // profiles back and quietly matching nothing is the whole message.
-    expect(await screen.findByText(/4 profiles set back/)).toBeInTheDocument();
+    await screen.findByText('Todd');
+    expect(screen.queryByRole('button', { name: /Restore directory/ })).toBeNull();
   });
 
-  it('counts one profile in the singular', async () => {
-    const user = userEvent.setup();
-    api.restoredCount = 1;
+  it('draws no directory filter, section or count when nobody is seeded', async () => {
     renderAdmin();
-    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
-    expect(await screen.findByText(/1 profile set back/)).toBeInTheDocument();
+    await screen.findByText('Alfred S');
+    expect(screen.queryByRole('button', { name: /^Directory/ })).toBeNull();
+    expect(screen.queryByText('From the directory')).toBeNull();
+    expect(screen.getByRole('banner').textContent).not.toContain('from the directory');
   });
 
-  it('does nothing when the confirmation is declined', async () => {
-    const user = userEvent.setup();
-    confirmSpy.mockReturnValue(false);
+  it('still draws them while a database has seeded rows', async () => {
+    api.members = [member(), member({ id: 'm2', displayName: 'Todd', isSeed: true })];
     renderAdmin();
-    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
-    expect(api.restores).toBe(0);
+    await screen.findByText('Todd');
+    expect(screen.getByRole('button', { name: 'Directory · 1' })).toBeInTheDocument();
+    expect(screen.getByText('From the directory')).toBeInTheDocument();
   });
 
-  it("shows the database's refusal rather than claiming success", async () => {
+  it('asks no "already in the directory" question when there is nobody to claim', async () => {
+    api.claimable = [];
     const user = userEvent.setup();
-    api.failWith = 'Not an administrator';
     renderAdmin();
-    await user.click(await screen.findByRole('button', { name: 'Restore directory' }));
-    expect(await screen.findByText('Not an administrator')).toBeInTheDocument();
-    expect(screen.queryByText(/set back/)).toBeNull();
+    await user.click(await screen.findByRole('tab', { name: 'Invites' }));
+    expect(await screen.findByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Is this someone already in the directory?')).toBeNull();
   });
 });
 

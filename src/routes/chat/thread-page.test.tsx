@@ -175,9 +175,9 @@ const jan: ChatAuthor = {
   hasProfile: true,
 };
 
-function renderThread() {
+function renderThread(path = '/chat/t/th1') {
   return render(
-    <MemoryRouter initialEntries={['/chat/t/th1']}>
+    <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/chat/t/:threadId" element={<ThreadPage />} />
       </Routes>
@@ -740,5 +740,36 @@ describe('read receipts', () => {
     ]);
     renderThread();
     expect(screen.queryByText(/ · Read/)).toBeNull();
+  });
+});
+
+describe('opening on the message a notification was about', () => {
+  it('centres that message and lights it up, rather than opening at the bottom', async () => {
+    const scrolled: string[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) {
+      scrolled.push(this.id);
+    };
+    db.messages = [
+      message({ id: 'm1', body: 'The one the notification was about.' }),
+      message({ id: 'm2', body: 'Said since.' }),
+    ];
+    renderThread('/chat/t/th1?message=m1');
+    const target = document.getElementById('message-m1');
+    await waitFor(() => {
+      expect(target?.querySelector('.message-flash')).not.toBeNull();
+    });
+    expect(scrolled).toContain('message-m1');
+    expect(document.getElementById('message-m2')?.querySelector('.message-flash')).toBeNull();
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
+
+  it('opens at the bottom as before when the message is gone', () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    db.messages = [message({ id: 'm2', body: 'Said since.' })];
+    renderThread('/chat/t/th1?message=gone');
+    expect(scrolled).not.toHaveBeenCalled();
+    expect(document.querySelector('.message-flash')).toBeNull();
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
   });
 });

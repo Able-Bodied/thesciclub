@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Attachments from '@/lib/chat/attachments';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { makeHomeTopic, makePost } from '@/test/factory';
@@ -9,7 +10,8 @@ import { makeHomeTopic, makePost } from '@/test/factory';
 // Signing is a storage call under the reader's token; stubbed, as the grid's
 // own test does.
 const urls = vi.hoisted(() => new Map<string, string>());
-vi.mock('@/lib/chat/attachments', () => ({
+vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
+  ...(await importOriginal<typeof Attachments>()),
   useAttachmentUrls: (paths: readonly string[]) =>
     new Map([...urls].filter(([path]) => paths.includes(path))),
 }));

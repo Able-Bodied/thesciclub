@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
+import { NotificationBell } from '@/components/notification-bell';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { cn } from '@/lib/utils';
@@ -129,6 +130,15 @@ export function AppNav() {
             </Link>
           );
         })}
+        {/* Desktop only, at the far end: on a phone the bell is in Home's
+            header, and a sixth tab would crowd the five. */}
+        <NotificationBell
+          variant="bar"
+          className={cn(
+            'hidden md:ml-auto md:flex',
+            location.pathname === '/notifications' && 'text-emphasis',
+          )}
+        />
       </div>
     </nav>
   );

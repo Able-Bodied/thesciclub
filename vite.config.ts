@@ -33,6 +33,33 @@ export default defineConfig({
         background_color: '#F4F6F9',
         display: 'standalone',
         start_url: '/',
+        // "Share to The SCI Club" in the phone's share menu (2026-10-10).
+        // Android's installed app only: no iPhone browser lets a web app
+        // receive a share. A POST, because photographs come as files; the
+        // service worker keeps them a moment and opens /share (src/sw.ts).
+        share_target: {
+          action: '/share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            title: 'title',
+            text: 'text',
+            url: 'url',
+            files: [
+              {
+                name: 'photos',
+                accept: [
+                  'image/jpeg',
+                  'image/png',
+                  'image/webp',
+                  'image/gif',
+                  'image/heic',
+                  'image/heif',
+                ],
+              },
+            ],
+          },
+        },
         // Two sets since the 2026-09-28 rebrand. The owner's mark is a
         // rounded navy plate with transparent corners, which is right as a
         // plain icon and wrong under a mask: Android fills the corners and

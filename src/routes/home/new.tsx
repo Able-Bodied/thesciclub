@@ -3,54 +3,44 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-do
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
+import { createTopic } from '@/lib/chat/topics';
 import type { ChatRoom } from '@/lib/chat/types';
-import { RoomCategoryLabel } from '@/routes/chat/room-card';
+import { describeThrown } from '@/lib/describe-error';
+import { QuestionSwitch } from '@/routes/chat/question-switch';
+import { SimilarTopics } from '@/routes/chat/similar-topics';
 import { backToHome } from '@/routes/home/back';
 
 /**
- * Asking or sharing from Home: which kind, and which room.
+ * Asking or sharing from Home.
  *
  * ---------------------------------------------------------------------------
- * A question lives in a room, so this only picks one
+ * Asking: write first, the room is optional
  * ---------------------------------------------------------------------------
- * The owner's decision (HANDOFF.md "What Home is", 1 and 2): a question asked from Home is
- * a topic, and a photograph shared from Home is a topic whose first post has
- * one. So there is no form here. This screen asks the two things the mock's
- * compose sheet asked — the kind, and where it goes — and hands over to the
- * New topic screen, which is where a topic is written whoever starts it. The
- * mock's category chips become the open rooms: the room is the category.
+ * The owner, 2026-10-09 (App Feedback, "Asking questions should be easier"):
+ * choosing a room should be optional, and asking should open straight on
+ * somewhere to type. This screen used to be a list of rooms with Continue,
+ * which handed over to the New topic screen; now asking happens here. The
+ * question is the topic's title, the details (optional) its first post, and
+ * the room defaults to General (20261010010000), from where the asker or an
+ * administrator can move it to the right room later.
  *
- * Nothing is chosen to begin with. A default would be one room quietly chosen
- * for somebody, and a topic filed in the wrong room is read by the wrong
- * people and cannot be moved.
- *
- * ---------------------------------------------------------------------------
- * One radio group, under the six headings
- * ---------------------------------------------------------------------------
- * The rooms are grouped as Chat groups them, in `ROOM_CATEGORIES` order. The
- * headings are for reading; the choice is one group of native radios sharing
- * a name, so the arrow keys move through every room and a screen reader says
- * "3 of 9" rather than starting again under each heading. Each radio is named
- * by the room's name alone, with the description as the longer account, so
- * the list of names is quick to go through and the description is there for
- * whoever stops on one.
+ * A question is still a topic in a room (CONTEXT.md), so reports, mutes,
+ * removal and notifications reach it unchanged. With no details, the first
+ * post repeats the question: a post needs words, and the topic page does not
+ * draw the same words twice.
  *
  * ---------------------------------------------------------------------------
- * There is no join step
+ * Sharing: a photograph needs the photo picker
  * ---------------------------------------------------------------------------
- * Until 20260930000000 writing in a room needed a membership row, and this
- * screen joined the room — awaited, so the New topic screen was not reached
- * before the join landed — with a button that said so. The owner took joining
- * out on 2026-09-29 (HANDOFF.md "What Home is", decision 8): any member writes in any open
- * room. So the button is Continue, always, and the only thing it waits for is
- * a room being chosen.
+ * Sharing still hands over to the New topic screen, which has the picker; the
+ * room is chosen the same way, General unless another is picked.
  *
  * ---------------------------------------------------------------------------
- * No open room is an ordinary day
+ * A native select for the room
  * ---------------------------------------------------------------------------
- * Rooms open a few at a time, and a member can start one. So an empty list is
- * a sentence and the link to start a room, not an apology and not a button
- * that goes nowhere.
+ * Grouped under the room headings with optgroups. On a phone it opens the
+ * system's own picker, which is the easiest list there is to move through at
+ * any text size, and it takes one line of the screen until it is wanted.
  */
 
 type Kind = 'ask' | 'share';
@@ -60,19 +50,14 @@ const KINDS: [Kind, string][] = [
   ['share', 'Share something'],
 ];
 
-const WORDS: Record<Kind, { heading: string; line: string }> = {
-  ask: {
-    heading: 'Ask the club',
-    line: 'Goes to every member. Answers come from people who have lived it.',
-  },
-  share: {
-    heading: 'Share a photograph',
-    line: 'A picture and a line about it. Most of what gets shared here is something you did, made or worked out.',
-  },
-};
+/** The room a question goes to when none is chosen. */
+export const GENERAL_ROOM = 'general';
 
 const LINK_CLASS =
   'inline-flex min-h-[2.75rem] items-center font-semibold text-[0.875rem] text-emphasis underline decoration-line underline-offset-2 hover:decoration-emphasis';
+
+const FIELD =
+  'mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-ink outline-none focus:border-emphasis';
 
 export default function HomeNewPage() {
   const navigate = useNavigate();
@@ -82,7 +67,12 @@ export default function HomeNewPage() {
   // In the URL, so a link can open either kind: /home/new?kind=share.
   const [searchParams, setSearchParams] = useSearchParams();
   const kind: Kind = searchParams.get('kind') === 'share' ? 'share' : 'ask';
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const [chosenRoom, setChosenRoom] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
+  const [details, setDetails] = useState('');
+  const [isQuestion, setIsQuestion] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
 
   const back = backToHome(location.state) ?? '/home';
   const { segment } = (location.state ?? {}) as { segment?: unknown };
@@ -90,7 +80,11 @@ export default function HomeNewPage() {
   // An administrator reads closed rooms too. Only a room a member can see is
   // somewhere to ask.
   const open = rooms.rooms.filter((room) => room.openedAt !== null);
-  const chosen = open.find((room) => room.id === roomId) ?? null;
+  // General; or, before it exists, the first room as the select lists them.
+  const fallback =
+    open.find((room) => room.id === GENERAL_ROOM) ?? roomsByCategory(open)[0]?.[1][0] ?? null;
+  const room = open.find((r) => r.id === chosenRoom) ?? fallback;
+  const ready = question.trim().length > 0 && room !== null;
 
   function setKind(next: Kind) {
     // Replace, not push, as Home's pills do; and keep the state, which is the
@@ -101,13 +95,35 @@ export default function HomeNewPage() {
     });
   }
 
-  function proceed(room: ChatRoom) {
-    // The pill on Home this was opened from goes with it, so that the New
-    // topic screen, and the topic after it, come back to it.
-    void navigate(`/chat/rooms/${room.id}/new`, { state: { from: 'home', segment, kind } });
+  function share(target: ChatRoom) {
+    void navigate(`/chat/rooms/${target.id}/new`, { state: { from: 'home', segment, kind } });
   }
 
-  const words = WORDS[kind];
+  function ask() {
+    if (!room || saving || question.trim().length === 0) return;
+    setSaving(true);
+    setFailure(null);
+    const title = question.trim();
+    const target = room;
+    createTopic(target.id, title, details.trim() || title, [], isQuestion)
+      .then((result) => {
+        if (!result.ok) {
+          setFailure(result.error);
+          return;
+        }
+        // Straight to it, with Home as the way back.
+        void navigate(`/chat/rooms/${target.id}/topics/${result.value}`, {
+          replace: true,
+          state: { from: 'home', segment },
+        });
+      })
+      .catch((e: unknown) => {
+        setFailure(describeThrown(e, 'That did not work.'));
+      })
+      .finally(() => {
+        setSaving(false);
+      });
+  }
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6">
@@ -115,10 +131,9 @@ export default function HomeNewPage() {
         <BackLink to={back} label="Home" />
 
         <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
-          {words.heading}
+          {kind === 'ask' ? 'Ask the club' : 'Share a photograph'}
         </h1>
         <SegmentPills segments={KINDS} value={kind} onChange={setKind} className="flex-wrap" />
-        <p className="text-[0.8125rem] text-ink2 leading-[1.45]">{words.line}</p>
 
         {rooms.loading ? (
           <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
@@ -149,32 +164,104 @@ export default function HomeNewPage() {
               </Link>
             </p>
           </div>
-        ) : (
-          <>
-            <RoomChoice rooms={open} value={roomId} onChange={setRoomId} />
-
-            <p className="mt-1 text-[0.8125rem] text-ink2">
-              None of these fit?{' '}
-              <Link to="/chat/rooms/new" className={LINK_CLASS}>
-                Start a room
-              </Link>
+        ) : kind === 'ask' ? (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              ask();
+            }}
+          >
+            <p className="text-[0.8125rem] text-ink2 leading-[1.45]">
+              Goes to every member. Answers come from people who have lived it.
             </p>
 
+            {failure ? (
+              <p
+                role="alert"
+                className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+              >
+                {failure} Nothing has been posted, and what you wrote is still here.
+              </p>
+            ) : null}
+
+            <label
+              htmlFor="ask-question"
+              className="mt-4 block font-bold font-head text-[0.875rem] text-ink"
+            >
+              Your question
+            </label>
+            {/* Focused on arrival: the owner asked for the screen to open on
+                somewhere to type. A phone shows its keyboard only when the box
+                is tapped, but the cursor is waiting there. */}
+            <textarea
+              id="ask-question"
+              // biome-ignore lint/a11y/noAutofocus: opening on the box is the request; it is the screen's only purpose
+              autoFocus
+              rows={3}
+              maxLength={140}
+              value={question}
+              onChange={(event) => {
+                setQuestion(event.target.value.replace(/\n/g, ' '));
+              }}
+              aria-describedby="ask-question-left"
+              placeholder="What would you like to know?"
+              className={`${FIELD} text-[1.125rem] leading-[1.4]`}
+            />
+            <p id="ask-question-left" className="mt-1 text-[0.75rem] text-grey">
+              {140 - question.length} characters left.
+            </p>
+            <SimilarTopics text={question} linkState={location.state as unknown} />
+
+            <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />
+
+            <label
+              htmlFor="ask-details"
+              className="mt-4 block font-bold font-head text-[0.875rem] text-ink"
+            >
+              More detail <span className="font-normal text-grey">(optional)</span>
+            </label>
+            <textarea
+              id="ask-details"
+              rows={4}
+              maxLength={4000}
+              value={details}
+              onChange={(event) => {
+                setDetails(event.target.value);
+              }}
+              placeholder="What you have tried, or anything that helps people answer."
+              className={`${FIELD} text-[0.9375rem] leading-[1.5]`}
+            />
+
+            <RoomSelect rooms={open} value={room?.id ?? ''} onChange={setChosenRoom} />
+
+            <button
+              type="submit"
+              disabled={!ready || saving}
+              className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold px-4 py-2 text-center font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
+            >
+              {saving ? 'Posting…' : 'Post your question'}
+            </button>
+            {question.trim().length === 0 ? (
+              <p className="mt-1.5 text-center text-[0.75rem] text-grey">Write your question.</p>
+            ) : null}
+          </form>
+        ) : (
+          <>
+            <p className="text-[0.8125rem] text-ink2 leading-[1.45]">
+              A picture and a line about it. Most of what gets shared here is something you did,
+              made or worked out.
+            </p>
+            <RoomSelect rooms={open} value={room?.id ?? ''} onChange={setChosenRoom} />
             <button
               type="button"
-              disabled={!chosen}
+              disabled={!room}
               onClick={() => {
-                if (chosen) proceed(chosen);
+                if (room) share(room);
               }}
-              className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold px-4 py-2 text-center font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
+              className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold px-4 py-2 text-center font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
             >
               Continue
             </button>
-            {/* What the button waits for. A disabled control with no
-                explanation is a dead end. */}
-            {!chosen ? (
-              <p className="mt-1.5 text-center text-[0.75rem] text-grey">Choose a room.</p>
-            ) : null}
           </>
         )}
         <div className="h-3" />
@@ -183,73 +270,48 @@ export default function HomeNewPage() {
   );
 }
 
-function RoomChoice({
+function RoomSelect({
   rooms,
   value,
   onChange,
 }: {
   rooms: ChatRoom[];
-  value: string | null;
+  value: string;
   onChange: (roomId: string) => void;
 }) {
   return (
-    <fieldset className="mt-4">
-      {/* A heading inside the legend: the six category headings under it are
-          h3s, as they are in Chat, and a screen reader's list of headings
-          should not jump from the page's h1 straight to them. */}
-      <legend>
-        <h2 className="font-extrabold font-head text-[0.9375rem] text-ink">
-          Which room does it go in?
-        </h2>
-      </legend>
-      {roomsByCategory(rooms).map(([category, inCategory]) => (
-        <div key={category}>
-          <RoomCategoryLabel category={category} />
-          <ul>
-            {inCategory.map((room) => {
-              const id = `room-${room.id}`;
-              return (
-                <li key={room.id} className="mb-2">
-                  {/* The whole card is the target; the radio inside it is
-                      what is announced. */}
-                  <label
-                    htmlFor={id}
-                    className="flex min-h-[2.75rem] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 has-[:checked]:border-emphasis has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-emphasis has-[:focus-visible]:outline-offset-2"
-                  >
-                    <input
-                      id={id}
-                      type="radio"
-                      name="room"
-                      value={room.id}
-                      checked={value === room.id}
-                      onChange={() => {
-                        onChange(room.id);
-                      }}
-                      aria-labelledby={`${id}-name`}
-                      aria-describedby={`${id}-description`}
-                      className="mt-[0.2em] h-[1.1em] w-[1.1em] flex-none accent-emphasis outline-none"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span
-                        id={`${id}-name`}
-                        className="block font-extrabold font-head text-[0.9375rem] text-ink"
-                      >
-                        {room.name}
-                      </span>
-                      <span
-                        id={`${id}-description`}
-                        className="mt-[3px] block text-[0.78125rem] text-ink2 leading-[1.45]"
-                      >
-                        {room.description}
-                      </span>
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ))}
-    </fieldset>
+    <div className="mt-4">
+      <label htmlFor="ask-room" className="block font-bold font-head text-[0.875rem] text-ink">
+        Room <span className="font-normal text-grey">(optional)</span>
+      </label>
+      <p id="ask-room-hint" className="mt-0.5 text-[0.75rem] text-grey leading-[1.45]">
+        General if you are not sure. It can be moved to the right room later.
+      </p>
+      <select
+        id="ask-room"
+        value={value}
+        aria-describedby="ask-room-hint"
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+        className={`${FIELD} min-h-[48px] text-[1rem]`}
+      >
+        {roomsByCategory(rooms).map(([category, inCategory]) => (
+          <optgroup key={category} label={category}>
+            {inCategory.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.name}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+      <p className="mt-1 text-[0.8125rem] text-ink2">
+        None of these fit?{' '}
+        <Link to="/chat/rooms/new" className={LINK_CLASS}>
+          Start a room
+        </Link>
+      </p>
+    </div>
   );
 }

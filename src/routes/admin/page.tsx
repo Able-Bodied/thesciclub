@@ -23,7 +23,6 @@ import {
   fetchInvites,
   fetchStrikes,
   inviteState,
-  restoreDirectory,
   revokeInvite,
   type Strike,
   setMemberStatus,
@@ -80,7 +79,6 @@ export default function AdminPage() {
   const reports = useAdminReports();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   // Whose membership is waiting on an answer, by member id. Set by the strike
   // that reaches the limit and cleared by whatever the administrator chooses,
@@ -204,6 +202,10 @@ export default function AdminPage() {
   const showJoined = filter !== 'directory';
   const showDirectory = filter === 'all' || filter === 'directory';
   const joinedCount = members.filter((m) => !m.isSeed).length;
+  // Zero on the live club since 20261010020000; the directory's filter,
+  // section and count are drawn only where there are seeded rows (a local
+  // database still has them).
+  const directoryCount = members.length - joinedCount;
   const attentionCount = members.filter(needsAttention).length;
   const pending = invites.filter((i) => i.status === 'pending');
   // Three lists, because "The list" should mean the numbers that are on it.
@@ -227,7 +229,8 @@ export default function AdminPage() {
             Admin
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey">
-            {joinedCount} joined · {members.length - joinedCount} from the directory ·{' '}
+            {joinedCount} joined ·{' '}
+            {directoryCount > 0 ? `${directoryCount} from the directory · ` : ''}
             {pending.length} invite
             {pending.length === 1 ? '' : 's'} waiting
           </p>
@@ -261,15 +264,6 @@ export default function AdminPage() {
             {error}
           </p>
         ) : null}
-        {/* A count, not "done": the difference between a restore that put
-            four profiles back and one that quietly matched nothing is the
-            only thing worth reading here. */}
-        {notice ? (
-          <p className="mb-3 rounded-[11px] border border-line bg-paper px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-            {notice}
-          </p>
-        ) : null}
-
         {loading ? (
           <p className="py-10 text-center text-[0.875rem] text-grey">Loading the roster…</p>
         ) : (
@@ -316,12 +310,19 @@ export default function AdminPage() {
                   className="mt-1 pb-0"
                   value={filter}
                   onChange={setFilter}
-                  segments={[
-                    ['all', `All · ${members.length}`],
-                    ['joined', `Joined · ${joinedCount}`],
-                    ['directory', `Directory · ${members.length - joinedCount}`],
-                    ['attention', `Paused or struck · ${attentionCount}`],
-                  ]}
+                  segments={
+                    directoryCount > 0
+                      ? [
+                          ['all', `All · ${members.length}`],
+                          ['joined', `Joined · ${joinedCount}`],
+                          ['directory', `Directory · ${directoryCount}`],
+                          ['attention', `Paused or struck · ${attentionCount}`],
+                        ]
+                      : [
+                          ['all', `All · ${members.length}`],
+                          ['attention', `Paused or struck · ${attentionCount}`],
+                        ]
+                  }
                 />
               </div>
             ) : null}
@@ -536,45 +537,7 @@ export default function AdminPage() {
             <Section
               title="From the directory"
               subtitle="Seeded from NorCal SCI. Pausing one hides it from the deck."
-              hidden={tab !== 'members' || !showDirectory}
-              // Rehearsing the claim flow retires a seeded profile every
-              // time — that is what claiming does — so putting the directory
-              // back needs to be a button rather than a migration written by
-              // hand each time.
-              action={
-                <SmallButton
-                  onClick={() => {
-                    const ok = window.confirm(
-                      'Restore the directory?\n\nMissing profiles come back and the ones still here are reset to how they shipped, including any you have paused or edited. Members who have joined are not touched.',
-                    );
-                    if (!ok) return;
-                    setBusyId('directory');
-                    restoreDirectory()
-                      .then(async (result) => {
-                        if (!result.ok) {
-                          setError(result.error);
-                          return;
-                        }
-                        setError(null);
-                        // "Set back", not "put back": the count is every row
-                        // it touched, most of which were present and reset
-                        // rather than missing and re-inserted.
-                        setNotice(
-                          `Directory restored — ${result.restored} profile${result.restored === 1 ? '' : 's'} set back to how they shipped.`,
-                        );
-                        await load();
-                      })
-                      .catch((e: unknown) => {
-                        setError(describeThrown(e, 'That did not work.'));
-                      })
-                      .finally(() => {
-                        setBusyId(null);
-                      });
-                  }}
-                >
-                  {busyId === 'directory' ? 'Restoring…' : 'Restore directory'}
-                </SmallButton>
-              }
+              hidden={tab !== 'members' || !showDirectory || directoryCount === 0}
             >
               {seeded.map((m) => (
                 <Row

@@ -109,10 +109,12 @@ describe('a discussion room', () => {
     db.topics = [topic({ id: '1', title: 'Travelling with a bowel programme' })];
     renderRoom();
     expect(screen.getByText('Travelling with a bowel programme')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '+ New topic' })).toHaveAttribute(
-      'href',
-      '/chat/rooms/bowel/new',
-    );
+    // At the top, typed into where it is.
+    const ask = screen.getByRole('textbox', { name: 'Ask or post in Bowel management' });
+    expect(
+      ask.compareDocumentPosition(screen.getByText('Travelling with a bowel programme')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.queryByRole('button', { name: /^Join/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Leave' })).toBeNull();
     expect(screen.queryByText(/You are in this room/)).toBeNull();
@@ -176,7 +178,7 @@ describe('a discussion room', () => {
     renderRoom();
     expect(screen.getByText(/This room is closed. No member can see it yet/)).toBeInTheDocument();
     // They can seed it before it opens.
-    expect(screen.getByRole('link', { name: '+ New topic' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /Ask or post in/ })).toBeInTheDocument();
     expect(screen.queryByText(/open to all/)).toBeNull();
   });
 

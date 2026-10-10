@@ -25,6 +25,7 @@ const db = vi.hoisted(() => ({
   uploads: [] as [string[], string][],
   deleted: [] as string[][],
   navigated: [] as [string, unknown][],
+  questions: [] as boolean[],
 }));
 
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
@@ -34,8 +35,15 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
 
 vi.mock('@/lib/chat/topics', async (importOriginal) => ({
   ...(await importOriginal<typeof Topics>()),
-  createTopic: (roomId: string, title: string, body: string, paths: string[] = []) => {
+  createTopic: (
+    roomId: string,
+    title: string,
+    body: string,
+    paths: string[] = [],
+    question = false,
+  ) => {
     db.created.push([roomId, title, body, paths]);
+    db.questions.push(question);
     return Promise.resolve(
       db.failure ? { ok: false, error: db.failure } : { ok: true, value: 'topic-1' },
     );
@@ -70,6 +78,7 @@ beforeEach(() => {
   db.uploads = [];
   db.deleted = [];
   db.navigated = [];
+  db.questions = [];
 });
 
 function renderPage(state?: unknown) {
@@ -103,21 +112,29 @@ describe('asking, from a room', () => {
     );
   });
 
-  it('still needs both a title and a first post, photograph or not', async () => {
+  it('needs only a title, and posts the title as the first post when there is nothing else', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
-    await user.upload(fileInput(), photo('guard.jpg'));
     expect(post()).toBeDisabled();
-    await user.type(screen.getByLabelText('The first post'), 'Which ones last?');
+    await user.type(screen.getByLabelText('What is it about?'), 'Side guards?');
     expect(post()).toBeEnabled();
+    await user.click(post());
+    await waitFor(() => {
+      expect(db.created).toEqual([['equip', 'Side guards?', 'Side guards?', []]]);
+    });
+  });
+
+  it('starts from the words carried over from the quick box', () => {
+    renderPage({ draft: 'Which side guards last?', question: true });
+    expect(screen.getByLabelText('What is it about?')).toHaveValue('Which side guards last?');
+    expect(screen.getByRole('checkbox', { name: /This is a question/ })).toBeChecked();
   });
 
   it('opens the topic with no state for Home', async () => {
     const user = userEvent.setup();
     renderPage();
     await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
-    await user.type(screen.getByLabelText('The first post'), 'Which ones last?');
+    await user.type(screen.getByLabelText(/^The first post/), 'Which ones last?');
     await user.click(post());
     await waitFor(() => {
       expect(db.navigated).toEqual([['/chat/rooms/equip/topics/topic-1', undefined]]);
@@ -143,7 +160,7 @@ describe('asking, from Home', () => {
     const user = userEvent.setup();
     renderPage(fromHome);
     await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
-    await user.type(screen.getByLabelText('The first post'), 'Which ones last?');
+    await user.type(screen.getByLabelText(/^The first post/), 'Which ones last?');
     await user.click(post());
     await waitFor(() => {
       expect(db.navigated).toEqual([
@@ -228,9 +245,9 @@ describe('sharing a photograph, from Home', () => {
 });
 
 describe('what Post waits for', () => {
-  it('asking wants a title and words', () => {
-    expect(topicProblem('Title', '', 1, false)).not.toBeNull();
+  it('asking wants a title, and the words are optional', () => {
     expect(topicProblem('', 'Words', 0, false)).not.toBeNull();
+    expect(topicProblem('Title', '', 0, false)).toBeNull();
     expect(topicProblem('Title', 'Words', 0, false)).toBeNull();
   });
 
@@ -239,5 +256,26 @@ describe('what Post waits for', () => {
     expect(topicProblem('Title', '  ', 0, true)).not.toBeNull();
     expect(topicProblem('Title', '', 1, true)).toBeNull();
     expect(topicProblem('Title', 'Words', 0, true)).toBeNull();
+  });
+});
+
+describe('asking whether it is a question', () => {
+  it('asks, unticked in a room, and sends what was chosen', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const box = screen.getByRole('checkbox', { name: /This is a question/ });
+    expect(box).not.toBeChecked();
+    await user.type(screen.getByLabelText('What is it about?'), 'Side guards');
+    await user.type(screen.getByLabelText(/^The first post/), 'Which ones last?');
+    await user.click(box);
+    await user.click(post());
+    await waitFor(() => {
+      expect(db.questions).toEqual([true]);
+    });
+  });
+
+  it('is not asked of a photograph being shared', () => {
+    renderPage({ from: 'home', segment: 'photos', kind: 'share' });
+    expect(screen.queryByRole('checkbox', { name: /This is a question/ })).toBeNull();
   });
 });

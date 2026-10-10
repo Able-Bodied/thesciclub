@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
@@ -169,13 +169,34 @@ export default function ThreadPage() {
     [pin, snapToBottom],
   );
 
-  // Open at the bottom, once, on the first load that has anything in it.
+  // Open at the bottom, once, on the first load that has anything in it; or
+  // on the message a notification was about (?message=), centred and lit up
+  // once, so a notification looked at later does not land on whatever was
+  // said since. Again whenever a new ?message= arrives while the page is
+  // open: a second notification pressed on the same conversation.
+  const [searchParams] = useSearchParams();
+  const wantedMessage = searchParams.get('message');
+  const shownFor = useRef<string | null>(null);
   useEffect(() => {
-    if (loading || opened.current || !thread) return;
+    if (loading || !thread) return;
+    if (opened.current && wantedMessage === shownFor.current) return;
+    const first = !opened.current;
     opened.current = true;
+    shownFor.current = wantedMessage;
     seen.current = messages.length;
-    toBottom('auto');
-  }, [loading, thread, messages.length, toBottom]);
+    const target = wantedMessage ? document.getElementById(`message-${wantedMessage}`) : null;
+    if (target) {
+      pin.hold(() => {
+        target.scrollIntoView({ block: 'center' });
+      });
+      setFlashId(null);
+      requestAnimationFrame(() => {
+        setFlashId(wantedMessage);
+      });
+      return;
+    }
+    if (first) toBottom('auto');
+  }, [loading, thread, messages.length, toBottom, wantedMessage, pin]);
 
   // Afterwards, follow only if the reader was already there.
   useEffect(() => {

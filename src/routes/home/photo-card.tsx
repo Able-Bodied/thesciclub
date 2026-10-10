@@ -108,7 +108,7 @@ export function PhotoCard({
       </div>
 
       <div className="mt-2.5">
-        <RoomTag room={topic.room} />
+        <RoomTag room={topic.room} linkState={linkState} />
       </div>
 
       {opening ? <AttachmentGrid paths={opening.attachments} from={name} fill /> : null}

@@ -103,6 +103,7 @@ export function Post({
   likes,
   replies = 0,
   flash = false,
+  hideBody = false,
   children,
 }: {
   post: ChatPost;
@@ -154,6 +155,14 @@ export function Post({
   replies?: number;
   /** Lit up once: the post a notification or a link was about. */
   flash?: boolean;
+  /**
+   * The post is the topic's title already, word for word: a question asked
+   * with no details. The page's header says the question, who asked it and
+   * when, so this draws only what can be done to it (likes, reply, remove)
+   * as a row under the header: no second card with the asker's name over
+   * nothing, and no Edit, which would edit a copy of the title.
+   */
+  hideBody?: boolean;
   /** The replies, as `<Post nested>` elements. */
   children?: ReactNode;
 }) {
@@ -174,66 +183,72 @@ export function Post({
       // notification starts on the post it was about. The flash marks it.
       tabIndex={-1}
       className={cn(
-        nested
-          ? depth <= 4
-            ? 'mt-2.5 rounded-bl-xl border-line border-l-2 pl-3'
-            : 'mt-2.5'
-          : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]',
+        hideBody
+          ? 'mb-2.5 border-line border-b pb-2.5'
+          : nested
+            ? depth <= 4
+              ? 'mt-2.5 rounded-bl-xl border-line border-l-2 pl-3'
+              : 'mt-2.5'
+            : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]',
         'outline-none',
         flash && 'message-flash',
       )}
     >
-      <div className="flex items-center gap-2.5">
-        {/* Decorative: the name is the next thing in the row, and the link to
+      {hideBody ? (
+        <h2 className="sr-only">The question</h2>
+      ) : (
+        <div className="flex items-center gap-2.5">
+          {/* Decorative: the name is the next thing in the row, and the link to
             the profile is on the name. An avatar that is its own link has no
             words in it to be the link's name — a screen reader reaches it and
             says "link, N". */}
-        <span aria-hidden="true" className="flex-none">
-          {author ? (
-            <MemberAvatar
-              id={author.id}
-              displayName={author.displayName}
-              photoPath={author.photoPath}
-              photoAlt={author.photoAlt}
-            />
-          ) : (
-            <FormerMemberAvatar />
-          )}
-        </span>
-
-        <span className="min-w-0 flex-1">
-          <span className="block font-extrabold font-head text-[0.875rem] text-ink">
+          <span aria-hidden="true" className="flex-none">
             {author ? (
-              author.hasProfile ? (
-                <Link to={`/peers/${author.id}`} className="underline-offset-2 hover:underline">
-                  {author.displayName}
-                </Link>
-              ) : (
-                // Named, not linked: /peers/:id will not show them, and a link
-                // to a page that says "no such member" is worse than plain
-                // text.
-                author.displayName
-              )
+              <MemberAvatar
+                id={author.id}
+                displayName={author.displayName}
+                photoPath={author.photoPath}
+                photoAlt={author.photoAlt}
+              />
             ) : (
-              'Deleted member'
+              <FormerMemberAvatar />
             )}
-            {author?.level ? (
-              <span className="ml-[7px] font-semibold text-[0.78125rem] text-grey">
-                {author.level}
-              </span>
-            ) : null}
           </span>
-          <span className="block text-[0.78125rem] text-grey">{chatTime(post.createdAt)}</span>
-        </span>
 
-        {/* The mock's `.pnum`, counted among the top-level posts still
-            standing. A reply has no number. */}
-        {number !== undefined && total !== undefined ? (
-          <span className="flex-none font-bold text-[0.71875rem] text-grey">
-            {number}/{total}
+          <span className="min-w-0 flex-1">
+            <span className="block font-extrabold font-head text-[0.875rem] text-ink">
+              {author ? (
+                author.hasProfile ? (
+                  <Link to={`/peers/${author.id}`} className="underline-offset-2 hover:underline">
+                    {author.displayName}
+                  </Link>
+                ) : (
+                  // Named, not linked: /peers/:id will not show them, and a link
+                  // to a page that says "no such member" is worse than plain
+                  // text.
+                  author.displayName
+                )
+              ) : (
+                'Deleted member'
+              )}
+              {author?.level ? (
+                <span className="ml-[7px] font-semibold text-[0.78125rem] text-grey">
+                  {author.level}
+                </span>
+              ) : null}
+            </span>
+            <span className="block text-[0.78125rem] text-grey">{chatTime(post.createdAt)}</span>
           </span>
-        ) : null}
-      </div>
+
+          {/* The mock's `.pnum`, counted among the top-level posts still
+            standing. A reply has no number. */}
+          {number !== undefined && total !== undefined ? (
+            <span className="flex-none font-bold text-[0.71875rem] text-grey">
+              {number}/{total}
+            </span>
+          ) : null}
+        </div>
+      )}
 
       {editing ? (
         <Composer
@@ -247,7 +262,7 @@ export function Post({
             onCancel: onCancelEdit,
           }}
         />
-      ) : post.body ? (
+      ) : post.body && !hideBody ? (
         // whitespace-pre-line, so the paragraph breaks somebody typed survive.
         <p className="mt-2 whitespace-pre-line text-[0.875rem] text-ink leading-[1.5]">
           <LinkedText text={post.body} />
@@ -263,7 +278,12 @@ export function Post({
       {edits && edits.length > 0 && !editing ? <EarlierVersions edits={edits} from={name} /> : null}
 
       {editing ? null : (
-        <div className="mt-2 flex flex-wrap items-center gap-x-3.5 gap-y-1">
+        <div
+          className={cn(
+            'flex flex-wrap items-center gap-x-3.5 gap-y-1',
+            hideBody ? 'mt-0' : 'mt-2',
+          )}
+        >
           {likes ? (
             <PostLikes
               likedBy={likes.likedBy}
@@ -273,7 +293,7 @@ export function Post({
               className="text-[0.75rem]"
             />
           ) : null}
-          {canEdit ? (
+          {canEdit && !hideBody ? (
             <button
               type="button"
               onClick={onEdit}

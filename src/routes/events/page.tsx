@@ -66,21 +66,27 @@ import {
  * a tab of its own.
  */
 
-const SEGMENTS: [EventsSegment, string][] = [
-  ['upcoming', 'Upcoming'],
-  ['going', "I'm going"],
-  ['interested', 'Interested'],
-  /* Been to was unlisted for a while, reached only from the counter on Me —
-     the /invites and /admin pattern, to keep this row from growing. The owner
-     wanted the three RSVP answers side by side instead, which is a fair read:
-     "what am I going to / weighing up / have I been to" is one question asked
-     three ways, and splitting the third onto another screen made it the one
-     you had to already know about. */
-  ['been-to', 'Been to'],
-  ['sport', 'Adaptive sport'],
-  ['online', 'Online'],
+/**
+ * Two pills: the calendar and the organizations (the owner, 2026-10-10).
+ *
+ * There were seven. Going, Interested and Been to are the member's own RSVPs,
+ * and are now "Your RSVP" in Filters, beside the other ways of narrowing the
+ * list; Adaptive sport and Online were narrowings the sheet already had (the
+ * Sport tags, and "Getting there"). The URL still names the RSVP list, so
+ * Me's counters link straight to it.
+ */
+type EventsPill = 'events' | 'orgs';
+const PILLS: [EventsPill, string][] = [
+  ['events', 'Events'],
   ['orgs', 'Organizations'],
 ];
+
+/** The RSVP lists, by the words Filters and the "Showing" line use. */
+const RSVP_LABELS: Record<'going' | 'interested' | 'been-to', string> = {
+  going: "I'm going",
+  interested: 'Interested',
+  'been-to': 'Been to',
+};
 
 export default function EventsPage() {
   const navigate = useNavigate();
@@ -103,9 +109,14 @@ export default function EventsPage() {
   // refresh.
   const [searchParams, setSearchParams] = useSearchParams();
   const fromUrl = searchParams.get('segment');
-  const segment: EventsSegment = EVENTS_SEGMENTS.includes(fromUrl as EventsSegment)
-    ? (fromUrl as EventsSegment)
-    : 'upcoming';
+  // Adaptive sport and Online are no longer lists of their own (see PILLS);
+  // an old link to one opens the whole calendar.
+  const segment: EventsSegment =
+    EVENTS_SEGMENTS.includes(fromUrl as EventsSegment) &&
+    fromUrl !== 'sport' &&
+    fromUrl !== 'online'
+      ? (fromUrl as EventsSegment)
+      : 'upcoming';
   const setSegment = useCallback(
     (next: EventsSegment) => {
       // Replace rather than push: the segment pills are a filter, and tapping
@@ -194,7 +205,10 @@ export default function EventsPage() {
     [memberId, viewer, announce],
   );
 
-  const filterCount = activeFilterCount(filters);
+  // The RSVP choice lives in the URL (as the segment) but is one of the
+  // filters, so it counts towards the dot.
+  const rsvp = isRsvpSegment(segment) ? (segment as keyof typeof RSVP_LABELS) : null;
+  const filterCount = activeFilterCount(filters) + (rsvp ? 1 : 0);
   const showingList = segment !== 'orgs';
   // Reached from Me and nowhere else, so it gets its own title and a way back
   // rather than an unlit chip row somebody cannot tell they are inside.
@@ -237,11 +251,31 @@ export default function EventsPage() {
         </div>
 
         <SegmentPills
-          segments={SEGMENTS}
-          value={segment}
-          onChange={setSegment}
+          segments={PILLS}
+          value={segment === 'orgs' ? 'orgs' : 'events'}
+          onChange={(next) => {
+            setSegment(next === 'orgs' ? 'orgs' : 'upcoming');
+          }}
           className="max-w-[var(--events-measure)]"
         />
+        {/* Said, so a narrowed list is never mistaken for the calendar. */}
+        {rsvp ? (
+          <p className="mx-auto flex w-full max-w-[var(--events-measure)] flex-wrap items-center gap-x-2 pb-2.5 text-[0.8125rem] text-ink2">
+            <span>
+              Showing: <span className="font-bold text-ink">{RSVP_LABELS[rsvp]}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setSegment('upcoming');
+              }}
+              className="min-h-[36px] font-semibold text-emphasis underline underline-offset-2"
+              data-target="small"
+            >
+              Show all events
+            </button>
+          </p>
+        ) : null}
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
@@ -339,11 +373,16 @@ export default function EventsPage() {
           organizations={hostingOrganizations}
           following={follows.following}
           filters={filters}
+          rsvp={rsvp}
+          onRsvpChange={(next) => {
+            setSegment(next ?? 'upcoming');
+          }}
           matchCount={visible.length}
           activeCount={filterCount}
           onChange={setFilters}
           onClear={() => {
             setFilters(EMPTY_EVENT_FILTERS);
+            setSegment('upcoming');
           }}
           onClose={() => {
             setSheetOpen(false);

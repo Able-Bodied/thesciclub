@@ -51,7 +51,8 @@ import { getSupabase } from '@/lib/supabase';
 export const HOME_TOPIC_LIMIT = 40;
 export const HOME_POST_LIMIT = 1000;
 
-const TOPIC_COLUMNS = 'id, room_id, title, author_id, created_at, last_post_at, reply_count';
+const TOPIC_COLUMNS =
+  'id, room_id, title, author_id, created_at, last_post_at, reply_count, is_question';
 
 interface TopicRow {
   id: string;
@@ -61,6 +62,8 @@ interface TopicRow {
   created_at: string;
   last_post_at: string;
   reply_count: number;
+  /** Absent from a database before 20261010010000. */
+  is_question?: boolean;
 }
 
 function toSummary(row: TopicRow): HomeTopicSummary {
@@ -72,6 +75,7 @@ function toSummary(row: TopicRow): HomeTopicSummary {
     createdAt: row.created_at,
     lastPostAt: row.last_post_at,
     replyCount: row.reply_count,
+    isQuestion: row.is_question === true,
   };
 }
 

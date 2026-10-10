@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { FALLBACK_TITLE, pickWindow, readPushPayload, safePath } from '@/lib/push/payload';
+import {
+  FALLBACK_TITLE,
+  NAVIGATE,
+  navigationRequest,
+  pickWindow,
+  readPushPayload,
+  safePath,
+} from '@/lib/push/payload';
 
 const origin = 'https://thesciclub.netlify.app';
 
@@ -101,5 +108,22 @@ describe('pickWindow', () => {
 
   it('then any', () => {
     expect(pickWindow([at('/peers'), at('/events')], '/chat/t/abc', origin)).toBe(0);
+  });
+});
+
+describe('navigationRequest', () => {
+  const origin = 'https://thesciclub.com';
+
+  it('reads the address the worker asks the app to open', () => {
+    expect(navigationRequest({ type: NAVIGATE, path: '/chat/t/abc?message=m' }, origin)).toBe(
+      '/chat/t/abc?message=m',
+    );
+  });
+
+  it('ignores anything else, and never leaves the club', () => {
+    expect(navigationRequest({ type: 'other', path: '/chat' }, origin)).toBeNull();
+    expect(navigationRequest(null, origin)).toBeNull();
+    expect(navigationRequest({ type: NAVIGATE }, origin)).toBeNull();
+    expect(navigationRequest({ type: NAVIGATE, path: 'https://evil.example/x' }, origin)).toBe('/');
   });
 });

@@ -1,10 +1,27 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Topics from '@/lib/chat/topics';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { TopicCard } from '@/routes/home/topic-card';
 import { makeHomeTopic, makePost, makeRoom } from '@/test/factory';
+
+const sent = vi.hoisted(() => ({ calls: [] as unknown[][], failure: null as string | null }));
+vi.mock('@/lib/chat/topics', async (importOriginal) => ({
+  ...(await importOriginal<typeof Topics>()),
+  sendPost: (...args: unknown[]) => {
+    sent.calls.push(args);
+    return Promise.resolve(
+      sent.failure ? { ok: false, error: sent.failure } : { ok: true, value: { id: 'answer-1' } },
+    );
+  },
+}));
+
+beforeEach(() => {
+  sent.calls = [];
+  sent.failure = null;
+});
 
 const author = (o: Partial<ChatAuthor> & { id: string }): ChatAuthor => ({
   displayName: 'Jan',
@@ -51,13 +68,15 @@ function renderCard(props: Partial<Parameters<typeof TopicCard>[0]> = {}) {
 describe('a topic on Home', () => {
   // The whole card is the target, but the link's name is the title alone:
   // not the room, the byline and the reply run together.
-  it('is one link, named for its title, to the topic page from Home', async () => {
+  it('is a link named for its title to the topic, and one on the room name to the room', async () => {
     const user = userEvent.setup();
     renderCard();
-    const [link, ...others] = screen.getAllByRole('link');
-    if (!link) throw new Error('the card should be a link');
-    expect(others).toHaveLength(0);
-    expect(link).toHaveAccessibleName('Morning or evening routine?');
+    const links = screen.getAllByRole('link');
+    expect(links.map((a) => a.getAttribute('href'))).toEqual([
+      '/chat/rooms/bowel',
+      '/chat/rooms/bowel/topics/t1',
+    ]);
+    const link = screen.getByRole('link', { name: 'Morning or evening routine?' });
     await user.click(link);
     expect(
       screen.getByText('at /chat/rooms/bowel/topics/t1 with {"from":"home"}'),
@@ -153,6 +172,8 @@ describe('likes on a topic card', () => {
   it('is reached by Tab after the title, and before the count', async () => {
     const user = userEvent.setup();
     renderCard({ likes: likes({ likedBy: ['jan'] }) });
+    // The room's name first, where it is drawn.
+    await user.tab();
     await user.tab();
     expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toHaveFocus();
     await user.tab();
@@ -184,5 +205,105 @@ describe('likes on a topic card', () => {
       likes: likes({ likedBy: ['jan'] }),
     });
     expect(screen.queryByRole('button')).toBeNull();
+  });
+});
+
+describe('a question', () => {
+  it('is drawn large and labelled, and still opens the topic', async () => {
+    const user = userEvent.setup();
+    renderCard({
+      topic: makeHomeTopic({ id: 'q1', title: 'Best cushion for long days?', isQuestion: true }),
+    });
+    const link = screen.getByRole('link', { name: /Best cushion for long days\?/ });
+    expect(link).toHaveTextContent('Question');
+    expect(link).toHaveClass('bg-gradient-to-br');
+    await user.click(link);
+    expect(screen.getByText(/at \/chat\/rooms\/bowel\/topics\/q1/)).toBeInTheDocument();
+  });
+
+  it('leaves an ordinary topic as a plain title', () => {
+    renderCard();
+    const link = screen.getByRole('link', { name: 'Morning or evening routine?' });
+    expect(link).not.toHaveTextContent('Question');
+    expect(link).not.toHaveClass('bg-gradient-to-br');
+  });
+});
+
+describe('the room name on a card', () => {
+  // jsdom draws no layers, so a click here reaches the name whatever covers
+  // it in a browser. The title's link is stretched over the card by a later
+  // ::after; without a z-index the name is under it and a press opens the
+  // topic (found by the owner, 2026-10-10; confirmed in Chromium).
+  it('is lifted above the title link stretched over the card', () => {
+    renderCard({ topic: makeHomeTopic({ room: makeRoom({ name: 'Bowel management' }) }) });
+    expect(screen.getByRole('link', { name: 'Bowel management' })).toHaveClass('relative', 'z-[1]');
+  });
+
+  it('opens the room, with the way back to Home', async () => {
+    const user = userEvent.setup();
+    renderCard({
+      topic: makeHomeTopic({ id: 't1', room: makeRoom({ id: 'bowel', name: 'Bowel management' }) }),
+    });
+    await user.click(screen.getByRole('link', { name: 'Bowel management' }));
+    expect(screen.getByText('at /chat/rooms/bowel with {"from":"home"}')).toBeInTheDocument();
+  });
+});
+
+describe('answering a question from Home', () => {
+  const question = () =>
+    makeHomeTopic({
+      id: 'q1',
+      title: 'Best cushion?',
+      isQuestion: true,
+      room: makeRoom({ id: 'bowel' }),
+    });
+
+  it('offers Answer on a question', () => {
+    renderCard({ topic: question(), answerAs: 'me' });
+    expect(screen.getByRole('button', { name: 'Answer Best cushion?' })).toBeInTheDocument();
+  });
+
+  it('offers nothing on an ordinary topic, or to nobody', () => {
+    renderCard({ answerAs: 'me' });
+    expect(screen.queryByRole('button', { name: /^Answer/ })).toBeNull();
+  });
+
+  it('opens a box with the cursor in it, in the same tap', async () => {
+    const user = userEvent.setup();
+    renderCard({ topic: question(), answerAs: 'me' });
+    await user.click(screen.getByRole('button', { name: 'Answer Best cushion?' }));
+    expect(screen.getByRole('textbox', { name: 'Your answer to Best cushion?' })).toHaveFocus();
+  });
+
+  it('posts the answer and opens the topic on it', async () => {
+    const user = userEvent.setup();
+    renderCard({ topic: question(), answerAs: 'me' });
+    await user.click(screen.getByRole('button', { name: 'Answer Best cushion?' }));
+    await user.type(screen.getByRole('textbox', { name: /Your answer/ }), 'A ROHO.');
+    await user.click(screen.getByRole('button', { name: 'Post answer' }));
+    expect(sent.calls).toEqual([['q1', 'me', 'A ROHO.']]);
+    expect(
+      await screen.findByText('at /chat/rooms/bowel/topics/q1 with {"from":"home"}'),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the answer when it is refused', async () => {
+    const user = userEvent.setup();
+    sent.failure = 'You cannot post in this room.';
+    renderCard({ topic: question(), answerAs: 'me' });
+    await user.click(screen.getByRole('button', { name: 'Answer Best cushion?' }));
+    await user.type(screen.getByRole('textbox', { name: /Your answer/ }), 'A ROHO.');
+    await user.click(screen.getByRole('button', { name: 'Post answer' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('You cannot post in this room.');
+    expect(screen.getByRole('textbox', { name: /Your answer/ })).toHaveValue('A ROHO.');
+  });
+
+  it('closes on Cancel', async () => {
+    const user = userEvent.setup();
+    renderCard({ topic: question(), answerAs: 'me' });
+    await user.click(screen.getByRole('button', { name: 'Answer Best cushion?' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('textbox', { name: /Your answer/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Answer Best cushion?' })).toBeInTheDocument();
   });
 });

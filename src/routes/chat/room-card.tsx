@@ -54,6 +54,11 @@ import type { ChatAuthor, ChatRoom, RoomCategory, RoomStats } from '@/lib/chat/t
  */
 
 const CATEGORY_STYLE: Record<RoomCategory, { border: string; icon: string; label: string }> = {
+  // The link colour, rather than a seventh room colour: General is about
+  // nothing in particular, and the emphasis colour is already checked in
+  // light and dark.
+  General: { border: 'border-l-emphasis', icon: 'text-emphasis', label: 'bg-emphasis' },
+  Other: { border: 'border-l-emphasis', icon: 'text-emphasis', label: 'bg-emphasis' },
   Body: { border: 'border-l-room-body', icon: 'text-room-body', label: 'bg-room-body' },
   Mind: { border: 'border-l-room-mind', icon: 'text-room-mind', label: 'bg-room-mind' },
   Life: { border: 'border-l-room-life', icon: 'text-room-life', label: 'bg-room-life' },

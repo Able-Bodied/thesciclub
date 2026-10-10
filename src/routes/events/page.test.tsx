@@ -46,12 +46,20 @@ vi.mock('@/lib/session', () => ({
 
 const { default: EventsPage } = await import('@/routes/events/page');
 
-function renderPage() {
+function renderPage(entry = '/events') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <EventsPage />
     </MemoryRouter>,
   );
+}
+
+/** "Your RSVP" lives in Filters since 2026-10-10: choose one, then close. */
+async function chooseRsvp(label: string) {
+  const user = userEvent.setup();
+  await user.click(screen.getByRole('button', { name: /^Filters/ }));
+  await user.click(screen.getByRole('button', { name: label }));
+  await user.click(screen.getByRole('button', { name: /^Show \d+/ }));
 }
 
 /** Far enough out to sit outside "this week" but inside "this month" is fragile
@@ -96,26 +104,37 @@ describe('EventsPage', () => {
   });
 
   describe('segments', () => {
-    it('"Adaptive sport" narrows to the sport category', async () => {
+    it('has two pills, Events and Organizations', () => {
       renderPage();
-      await userEvent.click(screen.getByRole('button', { name: 'Adaptive sport' }));
-      expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
-      expect(screen.queryByText('Newly injured coffee')).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Events' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(screen.getByRole('button', { name: 'Organizations' })).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      );
+      for (const gone of ['Upcoming', 'Adaptive sport', 'Online', "I'm going", 'Been to']) {
+        expect(screen.queryByRole('button', { name: gone })).toBeNull();
+      }
     });
 
-    it('"Online" narrows to what can be attended remotely', async () => {
-      renderPage();
-      await userEvent.click(screen.getByRole('button', { name: 'Online' }));
-      expect(screen.getByText('Driving Q&A')).toBeInTheDocument();
-      expect(screen.queryByText('Wheelchair rugby')).not.toBeInTheDocument();
+    it('opens the whole calendar from an old Adaptive sport or Online link', () => {
+      renderPage('/events?segment=sport');
+      expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
+      expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
     });
 
     it('"I\'m going" shows only what the member said yes to', async () => {
       state.rsvps = new Map([['coffee', 'going']]);
       renderPage();
-      await userEvent.click(screen.getByRole('button', { name: "I'm going" }));
+      await chooseRsvp("I'm going");
       expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
       expect(screen.queryByText('Wheelchair rugby')).not.toBeInTheDocument();
+      // Said, with the way back to everything.
+      expect(screen.getByText(/Showing:/)).toHaveTextContent("Showing: I'm going");
+      await userEvent.click(screen.getByRole('button', { name: 'Show all events' }));
+      expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
     });
 
     it('swaps the body for the directory under Organizations', async () => {
@@ -135,9 +154,8 @@ describe('EventsPage', () => {
   });
 
   describe('empty states say which emptiness it is', () => {
-    it('tells somebody with no RSVPs that they have not said yes yet', async () => {
-      renderPage();
-      await userEvent.click(screen.getByRole('button', { name: "I'm going" }));
+    it('tells somebody with no RSVPs that they have not said yes yet', () => {
+      renderPage('/events?segment=going');
       expect(screen.getByText(/have not said you are going/)).toBeInTheDocument();
       // Telling them to widen filters they never set is how an app teaches
       // people to distrust it.
@@ -184,9 +202,9 @@ describe('EventsPage', () => {
 
   describe('the filter sheet', () => {
     it('only offers tags that are on the events in view', async () => {
-      renderPage();
-      await userEvent.click(screen.getByRole('button', { name: 'Adaptive sport' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      state.rsvps = new Map([['rugby', 'going']]);
+      renderPage('/events?segment=going');
+      await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
       // peer-support is on an event the segment already removed, so offering it
       // would be offering a way to empty the screen.
       expect(screen.queryByRole('button', { name: 'peer-support' })).not.toBeInTheDocument();
@@ -291,8 +309,24 @@ describe('a repeating event is one row until you open it', () => {
       ['w2', 'going'],
     ]);
     renderPage();
-    await userEvent.click(screen.getByRole('button', { name: "I'm going" }));
+    await chooseRsvp("I'm going");
     expect(screen.getAllByText('Weekly Wednesdays')).toHaveLength(2);
     expect(screen.queryByText(/more dates/)).not.toBeInTheDocument();
+  });
+});
+
+describe('Your RSVP, in Filters', () => {
+  it('counts towards the dot, and Clear goes back to every event', async () => {
+    const user = userEvent.setup();
+    renderPage('/events?segment=interested');
+    expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Filters/ }));
+    // The window does not apply to an RSVP list, so it is not offered.
+    expect(screen.queryByRole('group', { name: 'When' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /^Clear/ }));
+    expect(screen.getByRole('button', { name: 'All events' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });

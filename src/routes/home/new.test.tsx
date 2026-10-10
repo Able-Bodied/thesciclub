@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type * as Router from 'react-router-dom';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -8,18 +8,33 @@ import type { ChatRoom } from '@/lib/chat/types';
 import { makeRoom } from '@/test/factory';
 
 /**
- * Asking or sharing from Home: the kind, and the room.
+ * Asking or sharing from Home: write first, the room optional.
  *
- * `roomsByCategory` is left real, since the order of the list is what this
- * screen promises and a stub would let the test assert its own order. The
- * read is the network and is stubbed. There is no join to stub since
- * 20260930000000.
+ * `roomsByCategory` is left real, since the order of the rooms is what the
+ * select promises. The room read and the topic write are the network and are
+ * stubbed; the write records what it was sent.
  */
 
 const db = vi.hoisted(() => ({
   rooms: [] as ChatRoom[],
   roomsError: null as string | null,
   navigated: [] as [string, unknown][],
+  created: [] as unknown[][],
+  createFails: null as string | null,
+}));
+
+// Looking up similar questions is the network; stubbed, with what it finds.
+const similar = vi.hoisted(() => ({
+  found: [] as { id: string; roomId: string; title: string; replyCount: number }[],
+}));
+vi.mock('@/lib/chat/similar', () => ({ useSimilarTopics: () => similar.found }));
+vi.mock('@/lib/chat/topics', () => ({
+  createTopic: (...args: unknown[]) => {
+    db.created.push(args);
+    return Promise.resolve(
+      db.createFails ? { ok: false, error: db.createFails } : { ok: true, value: 'new-topic' },
+    );
+  },
 }));
 
 vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
@@ -42,6 +57,7 @@ vi.mock('react-router-dom', async (importOriginal) => ({
 const { default: HomeNewPage } = await import('@/routes/home/new');
 
 const rooms = () => [
+  makeRoom({ id: 'general', name: 'General', category: 'General', sortOrder: 0 }),
   makeRoom({ id: 'equip', name: 'Equipment & assistive tech', category: 'Kit', sortOrder: 11 }),
   makeRoom({ id: 'bowel', name: 'Bowel management', category: 'Body', sortOrder: 1 }),
   makeRoom({ id: 'newsci', name: 'Newly injured', category: 'Life', sortOrder: 6 }),
@@ -53,6 +69,8 @@ beforeEach(() => {
   db.rooms = rooms();
   db.roomsError = null;
   db.navigated = [];
+  db.created = [];
+  db.createFails = null;
 });
 
 function renderPage(search = '', state: unknown = { from: 'home', segment: 'topics' }) {
@@ -65,87 +83,53 @@ function renderPage(search = '', state: unknown = { from: 'home', segment: 'topi
   );
 }
 
-const group = () => screen.getByRole('group', { name: 'Which room does it go in?' });
+const roomSelect = () => screen.getByRole('combobox', { name: /Room/ });
 
 describe('the kind', () => {
-  it('asks by default, and the heading follows the pill', async () => {
-    const user = userEvent.setup();
+  it('asks by default, opening on the question box', () => {
     renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'Ask the club' })).toBeInTheDocument();
-    expect(screen.getByText(/Answers come from people who have lived it/)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Share something' }));
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Share a photograph' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Share something' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByRole('heading', { name: 'Ask the club' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveFocus();
   });
 
   it('opens on sharing from the URL', () => {
     renderPage('?kind=share');
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Share a photograph' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Share a photograph' })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Your question' })).toBeNull();
   });
 
   it('goes back to the pill on Home it came from', () => {
-    renderPage();
+    renderPage('', { from: 'home', segment: 'photos' });
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
       'href',
-      '/home?segment=topics',
+      '/home?segment=photos',
     );
   });
 });
 
-describe('the rooms', () => {
-  it('lists the open rooms only, under their headings in order, with none chosen', () => {
+describe('the room', () => {
+  it('is General unless another is chosen', () => {
     renderPage();
-    const radios = within(group()).getAllByRole('radio');
-    expect(radios.map((radio) => radio.getAttribute('value'))).toEqual([
-      'bowel',
-      'newsci',
-      'equip',
-    ]);
-    for (const radio of radios) expect(radio).not.toBeChecked();
+    expect(roomSelect()).toHaveValue('general');
+  });
+
+  it('offers the open rooms only, under their headings in order', () => {
+    renderPage();
+    const groups = within(roomSelect()).getAllByRole('group');
+    expect(groups.map((g) => g.getAttribute('label'))).toEqual(['General', 'Body', 'Life', 'Kit']);
     expect(
-      within(group())
-        .getAllByRole('heading', { level: 3 })
-        .map((heading) => heading.textContent),
-    ).toEqual(['Body', 'Life', 'Kit']);
-    expect(screen.queryByRole('radio', { name: /Skin/ })).toBeNull();
+      within(roomSelect()).queryByRole('option', { name: 'Skin & pressure sores' }),
+    ).toBeNull();
   });
 
-  // h1, then h2, then the six h3s Chat uses for categories; never a jump.
-  it('keeps the headings in order', () => {
+  it('falls back to the first open room where there is no General', () => {
+    db.rooms = rooms().filter((room) => room.id !== 'general');
     renderPage();
-    expect(screen.getAllByRole('heading').map((h) => [h.tagName, h.textContent])).toEqual([
-      ['H1', 'Ask the club'],
-      ['H2', 'Which room does it go in?'],
-      ['H3', 'Body'],
-      ['H3', 'Life'],
-      ['H3', 'Kit'],
-    ]);
-  });
-
-  it('names each room and describes it, with no word about joining', () => {
-    renderPage();
-    const bowel = screen.getByRole('radio', { name: 'Bowel management' });
-    expect(bowel).toHaveAccessibleDescription('The one nobody talks about anywhere else.');
-    expect(screen.getByRole('radio', { name: 'Newly injured' })).toBeInTheDocument();
-    expect(screen.queryByText('Joined')).toBeNull();
-  });
-
-  it('waits for a room and says so', () => {
-    renderPage();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    expect(screen.getByText('Choose a room.')).toBeInTheDocument();
+    expect(roomSelect()).toHaveValue('bowel');
   });
 
   it('always offers to start a room', () => {
     renderPage();
-    expect(screen.getByText(/None of these fit\?/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Start a room' })).toHaveAttribute(
       'href',
       '/chat/rooms/new',
@@ -153,44 +137,69 @@ describe('the rooms', () => {
   });
 });
 
-describe('continuing', () => {
-  // Since 20260930000000 nobody joins a room to write in it, so the button is
-  // Continue for everybody and goes straight on.
-  it('goes straight on, with the kind and the way back', async () => {
+describe('asking', () => {
+  it('waits for a question and says so', () => {
+    renderPage();
+    expect(screen.getByRole('button', { name: 'Post your question' })).toBeDisabled();
+    expect(screen.getByText('Write your question.')).toBeInTheDocument();
+  });
+
+  it('posts to General as a question, with the question as the first post when there is no detail', async () => {
     const user = userEvent.setup();
-    renderPage('?kind=share');
-    await user.click(screen.getByRole('radio', { name: /Bowel management/ }));
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
-    expect(screen.queryByRole('button', { name: /Join/ })).toBeNull();
-    expect(screen.queryByText(/Joining is what lets you write/)).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    renderPage();
+    await user.type(screen.getByRole('textbox', { name: 'Your question' }), 'Best cushion?');
+    expect(screen.getByRole('checkbox', { name: /This is a question/ })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Post your question' }));
+    await waitFor(() => {
+      expect(db.created).toEqual([['general', 'Best cushion?', 'Best cushion?', [], true]]);
+    });
     expect(db.navigated).toEqual([
-      ['/chat/rooms/bowel/new', { from: 'home', segment: 'topics', kind: 'share' }],
+      ['/chat/rooms/general/topics/new-topic', { from: 'home', segment: 'topics' }],
     ]);
   });
 
-  it('says nothing under the button once a room is chosen', async () => {
+  it('sends the detail, the chosen room, and "not a question" when unticked', async () => {
     const user = userEvent.setup();
     renderPage();
-    expect(screen.getByText('Choose a room.')).toBeInTheDocument();
-    await user.click(screen.getByRole('radio', { name: 'Newly injured' }));
-    expect(screen.queryByText('Choose a room.')).toBeNull();
+    await user.type(screen.getByRole('textbox', { name: 'Your question' }), 'My new chair');
+    await user.click(screen.getByRole('checkbox', { name: /This is a question/ }));
+    await user.type(screen.getByRole('textbox', { name: /More detail/ }), 'It arrived today.');
+    await user.selectOptions(roomSelect(), 'equip');
+    await user.click(screen.getByRole('button', { name: 'Post your question' }));
+    await waitFor(() => {
+      expect(db.created).toEqual([['equip', 'My new chair', 'It arrived today.', [], false]]);
+    });
+  });
+
+  it('keeps what was written when the post is refused', async () => {
+    const user = userEvent.setup();
+    db.createFails = 'You cannot post in this room.';
+    renderPage();
+    await user.type(screen.getByRole('textbox', { name: 'Your question' }), 'Anyone?');
+    await user.click(screen.getByRole('button', { name: 'Post your question' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('You cannot post in this room.');
+    expect(screen.getByRole('textbox', { name: 'Your question' })).toHaveValue('Anyone?');
+    expect(db.navigated).toEqual([]);
+  });
+});
+
+describe('sharing', () => {
+  it('goes on to the photo picker in the chosen room, with the kind and the way back', async () => {
+    const user = userEvent.setup();
+    renderPage('?kind=share', { from: 'home', segment: 'photos' });
+    await user.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(db.navigated).toEqual([
+      ['/chat/rooms/general/new', { from: 'home', segment: 'photos', kind: 'share' }],
+    ]);
   });
 });
 
 describe('when no room is open', () => {
-  it('says so and links to starting one, with no list and no button', () => {
-    db.rooms = rooms().map((room) => ({ ...room, openedAt: null }));
+  it('says so and links to starting one, with no form', () => {
+    db.rooms = [makeRoom({ id: 'skin', openedAt: null })];
     renderPage();
-    expect(
-      screen.getByText('No rooms are open yet. Start one — it begins with your first topic.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Start a room' })).toHaveAttribute(
-      'href',
-      '/chat/rooms/new',
-    );
-    expect(screen.queryByRole('radio')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Continue/ })).toBeNull();
+    expect(screen.getByText(/No rooms are open yet/)).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: 'Your question' })).toBeNull();
   });
 });
 
@@ -199,6 +208,6 @@ describe('when the rooms cannot be read', () => {
     db.roomsError = 'Could not load the rooms.';
     renderPage();
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load the rooms.');
-    expect(screen.queryByRole('button', { name: /Continue/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Start a room' })).toBeInTheDocument();
   });
 });

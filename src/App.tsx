@@ -2,18 +2,22 @@ import { useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskOnOpening } from '@/components/ask-on-opening';
+import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
+import { FollowNotification } from '@/lib/push/follow-notification';
 import OrganizationManagementPage from '@/routes/admin/organization-management-page';
 import AdminPage from '@/routes/admin/page';
 import GroupMembersPage from '@/routes/chat/group-members';
 import NewGroupPage from '@/routes/chat/new-group';
+import NewMessagePage from '@/routes/chat/new-message';
 import NewRoomPage from '@/routes/chat/new-room';
 import NewTopicPage from '@/routes/chat/new-topic';
 import ChatPage from '@/routes/chat/page';
 import RoomPage from '@/routes/chat/room-page';
+import SharePage from '@/routes/chat/share-page';
 import ThreadPage from '@/routes/chat/thread-page';
 import TopicPage from '@/routes/chat/topic-page';
 import DevLoginPage from '@/routes/dev-login/page';
@@ -28,6 +32,7 @@ import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
 import MePage from '@/routes/me/page';
 import NotFoundPage from '@/routes/not-found/page';
+import NotificationsPage from '@/routes/notifications/page';
 import OnboardingPage from '@/routes/onboarding/page';
 import MemberDetailPage from '@/routes/peers/member-detail';
 import PeersPage from '@/routes/peers/page';
@@ -99,6 +104,12 @@ function AppShell() {
             does once, and none of them belongs beside a composer. */}
           <Route path="/chat/t/:threadId/members" element={<GroupMembersPage />} />
           <Route path="/chat/new-group" element={<NewGroupPage />} />
+          {/* A conversation with one person, from Chat rather than only from
+            their profile (2026-10-10). */}
+          <Route path="/chat/new" element={<NewMessagePage />} />
+          {/* What another app shared to the club, kept by the service worker
+            (manifest share_target; Android). */}
+          <Route path="/share" element={<SharePage />} />
           <Route path="/events" element={<EventsPage />} />
           {/* Adding and changing an event by hand: administrators, and members
             who speak for an organization. The page sends anybody else back to
@@ -108,6 +119,9 @@ function AppShell() {
           <Route path="/events/:id/edit" element={<EventFormPage />} />
           <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
           <Route path="/me" element={<MePage />} />
+          {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
+            of the top bar (desktop) lead here. */}
+          <Route path="/notifications" element={<NotificationsPage />} />
           {/* Unlisted in the tab bar; the page redirects a non-mentor away.
             Reached from the Invites card on Me, which is where a member goes
             to find out what their membership lets them do. */}
@@ -121,6 +135,10 @@ function AppShell() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </main>
+      {/* After the screen and before the tab bar on a phone (the nav is
+          ordered last there): it pushes the screen up rather than covering
+          it. Phones' browsers only; see install-nudge.tsx. */}
+      <InstallNudge />
     </div>
   );
 }
@@ -133,6 +151,7 @@ export default function App() {
       <AnnounceProvider>
         <InstalledApp />
         <RouteChange />
+        <FollowNotification />
         <AppRoutes />
       </AnnounceProvider>
     </AccessibilityProvider>

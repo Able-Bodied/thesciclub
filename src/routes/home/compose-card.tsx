@@ -51,10 +51,10 @@ export function ComposeCard({
           state={linkState}
           className="block font-extrabold font-head text-[0.90625rem] text-ink leading-[1.3] after:absolute after:inset-0 after:rounded-[17px]"
         >
-          Ask something, or share something
+          {segment === 'photos' ? 'Share a photograph' : 'What would you like to ask?'}
         </Link>
         <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.45]">
-          No question is too basic, too personal or too weird.
+          No question is too basic, too personal or too weird. Or share a photograph.
         </span>
       </span>
     </div>

@@ -1,3 +1,4 @@
+import { SquarePen } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { SegmentPills } from '@/components/segment-pills';
@@ -13,6 +14,7 @@ import {
   type ChatSegment,
   type ChatThread,
 } from '@/lib/chat/types';
+import { QuickAsk } from '@/routes/chat/quick-ask';
 import { RoomCard, RoomCategoryLabel } from '@/routes/chat/room-card';
 import { ThreadRow } from '@/routes/chat/thread-row';
 
@@ -128,10 +130,19 @@ export default function ChatPage() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto w-full max-w-[720px]">
+        <div className="mx-auto flex w-full max-w-[720px] items-center justify-between gap-2">
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Chat
           </h1>
+          {/* Writing to one person, from here (2026-10-10). Before, only a
+              profile's Message button started a conversation. */}
+          <Link
+            to="/chat/new"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-action px-4 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
+          >
+            <SquarePen aria-hidden="true" className="h-4 w-4" />
+            New message
+          </Link>
         </div>
         <SegmentPills
           segments={SEGMENTS}
@@ -143,6 +154,9 @@ export default function ChatPage() {
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[720px]">
+          {/* Asking from Chat too, the same box as Home's (the owner,
+              2026-10-10): General unless another room is picked. */}
+          <QuickAsk rooms={rooms} className="mb-3.5" />
           {showConversations ? (
             <Conversations
               segment={segment}
