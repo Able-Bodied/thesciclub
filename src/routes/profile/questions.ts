@@ -1,3 +1,4 @@
+import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { BEFORE_AFTER, EDUCATION, EMPLOYMENT, INDEPENDENCE, MARITAL_STATUS } from '@/types/domain';
 
 /**
@@ -137,6 +138,13 @@ export const SELF_CARE = [
   // which is what happened to the people who had picked 'Other' for a language.
 ] as const;
 
+/** The self-care answers that "The specifics" asks about. */
+export const SPECIFICS_FOR: readonly string[] = [
+  'Dictation software',
+  'Vehicle modifications',
+  'Wheelchair assist devices',
+];
+
 export const QUESTIONS: Question[] = [
   {
     key: 'gender',
@@ -163,19 +171,20 @@ export const QUESTIONS: Question[] = [
   },
 
   {
-    key: 'howInjured',
-    column: 'how_injured',
-    title: 'How were you injured?',
+    key: 'bio',
+    column: 'bio',
+    title: 'Brief bio',
     kind: 'text',
-    placeholder: 'Car accident on the 880, 2013…',
+    placeholder:
+      'Avid handcyclist and gardener who loves the outdoors. Manual chair user with full hand strength, but bilateral carpal tunnel.',
   },
 
   {
-    key: 'bio',
-    column: 'bio',
-    title: 'In your own words',
+    key: 'howInjured',
+    column: 'how_injured',
+    title: 'How were you paralyzed?',
     kind: 'text',
-    placeholder: 'Manual chair with a SmartDrive. Live alone, drive with hand controls…',
+    placeholder: 'Car accident on the 880, 2013…',
   },
 
   {
@@ -255,6 +264,25 @@ export const QUESTIONS: Question[] = [
   },
 
   {
+    key: 'sportsEquipment',
+    column: 'sports_equipment',
+    title: 'Do you own any adaptive sports equipment?',
+    kind: 'text',
+    placeholder: 'Top End Force 3 handcycle, Freewheel, and HOC Glide ski',
+  },
+
+  // In words rather than a list of organizations (owner, 2026-10-08): which
+  // grant paid for what is the part another member asks about.
+  {
+    key: 'grants',
+    column: 'grants',
+    title: 'Did you receive any grants?',
+    kind: 'text',
+    placeholder:
+      'I received a Kelly Brush grant and High Fives grant for my handcycle and a NorCal SCI Franklin Project rehab grant to go to Neuroworx.',
+  },
+
+  {
     key: 'selfCare',
     column: 'self_care',
     title: 'Self-care devices and procedures',
@@ -264,12 +292,19 @@ export const QUESTIONS: Question[] = [
     otherPlaceholder: 'In your own words',
   },
 
+  // Asked only of somebody who chose one of the self-care answers it is about
+  // (owner, 2026-10-10): which program, which modifications, which device.
+  // Still asked of anybody who already wrote something here, so an answer is
+  // never left where its author cannot reach it.
   {
     key: 'detail',
     column: 'detail',
     title: 'Anything worth spelling out?',
     kind: 'text',
     placeholder: 'SmartDrive; Dragon; 2019 Odyssey with a power sliding door…',
+    onlyIf: (a) =>
+      (Array.isArray(a.selfCare) && a.selfCare.some((c) => SPECIFICS_FOR.includes(c))) ||
+      (typeof a.detail === 'string' && a.detail.trim() !== ''),
   },
 
   {
@@ -284,24 +319,21 @@ export interface Screen {
   title: string;
   keys: string[];
   hint?: string;
+  /** A short list under the hint, before the questions: what saying yes means. */
+  details?: { title: string; items: string[] };
 }
 
 export const SCREENS: Screen[] = [
   { title: 'About you', keys: ['gender', 'languages'] },
   {
-    title: 'How it happened',
-    keys: ['howInjured'],
-    hint: 'In your own words. Members read this to find somebody whose story rhymes with theirs.',
-  },
-  {
-    title: 'In your own words',
+    title: 'Brief bio',
     keys: ['bio'],
     hint: 'The lines that sit on your profile. What you use, how you get about, who is around you.',
   },
   {
-    title: 'Topics you are happy to talk about',
-    keys: ['topics'],
-    hint: 'This is what other members search on. Pick anything you would not mind a stranger asking about.',
+    title: 'How were you paralyzed?',
+    keys: ['howInjured'],
+    hint: 'In your own words. Members read this to find somebody whose story rhymes with theirs.',
   },
   { title: 'Family', keys: ['maritalStatus', 'hasChildren', 'childrenWhen'] },
   { title: 'Day to day', keys: ['independence', 'employment'] },
@@ -321,15 +353,45 @@ export const SCREENS: Screen[] = [
     keys: ['selfCare'],
     hint: 'Only what you are comfortable discussing. The single most searched field in the club.',
   },
+  // Only after one of the three self-care answers it asks about (`detail`'s
+  // onlyIf); otherwise the survey steps over it (`stepFrom`).
   {
     title: 'The specifics',
     keys: ['detail'],
     hint: 'Which dictation program, which vehicle modifications, which assist devices — the details are what people message you about.',
   },
   {
+    title: 'Do you own any adaptive sports equipment?',
+    keys: ['sportsEquipment'],
+    hint: 'Make and model if you know them. Somebody trying one for the first time may want to ask you about it.',
+  },
+  {
+    title: 'Did you receive any grants?',
+    keys: ['grants'],
+    hint: 'Who it was from and what it paid for — equipment, a vehicle, rehab, a home change. Members applying for their first want to know who has been through it.',
+  },
+  // Why first, then what it means (owner, 2026-10-10). The allowance is read
+  // from the invites screen's constant, which mirrors mentor_invite_limit():
+  // this hint said "two numbers" for a month after the limit became ten. And
+  // yes is a request — an administrator makes somebody a mentor
+  // (guard_own_member_row) — so the list says so rather than promising it.
+  {
     title: 'Mentoring',
     keys: ['wantsToMentor'],
-    hint: 'Mentors appear first to newly injured members, and can put two numbers on the club’s list.',
+    hint: 'Mentoring peers is not only helpful to the community, but also very rewarding. Help someone newly injured navigate SCI and all the complications involved. Become a mentor.',
+    details: {
+      title: 'As a mentor',
+      items: [
+        'You appear first to newly injured members looking for someone who has been there.',
+        `You can invite up to ${MENTOR_ALLOWANCE} people to the club.`,
+        'Saying yes tells the club you are interested. An administrator makes it official.',
+      ],
+    },
+  },
+  {
+    title: 'Topics you are happy to talk about',
+    keys: ['topics'],
+    hint: 'This is what other members search on. Pick anything you would not mind a stranger asking about.',
   },
 ];
 
@@ -345,6 +407,35 @@ export function questionsOn(screen: Screen, answers: Answers): Question[] {
     .map((k) => BY_KEY.get(k))
     .filter((q): q is Question => q !== undefined)
     .filter((q) => !q.onlyIf || q.onlyIf(answers));
+}
+
+/**
+ * The indexes of the screens that have something to ask, in order.
+ *
+ * A screen whose every question is conditional and off — "The specifics" for
+ * somebody who chose none of its three self-care answers — is not shown at
+ * all, rather than as a title over nothing. The counter and the bar count
+ * these, so "10 of 13" is what this member will actually see.
+ */
+export function screensThatApply(answers: Answers): number[] {
+  return SCREENS.flatMap((screen, index) =>
+    questionsOn(screen, answers).length > 0 ? [index] : [],
+  );
+}
+
+/**
+ * The next screen with something to ask, from `index` (inclusive) in the
+ * direction of `step`. Past the last screen is `SCREENS.length`, which the
+ * survey treats as finishing; before the first is the first.
+ */
+export function stepFrom(index: number, step: 1 | -1, answers: Answers): number {
+  let at = index;
+  while (at >= 0 && at < SCREENS.length) {
+    const screen = SCREENS[at];
+    if (screen && questionsOn(screen, answers).length > 0) return at;
+    at += step;
+  }
+  return at < 0 ? 0 : SCREENS.length;
 }
 
 /**

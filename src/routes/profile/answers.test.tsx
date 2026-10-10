@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
+import { SCREENS } from '@/routes/profile/questions';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const api = vi.hoisted(() => ({
@@ -50,10 +51,10 @@ describe('Your answers', () => {
     await screen.findByRole('heading', { name: 'Your answers' });
     const about = await screen.findByRole('region', { name: 'About you' });
     expect(within(about).getByText('English, Spanish')).toBeInTheDocument();
+    expect(within(section('Brief bio')).getByText('Rugby on Tuesdays.')).toBeInTheDocument();
     expect(
-      within(section('In your own words')).getByText('Rugby on Tuesdays.'),
+      within(section('How were you paralyzed?')).getByText('Rather not say'),
     ).toBeInTheDocument();
-    expect(within(section('How it happened')).getByText('Rather not say')).toBeInTheDocument();
     expect(within(section('Work')).getByText('Not answered yet')).toBeInTheDocument();
   });
 
@@ -62,7 +63,7 @@ describe('Your answers', () => {
     const family = await screen.findByRole('region', { name: 'Family' });
     expect(within(family).getByRole('link', { name: 'Change Family' })).toHaveAttribute(
       'href',
-      '/profile?screen=4',
+      `/profile?screen=${SCREENS.findIndex((s) => s.title === 'Family')}`,
     );
   });
 

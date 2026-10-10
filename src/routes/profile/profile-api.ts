@@ -26,6 +26,14 @@ import { type Answers, canDecline, QUESTIONS } from '@/routes/profile/questions'
  */
 const COLUMNS = [...QUESTIONS.map((q) => q.column), 'declined'];
 
+/**
+ * The columns the app may know about before the database does: `declined`
+ * (20260917030000) and the equipment and grants answers (20261011020000).
+ * Left out of the fallback read below, so the survey still loads, without
+ * them, on a database that does not have them yet.
+ */
+const NEWEST_COLUMNS = ['declined', 'sports_equipment', 'grants'];
+
 /** What the row says somebody has declined, with anything unexpected dropped. */
 export function declinedFrom(row: Record<string, unknown>): Set<string> {
   const value = row.declined;
@@ -36,7 +44,7 @@ export function declinedFrom(row: Record<string, unknown>): Set<string> {
 export async function loadAnswers(): Promise<
   { ok: true; answers: Answers; declined: Set<string> } | { ok: false; error: string }
 > {
-  // Asked for once with `declined` and once without.
+  // Asked for once with the newest columns and once without.
   //
   // This project deploys the app ahead of its migrations often enough that it
   // has its own conventions for it, and a select naming a column the database
@@ -47,19 +55,19 @@ export async function loadAnswers(): Promise<
   // find because the error pointed nowhere near the cause.
   let result = await getSupabase().from('members').select(COLUMNS.join(', ')).maybeSingle();
   if (result.error) {
-    const withoutDeclined = await getSupabase()
+    const withoutNewest = await getSupabase()
       .from('members')
-      .select(COLUMNS.filter((c) => c !== 'declined').join(', '))
+      .select(COLUMNS.filter((c) => !NEWEST_COLUMNS.includes(c)).join(', '))
       .maybeSingle();
     // Only the second failure is reported. If the fallback fails too, the
     // problem is not the column and the first message is the misleading one.
-    if (withoutDeclined.error) {
+    if (withoutNewest.error) {
       return {
         ok: false,
-        error: describeError(withoutDeclined.error, 'Could not load your answers.'),
+        error: describeError(withoutNewest.error, 'Could not load your answers.'),
       };
     }
-    result = withoutDeclined;
+    result = withoutNewest;
   }
 
   const row = (result.data ?? {}) as Record<string, unknown>;

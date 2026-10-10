@@ -17,9 +17,8 @@ the product definition and wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
-  `20261010020000` live (linked dry run 2026-10-10); `20261010030000` (an
-  Other category, last, with an Other room) and `20261011000000` (Open 17)
-  are pending,
+  `20261011020000` live (linked `db push` 2026-10-10; the dry run before it
+  listed nothing else pending),
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -368,7 +367,31 @@ the product definition and wins over this file.
     regressions; restoring the desktop gate fails the new tests. The owner
     explicitly requested commit and push to main.
 
-22. **System notification navigation** (2026-10-10, no migration). The
+22. **Profile survey: wording, order, equipment and grants** (2026-10-10).
+    "How it happened" is "How were you paralyzed?"; "In your own words" is
+    "Brief bio", second. Order: About you, Brief bio, How were you
+    paralyzed?, Family, Day to day, Education, Work, Interests, Self-care
+    devices, The specifics, adaptive sports equipment, grants, Mentoring,
+    Topics. "The specifics" is asked only after Dictation software, Vehicle
+    modifications or Wheelchair assist devices (or when it already has an
+    answer); a screen with nothing to ask is stepped over (`stepFrom`) and
+    the counter counts only shown screens. Two new free-text questions, "Do
+    you own any adaptive sports equipment?" and "Did you receive any
+    grants?", in `20261011020000` (`sports_equipment`, `grants`, 1000
+    characters each) — applied and released 2026-10-10;
+    `loadAnswers` leaves them out of its fallback read, so the survey still
+    loads without them, but saving those two screens fails until they exist.
+    Not in `browse_members`: whether other members see them is the owner's
+    call. Mentoring opens with why to mentor, then "As a mentor" (first to
+    newly injured members, `MENTOR_ALLOWANCE` invites — the old hint still
+    said two — and that an administrator makes it official). A lone yes/no
+    question now shows its words. Members at 100% drop below it until they
+    answer the new screens. All 2,185 tests, standalone check and build pass.
+    A Home ask dialog (one box, two taps) was built alongside and set aside
+    unreleased on the local branch `backup/2026-10-10-home-ask-and-survey`,
+    since Open 14's asking screen came first.
+
+23. **System notification navigation** (2026-10-10, no migration). The
     live `push_owed` already carries `?message=` and `?post=`. A rejected
     `WindowClient.focus()` previously aborted delivery; now delivery uses
     the original client and continues after that rejection. Clicks are kept
