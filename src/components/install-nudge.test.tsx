@@ -85,18 +85,39 @@ describe('the Home Screen nudge', () => {
     expect(prompt).toHaveBeenCalledTimes(1);
   });
 
-  it('offers installation on Chrome desktop even before a native prompt is available', async () => {
+  it('does not offer the nudge on desktop', () => {
     browserIs(DESKTOP);
     renderAfterWait();
-    expect(screen.getByText('Install the club on this computer')).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
-    expect(screen.getByRole('dialog', { name: 'Install the club' })).toHaveTextContent(
-      'install icon',
-    );
+    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Show me how' })).toBeNull();
+  });
+
+  it('stays hidden on desktop when Chrome offers a native prompt', async () => {
+    browserIs(DESKTOP);
+    renderAfterWait();
+    act(() => {
+      window.dispatchEvent(
+        Object.assign(new Event('beforeinstallprompt'), {
+          prompt: vi.fn(() => Promise.resolve()),
+          userChoice: Promise.resolve({ outcome: 'dismissed' as const }),
+        }),
+      );
+    });
+    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Install' })).toBeNull();
+    render(<InstallSettings />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Install' }));
+  });
+
+  it('offers manual installation on Android before Chrome supplies a native prompt', () => {
+    browserIs(ANDROID);
+    renderAfterWait();
+    expect(screen.getByText('Put the club on your Home Screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Show me how' })).toBeInTheDocument();
   });
 
   it('keeps a Chrome prompt caught before mounting available to the Install button', async () => {
-    browserIs(DESKTOP);
+    browserIs(ANDROID);
     const prompt = vi.fn(() => Promise.resolve());
     window.dispatchEvent(
       Object.assign(new Event('beforeinstallprompt'), {

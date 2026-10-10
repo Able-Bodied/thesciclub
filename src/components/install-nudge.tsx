@@ -29,7 +29,9 @@ import {
  * prompt (Chrome and Samsung Internet on Android), the button is Install and
  * shows that prompt; everywhere else it shows the steps for this browser.
  *
- * Not in the installed app and not in the first moments
+ * Only on mobile browsers (the owner, 2026-10-10), regardless of viewport
+ * width: narrowing a desktop window must not show it, and a wide phone
+ * must still offer installation. Not in the installed app or the first moments
  * after a screen opens, so it is not the first thing anybody sees.
  */
 export function InstallNudge() {
@@ -48,6 +50,8 @@ export function InstallNudge() {
       clearTimeout(timer);
     };
   }, []);
+
+  if (!isHandheld(platform)) return null;
 
   if (installed || dismissed || !ready) {
     return showing ? (
