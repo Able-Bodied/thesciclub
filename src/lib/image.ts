@@ -169,6 +169,12 @@ export async function preparePhoto(
   file: File,
   /** The long edge to fit to. Profiles use the default; chat photographs ask for more. */
   max: number = MAX_PHOTO_EDGE,
+  /**
+   * Painted under the picture, for one that may be transparent. A logo is
+   * often a PNG with no ground, and where the browser cannot write webp (an
+   * iPhone) it goes out as JPEG, which turns transparency black.
+   */
+  background?: string,
 ): Promise<PreparedPhoto> {
   const fallback: PreparedPhoto = { blob: file, ext: originalExtension(file) };
   if (typeof createImageBitmap !== 'function') return fallback;
@@ -184,6 +190,10 @@ export async function preparePhoto(
 
     const context = canvas.getContext('2d');
     if (!context) return fallback;
+    if (background) {
+      context.fillStyle = background;
+      context.fillRect(0, 0, width, height);
+    }
     context.drawImage(bitmap, 0, 0, width, height);
 
     for (const [type, ext] of ENCODINGS) {

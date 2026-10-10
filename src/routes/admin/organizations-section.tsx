@@ -4,6 +4,7 @@ import { removeOrganization } from '@/lib/organization-management';
 import { useOrganizations } from '@/lib/organizations';
 import { SmallButton } from '@/routes/admin/controls';
 import { OrganizationEditor } from '@/routes/admin/organization-editor';
+import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { Organization } from '@/types/domain';
 
 /** Administrators manage the directory. Organization accounts edit only their
@@ -57,8 +58,9 @@ export function OrganizationsSection({
           onCancel={() => {
             setEditing(null);
           }}
-          onSaved={() => {
+          onSaved={(warning) => {
             setEditing(null);
+            setFailure(warning ?? null);
             changed();
           }}
         />
@@ -79,33 +81,39 @@ export function OrganizationsSection({
                 key={organization.id}
                 className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
               >
-                <div className="min-w-0 flex-1 basis-[12rem]">
+                {/* The badge members see, so a missing logo is noticed here. */}
+                <OrganizationBadge organization={organization} />
+                <div className="min-w-0 flex-1 basis-[8rem]">
                   <h3 className="font-bold text-ink">{organization.name}</h3>
                   <p className="text-[0.8125rem] text-grey">
                     {organization.shortCode} · {organization.city}
                   </p>
                 </div>
-                <SmallButton
-                  aria-label={`Edit ${organization.name}`}
-                  onClick={() => {
-                    setFailure(null);
-                    setEditing(organization);
-                  }}
-                >
-                  Edit
-                </SmallButton>
-                {administrator ? (
+                {/* Together, so the badge does not push Remove onto a line of
+                    its own beneath the name on a phone. */}
+                <div className="flex flex-none gap-2">
                   <SmallButton
-                    destructive
-                    aria-label={`Remove ${organization.name}`}
+                    aria-label={`Edit ${organization.name}`}
                     onClick={() => {
                       setFailure(null);
-                      setRemoving(organization);
+                      setEditing(organization);
                     }}
                   >
-                    Remove
+                    Edit
                   </SmallButton>
-                ) : null}
+                  {administrator ? (
+                    <SmallButton
+                      destructive
+                      aria-label={`Remove ${organization.name}`}
+                      onClick={() => {
+                        setFailure(null);
+                        setRemoving(organization);
+                      }}
+                    >
+                      Remove
+                    </SmallButton>
+                  ) : null}
+                </div>
               </div>
             ))
           )}
