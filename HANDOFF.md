@@ -17,7 +17,8 @@ the product definition and wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
-  `20261009040000` live (`migration list --linked`, 2026-10-09),
+  `20261010020000` live (linked dry run 2026-10-10); `20261010030000` (an
+  Other category, last, with an Other room) is pending,
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -224,6 +225,72 @@ the product definition and wins over this file.
     deleted. Probe `supabase/tests/organization-logos.sql`: 8 true, 10 expected
     refusals on local and fresh stacks; letting any representative edit removed
     one refusal.
+
+14. **Notifications list, notification taps, easier questions — unreleased**
+    (2026-10-09). Two migrations, live (the client is not yet released):
+    `20261010000000_notifications_are_kept_and_open_what_they_are_about.sql`
+    (a `notifications` row per member, written by `push_notify_send` before it
+    pushes, so members without a device are included; references only, words
+    read live by `my_notifications()`; folded per tag while unread; read with
+    the conversation or topic; 30 days, cron `notifications-forget`; push_owed
+    restated with a message opening on `?message=` and a report on Admin's
+    Reports tab) and `20261010010000_asking_is_easier.sql` (category and room
+    `general`, `chat_topics.is_question`, `chat_create_topic(..., question)`,
+    `chat_move_topic` for an administrator or the starter, `chat_topic_room`).
+    The service worker now asks a running app to change screen itself
+    (`NAVIGATE`, answered, `navigate()` only as a fallback) and keeps the last
+    press for a starting app (`PENDING`, 20s): `FollowNotification` in App.
+    Probes `notifications-list.sql` (18 true, 3 refusals) and
+    `asking-is-easier.sql` (10 true, 4 refusals) match on local and fresh
+    stacks; ignoring a left conversation and letting anybody move a topic each
+    failed one. 2,091 tests, check and build pass; browser checks at 390 and
+    1280, dark with larger text. Not tried: a real iPhone press from the lock
+    screen, cold and warm (Open 5). The per-kind switches on Me stay phone-only;
+    the list shows those kinds. Then, at the owner's word, the least friction:
+    `QuickAsk` (a box at the top of Home, except Photos, and of every room,
+    replacing the room's bottom "+ New topic") posts the words as title and
+    first post in one tap or Enter, question ticked, room General on Home;
+    "Add details or a photo" carries the words and tick into the room's New
+    topic form, whose first post is now optional. Unposted words stay in
+    sessionStorage per place. Topic and room pages lead with a breadcrumb
+    (Home › Rooms › room, `ChatBreadcrumb`); Home's room names link to the
+    room. A question whose first post only repeats the title draws that post
+    as a row of actions (no second card, no Edit) and answers count from 1.
+    A question card on Home has Answer (`answer-box.tsx`): the box opens and
+    takes focus within the tap (flushSync, for the iPhone keyboard), posts a
+    reply and opens the topic on it.
+
+15. **Seeded directory removed, live** (2026-10-10, the owner's word; pushed
+    and the photos script run by the owner, verified: 4 members, 0 seeded,
+    no seed/ files, snapshot and function gone):
+    `20261010020000_the_seeded_directory_is_removed.sql` deletes the 22 seeded
+    members (nothing referenced them; checked live), conversations opened with
+    one and never written in (2 live), `directory_seed` and
+    `admin_restore_directory()`. After it is pushed, `node
+    scripts/remove-seed-photos.mjs --delete` removes photos/seed/* (23 files)
+    through the Storage API; it refuses while any row still uses one. Admin
+    drops Restore directory, and hides the Directory filter, section, count and
+    the invite form's claim question when there are no seeded rows. The claim
+    mechanism stays in the schema, unused; its three probes now make their own
+    seeded "Ajay". The owner holds an offline copy (rows and photos) outside the
+    repo. The seed migration in git history is left alone (owner's choice).
+
+16. **Install nudge, sharing in, similar questions, New message — unreleased**
+    (2026-10-10, no migration). `InstallNudge` (a card above the tab bar in a
+    phone's browser, after 3s; Not now snoozes 14 days; per-browser steps in
+    `lib/install.ts`, Android's own Install where `beforeinstallprompt` fires;
+    in-app browsers told to open a real one) and `InstallSettings` on Me →
+    Settings. Share target (manifest, POST `/share-target`, kept by `sw.ts` in
+    cache `club-share`, read once by `/share`; Netlify 302s a share that misses
+    the worker): Android only, as no iPhone browser lets a web app receive a
+    share; checked against a real service worker. "Already asked" under the
+    ask boxes (`lib/chat/similar.ts`, title word matching under the topics'
+    read policy). The ask box is on Chat too, and Chat's header has New message
+    (`/chat/new`, one tap on a person opens `chat_open_direct`). Events has
+    two pills (Events, Organizations); Going, Interested and Been to are "Your
+    RSVP" in Filters, still `?segment=` so Me's counters link to them, with a
+    "Showing: … · Show all events" line; old sport/online links open
+    everything. 2,145 tests, check and build pass.
 
 ## Rules the owner set
 
