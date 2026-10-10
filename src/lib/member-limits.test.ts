@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { MEMBER_TEXT_MAX, memberTextMax } from '@/lib/member-limits';
 import { QUESTIONS } from '@/routes/profile/questions';
-import MIGRATION from '../../supabase/migrations/20261003100000_a_member_row_has_length_limits.sql?raw';
+import LENGTH_LIMITS from '../../supabase/migrations/20261003100000_a_member_row_has_length_limits.sql?raw';
+import EQUIPMENT_AND_GRANTS from '../../supabase/migrations/20261011020000_adaptive_equipment_and_grants.sql?raw';
 
-/** column → limit, as the migration's check constraints state them. */
+/** column → limit, as the migrations' check constraints state them. */
 function databaseLimits(): Map<string, number> {
   const limits = new Map<string, number>();
-  for (const match of MIGRATION.matchAll(/check \(char_length\(([a-z_]+)\) <= (\d+)\)/g)) {
+  const sql = `${LENGTH_LIMITS}\n${EQUIPMENT_AND_GRANTS}`;
+  for (const match of sql.matchAll(/check \(char_length\(([a-z_]+)\) <= (\d+)\)/g)) {
     limits.set(match[1] ?? '', Number(match[2]));
   }
   return limits;

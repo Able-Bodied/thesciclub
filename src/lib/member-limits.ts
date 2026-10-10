@@ -14,6 +14,8 @@ export const MEMBER_TEXT_MAX = {
   how_injured: 1000,
   bio: 2000,
   detail: 1000,
+  sports_equipment: 1000,
+  grants: 1000,
   field_of_work: 200,
   /** A sentence, not an essay: enough for a scene, short enough to hear. */
   photo_alt: 200,
