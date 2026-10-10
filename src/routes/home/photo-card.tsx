@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
@@ -17,10 +17,12 @@ import { byline, type CardLikes, RoomTag } from '@/routes/home/topic-card';
  * ---------------------------------------------------------------------------
  * Not one link, because it holds buttons
  * ---------------------------------------------------------------------------
- * Each photograph is a button that opens the viewer, and a button inside a
+ * Each photograph is a button that opens its topic, and a button inside a
  * link is two controls fighting over one tap. So the parts are separate: the
  * name goes to the profile, the title and the replies go to the topic, and the
- * photographs open where they are.
+ * photographs open the topic too. The title link stretches over the card
+ * so its body and background also open it; independent controls sit above
+ * that link.
  *
  * ---------------------------------------------------------------------------
  * A single photograph fills the card
@@ -69,15 +71,16 @@ export function PhotoCard({
   likes?: CardLikes | undefined;
   viewCount?: number | null | undefined;
 }) {
+  const navigate = useNavigate();
   const opening = topic.opening;
   const to = `/chat/rooms/${topic.roomId}/topics/${topic.id}`;
   const name = byline(topic.authorId, author);
 
   return (
-    <article className="rounded-[17px] border border-line bg-paper p-3.5">
+    <article className="relative rounded-[17px] border border-line bg-paper p-3.5">
       <div className="flex items-center gap-3">
         {/* Decorative: the link to the profile is on the name. */}
-        <span aria-hidden="true" className="flex-none">
+        <span aria-hidden="true" className="pointer-events-none flex-none">
           {author ? (
             <MemberAvatar
               id={author.id}
@@ -96,7 +99,7 @@ export function PhotoCard({
                 to={`/peers/${author.id}`}
                 state={linkState}
                 data-target="small"
-                className="underline-offset-2 hover:underline"
+                className="relative z-[1] underline-offset-2 hover:underline"
               >
                 {name}
               </Link>
@@ -114,22 +117,36 @@ export function PhotoCard({
         <RoomTag room={topic.room} linkState={linkState} />
       </div>
 
-      {opening ? <AttachmentGrid paths={opening.attachments} from={name} fill /> : null}
+      {opening ? (
+        <div className="relative z-[1]">
+          <AttachmentGrid
+            paths={opening.attachments}
+            from={name}
+            fill
+            onOpen={() => {
+              void navigate(to, { state: linkState });
+            }}
+            openLabel="Open the topic."
+          />
+        </div>
+      ) : null}
 
       <Link
         to={to}
         state={linkState}
         data-target="small"
-        className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] underline-offset-2 hover:underline"
+        className="mt-2.5 block font-extrabold font-head text-[1rem] text-ink leading-[1.32] underline-offset-2 hover:underline after:absolute after:inset-0 after:rounded-[17px]"
       >
         {topic.title}
       </Link>
       {opening?.body ? (
-        <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink leading-[1.52]">
+        <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink leading-[1.52] [&_a]:relative [&_a]:z-[1]">
           <LinkedText text={opening.body} />
         </p>
       ) : null}
-      {opening?.linkPreview ? <LinkPreviewCard preview={opening.linkPreview} /> : null}
+      {opening?.linkPreview ? (
+        <LinkPreviewCard preview={opening.linkPreview} className="relative" />
+      ) : null}
 
       <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 border-line border-t pt-2">
         {opening && likes ? (
@@ -139,7 +156,7 @@ export function PhotoCard({
             what={topic.title}
             onToggle={likes.onToggle}
             linkState={linkState}
-            className="min-h-[2.25rem] text-[0.8125rem]"
+            className="relative min-h-[2.25rem] text-[0.8125rem]"
             loading={likes.loading}
             unavailable={likes.unavailable}
           />
@@ -151,7 +168,7 @@ export function PhotoCard({
             state={linkState}
             aria-label={`${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'} to ${topic.title}`}
             data-target="small"
-            className="inline-flex min-h-[2.25rem] items-center font-semibold text-[0.8125rem] text-ink2 underline-offset-2 hover:underline"
+            className="relative inline-flex min-h-[2.25rem] items-center font-semibold text-[0.8125rem] text-ink2 underline-offset-2 hover:underline"
           >
             {topic.replyCount} {topic.replyCount === 1 ? 'reply' : 'replies'}
           </Link>
@@ -164,7 +181,7 @@ export function PhotoCard({
           state={linkState}
           aria-label={`Reply to ${topic.title}`}
           data-target="small"
-          className="inline-flex min-h-[2.25rem] items-center font-bold text-[0.8125rem] text-emphasis underline-offset-2 hover:underline"
+          className="relative inline-flex min-h-[2.25rem] items-center font-bold text-[0.8125rem] text-emphasis underline-offset-2 hover:underline"
         >
           Reply
         </Link>

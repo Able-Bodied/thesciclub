@@ -406,7 +406,7 @@ the product definition and wins over this file.
     suspended clients, expiry and both exact destinations; reinstating the
     focus abort fails them. Screen regressions check repeated centring.
 
-24. **Room visibility in Home, unreleased** (2026-10-10). Admin → Rooms
+24. **Room visibility in Home, release authorized** (2026-10-10). Admin → Rooms
     has a Home feed switch for each room, separate from Open/Close.
     `20261011030000_rooms_in_home_feed.sql` adds `show_in_home`, default true
     for existing and new rooms, and `admin_set_room_home`; only an active
@@ -420,8 +420,19 @@ the product definition and wins over this file.
     administrator check fails the probe. Removing Home's eligibility gate
     fails its regression. Browser checks verify persisted hide/show and Home
     inclusion at desktop/mobile widths with no overflow. All 2,202 tests,
-    standalone check and build pass. The linked dry run lists only this
-    migration; the owner must apply it before publishing this client.
+    standalone check and build pass. The linked dry run now confirms the
+    owner applied the migration; the remote database is up to date.
+
+25. **Home card navigation, release authorized** (2026-10-10, no migration).
+    Post text, card background and photographs open the containing topic.
+    Questions retain their stretched topic link; decorative reply avatars
+    no longer intercept it. Room labels and their icons open the room.
+    Like, Reply, member names and external links keep their own actions,
+    and navigation preserves Home's back-link state. Photographs inside
+    Chat still open the full-picture viewer. Mobile post/room/Like and
+    desktop question/room browser checks pass. All 2,204 tests, standalone
+    check and production build pass. Open 24's database migration is
+    confirmed live before publishing its client with this change.
 
 ## Rules the owner set
 

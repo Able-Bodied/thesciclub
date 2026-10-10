@@ -120,7 +120,7 @@ export function TopicCard({
         <div className="mt-[11px] border-tint border-l-[2.5px] py-0.5 pl-3">
           <p className="flex items-center gap-[9px]">
             {/* Decorative: the name is beside it. */}
-            <span aria-hidden="true" className="flex-none">
+            <span aria-hidden="true" className="pointer-events-none flex-none">
               {replier ? (
                 <MemberAvatar
                   id={replier.id}
@@ -219,12 +219,6 @@ export function byline(authorId: string | null, author: ChatAuthor | null): stri
 export function RoomTag({ room, linkState }: { room: ChatRoom; linkState?: unknown }) {
   return (
     <p className="flex items-center gap-1.5 font-bold text-[0.71875rem] text-emphasis uppercase tracking-[0.07em]">
-      <span
-        aria-hidden="true"
-        className={`w-[1.2em] flex-none text-center text-[1rem] normal-case leading-none ${ROOM_ICON_COLOUR[room.category]}`}
-      >
-        {room.icon ?? room.name.charAt(0)}
-      </span>
       {/* To the room, and its other topics (the owner, 2026-10-09).
           The title's link is stretched over the whole card by an ::after
           that comes later in the page, so it is drawn on top of anything
@@ -234,8 +228,14 @@ export function RoomTag({ room, linkState }: { room: ChatRoom; linkState?: unkno
         to={`/chat/rooms/${room.id}`}
         state={linkState}
         data-target="small"
-        className="relative z-[1] min-w-0 rounded py-1 underline-offset-2 hover:underline"
+        className="relative z-[1] inline-flex min-w-0 items-center gap-1.5 rounded py-1 underline-offset-2 hover:underline"
       >
+        <span
+          aria-hidden="true"
+          className={`w-[1.2em] flex-none text-center text-[1rem] normal-case leading-none ${ROOM_ICON_COLOUR[room.category]}`}
+        >
+          {room.icon ?? room.name.charAt(0)}
+        </span>
         {room.name}
       </Link>
     </p>

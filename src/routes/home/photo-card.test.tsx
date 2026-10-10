@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
 import type { ChatAuthor } from '@/lib/chat/types';
@@ -46,10 +46,20 @@ const photoTopic = (o: Parameters<typeof makeHomeTopic>[0] = {}) =>
     ...o,
   });
 
+function Destination() {
+  const location = useLocation();
+  return (
+    <p data-testid="destination">
+      {location.pathname} {JSON.stringify(location.state)}
+    </p>
+  );
+}
+
 function renderCard(props: Partial<Parameters<typeof PhotoCard>[0]> = {}) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={['/home']}>
       <PhotoCard topic={photoTopic()} author={jan} linkState={{ from: 'home' }} {...props} />
+      <Destination />
     </MemoryRouter>,
   );
 }
@@ -58,20 +68,42 @@ describe('a photograph on Home', () => {
   it('draws the photographs with Chat’s own grid', () => {
     renderCard();
     expect(
-      screen.getByRole('button', { name: 'Photograph 1 of 2 from Jan. Open it.' }),
+      screen.getByRole('button', { name: 'Photograph 1 of 2 from Jan. Open the topic.' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Photograph 2 of 2 from Jan. Open it.' }),
+      screen.getByRole('button', { name: 'Photograph 2 of 2 from Jan. Open the topic.' }),
     ).toBeInTheDocument();
   });
 
   // Chat's default sizes one photograph for a bubble, which left half the
   // card empty. The card asks the grid to fill it.
+  it('opens the topic from a photograph and preserves the way back to Home', async () => {
+    renderCard();
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Photograph 1 of 2 from Jan. Open the topic.' }));
+    expect(screen.getByTestId('destination')).toHaveTextContent(
+      '/chat/rooms/equip/topics/t1 {"from":"home"}',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens the room from its label rather than the topic', async () => {
+    renderCard();
+    const roomLink = screen.getByRole('link', { name: 'Bowel management' });
+    await userEvent.setup().click(roomLink);
+    expect(screen.getByTestId('destination')).toHaveTextContent(
+      '/chat/rooms/bowel {"from":"home"}',
+    );
+  });
+
   it('draws a single photograph the full width of the card', () => {
     renderCard({
       topic: photoTopic({ opening: makePost({ attachments: ['rooms/equip/a.webp'] }) }),
     });
-    const tile = screen.getByRole('button', { name: 'Photograph 1 of 1 from Jan. Open it.' });
+    const tile = screen.getByRole('button', {
+      name: 'Photograph 1 of 1 from Jan. Open the topic.',
+    });
     expect(tile.className).toContain('w-full');
     expect(tile.className).toContain('aspect-[400/260]');
   });
@@ -166,7 +198,9 @@ describe('a photograph on Home', () => {
     renderCard({ topic: photoTopic({ authorId: null }), author: null });
     expect(screen.getByText('Deleted member')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Photograph 1 of 2 from Deleted member. Open it.' }),
+      screen.getByRole('button', {
+        name: 'Photograph 1 of 2 from Deleted member. Open the topic.',
+      }),
     ).toBeInTheDocument();
   });
 

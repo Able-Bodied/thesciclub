@@ -17,7 +17,8 @@ import { useDialogFocus } from '@/lib/dialog-focus';
  * grid is the same for the reader's own and for somebody else's.
  *
  * On Home, with `fill`, a single photograph is the full width of the card at
- * the mock's 400 by 260, cropped to it, and still opens whole in the viewer.
+ * the mock's 400 by 260, cropped to it. Home supplies `onOpen` to go to
+ * the topic; without it the full picture opens in the viewer.
  * Home is the one caller because a card on Home is a fixed width in a column
  * of cards, and a photograph at its own shape left half a card empty beside
  * it on a wide screen, next to two-photograph cards that filled theirs. A
@@ -80,11 +81,16 @@ export function AttachmentGrid({
   paths,
   from,
   fill = false,
+  onOpen,
+  openLabel,
 }: {
   paths: readonly string[];
   from: string;
   /** A single photograph fills the width, cropped. Home's cards only. */
   fill?: boolean;
+  /** Home opens the containing topic; Chat keeps the full-picture viewer. */
+  onOpen?: (() => void) | undefined;
+  openLabel?: string | undefined;
 }) {
   const urls = useAttachmentUrls(paths);
   const [open, setOpen] = useState<number | null>(null);
@@ -106,10 +112,14 @@ export function AttachmentGrid({
             key={path}
             type="button"
             onClick={(event) => {
+              if (onOpen) {
+                onOpen();
+                return;
+              }
               opener.current = event.currentTarget;
               setOpen(index);
             }}
-            aria-label={`Photograph ${index + 1} of ${shown.length} from ${from}. Open it.`}
+            aria-label={`Photograph ${index + 1} of ${shown.length} from ${from}. ${openLabel ?? 'Open it.'}`}
             className={`block overflow-hidden rounded-[10px] ${
               filled ? 'aspect-[400/260] w-full' : single ? 'w-fit max-w-full' : 'aspect-square'
             }`}
