@@ -9,6 +9,7 @@ import { describeThrown } from '@/lib/describe-error';
 import { saveEvent, saveEventSeries, useEvents } from '@/lib/events';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
+import { DescriptionEditor } from '@/routes/events/description-editor';
 import {
   CITY_MAX,
   DESCRIPTION_MAX,
@@ -367,18 +368,16 @@ function EventForm({
         <label htmlFor="event-description" className={LABEL}>
           About it (optional)
         </label>
-        <textarea
+        <DescriptionEditor
           id="event-description"
           value={draft.description}
-          rows={6}
           maxLength={DESCRIPTION_MAX}
-          onChange={(e) => {
-            set('description', e.target.value);
+          onChange={(next) => {
+            set('description', next);
           }}
           placeholder="What happens, who it is for, what to bring, and whether the venue is step-free."
-          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
+          hintClassName={HINT}
         />
-        <p className={HINT}>{DESCRIPTION_MAX - draft.description.length} characters left.</p>
 
         <label htmlFor="event-registration" className={LABEL}>
           Sign-up link (optional)

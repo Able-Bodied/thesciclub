@@ -458,7 +458,7 @@ the product definition and wins over this file.
     the post's own picture and linked name, so the asker had been shown
     only as plain text there.
 
-29. **Repeating events added by hand** (2026-10-10, unreleased). Add an
+29. **Repeating events added by hand** (2026-10-10, released). Add an
     event → Repeats, after Google Calendar: Does not repeat (default), Daily,
     Weekly on <weekday>, Monthly on the <nth weekday>, Custom (every 1–30
     days/weeks/months; ends Never, on a date, or after 2–100 dates). Daily,
@@ -508,6 +508,16 @@ the product definition and wins over this file.
     main as 6a3ab78. The owner applied the migration: linked dry run is now
     up to date and production REST confirms both tables and chat_set_reaction
     exist. The reaction client can now be published.
+
+31. **Formatting in an event's "About it"** (2026-10-10, no migration). A
+    toolbar (Bold, Italic, Heading, Bulleted list, Numbered list, Link,
+    Preview) writes a small Markdown into the box (`lib/markdown.ts`): no
+    fonts or sizes, which the text-size setting owns. Still plain text in
+    `description`; `EventDescription` converts it and passes it through the
+    same `sanitizeHtml` allowlist as a scraped description, so the sanitizer
+    is what makes it safe (tests: typed `<script>`, `javascript:` links, a
+    quote in an address). Plain text from before reads as it did. Link asks
+    for the address beside the toolbar, not in a browser prompt.
 
 ## Rules the owner set
 

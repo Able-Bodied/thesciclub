@@ -1,5 +1,4 @@
-import { LinkedText } from '@/components/linked-text';
-import { cn } from '@/lib/utils';
+import { markdownToHtml } from '@/lib/markdown';
 
 /**
  * Rendering an event description that came from somebody else's website.
@@ -133,16 +132,13 @@ export function EventDescription({
   text: string;
   className?: string;
 }) {
-  const trimmed = html.trim();
-  // A hand-added event has only this: its line breaks are the writer's
-  // paragraphs, and its addresses are links, as they are in Chat.
-  if (!trimmed) {
-    return (
-      <p className={cn(className, 'whitespace-pre-line')}>
-        <LinkedText text={text} />
-      </p>
-    );
-  }
+  // A hand-added event has only the text, written in the form's small
+  // Markdown (lib/markdown.ts: bold, italic, headings, lists, links). Turned
+  // into HTML and then through the same allowlist as an organization's own,
+  // so the sanitizer, not the converter, is what makes it safe. Plain text
+  // from before reads as it did: paragraphs, line breaks, addresses as links.
+  const trimmed = html.trim() || (text.trim() ? markdownToHtml(text) : '');
+  if (!trimmed) return null;
   return (
     <div
       className={className}

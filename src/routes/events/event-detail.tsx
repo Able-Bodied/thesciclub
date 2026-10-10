@@ -239,7 +239,7 @@ export default function EventDetailPage() {
         <EventDescription
           html={event.descriptionHtml}
           text={event.description}
-          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
+          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_ul]:mt-2 [&_ul]:list-disc"
         />
 
         {registerHref || pageHref ? (
