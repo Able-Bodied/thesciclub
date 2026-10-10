@@ -178,6 +178,7 @@ export default function TopicPage() {
   // down, until the reader scrolls (lib/hold-scroll.ts).
   const [searchParams] = useSearchParams();
   const wanted = searchParams.get('post');
+  const wantedNavigation = wanted ? `${wanted}:${location.key}` : null;
   const [flashId, setFlashId] = useState<string | null>(null);
   // Which ?post= the page last opened on; undefined before the first. A
   // second notification pressed while the topic is open names another post.
@@ -187,9 +188,9 @@ export default function TopicPage() {
   const drawn = !loading && !roomsLoading && topic !== null;
   const place = useHoldScroll(scroller, list, drawn);
   useEffect(() => {
-    if (!drawn || threads.length === 0 || scrolledFor.current === wanted) return;
+    if (!drawn || threads.length === 0 || scrolledFor.current === wantedNavigation) return;
     const first = scrolledFor.current === undefined;
-    scrolledFor.current = wanted;
+    scrolledFor.current = wantedNavigation;
     const target = wanted ? document.getElementById(`post-${wanted}`) : null;
     if (target) {
       place.hold(() => {
@@ -211,7 +212,7 @@ export default function TopicPage() {
         element.scrollIntoView({ block: 'start' });
       });
     }
-  }, [drawn, threads, lastReadAt, wanted, place]);
+  }, [drawn, threads, lastReadAt, wanted, wantedNavigation, place]);
 
   function removeTopic() {
     if (!topicId) return;

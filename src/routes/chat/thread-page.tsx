@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
@@ -176,13 +176,15 @@ export default function ThreadPage() {
   // open: a second notification pressed on the same conversation.
   const [searchParams] = useSearchParams();
   const wantedMessage = searchParams.get('message');
+  const { key: navigationKey } = useLocation();
+  const wantedNavigation = wantedMessage ? `${wantedMessage}:${navigationKey}` : null;
   const shownFor = useRef<string | null>(null);
   useEffect(() => {
     if (loading || !thread) return;
-    if (opened.current && wantedMessage === shownFor.current) return;
+    if (opened.current && wantedNavigation === shownFor.current) return;
     const first = !opened.current;
     opened.current = true;
-    shownFor.current = wantedMessage;
+    shownFor.current = wantedNavigation;
     seen.current = messages.length;
     const target = wantedMessage ? document.getElementById(`message-${wantedMessage}`) : null;
     if (target) {
@@ -196,7 +198,7 @@ export default function ThreadPage() {
       return;
     }
     if (first) toBottom('auto');
-  }, [loading, thread, messages.length, toBottom, wantedMessage, pin]);
+  }, [loading, thread, messages.length, toBottom, wantedMessage, wantedNavigation, pin]);
 
   // Afterwards, follow only if the reader was already there.
   useEffect(() => {

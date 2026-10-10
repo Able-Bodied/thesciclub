@@ -29,21 +29,34 @@ export function FollowNotification() {
     function onMessage(event: MessageEvent) {
       const path = navigationRequest(event.data, origin);
       if (path === null) return;
+      // A fresh location also re-centres a notification's message or post
+      // when its URL was already open and the member has scrolled away.
+      void navigate.current(path);
       event.ports[0]?.postMessage({ ok: true });
-      const now = `${window.location.pathname}${window.location.search}`;
-      if (path !== now) void navigate.current(path);
     }
 
     container.addEventListener('message', onMessage);
     // Messages sent before the page was ready are held until this is called.
     container.startMessages();
-    void container.ready
-      .then((registration) => {
-        registration.active?.postMessage({ type: PENDING });
-      })
-      .catch(() => undefined);
+    let alive = true;
+    function collectPending() {
+      if (document.visibilityState === 'hidden') return;
+      void container.ready
+        .then((registration) => {
+          if (alive) registration.active?.postMessage({ type: PENDING });
+        })
+        .catch(() => undefined);
+    }
+    collectPending();
+    window.addEventListener('focus', collectPending);
+    document.addEventListener('visibilitychange', collectPending);
+    container.addEventListener('controllerchange', collectPending);
     return () => {
+      alive = false;
       container.removeEventListener('message', onMessage);
+      window.removeEventListener('focus', collectPending);
+      document.removeEventListener('visibilitychange', collectPending);
+      container.removeEventListener('controllerchange', collectPending);
     };
   }, []);
   return null;

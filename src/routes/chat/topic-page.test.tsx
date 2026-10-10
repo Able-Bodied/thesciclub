@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
 import type * as Likes from '@/lib/chat/likes';
@@ -198,9 +198,25 @@ const post = (o: Partial<ChatPost> & { id: string }): ChatPost => ({
   ...o,
 });
 
-function renderTopic(path = '/chat/rooms/bowel/topics/t') {
+function RepeatNotification() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(`${location.pathname}${location.search}`);
+      }}
+    >
+      Repeat notification
+    </button>
+  );
+}
+
+function renderTopic(path = '/chat/rooms/bowel/topics/t', repeatNotification = false) {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      {repeatNotification ? <RepeatNotification /> : null}
       <Routes>
         <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
         <Route path="/chat/rooms/:roomId" element={<p>The room</p>} />
@@ -278,6 +294,22 @@ describe('opening on the post a notification was about', () => {
     });
     expect(document.getElementById('post-1')).not.toHaveClass('message-flash');
     expect(scrolled).toContainEqual(['post-2', { block: 'center' }]);
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
+
+  it('re-centres the same post when its notification is pressed again', async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    db.posts = [post({ id: '1' }), post({ id: '2', replyTo: '1', body: 'The reply' })];
+    renderTopic('/chat/rooms/bowel/topics/t?post=2', true);
+    await waitFor(() => {
+      expect(scrolled).toHaveBeenCalled();
+    });
+    scrolled.mockClear();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Repeat notification' }));
+    await waitFor(() => {
+      expect(scrolled.mock.contexts).toContain(document.getElementById('post-2'));
+    });
     Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
   });
 

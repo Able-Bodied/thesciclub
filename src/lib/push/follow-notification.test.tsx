@@ -17,8 +17,8 @@ beforeEach(() => {
   Object.defineProperty(navigator, 'serviceWorker', {
     configurable: true,
     value: {
-      addEventListener: (_: string, fn: (event: MessageEvent) => void) => {
-        listeners.push(fn);
+      addEventListener: (kind: string, fn: (event: MessageEvent) => void) => {
+        if (kind === 'message') listeners.push(fn);
       },
       removeEventListener: (_: string, fn: (event: MessageEvent) => void) => {
         listeners = listeners.filter((l) => l !== fn);
@@ -41,7 +41,7 @@ afterEach(() => {
 
 function Where() {
   const location = useLocation();
-  return <p>at {`${location.pathname}${location.search}`}</p>;
+  return <p data-navigation-key={location.key}>at {`${location.pathname}${location.search}`}</p>;
 }
 
 function renderApp() {
@@ -81,6 +81,43 @@ describe('following a pressed notification', () => {
     );
     expect(screen.getByText('at /chat/t/abc?message=m1')).toBeInTheDocument();
     expect(answered).toEqual([{ ok: true }]);
+  });
+
+  it('collects a click again when the app returns to the foreground', async () => {
+    const view = renderApp();
+    await act(() => Promise.resolve());
+    posted = [];
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      await Promise.resolve();
+    });
+    expect(posted).toEqual([{ type: PENDING }]);
+    posted = [];
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await Promise.resolve();
+    });
+    expect(posted).toEqual([{ type: PENDING }]);
+    view.unmount();
+    posted = [];
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      await Promise.resolve();
+    });
+    expect(posted).toEqual([]);
+  });
+
+  it('creates a new navigation even if the same notification URL is open', () => {
+    renderApp();
+    deliver({ type: NAVIGATE, path: '/chat/t/abc?message=m1' });
+    const previous = screen
+      .getByText('at /chat/t/abc?message=m1')
+      .getAttribute('data-navigation-key');
+    deliver({ type: NAVIGATE, path: '/chat/t/abc?message=m1' });
+    expect(
+      screen.getByText('at /chat/t/abc?message=m1').getAttribute('data-navigation-key'),
+    ).not.toBe(previous);
+    expect(screen.getByText('at /chat/t/abc?message=m1')).toBeInTheDocument();
   });
 
   it('ignores a message that is not a request to open somewhere', () => {

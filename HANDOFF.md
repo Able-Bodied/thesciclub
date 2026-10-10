@@ -368,6 +368,21 @@ the product definition and wins over this file.
     regressions; restoring the desktop gate fails the new tests. The owner
     explicitly requested commit and push to main.
 
+22. **System notification navigation** (2026-10-10, no migration). The
+    live `push_owed` already carries `?message=` and `?post=`. A rejected
+    `WindowClient.focus()` previously aborted delivery; now delivery uses
+    the original client and continues after that rejection. Clicks are kept
+    in a separate Cache Storage entry until the app acknowledges them, with
+    the existing 20-second expiry, across worker restart. The app collects
+    them on startup, focus, visibility and controller change. Channels are
+    closed after acknowledgement or timeout. A repeated click creates a new
+    router entry and re-centres the same message/post instead of ignoring
+    the already-open URL. The fallback title is “New activity”; normal push
+    titles already omit the app name. The operating system may add its own
+    app attribution. Worker regressions cover focus failure, restart,
+    suspended clients, expiry and both exact destinations; reinstating the
+    focus abort fails them. Screen regressions check repeated centring.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

@@ -11,8 +11,8 @@
  * The subscription is `userVisibleOnly`, and Safari has said of the Mac that a
  * push which shows no notification can cost the subscription. The iOS post is
  * silent on it, so this assumes the worst: a payload that is missing, is not
- * JSON, or has no title still produces a notification. The fallback names the
- * club and nothing else — it is what a lock screen says when we do not know
+ * JSON, or has no title still produces a notification. The fallback says only
+ * that there is new activity — it is what a lock screen says when we do not know
  * what happened, and a lock screen is read by whoever is next to it.
  *
  * ---------------------------------------------------------------------------
@@ -47,7 +47,7 @@ export interface PushNotification {
 }
 
 /** The lock screen's words when a push arrives without any we can use. */
-export const FALLBACK_TITLE = 'The SCI Club';
+export const FALLBACK_TITLE = 'New activity';
 
 const ICON = '/favicon-192x192.png';
 

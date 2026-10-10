@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
 import type * as ReadReceipts from '@/lib/chat/read-receipts';
@@ -175,9 +175,25 @@ const jan: ChatAuthor = {
   hasProfile: true,
 };
 
-function renderThread(path = '/chat/t/th1') {
+function RepeatNotification() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigate(`${location.pathname}${location.search}`);
+      }}
+    >
+      Repeat notification
+    </button>
+  );
+}
+
+function renderThread(path = '/chat/t/th1', repeatNotification = false) {
   return render(
     <MemoryRouter initialEntries={[path]}>
+      {repeatNotification ? <RepeatNotification /> : null}
       <Routes>
         <Route path="/chat/t/:threadId" element={<ThreadPage />} />
       </Routes>
@@ -760,6 +776,22 @@ describe('opening on the message a notification was about', () => {
     });
     expect(scrolled).toContain('message-m1');
     expect(document.getElementById('message-m2')?.querySelector('.message-flash')).toBeNull();
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
+
+  it('re-centres the same message when its notification is pressed again', async () => {
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    db.messages = [message({ id: 'm1', body: 'The notification message.' })];
+    renderThread('/chat/t/th1?message=m1', true);
+    await waitFor(() => {
+      expect(scrolled).toHaveBeenCalled();
+    });
+    scrolled.mockClear();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Repeat notification' }));
+    await waitFor(() => {
+      expect(scrolled.mock.contexts).toContain(document.getElementById('message-m1'));
+    });
     Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
   });
 

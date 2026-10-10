@@ -130,22 +130,59 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// The last press, for a window that is only starting and asks for it. See
-// PENDING in lib/push/payload.ts.
-let pending: { path: string; at: number } | null = null;
+// Persist a click across worker suspension and activation, so a resumed app
+// can collect it even when Safari could not focus or message its old window.
+const NAVIGATION_CACHE = 'club:notification-navigation';
+const NAVIGATION_KEY = new URL('/__notification-navigation', self.location.origin).href;
+interface PendingNavigation {
+  path: string;
+  at: number;
+}
+
+async function rememberNavigation(waiting: PendingNavigation) {
+  const cache = await caches.open(NAVIGATION_CACHE);
+  await cache.put(NAVIGATION_KEY, new Response(JSON.stringify(waiting)));
+}
+
+async function readNavigation(): Promise<PendingNavigation | null> {
+  const cache = await caches.open(NAVIGATION_CACHE);
+  const saved = await cache.match(NAVIGATION_KEY);
+  if (!saved) return null;
+  const waiting = (await saved.json()) as PendingNavigation;
+  if (typeof waiting.path !== 'string' || !Number.isFinite(waiting.at)) return null;
+  return { path: safePath(waiting.path, self.location.origin), at: waiting.at };
+}
+
+async function forgetNavigation(waiting: PendingNavigation) {
+  const saved = await readNavigation().catch(() => null);
+  // A later click must survive the acknowledgement of an earlier one.
+  if (saved?.path === waiting.path && saved.at === waiting.at) {
+    await (await caches.open(NAVIGATION_CACHE)).delete(NAVIGATION_KEY);
+  }
+}
 
 /** Asks a running app to open `path` itself; true if it said it did. */
 function askToOpen(client: Client, path: string): Promise<boolean> {
   return new Promise((resolve) => {
     const channel = new MessageChannel();
-    const timer = setTimeout(() => {
-      resolve(false);
-    }, 1500);
-    channel.port1.onmessage = () => {
+    const finish = (ok: boolean) => {
       clearTimeout(timer);
-      resolve(true);
+      channel.port1.close();
+      resolve(ok);
     };
-    client.postMessage({ type: NAVIGATE, path }, [channel.port2]);
+    const timer = setTimeout(() => {
+      finish(false);
+    }, 1500);
+    channel.port1.onmessage = (event) => {
+      const data: unknown = event.data;
+      if (typeof data === 'object' && data !== null && 'ok' in data && data.ok === true)
+        finish(true);
+    };
+    try {
+      client.postMessage({ type: NAVIGATE, path }, [channel.port2]);
+    } catch {
+      finish(false);
+    }
   });
 }
 
@@ -154,34 +191,43 @@ self.addEventListener('notificationclick', (event) => {
   const origin = self.location.origin;
   const data = event.notification.data as { url?: unknown } | null;
   const path = safePath(data?.url, origin);
-  pending = { path, at: Date.now() };
+  const waiting = { path, at: Date.now() };
   event.waitUntil(
     (async () => {
+      await rememberNavigation(waiting).catch(() => undefined);
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
       const index = pickWindow(windows, path, origin);
       const target = index === null ? undefined : windows[index];
       if (!target) {
-        // A starting app collects `pending` if it does not open at `path`.
         await self.clients.openWindow(path);
         return;
       }
-      const focused = await target.focus();
-      if (await askToOpen(focused, path)) {
-        pending = null;
+      // A focus rejection must not abort delivery to an already-open app.
+      await target.focus().catch(() => undefined);
+      if (await askToOpen(target, path)) {
+        await forgetNavigation(waiting);
         return;
       }
-      // An app too old to answer, or one still starting.
-      if (safePath(focused.url, origin) !== path) await focused.navigate(path).catch(() => null);
+      // An app too old to answer, or one still starting. Keep the click for
+      // the startup/resume handshake even when navigate() appears to work.
+      if (safePath(target.url, origin) !== path) await target.navigate(path).catch(() => null);
     })(),
   );
 });
 
 self.addEventListener('message', (event) => {
   const data = event.data as { type?: unknown } | null;
-  if (data?.type !== PENDING || !(event.source instanceof Client)) return;
-  const waiting = pending;
-  pending = null;
-  if (waiting && Date.now() - waiting.at < PENDING_FOR_MS) {
-    event.source.postMessage({ type: NAVIGATE, path: waiting.path });
-  }
+  const client = event.source;
+  if (data?.type !== PENDING || !client || !('type' in client) || client.type !== 'window') return;
+  event.waitUntil(
+    (async () => {
+      const waiting = await readNavigation().catch(() => null);
+      if (!waiting) return;
+      if (Date.now() - waiting.at < PENDING_FOR_MS && (await askToOpen(client, waiting.path))) {
+        await forgetNavigation(waiting);
+      } else if (Date.now() - waiting.at >= PENDING_FOR_MS) {
+        await forgetNavigation(waiting);
+      }
+    })(),
+  );
 });

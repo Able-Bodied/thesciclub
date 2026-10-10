@@ -64,7 +64,7 @@ describe('readPushPayload', () => {
     ['JSON that is not an object', '"hello"'],
     ['JSON null', 'null'],
     ['a blank title', JSON.stringify({ title: '   ', url: '/chat' })],
-  ])('falls back to the club’s name for %s', (_, raw) => {
+  ])('falls back to activity without repeating the app name for %s', (_, raw) => {
     const shown = readPushPayload(raw, origin);
     expect(shown.title).toBe(FALLBACK_TITLE);
     expect(shown.options.icon).toBe('/favicon-192x192.png');
