@@ -17,9 +17,8 @@ the product definition and wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
-  `20261010020000` live (linked dry run 2026-10-10); `20261010030000` (an
-  Other category, last, with an Other room) and `20261011000000` (Open 17)
-  are pending,
+  `20261011020000` live (linked `db push` 2026-10-10; the dry run before it
+  listed nothing else pending),
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -379,7 +378,7 @@ the product definition and wins over this file.
     the counter counts only shown screens. Two new free-text questions, "Do
     you own any adaptive sports equipment?" and "Did you receive any
     grants?", in `20261011020000` (`sports_equipment`, `grants`, 1000
-    characters each) — **must be applied before this client is released**;
+    characters each) — applied and released 2026-10-10;
     `loadAnswers` leaves them out of its fallback read, so the survey still
     loads without them, but saving those two screens fails until they exist.
     Not in `browse_members`: whether other members see them is the owner's
