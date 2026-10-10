@@ -49,6 +49,14 @@ export interface BrowseMemberRow {
   topics: string[] | null;
   self_care: string[] | null;
   affiliations: string[] | null;
+  represented_organizations?:
+    | {
+        id: string;
+        name: string;
+        short_code: string;
+        logo_path: string | null;
+      }[]
+    | null;
   wants_to_mentor: boolean | null;
   is_seed: boolean;
   is_admin: boolean;
@@ -90,6 +98,12 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     topics: row.topics ?? [],
     selfCare: row.self_care ?? [],
     affiliations: row.affiliations ?? [],
+    representedOrganizations: (row.represented_organizations ?? []).map((organization) => ({
+      id: organization.id,
+      name: organization.name,
+      shortCode: organization.short_code,
+      logoPath: organization.logo_path,
+    })),
     wantsToMentor: row.wants_to_mentor,
     isSeed: row.is_seed,
     isAdmin: row.is_admin,

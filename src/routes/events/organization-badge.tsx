@@ -27,7 +27,7 @@ import type { Organization } from '@/types/domain';
 
 export interface OrganizationBadgeProps {
   /** The club organization, when the event links to one. */
-  organization: Organization | null;
+  organization: Pick<Organization, 'name' | 'shortCode' | 'logoPath'> | null;
   /** The feed's own name for the host, used when there is no organization. */
   hostName?: string | null;
   size?: 'sm' | 'lg';

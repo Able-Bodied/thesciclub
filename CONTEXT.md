@@ -74,7 +74,7 @@ Use these words exactly. Do not invent synonyms.
 - **Member** — anybody in the club. Everybody is one.
 - **Mentor** — a member who has agreed to be one, and appears first to newly injured members. An
   attribute of a member, not a separate kind of person.
-- **Organization** — a hospital, foundation or programme that can vouch for numbers and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09).
+- **Organization** — a hospital, foundation or programme that can vouch for numbers and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09). Administrator-linked accounts show “Represents” tags on their member profiles, linking to the organizations they speak for; self-described affiliations remain separate.
 - **Invite** — one phone number, placed on the list by an organization or a mentor.
 
 There is no "user", no "peer" as an identity (the Peers tab is a surface, not a class of person),

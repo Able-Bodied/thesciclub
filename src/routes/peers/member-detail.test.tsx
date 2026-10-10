@@ -330,3 +330,33 @@ describe('the rooms a member’s topics already live in', () => {
     expect(screen.getByRole('link', { name: /Continue in/ })).toBeInTheDocument();
   });
 });
+
+describe('administrator-linked organizations', () => {
+  it('shows every organization represented as a tag linking to its profile', () => {
+    state.current = ok(
+      makeMember({
+        representedOrganizations: [
+          { id: 'able-bodied', name: 'Able Bodied', shortCode: 'AB', logoPath: null },
+          { id: 'other-org', name: 'Example Organization', shortCode: 'EX', logoPath: null },
+        ],
+        affiliations: [],
+      }),
+    );
+    renderDetail();
+    expect(screen.getByRole('link', { name: 'Represents Able Bodied' })).toHaveAttribute(
+      'href',
+      '/events/organizations/able-bodied',
+    );
+    expect(screen.getByRole('link', { name: 'Represents Example Organization' })).toHaveAttribute(
+      'href',
+      '/events/organizations/other-org',
+    );
+  });
+
+  it('does not turn self-described affiliations into representative tags', () => {
+    state.current = ok(makeMember({ affiliations: ['Able Bodied'], representedOrganizations: [] }));
+    renderDetail();
+    expect(screen.getByText('Able Bodied')).toBeInTheDocument();
+    expect(screen.queryByText('Represents Able Bodied')).toBeNull();
+  });
+});

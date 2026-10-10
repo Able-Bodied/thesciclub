@@ -12,6 +12,7 @@ import { usePhotoUrl } from '@/lib/photos';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
+import { RepresentationTags } from '@/routes/peers/representation-tags';
 import type { BeforeAfter, BrowseMember } from '@/types/domain';
 
 /**
@@ -378,6 +379,7 @@ export default function MemberDetailPage() {
               of their own they would all sit beside it or all below it, which
               is the grid this replaced. */}
           <div className="min-w-0 px-4 lg:contents">
+            <RepresentationTags organizations={member.representedOrganizations} />
             {member.topics.length ? (
               <Section title="Happy to talk about">
                 <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">

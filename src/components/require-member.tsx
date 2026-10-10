@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
 import { useAccount } from '@/lib/account';
+import { restoreDeviceNotifications } from '@/lib/push/notifications';
 import { signInDoor } from '@/lib/sign-in-destination';
 
 /**
@@ -21,6 +23,14 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
   const account = useAccount();
   const { status } = account;
   const location = useLocation();
+
+  useEffect(() => {
+    if (status !== 'member' || !account.userId) return;
+    // Restore on entering the club, even if the member never visits Me.
+    void restoreDeviceNotifications(account.userId).catch((error: unknown) => {
+      console.error(error);
+    });
+  }, [status, account.userId]);
 
   if (status === 'error') return <AccountProblem account={account} />;
 

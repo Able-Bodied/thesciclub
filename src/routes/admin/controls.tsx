@@ -48,12 +48,9 @@ export function SmallButton({
   return (
     <button
       type="button"
-      // 30px tall, and there are ninety-two of them on /admin. The single
-      // biggest concentration of small controls in the app.
-      data-target="small"
       {...props}
       className={cn(
-        'whitespace-nowrap rounded-full px-3 py-1.5 font-semibold text-[0.75rem] transition-colors',
+        'min-h-[44px] rounded-[10px] px-3 py-2 font-semibold text-[0.75rem] transition-colors',
         destructive
           ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
           : 'bg-tint text-emphasis hover:bg-line',
