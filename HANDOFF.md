@@ -334,7 +334,7 @@ the product definition and wins over this file.
     and size. Real device installs remain to be checked after publishing;
     existing shortcuts may need removing and adding again.
 
-20. **Like and counts on every post, unreleased** (2026-10-10). The owner
+20. **Like and counts on every post** (2026-10-10). The owner
     wants Like, like count and view count on all standing posts, including
     their own, and explicitly allows self-likes. Home topic/photo cards,
     room topic rows, opening posts and nested replies now offer Like and
@@ -347,13 +347,26 @@ the product definition and wins over this file.
     `20261011010000_self_likes_and_post_view_counts.sql` changes only the
     self-like exclusion and adds the two scoped count/opener RPCs. Suspension,
     identity, room visibility and removal checks stay; self-likes do not notify
-    their author. The linked dry run lists only this migration. **The owner
-    must apply it before publishing this client**, per the rule below.
+    their author. The owner confirmed applying the migration; the linked dry
+    run on 2026-10-10 confirms the remote database is up to date. The owner
+    authorized publishing this client alongside the Chrome install fix.
     Local and fresh SQL probes pass; weakening the read boundary or restoring
     the self-like exclusion fails them. UI checks cover saved self-likes,
     unlikes, opening/nested post counts and Home/room consistency at 1280 and
     390 pixels. All 2,171 tests, standalone check and build pass. Scratch
     fixtures were confined to the fresh stack, which has been stopped.
+
+21. **Chrome install card visibility** (2026-10-10, no migration). The
+    page catches Chrome's native prompt but used to hide its own card on
+    desktop and at the medium CSS breakpoint. Show the card on all screen
+    sizes, with computer wording on desktop, even before a native event.
+    When Chrome provides its event, Install uses it; a rejected or missing
+    prompt falls back to the browser's steps in both the card and Settings.
+    Dismissing a native prompt does not open another dialog. Installed apps
+    and the existing two-week Not now snooze still hide the card. Chrome
+    desktop, early events, failed native prompts and iPhone Chrome have
+    regressions; restoring the desktop gate fails the new tests. The owner
+    explicitly requested commit and push to main.
 
 ## Rules the owner set
 

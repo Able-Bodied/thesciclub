@@ -15,7 +15,7 @@ import {
 
 /**
  * A nudge to put the club on the Home Screen, for somebody using it in a
- * phone's browser (the owner, 2026-10-10).
+ * browser (the owner, 2026-10-10).
  *
  * Why it matters here more than on most sites: on an iPhone the club can only
  * send notifications once it is on the Home Screen, and it opens full screen
@@ -29,7 +29,7 @@ import {
  * prompt (Chrome and Samsung Internet on Android), the button is Install and
  * shows that prompt; everywhere else it shows the steps for this browser.
  *
- * Not in the installed app, not on a desktop, and not in the first moments
+ * Not in the installed app and not in the first moments
  * after a screen opens, so it is not the first thing anybody sees.
  */
 export function InstallNudge() {
@@ -49,7 +49,7 @@ export function InstallNudge() {
     };
   }, []);
 
-  if (installed || dismissed || !ready || !isHandheld(platform)) {
+  if (installed || dismissed || !ready) {
     return showing ? (
       <InstallSheet
         platform={platform}
@@ -69,8 +69,8 @@ export function InstallNudge() {
   return (
     <>
       <aside
-        aria-label="Add the club to your Home Screen"
-        className="z-30 flex-none border-line border-t bg-paper px-4 py-3 md:hidden"
+        aria-label={isHandheld(platform) ? 'Add the club to your Home Screen' : 'Install the club'}
+        className="z-30 flex-none border-line border-t bg-paper px-4 py-3"
       >
         <div className="mx-auto flex w-full max-w-[480px] items-start gap-3">
           <span
@@ -81,7 +81,9 @@ export function InstallNudge() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-extrabold font-head text-[0.9375rem] text-ink leading-[1.3]">
-              Put the club on your Home Screen
+              {isHandheld(platform)
+                ? 'Put the club on your Home Screen'
+                : 'Install the club on this computer'}
             </p>
             <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
               {platform.startsWith('ios')
@@ -92,7 +94,9 @@ export function InstallNudge() {
               type="button"
               onClick={() => {
                 if (canPrompt) {
-                  void prompt();
+                  void prompt().then((outcome) => {
+                    if (outcome === 'unavailable') setShowing(true);
+                  });
                 } else {
                   setShowing(true);
                 }
@@ -161,7 +165,7 @@ export function InstallSheet({
           tabIndex={-1}
           className="font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em] outline-none"
         >
-          Add the club to your Home Screen
+          {isHandheld(platform) ? 'Add the club to your Home Screen' : 'Install the club'}
         </h2>
         {intro ? <p className="mt-1.5 text-[0.875rem] text-ink2 leading-[1.5]">{intro}</p> : null}
         <ol className="mt-4 space-y-3.5">
@@ -221,7 +225,10 @@ export function InstallSettings() {
         <button
           type="button"
           onClick={() => {
-            if (canPrompt) void prompt();
+            if (canPrompt)
+              void prompt().then((outcome) => {
+                if (outcome === 'unavailable') setShowing(true);
+              });
             else setShowing(true);
           }}
           className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint"

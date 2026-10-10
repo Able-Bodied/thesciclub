@@ -47,7 +47,7 @@ export function currentInstallPlatform(): InstallPlatform {
   return installPlatform(navigator.userAgent, navigator.maxTouchPoints);
 }
 
-/** A phone or tablet, where the nudge is shown; a desktop gets the steps on Me only. */
+/** Whether to describe installation as adding to the Home Screen. */
 export function isHandheld(platform: InstallPlatform): boolean {
   return platform !== 'desktop';
 }
@@ -83,7 +83,7 @@ if (typeof window !== 'undefined') {
 export function useInstallPrompt(): {
   canPrompt: boolean;
   installed: boolean;
-  prompt: () => Promise<boolean>;
+  prompt: () => Promise<'accepted' | 'dismissed' | 'unavailable'>;
 } {
   const [, redraw] = useState(0);
   useEffect(() => {
@@ -100,12 +100,16 @@ export function useInstallPrompt(): {
     installed: installed || isStandalone(),
     prompt: async () => {
       const event = deferred;
-      if (!event) return false;
+      if (!event) return 'unavailable';
       deferred = null;
       changed();
-      await event.prompt();
-      const choice = await event.userChoice;
-      return choice.outcome === 'accepted';
+      try {
+        await event.prompt();
+        const choice = await event.userChoice;
+        return choice.outcome;
+      } catch {
+        return 'unavailable';
+      }
     },
   };
 }

@@ -85,10 +85,44 @@ describe('the Home Screen nudge', () => {
     expect(prompt).toHaveBeenCalledTimes(1);
   });
 
-  it('is not shown on a computer', () => {
+  it('offers installation on Chrome desktop even before a native prompt is available', async () => {
     browserIs(DESKTOP);
     renderAfterWait();
-    expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
+    expect(screen.getByText('Install the club on this computer')).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    expect(screen.getByRole('dialog', { name: 'Install the club' })).toHaveTextContent(
+      'install icon',
+    );
+  });
+
+  it('keeps a Chrome prompt caught before mounting available to the Install button', async () => {
+    browserIs(DESKTOP);
+    const prompt = vi.fn(() => Promise.resolve());
+    window.dispatchEvent(
+      Object.assign(new Event('beforeinstallprompt'), {
+        prompt,
+        userChoice: Promise.resolve({ outcome: 'dismissed' as const }),
+      }),
+    );
+    renderAfterWait();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Install' }));
+    expect(prompt).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows the manual steps if Chrome fails to open its native prompt', async () => {
+    browserIs(ANDROID);
+    renderAfterWait();
+    act(() => {
+      window.dispatchEvent(
+        Object.assign(new Event('beforeinstallprompt'), {
+          prompt: vi.fn(() => Promise.reject(new Error('Prompt expired'))),
+          userChoice: Promise.resolve({ outcome: 'dismissed' as const }),
+        }),
+      );
+    });
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Install' }));
+    expect(await screen.findByRole('dialog')).toHaveTextContent('Install app');
   });
 
   it('is not shown in the installed app', () => {
@@ -114,7 +148,7 @@ describe('the iPhone steps match the phones', () => {
     browserIs(
       'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1',
     );
-    render(<InstallSettings />);
+    renderAfterWait();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Tap View More');
   });
