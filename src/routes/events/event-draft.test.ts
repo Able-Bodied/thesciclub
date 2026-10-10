@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeRepeat,
   draftFromEvent,
   type EventDraft,
   emptyDraft,
@@ -9,7 +10,9 @@ import {
   NO_ORGANIZATION,
   readDraft,
   readLink,
+  readRepeat,
   readTime,
+  repeatLabels,
   timeText,
   wallTimeToIso,
 } from '@/routes/events/event-draft';
@@ -157,6 +160,7 @@ describe('readDraft', () => {
         url: 'https://norcalsci.org',
         registrationUrl: '',
       },
+      repeat: null,
     });
   });
 
@@ -264,6 +268,100 @@ describe('daylight-saving boundaries', () => {
   it('chooses the first occurrence of a repeated autumn time', () => {
     expect(wallTimeToIso({ year: 2027, month: 11, day: 7 }, { hour: 1, minute: 30 }, PACIFIC)).toBe(
       '2027-11-07T08:30:00.000Z',
+    );
+  });
+});
+
+describe('repeats', () => {
+  // 20 October 2026 is the third Tuesday of the month.
+  const FIRST = '2026-10-20';
+
+  it('names Weekly and Monthly for the date, as Google Calendar does', () => {
+    const labels = repeatLabels(FIRST);
+    expect(labels.none).toBe('Does not repeat');
+    expect(labels.daily).toBe('Daily');
+    expect(labels.weekly).toBe('Weekly on Tuesday');
+    expect(labels.monthly).toBe('Monthly on the third Tuesday');
+    expect(labels.custom).toBe('Custom…');
+    expect(repeatLabels(null).weekly).toBe('Weekly');
+  });
+
+  it('does not repeat unless asked, and never ends for Daily, Weekly and Monthly', () => {
+    expect(readRepeat(draft(), FIRST)).toEqual({ ok: true, rule: null });
+    expect(readRepeat(draft({ repeat: 'weekly' }), FIRST)).toEqual({
+      ok: true,
+      rule: { unit: 'week', every: 1, endsOn: null, endsAfter: null },
+    });
+    expect(readRepeat(draft({ repeat: 'monthly' }), FIRST)).toEqual({
+      ok: true,
+      rule: { unit: 'month', every: 1, endsOn: null, endsAfter: null },
+    });
+  });
+
+  it('reads Custom: every N, and ending never, on a date or after a count', () => {
+    const custom = draft({ repeat: 'custom', repeatEvery: '2', repeatUnit: 'week' });
+    expect(readRepeat(custom, FIRST)).toEqual({
+      ok: true,
+      rule: { unit: 'week', every: 2, endsOn: null, endsAfter: null },
+    });
+    expect(readRepeat({ ...custom, repeatEnd: 'on', repeatUntil: '2026-12-31' }, FIRST)).toEqual({
+      ok: true,
+      rule: { unit: 'week', every: 2, endsOn: '2026-12-31', endsAfter: null },
+    });
+    expect(readRepeat({ ...custom, repeatEnd: 'after', repeatCount: '6' }, FIRST)).toEqual({
+      ok: true,
+      rule: { unit: 'week', every: 2, endsOn: null, endsAfter: 6 },
+    });
+  });
+
+  it('says what is wrong with a Custom repeat, in the bounds the database keeps', () => {
+    const custom = draft({ repeat: 'custom' });
+    expect(readRepeat({ ...custom, repeatEvery: '0' }, FIRST)).toMatchObject({ ok: false });
+    expect(readRepeat({ ...custom, repeatEvery: '31' }, FIRST)).toMatchObject({ ok: false });
+    expect(readRepeat({ ...custom, repeatEvery: 'two' }, FIRST)).toMatchObject({ ok: false });
+    expect(readRepeat({ ...custom, repeatEnd: 'on', repeatUntil: '' }, FIRST)).toEqual({
+      ok: false,
+      problem: 'Ends on: choose the last date.',
+    });
+    expect(readRepeat({ ...custom, repeatEnd: 'on', repeatUntil: FIRST }, FIRST)).toEqual({
+      ok: false,
+      problem: 'Ends on: choose a date after the first one.',
+    });
+    expect(readRepeat({ ...custom, repeatEnd: 'after', repeatCount: '1' }, FIRST)).toMatchObject({
+      ok: false,
+    });
+  });
+
+  it('is part of reading a new event, and ignored when changing one', () => {
+    const weekly = draft({ repeat: 'weekly' });
+    const adding = readDraft(weekly, { isNew: true, now: NOW });
+    expect(adding.ok && adding.repeat).toEqual({
+      unit: 'week',
+      every: 1,
+      endsOn: null,
+      endsAfter: null,
+    });
+    const changing = readDraft(weekly, { isNew: false, now: NOW });
+    expect(changing.ok && changing.repeat).toBeNull();
+    expect(
+      readDraft(draft({ repeat: 'custom', repeatEvery: '0' }), { isNew: true, now: NOW }),
+    ).toMatchObject({
+      ok: false,
+    });
+  });
+
+  it('reads the choice back in a sentence', () => {
+    expect(describeRepeat({ unit: 'week', every: 1, endsOn: null, endsAfter: null }, FIRST)).toBe(
+      'Every Tuesday, with no end date. Delete a date and the ones after it to stop.',
+    );
+    expect(describeRepeat({ unit: 'month', every: 1, endsOn: null, endsAfter: 6 }, FIRST)).toBe(
+      'The third Tuesday of every month, 6 times in all.',
+    );
+    expect(
+      describeRepeat({ unit: 'week', every: 2, endsOn: '2026-12-31', endsAfter: null }, FIRST),
+    ).toBe('Every 2 weeks on Tuesday, until December 31, 2026.');
+    expect(describeRepeat({ unit: 'day', every: 3, endsOn: null, endsAfter: null }, FIRST)).toMatch(
+      /^Every 3 days, with no end date/,
     );
   });
 });

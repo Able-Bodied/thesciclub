@@ -458,7 +458,27 @@ the product definition and wins over this file.
     the post's own picture and linked name, so the asker had been shown
     only as plain text there.
 
-29. **Emoji reactions, unreleased** (2026-10-10). Messages (direct/group),
+29. **Repeating events added by hand** (2026-10-10, unreleased). Add an
+    event → Repeats, after Google Calendar: Does not repeat (default), Daily,
+    Weekly on <weekday>, Monthly on the <nth weekday>, Custom (every 1–30
+    days/weeks/months; ends Never, on a date, or after 2–100 dates). Daily,
+    Weekly and Monthly never end. `20261011050000`: a hand-made
+    `event_series` (feed_id null) holds the rule and a template; every date
+    is an ordinary `events` row (own Going list, reminder, page), made up to
+    92 days ahead by `save_event_series` (first date through `save_event`,
+    so its checks hold) and then nightly by pg_cron `event-series-extend`
+    (11:40 UTC). Steps are Pacific wall-clock times, so DST does not move
+    them; a missing fifth weekday is skipped. Delete on a series date offers
+    "This date only" or "This and all later dates" (`delete_event_and_later`,
+    which also stops the series). Changing is one date at a time; later
+    dates copy the template. Verified in PGlite against the real `save_event`
+    and `event_series` definitions (28 checks: weekly/biweekly/daily/monthly,
+    DST, fifth weekday, counts and end dates, nightly no-duplicates, stopping,
+    refusals); not yet on a Supabase stack. Followers' daily "new events from
+    <organization>" counts dates, so a new weekly series reads as ~13 new
+    events and each nightly date as 1 — as scraped series already do.
+
+30. **Emoji reactions, unreleased** (2026-10-10). Messages (direct/group),
     room questions, posts and nested replies/comments, and Home openers have
     React and eight common emoji choices. One reaction per member per item;
     choosing another replaces it, choosing yours removes it. Counts and names
@@ -486,8 +506,9 @@ the product definition and wins over this file.
     20261011050000, which the other contributor also used for repeating events.
     That live event migration made the CLI report up to date, despite the
     reaction tables/function being absent. Reactions now use 20261011060000.
-    The migration is being released separately on top of the latest main;
+    The migration was released separately on main as 6a3ab78;
     the owner applies it before the reaction client is published.
+
 
 ## Rules the owner set
 

@@ -362,13 +362,15 @@ export default function HomePage() {
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
-          {/* On every pill, and before anything has loaded: asking should
-              not wait for the list. Typed into here and posted from here
-              (the owner, 2026-10-09: the least friction there can be); the
-              Photos pill keeps its card to the photograph picker. */}
+          {/* Before anything has loaded: asking should not wait for the
+              list. Typed into here and posted from here (the owner,
+              2026-10-09: the least friction there can be); the Photos pill
+              keeps its card to the photograph picker. Not on the Events pill
+              (the owner, 2026-10-10): a box to ask the club sat on top of a
+              list of events and read as part of it. */}
           {segment === 'photos' ? (
             <ComposeCard segment={segment} linkState={linkState} />
-          ) : (
+          ) : segment === 'events' ? null : (
             <QuickAsk rooms={rooms.rooms} linkState={linkState} className="mb-[11px]" />
           )}
           {writeError ? <Problem sentences={[writeError]} /> : null}
