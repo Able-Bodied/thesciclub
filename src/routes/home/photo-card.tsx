@@ -7,6 +7,7 @@ import type { HomeTopic } from '@/lib/home/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+import { ViewCount } from '@/routes/chat/view-count';
 import { byline, type CardLikes, RoomTag } from '@/routes/home/topic-card';
 
 /**
@@ -58,6 +59,7 @@ export function PhotoCard({
   author,
   linkState,
   likes,
+  viewCount,
 }: {
   topic: HomeTopic;
   /** Null for a former member, and while the name is still loading. */
@@ -65,6 +67,7 @@ export function PhotoCard({
   linkState: unknown;
   /** Who likes the opening post, as the topic page's posts take it. */
   likes?: CardLikes | undefined;
+  viewCount?: number | null | undefined;
 }) {
   const opening = topic.opening;
   const to = `/chat/rooms/${topic.roomId}/topics/${topic.id}`;
@@ -137,8 +140,11 @@ export function PhotoCard({
             onToggle={likes.onToggle}
             linkState={linkState}
             className="min-h-[2.25rem] text-[0.8125rem]"
+            loading={likes.loading}
+            unavailable={likes.unavailable}
           />
         ) : null}
+        {opening ? <ViewCount count={viewCount} /> : null}
         {topic.replyCount > 0 ? (
           <Link
             to={to}

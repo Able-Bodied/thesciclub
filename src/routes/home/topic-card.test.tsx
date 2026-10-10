@@ -182,16 +182,16 @@ describe('likes on a topic card', () => {
     expect(screen.getByRole('button', { name: /^1 like on/ })).toHaveFocus();
   });
 
-  it('draws the count and no Like on the reader’s own topic', () => {
-    renderCard({ likes: likes({ likedBy: ['jan'], readerId: null }) });
-    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+  it('draws Like and the count on the reader’s own topic', () => {
+    renderCard({ likes: likes({ likedBy: ['jan'], readerId: 'me' }) });
+    expect(screen.getByRole('button', { name: /^Like/ })).toBeVisible();
     expect(screen.getByRole('button', { name: /^1 like on/ })).toBeInTheDocument();
   });
 
-  it('draws no count of zero', () => {
+  it('shows zero likes on a new topic', () => {
     renderCard({ likes: likes() });
     expect(screen.getAllByRole('button')).toHaveLength(1);
-    expect(document.body.textContent).not.toMatch(/\b0 like/);
+    expect(screen.getByText('0 likes')).toBeVisible();
   });
 
   it('says so when a like did not land', () => {
@@ -306,4 +306,13 @@ describe('answering a question from Home', () => {
     expect(screen.queryByRole('textbox', { name: /Your answer/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Answer Best cushion?' })).toBeInTheDocument();
   });
+});
+
+it('shows zero views on a new post and the real count after it has been read', () => {
+  renderCard({ viewCount: 0 });
+  expect(screen.getByText('0 views')).toBeVisible();
+});
+it('shows a positive view count', () => {
+  renderCard({ viewCount: 3 });
+  expect(screen.getByText('3 views')).toBeVisible();
 });

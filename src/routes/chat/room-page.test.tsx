@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Likes from '@/lib/chat/likes';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Topics from '@/lib/chat/topics';
 import type { ChatRoom, ChatTopic, RoomStats } from '@/lib/chat/types';
@@ -18,6 +19,26 @@ const db = vi.hoisted(() => ({
   topics: [] as ChatTopic[],
   stats: new Map<string, RoomStats>(),
   isAdmin: false,
+  liked: [] as string[],
+}));
+
+vi.mock('@/lib/chat/opening-posts', () => ({
+  useTopicOpeningPosts: (ids: readonly string[]) => ({
+    byTopic: new Map(ids.map((id) => [id, `${id}-post`])),
+    reload: () => undefined,
+  }),
+}));
+vi.mock('@/lib/chat/likes', async (importOriginal) => ({
+  ...(await importOriginal<typeof Likes>()),
+  usePostLikes: () => ({
+    byPost: new Map(),
+    loading: false,
+    failure: null,
+    toggle: (id: string) => {
+      db.liked.push(id);
+    },
+    reload: () => undefined,
+  }),
 }));
 
 // Mutes read and write the club; the button has its own test.
@@ -120,18 +141,19 @@ describe('a discussion room', () => {
     expect(screen.queryByText(/You are in this room/)).toBeNull();
   });
 
-  // A count of zero is not drawn on a topic row.
-  it('draws a topic row’s counts, leaving out a zero', () => {
+  // New posts retain both engagement counts in the room list.
+  it('draws a topic row’s counts, including zero views', () => {
     db.topics = [
       topic({ id: 'a', title: 'Answered', replyCount: 2, viewCount: 0 }),
       topic({ id: 'b', title: 'Unread', replyCount: 0, viewCount: 0 }),
     ];
     renderRoom();
-    const answered = screen.getByRole('link', { name: /Answered/ });
+    const answered = screen.getByRole('link', { name: /Answered/ }).closest('article');
     expect(answered).toHaveTextContent(/2\s*replies/);
-    expect(answered).not.toHaveTextContent(/views?/);
-    const unread = screen.getByRole('link', { name: /Unread/ });
-    expect(unread).not.toHaveTextContent(/repl|views?/);
+    expect(answered).toHaveTextContent(/0\s*views/);
+    expect(answered).toHaveTextContent('0 likes');
+    const unread = screen.getByRole('link', { name: /Unread/ }).closest('article');
+    expect(unread).toHaveTextContent(/0\s*views/);
   });
 
   it('sorts by replies and by views when asked', async () => {
@@ -199,4 +221,12 @@ describe('a discussion room', () => {
     const group = screen.getByRole('group', { name: 'Sort by' });
     expect(within(group).getByRole('button', { name: 'Activity' })).toBeInTheDocument();
   });
+});
+
+it('likes the same opening post from its room row, including the author’s own topic', async () => {
+  db.liked = [];
+  db.topics = [topic({ id: 'mine', title: 'My new post', authorId: 'me' })];
+  renderRoom();
+  await userEvent.click(screen.getByRole('button', { name: 'Like My new post' }));
+  expect(db.liked).toEqual(['mine-post']);
 });

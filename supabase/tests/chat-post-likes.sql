@@ -107,11 +107,12 @@ values (:'p1', 'aaaaaaaa-7777-0000-0000-000000000001');
 rollback to savepoint twice;
 
 \echo ''
-\echo '== 3. a member cannot like their own post =='
-\echo '   expect: ERROR, new row violates row-level security policy.'
+\echo '== 3. a member can like their own post =='
+\echo '   expect: INSERT 0 1, then 1 own like.'
 savepoint own;
 insert into public.chat_post_likes (post_id, member_id)
 values (:'p2', 'aaaaaaaa-7777-0000-0000-000000000001');
+select count(*) as own_likes from public.chat_post_likes where post_id = :'p2';
 rollback to savepoint own;
 
 \echo ''

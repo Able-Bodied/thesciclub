@@ -6,6 +6,7 @@ import type { HomeTopic } from '@/lib/home/types';
 import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+import { ViewCount } from '@/routes/chat/view-count';
 import { AnswerBox } from '@/routes/home/answer-box';
 
 /**
@@ -53,6 +54,7 @@ export function TopicCard({
   replier,
   linkState,
   likes,
+  viewCount,
   answerAs,
 }: {
   topic: HomeTopic;
@@ -63,6 +65,7 @@ export function TopicCard({
   linkState: unknown;
   /** Who likes the opening post, or nothing while the likes load. */
   likes?: CardLikes | undefined;
+  viewCount?: number | null | undefined;
   /** The member reading, who can answer a question from here. */
   answerAs?: string | null | undefined;
 }) {
@@ -154,8 +157,11 @@ export function TopicCard({
             linkState={linkState}
             // `relative` is what lets them be pressed. See the header.
             className="relative min-h-[2.25rem] text-[0.8125rem]"
+            loading={likes.loading}
+            unavailable={likes.unavailable}
           />
         ) : null}
+        {opening ? <ViewCount count={viewCount} /> : null}
         <p className="font-semibold text-[0.78125rem] text-emphasis">
           {topic.replyCount > 0
             ? `${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'}`
@@ -184,10 +190,12 @@ export function TopicCard({
 /** What a card's Like needs: the topic page's posts take the same. */
 export interface CardLikes {
   likedBy: readonly string[];
-  /** The reader, or null on their own topic, where only the count is drawn. */
+  /** The signed-in reader, including the author of this topic. */
   readerId: string | null;
   onToggle: () => void;
   failure: string | null;
+  loading?: boolean | undefined;
+  unavailable?: boolean | undefined;
 }
 
 /**

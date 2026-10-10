@@ -22,6 +22,7 @@ import {
   useTopicPosts,
 } from '@/lib/chat/topics';
 import type { ChatPost } from '@/lib/chat/types';
+import { usePostViews } from '@/lib/chat/views';
 import { describeThrown } from '@/lib/describe-error';
 import { useHoldScroll } from '@/lib/hold-scroll';
 import { backFromTopic } from '@/routes/chat/back';
@@ -140,6 +141,7 @@ export default function TopicPage() {
     [posts],
   );
   const likes = usePostLikes(standingIds);
+  const views = usePostViews(standingIds);
 
   useRealtimeRows({
     table: 'chat_posts',
@@ -348,18 +350,18 @@ export default function TopicPage() {
       setReportingId(post.id);
     },
     edits: edits.byPost.get(post.id) ?? [],
-    // No likes drawn until they have loaded, rather than a row of zeroes
-    // that fills in. The reader's own post draws the count and no button.
-    likes: likes.loading
-      ? undefined
-      : {
-          likedBy: likes.byPost.get(post.id) ?? [],
-          readerId: post.authorId === account.userId ? null : account.userId,
-          onToggle: () => {
-            likes.toggle(post.id);
-          },
-          failure: likes.failure?.postId === post.id ? likes.failure.message : null,
-        },
+    viewCount: views.loading ? undefined : (views.byPost.get(post.id) ?? null),
+    // Keep Like visible while counts load, without inventing a zero count.
+    likes: {
+      likedBy: likes.byPost.get(post.id) ?? [],
+      readerId: account.userId,
+      loading: likes.loading,
+      unavailable: Boolean(likes.error),
+      onToggle: () => {
+        likes.toggle(post.id);
+      },
+      failure: likes.failure?.postId === post.id ? likes.failure.message : null,
+    },
   });
 
   // A question asked with no details: its first post only repeats the title,
@@ -554,11 +556,11 @@ export default function TopicPage() {
   );
 }
 
-/** "3 replies · 1 view", leaving out a count of zero; empty when both are. */
+/** "3 replies · 1 view", including zero views. */
 function topicCounts(replies: number, views: number): string {
   return [
     replies ? `${replies} ${replies === 1 ? 'reply' : 'replies'}` : null,
-    views ? `${views} ${views === 1 ? 'view' : 'views'}` : null,
+    `${views} ${views === 1 ? 'view' : 'views'}`,
   ]
     .filter(Boolean)
     .join(' · ');

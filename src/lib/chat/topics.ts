@@ -3,6 +3,7 @@ import { useAccount } from '@/lib/account';
 import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
+import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { announceNotificationsChanged } from '@/lib/notifications';
 import { readPages } from '@/lib/read-pages';
@@ -385,7 +386,8 @@ export function useTopicPosts(
       if (found && through) {
         void supabase
           .rpc('chat_mark_topic_read_through', { topic: topicId, post: through })
-          .then(() => {
+          .then(({ error }) => {
+            if (!error) announcePostViewsChanged();
             announceNotificationsChanged();
           });
       }

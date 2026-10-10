@@ -11,6 +11,7 @@ import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import { ReportControl } from '@/routes/chat/report-control';
+import { ViewCount } from '@/routes/chat/view-count';
 
 /**
  * One post in a topic, from the mock's `fpost()`.
@@ -33,8 +34,7 @@ import { ReportControl } from '@/routes/chat/report-control';
  * ---------------------------------------------------------------------------
  * The controls in one row, each named for its post
  * ---------------------------------------------------------------------------
- * Like and its count first (HANDOFF.md "What Home is" step 3; like-button.tsx says why
- * there is no Like on your own post), then Edit and Reply since 2026-09-29
+ * Like, its count and views first, then Edit and Reply since 2026-09-29
  * (decisions 9 and 11), then Remove, or Report, or nothing. Report sits exactly where Remove sits, and
  * never beside it: the reader can take back what they wrote; on somebody
  * else's post they can hand it to the administrators. An administrator gets
@@ -101,6 +101,7 @@ export function Post({
   onReport,
   edits,
   likes,
+  viewCount,
   replies = 0,
   flash = false,
   hideBody = false,
@@ -144,13 +145,17 @@ export function Post({
   likes?:
     | {
         likedBy: readonly string[];
-        /** The reader, or null on their own post, which draws no Like button. */
+        /** The signed-in reader, including the post's author. */
         readerId: string | null;
         onToggle: () => void;
         /** The sentence for a like that did not land on this post, or null. */
         failure: string | null;
+        loading?: boolean | undefined;
+        unavailable?: boolean | undefined;
       }
     | undefined;
+  /** Distinct members delivered this post, including zero. */
+  viewCount?: number | null | undefined;
   /** How many replies `children` holds, for the hide control. */
   replies?: number;
   /** Lit up once: the post a notification or a link was about. */
@@ -291,8 +296,11 @@ export function Post({
               what={`${whose} post`}
               onToggle={likes.onToggle}
               className="text-[0.75rem]"
+              loading={likes.loading}
+              unavailable={likes.unavailable}
             />
           ) : null}
+          <ViewCount count={viewCount} />
           {canEdit && !hideBody ? (
             <button
               type="button"

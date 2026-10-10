@@ -45,6 +45,13 @@ const db = vi.hoisted(() => ({
 
 // Likes are a read and a write of the club; the hook has its own test.
 // The bell reads its number from the database; stubbed so this test reads nothing.
+vi.mock('@/lib/chat/views', () => ({
+  usePostViews: (ids: readonly string[]) => ({
+    byPost: new Map(ids.map((id) => [id, 0])),
+    loading: false,
+  }),
+}));
+
 vi.mock('@/lib/notifications', async (importOriginal) => ({
   ...(await importOriginal<typeof NotificationsModule>()),
   useUnseenNotifications: () => ({ count: 0, refresh: () => undefined }),
@@ -215,6 +222,17 @@ beforeEach(() => {
 });
 
 describe('likes on Home', () => {
+  it('offers Like on both the reader’s own topic and photograph, with zero counts', async () => {
+    db.posts = db.posts.map((post) => ({ ...post, authorId: 'me' }));
+    db.topics = db.topics.map((topic) => ({ ...topic, authorId: 'me' }));
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Like Morning or evening routine?' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Like Wheel covers I made' }));
+    expect(db.liked).toEqual(['plain-opening', 'photo-opening']);
+    expect(screen.getAllByText('0 likes')).toHaveLength(2);
+    expect(screen.getAllByText('0 views')).toHaveLength(2);
+  });
+
   it('asks for the likes of every opening post on Home, and nothing else', () => {
     renderPage();
     expect([...(db.likesAskedFor.at(-1) ?? [])].sort()).toEqual(['photo-opening', 'plain-opening']);

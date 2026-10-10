@@ -24,8 +24,8 @@ export type HomeSegment = (typeof HOME_SEGMENTS)[number];
 /**
  * A topic as Home reads it, straight from `chat_topics`.
  *
- * No view count and no unread flag. Those exist only inside `chat_topics_for`,
- * which answers for one room at a time, and Home is every open room at once.
+ * No unread flag or view count on this row. Home reads each opening post's
+ * views separately through `usePostViews`, also used on the topic page.
  */
 export interface HomeTopicSummary {
   id: string;

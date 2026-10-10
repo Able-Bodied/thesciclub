@@ -27,11 +27,9 @@ import { cn } from '@/lib/utils';
  * starts the name, so a voice user saying "Like" still reaches it.
  *
  * ---------------------------------------------------------------------------
- * Not on your own post; the count is
+ * Every standing post, including your own (the owner, 2026-10-10)
  * ---------------------------------------------------------------------------
- * Nobody likes their own words (the insert policy refuses it), so the button
- * is not drawn there. The count still is: who liked what you wrote is the
- * part worth seeing. A count of zero is not drawn anywhere.
+ * Zero is shown too, so a new post still has a visible like count.
  *
  * ---------------------------------------------------------------------------
  * The list is a dialog
@@ -56,16 +54,19 @@ export function LikeButton({
   what,
   onToggle,
   className,
+  disabled = false,
 }: {
   liked: boolean;
   /** What is being liked, for the name: "Jan's post", or a topic's title. */
   what: string;
   onToggle: () => void;
   className?: string | undefined;
+  disabled?: boolean | undefined;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onToggle}
       aria-pressed={liked}
       // Named for the action, because the visible label is the state.
@@ -97,16 +98,20 @@ export function PostLikes({
   onToggle,
   linkState,
   className,
+  loading = false,
+  unavailable = false,
 }: {
   /** Member ids, oldest like first. */
   likedBy: readonly string[];
-  /** The reader, or null when their own post and the button is not drawn. */
+  /** The signed-in reader, including the author of the post. */
   readerId: string | null;
   what: string;
   onToggle: () => void;
   /** Handed to the profile links in the list, so Back returns here. */
   linkState?: unknown;
   className?: string | undefined;
+  loading?: boolean | undefined;
+  unavailable?: boolean | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const count = useRef<HTMLButtonElement | null>(null);
@@ -120,9 +125,14 @@ export function PostLikes({
           what={what}
           onToggle={onToggle}
           className={className}
+          disabled={loading || unavailable}
         />
       ) : null}
-      {total > 0 ? (
+      {loading || unavailable ? (
+        <span className={cn(CONTROL, 'font-semibold text-ink2', className)}>
+          {loading ? 'Likes …' : 'Likes unavailable'}
+        </span>
+      ) : total > 0 ? (
         <button
           ref={count}
           type="button"
@@ -139,7 +149,9 @@ export function PostLikes({
         >
           {likesLabel(total)}
         </button>
-      ) : null}
+      ) : (
+        <span className={cn(CONTROL, 'font-semibold text-ink2', className)}>0 likes</span>
+      )}
       {open ? (
         <LikesSheet
           memberIds={likedBy}

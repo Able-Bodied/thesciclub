@@ -38,6 +38,13 @@ const db = vi.hoisted(() => ({
 
 // Likes are a read and a write of the club; the hook has its own test. The
 // pure functions stay real.
+vi.mock('@/lib/chat/views', () => ({
+  usePostViews: (ids: readonly string[]) => ({
+    byPost: new Map(ids.map((id) => [id, 0])),
+    loading: false,
+  }),
+}));
+
 vi.mock('@/lib/chat/likes', async (importOriginal) => ({
   ...(await importOriginal<typeof Likes>()),
   usePostLikes: (ids: readonly string[]) => {
@@ -302,15 +309,16 @@ describe('likes', () => {
     expect(db.liked).toEqual(['1']);
   });
 
-  it('draws the count, and no Like, on the reader’s own post', () => {
+  it('offers Like and the count on the reader’s own post', async () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
     db.likes = new Map([['2', ['nicole']]]);
     renderTopic();
     const mine = screen.getByRole('button', { name: '1 like on your post. Show who.' });
     const article = mine.closest('article');
     if (!article) throw new Error('the count is not inside its post');
-    expect(within(article).queryByRole('button', { name: /^Like/ })).toBeNull();
-    expect(screen.getAllByRole('button', { name: /^Like / })).toHaveLength(1);
+    await userEvent.click(within(article).getByRole('button', { name: 'Like your post' }));
+    expect(db.liked).toEqual(['2']);
+    expect(screen.getAllByRole('button', { name: /^Like / })).toHaveLength(2);
   });
 
   it('likes a reply as well as a top-level post', () => {
@@ -336,6 +344,20 @@ describe('likes', () => {
   });
 });
 
+describe('views on every standing post', () => {
+  it('shows a zero view count alongside likes on opening posts and replies', () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me', replyTo: '1' })];
+    renderTopic();
+    const articles = screen.getAllByRole('article');
+    for (const article of articles) {
+      // Nested articles also include their children; each still has its own count.
+      expect(within(article).getAllByText('0 views').length).toBeGreaterThan(0);
+      expect(within(article).getAllByText('0 likes').length).toBeGreaterThan(0);
+      expect(within(article).getAllByRole('button', { name: /^Like / }).length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('a topic', () => {
   it('says how many replies and views it has', () => {
     renderTopic();
@@ -351,10 +373,10 @@ describe('a topic', () => {
     expect(screen.queryByText(/0 replies/)).toBeNull();
   });
 
-  it('starts with who started it when there is no count at all', () => {
+  it('keeps zero views visible on a new topic', () => {
     db.topic = { ...db.topic, replyCount: 0, viewCount: 0 } as ChatTopic;
     renderTopic();
-    expect(screen.getByText(/^Started by/)).toBeInTheDocument();
+    expect(screen.getByText(/^0 views · started by/)).toBeInTheDocument();
   });
 
   // The owner, 2026-09-27: a removed post is not drawn at all, and the

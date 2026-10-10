@@ -4,6 +4,8 @@ import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { usePostLikes } from '@/lib/chat/likes';
+import { useTopicOpeningPosts } from '@/lib/chat/opening-posts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useChatRooms, useRoomStats } from '@/lib/chat/rooms';
 import { sortTopics, useRoomTopics } from '@/lib/chat/topics';
@@ -69,6 +71,10 @@ export default function RoomPage() {
   const location = useLocation();
   const { topics, loading: topicsLoading, error, reload } = useRoomTopics(roomId);
   const { stats, reload: reloadStats } = useRoomStats();
+  const { byTopic: openingPosts, reload: reloadOpeners } = useTopicOpeningPosts(
+    topics.map((topic) => topic.id),
+  );
+  const likes = usePostLikes([...openingPosts.values()].filter((id): id is string => id !== null));
 
   // Watching chat_topics catches both halves of what this screen shows: a new
   // topic is an INSERT, and a reply to an existing one is an UPDATE, because
@@ -81,6 +87,8 @@ export default function RoomPage() {
     onChange: () => {
       reload();
       reloadStats();
+      likes.reload();
+      reloadOpeners();
     },
     enabled: Boolean(roomId),
   });
@@ -226,7 +234,30 @@ export default function RoomPage() {
                 : 'An administrator can start one before the room opens.'}
             </p>
           ) : (
-            sorted.map((topic) => <TopicRow key={topic.id} topic={topic} authors={authors} />)
+            sorted.map((topic) => {
+              const postId = openingPosts.get(topic.id);
+              return (
+                <TopicRow
+                  key={topic.id}
+                  topic={topic}
+                  authors={authors}
+                  likes={
+                    postId
+                      ? {
+                          likedBy: likes.byPost.get(postId) ?? [],
+                          readerId: account.status === 'member' ? account.userId : null,
+                          loading: likes.loading,
+                          unavailable: Boolean(likes.error),
+                          onToggle: () => {
+                            likes.toggle(postId);
+                          },
+                          failure: likes.failure?.postId === postId ? likes.failure.message : null,
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })
           )}
         </div>
       </div>

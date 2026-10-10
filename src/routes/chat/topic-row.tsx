@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatTopic } from '@/lib/chat/types';
+import { PostLikes } from '@/routes/chat/like-button';
+import type { CardLikes } from '@/routes/home/topic-card';
 
 /**
  * One topic in a room's list, from the mock's `topicRow()`.
@@ -18,17 +20,16 @@ import type { ChatAuthor, ChatTopic } from '@/lib/chat/types';
 export function TopicRow({
   topic,
   authors,
+  likes,
 }: {
   topic: ChatTopic;
   authors: Map<string, ChatAuthor>;
+  likes?: CardLikes | undefined;
 }) {
   const faces = topic.participantIds.slice(0, 4);
 
   return (
-    <Link
-      to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
-      className="mb-2.5 block rounded-[15px] border border-line bg-paper px-3.5 py-[13px]"
-    >
+    <article className="relative mb-2.5 block rounded-[15px] border border-line bg-paper px-3.5 py-[13px]">
       <span className="flex items-start gap-2">
         {topic.unread ? (
           <span
@@ -38,10 +39,13 @@ export function TopicRow({
             className="mt-[7px] h-[7px] w-[7px] flex-none rounded-full bg-emphasis"
           />
         ) : null}
-        <span className="min-w-0 flex-1 font-extrabold font-head text-[0.96875rem] text-ink leading-[1.34]">
+        <Link
+          to={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
+          className="min-w-0 flex-1 after:absolute after:inset-0 after:content-[''] font-extrabold font-head text-[0.96875rem] text-ink leading-[1.34]"
+        >
           {topic.unread ? <span className="sr-only">New. </span> : null}
           {topic.title}
-        </span>
+        </Link>
       </span>
 
       <span className="mt-2.5 flex items-center gap-2.5">
@@ -69,11 +73,8 @@ export function TopicRow({
           })}
         </span>
 
-        {/* The mock's `.tstats`: the numbers in the head font and navy, the
-            words beside them in grey, so the row scans as numbers. A count of
-            zero is not drawn; the time always is. */}
         <span className="flex flex-wrap items-baseline gap-x-1 text-[0.775rem] text-grey">
-          {topic.replyCount ? (
+          {topic.replyCount > 0 ? (
             <>
               <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
                 {topic.replyCount}
@@ -81,19 +82,33 @@ export function TopicRow({
               <i className="mr-[9px] not-italic">{topic.replyCount === 1 ? 'reply' : 'replies'}</i>
             </>
           ) : null}
-          {topic.viewCount ? (
-            <>
-              <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
-                {topic.viewCount}
-              </b>
-              <i className="mr-[9px] not-italic">{topic.viewCount === 1 ? 'view' : 'views'}</i>
-            </>
-          ) : null}
+          <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
+            {topic.viewCount}
+          </b>
+          <i className="mr-[9px] not-italic">{topic.viewCount === 1 ? 'view' : 'views'}</i>
           <b className="font-extrabold font-head text-[0.8375rem] text-emphasis">
             {chatTime(topic.lastPostAt)}
           </b>
         </span>
       </span>
-    </Link>
+      {likes ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+          <PostLikes
+            likedBy={likes.likedBy}
+            readerId={likes.readerId}
+            what={topic.title}
+            onToggle={likes.onToggle}
+            className="relative min-h-[2.25rem] text-[0.8125rem]"
+            loading={likes.loading}
+            unavailable={likes.unavailable}
+          />
+        </div>
+      ) : null}
+      {likes?.failure ? (
+        <p role="alert" className="relative mt-1 text-[0.78125rem] text-destructive">
+          {likes.failure}
+        </p>
+      ) : null}
+    </article>
   );
 }

@@ -68,15 +68,29 @@ describe('LikeButton', () => {
 });
 
 describe('PostLikes', () => {
+  it('keeps Like visible while loading without showing a guessed zero', () => {
+    renderLikes({ likedBy: [], loading: true });
+    expect(screen.getByRole('button', { name: "Like Nicole's post" })).toBeDisabled();
+    expect(screen.getByText('Likes …')).toBeVisible();
+    expect(screen.queryByText('0 likes')).toBeNull();
+  });
+  it('says when the count is unavailable rather than showing zero', () => {
+    renderLikes({ likedBy: [], unavailable: true });
+    expect(screen.getByRole('button', { name: "Like Nicole's post" })).toBeDisabled();
+    expect(screen.getByText('Likes unavailable')).toBeVisible();
+    expect(screen.queryByText('0 likes')).toBeNull();
+  });
+
   it('likes on a press', async () => {
     const onToggle = renderLikes();
     await userEvent.click(screen.getByRole('button', { name: "Like Nicole's post" }));
     expect(onToggle).toHaveBeenCalledOnce();
   });
 
-  it('draws no count when nobody likes it', () => {
+  it('shows zero likes when nobody likes it', () => {
     renderLikes({ likedBy: [] });
     expect(screen.getByRole('button', { name: "Like Nicole's post" })).toBeInTheDocument();
+    expect(screen.getByText('0 likes')).toBeVisible();
     expect(screen.queryByRole('button', { name: /likes? on/ })).toBeNull();
   });
 
@@ -97,10 +111,10 @@ describe('PostLikes', () => {
     ).toBeVisible();
   });
 
-  // Nobody likes their own words; who liked them is still worth seeing.
-  it('draws no button on the reader’s own post, and still draws the count', () => {
-    renderLikes({ readerId: null, what: 'your post' });
-    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+  // The author is a reader too; their own post has the same controls.
+  it('draws Like and the count on the reader’s own post', () => {
+    renderLikes({ readerId: 'me', what: 'your post' });
+    expect(screen.getByRole('button', { name: 'Like your post' })).toBeVisible();
     expect(screen.getByRole('button', { name: '2 likes on your post. Show who.' })).toBeVisible();
   });
 

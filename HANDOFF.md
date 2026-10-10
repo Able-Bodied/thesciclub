@@ -334,6 +334,27 @@ the product definition and wins over this file.
     and size. Real device installs remain to be checked after publishing;
     existing shortcuts may need removing and adding again.
 
+20. **Like and counts on every post, unreleased** (2026-10-10). The owner
+    wants Like, like count and view count on all standing posts, including
+    their own, and explicitly allows self-likes. Home topic/photo cards,
+    room topic rows, opening posts and nested replies now offer Like and
+    keep zero counts visible. Loading and failed reads are labelled rather
+    than guessed as zero. Room rows like the same opening post as Home;
+    a removed opener is not replaced by somebody else's reply. Each post's
+    views count distinct delivered readers using the existing read-through
+    markers, without disclosing reader identities; long topics load counts
+    in batches below the API row cap. A saved marker refreshes the counts.
+    `20261011010000_self_likes_and_post_view_counts.sql` changes only the
+    self-like exclusion and adds the two scoped count/opener RPCs. Suspension,
+    identity, room visibility and removal checks stay; self-likes do not notify
+    their author. The linked dry run lists only this migration. **The owner
+    must apply it before publishing this client**, per the rule below.
+    Local and fresh SQL probes pass; weakening the read boundary or restoring
+    the self-like exclusion fails them. UI checks cover saved self-likes,
+    unlikes, opening/nested post counts and Home/room consistency at 1280 and
+    390 pixels. All 2,171 tests, standalone check and build pass. Scratch
+    fixtures were confined to the fresh stack, which has been stopped.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

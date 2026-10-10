@@ -9,6 +9,7 @@ import { usePostLikes } from '@/lib/chat/likes';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
+import { usePostViews } from '@/lib/chat/views';
 import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
@@ -166,6 +167,7 @@ export default function HomePage() {
     [topics],
   );
   const likes = usePostLikes(openingPostIds);
+  const views = usePostViews(openingPostIds);
 
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
@@ -227,12 +229,14 @@ export default function HomePage() {
     [memberId, viewer, announce],
   );
 
-  /** What a card's Like needs, or nothing while the likes load. */
+  /** A standing opener keeps its Like visible while the real count loads. */
   function likesFor(opening: ChatPost | null): CardLikes | undefined {
-    if (!opening || likes.loading) return undefined;
+    if (!opening) return undefined;
     return {
       likedBy: likes.byPost.get(opening.id) ?? [],
-      readerId: opening.authorId === memberId ? null : memberId,
+      readerId: memberId,
+      loading: likes.loading,
+      unavailable: Boolean(likes.error),
       onToggle: () => {
         likes.toggle(opening.id);
       },
@@ -254,6 +258,9 @@ export default function HomePage() {
             }
             linkState={linkState}
             likes={likesFor(item.topic.opening)}
+            viewCount={
+              views.loading ? undefined : (views.byPost.get(item.topic.opening?.id ?? '') ?? null)
+            }
             answerAs={memberId}
           />
         );
@@ -264,6 +271,9 @@ export default function HomePage() {
             author={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
             linkState={linkState}
             likes={likesFor(item.topic.opening)}
+            viewCount={
+              views.loading ? undefined : (views.byPost.get(item.topic.opening?.id ?? '') ?? null)
+            }
           />
         );
       case 'event':

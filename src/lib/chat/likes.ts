@@ -94,7 +94,7 @@ export function withLike(
   return next;
 }
 
-/** "1 like", "3 likes". Never called with zero: a count of zero is not drawn. */
+/** "1 like", "3 likes". Zero is shown on new posts too. */
 export function likesLabel(count: number): string {
   return `${count} ${count === 1 ? 'like' : 'likes'}`;
 }

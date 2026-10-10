@@ -95,9 +95,9 @@ describe('a photograph on Home', () => {
     expect(onToggle).toHaveBeenCalledOnce();
   });
 
-  it('draws the count and no Like on the reader’s own photograph', () => {
-    renderCard({ likes: { likedBy: ['jan'], readerId: null, onToggle: vi.fn(), failure: null } });
-    expect(screen.queryByRole('button', { name: /^Like/ })).toBeNull();
+  it('draws Like and the count on the reader’s own photograph', () => {
+    renderCard({ likes: { likedBy: ['jan'], readerId: 'me', onToggle: vi.fn(), failure: null } });
+    expect(screen.getByRole('button', { name: /^Like/ })).toBeVisible();
     expect(screen.getByRole('button', { name: /^1 like on/ })).toBeInTheDocument();
   });
 
@@ -175,4 +175,13 @@ describe('a photograph on Home', () => {
     expect(document.body.textContent).toContain('T10');
     expect(document.body.textContent).not.toMatch(/San Jose|Oakland/);
   });
+});
+
+it('shows zero views on a new post and the real count after it has been read', () => {
+  renderCard({ viewCount: 0 });
+  expect(screen.getByText('0 views')).toBeVisible();
+});
+it('shows a positive view count', () => {
+  renderCard({ viewCount: 3 });
+  expect(screen.getByText('3 views')).toBeVisible();
 });
