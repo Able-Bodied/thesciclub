@@ -12,6 +12,8 @@ import {
   questionFor,
   questionsOn,
   SCREENS,
+  screensThatApply,
+  stepFrom,
   toggleMany,
 } from '@/routes/profile/questions';
 
@@ -74,6 +76,53 @@ describe('conditional questions', () => {
   });
 });
 
+describe('the specifics', () => {
+  const specifics = screen('The specifics');
+  const asked = (answers: Answers) => questionsOn(specifics, answers).length > 0;
+
+  it('comes straight after self-care devices', () => {
+    expect(SCREENS.indexOf(specifics)).toBe(SCREENS.indexOf(screen('Self-care devices')) + 1);
+  });
+
+  it('is asked after any one of its three self-care answers', () => {
+    for (const choice of [
+      'Dictation software',
+      'Vehicle modifications',
+      'Wheelchair assist devices',
+    ]) {
+      expect(asked({ selfCare: ['Botox', choice] }), choice).toBe(true);
+    }
+  });
+
+  it('is not asked after any other self-care answer, or none', () => {
+    expect(asked({})).toBe(false);
+    expect(asked({ selfCare: [] })).toBe(false);
+    expect(asked({ selfCare: ['Intermittent catheter', 'Standing frame'] })).toBe(false);
+  });
+
+  it('is still asked of somebody who already wrote something there', () => {
+    expect(asked({ detail: 'Dragon on a Surface' })).toBe(true);
+    expect(asked({ detail: '   ' })).toBe(false);
+  });
+
+  it('is stepped over, both ways, when it is not asked', () => {
+    const selfCare = SCREENS.indexOf(screen('Self-care devices'));
+    const after = SCREENS.indexOf(specifics) + 1;
+    expect(screensThatApply({})).not.toContain(SCREENS.indexOf(specifics));
+    expect(stepFrom(SCREENS.indexOf(specifics), 1, {})).toBe(after);
+    expect(stepFrom(SCREENS.indexOf(specifics), -1, {})).toBe(selfCare);
+    const chosen = { selfCare: ['Dictation software'] };
+    expect(stepFrom(SCREENS.indexOf(specifics), 1, chosen)).toBe(SCREENS.indexOf(specifics));
+  });
+
+  it('does not count towards progress unless it is asked', () => {
+    expect(applicableQuestions({}).map((q) => q.key)).not.toContain('detail');
+    expect(
+      applicableQuestions({ selfCare: ['Vehicle modifications'] }).map((q) => q.key),
+    ).toContain('detail');
+  });
+});
+
 describe('isAnswered', () => {
   const q = (key: string) => {
     const found = questionFor(key);
@@ -107,7 +156,7 @@ describe('advancesItself', () => {
   });
 
   it('is false where a text answer is involved, because the person is not done until they say so', () => {
-    expect(advancesItself(screen('How it happened'), {})).toBe(false);
+    expect(advancesItself(screen('How were you paralyzed?'), {})).toBe(false);
     expect(advancesItself(screen('The specifics'), {})).toBe(false);
   });
 

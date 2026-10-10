@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
-import type { Answers } from '@/routes/profile/questions';
+import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
+import { type Answers, SCREENS, screensThatApply } from '@/routes/profile/questions';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const api = vi.hoisted(() => ({
@@ -45,12 +46,32 @@ function renderSurvey() {
   );
 }
 
+/** Where a screen is in the survey, by its title, so a test reads which
+ *  screen it means and survives the order changing. */
+function at(title: string): number {
+  const index = SCREENS.findIndex((s) => s.title === title);
+  if (index < 0) throw new Error(`no screen called ${title}`);
+  return index;
+}
+
 /** Advance one screen without answering. Skip rather than Continue, because
  *  both are on screen and only one of them is unambiguous. */
 async function skip(times = 1) {
   for (let i = 0; i < times; i++) {
     await userEvent.click(screen.getByRole('button', { name: 'Skip this one' }));
   }
+}
+
+/** The screens a member with nothing answered is shown — "The specifics"
+ *  is not one of them. */
+const SHOWN = screensThatApply({});
+
+/** From the first screen, skip forward to the one with this title. Counts
+ *  only the screens that are shown, since Skip steps over the rest. */
+async function skipTo(title: string) {
+  const steps = SHOWN.indexOf(at(title));
+  if (steps < 0) throw new Error(`${title} is not shown to a blank member`);
+  await skip(steps);
 }
 
 beforeEach(() => {
@@ -76,13 +97,15 @@ describe('opened from Your answers', () => {
   }
 
   it('starts on the screen it was sent to', async () => {
-    renderAt('/profile?screen=4');
+    renderAt(`/profile?screen=${at('Family')}`);
     expect(await screen.findByRole('heading', { name: 'Family' })).toBeInTheDocument();
-    expect(screen.getByText(/5 of 12/)).toBeInTheDocument();
+    expect(
+      screen.getByText(`${SHOWN.indexOf(at('Family')) + 1} of ${SHOWN.length}`, { exact: false }),
+    ).toBeInTheDocument();
   });
 
   it('saves and goes back to the answers, not to Me', async () => {
-    renderAt('/profile?screen=4');
+    renderAt(`/profile?screen=${at('Family')}`);
     await screen.findByRole('heading', { name: 'Family' });
     await userEvent.click(screen.getByRole('button', { name: /Back to your answers/ }));
     expect(await screen.findByText('Your answers page')).toBeInTheDocument();
@@ -112,7 +135,85 @@ describe('the profile survey', () => {
   it('starts on the first screen and says where you are', async () => {
     renderSurvey();
     expect(await screen.findByText('About you')).toBeInTheDocument();
-    expect(screen.getByText(/1 of 12/)).toBeInTheDocument();
+    expect(screen.getByText(`1 of ${SHOWN.length}`, { exact: false })).toBeInTheDocument();
+  });
+
+  describe('the specifics', () => {
+    it('follows self-care when one of its three answers is chosen, and Back returns', async () => {
+      renderSurvey();
+      await screen.findByText('About you');
+      await skipTo('Self-care devices');
+      await userEvent.click(await screen.findByRole('button', { name: 'Dictation software' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      expect(await screen.findByRole('heading', { name: 'The specifics' })).toBeInTheDocument();
+      // One more screen than a blank member is shown.
+      expect(screen.getByText(`of ${SHOWN.length + 1}`, { exact: false })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+      expect(await screen.findByRole('heading', { name: 'Self-care devices' })).toBeInTheDocument();
+    });
+
+    it('is stepped over otherwise, forward and back', async () => {
+      renderSurvey();
+      await screen.findByText('About you');
+      await skipTo('Self-care devices');
+      await userEvent.click(await screen.findByRole('button', { name: 'Standing frame' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      expect(
+        await screen.findByRole('heading', { name: 'Do you own any adaptive sports equipment?' }),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+      expect(await screen.findByRole('heading', { name: 'Self-care devices' })).toBeInTheDocument();
+    });
+  });
+
+  describe('equipment and grants', () => {
+    it('asks for equipment in words, with an example', async () => {
+      renderSurvey();
+      await screen.findByText('About you');
+      await skipTo('Do you own any adaptive sports equipment?');
+      expect(
+        await screen.findByPlaceholderText(
+          'Top End Force 3 handcycle, Freewheel, and HOC Glide ski',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('asks for grants in words, and saves them as they were typed', async () => {
+      renderSurvey();
+      await screen.findByText('About you');
+      await skipTo('Did you receive any grants?');
+      const box = await screen.findByPlaceholderText(/Kelly Brush grant and High Fives grant/);
+      await userEvent.type(box, 'High Fives, for a handcycle');
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      await waitFor(() => {
+        expect(api.saves.at(-1)?.keys).toEqual(['grants']);
+      });
+    });
+  });
+
+  // A yes/no on its own still shows its words: Yes and No under "Mentoring"
+  // are not a question.
+  it('shows the question on a screen that is only a yes or no', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skipTo('Mentoring');
+    expect(await screen.findByText('Do you want to be a peer mentor?')).toBeInTheDocument();
+  });
+
+  it('says why to mentor, and what it means, before asking', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    await skipTo('Mentoring');
+    expect(await screen.findByText(/very rewarding/)).toBeInTheDocument();
+    const details = screen.getByRole('heading', { name: 'As a mentor' });
+    // The allowance is the invites screen's, which mirrors the database's.
+    expect(
+      screen.getByText(`You can invite up to ${MENTOR_ALLOWANCE} people to the club.`),
+    ).toBeInTheDocument();
+    expect(
+      details.compareDocumentPosition(screen.getByText('Do you want to be a peer mentor?')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('resumes from what is already answered rather than starting blank', async () => {
@@ -142,13 +243,13 @@ describe('the profile survey', () => {
     renderSurvey();
     await screen.findByText('About you');
     await skip();
-    expect(await screen.findByText('How it happened')).toBeInTheDocument();
+    expect(await screen.findByText('Brief bio')).toBeInTheDocument();
   });
 
   it('advances a single-choice-only screen by itself once it is answered', async () => {
     renderSurvey();
     await screen.findByText('About you');
-    await skip(6);
+    await skipTo('Education');
     // Education is two single-choice questions and nothing else.
     expect(await screen.findByText('Education')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Some college' }));
@@ -161,17 +262,17 @@ describe('the profile survey', () => {
     renderSurvey();
     await screen.findByText('About you');
     await skip();
-    await screen.findByText('How it happened');
-    await userEvent.type(screen.getByRole('textbox'), 'Car accident');
+    await screen.findByText('Brief bio');
+    await userEvent.type(screen.getByRole('textbox'), 'Avid handcyclist');
     // Still here: a person is not finished with prose until they say so.
-    expect(screen.getByText('How it happened')).toBeInTheDocument();
+    expect(screen.getByText('Brief bio')).toBeInTheDocument();
   });
 
   it('stops at three interests rather than silently dropping one', async () => {
     api.answers = { interests: ['Travel', 'Cooking', 'Reading'] };
     renderSurvey();
     await screen.findByText('About you');
-    await skip(8);
+    await skipTo('Interests');
     expect(await screen.findByText('Interests')).toBeInTheDocument();
     expect(screen.getByText(/3 of 3 chosen/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Climbing' })).toBeDisabled();
@@ -180,7 +281,7 @@ describe('the profile survey', () => {
   it('asks when children arrived only once it knows there are any', async () => {
     renderSurvey();
     await screen.findByText('About you');
-    await skip(4);
+    await skipTo('Family');
     expect(await screen.findByText('Family')).toBeInTheDocument();
     expect(screen.queryByText('Before or after your injury?')).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Yes' }));
@@ -191,7 +292,7 @@ describe('the profile survey', () => {
     api.answers = { education: 'Some college', educationWhen: 'After' };
     renderSurvey();
     await screen.findByText('About you');
-    await skip(6);
+    await skipTo('Education');
     expect(await screen.findByText('Education')).toBeInTheDocument();
     // Both answers are already there. Without the arrival guard this screen
     // advances immediately and the answer can never be revised.
@@ -202,7 +303,7 @@ describe('the profile survey', () => {
   it('lets you go back and change a single-choice answer', async () => {
     renderSurvey();
     await screen.findByText('About you');
-    await skip(6);
+    await skipTo('Education');
     await screen.findByText('Education');
     await userEvent.click(screen.getByRole('button', { name: 'Some college' }));
     await userEvent.click(screen.getByRole('button', { name: 'After' }));
@@ -222,7 +323,7 @@ describe('the profile survey', () => {
   it('asks the mentoring question rather than treating an unset flag as a no', async () => {
     renderSurvey();
     await screen.findByText('About you');
-    await skip(11);
+    await skipTo('Mentoring');
     expect(await screen.findByText('Mentoring')).toBeInTheDocument();
     await new Promise((r) => setTimeout(r, 400));
     // Still on it: nothing has been answered, so there is nothing to advance from.
@@ -239,11 +340,11 @@ describe('the profile survey', () => {
   });
 
   describe('answering in your own words', () => {
-    /** Topics is the fourth screen; three skips lands on it. */
+    /** Topics has to be walked to; where it is depends on the order. */
     async function goToTopics() {
       renderSurvey();
       await screen.findByRole('button', { name: 'Skip this one' });
-      await skip(3);
+      await skipTo('Topics you are happy to talk about');
       await screen.findByText(/happy to talk about/i);
     }
 
@@ -318,11 +419,11 @@ describe('the profile survey', () => {
       );
     });
 
-    /** Self-care is the tenth screen, so it has to be walked to. */
+    /** Self-care is well into the survey, so it has to be walked to. */
     async function goToSelfCare() {
       renderSurvey();
       await screen.findByRole('button', { name: 'Skip this one' });
-      await skip(9);
+      await skipTo('Self-care devices');
       await screen.findByText(/self-care devices/i);
     }
 

@@ -368,6 +368,30 @@ the product definition and wins over this file.
     regressions; restoring the desktop gate fails the new tests. The owner
     explicitly requested commit and push to main.
 
+22. **Profile survey: wording, order, equipment and grants** (2026-10-10).
+    "How it happened" is "How were you paralyzed?"; "In your own words" is
+    "Brief bio", second. Order: About you, Brief bio, How were you
+    paralyzed?, Family, Day to day, Education, Work, Interests, Self-care
+    devices, The specifics, adaptive sports equipment, grants, Mentoring,
+    Topics. "The specifics" is asked only after Dictation software, Vehicle
+    modifications or Wheelchair assist devices (or when it already has an
+    answer); a screen with nothing to ask is stepped over (`stepFrom`) and
+    the counter counts only shown screens. Two new free-text questions, "Do
+    you own any adaptive sports equipment?" and "Did you receive any
+    grants?", in `20261011020000` (`sports_equipment`, `grants`, 1000
+    characters each) — **must be applied before this client is released**;
+    `loadAnswers` leaves them out of its fallback read, so the survey still
+    loads without them, but saving those two screens fails until they exist.
+    Not in `browse_members`: whether other members see them is the owner's
+    call. Mentoring opens with why to mentor, then "As a mentor" (first to
+    newly injured members, `MENTOR_ALLOWANCE` invites — the old hint still
+    said two — and that an administrator makes it official). A lone yes/no
+    question now shows its words. Members at 100% drop below it until they
+    answer the new screens. All 2,185 tests, standalone check and build pass.
+    A Home ask dialog (one box, two taps) was built alongside and set aside
+    unreleased on the local branch `backup/2026-10-10-home-ask-and-survey`,
+    since Open 14's asking screen came first.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

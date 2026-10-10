@@ -19,13 +19,15 @@ import {
   type Question,
   questionsOn,
   SCREENS,
+  screensThatApply,
+  stepFrom,
   toggleMany,
 } from '@/routes/profile/questions';
 
 /**
  * The profile survey.
  *
- * Twelve screens, each saved as it is left. Every question can be skipped — the
+ * A screen at a time, each saved as it is left. Every question can be skipped — the
  * deck has to work for a half-filled profile anyway, and a form that will not
  * let you past a question you do not want to answer is a form you abandon
  * rather than one you answer honestly.
@@ -82,13 +84,17 @@ export default function ProfileSurveyPage() {
           }
           setError(null);
           // Each screen is saved as it is left, which nothing else says.
-          if (next >= SCREENS.length) {
+          // Forward steps over a screen with nothing to ask (stepFrom), so
+          // every way onward — Continue, Skip, Rather not say, an answer that
+          // moves on by itself — lands on one that has.
+          const target = next >= SCREENS.length ? next : stepFrom(next, 1, answers);
+          if (target >= SCREENS.length) {
             announce('Your answers are saved.');
             void navigate(exitTo, { replace: true });
             return;
           }
           announce('Saved.');
-          setIndex(next);
+          setIndex(target);
         })
         .catch((e: unknown) => {
           setError(describeThrown(e, 'Could not save that.'));
@@ -187,6 +193,17 @@ export default function ProfileSurveyPage() {
     };
   }, [screen, answers, declined, loading, saving, index, commit]);
 
+  // Arriving on a screen with nothing to ask — a ?screen= link to "The
+  // specifics" for somebody it does not apply to — goes on to the next one
+  // that has something, as Continue would have.
+  useEffect(() => {
+    if (!screen || loading) return;
+    if (questionsOn(screen, answers).length > 0) return;
+    const next = stepFrom(index, 1, answers);
+    if (next >= SCREENS.length) void navigate(exitTo, { replace: true });
+    else setIndex(next);
+  }, [screen, loading, answers, index, navigate, exitTo]);
+
   if (account.status === 'error') return <AccountProblem account={account} />;
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
   if (account.status !== 'member')
@@ -197,6 +214,10 @@ export default function ProfileSurveyPage() {
 
   const questions = questionsOn(screen, answers);
   const progress = progressOf(answers, declined);
+  // Counted over the screens this member will see, not all of them.
+  const shown = screensThatApply(answers);
+  const position = shown.filter((i) => i <= index).length;
+  const isLast = stepFrom(index + 1, 1, answers) >= SCREENS.length;
   const declinable = questions.filter((q) => canDecline(q.key));
   const alreadyDeclined = declinable.length > 0 && declinable.every((q) => declined.has(q.key));
 
@@ -216,7 +237,7 @@ export default function ProfileSurveyPage() {
             <button
               type="button"
               onClick={() => {
-                setIndex(index - 1);
+                setIndex(stepFrom(index - 1, -1, answers));
               }}
               className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
             >
@@ -248,13 +269,13 @@ export default function ProfileSurveyPage() {
         <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
           <div
             className="h-full rounded-full bg-emphasis transition-[width] duration-300"
-            style={{ width: `${((index + 1) / SCREENS.length) * 100}%` }}
+            style={{ width: `${(position / shown.length) * 100}%` }}
           />
         </div>
         {/* Under the bar it describes, rather than beside the buttons, which
             now hold the two ways out. */}
         <p className="mt-1.5 text-right text-[0.78125rem] text-grey">
-          {index + 1} of {SCREENS.length} · {progress.percent}% complete
+          {position} of {shown.length} · {progress.percent}% complete
         </p>
       </div>
 
@@ -264,6 +285,18 @@ export default function ProfileSurveyPage() {
         </h1>
         {screen.hint ? (
           <p className="mt-2 text-[0.8375rem] text-ink2 leading-[1.5]">{screen.hint}</p>
+        ) : null}
+        {screen.details ? (
+          <section className="mt-4 rounded-[13px] bg-tint px-3.5 py-3">
+            <h2 className="font-bold font-head text-[0.8125rem] text-ink">
+              {screen.details.title}
+            </h2>
+            <ul className="mt-1.5 list-disc space-y-1 pl-5 text-[0.8125rem] text-ink2 leading-[1.5]">
+              {screen.details.items.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </section>
         ) : null}
 
         {loading ? (
@@ -277,7 +310,10 @@ export default function ProfileSurveyPage() {
               onChange={(v) => {
                 set(question.key, v);
               }}
-              solo={questions.length === 1}
+              // A lone question's title repeats the screen's, so it is left
+              // out — except a yes/no, whose buttons say nothing without it:
+              // "Mentoring" over Yes and No is not a question.
+              solo={questions.length === 1 && question.kind !== 'yesno'}
             />
           ))
         )}
@@ -298,13 +334,7 @@ export default function ProfileSurveyPage() {
           }}
           className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
         >
-          {saving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : index === SCREENS.length - 1 ? (
-            'Finish'
-          ) : (
-            'Continue'
-          )}
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? 'Finish' : 'Continue'}
         </button>
         {/* Two different things, and the difference is the point.
 
