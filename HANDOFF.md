@@ -17,8 +17,7 @@ the product definition and wins over this file.
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
-  `20261009020000` live (linked dry run confirmed 2026-10-09);
-  `20261009030000` is pending (Open 12),
+  `20261009040000` live (`migration list --linked`, 2026-10-09),
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -181,20 +180,23 @@ the product definition and wins over this file.
     Local fixtures were removed and the scratch stack was stopped. The owner applied
     the hosted migrations and authorized this client release on 2026-10-09.
 
-11. **Profile and admin organization, unreleased** (2026-10-09): Me groups profile
-    editing/preview, club tools, device settings and account actions, with accessible
-    section shortcuts. Display stays expanded and comes before notifications.
-    Your details groups identity, injury and location, retaining one Save changes
-    action. Admin navigation wraps into two rows on phones; the whole page scrolls
-    so its header does not reserve half a small screen at larger text sizes.
-    Member search matches names, formatted phone numbers, location, account type
-    and status across joined and directory entries. Opening a member from a report
-    clears search first. Member actions separate account type from membership,
-    with 44px targets and the existing destructive confirmations. No migration.
-    All 2,017 tests, check and build pass; browser checks cover 375px and desktop,
-    larger text, dark appearance, focusable section shortcuts and member search.
+11. **Me and Admin in tabs, released** (2026-10-09): `PageTabs`
+    (`components/page-tabs.tsx`) gives both screens real ARIA tabs that stick
+    under the header, keep the choice in `?tab=` (replaced, not pushed, so the
+    back gesture leaves the screen) and move with the arrow keys. Me: Profile
+    (ending with Sign out, at the owner's word), Settings (Display,
+    Notifications), Account (Google, Delete).
+    Google's return (`/me?google=linked`, unchanged: it is on Supabase's
+    allowed list) opens Account. Admin: Members, Reports (count), Invites,
+    Organizations, Rooms in one sideways-scrolling row on phones. Member rows
+    are closed to a name and a line, with one "Manage" open at a time; "Go to"
+    from a report opens that row. Members filter: All, Joined, Directory,
+    Paused or struck (joined only). Invites and Organizations go two-column at
+    `lg`. Your details groups identity, injury and location with one Save. No
+    migration. 2,045 tests, check and build pass; browser checks at 390 and
+    1280, dark with larger text, sticky tabs while scrolled, report → member.
 
-12. **Linked organization profile tags, unreleased** (2026-10-09): visible member
+12. **Linked organization profile tags, released** (2026-10-09): visible member
     profiles show `Represents <organization>` tags for administrator-linked
     organizations. Each tag opens that organization's page and uses its logo or
     short code. Self-described “Member of” affiliations stay separate and do not
@@ -202,12 +204,26 @@ the product definition and wins over this file.
     identities, retaining its active-viewer/profile gate, security barrier and
     read-only grants. Archived organizations are excluded; unlinking removes the
     badge on the next profile read. The private representatives table stays private.
-    Migration `20261009030000_profiles_show_represented_organizations.sql` is local
-    only and confirmed pending by linked dry run. All 2,021 tests, check and build
+    Migration `20261009030000_profiles_show_represented_organizations.sql` is
+    live. All 2,021 tests, check and build
     pass. The signed-in SQL probe has ten true assertions and two expected refusals
     on local and fresh stacks; removing the archive filter fails an assertion.
     Using self-described affiliations as badges fails both profile regressions.
     Browser checks cover the badge on phones and desktop, larger text and the organization link. Local preview fixtures were removed and the fresh stack stopped.
+
+13. **Organization logos, released** (2026-10-09): the organization editor
+    (Admin → Organizations and `/organizations/manage`) chooses, changes and
+    removes a logo, applied by Save; Edit scrolls the form into view under the
+    sticky tabs. Files go to `photos/organizations/<id>/<random>.<ext>`, fitted
+    to 400px on white. Migration
+    `20261009040000_whoever_edits_an_organization_sets_its_logo.sql` (live)
+    adds `can_edit_organization` (save_organization's rule),
+    storage insert/delete policies for that folder, and `set_organization_logo`,
+    which refuses another folder or an unuploaded file and returns the old path
+    for the client to delete. Seeded logos outside an id folder are never
+    deleted. Probe `supabase/tests/organization-logos.sql`: 8 true, 10 expected
+    refusals on local and fresh stacks; letting any representative edit removed
+    one refusal.
 
 ## Rules the owner set
 
