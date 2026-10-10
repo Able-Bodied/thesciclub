@@ -119,15 +119,16 @@ describe('the iPhone steps match the phones', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Tap View More');
   });
 
-  it('sends Firefox to Share at the top left, then View More', async () => {
+  it('sends Firefox on iPhone to Safari so the install keeps the name and icon', async () => {
     browserIs(
       'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/131.0 Mobile/15E148 Safari/605.1.15',
     );
     render(<InstallSettings />);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
     const sheet = screen.getByRole('dialog');
-    expect(sheet).toHaveTextContent('at the top left beside the address');
+    expect(sheet).toHaveTextContent('Use Safari to add the club with its name and icon.');
+    expect(sheet).toHaveTextContent('Open thesciclub.com in Safari.');
     expect(sheet).toHaveTextContent('View More');
-    expect(sheet).not.toHaveTextContent('☰');
+    expect(sheet).not.toHaveTextContent('at the top left beside the address');
   });
 });

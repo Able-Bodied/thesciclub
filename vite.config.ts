@@ -16,6 +16,8 @@ export default defineConfig({
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
+      // Browser shortcut icons, as well as the manifest's install icons, work offline.
+      includeAssets: ['favicon*.png', 'favicon.ico', 'apple-touch-icon*.png'],
       // A classic script, not a module: iOS came late to module workers.
       // The default precaches js, css and html only. The fonts and the logo
       // files are in public/, not imported, so they are named here — without
@@ -25,8 +27,9 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,woff2,ttf,svg}'],
       },
       manifest: {
-        name: 'The SCI Club',
-        short_name: 'SCI Club',
+        // Launchers can choose either name; both must be the owner's install name.
+        name: 'The Sci Club',
+        short_name: 'The Sci Club',
         description: 'A private community for people living with spinal cord injury.',
         // Matches --navy / --canvas in src/index.css.
         theme_color: '#102A4C',

@@ -7,15 +7,23 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <meta name="theme-color" content="#102A4C" />
+    <!-- Install names stay the same even when the current page has its own title. -->
+    <meta name="application-name" content="The Sci Club" />
+    <meta name="apple-mobile-web-app-title" content="The Sci Club" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <!-- favicon.ico first, for browsers and bookmark tools that still look for
          it by convention. The PNGs are what modern browsers actually pick. -->
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon-180x180.png" />
+    <!-- Large icons also cover browsers that create a shortcut without reading the manifest. -->
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <!-- Member pages are never public (CONTEXT.md). Keep the whole app out of indexes. -->
     <meta name="robots" content="noindex, nofollow" />
-    <title>The SCI Club</title>
+    <title>The Sci Club</title>
     <!-- The club's address is thesciclub.com (2026-10-03). Anybody on the old
          Netlify address, in a browser or in a Home Screen app installed from
          it, is moved to the same page there. In the page and not a Netlify

@@ -140,28 +140,30 @@ export const INSTALL_STEPS: Record<InstallPlatform, { intro?: string; steps: str
     steps: [
       'Tap Share, the square with an arrow pointing up, at the bottom of the screen (at the top on an iPad).',
       'If you see View More, the round button with a down arrow on the right, tap it. Then scroll down and choose “Add to Home Screen”.',
-      'Tap Add, then open The SCI Club from your Home Screen.',
+      'Tap Add, then open The Sci Club from your Home Screen.',
     ],
   },
   'ios-chrome': {
     steps: [
       'Tap Share, the square with an arrow, in the address bar at the top.',
       'Tap View More, the round button with a down arrow on the right. “Add to Home Screen” is at the bottom of the list that opens; choose it.',
-      'Tap Add, then open The SCI Club from your Home Screen.',
+      'Tap Add, then open The Sci Club from your Home Screen.',
     ],
   },
   'ios-firefox': {
+    // Firefox iOS ignores install names/icons: mozilla-mobile/firefox-ios#33663.
+    intro: 'Use Safari to add the club with its name and icon.',
     steps: [
-      'Tap Share, the square with an arrow, at the top left beside the address.',
-      'Tap View More, the round button with a down arrow on the right, then choose “Add to Home Screen”.',
-      'Tap Add, then open The SCI Club from your Home Screen.',
+      'Open thesciclub.com in Safari.',
+      'Tap Share, then View More (the down arrow on the right) if you see it, then “Add to Home Screen”.',
+      'Tap Add, then open The Sci Club from your Home Screen.',
     ],
   },
   'ios-edge': {
     steps: [
       'Tap the menu (•••) at the bottom of the screen, then Share.',
       'If you see View More, the round button with a down arrow on the right, tap it. Then choose “Add to Home Screen”.',
-      'Tap Add, then open The SCI Club from your Home Screen.',
+      'Tap Add, then open The Sci Club from your Home Screen.',
     ],
   },
   'ios-other': {
@@ -169,14 +171,14 @@ export const INSTALL_STEPS: Record<InstallPlatform, { intro?: string; steps: str
     steps: [
       'Open thesciclub.com in Safari.',
       'Tap Share, then View More (the down arrow on the right) if you see it, then “Add to Home Screen”.',
-      'Tap Add, then open The SCI Club from your Home Screen.',
+      'Tap Add, then open The Sci Club from your Home Screen.',
     ],
   },
   android: {
     steps: [
       'Tap the menu (⋮) at the top right of the browser.',
       'Choose “Install app” or “Add to Home screen”.',
-      'Tap Install, then open The SCI Club from your Home Screen.',
+      'Tap Install, then open The Sci Club from your Home Screen.',
     ],
   },
   'in-app': {
@@ -191,7 +193,7 @@ export const INSTALL_STEPS: Record<InstallPlatform, { intro?: string; steps: str
   desktop: {
     steps: [
       'In Chrome or Edge, click the install icon at the right of the address bar.',
-      'Or open the browser’s menu and choose “Install The SCI Club” (or Apps, then Install).',
+      'Or open the browser’s menu and choose “Install The Sci Club” (or Apps, then Install).',
       'Safari on a Mac: File, then “Add to Dock”.',
     ],
   },

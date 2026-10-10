@@ -321,6 +321,19 @@ the product definition and wins over this file.
     3 posts have ever been deleted, which takes their likes. Supabase's logs
     endpoint failed every query that day, so the cause is not confirmed.
 
+19. **Install name and icons, release authorized** (2026-10-10). The owner wants
+    **The Sci Club** on installed apps: both manifest names, Apple and HTML
+    application-name metadata, page-title branding and install instructions
+    now use that spelling. Icons already match the supplied `sci-club-logo/`
+    mark; large PNG favicon links and conventional Apple touch-icon files
+    also serve shortcut browsers, and the worker precaches them. Firefox on
+    iPhone has an open browser defect that ignores PWA names/icons
+    (https://github.com/mozilla-mobile/firefox-ios/issues/33663); its install
+    instructions now use Safari. Check, 33 relevant tests and build pass;
+    desktop/mobile preview verified manifest names and every icon response
+    and size. Real device installs remain to be checked after publishing;
+    existing shortcuts may need removing and adding again.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

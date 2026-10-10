@@ -12,7 +12,7 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  *
  * Every other path is the same empty shell until the app's JavaScript draws
  * it, and that was true of these two: a program that fetched /privacy without
- * running scripts got a page titled "The SCI Club" with nothing in it. Twilio's
+ * running scripts got a page titled "The Sci Club" with nothing in it. Twilio's
  * pre-check of the text-message registration is such a program, and what it
  * looks for is a page titled "Privacy Policy" that carries the SMS sentence
  * and the brand's name (2026-10-01, "could not verify"). So these two paths
@@ -76,7 +76,7 @@ export const STATIC_PAGES = [
 ] as const;
 
 const ROBOTS = /\s*<meta name="robots" content="noindex, nofollow" \/>/;
-const TITLE = '<title>The SCI Club</title>';
+const TITLE = '<title>The Sci Club</title>';
 const ROOT = '<div id="root"></div>';
 
 /**
@@ -99,6 +99,6 @@ export function withPage(
   );
   return shell
     .replace(ROBOTS, (meta) => (indexed ? '' : meta))
-    .replace(TITLE, `<title>${title} · The SCI Club</title>`)
+    .replace(TITLE, `<title>${title} · The Sci Club</title>`)
     .replace(ROOT, `<div id="root">${markup}</div>`);
 }

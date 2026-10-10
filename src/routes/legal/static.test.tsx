@@ -18,8 +18,8 @@ describe('the static Privacy Policy', () => {
   const html = withPage(shell, privacy.title, privacy.Page);
 
   it('is titled Privacy Policy', () => {
-    expect(html).toContain('<title>Privacy Policy · The SCI Club</title>');
-    expect(html).not.toContain('<title>The SCI Club</title>');
+    expect(html).toContain('<title>Privacy Policy · The Sci Club</title>');
+    expect(html).not.toContain('<title>The Sci Club</title>');
   });
 
   it('carries the SMS sentence and the brand in the HTML itself', () => {
@@ -46,7 +46,7 @@ describe('the static Terms of Service', () => {
   const html = withPage(shell, terms.title, terms.Page);
 
   it('is titled Terms of Service and carries the text-message terms', () => {
-    expect(html).toContain('<title>Terms of Service · The SCI Club</title>');
+    expect(html).toContain('<title>Terms of Service · The Sci Club</title>');
     expect(html).toContain('Carriers are not liable for delayed or undelivered messages');
     expect(html).toContain('<b>Text STOP</b>');
   });

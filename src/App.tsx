@@ -163,9 +163,9 @@ export default function App() {
  * page and put the reader at the top of it.
  *
  * Tapping Peers → Chat swaps the screen without a load, so a screen reader
- * was told nothing, the title stayed "The SCI Club" on every screen, and
+ * was told nothing, the title stayed "The Sci Club" on every screen, and
  * focus stayed on the tab that was pressed. After each change the title
- * becomes the screen's h1 — "Chat · The SCI Club" — and focus moves to the
+ * becomes the screen's h1 — "Chat · The Sci Club" — and focus moves to the
  * main landmark, from which the next Tab reaches the screen's first control
  * and a screen reader starts reading the heading. Not on the first render:
  * a page load already announces itself, and stealing focus then would take
@@ -187,7 +187,7 @@ export function RouteChange() {
     // until the next screen.
     const name = () => {
       const heading = document.querySelector('main h1, h1')?.textContent.trim();
-      document.title = heading ? `${heading} · The SCI Club` : 'The SCI Club';
+      document.title = heading ? `${heading} · The Sci Club` : 'The Sci Club';
     };
     name();
     const observer = new MutationObserver(name);

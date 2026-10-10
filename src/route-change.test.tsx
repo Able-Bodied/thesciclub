@@ -35,18 +35,18 @@ describe('a route change', () => {
   it('names the screen in the title, from its heading', async () => {
     render(<Two />);
     await waitFor(() => {
-      expect(document.title).toBe('Peers · The SCI Club');
+      expect(document.title).toBe('Peers · The Sci Club');
     });
     await userEvent.click(screen.getByRole('link', { name: 'Chat' }));
     await waitFor(() => {
-      expect(document.title).toBe('Chat · The SCI Club');
+      expect(document.title).toBe('Chat · The Sci Club');
     });
   });
 
   it('moves focus to the main landmark after a change, and not on the first screen', async () => {
     render(<Two />);
     await waitFor(() => {
-      expect(document.title).toBe('Peers · The SCI Club');
+      expect(document.title).toBe('Peers · The Sci Club');
     });
     // A page load announces itself; taking focus then would take it from the
     // address bar.
