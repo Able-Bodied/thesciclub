@@ -6,6 +6,7 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
+import { useReactions } from '@/lib/chat/reactions';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
@@ -17,6 +18,7 @@ import { useBrowseMembers } from '@/lib/members';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { QuickAsk } from '@/routes/chat/quick-ask';
+import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { EventCard } from '@/routes/events/event-card';
 import { ComposeCard } from '@/routes/home/compose-card';
 import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
@@ -166,6 +168,7 @@ export default function HomePage() {
     () => topics.flatMap((topic) => (topic.opening ? [topic.opening.id] : [])),
     [topics],
   );
+  const reactions = useReactions('post', openingPostIds, memberId);
   const likes = usePostLikes(openingPostIds);
   const views = usePostViews(openingPostIds);
 
@@ -257,6 +260,16 @@ export default function HomePage() {
                 : null
             }
             linkState={linkState}
+            reactions={
+              item.topic.opening ? (
+                <ReactionBar
+                  target={item.topic.opening.id}
+                  what={item.topic.title}
+                  state={reactions}
+                  readerId={memberId}
+                />
+              ) : null
+            }
             likes={likesFor(item.topic.opening)}
             viewCount={
               views.loading ? undefined : (views.byPost.get(item.topic.opening?.id ?? '') ?? null)
@@ -270,6 +283,16 @@ export default function HomePage() {
             topic={item.topic}
             author={item.topic.authorId ? (authors.get(item.topic.authorId) ?? null) : null}
             linkState={linkState}
+            reactions={
+              item.topic.opening ? (
+                <ReactionBar
+                  target={item.topic.opening.id}
+                  what={item.topic.title}
+                  state={reactions}
+                  readerId={memberId}
+                />
+              ) : null
+            }
             likes={likesFor(item.topic.opening)}
             viewCount={
               views.loading ? undefined : (views.byPost.get(item.topic.opening?.id ?? '') ?? null)

@@ -458,6 +458,35 @@ the product definition and wins over this file.
     the post's own picture and linked name, so the asker had been shown
     only as plain text there.
 
+29. **Emoji reactions, unreleased** (2026-10-10). Messages (direct/group),
+    room questions, posts and nested replies/comments, and Home openers have
+    React and eight common emoji choices. One reaction per member per item;
+    choosing another replaces it, choosing yours removes it. Counts and names
+    come from the same rows. Existing Like and view counts remain.
+    `20261011050000_chat_emoji_reactions.sql` adds separate post/message
+    tables and `chat_set_reaction`, with caller identity derived in SQL.
+    RLS hides private conversations, closed rooms and removed content; the
+    write function refuses notices, missing/removed/inaccessible targets,
+    unsupported emoji and suspended additions. Suspended members can clear
+    their own reaction. Direct writes are revoked. Clearing sets emoji null
+    so Realtime delivers a scoped UPDATE; counts ignore null rows.
+    One paginated read/subscription per screen, serialized writes per item,
+    errors without invented counts, retry, and scope changes discard stale
+    results. Picker controls are visible and at least 44px; its portal avoids
+    Home card stacking contexts and its dialog traps/restores focus.
+    All 2,224 tests and standalone check/build pass. Authenticated SQL probes
+    pass on local and fresh stacks (24 assertions each); removing the active
+    gate makes the probe fail, and restoring it passes. Local browser checks
+    cover Home/question/nested reply/private message, saved changes/removal,
+    live add/remove by another member, names, mobile/desktop picker and no
+    overflow or page errors. T3 preview became unavailable; its explicit
+    error authorized the headless fallback. Linux test browser lacks some
+    emoji glyphs; supported phone/desktop system emoji fonts draw the symbols.
+    **Database before release:** linked CLI dry run and migration list report
+    up to date, but linked function lookup is empty and the production REST
+    table read returns PGRST205/404. Do not publish this client until the owner
+    applies the migration and the actual tables/function are confirmed live.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

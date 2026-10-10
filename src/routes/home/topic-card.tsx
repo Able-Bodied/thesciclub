@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
@@ -55,6 +56,7 @@ export function TopicCard({
   linkState,
   likes,
   viewCount,
+  reactions,
   answerAs,
 }: {
   topic: HomeTopic;
@@ -66,6 +68,7 @@ export function TopicCard({
   /** Who likes the opening post, or nothing while the likes load. */
   likes?: CardLikes | undefined;
   viewCount?: number | null | undefined;
+  reactions?: ReactNode;
   /** The member reading, who can answer a question from here. */
   answerAs?: string | null | undefined;
 }) {
@@ -202,6 +205,7 @@ export function TopicCard({
           {likes.failure}
         </p>
       ) : null}
+      {reactions}
     </article>
   );
 }

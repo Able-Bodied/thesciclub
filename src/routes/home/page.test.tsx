@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
 import type * as Likes from '@/lib/chat/likes';
+import type * as Reactions from '@/lib/chat/reactions';
 import type * as ChatRooms from '@/lib/chat/rooms';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/types';
@@ -653,3 +654,16 @@ describe('filtering the feed', () => {
     expect(screen.queryByText('Nothing matches that yet. Try fewer filters.')).toBeNull();
   });
 });
+
+vi.mock('@/lib/chat/reactions', async (importOriginal) => ({
+  ...(await importOriginal<typeof Reactions>()),
+  useReactions: () => ({
+    rows: [],
+    loading: false,
+    error: null,
+    pending: new Set(),
+    failure: null,
+    choose: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));

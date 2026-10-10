@@ -10,6 +10,7 @@ import {
   useAttachmentUrls,
 } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useReactions } from '@/lib/chat/reactions';
 import { readReceipt, useThreadReadReceipts } from '@/lib/chat/read-receipts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
@@ -22,6 +23,7 @@ import { DeleteConversation } from '@/routes/chat/delete-conversation';
 import { MessageBubble, type Quote } from '@/routes/chat/message-bubble';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { NoticeLine } from '@/routes/chat/notice-line';
+import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 
 /**
@@ -96,6 +98,11 @@ export default function ThreadPage() {
   const account = useAccount();
   const { thread, messages, loading, error, reload, send, edit, remove } =
     useThreadMessages(threadId);
+  const reactions = useReactions(
+    'message',
+    messages.filter((m) => !m.pending && !m.notice && m.removedAt === null).map((m) => m.id),
+    account.userId,
+  );
   const reads = useThreadReadReceipts(threadId);
 
   // Live. The reload also re-marks the thread read, which is right: the reader
@@ -420,6 +427,14 @@ export default function ThreadPage() {
                 <MessageBubble
                   key={message.id}
                   message={message}
+                  reactions={
+                    <ReactionBar
+                      target={message.id}
+                      what={message.body || 'this photograph'}
+                      state={reactions}
+                      readerId={account.userId}
+                    />
+                  }
                   author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
                   mine={message.authorId === account.userId}
                   receipt={readReceipt(message, thread.kind, reads)}

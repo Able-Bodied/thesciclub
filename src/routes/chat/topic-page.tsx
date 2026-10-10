@@ -14,6 +14,7 @@ import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/ch
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
 import { usePostLikes } from '@/lib/chat/likes';
+import { useReactions } from '@/lib/chat/reactions';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
@@ -39,6 +40,7 @@ import { Composer } from '@/routes/chat/composer';
 import { MoveTopic } from '@/routes/chat/move-topic';
 import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
+import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 
 /**
@@ -148,6 +150,7 @@ export default function TopicPage() {
     () => posts.filter((post) => post.removedAt === null).map((post) => post.id),
     [posts],
   );
+  const reactions = useReactions('post', standingIds, account.userId);
   const likes = usePostLikes(standingIds);
   const views = usePostViews(standingIds);
 
@@ -361,6 +364,14 @@ export default function TopicPage() {
     edits: edits.byPost.get(post.id) ?? [],
     viewCount: views.loading ? undefined : (views.byPost.get(post.id) ?? null),
     // Keep Like visible while counts load, without inventing a zero count.
+    reactions: (
+      <ReactionBar
+        target={post.id}
+        what={post.body || topic.title}
+        state={reactions}
+        readerId={account.userId}
+      />
+    ),
     likes: {
       likedBy: likes.byPost.get(post.id) ?? [],
       readerId: account.userId,

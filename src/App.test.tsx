@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
+import type * as Reactions from '@/lib/chat/reactions';
 
 /**
  * Where the app opens. The real routes and the real door, with the screens
@@ -33,3 +34,16 @@ describe('the app', () => {
     expect(screen.queryByRole('heading', { name: 'Peers' })).toBeNull();
   });
 });
+
+vi.mock('@/lib/chat/reactions', async (importOriginal) => ({
+  ...(await importOriginal<typeof Reactions>()),
+  useReactions: () => ({
+    rows: [],
+    loading: false,
+    error: null,
+    pending: new Set(),
+    failure: null,
+    choose: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));

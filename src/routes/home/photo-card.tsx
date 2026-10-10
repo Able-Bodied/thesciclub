@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -62,6 +63,7 @@ export function PhotoCard({
   linkState,
   likes,
   viewCount,
+  reactions,
 }: {
   topic: HomeTopic;
   /** Null for a former member, and while the name is still loading. */
@@ -70,6 +72,7 @@ export function PhotoCard({
   /** Who likes the opening post, as the topic page's posts take it. */
   likes?: CardLikes | undefined;
   viewCount?: number | null | undefined;
+  reactions?: ReactNode;
 }) {
   const navigate = useNavigate();
   const opening = topic.opening;
@@ -191,6 +194,7 @@ export function PhotoCard({
           {likes.failure}
         </p>
       ) : null}
+      {reactions}
     </article>
   );
 }

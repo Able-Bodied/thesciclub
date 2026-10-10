@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -83,6 +84,7 @@ export function MessageBubble({
   author,
   mine,
   receipt = null,
+  reactions,
   quote,
   onQuoteTap,
   flash,
@@ -106,6 +108,7 @@ export function MessageBubble({
   mine: boolean;
   /** A saved outgoing message read by another member, or no receipt yet. */
   receipt?: string | null;
+  reactions?: ReactNode;
   /** The message this one answers, or null. */
   quote: Quote | null;
   onQuoteTap: (messageId: string) => void;
@@ -259,6 +262,7 @@ export function MessageBubble({
             ? 'Sending…'
             : `You · ${chatTime(message.createdAt)}${edited}${receipt && !removed ? ` · ${receipt}` : ''}`}
         </p>
+        {!removed && !message.pending && !editing ? reactions : null}
         {controls}
       </div>
     );
@@ -308,6 +312,7 @@ export function MessageBubble({
           {quoteBlock}
           {words}
         </div>
+        {!removed && !message.pending && !editing ? reactions : null}
         {controls}
       </div>
     </div>

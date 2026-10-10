@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
+import type * as Reactions from '@/lib/chat/reactions';
 import type * as ReadReceipts from '@/lib/chat/read-receipts';
 import type * as Reports from '@/lib/chat/reports';
 import type * as Threads from '@/lib/chat/threads';
@@ -564,7 +565,7 @@ describe('replying to a message', () => {
       message({ id: 'm2', authorId: 'me', body: 'The rigid.', replyTo: 'm1' }),
     ];
     renderThread();
-    const quote = screen.getByRole('button', { name: /Which frame do you ride/ });
+    const quote = screen.getByRole('button', { name: /^Jan\s*Which frame do you ride/ });
     expect(quote).toHaveTextContent('Jan');
     const target = document.getElementById('message-m1');
     if (!target) throw new Error('the quoted message should be on the page');
@@ -596,7 +597,7 @@ describe('replying to a message', () => {
       message({ id: 'm2', authorId: 'me', body: 'And again.', replyTo: 'm1' }),
     ];
     renderThread();
-    expect(screen.getByRole('button', { name: /Mine first/ })).toHaveTextContent(/^You/);
+    expect(screen.getByRole('button', { name: /^You\s*Mine first/ })).toHaveTextContent(/^You/);
   });
 
   it('offers no Reply once the other member has left the club', () => {
@@ -805,3 +806,16 @@ describe('opening on the message a notification was about', () => {
     Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
   });
 });
+
+vi.mock('@/lib/chat/reactions', async (importOriginal) => ({
+  ...(await importOriginal<typeof Reactions>()),
+  useReactions: () => ({
+    rows: [],
+    loading: false,
+    error: null,
+    pending: new Set(),
+    failure: null,
+    choose: vi.fn(),
+    reload: vi.fn(),
+  }),
+}));

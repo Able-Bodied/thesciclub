@@ -102,6 +102,7 @@ export function Post({
   edits,
   likes,
   viewCount,
+  reactions,
   replies = 0,
   flash = false,
   hideBody = false,
@@ -156,6 +157,7 @@ export function Post({
     | undefined;
   /** Distinct members delivered this post, including zero. */
   viewCount?: number | null | undefined;
+  reactions?: ReactNode;
   /** How many replies `children` holds, for the hide control. */
   replies?: number;
   /** Lit up once: the post a notification or a link was about. */
@@ -351,6 +353,7 @@ export function Post({
         </p>
       ) : null}
 
+      {!editing ? reactions : null}
       {replies > 0 ? (
         <button
           type="button"
