@@ -1,6 +1,7 @@
 import { ShieldCheck } from 'lucide-react';
 import { useOrganizations } from '@/lib/organizations';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { AskSomebody } from '@/routes/onboarding/ask-somebody';
 
 /**
  * The number verified, and it is not on the list.
@@ -28,7 +29,14 @@ import { OrganizationBadge } from '@/routes/events/organization-badge';
  * one that might name the wrong body.
  */
 
-export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
+export function BlockedScreen({
+  onTryAnother,
+  phone,
+}: {
+  onTryAnother: () => void;
+  /** The number they verified, for the text asking to be added. */
+  phone: string;
+}) {
   const { organizations, loading } = useOrganizations();
   const vouchers = organizations.filter((organization) => organization.canInvite);
 
@@ -78,7 +86,9 @@ export function BlockedScreen({ onTryAnother }: { onTryAnother: () => void }) {
           </div>
         ) : null}
 
-        <p className="mt-3 text-[0.78125rem] text-grey leading-[1.5]">
+        <AskSomebody ownPhone={phone} />
+
+        <p className="mt-4 text-[0.78125rem] text-grey leading-[1.5]">
           If a member gave you a QR code, it gets you the app — it does not get you in. Someone
           still has to add your number.
         </p>

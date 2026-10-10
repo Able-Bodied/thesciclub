@@ -105,6 +105,21 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
 
 // The Notifications row reads the browser and the club; neither belongs in a
 // test of this page. It has its own test, and draws nothing while null.
+// The "ask me for an invite" switch reads the member's row; stubbed.
+const findable = vi.hoisted((): { value: boolean | null; sets: boolean[] } => ({
+  value: true,
+  sets: [],
+}));
+vi.mock('@/lib/invite-request', () => ({
+  useFindableForInvites: () => ({
+    findable: findable.value,
+    saving: false,
+    error: null,
+    set: (next: boolean) => {
+      findable.sets.push(next);
+    },
+  }),
+}));
 vi.mock('@/lib/push/notifications', () => ({
   useDeviceNotifications: () => ({
     state: null,
@@ -545,5 +560,25 @@ describe('the three tabs', () => {
   it('comes back from Google on Account, where the answer is shown', () => {
     renderMe('/me?google=linked');
     expect(screen.getByRole('tab', { name: 'Account' })).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+describe('being found by somebody who has your number', () => {
+  it('is offered, on, to a mentor, and turns off', async () => {
+    findable.value = true;
+    findable.sets = [];
+    own.member = ownMember({ type: 'mentor' });
+    renderMe();
+    const box = screen.getByRole('checkbox', { name: /Let people who have my number ask me/ });
+    expect(box).toBeChecked();
+    await userEvent.click(box);
+    expect(findable.sets).toEqual([false]);
+  });
+
+  it('is not offered to somebody who cannot invite', () => {
+    renderMe();
+    expect(
+      screen.queryByRole('checkbox', { name: /Let people who have my number ask me/ }),
+    ).toBeNull();
   });
 });

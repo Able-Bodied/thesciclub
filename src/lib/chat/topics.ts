@@ -4,6 +4,7 @@ import { MAX_ATTACHMENTS } from '@/lib/chat/attachments';
 import { toLinkPreview } from '@/lib/chat/link-preview';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { announceNotificationsChanged } from '@/lib/notifications';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -373,9 +374,21 @@ export function useTopicPosts(
       // After the read, not before: the value above is where the reader had
       // got to, and this is the visit that moves it. A failure here is silent —
       // the topic is on screen and unread is a convenience.
+      //
+      // `.then`, not just `void`: a Supabase request is only sent when it is
+      // awaited or `.then`ed. This line was `void supabase.rpc(...)` from the
+      // start, so no visit was ever recorded: views stayed at nothing and
+      // topics never stopped looking unread (found 2026-10-10; the hosted
+      // chat_topic_reads had never had a row inserted). Reading also reads the
+      // notifications about the topic, so the bell is told to count again.
       const through = postRows.data?.at(-1)?.id;
-      if (found && through)
-        void supabase.rpc('chat_mark_topic_read_through', { topic: topicId, post: through });
+      if (found && through) {
+        void supabase
+          .rpc('chat_mark_topic_read_through', { topic: topicId, post: through })
+          .then(() => {
+            announceNotificationsChanged();
+          });
+      }
     } catch (e) {
       if (aborted()) return;
       setError(describeThrown(e, 'Could not load the topic.'));

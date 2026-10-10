@@ -18,7 +18,8 @@ the product definition and wins over this file.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
   `20261010020000` live (linked dry run 2026-10-10); `20261010030000` (an
-  Other category, last, with an Other room) is pending,
+  Other category, last, with an Other room) and `20261011000000` (Open 17)
+  are pending,
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -291,6 +292,34 @@ the product definition and wins over this file.
     RSVP" in Filters, still `?segment=` so Me's counters link to them, with a
     "Showing: … · Show all events" line; old sport/online links open
     everything. 2,145 tests, check and build pass.
+
+17. **Asking somebody you know for an invite, unreleased** (2026-10-10).
+    `20261011000000`: `members.findable_for_invites` (on by default, the
+    owner's choice; a switch in Me's Club tools for anybody who can invite),
+    `invite_lookups` (counts only, no numbers), and `find_inviters(numbers)`:
+    only for a verified, uninvited non-member, numbers only back, 100 a look,
+    5 looks a day. The closed door (`blocked.tsx` → `ask-somebody.tsx`) checks
+    a typed number everywhere and the Contact Picker where the browser has it
+    (Chrome on Android; no iPhone browser or Home Screen app can read contacts),
+    then an `sms:` text from the person's own phone; and the consultation with
+    Wojtek (`CONSULTATION_URL`), also on the welcome screen. The door is
+    reached only after a texted code, so strangers meet it once Twilio works.
+    Probe `find-inviters.sql`: 7 true, 6 refusals on local and fresh stacks;
+    ignoring the switch failed one. Browser check on a fresh stack: join with
+    an uninvited test number, match, text link, and the daily limit.
+
+18. **Topic views were never recorded, fixed, unreleased** (2026-10-10).
+    `useTopicPosts` sent `chat_mark_topic_read_through` as a bare
+    `void supabase.rpc(...)`, which a Supabase request never sends; hosted
+    `chat_topic_reads` has had no row inserted since stats began (2026-08-25),
+    so views and topic unread never worked. Now `.then`ed;
+    `pagination.test.ts` asserts the request is sent, not only built, and
+    fails on the old line. Views count from release; none can be recovered.
+    Likes save correctly (awaited, reverted on failure; checked end to end).
+    The owner's two newest posts (bowel, cooking, 2026-10-10) have no like
+    row and none was ever inserted after 2026-10-09 21:04 UTC; 2 topics and
+    3 posts have ever been deleted, which takes their likes. Supabase's logs
+    endpoint failed every query that day, so the cause is not confirmed.
 
 ## Rules the owner set
 

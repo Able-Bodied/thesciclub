@@ -108,3 +108,26 @@ describe('the steps on Me', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('install icon');
   });
 });
+
+describe('the iPhone steps match the phones', () => {
+  it('sends Chrome to View More, where Add to Home Screen is', async () => {
+    browserIs(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1',
+    );
+    render(<InstallSettings />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Tap View More');
+  });
+
+  it('sends Firefox to Share at the top left, then View More', async () => {
+    browserIs(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/131.0 Mobile/15E148 Safari/605.1.15',
+    );
+    render(<InstallSettings />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    const sheet = screen.getByRole('dialog');
+    expect(sheet).toHaveTextContent('at the top left beside the address');
+    expect(sheet).toHaveTextContent('View More');
+    expect(sheet).not.toHaveTextContent('☰');
+  });
+});
