@@ -463,7 +463,7 @@ the product definition and wins over this file.
     React and eight common emoji choices. One reaction per member per item;
     choosing another replaces it, choosing yours removes it. Counts and names
     come from the same rows. Existing Like and view counts remain.
-    `20261011050000_chat_emoji_reactions.sql` adds separate post/message
+    `20261011060000_chat_emoji_reactions.sql` adds separate post/message
     tables and `chat_set_reaction`, with caller identity derived in SQL.
     RLS hides private conversations, closed rooms and removed content; the
     write function refuses notices, missing/removed/inaccessible targets,
@@ -482,10 +482,12 @@ the product definition and wins over this file.
     overflow or page errors. T3 preview became unavailable; its explicit
     error authorized the headless fallback. Linux test browser lacks some
     emoji glyphs; supported phone/desktop system emoji fonts draw the symbols.
-    **Database before release:** linked CLI dry run and migration list report
-    up to date, but linked function lookup is empty and the production REST
-    table read returns PGRST205/404. Do not publish this client until the owner
-    applies the migration and the actual tables/function are confirmed live.
+    **Database before release:** reactions originally used version
+    20261011050000, which the other contributor also used for repeating events.
+    That live event migration made the CLI report up to date, despite the
+    reaction tables/function being absent. Reactions now use 20261011060000.
+    The migration is being released separately on top of the latest main;
+    the owner applies it before the reaction client is published.
 
 ## Rules the owner set
 
