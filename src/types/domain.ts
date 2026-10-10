@@ -304,6 +304,10 @@ export interface BrowseMember {
   topics: string[];
   /** Devices and procedures somebody is willing to discuss. */
   selfCare: string[];
+  /** Adaptive sports equipment owned, in the member's words. */
+  sportsEquipment: string | null;
+  /** Grants received, in the member's words. */
+  grants: string | null;
 
   affiliations: string[];
   /** Set by administrators; distinct from self-described affiliations. */

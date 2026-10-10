@@ -48,6 +48,9 @@ export interface BrowseMemberRow {
   interests: string[] | null;
   topics: string[] | null;
   self_care: string[] | null;
+  /** Optional: absent from a database before 20261011040000. */
+  sports_equipment?: string | null;
+  grants?: string | null;
   affiliations: string[] | null;
   represented_organizations?:
     | {
@@ -97,6 +100,8 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     interests: row.interests ?? [],
     topics: row.topics ?? [],
     selfCare: row.self_care ?? [],
+    sportsEquipment: row.sports_equipment ?? null,
+    grants: row.grants ?? null,
     affiliations: row.affiliations ?? [],
     representedOrganizations: (row.represented_organizations ?? []).map((organization) => ({
       id: organization.id,

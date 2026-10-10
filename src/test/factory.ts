@@ -36,6 +36,8 @@ export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember 
     interests: [],
     topics: [],
     selfCare: [],
+    sportsEquipment: null,
+    grants: null,
     affiliations: [],
     representedOrganizations: [],
     wantsToMentor: null,

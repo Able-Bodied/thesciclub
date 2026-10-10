@@ -129,7 +129,53 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByText('Happy to talk about')).not.toBeInTheDocument();
     expect(screen.queryByText('Interests')).not.toBeInTheDocument();
     expect(screen.queryByText('Uses day to day')).not.toBeInTheDocument();
-    expect(screen.queryByText('Function & living situation')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bio')).not.toBeInTheDocument();
+    expect(screen.queryByText('Adaptive sports equipment')).not.toBeInTheDocument();
+    expect(screen.queryByText('Grants')).not.toBeInTheDocument();
+  });
+
+  it("reads in the owner's order, with equipment, grants and the specifics", () => {
+    state.current = ok(
+      makeMember({
+        bio: 'Avid handcyclist and gardener.',
+        howInjured: 'Mountain bike crash, 2016.',
+        topics: ['Driving'],
+        interests: ['Cycling'],
+        selfCare: ['Dictation software'],
+        detail: 'Dragon on a Surface.',
+        sportsEquipment: 'Top End Force 3 handcycle',
+        grants: 'High Fives, for the handcycle.',
+      }),
+    );
+    renderDetail();
+    const headings = screen
+      .getAllByRole('heading', { level: 2 })
+      .map((h) => h.textContent)
+      .filter((t) =>
+        [
+          'Bio',
+          'How it happened',
+          'Happy to talk about',
+          'Interests',
+          'Uses day to day',
+          'Adaptive sports equipment',
+          'Grants',
+          'Details',
+        ].includes(t),
+      );
+    expect(headings).toEqual([
+      'Bio',
+      'How it happened',
+      'Happy to talk about',
+      'Interests',
+      'Uses day to day',
+      'Adaptive sports equipment',
+      'Grants',
+      'Details',
+    ]);
+    expect(screen.getByText('Top End Force 3 handcycle')).toBeInTheDocument();
+    expect(screen.getByText('High Fives, for the handcycle.')).toBeInTheDocument();
+    expect(screen.getByText('Dragon on a Surface.')).toBeInTheDocument();
   });
 
   it('shows the sections that do have content', () => {

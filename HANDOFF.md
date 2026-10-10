@@ -434,6 +434,18 @@ the product definition and wins over this file.
     check and production build pass. Open 24's database migration is
     confirmed live before publishing its client with this change.
 
+26. **Profile order, equipment and grants on Peers** (2026-10-10). The
+    owner's order for a member's profile: Bio (was "Function & living
+    situation"), How it happened, Happy to talk about, Interests, Uses day
+    to day, Adaptive sports equipment, Grants, Details. Equipment and grants
+    are now shown to other members (the owner's call that Open 22 left
+    open): `20261011040000` appends `sports_equipment` and `grants` to
+    `browse_members`, restated from `20261009030000` with nothing else
+    changed — **pending until the owner's `db push`**. The app reads the
+    view with `select *`, so either may go first. "The specifics"
+    (`detail`), collected all along and never shown, is drawn under the
+    Uses day to day chips. All 2,207 tests and standalone check pass.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

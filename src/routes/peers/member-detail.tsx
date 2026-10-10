@@ -380,17 +380,12 @@ export default function MemberDetailPage() {
               is the grid this replaced. */}
           <div className="min-w-0 px-4 lg:contents">
             <RepresentationTags organizations={member.representedOrganizations} />
-            {member.topics.length ? (
-              <Section title="Happy to talk about">
-                <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">
-                  What {member.displayName} offered to be asked about.
-                </p>
-                <Chips items={member.topics} tone="solid" />
-              </Section>
-            ) : null}
-
+            {/* The owner's order, 2026-10-10: who they are in their own words,
+                then how it happened, then what they will talk about and do,
+                then the flatter details card. "Bio" because that is what the
+                survey now asks for ("Brief bio"). */}
             {member.bio ? (
-              <Section title="Function & living situation">
+              <Section title="Bio">
                 <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
                   <LinkedText text={member.bio} />
                 </p>
@@ -403,15 +398,51 @@ export default function MemberDetailPage() {
               </Section>
             ) : null}
 
+            {member.topics.length ? (
+              <Section title="Happy to talk about">
+                <p className="-mt-1 mb-2.5 text-[0.78125rem] text-grey leading-[1.45]">
+                  What {member.displayName} offered to be asked about.
+                </p>
+                <Chips items={member.topics} tone="solid" />
+              </Section>
+            ) : null}
+
             {member.interests.length ? (
               <Section title="Interests">
                 <Chips items={member.interests} tone="outline" />
               </Section>
             ) : null}
 
-            {member.selfCare.length ? (
+            {/* "The specifics" from the survey, under the self-care answers it
+                spells out — which program, which modifications, which device.
+                It was collected and never shown, though the survey tells the
+                member it is what people message them about. */}
+            {member.selfCare.length || member.detail ? (
               <Section title="Uses day to day">
-                <Chips items={member.selfCare} tone="gold" />
+                {member.selfCare.length ? <Chips items={member.selfCare} tone="gold" /> : null}
+                {member.detail ? (
+                  <p
+                    className={`${member.selfCare.length ? 'mt-2.5 ' : ''}text-[0.8875rem] text-ink2 leading-[1.52]`}
+                  >
+                    <LinkedText text={member.detail} />
+                  </p>
+                ) : null}
+              </Section>
+            ) : null}
+
+            {member.sportsEquipment ? (
+              <Section title="Adaptive sports equipment">
+                <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
+                  <LinkedText text={member.sportsEquipment} />
+                </p>
+              </Section>
+            ) : null}
+
+            {member.grants ? (
+              <Section title="Grants">
+                <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
+                  <LinkedText text={member.grants} />
+                </p>
               </Section>
             ) : null}
 
