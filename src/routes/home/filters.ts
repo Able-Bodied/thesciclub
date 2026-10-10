@@ -62,7 +62,11 @@ export interface FeedFilterContext {
 export function openRoomsById(rooms: readonly ChatRoom[]): Map<string, ChatRoom> {
   // An administrator's read includes closed rooms. A chip for one would
   // narrow to members' profiles pointing at a room no member can open.
-  return new Map(rooms.filter((room) => room.openedAt !== null).map((room) => [room.id, room]));
+  return new Map(
+    rooms
+      .filter((room) => room.openedAt !== null && room.showInHome)
+      .map((room) => [room.id, room]),
+  );
 }
 
 /** Every open room an item belongs to. */

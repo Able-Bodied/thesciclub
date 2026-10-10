@@ -60,6 +60,8 @@ export interface ChatRoom {
    * standing by to open it, and it is born with a topic in it.
    */
   openedAt: string | null;
+  /** Whether topics and photographs from this room appear in Home. */
+  showInHome: boolean;
   /**
    * The member who started it, or null for the seeded twelve.
    *

@@ -34,6 +34,7 @@ interface ChatRoomRow {
   icon: string | null;
   sort_order: number;
   opened_at: string | null;
+  show_in_home: boolean;
   created_by: string | null;
 }
 
@@ -51,6 +52,7 @@ function toRoom(row: ChatRoomRow): ChatRoom {
     icon: row.icon,
     sortOrder: row.sort_order,
     openedAt: row.opened_at,
+    showInHome: row.show_in_home,
     createdBy: row.created_by,
   };
 }
@@ -113,7 +115,9 @@ export function useChatRooms(): ChatRoomsState {
     try {
       const { data, error: failure } = await getSupabase()
         .from('chat_rooms')
-        .select('id, name, description, category, icon, sort_order, opened_at, created_by')
+        .select(
+          'id, name, description, category, icon, sort_order, opened_at, created_by, show_in_home',
+        )
         .order('sort_order')
         .abortSignal(controller.signal);
       if (aborted()) return;
@@ -169,6 +173,24 @@ export async function setRoomOpen(
   });
   if (error) return { ok: false, error: describeError(error, 'The room was not changed.') };
   return { ok: true };
+}
+
+/** Curate Home without closing the room or changing who can read it. */
+export async function setRoomHome(
+  roomId: string,
+  showInHome: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { error } = await getSupabase().rpc('admin_set_room_home', {
+      room: roomId,
+      show_in_home: showInHome,
+    });
+    return error
+      ? { ok: false, error: describeError(error, 'The Home feed setting was not changed.') }
+      : { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'The Home feed setting was not changed.') };
+  }
 }
 
 /**

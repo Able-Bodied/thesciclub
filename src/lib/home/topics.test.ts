@@ -151,6 +151,19 @@ describe('toHomeTopics', () => {
     expect(topics.map((t) => t.id)).toEqual(['open']);
   });
 
+  it('excludes topics and photos from a room hidden from Home', () => {
+    expect(
+      toHomeTopics(
+        [summary({ id: 'plain' }), summary({ id: 'photo' })],
+        [
+          makePost({ topicId: 'plain' }),
+          makePost({ topicId: 'photo', attachments: ['photo.webp'] }),
+        ],
+        [makeRoom({ showInHome: false })],
+      ),
+    ).toEqual([]);
+  });
+
   it('keeps a topic whose author has left the club', () => {
     const [topic] = toHomeTopics(
       [summary({ id: 't', authorId: null })],

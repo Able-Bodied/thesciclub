@@ -26,6 +26,7 @@ const api = vi.hoisted(() => ({
   error: null as string | null,
   reloads: 0,
   calls: [] as [string, boolean][],
+  homeCalls: [] as [string, boolean][],
   failWith: null as string | null,
   stats: new Map<string, RoomStats>(),
   statReloads: 0,
@@ -52,6 +53,11 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
       api.statReloads += 1;
     },
   }),
+  setRoomHome: (id: string, show: boolean) => {
+    api.homeCalls.push([id, show]);
+    if (api.failWith) return Promise.resolve({ ok: false as const, error: api.failWith });
+    return Promise.resolve({ ok: true as const });
+  },
   setRoomOpen: (id: string, open: boolean) => {
     api.calls.push([id, open]);
     if (api.failWith) return Promise.resolve({ ok: false as const, error: api.failWith });
@@ -65,6 +71,7 @@ const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   category: 'Body',
   icon: '◍',
   sortOrder: 1,
+  showInHome: true,
   openedAt: null,
   createdBy: null,
   ...o,
@@ -86,6 +93,7 @@ beforeEach(() => {
   api.error = null;
   api.reloads = 0;
   api.calls = [];
+  api.homeCalls = [];
   api.failWith = null;
   api.stats = new Map();
   api.statReloads = 0;
@@ -268,5 +276,34 @@ describe('a room a member started', () => {
       </MemoryRouter>,
     );
     expect(screen.queryByText(/started by/)).not.toBeInTheDocument();
+  });
+});
+
+describe('curating Home by room', () => {
+  it.each([true, false])(
+    'toggles a room with current Home setting %s without closing it',
+    async (showInHome) => {
+      confirmSpy.mockClear();
+      api.rooms = [room({ id: 'bowel', openedAt: '2026-09-18T10:00:00Z', showInHome })];
+      renderSection();
+      const toggle = screen.getByRole('switch', { name: 'Show Bowel management in Home feed' });
+      expect(toggle).toHaveAttribute('aria-checked', String(showInHome));
+      await userEvent.setup().click(toggle);
+      await waitFor(() => {
+        expect(api.reloads).toBe(1);
+      });
+      expect(api.homeCalls).toEqual([['bowel', !showInHome]]);
+      expect(api.calls).toEqual([]);
+      expect(confirmSpy).not.toHaveBeenCalled();
+    },
+  );
+  it('reports a refusal and keeps the saved switch state', async () => {
+    api.rooms = [room({ id: 'bowel' })];
+    api.failWith = 'Only an administrator can change which rooms appear in Home.';
+    renderSection();
+    await userEvent.setup().click(screen.getByRole('switch'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(api.failWith);
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+    expect(api.reloads).toBe(0);
   });
 });

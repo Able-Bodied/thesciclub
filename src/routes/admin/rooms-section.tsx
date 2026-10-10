@@ -1,8 +1,15 @@
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
-import { roomsByCategory, setRoomOpen, useChatRooms, useRoomStats } from '@/lib/chat/rooms';
+import {
+  roomsByCategory,
+  setRoomHome,
+  setRoomOpen,
+  useChatRooms,
+  useRoomStats,
+} from '@/lib/chat/rooms';
 import type { ChatRoom, RoomCategory } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
@@ -72,6 +79,7 @@ export function RoomsSection() {
   const { stats, reload: reloadStats } = useRoomStats();
   const starters = useChatAuthors(rooms.map((room) => room.createdBy));
   const [busyId, setBusyId] = useState<string | null>(null);
+  const announce = useAnnounce();
   const [failure, setFailure] = useState<string | null>(null);
 
   const open = rooms.filter((r) => r.openedAt !== null).length;
@@ -106,6 +114,24 @@ export function RoomsSection() {
       });
   }
 
+  function toggleHome(room: ChatRoom) {
+    const show = !room.showInHome;
+    setBusyId(room.id);
+    setFailure(null);
+    void setRoomHome(room.id, show)
+      .then((result) => {
+        if (result.ok) {
+          reload();
+          announce(`${room.name} ${show ? 'will appear in' : 'is hidden from'} the Home feed.`);
+        } else {
+          setFailure(result.error);
+        }
+      })
+      .finally(() => {
+        setBusyId(null);
+      });
+  }
+
   return (
     <>
       <div className="mt-4 flex items-center justify-between gap-2">
@@ -119,7 +145,9 @@ export function RoomsSection() {
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
         Open the seeded ones a few at a time, as there are members to fill them. A closed room does
         not exist as far as a member is concerned. A room a member started is open already — closing
-        it is the whole of what anybody can do to it, and nobody can rename or delete one.
+        it hides it from members. The Home feed switch controls whether its topics and photos appear
+        in Home. Members can still open an excluded room in Chat. Nobody can rename or delete a
+        room.
       </p>
 
       {failure ? (
@@ -175,10 +203,33 @@ export function RoomsSection() {
                       : ''}
                   </span>
                 </Link>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={room.showInHome}
+                  aria-label={`Show ${room.name} in Home feed`}
+                  disabled={busyId !== null}
+                  onClick={() => {
+                    toggleHome(room);
+                  }}
+                  className="flex min-h-[44px] items-center gap-2 rounded-[10px] px-2 text-[0.8125rem] text-ink disabled:opacity-50"
+                >
+                  <span>Home feed</span>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'flex h-6 w-11 items-center rounded-full p-0.5',
+                      room.showInHome ? 'justify-end bg-action' : 'justify-start bg-grey',
+                    )}
+                  >
+                    <span className="h-5 w-5 rounded-full bg-white" />
+                  </span>
+                </button>
                 {busyId === room.id ? (
                   <Loader2 className="h-4 w-4 animate-spin text-grey" />
                 ) : (
                   <SmallButton
+                    disabled={busyId !== null}
                     onClick={() => {
                       toggle(room);
                     }}

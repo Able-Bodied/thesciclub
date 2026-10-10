@@ -8,6 +8,7 @@ import {
   roomsByCategory,
   roomsMatching,
   roomToFill,
+  setRoomHome,
   setRoomOpen,
   useChatRooms,
 } from '@/lib/chat/rooms';
@@ -58,6 +59,7 @@ const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   category: 'Body',
   icon: '◍',
   sortOrder: 1,
+  showInHome: true,
   openedAt: null,
   createdBy: null,
   ...o,
@@ -125,6 +127,17 @@ describe('grouping rooms into categories', () => {
   });
 });
 
+describe('Home feed settings', () => {
+  it('saves through the admin-only function', async () => {
+    expect(await setRoomHome('bowel', false)).toEqual({ ok: true });
+    expect(db.rpcCalls).toEqual([['admin_set_room_home', { room: 'bowel', show_in_home: false }]]);
+  });
+  it('reports a refused save', async () => {
+    db.rpcError = { message: 'Only an administrator can change which rooms appear in Home.' };
+    expect(await setRoomHome('bowel', false)).toEqual({ ok: false, error: db.rpcError.message });
+  });
+});
+
 describe('reading the rooms', () => {
   it('maps the row and keeps opened_at', async () => {
     db.rows = [
@@ -136,6 +149,7 @@ describe('reading the rooms', () => {
         icon: '◍',
         sort_order: 1,
         opened_at: '2026-09-18T10:00:00Z',
+        show_in_home: true,
       },
       {
         id: 'bladder',
@@ -145,6 +159,7 @@ describe('reading the rooms', () => {
         icon: '◌',
         sort_order: 2,
         opened_at: null,
+        show_in_home: false,
       },
     ];
     const { result } = renderHook(() => useChatRooms());

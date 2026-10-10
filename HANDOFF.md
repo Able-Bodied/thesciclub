@@ -406,6 +406,23 @@ the product definition and wins over this file.
     suspended clients, expiry and both exact destinations; reinstating the
     focus abort fails them. Screen regressions check repeated centring.
 
+24. **Room visibility in Home, unreleased** (2026-10-10). Admin → Rooms
+    has a Home feed switch for each room, separate from Open/Close.
+    `20261011030000_rooms_in_home_feed.sql` adds `show_in_home`, default true
+    for existing and new rooms, and `admin_set_room_home`; only an active
+    administrator can write it. Null and missing-room saves fail explicitly.
+    Excluded rooms remain readable in Chat. Home's topic query joins rooms
+    and filters open, included rooms before the forty-topic limit; its pure
+    join repeats the gate for topics and photos, and Home room filters omit
+    excluded rooms. Saves show errors without changing the recorded switch,
+    disable conflicting writes while pending, reload rooms and announce
+    success. Local and fresh authenticated SQL probes pass; deleting the
+    administrator check fails the probe. Removing Home's eligibility gate
+    fails its regression. Browser checks verify persisted hide/show and Home
+    inclusion at desktop/mobile widths with no overflow. All 2,202 tests,
+    standalone check and build pass. The linked dry run lists only this
+    migration; the owner must apply it before publishing this client.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

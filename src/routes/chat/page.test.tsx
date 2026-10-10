@@ -115,6 +115,7 @@ const room = (o: Partial<ChatRoom> & { id: string }): ChatRoom => ({
   category: 'Body',
   icon: '◍',
   sortOrder: 1,
+  showInHome: true,
   openedAt: '2026-09-18T10:00:00Z',
   createdBy: null,
   ...o,

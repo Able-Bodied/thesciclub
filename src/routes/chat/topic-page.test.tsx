@@ -235,6 +235,7 @@ beforeEach(() => {
       icon: '◍',
       createdBy: null,
       sortOrder: 1,
+      showInHome: true,
       openedAt: '2026-09-01T10:00:00Z',
     },
   ];

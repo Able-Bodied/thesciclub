@@ -104,7 +104,9 @@ export function toHomeTopics(
   rooms: readonly ChatRoom[],
 ): HomeTopic[] {
   const open = new Map(
-    rooms.filter((room) => room.openedAt !== null).map((room) => [room.id, room]),
+    rooms
+      .filter((room) => room.openedAt !== null && room.showInHome)
+      .map((room) => [room.id, room]),
   );
 
   const byTopic = new Map<string, ChatPost[]>();
@@ -170,7 +172,9 @@ export function useHomeTopics(): HomeTopicsState {
         const supabase = getSupabase();
         const topicRows = (await supabase
           .from('chat_topics')
-          .select(TOPIC_COLUMNS)
+          .select(`${TOPIC_COLUMNS}, chat_rooms!inner(show_in_home, opened_at)`)
+          .eq('chat_rooms.show_in_home', true)
+          .not('chat_rooms.opened_at', 'is', null)
           .order('last_post_at', { ascending: false })
           .limit(HOME_TOPIC_LIMIT)
           .abortSignal(controller.signal)) as Result<TopicRow[]>;
