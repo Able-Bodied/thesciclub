@@ -482,10 +482,34 @@ describe('a topic', () => {
     ]);
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'hidden' })];
     renderTopic();
-    expect(screen.getByRole('link', { name: 'Nicole' })).toHaveAttribute('href', '/peers/nicole');
+    // On her post, and in the header as the one who started it.
+    const nicole = screen.getAllByRole('link', { name: 'Nicole' });
+    expect(nicole.length).toBeGreaterThan(0);
+    for (const link of nicole) expect(link).toHaveAttribute('href', '/peers/nicole');
     // Named all the same — hiding from the deck is not unwriting a post.
     expect(screen.getByText('Jake')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Jake' })).toBeNull();
+  });
+
+  // A question with no details hides its opening post, and with it the post's
+  // own picture and linked name; the header is then the only place the asker
+  // appears.
+  it('shows who asked a question, with their picture and a link, when the opening post is hidden', () => {
+    db.posts = [post({ id: '1', body: 'Travelling with a bowel programme' })];
+    renderTopic();
+    const link = screen.getByRole('link', { name: 'Nicole' });
+    expect(link).toHaveAttribute('href', '/peers/nicole');
+    const row = link.closest('p');
+    expect(row?.textContent).toMatch(/started by Nicole on/i);
+    expect(row?.querySelector('[aria-hidden="true"]')).toHaveTextContent(/\S/);
+  });
+
+  it('names a starter with no profile without linking them', () => {
+    db.authors = new Map([['nicole', author({ id: 'nicole', hasProfile: false })]]);
+    db.posts = [post({ id: '1', body: 'Travelling with a bowel programme' })];
+    renderTopic();
+    expect(screen.queryByRole('link', { name: 'Nicole' })).toBeNull();
+    expect(screen.getByText(/started by Nicole on/i)).toBeInTheDocument();
   });
 
   it('offers Remove on the viewer’s own post and on nobody else’s', () => {

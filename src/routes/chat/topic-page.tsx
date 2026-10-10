@@ -1,6 +1,14 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  Navigate,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -400,10 +408,46 @@ export default function TopicPage() {
           <h1 className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3]">
             {topic.title}
           </h1>
-          <p className="mt-1.5 text-[0.78125rem] text-grey leading-[1.45]">
-            {counts ? `${counts} · started by ` : 'Started by '}
-            {starter ? starter.displayName : topic.authorId ? '…' : 'a deleted member'} on{' '}
-            {chatTimeLong(topic.createdAt)}
+          {/* Who started it, with their picture and a link to their profile
+              (owner, 2026-10-10). A question hides its opening post — the
+              title is the question — and with it the post's own picture and
+              linked name, so this line was the only trace of the asker. The
+              name links as a post's does: only to a profile Peers will show. */}
+          <p className="mt-1.5 flex items-center gap-2 text-[0.78125rem] text-grey leading-[1.45]">
+            {/* Decorative: the name is beside it. */}
+            <span aria-hidden="true" className="flex-none">
+              {starter ? (
+                <MemberAvatar
+                  id={starter.id}
+                  displayName={starter.displayName}
+                  photoPath={starter.photoPath}
+                  photoAlt={starter.photoAlt}
+                  className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]"
+                />
+              ) : (
+                <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
+              )}
+            </span>
+            <span className="min-w-0">
+              {counts ? `${counts} · started by ` : 'Started by '}
+              {starter ? (
+                starter.hasProfile ? (
+                  <Link
+                    to={`/peers/${starter.id}`}
+                    className="font-semibold text-ink2 underline-offset-2 hover:underline"
+                  >
+                    {starter.displayName}
+                  </Link>
+                ) : (
+                  starter.displayName
+                )
+              ) : topic.authorId ? (
+                '…'
+              ) : (
+                'a deleted member'
+              )}{' '}
+              on {chatTimeLong(topic.createdAt)}
+            </span>
           </p>
           {/* An administrator seeding a room reaches this screen with a
               working composer and no other sign that nobody can read what

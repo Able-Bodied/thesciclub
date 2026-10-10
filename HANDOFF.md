@@ -451,6 +451,13 @@ the product definition and wins over this file.
     beside the name, the size and shape of the first reply's. Decorative and
     out of the pointer's way, so a tap on it still opens the topic.
 
+28. **Who started a topic, on the topic page** (2026-10-10, no migration).
+    The header's "started by" line has the starter's picture and their name
+    as a link to their profile (plain text for somebody Peers will not
+    show). A question with no details hides its opening post, and with it
+    the post's own picture and linked name, so the asker had been shown
+    only as plain text there.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run
