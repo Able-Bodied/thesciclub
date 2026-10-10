@@ -1,5 +1,5 @@
 import { type DateParts, EMPTY_DATE_PARTS, readDate } from '@/lib/date-parts';
-import { type EventDraftPayload, HAND_ADDED_TIMEZONE } from '@/lib/events';
+import { type EventDraftPayload, HAND_ADDED_TIMEZONE, type RepeatRule } from '@/lib/events';
 import type { ClubEvent, EventFormat, Organization } from '@/types/domain';
 
 /**
@@ -30,7 +30,21 @@ export interface EventDraft {
   city: string;
   url: string;
   registrationUrl: string;
+  /** Only offered when adding an event; a date already made is changed alone. */
+  repeat: RepeatChoice;
+  /** Custom only, as typed. */
+  repeatEvery: string;
+  repeatUnit: RepeatRule['unit'];
+  repeatEnd: RepeatEnd;
+  /** Custom "ends on", as the date input gives it: YYYY-MM-DD. */
+  repeatUntil: string;
+  /** Custom "ends after", as typed. */
+  repeatCount: string;
 }
+
+/** The Repeats dropdown, after Google Calendar's (the owner, 2026-10-10). */
+export type RepeatChoice = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+export type RepeatEnd = 'never' | 'on' | 'after';
 
 export const TITLE_MAX = 140;
 export const DESCRIPTION_MAX = 4000;
@@ -89,8 +103,18 @@ export function emptyDraft(onlyHost: string | null): EventDraft {
     city: '',
     url: '',
     registrationUrl: '',
+    ...NO_REPEAT,
   };
 }
+
+const NO_REPEAT = {
+  repeat: 'none',
+  repeatEvery: '2',
+  repeatUnit: 'week',
+  repeatEnd: 'never',
+  repeatUntil: '',
+  repeatCount: '10',
+} as const satisfies Partial<EventDraft>;
 
 /** The form for an event already on the calendar, in its own zone. */
 export function draftFromEvent(event: ClubEvent): EventDraft {
@@ -113,7 +137,125 @@ export function draftFromEvent(event: ClubEvent): EventDraft {
     city: event.city ?? '',
     url: event.url ?? '',
     registrationUrl: event.registrationUrl ?? '',
+    ...NO_REPEAT,
   };
+}
+
+/* --------------------------------------------------------------- repeats */
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ORDINALS = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+/**
+ * What the dropdown calls Weekly and Monthly for the date chosen, as Google
+ * does: "Weekly on Friday", "Monthly on the third Friday". Before a date is
+ * chosen, just "Weekly" and "Monthly". Monthly is the same weekday of the
+ * same week, which is how groups are scheduled — and what the database makes
+ * (event_series_step).
+ */
+export function repeatLabels(dateIso: string | null): Record<RepeatChoice, string> {
+  const day = dateIso ? weekdayOf(dateIso) : null;
+  return {
+    none: 'Does not repeat',
+    daily: 'Daily',
+    weekly: day ? `Weekly on ${day.name}` : 'Weekly',
+    monthly: day ? `Monthly on the ${ORDINALS[day.week - 1] ?? 'last'} ${day.name}` : 'Monthly',
+    custom: 'Custom…',
+  };
+}
+
+function weekdayOf(dateIso: string): { name: string; week: number } {
+  const [y, m, d] = dateIso.split('-').map(Number) as [number, number, number];
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return { name: WEEKDAYS[date.getUTCDay()] ?? '', week: Math.ceil(d / 7) };
+}
+
+export type RepeatReading = { ok: true; rule: RepeatRule | null } | { ok: false; problem: string };
+
+/**
+ * The rule a draft's Repeats asks for, against its first date. Daily, Weekly
+ * and Monthly never end, as Google's do; Custom says how often and, if it
+ * ends, when. The database checks the same bounds (save_event_series).
+ */
+export function readRepeat(draft: EventDraft, firstDateIso: string): RepeatReading {
+  switch (draft.repeat) {
+    case 'none':
+      return { ok: true, rule: null };
+    case 'daily':
+      return { ok: true, rule: { unit: 'day', every: 1, endsOn: null, endsAfter: null } };
+    case 'weekly':
+      return { ok: true, rule: { unit: 'week', every: 1, endsOn: null, endsAfter: null } };
+    case 'monthly':
+      return { ok: true, rule: { unit: 'month', every: 1, endsOn: null, endsAfter: null } };
+    case 'custom':
+      break;
+  }
+  const every = wholeNumber(draft.repeatEvery);
+  if (every === null || every < 1 || every > 30) {
+    return { ok: false, problem: 'Repeats every: a number from 1 to 30.' };
+  }
+  if (draft.repeatEnd === 'on') {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.repeatUntil)) {
+      return { ok: false, problem: 'Ends on: choose the last date.' };
+    }
+    if (draft.repeatUntil <= firstDateIso) {
+      return { ok: false, problem: 'Ends on: choose a date after the first one.' };
+    }
+    return {
+      ok: true,
+      rule: { unit: draft.repeatUnit, every, endsOn: draft.repeatUntil, endsAfter: null },
+    };
+  }
+  if (draft.repeatEnd === 'after') {
+    const count = wholeNumber(draft.repeatCount);
+    if (count === null || count < 2 || count > 100) {
+      return { ok: false, problem: 'Ends after: a number of dates from 2 to 100.' };
+    }
+    return { ok: true, rule: { unit: draft.repeatUnit, every, endsOn: null, endsAfter: count } };
+  }
+  return { ok: true, rule: { unit: draft.repeatUnit, every, endsOn: null, endsAfter: null } };
+}
+
+function wholeNumber(text: string): number | null {
+  const t = text.trim();
+  return /^\d+$/.test(t) ? Number(t) : null;
+}
+
+/**
+ * One sentence saying what will be made, under the dropdown, so the choice is
+ * read back before it is saved: "Every Friday, with no end date."
+ */
+export function describeRepeat(rule: RepeatRule, firstDateIso: string): string {
+  const day = weekdayOf(firstDateIso);
+  const plural = { day: 'days', week: 'weeks', month: 'months' }[rule.unit];
+  let what: string;
+  if (rule.unit === 'day') what = rule.every === 1 ? 'Every day' : `Every ${rule.every} days`;
+  else if (rule.unit === 'week')
+    what = rule.every === 1 ? `Every ${day.name}` : `Every ${rule.every} ${plural} on ${day.name}`;
+  else {
+    const nth = `the ${ORDINALS[day.week - 1] ?? 'last'} ${day.name}`;
+    what =
+      rule.every === 1
+        ? `${capitalise(nth)} of every month`
+        : `Every ${rule.every} months on ${nth}`;
+  }
+  if (rule.endsAfter !== null) return `${what}, ${rule.endsAfter} times in all.`;
+  if (rule.endsOn !== null) return `${what}, until ${longDate(rule.endsOn)}.`;
+  return `${what}, with no end date. Delete a date and the ones after it to stop.`;
+}
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function longDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 /* ---------------------------------------------------------------- times */
@@ -251,7 +393,7 @@ export function readLink(text: string): { ok: true; url: string } | { ok: false 
 /* ---------------------------------------------------------------- reading */
 
 export type DraftReading =
-  | { ok: true; payload: Omit<EventDraftPayload, 'id'> }
+  | { ok: true; payload: Omit<EventDraftPayload, 'id'>; repeat: RepeatRule | null }
   | { ok: false; problem: string };
 
 /**
@@ -314,6 +456,9 @@ export function readDraft(
   if (isNew && new Date(startTime) < now) {
     return { ok: false, problem: 'That time has already passed.' };
   }
+  // Repeats are asked only when adding; a date already made is changed alone.
+  const repeat = isNew ? readRepeat(draft, date.iso) : ({ ok: true, rule: null } as const);
+  if (!repeat.ok) return { ok: false, problem: repeat.problem };
 
   if (!draft.format)
     return { ok: false, problem: 'Say whether it is in person, online or hybrid.' };
@@ -342,5 +487,6 @@ export function readDraft(
       url: url.url,
       registrationUrl: registration.url,
     },
+    repeat: repeat.rule,
   };
 }

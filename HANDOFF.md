@@ -458,6 +458,26 @@ the product definition and wins over this file.
     the post's own picture and linked name, so the asker had been shown
     only as plain text there.
 
+29. **Repeating events added by hand** (2026-10-10, unreleased). Add an
+    event → Repeats, after Google Calendar: Does not repeat (default), Daily,
+    Weekly on <weekday>, Monthly on the <nth weekday>, Custom (every 1–30
+    days/weeks/months; ends Never, on a date, or after 2–100 dates). Daily,
+    Weekly and Monthly never end. `20261011050000`: a hand-made
+    `event_series` (feed_id null) holds the rule and a template; every date
+    is an ordinary `events` row (own Going list, reminder, page), made up to
+    92 days ahead by `save_event_series` (first date through `save_event`,
+    so its checks hold) and then nightly by pg_cron `event-series-extend`
+    (11:40 UTC). Steps are Pacific wall-clock times, so DST does not move
+    them; a missing fifth weekday is skipped. Delete on a series date offers
+    "This date only" or "This and all later dates" (`delete_event_and_later`,
+    which also stops the series). Changing is one date at a time; later
+    dates copy the template. Verified in PGlite against the real `save_event`
+    and `event_series` definitions (28 checks: weekly/biweekly/daily/monthly,
+    DST, fifth weekday, counts and end dates, nightly no-duplicates, stopping,
+    refusals); not yet on a Supabase stack. Followers' daily "new events from
+    <organization>" counts dates, so a new weekly series reads as ~13 new
+    events and each nightly date as 1 — as scraped series already do.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

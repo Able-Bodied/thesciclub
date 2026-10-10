@@ -5,6 +5,7 @@ import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import {
   deleteEvent,
+  deleteEventAndLater,
   rsvpSaved,
   setRsvp,
   useAttendeesByEvent,
@@ -316,8 +317,11 @@ export default function EventDetailPage() {
           <ChangeEvent
             eventId={event.id}
             going={event.goingCount}
-            onDeleted={() => {
-              announce('The event is deleted.');
+            repeats={event.seriesId !== null}
+            onDeleted={(later) => {
+              announce(
+                later ? 'This date and the later ones are deleted.' : 'The event is deleted.',
+              );
               void navigate('/events', { replace: true });
             }}
           />
@@ -398,26 +402,32 @@ function AttendeeSection({
  * Deleting asks first, in place, and says what goes with it: the RSVPs. The
  * event's group chat stays (delete_event's header says why), so the question
  * does not claim otherwise.
+ *
+ * A date of a repeating event asks which (the owner, 2026-10-10, as Google
+ * Calendar does): this date only, or this and every later date, which also
+ * stops the series (delete_event_and_later). Changing is always this date only.
  */
 function ChangeEvent({
   eventId,
   going,
+  repeats,
   onDeleted,
 }: {
   eventId: string;
   going: number;
-  onDeleted: () => void;
+  repeats: boolean;
+  onDeleted: (later: boolean) => void;
 }) {
   const [asking, setAsking] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<'one' | 'later' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function confirm() {
-    setBusy(true);
+  function confirm(later: boolean) {
+    setBusy(later ? 'later' : 'one');
     setError(null);
-    void deleteEvent(eventId).then((result) => {
-      setBusy(false);
-      if (result.ok) onDeleted();
+    void (later ? deleteEventAndLater(eventId) : deleteEvent(eventId)).then((result) => {
+      setBusy(null);
+      if (result.ok) onDeleted(later);
       else setError(result.error ?? 'The event was not deleted.');
     });
   }
@@ -430,10 +440,10 @@ function ChangeEvent({
       {asking ? (
         <div className="rounded-[14px] border border-destructive/30 bg-destructive/5 p-3.5">
           <p className="text-[0.875rem] text-ink leading-[1.45]">
-            Delete this event?{' '}
+            {repeats ? 'This event repeats. Delete which dates? ' : 'Delete this event? '}
             {going > 0
-              ? `${going} member${going === 1 ? ' has' : 's have'} said they are going, and will find it gone.`
-              : 'Nobody has said they are going yet.'}{' '}
+              ? `${going} member${going === 1 ? ' has' : 's have'} said they are going to this date, and will find it gone.`
+              : 'Nobody has said they are going to this date yet.'}{' '}
             Its group chat, if it has one, stays.
           </p>
           {error ? (
@@ -441,23 +451,37 @@ function ChangeEvent({
               {error}
             </p>
           ) : null}
-          <div className="mt-3 grid grid-cols-2 gap-[9px]">
+          <div className={`mt-3 grid gap-[9px] ${repeats ? 'grid-cols-1' : 'grid-cols-2'}`}>
             <button
               type="button"
-              onClick={confirm}
-              disabled={busy}
-              className="flex min-h-[44px] items-center justify-center rounded-[13px] bg-destructive-fill font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
+              onClick={() => {
+                confirm(false);
+              }}
+              disabled={busy !== null}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] bg-destructive-fill px-3 font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
             >
-              {busy ? 'Deleting…' : 'Delete'}
+              {busy === 'one' ? 'Deleting…' : repeats ? 'This date only' : 'Delete'}
             </button>
+            {repeats ? (
+              <button
+                type="button"
+                onClick={() => {
+                  confirm(true);
+                }}
+                disabled={busy !== null}
+                className="flex min-h-[44px] items-center justify-center rounded-[13px] bg-destructive-fill px-3 font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
+              >
+                {busy === 'later' ? 'Deleting…' : 'This and all later dates'}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => {
                 setAsking(false);
                 setError(null);
               }}
-              disabled={busy}
-              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-line font-bold font-head text-[0.9375rem] text-ink"
+              disabled={busy !== null}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-line px-3 font-bold font-head text-[0.9375rem] text-ink"
             >
               Keep it
             </button>

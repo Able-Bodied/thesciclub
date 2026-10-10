@@ -6,12 +6,13 @@ import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
-import { saveEvent, useEvents } from '@/lib/events';
+import { saveEvent, saveEventSeries, useEvents } from '@/lib/events';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import {
   CITY_MAX,
   DESCRIPTION_MAX,
+  describeRepeat,
   draftFromEvent,
   type EventDraft,
   emptyDraft,
@@ -21,8 +22,12 @@ import {
   mayAddEvents,
   mayChangeEvent,
   NO_ORGANIZATION,
+  type RepeatChoice,
+  type RepeatEnd,
   readDraft,
+  readRepeat,
   readTime,
+  repeatLabels,
   TITLE_MAX,
 } from '@/routes/events/event-draft';
 import { EVENT_FORMAT_LABELS, EVENT_FORMATS, type EventFormat } from '@/types/domain';
@@ -97,8 +102,10 @@ export default function EventFormPage() {
   );
 }
 
-const FIELD =
-  'mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis';
+/** A field's look without its width or spacing, for the boxes that sit in a row. */
+const BOX =
+  'min-h-[44px] rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis';
+const FIELD = `mt-1.5 w-full ${BOX}`;
 const LABEL = 'mt-4 block font-bold font-head text-[0.8125rem] text-ink';
 const HINT = 'mt-1 text-[0.71875rem] text-grey leading-[1.45]';
 
@@ -124,6 +131,7 @@ function EventForm({
   // cannot disagree about what is missing.
   const reading = useMemo(() => readDraft(draft, { isNew }), [draft, isNew]);
   const dateReading = readDate(draft.date, { needs: 'day', future: true });
+  const dateIso = dateReading.kind === 'date' ? dateReading.iso : null;
   const startReading = readTime(draft.startTime);
   const endReading = readTime(draft.endTime);
 
@@ -136,13 +144,23 @@ function EventForm({
   function submit() {
     if (!reading.ok || saving) return;
     setSaving(true);
-    saveEvent({ id: eventId, ...reading.payload })
+    const repeat = reading.repeat;
+    (repeat
+      ? saveEventSeries(reading.payload, repeat)
+      : saveEvent({ id: eventId, ...reading.payload })
+    )
       .then((result) => {
         if (!result.ok) {
           setFailure(result.error);
           return;
         }
-        announce(isNew ? 'The event is on the calendar.' : 'Changes saved.');
+        announce(
+          !isNew
+            ? 'Changes saved.'
+            : repeat
+              ? 'The event and its dates are on the calendar.'
+              : 'The event is on the calendar.',
+        );
         // Replacing this screen: Back from the event should not land on a
         // filled-in form that would add it a second time.
         void navigate(`/events/${result.id}`, { replace: true });
@@ -294,6 +312,9 @@ function EventForm({
           Pacific time, with am or pm.
         </p>
 
+        {/* --------------------------------------------------- repeats */}
+        {isNew ? <RepeatFields draft={draft} dateIso={dateIso} set={set} /> : null}
+
         {/* ----------------------------------------------------- where */}
         {/* A paragraph and not a label: three aria-pressed buttons rather than
             one field, as on Start a room. */}
@@ -418,5 +439,169 @@ function EventForm({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * "Repeats", after Google Calendar (the owner, 2026-10-10): a dropdown that
+ * starts at Does not repeat, with Daily, Weekly on <the weekday>, Monthly on
+ * <the nth weekday> and Custom. Custom is every N days, weeks or months,
+ * ending never, on a date, or after a number of dates.
+ *
+ * On the page rather than in a pop-up, as the rest of this form is: one more
+ * layer is one more thing to dismiss with a switch or at large text, and the
+ * choice is read back in a sentence underneath before anything is saved.
+ *
+ * A native select, as the host is: every phone draws its own picker for it.
+ */
+function RepeatFields({
+  draft,
+  dateIso,
+  set,
+}: {
+  draft: EventDraft;
+  dateIso: string | null;
+  set: <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => void;
+}) {
+  const labels = repeatLabels(dateIso);
+  const choices: RepeatChoice[] = ['none', 'daily', 'weekly', 'monthly', 'custom'];
+  const reading = dateIso ? readRepeat(draft, dateIso) : null;
+  const custom = draft.repeat === 'custom';
+
+  return (
+    <>
+      <label htmlFor="event-repeat" className={LABEL}>
+        Repeats
+      </label>
+      <select
+        id="event-repeat"
+        value={draft.repeat}
+        onChange={(e) => {
+          set('repeat', e.target.value as RepeatChoice);
+        }}
+        aria-describedby={draft.repeat === 'none' ? undefined : 'event-repeat-summary'}
+        className={FIELD}
+      >
+        {choices.map((choice) => (
+          <option key={choice} value={choice}>
+            {labels[choice]}
+          </option>
+        ))}
+      </select>
+
+      {custom ? (
+        <div className="mt-2.5 rounded-[13px] border border-line bg-tint/40 px-3.5 pt-0.5 pb-3.5">
+          <p className={LABEL} id="event-repeat-every-label">
+            Repeats every
+          </p>
+          <div className="mt-1.5 flex gap-2.5">
+            <input
+              id="event-repeat-every"
+              inputMode="numeric"
+              value={draft.repeatEvery}
+              onChange={(e) => {
+                set('repeatEvery', e.target.value);
+              }}
+              aria-labelledby="event-repeat-every-label"
+              className={`${BOX} w-[5em] flex-none text-center`}
+            />
+            <select
+              value={draft.repeatUnit}
+              onChange={(e) => {
+                set('repeatUnit', e.target.value as EventDraft['repeatUnit']);
+              }}
+              aria-label="Days, weeks or months"
+              className={`${BOX} min-w-0 flex-1`}
+            >
+              <option value="day">{draft.repeatEvery.trim() === '1' ? 'day' : 'days'}</option>
+              <option value="week">{draft.repeatEvery.trim() === '1' ? 'week' : 'weeks'}</option>
+              <option value="month">{draft.repeatEvery.trim() === '1' ? 'month' : 'months'}</option>
+            </select>
+          </div>
+
+          <fieldset className="mt-1">
+            <legend className={LABEL}>Ends</legend>
+            <EndChoice value="never" draft={draft} set={set}>
+              Never
+            </EndChoice>
+            <EndChoice value="on" draft={draft} set={set}>
+              On
+              <input
+                type="date"
+                aria-label="Last date"
+                min={dateIso ?? undefined}
+                value={draft.repeatUntil}
+                onFocus={() => {
+                  set('repeatEnd', 'on');
+                }}
+                onChange={(e) => {
+                  set('repeatUntil', e.target.value);
+                  set('repeatEnd', 'on');
+                }}
+                className={`${BOX} ml-1 min-w-0 flex-1`}
+              />
+            </EndChoice>
+            <EndChoice value="after" draft={draft} set={set}>
+              After
+              <input
+                inputMode="numeric"
+                aria-label="Number of dates"
+                value={draft.repeatCount}
+                onFocus={() => {
+                  set('repeatEnd', 'after');
+                }}
+                onChange={(e) => {
+                  set('repeatCount', e.target.value);
+                  set('repeatEnd', 'after');
+                }}
+                className={`${BOX} mx-1 w-[5em] flex-none text-center`}
+              />
+              dates
+            </EndChoice>
+          </fieldset>
+        </div>
+      ) : null}
+
+      {draft.repeat !== 'none' ? (
+        <p id="event-repeat-summary" className={HINT}>
+          {!dateIso
+            ? 'Choose the first date above, and the repeat follows from it.'
+            : reading?.ok && reading.rule
+              ? describeRepeat(reading.rule, dateIso)
+              : reading && !reading.ok
+                ? reading.problem
+                : null}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
+/** One "Ends" radio, with whatever goes beside its words. */
+function EndChoice({
+  value,
+  draft,
+  set,
+  children,
+}: {
+  value: RepeatEnd;
+  draft: EventDraft;
+  set: <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="mt-2 flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
+      <input
+        type="radio"
+        name="event-repeat-end"
+        value={value}
+        checked={draft.repeatEnd === value}
+        onChange={() => {
+          set('repeatEnd', value);
+        }}
+        className="h-[1.15em] w-[1.15em] flex-none accent-emphasis"
+      />
+      {children}
+    </label>
   );
 }

@@ -539,6 +539,71 @@ export async function saveEvent(
   }
 }
 
+/** How a new event repeats (20261011050000). Null ends: it never does. */
+export interface RepeatRule {
+  unit: 'day' | 'week' | 'month';
+  /** Every this many days, weeks or months; 1 to 30. */
+  every: number;
+  /** The last day it may fall on, as YYYY-MM-DD in Pacific. */
+  endsOn: string | null;
+  /** How many dates in all, the first included; 2 to 100. */
+  endsAfter: number | null;
+}
+
+/**
+ * Adds a repeating event through `save_event_series`: the first date is saved
+ * by save_event, with all its checks, and the dates up to three months ahead
+ * are made from it. Resolves to the first date's id.
+ */
+export async function saveEventSeries(
+  draft: Omit<EventDraftPayload, 'id'>,
+  repeat: RepeatRule,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { data, error } = (await getSupabase().rpc('save_event_series', {
+      organization: draft.organizationId,
+      host: draft.hostName,
+      title: draft.title,
+      description: draft.description,
+      starts: draft.startTime,
+      ends: draft.endTime,
+      format: draft.format,
+      place: draft.location,
+      city: draft.city,
+      link: draft.url,
+      registration: draft.registrationUrl,
+      repeat_unit: repeat.unit,
+      repeat_every: repeat.every,
+      ends_on: repeat.endsOn,
+      ends_after: repeat.endsAfter,
+    })) as { data: string | null; error: Failure | null };
+    if (error || !data) {
+      return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
+    }
+    return { ok: true, id: data };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
+  }
+}
+
+/**
+ * Deletes this date of a repeating event and every later one, and the series
+ * makes no more (`delete_event_and_later`).
+ */
+export async function deleteEventAndLater(eventId: string): Promise<WriteResult> {
+  const refusal = {
+    attempt: 'The dates were not deleted.',
+    refused: 'You cannot delete this event.',
+    missing: 'That event is not on the calendar any more.',
+  };
+  try {
+    const { error } = await getSupabase().rpc('delete_event_and_later', { event: eventId });
+    return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
+}
+
 /** Deletes a hand-added event, with its RSVPs. Its group chat stays. */
 export async function deleteEvent(eventId: string): Promise<WriteResult> {
   const refusal = {
