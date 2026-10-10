@@ -105,9 +105,28 @@ export function TopicCard({
         </Link>
       )}
 
-      <p className="mt-[7px] text-[0.8125rem] text-ink2 leading-[1.42]">
-        {byline(topic.authorId, starter)}
-        {starter?.level ? ` · ${starter.level}` : ''} · {chatTime(topic.createdAt)}
+      {/* Who asked, with their picture (owner, 2026-10-10), the same size
+          and shape as the first reply's below so the two read as a pair. */}
+      <p className="mt-2 flex items-center gap-[9px] text-[0.8125rem] text-ink2 leading-[1.42]">
+        {/* Decorative: the name is beside it. Out of the pointer's way, so a
+            tap on it opens the topic like the rest of the card. */}
+        <span aria-hidden="true" className="pointer-events-none flex-none">
+          {starter ? (
+            <MemberAvatar
+              id={starter.id}
+              displayName={starter.displayName}
+              photoPath={starter.photoPath}
+              photoAlt={starter.photoAlt}
+              className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]"
+            />
+          ) : (
+            <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
+          )}
+        </span>
+        <span className="min-w-0">
+          {byline(topic.authorId, starter)}
+          {starter?.level ? ` · ${starter.level}` : ''} · {chatTime(topic.createdAt)}
+        </span>
       </p>
 
       {/* `relative`, like the Like control: above the title's stretched

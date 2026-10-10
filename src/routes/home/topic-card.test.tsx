@@ -89,6 +89,15 @@ describe('a topic on Home', () => {
     expect(screen.getByText(/^Alex · C6 · /)).toBeInTheDocument();
   });
 
+  // Decorative: hidden from a screen reader, which has the name beside it.
+  it('draws who asked with their picture beside their name', () => {
+    renderCard();
+    const row = screen.getByText(/^Alex · C6 · /).closest('p');
+    const picture = row?.querySelector('[aria-hidden="true"]');
+    expect(picture).not.toBeNull();
+    expect(picture).toHaveTextContent(/\S/);
+  });
+
   it('says Deleted member for somebody who has left, and not while a name is loading', () => {
     const { unmount } = renderCard({ topic: makeHomeTopic({ authorId: null }), starter: null });
     expect(screen.getByText(/^Deleted member · /)).toBeInTheDocument();

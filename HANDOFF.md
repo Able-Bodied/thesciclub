@@ -441,10 +441,15 @@ the product definition and wins over this file.
     are now shown to other members (the owner's call that Open 22 left
     open): `20261011040000` appends `sports_equipment` and `grants` to
     `browse_members`, restated from `20261009030000` with nothing else
-    changed — **pending until the owner's `db push`**. The app reads the
-    view with `select *`, so either may go first. "The specifics"
-    (`detail`), collected all along and never shown, is drawn under the
-    Uses day to day chips. All 2,207 tests and standalone check pass.
+    changed — applied and released 2026-10-10. The app reads the view with
+    `select *`, so either may go first. "The specifics" (`detail`),
+    collected all along and never shown, is drawn under the Uses day to
+    day chips. All 2,207 tests and standalone check pass.
+
+27. **Who asked, with their picture, on Home** (2026-10-10, no migration).
+    A topic card's byline (question or not) now has the starter's picture
+    beside the name, the size and shape of the first reply's. Decorative and
+    out of the pointer's way, so a tap on it still opens the topic.
 
 ## Rules the owner set
 
