@@ -233,7 +233,8 @@ check(
   await signs(createClient(API, ANON), `${MEMBER}/${PROBE}`),
   false,
 );
-check('…not even for a logo', await signs(createClient(API, ANON), LOGO), false);
+// The closed door shows organization logos even before sign-in (20261012050000).
+check('…but can read an organization logo', await signs(createClient(API, ANON), LOGO), true);
 check(
   "somebody signed in with no member row gets none for a member's photograph",
   await signs(as(NOT_YET), `${MEMBER}/${PROBE}`),

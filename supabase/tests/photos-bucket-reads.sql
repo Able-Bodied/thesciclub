@@ -11,7 +11,8 @@
 --   other     a seeded profile nobody here may claim seed/probe-not-mine.webp
 --   own       C's own upload, before C is a member   c…/profile.webp
 --
--- Step 1 (a signed-out visitor reads nothing, and is told nothing) and step 5
+-- Step 1 (a signed-out visitor reads only organization logos, since
+-- 20261012050000, and never a member's photograph) and step 5
 -- (somebody mid-signup reads the logo, the face on their claim card and their
 -- own upload, and not a member's photograph) are the ones that matter.
 --
@@ -75,8 +76,8 @@ select string_agg(
 grant select on probe_reads to anon, authenticated;
 
 \echo ''
-\echo '== 0. the bucket is private, with one select policy for authenticated =='
-\echo '   expect: f | then one row, {authenticated}, "a signed-in account reads the photographs it may see"'
+\echo '== 0. the bucket is private, with separate member and public-logo select policies =='
+\echo '   expect: f | then two rows: {authenticated} photographs, {anon} organization logos'
 select public from storage.buckets where id = 'photos';
 select roles::text, policyname
   from pg_policies
@@ -84,8 +85,8 @@ select roles::text, policyname
    and qual like '%bucket_id = ''photos''::text%';
 
 \echo ''
-\echo '== 1. a signed-out visitor reads nothing, and no error names a function =='
-\echo '   expect: anon | (empty)'
+\echo '== 1. a signed-out visitor reads only the logo, and no error names a function =='
+\echo '   expect: anon | logo'
 set local role anon;
 select current_user, coalesce((select reads from probe_reads), '') as reads;
 set local role postgres;

@@ -127,9 +127,9 @@ select set_config('request.jwt.claims',
 select status from public.admin_invites where email = 'joiner@probe.test';
 
 \echo ''
-\echo '== 12. signed out (expect ERROR, ERROR, ERROR, ERROR, then t) =='
+\echo '== 12. signed out (expect five permission ERRORs) =='
 \echo '   the signup hook, a strike count, nearby_events, browse_members; then'
-\echo '   the one view anon may read, because events are public'
+\echo '   RSVP counts, now behind membership with the calendar (20261012080000)'
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true) is not null as ok;
@@ -145,7 +145,9 @@ rollback to savepoint anon_nearby;
 savepoint anon_browse;
 select count(*) from public.browse_members;
 rollback to savepoint anon_browse;
+savepoint counts_read;
 select count(*) >= 0 as reads from public.event_rsvp_counts;
+rollback to savepoint counts_read;
 
 reset role;
 
@@ -159,9 +161,9 @@ select c.relname, r.rolname, p.privilege
    and has_table_privilege(r.rolname, c.oid, p.privilege);
 
 \echo ''
-\echo '== 14. every gated view is a security barrier (expect one row: event_rsvp_counts) =='
-\echo '   event_rsvp_counts is ungated on purpose; any other name here lost the'
-\echo '   option, most likely to a create or replace view.'
+\echo '== 14. every gated view is a security barrier (expect 0 rows) =='
+\echo '   RSVP counts are gated too. Any name here lost the option,'
+\echo '   most likely to a create or replace view.'
 select relname from pg_class
  where relnamespace = 'public'::regnamespace and relkind = 'v'
    and not coalesce('security_barrier=true' = any(reloptions), false);
