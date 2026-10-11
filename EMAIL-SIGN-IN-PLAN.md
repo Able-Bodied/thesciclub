@@ -16,11 +16,17 @@ way, a session that runs out of usage partway leaves the next one an exact
 place to resume. Notes for the next session go under the session's line, not in
 HANDOFF.md.
 
-- [ ] **Session 1: A, Database**
+- [x] **Session 1: A, Database**
   - [x] migration written (`8c10561`)
   - [x] seed.sql and local config.toml (`4d8313d`)
-  - [ ] SQL probes pass to the probe standard
-  - [ ] `pnpm check` exit 0, committed
+  - [x] SQL probes pass to the probe standard (`2917bd3`)
+    - Fresh stack, run as signed-in roles, rolled back, each log read against its `expect` lines: `email-is-the-account.sql`
+      (21 refusals), `email-invites-and-admin.sql` (10), and every older probe re-run and diffed against a pre-change baseline.
+    - Broken on purpose, each failing the probe that guards it: confirmed-email check removed, claimed-token guard removed,
+      `admin_revoke_invite` back to the phone check, `delete_my_account` trusting the typed phone, `admin_block_number`
+      finding members by the typed phone. Real GoTrue also checked: sign-up returns no session, unconfirmed sign-in is
+      refused, a confirmed `newcomer@` is invited and joins (201), `stranger@` is refused.
+  - [x] `pnpm check` exit 0, committed (work: `8c10561`, `4d8313d`, `2917bd3`; this plan edit is the commit after)
   - Notes for the next session (contract changes are made in place above; "as built"):
     - Ticks trail by one commit: a hash cannot sit in the commit it names, so each tick lands in the commit after the work it cites.
     - **Seeded local accounts** (password `local-dev-password`): `alfred@local.test` (admin), `maya@local.test` (mentor, has a phone),
