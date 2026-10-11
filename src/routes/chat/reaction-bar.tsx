@@ -21,6 +21,7 @@ export interface ReactionBarProps {
   compact?: boolean;
   attached?: boolean;
   actions?: ReactNode;
+  reply?: ReactNode;
 }
 export function ReactionBar({
   target,
@@ -30,6 +31,7 @@ export function ReactionBar({
   compact = false,
   attached = false,
   actions,
+  reply,
 }: ReactionBarProps) {
   const [open, setOpen] = useState(false);
   const rows = state.rows.filter((r) => r.target_id === target && r.emoji !== null);
@@ -84,51 +86,9 @@ export function ReactionBar({
               </button>
             ) : null;
           })}
-        {compact ? (
-          <ItemActions
-            what={what}
-            reactions={(close) => (
-              <>
-                <fieldset className="mt-3 grid grid-cols-4 gap-2" aria-label="Emoji reactions">
-                  {REACTIONS.map(({ emoji, name }) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      aria-label={name}
-                      aria-pressed={mine === emoji}
-                      disabled={disabled}
-                      onClick={() => {
-                        void choose(emoji).then((saved) => {
-                          if (saved) close();
-                        });
-                      }}
-                      className={`min-h-11 rounded-xl border text-2xl disabled:opacity-50 ${mine === emoji ? 'border-emphasis bg-tint' : 'border-line hover:bg-tint'}`}
-                    >
-                      <span aria-hidden="true">{emoji}</span>
-                    </button>
-                  ))}
-                </fieldset>
-                {state.failure?.target === target ? (
-                  <p className="mt-2 text-sm text-destructive">{state.failure.message}</p>
-                ) : null}
-              </>
-            )}
-          >
-            {rows.length ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(true);
-                }}
-              >
-                Who reacted
-              </button>
-            ) : null}
-            {actions}
-          </ItemActions>
-        ) : (
-          trigger
-        )}
+        {trigger}
+        {reply}
+        {compact ? <ItemActions what={what}>{actions}</ItemActions> : null}
       </div>
       {state.error ? (
         <p className="relative text-grey">

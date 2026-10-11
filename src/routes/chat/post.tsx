@@ -183,6 +183,17 @@ export function Post({
   const control =
     'font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2';
 
+  const reply = canReply ? (
+    <button
+      type="button"
+      onClick={onReply}
+      aria-label={`Reply to ${whose} post`}
+      className="relative inline-flex min-h-11 items-center rounded-full px-3 font-semibold text-[0.8125rem] text-emphasis hover:bg-tint"
+    >
+      Reply
+    </button>
+  ) : null;
+
   const controls = (
     <>
       {canEdit && !hideBody ? (
@@ -194,17 +205,6 @@ export function Post({
           className={`${control} hover:text-emphasis`}
         >
           Edit
-        </button>
-      ) : null}
-      {canReply ? (
-        <button
-          type="button"
-          onClick={onReply}
-          aria-label={`Reply to ${whose} post`}
-          data-target="small"
-          className={`${control} hover:text-emphasis`}
-        >
-          Reply
         </button>
       ) : null}
       {canRemove ? (
@@ -351,7 +351,14 @@ export function Post({
             />
           ) : null}
           <ViewCount count={viewCount} />
-          {reactions ? cloneElement(reactions, { compact: true, actions: controls }) : controls}
+          {reactions ? (
+            cloneElement(reactions, { compact: true, actions: controls, reply })
+          ) : (
+            <>
+              {reply}
+              {controls}
+            </>
+          )}
         </div>
       )}
       {likes?.failure && !editing ? (

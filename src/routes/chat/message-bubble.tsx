@@ -197,6 +197,17 @@ export function MessageBubble({
     </>
   );
 
+  const reply = canReply ? (
+    <button
+      type="button"
+      onClick={onReply}
+      aria-label={`Reply to ${whose} message`}
+      className="relative inline-flex min-h-11 items-center rounded-full px-3 font-semibold text-[0.8125rem] text-emphasis hover:bg-tint"
+    >
+      Reply
+    </button>
+  ) : null;
+
   const controls =
     removed || message.pending || editing ? null : (
       <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
@@ -209,17 +220,6 @@ export function MessageBubble({
             className={`${control} hover:text-emphasis`}
           >
             Edit
-          </button>
-        ) : null}
-        {canReply ? (
-          <button
-            type="button"
-            onClick={onReply}
-            aria-label={`Reply to ${whose} message`}
-            data-target="small"
-            className={`${control} hover:text-emphasis`}
-          >
-            Reply
           </button>
         ) : null}
         {canRemove ? (
@@ -275,11 +275,16 @@ export function MessageBubble({
             {timestamp}
           </div>
         )}
-        {!removed && !message.pending && !editing
-          ? reactions
-            ? cloneElement(reactions, { compact: true, attached: true, actions: controls })
-            : controls
-          : null}
+        {!removed && !message.pending && !editing ? (
+          reactions ? (
+            cloneElement(reactions, { compact: true, attached: true, actions: controls, reply })
+          ) : (
+            <>
+              {reply}
+              {controls}
+            </>
+          )
+        ) : null}
       </div>
     );
   }
@@ -328,11 +333,16 @@ export function MessageBubble({
           {words}
           {timestamp}
         </div>
-        {!removed && !message.pending && !editing
-          ? reactions
-            ? cloneElement(reactions, { compact: true, attached: true, actions: controls })
-            : controls
-          : null}
+        {!removed && !message.pending && !editing ? (
+          reactions ? (
+            cloneElement(reactions, { compact: true, attached: true, actions: controls, reply })
+          ) : (
+            <>
+              {reply}
+              {controls}
+            </>
+          )
+        ) : null}
       </div>
     </div>
   );

@@ -571,6 +571,13 @@ the product definition and wins over this file.
     including direct selection/removal, retry and keyboard focus restoration.
     Mobile and desktop browser checks verify selection/removal and 44px targets.
 
+36. **Visible React and Reply actions, release authorized** (2026-10-10).
+    The owner wants interaction actions outside the ellipsis menu. Messages
+    and room posts/questions/replies now expose React and Reply beside the
+    menu button; Edit/Remove/Report remain inside. React opens the existing
+    emoji picker with names, retry and keyboard focus restoration. Attached
+    small reaction count chips and bubble timestamps remain. No migration.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

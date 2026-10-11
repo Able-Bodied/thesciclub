@@ -22,7 +22,7 @@ const state = (extra: Partial<ReactionsState> = {}): ReactionsState => ({
   ...extra,
 });
 describe('reaction controls', () => {
-  it('keeps only counts and one actions button visible in a conversation', async () => {
+  it('shows React and Reply directly while keeping Edit in the menu', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'other', emoji: '❤️' }] });
     render(
       <ReactionBar
@@ -31,39 +31,40 @@ describe('reaction controls', () => {
         what="the message"
         readerId="me"
         state={data}
-        actions={<button type="button">Reply</button>}
+        reply={<button type="button">Reply</button>}
+        actions={<button type="button">Edit</button>}
       />,
     );
     expect(screen.getByRole('button', { name: /Love: 1 reaction/ })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'React to the message' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Reply' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'React to the message' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
-    expect(screen.queryByRole('button', { name: 'React to the message' })).toBeNull();
-    const picker = screen.getByRole('dialog', { name: 'Actions for the message' });
+    await user.click(screen.getByRole('button', { name: 'React to the message' }));
+    const picker = screen.getByRole('dialog', { name: 'React to the message' });
     await user.click(within(picker).getByRole('button', { name: 'Love' }));
     expect(data.choose).toHaveBeenCalledWith('m1', '❤️');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('keeps the menu open after a failed save so the choice can be retried', async () => {
+  it('keeps the picker open after a failed save so the choice can be retried', async () => {
     const data = state({
       choose: vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true),
     });
     render(<ReactionBar compact target="m1" what="the message" readerId="me" state={data} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
+    await user.click(screen.getByRole('button', { name: 'React to the message' }));
     await user.click(screen.getByRole('button', { name: 'Love' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Love' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(data.choose).toHaveBeenCalledTimes(2);
   });
-  it('marks your choice in the menu and lets you remove it directly', async () => {
+  it('marks your choice in the picker and lets you remove it directly', async () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'me', emoji: '❤️' }] });
     render(<ReactionBar compact target="m1" what="the message" readerId="me" state={data} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
+    await user.click(screen.getByRole('button', { name: 'React to the message' }));
     const choice = within(screen.getByRole('dialog')).getByRole('button', { name: 'Love' });
     expect(choice).toHaveAttribute('aria-pressed', 'true');
     await user.click(choice);
@@ -72,7 +73,7 @@ describe('reaction controls', () => {
   });
 
   it('performs an existing action and closes the menu', async () => {
-    const reply = vi.fn();
+    const edit = vi.fn();
     render(
       <ReactionBar
         compact
@@ -81,16 +82,37 @@ describe('reaction controls', () => {
         readerId="me"
         state={state()}
         actions={
-          <button type="button" onClick={reply}>
-            Reply
+          <button type="button" onClick={edit}>
+            Edit
           </button>
         }
       />,
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
-    await user.click(screen.getByRole('button', { name: 'Reply' }));
-    expect(reply).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    expect(edit).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('replies directly without opening the actions menu', async () => {
+    const onReply = vi.fn();
+    render(
+      <ReactionBar
+        compact
+        target="m1"
+        what="the message"
+        readerId="me"
+        state={state()}
+        reply={
+          <button type="button" onClick={onReply}>
+            Reply
+          </button>
+        }
+      />,
+    );
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Reply' }));
+    expect(onReply).toHaveBeenCalledOnce();
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
