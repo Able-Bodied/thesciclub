@@ -20,6 +20,8 @@ export interface ReactionBarProps {
   readerId: string | null;
   compact?: boolean;
   attached?: boolean;
+  bubble?: ReactNode;
+  align?: 'start' | 'end';
   actions?: ReactNode;
   reply?: ReactNode;
 }
@@ -30,6 +32,8 @@ export function ReactionBar({
   readerId,
   compact = false,
   attached = false,
+  bubble,
+  align = 'start',
   actions,
   reply,
 }: ReactionBarProps) {
@@ -57,35 +61,49 @@ export function ReactionBar({
     if (saved) setOpen(false);
     return saved;
   }
+  const counts =
+    !state.error &&
+    REACTIONS.map(({ emoji, name }) => {
+      const count = rows.filter((r) => r.emoji === emoji).length;
+      return count ? (
+        <button
+          key={emoji}
+          type="button"
+          aria-pressed={mine === emoji}
+          aria-label={`${name}: ${count} ${count === 1 ? 'reaction' : 'reactions'} on ${what}${mine === emoji ? '. Remove your reaction' : '. React'}`}
+          disabled={disabled}
+          onClick={() => {
+            void choose(emoji);
+          }}
+          className={`relative inline-flex min-h-11 min-w-11 ${attached ? 'items-start' : 'items-center'} justify-center rounded-full font-semibold disabled:opacity-50`}
+        >
+          <span
+            className={`inline-flex items-center justify-center gap-1 rounded-full border ${attached ? 'min-h-7 px-2 text-[0.6875rem] shadow-sm' : 'min-h-11 px-3'} ${mine === emoji ? 'border-emphasis bg-tint text-emphasis' : 'border-line bg-paper'}`}
+          >
+            <span aria-hidden="true" className={attached ? 'text-sm' : 'text-lg'}>
+              {emoji}
+            </span>
+            {count}
+          </span>
+        </button>
+      ) : null;
+    });
+  const hasCounts = !state.error && rows.length > 0;
   return (
-    <div className={`${attached ? 'relative -mt-2' : 'mt-2'} text-[0.8125rem] text-ink`}>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {!state.error &&
-          REACTIONS.map(({ emoji, name }) => {
-            const count = rows.filter((r) => r.emoji === emoji).length;
-            return count ? (
-              <button
-                key={emoji}
-                type="button"
-                aria-pressed={mine === emoji}
-                aria-label={`${name}: ${count} ${count === 1 ? 'reaction' : 'reactions'} on ${what}${mine === emoji ? '. Remove your reaction' : '. React'}`}
-                disabled={disabled}
-                onClick={() => {
-                  void choose(emoji);
-                }}
-                className={`relative inline-flex min-h-11 min-w-11 ${attached ? 'items-start' : 'items-center'} justify-center rounded-full font-semibold disabled:opacity-50`}
-              >
-                <span
-                  className={`inline-flex items-center justify-center gap-1 rounded-full border ${attached ? 'min-h-7 px-2 text-[0.6875rem] shadow-sm' : 'min-h-11 px-3'} ${mine === emoji ? 'border-emphasis bg-tint text-emphasis' : 'border-line bg-paper'}`}
-                >
-                  <span aria-hidden="true" className={attached ? 'text-sm' : 'text-lg'}>
-                    {emoji}
-                  </span>
-                  {count}
-                </span>
-              </button>
-            ) : null;
-          })}
+    <div
+      className={`${bubble ? `flex min-w-0 max-w-full flex-col ${align === 'end' ? 'items-end' : 'items-start'}` : 'mt-2'} text-[0.8125rem] text-ink`}
+    >
+      {bubble ? (
+        <div className="w-fit max-w-full">
+          {bubble}
+          {hasCounts ? (
+            // Chip widths must not widen a short bubble; wrap within its width.
+            <div className="relative -mt-2 flex w-0 min-w-full flex-wrap gap-1.5">{counts}</div>
+          ) : null}
+        </div>
+      ) : null}
+      <div className={`${bubble ? 'mt-1' : ''} flex flex-wrap items-center gap-1.5`}>
+        {bubble ? null : counts}
         {trigger}
         {reply}
         {compact ? <ItemActions what={what}>{actions}</ItemActions> : null}

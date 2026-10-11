@@ -578,6 +578,16 @@ the product definition and wins over this file.
     emoji picker with names, retry and keyboard focus restoration. Attached
     small reaction count chips and bubble timestamps remain. No migration.
 
+37. **Reactions anchored to their message bubble** (2026-10-10, no migration).
+    The owner reported short outgoing reactions drifting away because they
+    shared the wider action row. The bubble and reaction chips now share a
+    wrapper sized by the bubble, with a separate React/Reply/menu row.
+    Incoming and outgoing chips both overlap the bubble's lower-left edge.
+    Chips wrap within the bubble width, without widening short messages.
+    All 2,263 tests, standalone check and build pass. Browser geometry checks
+    verify matching left offsets and 8px overlap for incoming/outgoing short
+    and long messages on mobile, narrow mobile and desktop.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

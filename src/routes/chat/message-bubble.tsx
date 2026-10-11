@@ -245,6 +245,46 @@ export function MessageBubble({
       </div>
     );
 
+  // The reaction component owns this bubble and its chips together, so the
+  // action row cannot move reactions away from a short message.
+  const bubble = (
+    <div
+      className={
+        'max-w-[17rem] px-3.5 py-2.5 text-[0.875rem] leading-[1.5] ' +
+        (mine
+          ? 'rounded-[15px_15px_4px_15px] bg-action text-white'
+          : 'rounded-[4px_15px_15px_15px] border border-line bg-paper text-ink') +
+        (message.pending ? ' opacity-60' : '') +
+        (flash ? ' message-flash' : '')
+      }
+    >
+      {quoteBlock}
+      {words}
+      {timestamp}
+    </div>
+  );
+  const content =
+    reactions && !removed && !message.pending && !editing ? (
+      cloneElement(reactions, {
+        compact: true,
+        attached: true,
+        bubble,
+        align: mine ? 'end' : 'start',
+        actions: controls,
+        reply,
+      })
+    ) : (
+      <>
+        {bubble}
+        {!removed && !message.pending && !editing ? (
+          <>
+            {reply}
+            {controls}
+          </>
+        ) : null}
+      </>
+    );
+
   if (mine) {
     return (
       <div id={anchor} className="mb-3.5 flex flex-col items-end">
@@ -263,28 +303,8 @@ export function MessageBubble({
             />
           </div>
         ) : (
-          <div
-            className={
-              'max-w-[17rem] rounded-[15px_15px_4px_15px] bg-action px-3.5 py-2.5 text-[0.875rem] text-white leading-[1.5]' +
-              (message.pending ? ' opacity-60' : '') +
-              (flash ? ' message-flash' : '')
-            }
-          >
-            {quoteBlock}
-            {words}
-            {timestamp}
-          </div>
+          content
         )}
-        {!removed && !message.pending && !editing ? (
-          reactions ? (
-            cloneElement(reactions, { compact: true, attached: true, actions: controls, reply })
-          ) : (
-            <>
-              {reply}
-              {controls}
-            </>
-          )
-        ) : null}
       </div>
     );
   }
@@ -323,26 +343,7 @@ export function MessageBubble({
           )}
           {author?.level ? ` · ${author.level}` : ''}
         </p>
-        <div
-          className={
-            'max-w-[17rem] rounded-[4px_15px_15px_15px] border border-line bg-paper px-3.5 py-2.5 text-[0.875rem] text-ink leading-[1.5]' +
-            (flash ? ' message-flash' : '')
-          }
-        >
-          {quoteBlock}
-          {words}
-          {timestamp}
-        </div>
-        {!removed && !message.pending && !editing ? (
-          reactions ? (
-            cloneElement(reactions, { compact: true, attached: true, actions: controls, reply })
-          ) : (
-            <>
-              {reply}
-              {controls}
-            </>
-          )
-        ) : null}
+        {content}
       </div>
     </div>
   );
