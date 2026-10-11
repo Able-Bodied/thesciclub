@@ -1,4 +1,4 @@
-import { SmilePlus } from 'lucide-react';
+import { SmilePlus, X } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -15,7 +15,13 @@ import { ItemActions } from '@/routes/chat/item-actions';
  * Home's stretched topic links sit below these positioned buttons. */
 export interface ReactionBarProps {
   target: string;
+  /** The words being reacted to (or a description, e.g. "this photograph"). */
   what: string;
+  /**
+   * Whether `what` is the item's own words, quoted back in the picker. False
+   * for a description such as "this photograph", which is not a quotation.
+   */
+  quoted?: boolean;
   state: ReactionsState;
   readerId: string | null;
   compact?: boolean;
@@ -27,7 +33,8 @@ export interface ReactionBarProps {
 }
 export function ReactionBar({
   target,
-  what,
+  what: words,
+  quoted = true,
   state,
   readerId,
   compact = false,
@@ -38,6 +45,9 @@ export function ReactionBar({
   reply,
 }: ReactionBarProps) {
   const [open, setOpen] = useState(false);
+  // Short, so a long message is not printed again in the picker or read out
+  // whole in every button's name (the owner, 2026-10-10).
+  const what = quoted ? `“${excerpt(words)}”` : excerpt(words);
   const rows = state.rows.filter((r) => r.target_id === target && r.emoji !== null);
   const mine = rows.find((r) => r.member_id === readerId)?.emoji ?? null;
   const pending = state.pending.has(target);
@@ -106,7 +116,7 @@ export function ReactionBar({
         {bubble ? null : counts}
         {trigger}
         {reply}
-        {compact ? <ItemActions what={what}>{actions}</ItemActions> : null}
+        {compact ? <ItemActions what={words}>{actions}</ItemActions> : null}
       </div>
       {state.error ? (
         <p className="relative text-grey">
@@ -163,9 +173,14 @@ function ReactionSheet({
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
-  const heading = useRef<HTMLHeadingElement>(null);
+  const heading = useRef<HTMLParagraphElement>(null);
   useDialogFocus(dialog, heading, onClose);
   const authors = useChatAuthors(rows.map((r) => r.member_id));
+  // The owner, 2026-10-10: a picker that is the emoji and little else. A
+  // choice is saved and the picker closes as soon as it is tapped (it stays
+  // open only when saving fails, to try again). No Done button; a small Close,
+  // the backdrop and Escape remain, because somebody on a keyboard or a
+  // switch needs a control to leave by, and the backdrop is not one.
   return (
     <>
       <button
@@ -180,15 +195,26 @@ function ReactionSheet({
         role="dialog"
         aria-modal="true"
         aria-label={`React to ${what}`}
-        className="fixed inset-x-0 bottom-0 z-[81] max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-paper p-5 text-ink shadow-xl md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[440px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
+        className="fixed inset-x-0 bottom-0 z-[81] max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-paper px-5 pt-4 pb-6 text-ink shadow-xl md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[440px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
       >
-        <h2 ref={heading} tabIndex={-1} className="font-bold font-head text-xl outline-none">
-          React to {what}
-        </h2>
-        <p className="mt-2 text-sm text-grey">
-          Choose a reaction. Choose yours again to remove it.
-        </p>
-        <div className="mt-4 grid grid-cols-4 gap-2">
+        <div className="flex items-start gap-3">
+          <p
+            ref={heading}
+            tabIndex={-1}
+            className="min-w-0 flex-1 pt-2.5 text-[0.875rem] text-grey leading-snug outline-none [overflow-wrap:anywhere]"
+          >
+            {what}
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="grid h-11 w-11 flex-none place-items-center rounded-full text-grey hover:bg-tint"
+          >
+            <X aria-hidden="true" className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-2">
           {REACTIONS.map(({ emoji, name }) => (
             <button
               key={emoji}
@@ -205,6 +231,9 @@ function ReactionSheet({
             </button>
           ))}
         </div>
+        {mine ? (
+          <p className="mt-2 text-[0.75rem] text-grey">Tap {mine} again to take it back.</p>
+        ) : null}
         {failure ? (
           <p role="alert" className="mt-3 text-sm text-destructive">
             {failure}
@@ -226,14 +255,23 @@ function ReactionSheet({
             })}
           </section>
         ) : null}
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 min-h-12 w-full rounded-xl border border-line font-semibold"
-        >
-          Done
-        </button>
       </div>
     </>
   );
+}
+
+/** How much of what is being reacted to is quoted back. */
+export const EXCERPT_LENGTH = 80;
+
+/**
+ * The first 80 characters, on one line, cut at a word with an ellipsis when
+ * there is more. Counted in code points, so an emoji is not cut in half.
+ */
+export function excerpt(text: string, max = EXCERPT_LENGTH): string {
+  const flat = Array.from(text.replace(/\s+/g, ' ').trim());
+  if (flat.length <= max) return flat.join('');
+  const cut = flat.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  const kept = space > max / 2 ? cut.slice(0, space) : cut;
+  return `${kept.join('').trimEnd()}…`;
 }

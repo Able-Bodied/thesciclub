@@ -588,6 +588,16 @@ the product definition and wins over this file.
     verify matching left offsets and 8px overlap for incoming/outgoing short
     and long messages on mobile, narrow mobile and desktop.
 
+38. **A simpler React picker** (2026-10-10, no migration). The owner: the
+    picker is the emoji. Its heading no longer reprints the whole message in
+    bold: the first 80 characters, cut at a word (`excerpt`), in quotes and
+    plain grey, and the same short quote names the React button and the
+    dialog for a screen reader. "this photograph" is not quoted (`quoted`).
+    No Done button and no instruction line; a choice saves and closes as
+    before (open only after a failed save, to retry), and a small Close,
+    the backdrop and Escape remain. A hint to take a reaction back shows only
+    once you have one.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

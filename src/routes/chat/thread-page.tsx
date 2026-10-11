@@ -431,6 +431,7 @@ export default function ThreadPage() {
                     <ReactionBar
                       target={message.id}
                       what={message.body || 'this photograph'}
+                      quoted={Boolean(message.body)}
                       state={reactions}
                       readerId={account.userId}
                     />
