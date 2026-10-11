@@ -1,8 +1,8 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactionsState } from '@/lib/chat/reactions';
-import { excerpt, ReactionBar } from '@/routes/chat/reaction-bar';
+import { excerpt, HOLD_MS, ReactionBar } from '@/routes/chat/reaction-bar';
 
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () =>
@@ -197,6 +197,99 @@ describe('reaction controls', () => {
       />,
     );
     expect(screen.getByRole('button', { name: 'React to this photograph' })).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-10-11: anybody can see who reacted by holding a reaction.
+describe('holding a reaction shows who reacted', () => {
+  const rows = [
+    { target_id: 'm1', member_id: 'other', emoji: '❤️' as const },
+    { target_id: 'm1', member_id: 'me', emoji: '👍' as const },
+  ];
+  function hold(chip: HTMLElement, ms = HOLD_MS) {
+    fireEvent.pointerDown(chip, { button: 0, clientX: 10, clientY: 10 });
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+    fireEvent.pointerUp(chip);
+    fireEvent.click(chip);
+  }
+
+  it('opens the names with the held emoji first, and does not react', () => {
+    vi.useFakeTimers();
+    try {
+      const data = state({ rows });
+      render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
+      hold(screen.getByRole('button', { name: /Love: 1 reaction/ }));
+      const sheet = screen.getByRole('dialog', { name: 'Who reacted to “the message”' });
+      const lines = within(sheet)
+        .getAllByText(/\(1\):/)
+        .map((line) => line.textContent);
+      expect(lines).toEqual(['Love (1): ', 'Thumbs up (1): ']);
+      expect(sheet).toHaveTextContent('Sam');
+      expect(sheet).toHaveTextContent('Alex');
+      expect(data.choose).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a short tap still reacts and shows no names', () => {
+    vi.useFakeTimers();
+    try {
+      const data = state({ rows });
+      render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
+      hold(screen.getByRole('button', { name: /Love: 1 reaction/ }), HOLD_MS - 100);
+      expect(data.choose).toHaveBeenCalledWith('m1', '❤️');
+      expect(screen.queryByRole('dialog')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a finger that moves is scrolling, not holding', () => {
+    vi.useFakeTimers();
+    try {
+      render(<ReactionBar target="m1" what="the message" readerId="me" state={state({ rows })} />);
+      const chip = screen.getByRole('button', { name: /Love: 1 reaction/ });
+      fireEvent.pointerDown(chip, { button: 0, clientX: 10, clientY: 10 });
+      fireEvent.pointerMove(chip, { clientX: 10, clientY: 40 });
+      act(() => {
+        vi.advanceTimersByTime(HOLD_MS * 2);
+      });
+      expect(screen.queryByRole('dialog')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('right-click or the menu key opens the names too', () => {
+    const data = state({ rows });
+    render(<ReactionBar target="m1" what="the message" readerId="me" state={data} />);
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Thumbs up: 1 reaction/ }));
+    expect(
+      screen.getByRole('dialog', { name: 'Who reacted to “the message”' }),
+    ).toBeInTheDocument();
+    expect(data.choose).not.toHaveBeenCalled();
+  });
+
+  it('shows the names even to somebody who cannot react, whose tap does nothing', async () => {
+    const data = state({ rows });
+    render(<ReactionBar target="m1" what="the message" readerId={null} state={data} />);
+    const chip = screen.getByRole('button', { name: /Love: 1 reaction/ });
+    expect(chip).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.setup().click(chip);
+    expect(data.choose).not.toHaveBeenCalled();
+    fireEvent.contextMenu(chip);
+    expect(screen.getByRole('dialog', { name: /Who reacted/ })).toHaveTextContent('Sam');
+  });
+
+  it('closes with its Close button', async () => {
+    render(<ReactionBar target="m1" what="the message" readerId="me" state={state({ rows })} />);
+    fireEvent.contextMenu(screen.getByRole('button', { name: /Love: 1 reaction/ }));
+    const sheet = screen.getByRole('dialog', { name: /Who reacted/ });
+    await userEvent.setup().click(within(sheet).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
 
