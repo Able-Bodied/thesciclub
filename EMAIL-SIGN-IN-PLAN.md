@@ -470,7 +470,7 @@ Supabase dashboard, project `erijdvqnxavwezsbbojv`:
     `VITE_PASSKEYS=1` once the passkey check passes. Rebuild after.
 
 Apple Developer:
-11. Enroll as an Individual, from the iPhone app.
+11. Enroll as an Individual, from the iPhone app. **Approved 2026-10-10.**
 12. Create an App ID with Sign in with Apple, then a Services ID (say
     `com.thesciclub.web`).
     - Domain `erijdvqnxavwezsbbojv.supabase.co`.
