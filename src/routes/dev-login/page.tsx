@@ -20,8 +20,13 @@ import { getSupabase } from '@/lib/supabase';
  * not yet a member) and `stranger@local.test` (not invited). Unlisted — not
  * linked from anywhere in the app, and left out of a production build.
  *
+ * One more, `14155550199`, is a phone-only member with no email, like the live
+ * club's members from before email sign-in: `/dev-login?phone=14155550199`.
+ * The same password call with a phone in place of an address.
+ *
  *   /dev-login?email=alfred@local.test&next=/peers
  *   /dev-login?email=maya@local.test&password=local-dev-password
+ *   /dev-login?phone=14155550199&next=/me
  */
 const SEEDED_PASSWORD = 'local-dev-password';
 
@@ -32,17 +37,20 @@ export default function DevLoginPage() {
   const started = useRef(false);
 
   const email = params.get('email') ?? '';
+  const phone = params.get('phone') ?? '';
   const password = params.get('password') ?? SEEDED_PASSWORD;
   // Where the app opens, as `/` does, unless told otherwise.
   const next = params.get('next') ?? '/home';
 
   const run = useCallback(async () => {
-    if (!email) {
+    if (!email && !phone) {
       setStatus('Pass ?email=… — for example /dev-login?email=alfred@local.test');
       return;
     }
     try {
-      const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+      const { error } = await getSupabase().auth.signInWithPassword(
+        email ? { email, password } : { phone, password },
+      );
       if (error) {
         setStatus(`Could not sign in: ${error.message}`);
         return;
@@ -52,7 +60,7 @@ export default function DevLoginPage() {
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Sign-in failed.');
     }
-  }, [email, password, next, navigate]);
+  }, [email, phone, password, next, navigate]);
 
   useEffect(() => {
     // StrictMode double-invokes effects in development; sign-in once rather

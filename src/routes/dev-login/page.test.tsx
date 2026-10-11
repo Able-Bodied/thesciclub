@@ -3,14 +3,14 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const auth = vi.hoisted(() => ({
-  signedInWith: [] as { email: string; password: string }[],
+  signedInWith: [] as { email?: string; phone?: string; password: string }[],
   error: null as string | null,
 }));
 
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     auth: {
-      signInWithPassword: (credentials: { email: string; password: string }) => {
+      signInWithPassword: (credentials: { email?: string; phone?: string; password: string }) => {
         auth.signedInWith.push(credentials);
         return Promise.resolve({ error: auth.error ? { message: auth.error } : null });
       },
@@ -60,6 +60,14 @@ describe('DevLoginPage', () => {
     renderAt('/dev-login?email=sam@local.test&password=other-password');
     await screen.findByRole('heading', { name: 'Home' });
     expect(auth.signedInWith[0]?.password).toBe('other-password');
+  });
+
+  // A phone-only member, as the live club has: the same password call, with
+  // a phone in place of an address.
+  it('signs in a phone-only member by phone with the seeded password', async () => {
+    renderAt('/dev-login?phone=14155550199');
+    await screen.findByRole('heading', { name: 'Home' });
+    expect(auth.signedInWith).toEqual([{ phone: '14155550199', password: 'local-dev-password' }]);
   });
 
   it('says what to pass when there is no address', () => {
