@@ -2,7 +2,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from '@/App';
+import { stayCurrent } from '@/lib/stay-current';
 import '@/index.css';
+
+stayCurrent();
 
 const root = document.getElementById('root');
 if (!root) throw new Error('No #root element in index.html');
