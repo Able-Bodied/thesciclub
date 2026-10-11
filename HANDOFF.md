@@ -519,7 +519,7 @@ the product definition and wins over this file.
     quote in an address). Plain text from before reads as it did. Link asks
     for the address beside the toolbar, not in a browser prompt.
 
-32. **A cover picture on an event added by hand** (2026-10-10). One picture,
+32. **A cover picture on an event added by hand** (2026-10-10, released). One picture,
     shown whole (never cropped, as flyers carry words) at the top of the
     event's page and as a small square on its card; optional words for a
     screen reader. `20261011070000`: `events.photo_path`/`photo_alt`, files
@@ -532,8 +532,10 @@ the product definition and wins over this file.
     previous file comes back to delete only when nothing names it. Deleting
     an event leaves its file. The form uploads after saving the event (the
     folder is its id); a failed upload reopens the edit form saying the
-    event is saved. PGlite: 45 checks with the repeat ones. **Migration
-    before the client**: `EVENT_COLUMNS` now names `photo_path`.
+    event is saved. PGlite: 45 checks with the repeat ones. The migration
+    went live before the client (`EVENT_COLUMNS` names `photo_path`, so a
+    client ahead of it cannot read Events): applied 2026-10-10, columns and
+    `set_event_photo` confirmed on production, then the client published.
 
 33. **Compact message actions, release authorized** (2026-10-10, no migration).
     The owner requested less clutter beneath messages and posts. Room posts,
