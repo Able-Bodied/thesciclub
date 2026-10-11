@@ -14,6 +14,7 @@ import { useOwnMember } from '@/lib/members';
 import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
+import { AddEmailBanner } from '@/routes/me/add-email-banner';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { FindableSwitch } from '@/routes/me/findable-switch';
@@ -252,6 +253,9 @@ export default function MePage() {
           <p className="mt-0.5 text-[0.78125rem] text-grey">Signed in as {displayName ?? '—'}</p>
         </header>
       )}
+
+      {/* Above the tabs, so it is seen on whichever one Me opens on. */}
+      <AddEmailBanner state={signIn.state} reload={signIn.reload} />
 
       <PageTabs id="me" label="Me" fill tabs={ME_TABS} value={tab} onChange={setTab} />
 

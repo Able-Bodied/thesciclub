@@ -116,7 +116,7 @@ HANDOFF.md.
     - `/reset-password` handles both links; it signs nobody in itself, it waits for the session the link creates and
       says "This link has expired" without one. It goes to `/home`, and the guard there sends a non-member to `/join`.
 - [ ] **Session 4: E, Me, profiles, events**
-  - [ ] Me sign-in section (email, password, Google/Apple, passkeys, phone, username)
+  - [x] Me sign-in section (email, password, Google/Apple, passkeys, phone, username) (`6dcd316`)
   - [ ] add-an-email banner for phone accounts
   - [x] @username on profiles and cards (`a16980f`)
   - [ ] Going wording and phone sheet
