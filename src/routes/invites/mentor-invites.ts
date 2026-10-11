@@ -1,41 +1,46 @@
 import { describeError, type Failure } from '@/lib/describe-error';
-import { toE164 } from '@/lib/phone';
 import { readPages } from '@/lib/read-pages';
+import { addedButNotSent, SEND_FAILED, sendInvite } from '@/lib/send-invite';
 import { getSupabase } from '@/lib/supabase';
 
 /**
  * A mentor's own invites.
  *
- * Unlike the administrator's tools next door, none of this goes through an
- * `admin_*` function. A mentor reads, issues and withdraws their own invites
- * against the `invites` table directly, because three policies already say
- * exactly that much and nothing more:
+ * Reading and withdrawing go straight to the `invites` table, because two
+ * policies already say exactly that much and nothing more:
  *
  *   mentors can see invites they sent          (select, own rows only)
- *   mentors can invite within their allowance  (insert, capped at MENTOR_ALLOWANCE live)
  *   mentors can revoke their own pending       (update, pending rows only)
  *
  * So there is no select filter on `invited_by_member_id` below and no
- * ownership check before withdrawing. Adding either would read as the
- * permission check, and it is not — the database is. See
- * supabase/tests/mentor-invites.sql, which runs every one of those policies as
- * a real mentor session.
+ * ownership check before withdrawing; the database is the permission check.
+ *
+ * Adding one is different since email sign-in: a client can no longer insert
+ * into `invites` at all. `create_my_invite` does it, with the same allowance
+ * rules the insert policy used to hold, and `send-invite` emails the link.
+ * supabase/tests/mentor-invites.sql runs all of it as a real mentor session.
  */
 
 export interface MentorInvite {
   id: string;
-  phone: string;
+  /** The address the link goes to; null on an invite made by phone before email sign-in. */
+  email: string | null;
+  /** Only on an old phone invite. */
+  phone: string | null;
   status: 'pending' | 'consumed' | 'revoked';
   note: string | null;
   createdAt: string;
+  sentAt: string | null;
 }
 
 interface MentorInviteRow {
   id: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   status: string;
   note: string | null;
   created_at: string;
+  sent_at: string | null;
 }
 
 /**
@@ -54,7 +59,7 @@ export async function fetchMyInvites(): Promise<
   const result = await readPages<MentorInviteRow>((from, to) =>
     getSupabase()
       .from('invites')
-      .select('id, phone, status, note, created_at')
+      .select('id, email, phone, status, note, created_at, sent_at')
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .range(from, to),
@@ -65,30 +70,50 @@ export async function fetchMyInvites(): Promise<
     ok: true,
     invites: (result.data ?? []).map((row) => ({
       id: row.id,
+      email: row.email,
       phone: row.phone,
       status: row.status as MentorInvite['status'],
       note: row.note,
       createdAt: row.created_at,
+      sentAt: row.sent_at,
     })),
   };
 }
 
+/**
+ * Adds an address and emails its link.
+ *
+ * Two steps, and the second can fail on its own: the invite is then on the
+ * list and spends a slot, so that comes back as `ok` with `sendError` set and
+ * the row shows Resend, rather than as a failure that would be answered by
+ * adding the same address again.
+ */
 export async function createMyInvite(input: {
-  phone: string;
-  memberId: string;
+  email: string;
   note: string | null;
   unlimited?: boolean;
-}): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await getSupabase()
-    .from('invites')
-    .insert({
-      phone_raw: toE164(input.phone) ?? input.phone,
-      invited_by_member_id: input.memberId,
-      note: input.note,
-    });
-  return error
-    ? { ok: false, error: describeFailure(error, 'The invite was not added.', input.unlimited) }
-    : { ok: true };
+}): Promise<{ ok: boolean; error?: string; sendError?: string }> {
+  // Not destructured: the client types rpc data as `any`.
+  const result = await getSupabase().rpc('create_my_invite', {
+    raw_email: input.email,
+    note: input.note,
+  });
+  if (result.error)
+    return {
+      ok: false,
+      error: describeFailure(result.error, 'The invite was not added.', input.unlimited),
+    };
+  const created: unknown = result.data;
+  const id = (created as { id?: unknown } | null)?.id;
+  if (typeof id !== 'string') return { ok: true, sendError: SEND_FAILED };
+  const sent = await sendInvite(id);
+  return sent.ok ? { ok: true } : { ok: true, sendError: addedButNotSent(sent.error) };
+}
+
+/** A new link to the same address; the old link stops working. */
+export async function resendMyInvite(id: string): Promise<{ ok: boolean; error?: string }> {
+  const sent = await sendInvite(id);
+  return sent.ok ? { ok: true } : { ok: false, error: sent.error };
 }
 
 /**
@@ -127,7 +152,7 @@ export function slotsLeft(invites: MentorInvite[]): number {
  * What an invite is doing, in English, for the person who sent it.
  *
  * Deliberately not the administrator's wording. `/admin` says "used by Dana"
- * because an administrator needs to know who is on a number; a mentor cannot
+ * because an administrator needs to know who is behind an address; a mentor cannot
  * read the roster and does not need to be told the name of somebody they
  * invited themselves.
  */
@@ -137,7 +162,7 @@ export function inviteState(invite: MentorInvite): string {
   return 'waiting for them to join';
 }
 
-/** Only a pending invite. Once somebody is on the number, removing them is an administrator's job. */
+/** Only a pending invite. Once somebody has joined on it, removing them is an administrator's job. */
 export function canWithdraw(invite: MentorInvite): boolean {
   return invite.status === 'pending';
 }
@@ -153,7 +178,7 @@ export function canWithdraw(invite: MentorInvite): boolean {
  * be read as "that number is taken", and a message that guessed would be
  * wrong exactly when a mentor was already confused.
  *
- * 23505 is invites_live_phone_idx — the number is on the list. It may be on it
+ * 23505 is the address already being on the list. It may be on it
  * because of somebody else's invite, which this mentor cannot see, so the
  * sentence says what is true without implying they put it there.
  *
@@ -165,9 +190,17 @@ export function describeFailure(
   attempt = 'The invite was not added.',
   unlimited = false,
 ): string {
-  return describeError(error, {
+  // create_my_invite refuses with its own sentence under the same 42501 the
+  // insert policy used. Its sentence is true but says nothing about the
+  // allowance, which is what a mentor is asking, so it is read as a policy
+  // refusal and gets this screen's words.
+  const refusal =
+    error.code === '42501' && /cannot add another invite/i.test(error.message)
+      ? { ...error, message: 'new row violates row-level security policy for table "invites"' }
+      : error;
+  return describeError(refusal, {
     attempt,
-    duplicate: 'That number is already on the club’s list.',
+    duplicate: 'That email address is already on the club’s list.',
     refused: unlimited
       ? 'You can no longer issue this invite. Your role or organization link may have changed.'
       : `You have used all ${MENTOR_ALLOWANCE} of your invites.`,

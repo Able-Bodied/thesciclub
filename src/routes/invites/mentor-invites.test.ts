@@ -17,10 +17,12 @@ vi.mock('@/lib/supabase', () => ({ getSupabase: () => pagedDatabase({ invites: r
 
 const invite = (o: Partial<MentorInvite> = {}): MentorInvite => ({
   id: 'i1',
-  phone: '14085550112',
+  email: 'friend@example.com',
+  phone: null,
   status: 'pending',
   note: null,
   createdAt: '2026-09-11T08:43:18Z',
+  sentAt: null,
   ...o,
 });
 
@@ -83,13 +85,13 @@ describe('explaining a refusal', () => {
     consoleError.mockRestore();
   });
 
-  it('names the number, not the allowance, when the number is taken', () => {
+  it('names the address, not the allowance, when the address is taken', () => {
     expect(
       describeFailure({
         code: '23505',
-        message: 'duplicate key value violates unique constraint "invites_live_phone_idx"',
+        message: 'That email address is already on the list',
       }),
-    ).toMatch(/already on the club’s list/);
+    ).toMatch(/email address is already on the club’s list/);
   });
 
   it('names the allowance when the policy refuses', () => {
@@ -125,10 +127,12 @@ describe('explaining a refusal', () => {
 it('reads the complete history for an account with more than a thousand invites', async () => {
   rows.invites = Array.from({ length: 1005 }, (_, index) => ({
     id: `invite-${index}`,
-    phone: '19990009999',
+    email: `friend${index}@example.com`,
+    phone: null,
     status: 'pending',
     note: null,
     created_at: '2026-10-09T10:00:00Z',
+    sent_at: null,
   }));
   const result = await fetchMyInvites();
   expect(result.ok && result.invites.length).toBe(1005);

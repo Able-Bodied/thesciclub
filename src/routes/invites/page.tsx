@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { useAccount } from '@/lib/account';
+import { looksLikeEmail } from '@/lib/auth-email';
 import { describeThrown } from '@/lib/describe-error';
 import { useInvitePermissions } from '@/lib/invite-permissions';
-import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import {
   canWithdraw,
   createMyInvite,
@@ -13,6 +13,7 @@ import {
   inviteState,
   MENTOR_ALLOWANCE,
   type MentorInvite,
+  resendMyInvite,
   slotsLeft,
   withdrawMyInvite,
 } from '@/routes/invites/mentor-invites';
@@ -20,17 +21,14 @@ import {
 /**
  * A mentor's invites.
  *
- * CONTEXT.md has promised since the beginning that a mentor can put two
- * numbers on the club's list, and the database has enforced exactly two since
- * the first invites migration. Until this screen there was nowhere to do it:
- * `/admin` was the only invite surface and an ordinary mentor cannot reach it,
- * so the Invites card on Me stated the allowance and then offered no way to
- * spend it.
+ * A mentor invites by email address. The club emails them a link; whoever
+ * opens it while signed in takes the invite, whatever address they signed up
+ * with.
  *
- * Nothing here decides who may invite. The three mentor policies do, and
- * supabase/tests/mentor-invites.sql runs them as a real mentor session. What
- * this screen owes a member is that the database's answer arrives as a
- * sentence rather than as a constraint name.
+ * Nothing here decides who may invite. `create_my_invite` and the mentor
+ * policies do, and supabase/tests/mentor-invites.sql runs them as a real
+ * mentor session. What this screen owes a member is that the database's
+ * answer arrives as a sentence rather than as a constraint name.
  */
 
 /** Formatted the way the club writes numbers back to people: +1 (408) 555-0112. */
@@ -45,11 +43,12 @@ export default function InvitesPage() {
   const userId = account.status === 'member' ? account.userId : null;
   const permissions = useInvitePermissions(userId);
   const [invites, setInvites] = useState<MentorInvite[]>([]);
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const result = await fetchMyInvites();
@@ -87,7 +86,7 @@ export default function InvitesPage() {
   if (!permissions.canInvite) return <Navigate to="/me" replace />;
 
   const left = permissions.unlimited ? Infinity : slotsLeft(invites);
-  const ready = isCompletePhone(phone) && left > 0 && userId !== null;
+  const ready = looksLikeEmail(email) && left > 0 && userId !== null;
 
   /**
    * Deliberately not async: these are handed to onClick, which expects void,
@@ -96,6 +95,7 @@ export default function InvitesPage() {
    */
   function act(id: string, run: () => Promise<{ ok: boolean; error?: string }>) {
     setBusyId(id);
+    setNotice(null);
     run()
       .then(async (result) => {
         if (!result.ok) {
@@ -115,16 +115,18 @@ export default function InvitesPage() {
 
   function add() {
     if (!userId) return;
+    const address = email.trim();
     act('new', async () => {
       const result = await createMyInvite({
-        phone,
-        memberId: userId,
+        email: address,
         note: note.trim() || null,
         ...(permissions.unlimited ? { unlimited: true } : {}),
       });
       if (result.ok) {
-        setPhone('');
+        setEmail('');
         setNote('');
+        // On the list, but the email did not go: say so, and the row has Resend.
+        setNotice(result.sendError ?? `The link is on its way to ${address}.`);
       }
       return result;
     });
@@ -162,18 +164,24 @@ export default function InvitesPage() {
             </p>
           ) : null}
 
-          {/* Stated before the form, not after a refusal. Somebody typing a
-              number deserves to know the invite is the whole of it — the club
-              does not send the message, and nothing arrives until the person
-              downloads the app and verifies that number themselves. */}
+          {notice ? (
+            <p
+              role="status"
+              className="mb-3 rounded-[11px] border border-line bg-paper px-3 py-2.5 text-[0.8125rem] text-ink leading-[1.45]"
+            >
+              {notice}
+            </p>
+          ) : null}
+
+          {/* Stated before the form, not after a refusal. */}
           <div className="rounded-[14px] border border-line bg-paper p-3.5">
             <div className="flex items-start gap-2.5">
               <span className="grid h-[34px] w-[34px] flex-none place-items-center rounded-[11px] bg-tint text-emphasis">
                 <Mail className="h-4 w-4" />
               </span>
               <p className="min-w-0 flex-1 text-[0.78125rem] text-ink2 leading-[1.45]">
-                Adding a number puts it on the club's list. The club does not text them — tell them
-                yourself, and they join by verifying that number in the app.
+                The club emails them a link to join. You may want to tell them to look for it, and
+                in their spam folder. Anyone who opens the link while signed in takes the invite.
               </p>
             </div>
 
@@ -189,20 +197,22 @@ export default function InvitesPage() {
 
             <div className="mt-3">
               <label
-                htmlFor="mentor-invite-phone"
+                htmlFor="mentor-invite-email"
                 className="block font-bold text-[0.75rem] text-ink"
               >
-                Phone number
+                Email address
               </label>
               <input
-                id="mentor-invite-phone"
-                type="tel"
-                inputMode="tel"
-                placeholder="(408) 555-0112"
-                value={phone}
+                id="mentor-invite-email"
+                type="email"
+                inputMode="email"
+                autoComplete="off"
+                autoCapitalize="none"
+                placeholder="name@example.com"
+                value={email}
                 disabled={left === 0}
                 onChange={(e) => {
-                  setPhone(formatPhoneInput(e.target.value));
+                  setEmail(e.target.value);
                 }}
                 className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
               />
@@ -233,19 +243,19 @@ export default function InvitesPage() {
               onClick={add}
               className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[11px] bg-action font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
             >
-              {busyId === 'new' ? 'Adding…' : 'Add to the list'}
+              {busyId === 'new' ? 'Adding…' : 'Add and send the link'}
             </button>
           </div>
 
           <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-            Numbers you have added
+            People you have invited
           </h2>
 
           {loading ? (
             <p className="py-8 text-center text-[0.875rem] text-grey">Loading your invites…</p>
           ) : invites.length === 0 ? (
             <p className="rounded-[14px] border border-line bg-paper px-3.5 py-6 text-center text-[0.875rem] text-grey leading-[1.5]">
-              You have not added anybody yet.
+              You have not invited anybody yet.
             </p>
           ) : (
             <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
@@ -256,13 +266,31 @@ export default function InvitesPage() {
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
-                      {displayPhone(invite.phone)}
+                      {invite.email ?? (invite.phone ? displayPhone(invite.phone) : 'Unknown')}
                     </span>
                     <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.45]">
                       {inviteState(invite)}
+                      {invite.status === 'pending' && invite.email
+                        ? invite.sentAt
+                          ? ' · link sent'
+                          : ' · link not sent yet'
+                        : ''}
+                      {invite.email === null ? ' · phone invite (old)' : ''}
                       {invite.note ? ` · ${invite.note}` : ''}
                     </span>
                   </span>
+                  {canWithdraw(invite) && invite.email ? (
+                    <button
+                      type="button"
+                      disabled={busyId !== null}
+                      onClick={() => {
+                        act(invite.id, () => resendMyInvite(invite.id));
+                      }}
+                      className="min-h-[40px] flex-none rounded-full bg-tint px-3.5 font-bold font-head text-[0.8125rem] text-emphasis disabled:opacity-40"
+                    >
+                      Resend link
+                    </button>
+                  ) : null}
                   {canWithdraw(invite) ? (
                     <button
                       type="button"

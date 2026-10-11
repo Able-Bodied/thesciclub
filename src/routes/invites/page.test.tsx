@@ -12,6 +12,8 @@ const api = vi.hoisted(() => ({
   invites: [] as MentorInvite[],
   created: [] as unknown[],
   withdrawn: [] as string[],
+  resent: [] as string[],
+  sendError: null as string | null,
   failWith: null as string | null,
 }));
 
@@ -51,6 +53,11 @@ vi.mock('@/routes/invites/mentor-invites', async (importOriginal) => ({
   createMyInvite: (input: unknown) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
     api.created.push(input);
+    return Promise.resolve(api.sendError ? { ok: true, sendError: api.sendError } : { ok: true });
+  },
+  resendMyInvite: (id: string) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.resent.push(id);
     return Promise.resolve({ ok: true });
   },
   withdrawMyInvite: (id: string) => {
@@ -65,10 +72,12 @@ const { default: InvitesPage } = await import('@/routes/invites/page');
 
 const invite = (o: Partial<MentorInvite> = {}): MentorInvite => ({
   id: 'i1',
-  phone: '14085550112',
+  email: 'friend@example.com',
+  phone: null,
   status: 'pending',
   note: null,
   createdAt: '2026-09-11T08:43:18Z',
+  sentAt: '2026-09-11T08:44:00Z',
   ...o,
 });
 
@@ -92,6 +101,8 @@ beforeEach(() => {
   api.invites = [];
   api.created = [];
   api.withdrawn = [];
+  api.resent = [];
+  api.sendError = null;
   api.failWith = null;
 });
 
@@ -133,7 +144,7 @@ describe('the allowance on screen', () => {
   it('says they are all free before a mentor has added anybody', async () => {
     renderInvites();
     expect(await screen.findByText(allFree)).toBeInTheDocument();
-    expect(screen.getByText('You have not added anybody yet.')).toBeInTheDocument();
+    expect(screen.getByText('You have not invited anybody yet.')).toBeInTheDocument();
   });
 
   // The counting rule that matters: somebody who joined is still spending the
@@ -156,7 +167,7 @@ describe('the allowance on screen', () => {
     expect(
       await screen.findByText(new RegExp(`All ${MENTOR_ALLOWANCE} of your invites are in use`)),
     ).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('(408) 555-0112')).toBeDisabled();
+    expect(screen.getByLabelText('Email address')).toBeDisabled();
   });
 
   it('frees the slot again once an invite is withdrawn', async () => {
@@ -166,30 +177,51 @@ describe('the allowance on screen', () => {
   });
 });
 
-describe('adding a number', () => {
-  it('sends the number and the mentor’s own id, and clears the form', async () => {
+describe('inviting by email', () => {
+  it('sends the address and the note, and clears the form', async () => {
     const user = userEvent.setup();
     renderInvites();
     await screen.findByText(allFree);
 
-    await user.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await user.type(screen.getByLabelText('Email address'), 'dana@example.com');
     await user.type(screen.getByPlaceholderText('Met at rugby practice'), 'Rugby');
-    await user.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await user.click(screen.getByRole('button', { name: 'Add and send the link' }));
 
     await waitFor(() => {
-      expect(api.created).toEqual([{ phone: '(408) 555-0112', memberId: 'me', note: 'Rugby' }]);
+      expect(api.created).toEqual([{ email: 'dana@example.com', note: 'Rugby' }]);
     });
-    expect(screen.getByPlaceholderText('(408) 555-0112')).toHaveValue('');
+    expect(screen.getByLabelText('Email address')).toHaveValue('');
+    expect(await screen.findByText(/on its way to dana@example.com/)).toBeInTheDocument();
   });
 
-  it('will not submit half a phone number', async () => {
+  it('has no phone field', async () => {
+    renderInvites();
+    await screen.findByText(allFree);
+    expect(screen.queryByLabelText(/Phone number/)).toBeNull();
+  });
+
+  it('will not submit something that is not an address', async () => {
     const user = userEvent.setup();
     renderInvites();
     await screen.findByText(allFree);
 
-    await user.type(screen.getByPlaceholderText('(408) 555-0112'), '408555');
-    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeDisabled();
+    await user.type(screen.getByLabelText('Email address'), 'dana@');
+    expect(screen.getByRole('button', { name: 'Add and send the link' })).toBeDisabled();
     expect(api.created).toEqual([]);
+  });
+
+  // On the list and spending a slot, but the email did not go. Said as it is,
+  // so the mentor uses Resend rather than adding the address a second time.
+  it('says so when the invite is on the list but the email did not go', async () => {
+    const user = userEvent.setup();
+    api.sendError = 'The email service did not take it. Try again in a minute.';
+    renderInvites();
+    await screen.findByText(allFree);
+
+    await user.type(screen.getByLabelText('Email address'), 'dana@example.com');
+    await user.click(screen.getByRole('button', { name: 'Add and send the link' }));
+
+    expect(await screen.findByText(/did not take it/)).toBeInTheDocument();
   });
 
   // Whatever the database said, verbatim. The two refusals a mentor can
@@ -197,29 +229,29 @@ describe('adding a number', () => {
   // would flatten them back together.
   it('shows the refusal it was given', async () => {
     const user = userEvent.setup();
-    api.failWith = 'That number is already on the club’s list.';
+    api.failWith = 'That email address is already on the club’s list.';
     renderInvites();
     await screen.findByText(allFree);
 
-    await user.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-    await user.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await user.type(screen.getByLabelText('Email address'), 'dana@example.com');
+    await user.click(screen.getByRole('button', { name: 'Add and send the link' }));
 
     expect(
-      await screen.findByText('That number is already on the club’s list.'),
+      await screen.findByText('That email address is already on the club’s list.'),
     ).toBeInTheDocument();
   });
 });
 
 describe('the list', () => {
-  it('offers Withdraw while nobody is on the number, and not after', async () => {
+  it('offers Withdraw while nobody has joined on it, and not after', async () => {
     api.invites = [
-      invite({ id: 'waiting', phone: '14085550112' }),
-      invite({ id: 'joined', phone: '14085550113', status: 'consumed' }),
+      invite({ id: 'waiting', email: 'waiting@example.com' }),
+      invite({ id: 'joined', email: 'joined@example.com', status: 'consumed' }),
     ];
     renderInvites();
 
-    const waiting = (await screen.findByText('(408) 555-0112')).closest('li');
-    const joined = screen.getByText('(408) 555-0113').closest('li');
+    const waiting = (await screen.findByText('waiting@example.com')).closest('li');
+    const joined = screen.getByText('joined@example.com').closest('li');
     expect(waiting).not.toBeNull();
     expect(joined).not.toBeNull();
     expect(within(waiting as HTMLElement).getByRole('button', { name: 'Withdraw' })).toBeEnabled();
@@ -236,18 +268,61 @@ describe('the list', () => {
   it('withdraws the row the button belongs to', async () => {
     const user = userEvent.setup();
     api.invites = [
-      invite({ id: 'i1', phone: '14085550112' }),
-      invite({ id: 'i2', phone: '14085550113' }),
+      invite({ id: 'i1', email: 'one@example.com' }),
+      invite({ id: 'i2', email: 'two@example.com' }),
     ];
     renderInvites();
 
-    const row = (await screen.findByText('(408) 555-0113')).closest('li');
+    const row = (await screen.findByText('two@example.com')).closest('li');
     await user.click(within(row as HTMLElement).getByRole('button', { name: 'Withdraw' }));
 
     await waitFor(() => {
       expect(api.withdrawn).toEqual(['i2']);
     });
     expect(await screen.findByText('withdrawn')).toBeInTheDocument();
+  });
+
+  it('sends the link again for the row the button belongs to', async () => {
+    const user = userEvent.setup();
+    api.invites = [
+      invite({ id: 'i1', email: 'one@example.com' }),
+      invite({ id: 'i2', email: 'two@example.com' }),
+    ];
+    renderInvites();
+
+    const row = (await screen.findByText('two@example.com')).closest('li');
+    await user.click(within(row as HTMLElement).getByRole('button', { name: 'Resend link' }));
+    await waitFor(() => {
+      expect(api.resent).toEqual(['i2']);
+    });
+  });
+
+  it('offers no resend on a used or withdrawn invite', async () => {
+    api.invites = [
+      invite({ id: 'u', email: 'used@example.com', status: 'consumed' }),
+      invite({ id: 'r', email: 'gone@example.com', status: 'revoked' }),
+    ];
+    renderInvites();
+    await screen.findByText('used@example.com');
+    expect(screen.queryByRole('button', { name: 'Resend link' })).toBeNull();
+  });
+
+  it('says whether the link has gone out', async () => {
+    api.invites = [
+      invite({ id: 'a', email: 'unsent@example.com', sentAt: null }),
+      invite({ id: 'b', email: 'sent@example.com' }),
+    ];
+    renderInvites();
+    expect(await screen.findByText(/link not sent yet/)).toBeInTheDocument();
+    expect(screen.getByText(/link sent/)).toBeInTheDocument();
+  });
+
+  it('shows an old phone invite as one, with a formatted number', async () => {
+    api.invites = [invite({ email: null, phone: '14085550112' })];
+    renderInvites();
+    expect(await screen.findByText('(408) 555-0112')).toBeInTheDocument();
+    expect(screen.getByText(/phone invite \(old\)/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Resend link' })).toBeNull();
   });
 });
 
@@ -262,8 +337,8 @@ describe('unlimited invites', () => {
       renderInvites();
       expect(await screen.findByText('You can invite people without a limit.')).toBeInTheDocument();
       expect(screen.queryByText(/of your 10|All 10/)).toBeNull();
-      await userEvent.type(screen.getByLabelText(/Phone number/), '9990009101');
-      const send = screen.getByRole('button', { name: /Add.*list|Add invite|Invite them/i });
+      await userEvent.type(screen.getByLabelText(/Email address/), 'dana@example.com');
+      const send = screen.getByRole('button', { name: 'Add and send the link' });
       expect(send).toBeEnabled();
       await userEvent.click(send);
       await waitFor(() => {
