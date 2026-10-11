@@ -635,6 +635,6 @@ Accounts:
 - **Email deliverability.** Gmail may file the first sends as spam until the
   domain has a reputation. The "Check your email" screen says to look in spam,
   and has a resend button with a 60-second wait.
-- **Someone signed out before adding an email** can still use their fixed
-  phone code while Phone stays on. After that, the owner sets their email with
-  the script.
+- **Someone signed out before adding an email** has no phone screen to go
+  back to. The owner sets their email with `set-member-email.mjs`, and they
+  use Forgot password.

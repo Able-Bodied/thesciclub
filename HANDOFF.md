@@ -93,8 +93,8 @@ the product definition and wins over this file.
    Google, Apple and passkeys; invites go by email. The plan, its decisions
    and its workstreams are in `EMAIL-SIGN-IN-PLAN.md`; nothing is built yet.
    Until it ships, members still sign in with fixed codes (dashboard:
-   Authentication → Sign In / Providers → Phone → Test phone numbers), and
-   Phone stays on until every existing account has a confirmed email.
+   Authentication → Sign In / Providers → Phone → Test phone numbers). After
+   the release the app has no phone screen; see the plan for the way back in.
 3. **Supabase free plan**: pauses after a quiet week, small limits, **no
    backups**. Move to the paid tier (daily backups) and test a restore before
    real members arrive.
