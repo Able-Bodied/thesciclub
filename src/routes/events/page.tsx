@@ -1,6 +1,7 @@
 import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -188,10 +189,13 @@ export default function EventsPage() {
     return organizations.filter((organization) => hosting.has(organization.id));
   }, [organizations, inSegment]);
 
+  const { askForPhone, sheet: phoneSheet } = useGoingPhoneSheet(memberId);
   const onRsvp = useCallback(
     (eventId: string, next: RsvpStatus | null) => {
       if (!memberId) return;
       setWriteError(null);
+      // The RSVP goes through whatever is answered; the sheet only asks.
+      if (next === 'going') askForPhone();
       void setRsvp(eventId, memberId, next).then((result) => {
         // Re-read rather than patching local state: the tallies on every card
         // come from the database, and a local edit would leave the number and
@@ -202,7 +206,7 @@ export default function EventsPage() {
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, announce],
+    [memberId, viewer, announce, askForPhone],
   );
 
   // The RSVP choice lives in the URL (as the segment) but is one of the
@@ -389,6 +393,7 @@ export default function EventsPage() {
           }}
         />
       ) : null}
+      {phoneSheet}
     </div>
   );
 }

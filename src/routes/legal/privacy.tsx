@@ -139,7 +139,7 @@ export default function PrivacyPage() {
 
       {/* The owner's practice, 2026-10-08: hosts receive the numbers of the
           members going to their event. The Going button says so before it is
-          pressed (GOING_SHARES_NUMBER in events/event-card.tsx); keep the two
+          pressed (GOING_SHARES_CONTACT in events/event-card.tsx); keep the two
           in step. */}
       <Section title="Event hosts">
         <P>

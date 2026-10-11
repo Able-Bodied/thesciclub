@@ -1,6 +1,7 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
 import { useCallback, useId, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import {
@@ -18,7 +19,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
-import { GOING_SHARES_NUMBER } from '@/routes/events/event-card';
+import { GOING_SHARES_CONTACT } from '@/routes/events/event-card';
 import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
@@ -60,10 +61,13 @@ export default function EventDetailPage() {
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
 
+  const { askForPhone, sheet: phoneSheet } = useGoingPhoneSheet(memberId);
   const onRsvp = useCallback(
     (next: RsvpStatus | null) => {
       if (!memberId || !id) return;
       setWriteError(null);
+      // The RSVP goes through whatever is answered; the sheet only asks.
+      if (next === 'going') askForPhone();
       void setRsvp(id, memberId, next).then((result) => {
         if (result.ok) {
           viewer.reload();
@@ -71,7 +75,7 @@ export default function EventDetailPage() {
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, id, viewer, announce],
+    [memberId, id, viewer, announce, askForPhone],
   );
 
   if (loading) {
@@ -129,208 +133,211 @@ export default function EventDetailPage() {
   const canChange = account.status === 'member' && mayChangeEvent(event, account.isAdmin, mine.ids);
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
-        <div className="mx-auto w-full max-w-[var(--events-measure)]">
-          <button
-            type="button"
-            onClick={() => {
-              void navigate(back);
-            }}
-            className="block pb-3 text-[#B9CADF] text-[0.875rem]"
-          >
-            ← {backLabel(location)}
-          </button>
+    <>
+      <div className="flex-1 overflow-y-auto">
+        <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
+          <div className="mx-auto w-full max-w-[var(--events-measure)]">
+            <button
+              type="button"
+              onClick={() => {
+                void navigate(back);
+              }}
+              className="block pb-3 text-[#B9CADF] text-[0.875rem]"
+            >
+              ← {backLabel(location)}
+            </button>
 
-          <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
+            <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
 
-          {/* A calendar, because the line is a date. This was a map pin, which
+            {/* A calendar, because the line is a date. This was a map pin, which
               says "place" in front of text that says "Friday 11 September". */}
-          <div className="flex items-center gap-1.5 font-bold text-gold-hi text-[0.71875rem] uppercase tracking-[0.07em]">
-            <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
-            <span>{longWhen(event.startTime, event.timezone)}</span>
-          </div>
-
-          <h1 className="mt-2 font-extrabold font-display text-[1.4375rem] leading-[1.28] tracking-[-0.01em]">
-            {event.title}
-          </h1>
-
-          <p className="mt-1.5 text-[#B9CADF] text-[0.8125rem] leading-[1.42]">
-            {[timeRange(event.startTime, event.endTime, event.timezone), placeLine(event)]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-
-          {isOnline(event) || event.tags.length ? (
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {isOnline(event) ? (
-                <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-gold-hi text-[0.7375rem]">
-                  {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
-                </span>
-              ) : null}
-              {event.tags.map((tag) => (
-                <span
-                  key={tag.slug}
-                  className="rounded-full bg-plate-chip px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
-                >
-                  {tag.name}
-                </span>
-              ))}
+            <div className="flex items-center gap-1.5 font-bold text-gold-hi text-[0.71875rem] uppercase tracking-[0.07em]">
+              <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
+              <span>{longWhen(event.startTime, event.timezone)}</span>
             </div>
-          ) : null}
 
-          {/* No RSVP on an event that is over. The list stopped offering it when
+            <h1 className="mt-2 font-extrabold font-display text-[1.4375rem] leading-[1.28] tracking-[-0.01em]">
+              {event.title}
+            </h1>
+
+            <p className="mt-1.5 text-[#B9CADF] text-[0.8125rem] leading-[1.42]">
+              {[timeRange(event.startTime, event.endTime, event.timezone), placeLine(event)]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+
+            {isOnline(event) || event.tags.length ? (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {isOnline(event) ? (
+                  <span className="rounded-full bg-[#3A2F12] px-2.5 py-[5px] font-semibold text-gold-hi text-[0.7375rem]">
+                    {event.format === 'hybrid' ? 'Hybrid' : 'Online'}
+                  </span>
+                ) : null}
+                {event.tags.map((tag) => (
+                  <span
+                    key={tag.slug}
+                    className="rounded-full bg-plate-chip px-2.5 py-[5px] font-semibold text-[#DDE7F3] text-[0.7375rem]"
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {/* No RSVP on an event that is over. The list stopped offering it when
               past events became lines rather than cards; this screen kept
               offering it, so the same finished evening answered two different
               ways depending on how you arrived at it. What a member came here
               for afterwards is the description and the link, and those are
               below. */}
-          {isPastEvent(event) ? (
-            <p className="mt-[15px] text-[0.8125rem] text-[#9FB3CD] leading-[1.45]">
-              {going
-                ? 'You said you were going to this.'
-                : interested
-                  ? 'You were interested in this.'
-                  : 'This has already happened.'}
-            </p>
-          ) : (
-            <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
-              <button
-                type="button"
-                onClick={() => {
-                  onRsvp(going ? null : 'going');
-                }}
-                aria-pressed={going}
-                aria-describedby={goingNote}
-                className={cn(
-                  'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
-                  going
-                    ? 'bg-tint text-emphasis hover:bg-line'
-                    : 'bg-gold text-on-gold hover:bg-gold-hi',
-                )}
-              >
-                {going ? 'Going ✓' : 'Going'}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onRsvp(interested ? null : 'interested');
-                }}
-                aria-pressed={interested}
-                className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-plate-edge font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-plate-hover"
-              >
-                {interested ? 'Interested ✓' : 'Interested'}
-              </button>
-              <p
-                id={goingNote}
-                className="col-span-2 text-[0.78125rem] text-[#B9CADF] leading-[1.45]"
-              >
-                {GOING_SHARES_NUMBER}
+            {isPastEvent(event) ? (
+              <p className="mt-[15px] text-[0.8125rem] text-[#9FB3CD] leading-[1.45]">
+                {going
+                  ? 'You said you were going to this.'
+                  : interested
+                    ? 'You were interested in this.'
+                    : 'This has already happened.'}
               </p>
-            </div>
-          )}
+            ) : (
+              <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRsvp(going ? null : 'going');
+                  }}
+                  aria-pressed={going}
+                  aria-describedby={goingNote}
+                  className={cn(
+                    'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
+                    going
+                      ? 'bg-tint text-emphasis hover:bg-line'
+                      : 'bg-gold text-on-gold hover:bg-gold-hi',
+                  )}
+                >
+                  {going ? 'Going ✓' : 'Going'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRsvp(interested ? null : 'interested');
+                  }}
+                  aria-pressed={interested}
+                  className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-plate-edge font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-plate-hover"
+                >
+                  {interested ? 'Interested ✓' : 'Interested'}
+                </button>
+                <p
+                  id={goingNote}
+                  className="col-span-2 text-[0.78125rem] text-[#B9CADF] leading-[1.45]"
+                >
+                  {GOING_SHARES_CONTACT}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
-        {writeError ? (
-          <p className="mt-3 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
-            {writeError}
-          </p>
-        ) : null}
+        <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
+          {writeError ? (
+            <p className="mt-3 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
+              {writeError}
+            </p>
+          ) : null}
 
-        <EventDescription
-          html={event.descriptionHtml}
-          text={event.description}
-          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_ul]:mt-2 [&_ul]:list-disc"
-        />
+          <EventDescription
+            html={event.descriptionHtml}
+            text={event.description}
+            className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_ul]:mt-2 [&_ul]:list-disc"
+          />
 
-        {registerHref || pageHref ? (
-          <a
-            href={registerHref ?? pageHref ?? undefined}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
-          >
-            {registerHref ? 'Register' : 'Details on their site'}
-            <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
-          </a>
-        ) : null}
+          {registerHref || pageHref ? (
+            <a
+              href={registerHref ?? pageHref ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
+            >
+              {registerHref ? 'Register' : 'Details on their site'}
+              <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
+            </a>
+          ) : null}
 
-        {/* Where the mock puts a group chat, and now what it puts there.
+          {/* Where the mock puts a group chat, and now what it puts there.
             Members only: the read behind it is the viewer's own conversation
             list, and an event page is the one surface that is public. */}
-        {memberId ? (
-          <EventGroupCard eventId={event.id} going={going} past={isPastEvent(event)} />
-        ) : null}
+          {memberId ? (
+            <EventGroupCard eventId={event.id} going={going} past={isPastEvent(event)} />
+          ) : null}
 
-        <AttendeeSection
-          title="Going"
-          attendees={goingList}
-          // The tally counts everyone; this list only names members who let
-          // themselves be browsed, so it can legitimately be shorter.
-          total={event.goingCount}
-          onOpen={(memberId) => {
-            void navigate(`/peers/${memberId}`);
-          }}
-        />
-        <AttendeeSection
-          title="Interested"
-          attendees={interestedList}
-          total={event.interestedCount}
-          onOpen={(memberId) => {
-            void navigate(`/peers/${memberId}`);
-          }}
-        />
-
-        {host ? (
-          <>
-            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-              Hosted by
-            </h2>
-            {organization ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate(`/events/organizations/${organization.id}`);
-                }}
-                className="flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
-              >
-                <OrganizationBadge organization={organization} />
-                <span className="min-w-0 flex-1">
-                  <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
-                    {organization.name}
-                  </span>
-                  <span className="block text-[0.78125rem] text-grey">{organization.city}</span>
-                </span>
-                <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
-              </button>
-            ) : (
-              // A host from the feed that the club has no organization for. Not
-              // a link, because there is no page to go to — pretending
-              // otherwise is a dead end wearing a chevron.
-              <p className="rounded-[14px] border border-line bg-paper p-3.5 text-[0.90625rem] text-ink">
-                {host}
-              </p>
-            )}
-          </>
-        ) : null}
-
-        {canChange ? (
-          <ChangeEvent
-            eventId={event.id}
-            going={event.goingCount}
-            repeats={event.seriesId !== null}
-            onDeleted={(later) => {
-              announce(
-                later ? 'This date and the later ones are deleted.' : 'The event is deleted.',
-              );
-              void navigate('/events', { replace: true });
+          <AttendeeSection
+            title="Going"
+            attendees={goingList}
+            // The tally counts everyone; this list only names members who let
+            // themselves be browsed, so it can legitimately be shorter.
+            total={event.goingCount}
+            onOpen={(memberId) => {
+              void navigate(`/peers/${memberId}`);
             }}
           />
-        ) : null}
+          <AttendeeSection
+            title="Interested"
+            attendees={interestedList}
+            total={event.interestedCount}
+            onOpen={(memberId) => {
+              void navigate(`/peers/${memberId}`);
+            }}
+          />
+
+          {host ? (
+            <>
+              <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+                Hosted by
+              </h2>
+              {organization ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigate(`/events/organizations/${organization.id}`);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 text-left"
+                >
+                  <OrganizationBadge organization={organization} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
+                      {organization.name}
+                    </span>
+                    <span className="block text-[0.78125rem] text-grey">{organization.city}</span>
+                  </span>
+                  <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
+                </button>
+              ) : (
+                // A host from the feed that the club has no organization for. Not
+                // a link, because there is no page to go to — pretending
+                // otherwise is a dead end wearing a chevron.
+                <p className="rounded-[14px] border border-line bg-paper p-3.5 text-[0.90625rem] text-ink">
+                  {host}
+                </p>
+              )}
+            </>
+          ) : null}
+
+          {canChange ? (
+            <ChangeEvent
+              eventId={event.id}
+              going={event.goingCount}
+              repeats={event.seriesId !== null}
+              onDeleted={(later) => {
+                announce(
+                  later ? 'This date and the later ones are deleted.' : 'The event is deleted.',
+                );
+                void navigate('/events', { replace: true });
+              }}
+            />
+          ) : null}
+        </div>
       </div>
-    </div>
+      {phoneSheet}
+    </>
   );
 }
 

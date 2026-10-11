@@ -1,6 +1,7 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { NotificationBell } from '@/components/notification-bell';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAnnounce } from '@/lib/announce';
@@ -215,10 +216,13 @@ export default function HomePage() {
   );
   const filterCount = activeFilterCount(filters);
 
+  const { askForPhone, sheet: phoneSheet } = useGoingPhoneSheet(memberId);
   const onRsvp = useCallback(
     (eventId: string, next: RsvpStatus | null) => {
       if (!memberId) return;
       setWriteError(null);
+      // The RSVP goes through whatever is answered; the sheet only asks.
+      if (next === 'going') askForPhone();
       void setRsvp(eventId, memberId, next).then((result) => {
         // Re-read rather than patch, as Events does: the tallies come from
         // the database, and a local edit would leave the number and the
@@ -229,7 +233,7 @@ export default function HomePage() {
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, announce],
+    [memberId, viewer, announce, askForPhone],
   );
 
   /** A standing opener keeps its Like visible while the real count loads. */
@@ -425,6 +429,7 @@ export default function HomePage() {
           }}
         />
       ) : null}
+      {phoneSheet}
     </div>
   );
 }

@@ -46,10 +46,10 @@ describe('EventCard', () => {
     // The owner, 2026-10-08: the host receives the numbers of members going,
     // so the button says so before it is pressed, to the eye and to a screen
     // reader alike.
-    it('says beside Going that the host gets your number, and the button carries it', () => {
+    it('says beside Going that the host gets your email, and your number if you gave one, and the button carries it', () => {
       renderCard({ status: null });
       expect(screen.getByRole('button', { name: 'Going' })).toHaveAccessibleDescription(
-        'Going shares your phone number with the host, for this event only.',
+        'Going shares your email, and your phone number if you’ve added one, with the host, for this event only.',
       );
     });
 

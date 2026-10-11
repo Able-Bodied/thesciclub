@@ -85,13 +85,14 @@ export interface EventCardProps {
 }
 
 /**
- * Said beside every Going button, before it is pressed (the owner, 2026-10-08):
- * an event's host receives the phone numbers of the members going, for that
- * event only. The Privacy Policy's "Event hosts" says the same at length; keep
- * the two in step.
+ * Said beside every Going button, before it is pressed (the owner, 2026-10-08,
+ * and 2026-10-10 once the email address became the account): an event's host
+ * receives the email address of the members going, and the phone number of
+ * those who gave one, for that event only. The Privacy Policy's "Event hosts"
+ * says the same at length; keep the two in step.
  */
-export const GOING_SHARES_NUMBER =
-  'Going shares your phone number with the host, for this event only.';
+export const GOING_SHARES_CONTACT =
+  'Going shares your email, and your phone number if you’ve added one, with the host, for this event only.';
 
 export function EventCard({
   event,
@@ -323,7 +324,7 @@ export function EventCard({
         </button>
       </div>
       <p id={goingNote} className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
-        {GOING_SHARES_NUMBER}
+        {GOING_SHARES_CONTACT}
       </p>
 
       {footer ? <div className="mt-2.5 border-line border-t pt-1">{footer}</div> : null}

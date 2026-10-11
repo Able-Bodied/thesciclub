@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ChatGroups from '@/lib/chat/groups';
 import type * as Threads from '@/lib/chat/threads';
+import type * as EventPhone from '@/lib/event-phone';
 import type * as Events from '@/lib/events';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
@@ -19,6 +20,15 @@ const state = vi.hoisted(() => ({
   reload: vi.fn(),
   threads: [] as { id: string; eventId: string | null }[],
   joinEventGroup: vi.fn(),
+  /** The number on file for the member: null for none. */
+  phone: null as string | null,
+}));
+
+// What the Going sheet reads; the sheet itself is tested in
+// src/components/going-phone-sheet.test.tsx. Here it is whether the page opens it.
+vi.mock('@/lib/event-phone', async (importOriginal) => ({
+  ...(await importOriginal<typeof EventPhone>()),
+  loadOwnPhone: () => Promise.resolve({ ok: true, phone: state.phone }),
 }));
 
 vi.mock('@/lib/events', async (importOriginal) => ({
@@ -121,6 +131,8 @@ beforeEach(() => {
   state.reload = vi.fn();
   state.threads = [];
   state.joinEventGroup = vi.fn().mockResolvedValue({ ok: true, value: 'th-ev' });
+  state.phone = null;
+  window.sessionStorage.clear();
 });
 
 describe('EventDetailPage', () => {
@@ -148,10 +160,10 @@ describe('EventDetailPage', () => {
       state.events = [makeEvent({ id: 'rugby', startTime: aheadByDays(21) })];
     });
 
-    it('says beside Going that the host gets your number, before it is pressed', () => {
+    it('says beside Going that the host gets your email, and your number if you gave one, before it is pressed', () => {
       renderDetail();
       expect(screen.getByRole('button', { name: 'Going' })).toHaveAccessibleDescription(
-        'Going shares your phone number with the host, for this event only.',
+        'Going shares your email, and your phone number if you’ve added one, with the host, for this event only.',
       );
     });
 
@@ -159,6 +171,41 @@ describe('EventDetailPage', () => {
       renderDetail();
       await userEvent.click(screen.getByRole('button', { name: 'Going' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
+    });
+
+    describe('with no phone number on file', () => {
+      it('saves the RSVP and asks for a number beside it', async () => {
+        renderDetail();
+        await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+        expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+      });
+
+      it('does not ask when the member only says Interested', async () => {
+        renderDetail();
+        await userEvent.click(screen.getByRole('button', { name: 'Interested' }));
+        expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'interested');
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+
+      it('does not ask again once it was skipped', async () => {
+        renderDetail();
+        await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Skip' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+
+    it('does not ask when there is a number on file', async () => {
+      state.phone = '14085550112';
+      renderDetail();
+      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
+      // The read is async: give the page its chance to open the sheet.
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
 
     it('takes it back when pressed again', async () => {
