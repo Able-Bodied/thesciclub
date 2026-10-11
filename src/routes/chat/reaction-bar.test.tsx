@@ -39,11 +39,35 @@ describe('reaction controls', () => {
     expect(screen.queryByRole('button', { name: 'Reply' })).toBeNull();
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
-    await user.click(screen.getByRole('button', { name: 'React to the message' }));
-    expect(screen.queryByRole('dialog', { name: 'Actions for the message' })).toBeNull();
-    const picker = screen.getByRole('dialog', { name: 'React to the message' });
+    expect(screen.queryByRole('button', { name: 'React to the message' })).toBeNull();
+    const picker = screen.getByRole('dialog', { name: 'Actions for the message' });
     await user.click(within(picker).getByRole('button', { name: 'Love' }));
     expect(data.choose).toHaveBeenCalledWith('m1', '❤️');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps the menu open after a failed save so the choice can be retried', async () => {
+    const data = state({
+      choose: vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true),
+    });
+    render(<ReactionBar compact target="m1" what="the message" readerId="me" state={data} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
+    await user.click(screen.getByRole('button', { name: 'Love' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Love' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(data.choose).toHaveBeenCalledTimes(2);
+  });
+  it('marks your choice in the menu and lets you remove it directly', async () => {
+    const data = state({ rows: [{ target_id: 'm1', member_id: 'me', emoji: '❤️' }] });
+    render(<ReactionBar compact target="m1" what="the message" readerId="me" state={data} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
+    const choice = within(screen.getByRole('dialog')).getByRole('button', { name: 'Love' });
+    expect(choice).toHaveAttribute('aria-pressed', 'true');
+    await user.click(choice);
+    expect(data.choose).toHaveBeenCalledWith('m1', null);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -70,12 +94,11 @@ describe('reaction controls', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('restores keyboard focus to the actions button after closing the picker', async () => {
+  it('restores keyboard focus to the actions button after closing the menu', async () => {
     render(<ReactionBar compact target="m1" what="the message" readerId="me" state={state()} />);
     const user = userEvent.setup();
     const opener = screen.getByRole('button', { name: 'Actions for the message' });
     await user.click(opener);
-    await user.click(screen.getByRole('button', { name: 'React to the message' }));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(opener).toHaveFocus();

@@ -561,6 +561,16 @@ the product definition and wins over this file.
     overflow/page errors and reactions can be saved/removed. T3 preview's
     explicit unavailable response authorized the local headless fallback.
 
+35. **Emoji choices directly in the actions menu** (2026-10-10, no migration).
+    The owner requested one fewer click. Message and room post actions now
+    open with eight emoji buttons above Reply/Edit/Remove/Report, replacing
+    the intermediate React button. Choices close the menu only after a
+    successful save, stay open for retry after failure, and show the member's
+    selected reaction. Choosing it again clears it. Who reacted retains the
+    names sheet; Home retains its existing React picker. All 2,262 tests pass,
+    including direct selection/removal, retry and keyboard focus restoration.
+    Mobile and desktop browser checks verify selection/removal and 44px targets.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

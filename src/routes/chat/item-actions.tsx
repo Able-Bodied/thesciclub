@@ -5,7 +5,15 @@ import { useDialogFocus } from '@/lib/dialog-focus';
 
 /** One visible target keeps message actions discoverable without a row of
  * controls under every bubble. The sheet also works with a keyboard or pointer. */
-export function ItemActions({ what, children }: { what: string; children: ReactNode }) {
+export function ItemActions({
+  what,
+  children,
+  reactions,
+}: {
+  what: string;
+  children: ReactNode;
+  reactions?: ((onClose: () => void) => ReactNode) | undefined;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -24,6 +32,7 @@ export function ItemActions({ what, children }: { what: string; children: ReactN
         ? createPortal(
             <ActionsSheet
               what={what}
+              reactions={reactions}
               onClose={() => {
                 setOpen(false);
               }}
@@ -41,10 +50,12 @@ function ActionsSheet({
   what,
   children,
   onClose,
+  reactions,
 }: {
   what: string;
   children: ReactNode;
   onClose: () => void;
+  reactions?: ((onClose: () => void) => ReactNode) | undefined;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -68,6 +79,7 @@ function ActionsSheet({
         <h2 ref={heading} tabIndex={-1} className="font-bold font-head text-lg outline-none">
           Message actions
         </h2>
+        {reactions?.(onClose)}
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Delegates activation from actual child buttons. */}
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: Keyboard button activation dispatches the same click. */}
         <div

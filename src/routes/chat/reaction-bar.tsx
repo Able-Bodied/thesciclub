@@ -51,7 +51,9 @@ export function ReactionBar({
     </button>
   );
   async function choose(emoji: ReactionEmoji) {
-    if (await state.choose(target, mine === emoji ? null : emoji)) setOpen(false);
+    const saved = await state.choose(target, mine === emoji ? null : emoji);
+    if (saved) setOpen(false);
+    return saved;
   }
   return (
     <div className={`${attached ? 'relative -mt-2' : 'mt-2'} text-[0.8125rem] text-ink`}>
@@ -83,8 +85,45 @@ export function ReactionBar({
             ) : null;
           })}
         {compact ? (
-          <ItemActions what={what}>
-            {trigger}
+          <ItemActions
+            what={what}
+            reactions={(close) => (
+              <>
+                <fieldset className="mt-3 grid grid-cols-4 gap-2" aria-label="Emoji reactions">
+                  {REACTIONS.map(({ emoji, name }) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      aria-label={name}
+                      aria-pressed={mine === emoji}
+                      disabled={disabled}
+                      onClick={() => {
+                        void choose(emoji).then((saved) => {
+                          if (saved) close();
+                        });
+                      }}
+                      className={`min-h-11 rounded-xl border text-2xl disabled:opacity-50 ${mine === emoji ? 'border-emphasis bg-tint' : 'border-line hover:bg-tint'}`}
+                    >
+                      <span aria-hidden="true">{emoji}</span>
+                    </button>
+                  ))}
+                </fieldset>
+                {state.failure?.target === target ? (
+                  <p className="mt-2 text-sm text-destructive">{state.failure.message}</p>
+                ) : null}
+              </>
+            )}
+          >
+            {rows.length ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(true);
+                }}
+              >
+                Who reacted
+              </button>
+            ) : null}
             {actions}
           </ItemActions>
         ) : (
@@ -142,7 +181,7 @@ function ReactionSheet({
   what: string;
   pending: boolean;
   failure: string | null;
-  choose: (emoji: ReactionEmoji) => Promise<void>;
+  choose: (emoji: ReactionEmoji) => Promise<boolean>;
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
