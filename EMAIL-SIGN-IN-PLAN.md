@@ -435,6 +435,13 @@ H is the owner's, and has to be done before release.
 ### H. The owner's dashboard and accounts (before release)
 
 Supabase dashboard, project `erijdvqnxavwezsbbojv`:
+
+> **Owner, 2026-10-10:** dashboard settings done: SMTP through Resend
+> (minimum interval per user 60 s), rate limit, Email provider (confirm email,
+> secure email and password change on, current password **not** required,
+> minimum length 8, no character rules), URL configuration, Passkeys, hook
+> off. Still open: templates (H6, after session 2), `send-invite` secrets
+> (H9), and the Apple secret in the Apple provider if it wasn't pasted.
 1. **Resend**
    - Finish domain verification for `thesciclub.com`: SPF, DKIM, and add a
      DMARC record.
