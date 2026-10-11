@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-09. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-10. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments, and the old long handoff
 (`git show 4b1673b:HANDOFF.md`, which comments citing a HANDOFF section mean).
 Product decisions in one page: `git show 932a809:HANDOFF.md`. `CONTEXT.md` is
@@ -18,7 +18,9 @@ the product definition and wins over this file.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
   `20261011020000` live (linked `db push` 2026-10-10; the dry run before it
-  listed nothing else pending),
+  listed nothing else pending). **On the branch, not live**: later migrations
+  through `20261012010000` (email sign-in, then `chat_authors.username`);
+  Session 6 of `EMAIL-SIGN-IN-PLAN.md` pushes them,
   including `20261006010000` (link previews) and `20261006020000` (earlier
   links), deployed at the owner's word 2026-10-06. Edge functions
   `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
@@ -88,13 +90,18 @@ the product definition and wins over this file.
    the transaction commits. Wait for them to finish before retrying; saved
    cards and taken-back content are skipped. The Privacy Policy does not
    yet say the club reads a linked page, or that pressing play reaches
-   YouTube: the owner's call, and the Twilio registration quotes `/privacy`.
-2. **Twilio is dropped** (the owner, 2026-10-10). Sign-in moves to email,
-   Google, Apple and passkeys; invites go by email. The plan, its decisions
-   and its workstreams are in `EMAIL-SIGN-IN-PLAN.md`; nothing is built yet.
-   Until it ships, members still sign in with fixed codes (dashboard:
-   Authentication → Sign In / Providers → Phone → Test phone numbers). After
-   the release the app has no phone screen; see the plan for the way back in.
+   YouTube: the owner's call.
+2. **Twilio is dropped; email sign-in is built, unreleased** (the owner,
+   2026-10-10). Email + password, Google, Apple and passkeys (the last two
+   behind `VITE_APPLE_SIGN_IN` / `VITE_PASSKEYS`); invites are emailed links;
+   a phone number is optional, for event hosts. Sessions 1–5 are done on the
+   branch: `EMAIL-SIGN-IN-PLAN.md` has the decisions, the contract, and the
+   release (Session 6, with the owner: dashboard steps, `db push`, deploy
+   `send-invite` and `sign-in-reminder`, push, smoke test). Until it ships,
+   the live app still signs in by fixed codes. After it the app has no phone
+   screen; `scripts/set-member-email.mjs` is the way back in for anyone
+   signed out without an email. The Apple client secret expires
+   **2027-04-09**; `scripts/apple-secret.mjs` makes the next one.
 3. **Supabase free plan**: pauses after a quiet week, small limits, **no
    backups**. Move to the paid tier (daily backups) and test a restore before
    real members arrive.
@@ -137,11 +144,10 @@ the product definition and wins over this file.
    allows Google's `/gsi/` files only. The owner set up the OAuth client
    (JavaScript origin `https://thesciclub.com`), the Google provider, manual
    linking, the redirect URL and the Before User Created hook
-   (`only_a_phone_makes_an_account`, migration `20261007010000`, live; not
-   `before_user_created`, which stays off). Google's branding review (to show
+   (`only_a_phone_makes_an_account`, migration `20261007010000`; **off on hosted
+   since 2026-10-10, dropped by `20261012000000`**). Google's branding review (to show
    "The SCI Club" instead of the Supabase address on Google's page) is the
-   owner's, pending. `/privacy` covers Google (2026-10-07); the SMS
-   statements are unchanged. Still to do: the owner's phone test (link, sign
+   owner's, pending. `/privacy` covers Google (2026-10-07). Still to do: the owner's phone test (link, sign
    in, an unlinked account refused and absent from Users), in Chrome and in
    the installed iPhone app. The probe passed locally in a rolled-back
    transaction, not on a fresh stack.
@@ -294,8 +300,9 @@ the product definition and wins over this file.
     a typed number everywhere and the Contact Picker where the browser has it
     (Chrome on Android; no iPhone browser or Home Screen app can read contacts),
     then an `sms:` text from the person's own phone; and the consultation with
-    Wojtek (`CONSULTATION_URL`), also on the welcome screen. The door is
-    reached only after a texted code, so strangers meet it once Twilio works.
+    Wojtek (`CONSULTATION_URL`), also on the welcome screen. **Hidden for
+    launch** (2026-10-10): the blocked screen keeps the consultation link only;
+    `ask-somebody.tsx` stays, unreferenced.
     Probe `find-inviters.sql`: 7 true, 6 refusals on local and fresh stacks;
     ignoring the switch failed one. Browser check on a fresh stack: join with
     an uninvited test number, match, text link, and the daily limit.
@@ -607,11 +614,8 @@ the product definition and wins over this file.
 - **Probes** (`supabase/tests/`, each rolled back, header says how to run):
   as a signed-in role, a savepoint per expected refusal, read every log
   against its `expect` lines, count on a fresh stack, sabotage a fix once.
-- **Decided, do not reopen**: the join door's phone step never sends the code
-  by itself (consent is the two boxes and Continue, as registered with
-  Twilio). The sign-in door sends it on the tenth digit, typed or autofilled
-  (the owner, 2026-10-06): its "By continuing" line is on screen before the
-  number is typed. Staying Driven Wheelchair Fitness is online
+- **Decided, do not reopen**: there is no phone sign-in or SMS anywhere in
+  the app (2026-10-10). Staying Driven Wheelchair Fitness is online
   (`STATED_FORMATS` in `jobs/event-ingest/classify.js`) until NorCal SCI says
   otherwise; any other event with no format, ask. Deleting an account keeps
   the person's words as "Deleted member" (CONTEXT.md "Leaving"); the member
@@ -632,15 +636,19 @@ the product definition and wins over this file.
   ```
   Stop by port (`ss -ltnp | grep :5183`), never `pkill -f`.
 - **Local stack**: `pnpm exec supabase start -x
-  imgproxy,mailpit,studio,edge-runtime,logflare,vector,supavisor` (never
-  exclude storage-api or realtime). New migration: `migration up --local`,
+  imgproxy,studio,edge-runtime,logflare,vector,supavisor` (never
+  exclude storage-api or realtime; **keep mailpit**, email sign-up needs it).
+  New migration: `migration up --local`,
   then `notify pgrst, 'reload schema';`. After `db reset`: `pnpm
   demo-member`.
 - **Fresh stack** for probes: copy `supabase/` to scratch, new `project_id`
   and ports, inspector 8183, `start --workdir <dir>`; `stop --workdir <dir>
   --no-backup` after.
-- **Test numbers**, local stack only: `11111111111`/`111111`,
-  `12222222222`/`222222`, `13333333333`/`333333`. Never on the live list.
+- **Seeded local accounts**, password `local-dev-password` (`supabase/seed.sql`
+  header lists them): `alfred@` (admin), `maya@` (mentor), `sam@`,
+  `invited@`, `stranger@`, `newcomer@` (all `@local.test`), and the phone-only
+  Phoebe, `/dev-login?phone=14155550199`. Start the stack with mailpit
+  (confirmations are on; mail is at http://127.0.0.1:54324).
 - **psql**: `docker run --rm -i --network host -e PGPASSWORD=postgres
   postgres:17-alpine psql -h 127.0.0.1 -p 54322 -U postgres -d postgres`.
 - **Playwright**: chromium with `LD_LIBRARY_PATH` as in `pnpm shoot`; no

@@ -35,7 +35,7 @@ describe('the Privacy Policy', () => {
     expect(screen.getAllByText(/Able Bodied Inc\./).length).toBeGreaterThan(0);
   });
 
-  // The club sends no texts any more (2026-10-11), so nothing on the page may
+  // The club sends no texts any more (2026-10-10), so nothing on the page may
   // still promise or describe them: a policy that mentions a program that does
   // not exist is a policy a reader cannot trust about the ones that do.
   it('no longer mentions text messages, codes, STOP or carriers', () => {

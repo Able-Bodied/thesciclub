@@ -11,14 +11,14 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  * organization mentors, grant applications a member asks for) is the owner's
  * answer, 2026-10-01.
  *
- * Rewritten 2026-10-11 for email sign-in (EMAIL-SIGN-IN-PLAN.md). The club no
+ * Rewritten 2026-10-10 for email sign-in (EMAIL-SIGN-IN-PLAN.md). The club no
  * longer sends text messages, so the SMS section and the carriers' wording
  * went with the Twilio registration, which was never approved. A phone number
  * is now optional and only for the host of an event the member chose Going for.
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 11, 2026">
+    <LegalPage title="Privacy Policy" updated="October 10, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord

@@ -9,13 +9,13 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  * said they would go "in the terms of service when there is one to link to".
  * This is it.
  *
- * The text-message terms went on 2026-10-11 with phone sign-in
+ * The text-message terms went on 2026-10-10 with phone sign-in
  * (EMAIL-SIGN-IN-PLAN.md): the club sends no texts, so there is no SMS program
  * to describe. "Email" says what it does send.
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 11, 2026">
+    <LegalPage title="Terms of Service" updated="October 10, 2026">
       <Section title="The club">
         <P>
           The SCI Club is a private community for adults living with spinal cord injury, run by Able
