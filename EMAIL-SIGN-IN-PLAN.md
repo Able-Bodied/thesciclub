@@ -115,12 +115,45 @@ HANDOFF.md.
       `shoot.mjs` and `demo-member.mjs`). HANDOFF's "Test numbers" lines are Session 5's.
     - `/reset-password` handles both links; it signs nobody in itself, it waits for the session the link creates and
       says "This link has expired" without one. It goes to `/home`, and the guard there sends a non-member to `/join`.
-- [ ] **Session 4: E, Me, profiles, events**
+- [x] **Session 4: E, Me, profiles, events**
   - [x] Me sign-in section (email, password, Google/Apple, passkeys, phone, username) (`6dcd316`)
   - [x] add-an-email banner for phone accounts, with Use my Google address (`4a7eafa`)
   - [x] @username on profiles and cards (`a16980f`)
   - [x] Going wording and phone sheet (`9bee253`)
-  - [ ] tests, checks, committed
+  - [x] `scripts/realtime-check.mjs` signs in with the seeded passwords (`f91d384`)
+  - [x] tests, checks, committed (work: `a16980f`, `6dcd316`, `4a7eafa`, `9bee253`, `f91d384`; tests went in with
+    each commit, so each is green on its own; this plan edit is the commit after). `pnpm check` exit 0, `pnpm test`
+    (175 files, 2451 tests) and `pnpm build` clean at the tip.
+  - Notes for the next session ("as built"):
+    - **Broken on purpose, each failing the tests that guard it:** Google's Unlink offered with no other way in (1 test);
+      Going sheet opening even with a number on file (2, in the sheet and the event page); a taken username saveable (1);
+      "Use my Google address" calling the password form's function (1); the phone stored as typed, not 1 + ten digits (2).
+    - **Verified on the real local stack:** `pnpm realtime-check` passes with the seeded accounts (both PASS lines); in a
+      browser as `sam@local.test`, Me → Account shows the Email, Password, Google, Phone and Username cards, and a
+      username change went through `username_available` and `set_my_username` and showed on the hero. (That left Sam as
+      `@sam.rolls` locally; `db reset` restores it.) **Not tried in a browser:** the banner against a phone-only account
+      (none is seeded), the Going sheet, Apple, passkeys, and the confirmation email's return to `/me?email=changed`.
+    - **Client names:** `src/lib/account-email.ts` (`useSignInDetails`, `readSignInDetails`, `waysIn`, `changeEmail`,
+      `addEmailAndPassword`, `resendEmailChange`, `EMAIL_RETURN_PARAM`), `event-phone.ts` (`useOwnPhone`, `loadOwnPhone`,
+      `saveOwnPhone`, `displayPhone`), `setMyUsername` in `usernames.ts`, and `linkApple` / `unlinkApple` /
+      `loadAppleIdentity` in `apple-sign-in.ts`. `src/components/going-phone-sheet.tsx` has `useGoingPhoneSheet`.
+    - **The account's email is read from the auth user** (`getUser()`), not the member row. `email` is the confirmed address
+      only; `pendingEmail` is `new_email`, or an address that has not been confirmed. The banner shows while `email` is
+      null, whatever the cause, and then offers the link again.
+    - **"Another way in" is `waysIn`**: Google, Apple, and a confirmed email. A phone identity is not counted (there is no
+      phone screen), so a phone account with Google linked cannot unlink Google until it has a confirmed email.
+    - **Me's Account tab also opens** for `?apple=linked` and `?email=changed`, as it did for `?google=linked`.
+      `?email=changed` is consumed and says nothing by itself; the card reads what is actually there.
+    - **Going:** `GOING_SHARES_NUMBER` is now `GOING_SHARES_CONTACT`. The sheet opens beside the RSVP (which is saved either
+      way) on Events, Home and the event page, only when `members.phone` was read and is empty. **Skip holds for the browser
+      session** (`sessionStorage`, `sciclub.goingPhoneSkipped`), not for ever: Me's phone card is the standing way to add
+      one. A number that could not be read does not open it.
+    - **The mentor line on Me** now says "you can invite N people by email". `/invites` itself is still the phone form
+      until Session 5.
+    - **Left for Session 5, not mine here:** `privacy.tsx` and `terms.tsx` still say the host receives the phone number
+      (only the comment naming the constant changed); `event_host_contacts` has no screen yet; HANDOFF's "Test numbers"
+      lines; the home page's `person-card.tsx` and chat lists do not show `@username` (the task named profiles and
+      peer cards).
 - [ ] **Session 5: F + G, Admin, invites, words**
   - [ ] admin invites and blocks by email, resend and revoke, re-invite old phone invites
   - [ ] mentor invites by email
