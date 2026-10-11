@@ -294,6 +294,36 @@ HANDOFF.md.
     **Not to be released from this session** (the owner, 2026-10-11): `signup-invite-gate` (worktree
     `thesciclub-signup-gate`) is built on top of these commits, so it carries them, and the session that owns it releases both
     together. Its `db push` dry run should list `20261012030000` and `20261012040000`.
+  - [ ] **Follow-up, the owner's word 2026-10-11: an uninvited address is refused at sign-up, before any email.** Built on
+    branch `signup-invite-gate` (a separate worktree while Session 6 ran), **not yet merged, applied or pushed**. Migration
+    `20261012040000_signup_needs_an_invite`: a Before User Created hook, `public.signup_needs_an_invite`. An email sign-up
+    passes only when its address has a pending invite, or it carries a pending, unclaimed invite's token in
+    `user_metadata.invite_token` (the join form now sends the held one), and the address is not blocked. Google and Apple
+    pass (no email; the closed door still answers them after sign-in). Phone, anonymous and provider-less sign-ups are
+    refused. A refusal is `403` "This email is not on the invite list."; the join form goes straight to the closed door
+    (`BlockedScreen signedIn={false}`: "Try another email", no sign-out). **It tells anybody whether an address is on the
+    list; the owner chose that knowingly over an invite-link-only gate** (see the migration header and the earlier phone
+    gate, 20260911120000).
+    - Probe `signup-needs-an-invite.sql` on a **fresh** stack (`thesciclub-gate`, ports 556xx): 7 passes, 16 refusals, anon
+      and authenticated denied, `supabase_auth_admin` granted. It caught my first version letting a phone or
+      provider-less sign-up through with an invited address; now fails closed. **Broken on purpose:** the blocked check
+      removed let both blocked cases through; restored, refused. Client: refusal detection removed failed 3 tests.
+    - **Real GoTrue, same fresh stack:** uninvited → 403, no user, no email; invited `newcomer@` → 200 and a confirmation
+      email; another address with a good token → 200 and an email; with a bad token → 403, nothing. supabase-js reports
+      the refusal as `status 403`, `message` exactly the hook's sentence.
+    - `pnpm check` exit 0, `pnpm test` 181 files and 2552 tests, `pnpm build` exit 0. Not tried in a browser or on a phone.
+    - **Release, in this order:** merge `signup-invite-gate`; `db push` (dry run lists `20261012030000` and `20261012040000`, nothing
+      else); push to main;
+      then the owner turns on Authentication > Hooks > **Before User Created** > Postgres > `public.signup_needs_an_invite`.
+      Hook before client would leave the live join form showing a bare sentence and dropping the invite token.
+    - Accounts made before the hook is on are not affected; an unconfirmed one re-signing up gets its confirmation resent by
+      Supabase without reaching the hook.
+  - [ ] **Follow-up, the owner's word 2026-10-11: Me no longer changes the account's email.** Same branch,
+    `signup-invite-gate`, no migration. Me → Signing in → Email is read only: the address, and "it can't be changed here. If
+    you lose access to it, ask an administrator" (the owner runs `scripts/set-member-email.mjs`). The add-an-email banner for
+    an account with no email is unchanged, and still uses `changeEmail` and `/me?email=changed`. Supabase's API would still
+    let a signed-in member call `updateUser({ email })` on their own account; nothing in the app offers it, and it moves only
+    their own account. Test: the card offers no change and names who can; with the old card put back it fails.
 
 ## Decisions (the owner's, 2026-10-10)
 

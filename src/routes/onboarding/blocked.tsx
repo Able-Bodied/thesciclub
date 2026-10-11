@@ -5,7 +5,9 @@ import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
- * The address confirmed, and it is not on the list.
+ * The address is not on the list: refused at sign-up, before any email
+ * (20261012040000), or confirmed and then found not invited, as Google and
+ * Apple are after their round trip.
  *
  * Written as a closed door rather than as an error, because it is one. It names
  * the organizations who can open it, so somebody who wants in knows exactly
@@ -36,11 +38,14 @@ import { NewTabLink } from '@/routes/onboarding/steps';
 export function BlockedScreen({
   onTryAnother,
   email,
+  signedIn = true,
 }: {
-  /** Signs them out and goes back to the doors. */
+  /** Signs them out (when signed in) and goes back to the doors. */
   onTryAnother: () => void;
   /** The address they signed in with, so they can see which one was refused. */
   email: string | null;
+  /** False when the join form was refused: there is no account to sign out of. */
+  signedIn?: boolean;
 }) {
   const { organizations, loading } = useOrganizations();
   const vouchers = organizations.filter((organization) => organization.canInvite);
@@ -60,8 +65,9 @@ export function BlockedScreen({
           before you can join — the app itself cannot let you in.
         </p>
         <p className="mt-3 text-[0.8875rem] text-ink2 leading-[1.52]">
-          You may have joined with another email. If you were invited, open the link in your
-          invitation while signed in, or sign in with the address it was sent to.
+          {signedIn
+            ? 'You may have joined with another email. If you were invited, open the link in your invitation while signed in, or sign in with the address it was sent to.'
+            : 'If you were invited, use the address your invitation was sent to, or open the link in your invitation and join from there.'}
         </p>
 
         {loading || vouchers.length > 0 ? (
@@ -112,7 +118,7 @@ export function BlockedScreen({
           onClick={onTryAnother}
           className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
         >
-          Sign out and try another email
+          {signedIn ? 'Sign out and try another email' : 'Try another email'}
         </button>
       </footer>
     </main>

@@ -104,6 +104,8 @@ export default function OnboardingPage() {
   const [forgotSent, setForgotSent] = useState(false);
   const [resendLeft, setResendLeft] = useState(0);
   const [blockedEmail, setBlockedEmail] = useState<string | null>(null);
+  // Refused at the join form (20261012040000): no account, so nothing to sign out of.
+  const [blockedAtSignUp, setBlockedAtSignUp] = useState(false);
 
   const set = useCallback((patch: Partial<OnboardingData>) => {
     setData((d) => ({ ...d, ...patch }));
@@ -315,6 +317,13 @@ export default function OnboardingPage() {
     setError(null);
     const result = await signUpWithEmail(data.email, data.password);
     setBusy(false);
+    if (!result.ok && result.notInvited) {
+      set({ password: '', passwordAgain: '' });
+      setBlockedEmail(cleanEmail(data.email));
+      setBlockedAtSignUp(true);
+      setPhase('blocked');
+      return;
+    }
     if (!result.ok) {
       setError(result.error);
       return;
@@ -434,7 +443,18 @@ export default function OnboardingPage() {
     return (
       <BlockedScreen
         email={blockedEmail}
+        signedIn={!blockedAtSignUp}
         onTryAnother={() => {
+          if (blockedAtSignUp) {
+            // The invite link, if any, stays held: it may still be good for the
+            // address they try next.
+            setBlockedAtSignUp(false);
+            setBlockedEmail(null);
+            set({ email: '' });
+            setPhase('wizard');
+            setStep('join');
+            return;
+          }
           void signOut().then(() => {
             forgetInviteToken();
             setPhase('wizard');

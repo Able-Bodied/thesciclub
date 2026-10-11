@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const auth = vi.hoisted(() => ({
   calls: [] as { fn: string; args: unknown[] }[],
-  error: null as { message: string; code?: string } | null,
+  error: null as { message: string; code?: string; status?: number } | null,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -22,6 +22,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 const {
+  NOT_INVITED_MESSAGE,
   cleanEmail,
   looksLikeEmail,
   resendConfirmation,
@@ -33,6 +34,7 @@ const {
 beforeEach(() => {
   auth.calls = [];
   auth.error = null;
+  window.localStorage.clear();
   window.history.replaceState(null, '', '/join');
 });
 
@@ -69,6 +71,36 @@ describe('signUpWithEmail', () => {
   it('gives a sentence when it is refused', async () => {
     auth.error = { message: 'Signups not allowed', code: 'signup_disabled' };
     const result = await signUpWithEmail('dana@example.com', 'a long password');
+    expect(result.ok).toBe(false);
+  });
+
+  it('sends the held invite token, so a link opened at another address still joins', async () => {
+    window.localStorage.setItem('sciclub.inviteToken', 'the-token');
+    await signUpWithEmail('dana@example.com', 'a long password');
+    const request = auth.calls[0]?.args[0] as { options: { data?: { invite_token?: string } } };
+    expect(request.options.data).toEqual({ invite_token: 'the-token' });
+  });
+
+  it('sends no metadata when there is no invite link', async () => {
+    await signUpWithEmail('dana@example.com', 'a long password');
+    const request = auth.calls[0]?.args[0] as { options: { data?: unknown } };
+    expect(request.options.data).toBeUndefined();
+  });
+
+  it("names the hook's refusal as not invited", async () => {
+    auth.error = { message: NOT_INVITED_MESSAGE, code: 'unknown', status: 403 };
+    const result = await signUpWithEmail('dana@example.com', 'a long password');
+    expect(result).toEqual({ ok: false, error: NOT_INVITED_MESSAGE, notInvited: true });
+  });
+
+  it('does not call any other 403 not invited', async () => {
+    auth.error = {
+      message: 'Signups not allowed for this instance',
+      code: 'signup_disabled',
+      status: 403,
+    };
+    const result = await signUpWithEmail('dana@example.com', 'a long password');
+    expect(result).not.toHaveProperty('notInvited');
     expect(result.ok).toBe(false);
   });
 });

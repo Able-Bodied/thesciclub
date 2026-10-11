@@ -2,9 +2,7 @@ import type { UserIdentity } from '@supabase/supabase-js';
 import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  changeEmail,
   EMAIL_RETURN_PARAM,
-  resendEmailChange,
   type SignInDetails,
   type SignInState,
   waysIn,
@@ -16,7 +14,7 @@ import {
   linkApple,
   unlinkApple,
 } from '@/lib/apple-sign-in';
-import { looksLikeEmail, sendPasswordReset } from '@/lib/auth-email';
+import { sendPasswordReset } from '@/lib/auth-email';
 import { describeThrown } from '@/lib/describe-error';
 import { displayPhone, useOwnPhone } from '@/lib/event-phone';
 import {
@@ -79,7 +77,7 @@ export function SignInSection({
       </h2>
       {state.status === 'error' ? <CardError>{state.error}</CardError> : null}
       <div className="space-y-3">
-        <EmailCard details={details} reload={reload} />
+        <EmailCard details={details} />
         <PasswordCard email={details?.email ?? null} />
         <GoogleSignIn
           canUnlink={details ? waysIn(details, 'google') > 0 : false}
@@ -98,18 +96,17 @@ export function SignInSection({
 
 /* ------------------------------------------------------------------ email */
 
-function EmailCard({ details, reload }: { details: SignInDetails | null; reload: () => void }) {
-  const announce = useAnnounce();
-  const fieldId = useId();
+/**
+ * Read only (the owner, 2026-10-11): the address is how the member was invited
+ * and how the club knows them, so Me does not change it. Somebody who loses
+ * the inbox asks an administrator, who sets it with scripts/set-member-email.mjs.
+ * Adding a first address to an account with none is the banner's job.
+ */
+function EmailCard({ details }: { details: SignInDetails | null }) {
   const [params, setParams] = useSearchParams();
   const [returned] = useState(() => params.get(EMAIL_RETURN_PARAM) === 'changed');
-  const [changing, setChanging] = useState(false);
-  const [next, setNext] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sentTo, setSentTo] = useState<string | null>(null);
 
-  // The link comes back to /me?email=changed; once, not on every visit.
+  // The banner's confirmation link comes back to /me?email=changed; once, not on every visit.
   useEffect(() => {
     if (!returned) return;
     setParams(
@@ -122,43 +119,7 @@ function EmailCard({ details, reload }: { details: SignInDetails | null; reload:
   }, [returned, setParams]);
 
   if (!details) return null;
-  const { email, pendingEmail } = details;
-
-  async function send() {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await changeEmail(next);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      const address = next.trim().toLowerCase();
-      setSentTo(address);
-      setChanging(false);
-      setNext('');
-      announce(`We sent a link to ${address}. Check both inboxes.`);
-      reload();
-    } catch (e: unknown) {
-      setError(describeThrown(e, 'The address was not changed. Try again.'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function again(address: string) {
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await resendEmailChange(address);
-      if (result.ok) announce(`We sent the link to ${address} again.`);
-      else setError(result.error);
-    } catch (e: unknown) {
-      setError(describeThrown(e, 'The email was not sent. Try again in a minute.'));
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { email } = details;
 
   if (!email) {
     return (
@@ -175,76 +136,10 @@ function EmailCard({ details, reload }: { details: SignInDetails | null; reload:
       <p className="text-[0.875rem] text-ink2 leading-[1.45]">
         You sign in with <strong className="text-ink">{email}</strong>.
       </p>
-      {pendingEmail ? (
-        <div role="status" className="mt-2 text-[0.875rem] text-ink2 leading-[1.45]">
-          <p>
-            Waiting for a link to be opened: we sent one to{' '}
-            <strong className="text-ink">{pendingEmail}</strong>
-            {sentTo ? ' and to your current address. Check both inboxes' : ''}. Until then you still
-            sign in with {email}.
-          </p>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              void again(pendingEmail);
-            }}
-            className="mt-1 min-h-[44px] font-bold font-head text-emphasis underline disabled:opacity-50"
-          >
-            Send the link again
-          </button>
-        </div>
-      ) : null}
-      {changing ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (!busy && looksLikeEmail(next)) void send();
-          }}
-        >
-          <label htmlFor={fieldId} className={FIELD_LABEL}>
-            New email
-          </label>
-          <input
-            id={fieldId}
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            value={next}
-            onChange={(event) => {
-              setNext(event.target.value);
-            }}
-            className={FIELD}
-          />
-          <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-            We email a link to the new address and to {email}. Open both to finish.
-          </p>
-          <button type="submit" disabled={busy || !looksLikeEmail(next)} className={PRIMARY_BUTTON}>
-            {busy ? 'One moment…' : 'Send links'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setChanging(false);
-              setError(null);
-            }}
-            className={CARD_BUTTON}
-          >
-            Cancel
-          </button>
-        </form>
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            setChanging(true);
-          }}
-          className={CARD_BUTTON}
-        >
-          Change email
-        </button>
-      )}
-      {error ? <CardError>{error}</CardError> : null}
+      <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
+        Your account belongs to this address, so it can&apos;t be changed here. If you lose access
+        to it, ask an administrator.
+      </p>
     </SignInCard>
   );
 }

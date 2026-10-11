@@ -98,4 +98,15 @@ describe('the way out', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign out and try another email' }));
     expect(onTryAnother).toHaveBeenCalledOnce();
   });
+
+  // Refused at the join form (20261012040000): there is no account yet.
+  it('refused at sign-up: no signing out, and points at the invited address or the link', async () => {
+    const onTryAnother = vi.fn();
+    render(<BlockedScreen onTryAnother={onTryAnother} email="dana@example.com" signedIn={false} />);
+    expect(screen.queryByText(/You may have joined with another email/)).toBeNull();
+    expect(screen.getByText(/use the address your invitation was sent to/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Sign out/ })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Try another email' }));
+    expect(onTryAnother).toHaveBeenCalledOnce();
+  });
 });

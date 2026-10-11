@@ -24,7 +24,7 @@ const calls = vi.hoisted(() => {
     /** What a successful password sign-in makes the account: a stranger to the club, or a member. */
     afterPassword: 'signed-up',
     passwordError: null as { message: string; code?: string } | null,
-    signUpError: null as { message: string; code?: string } | null,
+    signUpError: null as { message: string; code?: string; status?: number } | null,
     resendError: null as { message: string; code?: string } | null,
     resetError: null as { message: string; code?: string } | null,
     signUpOptions: null as { emailRedirectTo?: string } | null,
@@ -449,6 +449,39 @@ describe('joining by email', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.queryByText('Check your email')).toBeNull();
+  });
+
+  // signup_needs_an_invite (20261012040000) refuses before any email is sent.
+  describe('an address that is not invited', () => {
+    function refuse() {
+      calls.signUpError = {
+        message: 'This email is not on the invite list.',
+        code: 'unknown',
+        status: 403,
+      };
+    }
+
+    it('goes straight to the closed door, naming the address, with no Check your email', async () => {
+      refuse();
+      await openJoin();
+      await fillDoor('Stranger@Example.com', 'a long password');
+      await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+      expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
+      expect(screen.getByText('stranger@example.com')).toBeInTheDocument();
+      expect(screen.queryByText('Check your email')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Sign out and try another email' })).toBeNull();
+    });
+
+    it('Try another email goes back to the join form, empty, without signing anybody out', async () => {
+      refuse();
+      await openJoin();
+      await fillDoor('stranger@example.com', 'a long password');
+      await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Try another email' }));
+      expect(await screen.findByRole('button', { name: 'Create account' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Email')).toHaveValue('');
+      expect(calls.order).not.toContain('signOut');
+    });
   });
 
   // The sentences for what Supabase really returns, on the three screens that

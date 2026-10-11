@@ -297,14 +297,15 @@ max_frequency = "5s"
 # inactivity_timeout = "8h"
 
 # This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
-# The invite gate, deliberately OFF. Enabling it makes /auth/v1/otp answer 200
-# for an invited number and 403 for an uninvited one, which turns a public
-# endpoint into a per-number test for whether somebody has a spinal cord
-# injury. See migration 20260911120000_before_user_created_hook.sql before
-# changing this.
-# [auth.hook.before_user_created]
-# enabled = true
-# uri = "pg-functions://postgres/public/before_user_created"
+# An email sign-up needs an invite (the owner, 2026-10-11), so an uninvited
+# address is refused before any confirmation email. It answers 403 for an
+# address that is not invited, which tells anybody whether an address is on
+# the list; the owner chose that knowingly. See migration
+# 20261012040000_signup_needs_an_invite.sql. (The phone-number gate in
+# 20260911120000, before_user_created, stays unused.)
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/signup_needs_an_invite"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 # [auth.hook.custom_access_token]
