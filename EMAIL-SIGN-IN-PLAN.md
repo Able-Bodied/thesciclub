@@ -161,6 +161,13 @@ HANDOFF.md.
   - [x] privacy, terms, CONTEXT, HANDOFF; `public/sms-opt-in/` removed (`c550eff`, `e9295c5`)
   - [x] @username on Home's person cards and in chat lists, which Session 4 left out (`97dc60e`; new migration `20261012010000`)
   - [x] phone-only member and an upcoming event in seed.sql; dev-login by phone (`7710453`)
+  - [x] **"Ask somebody" removed completely** (`a41a357`): `ask-somebody.tsx`, Me's switch (`findable-switch.tsx`), `invite-request.ts`
+    and `find-inviters.sql` deleted; `CONSULTATION_URL` now in `src/lib/consultation.ts`; migration
+    `20261012020000_remove_ask_somebody.sql`; probe `ask-somebody-is-gone.sql`. Nothing in privacy, terms or CONTEXT.md said anything
+    about finding members by number (searched); HANDOFF's item 17 was rewritten.
+  - [x] profile page: the "never shows a phone number…" notice removed, and the box with it (it held only that sentence for a
+    member who joined; a seeded row keeps the box for its directory provenance sentence) (`2809118`)
+  - [x] "Type it again" on the email sign-up and on Me's add-an-email-and-password form, matching `/reset-password` (`0c76bbb`)
   - [x] tests, checks, committed (work: `0460270`, `9df36d1`, `c03be86`, `97dc60e`, `c550eff`, `7710453`, `e9295c5`; tests went in with each commit;
     this plan edit is the commit after). `pnpm check` exit 0, `pnpm test` (181 files, 2511 tests) and `pnpm build` clean at the tip.
   - Notes for the next session ("as built"):
@@ -193,7 +200,17 @@ HANDOFF.md.
       and one upcoming event with Maya going. The Going sheet opens only for a member with no number: use `sam@`.
     - **The Going tab** lists upcoming events somebody is going to (from yesterday on) and copies one line a person: name, email,
       phone if given. The app still does not hand the details to the host itself.
-    - **Remaining phone or SMS wording in `src/`** (searched 2026-10-10; none of it is a sign-in screen):
+    - **"Ask somebody" removal, probed to the standard** on a fresh stack (scratch copy of `supabase/`, project id
+      `thesciclub-fresh`, ports 553xx, stopped after): every `expect` line of `ask-somebody-is-gone.sql` met (the four objects
+      gone, nothing in functions or views mentions them, `find_inviters` and the column "do not exist", an invited account still
+      inserts its member row, an uninvited one is still refused); `blocked-numbers.sql` re-run (it now asks `has_active_invite`
+      as the superuser) and the email probes re-run clean. **Sabotaged:** the `drop column` line removed from the migration,
+      steps 4 (`columns_left` 1) and 6b (`UPDATE 0`) failed; restored, they pass. A scan of every probe for "does not exist" found
+      only expected refusals.
+    - **Password twice, broken on purpose:** the join gate no longer waiting for a match failed 3 onboarding tests; the Me form
+      ignoring the second field failed 1 banner test. Restored. `OnboardingData.passwordAgain` is cleared with `password`.
+    - **Remaining phone or SMS wording in `src/`** (searched 2026-10-10; none of it is a sign-in screen). **Updated after the
+      removal: the `findable-switch.tsx`, `ask-somebody.tsx` and `invite-request.ts` items below are gone.**
       - `src/lib/describe-error.ts` `AUTH` list: `invalid_credentials` still reads "That code is not right, or it has expired. Ask
         for a new one.", the rate-limit sentence says "Too many codes were asked for.", and a send failure says "The code could
         not be sent." These are what **email** flows show if they reach `describeError` (`auth-email.ts` does, for sign-up, resend and
@@ -362,7 +379,7 @@ blocked_emails  (email citext primary key, blocked_at, blocked_by, note)
 | `claim_invite(token text)` | `boolean` | Signed in, not a member. Hashes the token, finds a `pending` invite, sets `claimed_by = auth.uid()`. False for an unknown, used or revoked token. It never says which. |
 | `my_invite_status()` | `(invited boolean)` | **Redefined.** True when a live invite has `claimed_by = auth.uid()`, or when `email` equals the caller's **confirmed** `auth.users.email` (read from `auth.users`, checking `email_confirmed_at is not null`, not just the JWT). Blocked emails → false. The `claimable_member_id` column is dropped (the seeded directory is gone, 20261010020000). It is `select i_am_invited()`. |
 | `i_am_invited()` | `boolean` | The rule above, used by the members insert policy. "Live" means `pending` **or `consumed`**: the policy is judged after the consume trigger has run, so a pending-only rule would refuse every join. A member who joined without an invite (the owner, the seeded accounts) answers false; the client checks for the member row first. |
-| `my_number_is_invited()` | kept, unused | **Not dropped** (the plan said "replaced"): `find_inviters` still calls it. Drop both in the later cleanup. |
+| `my_number_is_invited()`, `find_inviters(text[])` | **dropped** | By `20261012020000_remove_ask_somebody.sql` (2026-10-10, the owner): with "Ask somebody" removed nothing calls either. The same migration drops the `invite_lookups` table and `members.findable_for_invites`. `has_active_invite(text)` stays (the phone-invite trigger uses it). |
 | `consume_invite_for_new_member()` trigger | — | **Redefined.** Consumes the invite `claimed_by = new.id`, else the one whose email matches the confirmed account email. Sets `new.invite_id`. Drops the seed-claim branch. |
 | `username_available(name text)` | `boolean` | Signed in. Case-insensitive; false for reserved names. |
 | `suggest_usernames(full_name text)` | `setof text` (≤ 5) | Signed in. Free, valid candidates: `first`, `firstlast`, `first.last`, `first_last`, `firstl`, then `firstlast` + 2 digits. Accents stripped. |
@@ -380,9 +397,8 @@ blocked_emails  (email citext primary key, blocked_at, blocked_by, note)
 
 Retire `only_a_phone_makes_an_account`. Drop the function after the hook is off
 on hosted, in that order. Otherwise every new account is refused. (The hook is
-off on hosted since 2026-10-10, so the migration drops it.) Leave
-`find_inviters` in place, unused: it already refuses anybody without a JWT
-phone. Drop it in a later cleanup.
+off on hosted since 2026-10-10, so the migration drops it.) `find_inviters`
+and `my_number_is_invited` went in `20261012020000` (see the table above).
 
 ### Views (as built)
 
@@ -727,8 +743,13 @@ Accounts:
 ## Release order
 
 1. Owner H1–H8 (H8 last), and the Apple steps whenever approval arrives.
-2. `db push` Workstream A's migration (dry run first; it should list only
-   this). The old client keeps working for members who are signed in, except
+2. `db push` the migrations (dry run first; it should list exactly three:
+   `20261012000000_email_is_the_account`, `20261012010000_chat_authors_username`
+   and `20261012020000_remove_ask_somebody`, and nothing else). The last one
+   drops `find_inviters`, `my_number_is_invited`, `invite_lookups` and
+   `members.findable_for_invites`; the client that used them is gone in the
+   same release, but an old tab open on the live site would fail on them,
+   which is fine. The old client keeps working for members who are signed in, except
    the phone join flow (fine: nobody new is joining tonight) **and Admin's
    invite/block forms and the mentor invites page, which call `admin_create_invite`
    with a phone and insert into `invites` directly**. Those break from the push
