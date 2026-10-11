@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventChanged, matchOrganization } from './ingest.js';
+import { eventChanged, matchOrganization, withAdminOverride } from './ingest.js';
 
 const ORGANIZATIONS = [
   { id: 'ncs', name: 'NorCal SCI', short_code: 'NCS', aliases: [] },
@@ -157,5 +157,56 @@ describe('eventChanged', () => {
   it('ignores the geocoded columns, which the source never states', () => {
     const prior = { ...scraped, city: 'San Jose', latitude: 37.3 };
     expect(eventChanged(prior, scraped)).toBe(false);
+  });
+});
+
+describe('withAdminOverride', () => {
+  const scraped = {
+    external_id: 'x1',
+    title: 'Friday Happy Hour',
+    start_time: '2026-10-17T01:30:00.000Z',
+    location: 'The Patio',
+    description: 'From the calendar',
+    description_html: '<p>From the calendar</p>',
+  };
+
+  it('writes the scrape as it is, with no calendar values, when nothing is overridden', () => {
+    expect(withAdminOverride(scraped, undefined)).toEqual({ ...scraped, feed_values: null });
+    expect(withAdminOverride(scraped, { admin_override: null })).toEqual({
+      ...scraped,
+      feed_values: null,
+    });
+  });
+
+  it("keeps an administrator's change and records what the calendar now says", () => {
+    const next = withAdminOverride(scraped, {
+      admin_override: { title: 'Happy Hour on the patio' },
+    });
+    expect(next.title).toBe('Happy Hour on the patio');
+    expect(next.feed_values).toEqual({ title: 'Friday Happy Hour' });
+  });
+
+  it('lets every field the administrator left alone keep updating', () => {
+    const moved = { ...scraped, start_time: '2026-10-17T02:00:00.000Z' };
+    const next = withAdminOverride(moved, { admin_override: { title: 'Fixed title' } });
+    expect(next.start_time).toBe('2026-10-17T02:00:00.000Z');
+    expect(next.location).toBe('The Patio');
+  });
+
+  it("holds a changed description's formatting empty", () => {
+    const next = withAdminOverride(scraped, {
+      admin_override: { description: 'Our words', description_html: '' },
+    });
+    expect(next.description).toBe('Our words');
+    expect(next.description_html).toBe('');
+    expect(next.feed_values).toEqual({
+      description: 'From the calendar',
+      description_html: '<p>From the calendar</p>',
+    });
+  });
+
+  it('ignores a key that is not an event field', () => {
+    const next = withAdminOverride(scraped, { admin_override: { feed_id: 'elsewhere' } });
+    expect(next).toEqual({ ...scraped, feed_values: null });
   });
 });

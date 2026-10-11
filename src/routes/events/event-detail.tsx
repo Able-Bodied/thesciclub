@@ -7,6 +7,7 @@ import { useAnnounce } from '@/lib/announce';
 import {
   deleteEvent,
   deleteEventAndLater,
+  revertImportedEvent,
   rsvpSaved,
   setRsvp,
   useAttendeesByEvent,
@@ -48,7 +49,7 @@ export default function EventDetailPage() {
   const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
-  const { events, loading, error } = useEvents({
+  const { events, loading, error, reload } = useEvents({
     id: id ?? '00000000-0000-0000-0000-000000000000',
   });
   const { byEvent } = useAttendeesByEvent();
@@ -321,7 +322,16 @@ export default function EventDetailPage() {
             </>
           ) : null}
 
-          {canChange ? (
+          {canChange && !event.handAdded ? (
+            <ChangeImportedEvent
+              eventId={event.id}
+              changed={event.adminChanged.length > 0}
+              onReverted={() => {
+                announce("The event is back as the organization's calendar has it.");
+                reload?.();
+              }}
+            />
+          ) : canChange ? (
             <ChangeEvent
               eventId={event.id}
               going={event.goingCount}
@@ -514,6 +524,104 @@ function ChangeEvent({
           >
             Delete
           </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
+ * Changing an imported event, for an administrator (20261012060000). There
+ * is no Delete: the next night's import would bring it back. Revert appears
+ * once something has been changed here, and puts the organization's calendar
+ * version back at once.
+ */
+function ChangeImportedEvent({
+  eventId,
+  changed,
+  onReverted,
+}: {
+  eventId: string;
+  changed: boolean;
+  onReverted: () => void;
+}) {
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function revert() {
+    setBusy(true);
+    setError(null);
+    void revertImportedEvent(eventId).then((result) => {
+      setBusy(false);
+      if (result.ok) {
+        setAsking(false);
+        onReverted();
+      } else setError(result.error ?? 'The event was not reverted.');
+    });
+  }
+
+  return (
+    <>
+      <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+        From the organization's calendar
+      </h2>
+      <p className="mb-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+        {changed
+          ? 'An administrator has changed this event here. Those changes stay when the calendar updates.'
+          : 'As an administrator you can change it here; your changes stay when the calendar updates.'}
+      </p>
+      {asking ? (
+        <div className="rounded-[14px] border border-line bg-tint/40 p-3.5">
+          <p className="text-[0.875rem] text-ink leading-[1.45]">
+            Put this event back as the organization's calendar has it? The changes made here go.
+          </p>
+          {error ? (
+            <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+              {error}
+            </p>
+          ) : null}
+          <div className="mt-3 grid grid-cols-2 gap-[9px]">
+            <button
+              type="button"
+              onClick={revert}
+              disabled={busy}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] bg-action px-3 font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
+            >
+              {busy ? 'Reverting…' : 'Revert'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAsking(false);
+                setError(null);
+              }}
+              disabled={busy}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-line px-3 font-bold font-head text-[0.9375rem] text-ink"
+            >
+              Keep the changes
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className={`grid gap-[9px] ${changed ? 'grid-cols-2' : 'grid-cols-1 max-w-[220px]'}`}>
+          <Link
+            to={`/events/${eventId}/edit`}
+            className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
+          >
+            Change
+          </Link>
+          {changed ? (
+            <button
+              type="button"
+              onClick={() => {
+                setAsking(true);
+              }}
+              className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-line px-2 text-center font-bold font-head text-[0.875rem] text-ink transition-colors hover:bg-tint"
+            >
+              Revert to the calendar
+            </button>
+          ) : null}
         </div>
       )}
     </>

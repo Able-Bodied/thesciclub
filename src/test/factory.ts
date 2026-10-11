@@ -61,6 +61,8 @@ export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
     handAdded: false,
     photoPath: null,
     photoAlt: null,
+    adminChanged: [],
+    calendarValues: null,
     endTime: null,
     timezone: 'America/Los_Angeles',
     location: 'Somewhere',

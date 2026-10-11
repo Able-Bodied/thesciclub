@@ -68,7 +68,9 @@ export function mayChangeEvent(
   isAdmin: boolean,
   myOrganizations: Set<string>,
 ): boolean {
-  if (!event.handAdded) return false;
+  // An imported event, only by an administrator (20261012060000): their
+  // change is kept over the nightly import until they revert it.
+  if (!event.handAdded) return isAdmin;
   if (isAdmin) return true;
   return event.organizationId !== null && myOrganizations.has(event.organizationId);
 }

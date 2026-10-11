@@ -40,9 +40,12 @@ describe('who may', () => {
     expect(mayAddEvents(false, new Set())).toBe(false);
   });
 
-  it('never offers to change a scraped event, even to an administrator', () => {
+  // 20261012060000: an administrator may change an imported event; a member
+  // who speaks for its organization still changes it on their own calendar.
+  it('offers a scraped event to an administrator only', () => {
     const scraped = makeEvent({ handAdded: false, organizationId: 'org-1' });
-    expect(mayChangeEvent(scraped, true, new Set(['org-1']))).toBe(false);
+    expect(mayChangeEvent(scraped, true, new Set())).toBe(true);
+    expect(mayChangeEvent(scraped, false, new Set(['org-1']))).toBe(false);
   });
 
   it('offers a hand-added event to its organization and to administrators only', () => {

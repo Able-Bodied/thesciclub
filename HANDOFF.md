@@ -597,6 +597,47 @@ the product definition and wins over this file.
     the backdrop and Escape remain. A hint to take a reaction back shows only
     once you have one.
 
+39. **Administrators change imported events** (2026-10-11, released). The owner:
+    anything the event form has, on an event from an organization's
+    calendar; the administrator's version wins until reverted.
+    `20261012060000`: `events.admin_override` (changed fields and values) and
+    `feed_values` (what the calendar says for exactly those fields).
+    `admin_change_imported_event` keeps only fields that differ from the
+    calendar (saving unchanged fields freezes nothing; changing one back lets
+    it go); a changed description also empties the calendar's HTML so the
+    new words are drawn. `admin_revert_imported_event` restores
+    `feed_values` at once. The event's own columns hold the corrected values,
+    so pages, lists, reminders and notifications read them unchanged. **The
+    ingest** reads `admin_override` (`withAdminOverride`): the override goes
+    back over the scrape and the scraped value into `feed_values`; untouched
+    fields keep updating. No Delete on an imported event (the import would
+    bring it back). A cover picture too, since `20261012070000` (the owner,
+    2026-10-11): `may_change_event` lets an administrator change an
+    imported event, so `set_event_photo` and the bucket's policies follow;
+    the ingest never writes the cover, so it stays. Form note lists what the calendar
+    says for each changed field; the event page has Change and Revert.
+    PGlite: 18 checks; 5 ingest tests. Released 2026-10-11: the migration
+    went live first (the client and the ingest both read `admin_override`),
+    columns and both functions confirmed on production, then the client and
+    ingest published. The first nightly import with an override is the real
+    check that a change survives it.
+
+40. **Formatting in a room's first post** (2026-10-11, no migration, released). New
+    topic's first post has the event form's toolbar (`DescriptionEditor`:
+    bold, italic, heading, lists, link, preview). Every post on a topic page
+    is now drawn from that small Markdown through `EventDescription`, the
+    same allowlist as an event description, so a reply someone formats by
+    hand is formatted too; plain text reads as it did. Previews that show a
+    few lines of a post — a Home card's opening or first reply, a
+    notification's excerpt — use `markdownToPlain`, so no `**` or `##` shows.
+    Not changed: messages in conversations. The phone notification text is
+    stripped too, in the `push-notify` edge function (`plainPost` in
+    compose.ts, restated from `markdownToPlain` because the function is
+    deployed on its own): replies and the post quoted in a like, never a
+    conversation's message. Released 2026-10-11: the client, and
+    `push-notify` deployed as version 5 at the owner's word (from the repo,
+    which matched the live version 4 apart from this change).
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

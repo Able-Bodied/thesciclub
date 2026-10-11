@@ -103,6 +103,14 @@ const fileInput = (): HTMLInputElement => {
 const post = () => screen.getByRole('button', { name: 'Post it' });
 
 describe('asking, from a room', () => {
+  it('has the formatting toolbar on the first post', () => {
+    renderPage();
+    for (const name of ['Bold', 'Italic', 'Heading', 'Bulleted list', 'Numbered list', 'Link']) {
+      expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
+  });
+
   it('goes back to the room and says New topic', () => {
     renderPage();
     expect(screen.getByRole('heading', { level: 1, name: 'New topic' })).toBeInTheDocument();

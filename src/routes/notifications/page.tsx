@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
+import { markdownToPlain } from '@/lib/markdown';
 import {
   type AppNotification,
   announceNotificationsChanged,
@@ -231,7 +232,7 @@ function NotificationRow({ item, onOpen }: { item: AppNotification; onOpen: () =
         </span>
         {item.excerpt ? (
           <span className="mt-0.5 line-clamp-2 block whitespace-pre-line text-[0.84375rem] text-ink2 leading-[1.45]">
-            {item.excerpt}
+            {markdownToPlain(item.excerpt)}
           </span>
         ) : null}
         <span className="mt-1 block text-[0.75rem] text-grey">{chatTime(item.createdAt)}</span>

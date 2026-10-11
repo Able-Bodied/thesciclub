@@ -50,7 +50,7 @@ const SCRAPERS = {
 const PRIOR_COLUMNS =
   'id, external_id, title, description, description_html, start_time, end_time, location, url, ' +
   'registration_url, city, postal_code, latitude, longitude, location_precision, ' +
-  'source_last_modified, detail_fetched_at';
+  'source_last_modified, detail_fetched_at, admin_override';
 
 function log(message) {
   console.log(message);
@@ -150,6 +150,51 @@ function sameInstant(a, b) {
   // equal or unequal. A malformed time should still read as a change.
   if (Number.isNaN(left) || Number.isNaN(right)) return String(a) === String(b);
   return left === right;
+}
+
+/**
+ * The fields an administrator may change on an imported event
+ * (20261012060000): the event form's, plus the description's HTML, which a
+ * changed description empties.
+ */
+const OVERRIDABLE = new Set([
+  'title',
+  'description',
+  'description_html',
+  'start_time',
+  'end_time',
+  'location',
+  'city',
+  'url',
+  'registration_url',
+  'event_format',
+  'organization_id',
+  'host_name',
+]);
+
+/**
+ * What to write for an event an administrator has changed: their value for
+ * each field they changed, and what the calendar now says for exactly those
+ * fields in `feed_values`, so the change survives the import and can be
+ * reverted to the calendar's latest. Every other field is the scrape's, so
+ * the calendar keeps updating everything the administrator left alone.
+ *
+ * `feed_values` is written for every row (null when nothing is overridden):
+ * a batch upsert sends one set of columns, and a row without the key would be
+ * written as null anyway.
+ */
+export function withAdminOverride(payload, prior) {
+  const override = prior?.admin_override;
+  if (!override || typeof override !== 'object') return { ...payload, feed_values: null };
+  const next = { ...payload };
+  const calendar = {};
+  for (const [field, value] of Object.entries(override)) {
+    if (!OVERRIDABLE.has(field)) continue;
+    calendar[field] = payload[field] ?? null;
+    next[field] = value;
+  }
+  next.feed_values = Object.keys(calendar).length > 0 ? calendar : null;
+  return next;
 }
 
 export function eventChanged(prior, scraped) {
@@ -268,38 +313,45 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
 
   await geocodeEvents(usable, priorByExternalId);
 
-  const payloads = usable.map((event) => ({
-    feed_id: feed.id,
-    external_id: event.external_id,
-    title: event.title,
-    description: event.description || '',
-    description_html: event.description_html || '',
-    start_time: event.start_time,
-    end_time: event.end_time || null,
-    location: event.location || '',
-    url: event.url || null,
-    registration_url: event.registration_url || null,
-    // The feed's own name for the host, then a club organization if that name
-    // matches one. Both are kept: the name is what the source said, and the id
-    // is our interpretation of it.
-    host_name: event.host_name ?? null,
-    organization_id:
-      matchOrganization(event.host_name, organizations) ?? feed.organization_id ?? null,
-    event_format: classifyFormat(event),
-    city: event.city ?? null,
-    postal_code: event.postal_code ?? null,
-    latitude: event.latitude ?? null,
-    longitude: event.longitude ?? null,
-    location_precision: event.location_precision ?? null,
-    needs_pii_review: containsContactDetails(event.description, event.description_html),
-    ...(event.source_last_modified === undefined
-      ? {}
-      : { source_last_modified: event.source_last_modified }),
-    ...(event.detail_fetched_at === undefined
-      ? {}
-      : { detail_fetched_at: event.detail_fetched_at }),
-    updated_at: new Date().toISOString(),
-  }));
+  // An administrator's changes are put back over the scrape, field by field
+  // (withAdminOverride, 20261012060000).
+  const payloads = usable.map((event) =>
+    withAdminOverride(
+      {
+        feed_id: feed.id,
+        external_id: event.external_id,
+        title: event.title,
+        description: event.description || '',
+        description_html: event.description_html || '',
+        start_time: event.start_time,
+        end_time: event.end_time || null,
+        location: event.location || '',
+        url: event.url || null,
+        registration_url: event.registration_url || null,
+        // The feed's own name for the host, then a club organization if that name
+        // matches one. Both are kept: the name is what the source said, and the id
+        // is our interpretation of it.
+        host_name: event.host_name ?? null,
+        organization_id:
+          matchOrganization(event.host_name, organizations) ?? feed.organization_id ?? null,
+        event_format: classifyFormat(event),
+        city: event.city ?? null,
+        postal_code: event.postal_code ?? null,
+        latitude: event.latitude ?? null,
+        longitude: event.longitude ?? null,
+        location_precision: event.location_precision ?? null,
+        needs_pii_review: containsContactDetails(event.description, event.description_html),
+        ...(event.source_last_modified === undefined
+          ? {}
+          : { source_last_modified: event.source_last_modified }),
+        ...(event.detail_fetched_at === undefined
+          ? {}
+          : { detail_fetched_at: event.detail_fetched_at }),
+        updated_at: new Date().toISOString(),
+      },
+      priorByExternalId.get(event.external_id),
+    ),
+  );
 
   const changed = payloads.filter((payload) =>
     eventChanged(priorByExternalId.get(payload.external_id), payload),

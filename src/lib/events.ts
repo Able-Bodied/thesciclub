@@ -40,7 +40,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, admin_override, feed_values';
 
 interface EventRow {
   id: string;
@@ -61,6 +61,9 @@ interface EventRow {
   series_id: string | null;
   photo_path: string | null;
   photo_alt: string | null;
+  /** Imported events an administrator changed (20261012060000). */
+  admin_override: Record<string, unknown> | null;
+  feed_values: Record<string, unknown> | null;
 }
 
 interface TagRow {
@@ -151,6 +154,9 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       seriesId: row.series_id,
       photoPath: row.photo_path,
       photoAlt: row.photo_alt,
+      // The description's HTML moves with its words, so it is not listed apart.
+      adminChanged: Object.keys(row.admin_override ?? {}).filter((f) => f !== 'description_html'),
+      calendarValues: row.feed_values ?? null,
       // Sorted so a card's chips do not reshuffle between renders.
       tags: (tagsByEvent.get(row.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
       // An event nobody has RSVPed to has no row in the counts view rather
@@ -166,6 +172,8 @@ export interface EventsState {
   loading: boolean;
   /** The database's own sentence where there is one, not a rewritten summary. */
   error: string | null;
+  /** Read again, after a change made on this screen (an administrator's revert). */
+  reload?: () => void;
 }
 
 /**
@@ -183,7 +191,13 @@ export interface EventQuery {
 
 export function useEvents({ from, to, id, organizationId }: EventQuery = {}): EventsState {
   const [state, setState] = useState<EventsState>({ events: [], loading: true, error: null });
+  // Bumped to read again; part of the effect's dependencies for that reason.
+  const [round, setRound] = useState(0);
+  const reload = useCallback(() => {
+    setRound((n) => n + 1);
+  }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
@@ -309,9 +323,9 @@ export function useEvents({ from, to, id, organizationId }: EventQuery = {}): Ev
     return () => {
       controller.abort();
     };
-  }, [from, to, id, organizationId]);
+  }, [from, to, id, organizationId, round]);
 
-  return state;
+  return { ...state, reload };
 }
 
 /* ------------------------------------------------------------ viewer state */
@@ -673,6 +687,52 @@ export async function saveEventCover(
     return { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, COVER_REFUSAL) };
+  }
+}
+
+/**
+ * An administrator's change to an imported event (20261012060000): only the
+ * fields that differ from the organization's calendar are kept as changes,
+ * and they survive the nightly import until reverted.
+ */
+export async function adminChangeImportedEvent(
+  eventId: string,
+  draft: Omit<EventDraftPayload, 'id'>,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { error } = await getSupabase().rpc('admin_change_imported_event', {
+      event: eventId,
+      organization: draft.organizationId,
+      host: draft.hostName,
+      title: draft.title,
+      description: draft.description,
+      starts: draft.startTime,
+      ends: draft.endTime,
+      format: draft.format,
+      place: draft.location,
+      city: draft.city,
+      link: draft.url,
+      registration: draft.registrationUrl,
+    });
+    if (error) return { ok: false, error: describeError(error, SAVE_EVENT_REFUSAL) };
+    return { ok: true, id: eventId };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
+  }
+}
+
+/** Puts an imported event back as its organization's calendar has it. */
+export async function revertImportedEvent(eventId: string): Promise<WriteResult> {
+  const refusal = {
+    attempt: 'The event was not reverted.',
+    refused: 'Only an administrator can change an imported event.',
+    missing: 'That event is not on the calendar any more.',
+  };
+  try {
+    const { error } = await getSupabase().rpc('admin_revert_imported_event', { event: eventId });
+    return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
   }
 }
 

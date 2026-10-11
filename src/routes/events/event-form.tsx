@@ -7,6 +7,7 @@ import { useAnnounce } from '@/lib/announce';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
 import {
+  adminChangeImportedEvent,
   type CoverChange,
   saveEvent,
   saveEventCover,
@@ -107,6 +108,15 @@ export default function EventFormPage() {
       }
       initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
       initialFailure={coverFailureFrom(location.state)}
+      imported={
+        existing && !existing.handAdded
+          ? {
+              changed: existing.adminChanged,
+              calendar: existing.calendarValues ?? {},
+              timezone: existing.timezone,
+            }
+          : null
+      }
       isAdmin={account.isAdmin}
       options={options}
     />
@@ -131,9 +141,16 @@ function EventForm({
   initial,
   initialCover,
   initialFailure,
+  imported,
   isAdmin,
   options,
 }: {
+  /**
+   * An event from an organization's calendar, changed by an administrator
+   * (20261012060000): what is already changed, and what the calendar says
+   * for those fields. Null for an event added in the club.
+   */
+  imported: { changed: string[]; calendar: Record<string, unknown>; timezone: string } | null;
   eventId: string | null;
   initial: EventDraft;
   /** The picture the event has, and its words, before anything is changed. */
@@ -180,7 +197,9 @@ function EventForm({
     void (async () => {
       const result = repeat
         ? await saveEventSeries(payload, repeat)
-        : await saveEvent({ id: eventId, ...payload });
+        : imported && eventId
+          ? await adminChangeImportedEvent(eventId, payload)
+          : await saveEvent({ id: eventId, ...payload });
       if (!result.ok) {
         setFailure(result.error);
         return;
@@ -235,6 +254,7 @@ function EventForm({
           Club members can read this event.
           {isNew ? ' It goes on the calendar as soon as you add it.' : ''}
         </p>
+        {imported ? <ImportedNote imported={imported} options={options} /> : null}
 
         {/* ------------------------------------------------------ host */}
         {onlyOne ? (
@@ -424,6 +444,8 @@ function EventForm({
         />
 
         {/* ----------------------------------------------------- cover */}
+        {/* On an imported event too, for an administrator (20261012070000);
+            the import never writes the cover, so it stays. */}
         <CoverField
           value={cover}
           onChange={(next) => {
@@ -659,4 +681,96 @@ function EndChoice({
       {children}
     </label>
   );
+}
+
+/** What each overridable field is called in this form. */
+const FIELD_NAMES: Record<string, string> = {
+  title: 'Name',
+  description: 'About it',
+  start_time: 'Starts',
+  end_time: 'Ends',
+  location: 'Where',
+  city: 'City',
+  url: 'More details at',
+  registration_url: 'Sign-up link',
+  event_format: 'In person or online',
+  organization_id: 'Host',
+  host_name: 'Host',
+};
+
+/**
+ * The note on an imported event's form (20261012060000): what changing it
+ * does, and, for each field already changed here, what the organization's
+ * calendar says now — which can differ from when it was changed, since the
+ * import keeps that value current.
+ */
+function ImportedNote({
+  imported,
+  options,
+}: {
+  imported: { changed: string[]; calendar: Record<string, unknown>; timezone: string };
+  options: { id: string; name: string }[];
+}) {
+  const lines = imported.changed
+    // One line for the host however it was changed.
+    .filter((field) => !(field === 'host_name' && imported.changed.includes('organization_id')))
+    .map((field) => ({
+      field,
+      name: FIELD_NAMES[field] ?? field,
+      says: calendarSays(field, imported.calendar, imported.timezone, options),
+    }));
+  return (
+    <div className="mt-3 rounded-[13px] border border-line bg-tint/40 px-3.5 py-3 text-[0.8125rem] text-ink2 leading-[1.5]">
+      <p>
+        This event comes from the organization's own calendar. What you change here stays when the
+        calendar updates each night; anything you leave alone keeps updating from it.
+      </p>
+      {lines.length > 0 ? (
+        <>
+          <p className="mt-2 font-bold text-ink">Changed here already — the calendar says:</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-5">
+            {lines.map((line) => (
+              <li key={line.field}>
+                {line.name}: <span className="text-ink">{line.says}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5">To go back to the calendar's version, use Revert on the event.</p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** One calendar value, as the form would show it. */
+function calendarSays(
+  field: string,
+  calendar: Record<string, unknown>,
+  timezone: string,
+  options: { id: string; name: string }[],
+): string {
+  const value = calendar[field];
+  if (field === 'organization_id' || field === 'host_name') {
+    const org = typeof calendar.organization_id === 'string' ? calendar.organization_id : null;
+    const named = options.find((o) => o.id === org)?.name;
+    const host = typeof calendar.host_name === 'string' ? calendar.host_name : null;
+    return named ?? host ?? 'no host';
+  }
+  // Every field kept is text in the JSON (times as ISO strings).
+  if (typeof value !== 'string' || value === '') return 'nothing';
+  if (field === 'start_time' || field === 'end_time') {
+    return new Date(value).toLocaleString('en-US', {
+      timeZone: timezone,
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+  if (field === 'event_format') {
+    return EVENT_FORMAT_LABELS[value as EventFormat];
+  }
+  const text = value.replace(/\s+/g, ' ').trim();
+  return text.length > 80 ? `“${text.slice(0, 79)}…”` : `“${text}”`;
 }
