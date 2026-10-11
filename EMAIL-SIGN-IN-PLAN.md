@@ -291,11 +291,15 @@ HANDOFF.md.
     ways (overwrites what was typed; opens at Welcome; asks when signed in), each failing 1, 7 and 3 tests. `pnpm check`
     exit 0, `pnpm test` 181 files and 2545 tests, `pnpm build` exit 0. Not tried on a phone or the live site. A newline is not
     trimmed in the database (nor in `claim_invite`); the client's `trim()` is what keeps one out.
+    **Released 2026-10-11** with `788dc8b` (its migration in the same `db push`).
     **Not to be released from this session** (the owner, 2026-10-11): `signup-invite-gate` (worktree
     `thesciclub-signup-gate`) is built on top of these commits, so it carries them, and the session that owns it releases both
     together. Its `db push` dry run should list `20261012030000` and `20261012040000`.
-  - [ ] **Follow-up, the owner's word 2026-10-11: an uninvited address is refused at sign-up, before any email.** Built on
-    branch `signup-invite-gate` (a separate worktree while Session 6 ran), **not yet merged, applied or pushed**. Migration
+  - [x] **Follow-up, the owner's word 2026-10-11: an uninvited address is refused at sign-up, before any email.** **Released
+    2026-10-11:** merged (`788dc8b`), `db push` of `20261012030000` and `20261012040000` (dry run listed exactly those two),
+    main pushed by the owner, then the owner turned the hook on. Live check by the owner: a never-used plus-address was
+    refused at once with no email. An address that **already has an account** never reaches the hook (Supabase answers
+    "check your email" and may send nothing), so test with a fresh address. Built on branch `signup-invite-gate`. Migration
     `20261012040000_signup_needs_an_invite`: a Before User Created hook, `public.signup_needs_an_invite`. An email sign-up
     passes only when its address has a pending invite, or it carries a pending, unclaimed invite's token in
     `user_metadata.invite_token` (the join form now sends the held one), and the address is not blocked. Google and Apple
@@ -318,13 +322,16 @@ HANDOFF.md.
       Hook before client would leave the live join form showing a bare sentence and dropping the invite token.
     - Accounts made before the hook is on are not affected; an unconfirmed one re-signing up gets its confirmation resent by
       Supabase without reaching the hook.
-  - [ ] **Follow-up, the owner's word 2026-10-11: Me no longer changes the account's email.** Same branch,
+  - [x] **Follow-up, the owner's word 2026-10-11: Me no longer changes the account's email.** Released with `788dc8b`.
+    The owner cleared the Change email address template, then pasted it back: the banner still sends it. Same branch,
     `signup-invite-gate`, no migration. Me → Signing in → Email is read only: the address, and "it can't be changed here. If
     you lose access to it, ask an administrator" (the owner runs `scripts/set-member-email.mjs`). The add-an-email banner for
     an account with no email is unchanged, and still uses `changeEmail` and `/me?email=changed`. Supabase's API would still
     let a signed-in member call `updateUser({ email })` on their own account; nothing in the app offers it, and it moves only
     their own account. Test: the card offers no change and names who can; with the old card put back it fails.
-  - [ ] **Follow-up, 2026-10-11, seen by the owner on production: the closed door's logos for a refused sign-up.** The
+  - [x] **Follow-up, 2026-10-11, seen by the owner on production: the closed door's logos for a refused sign-up.** Pushed
+    to the database 2026-10-11 (dry run listed only `20261012050000`); a logo signed and loaded as anon on production
+    (`organizations/ncs.webp`, 200), and the owner saw the logos on the closed door. The
     closed door now also opens for somebody not signed in (refused at sign-up), and `anon` could not sign `organizations/…`
     in the private photos bucket, so the logos fell back to tiles. Migration `20261012050000_anyone_sees_organization_logos`
     adds one select policy `to anon` for the `organizations` folder of `photos` only. Fresh stack: as anon a logo signs and
