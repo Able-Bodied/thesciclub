@@ -89,19 +89,12 @@ the product definition and wins over this file.
    cards and taken-back content are skipped. The Privacy Policy does not
    yet say the club reads a linked page, or that pressing play reaches
    YouTube: the owner's call, and the Twilio registration quotes `/privacy`.
-2. **Twilio**: the A2P 10DLC campaign was rejected 2026-10-02 (30908,
-   privacy policy); do not raise it each session. `/privacy` is fixed and
-   live. Resubmit once ablebodied.org (the brand's site on the registration)
-   has the owner's three edits live, with thesciclub.com URLs (the
-   registration still names thesciclub.netlify.app). The registration quotes
-   `SMS_CONSENT` and `SIGN_IN_CONSENT` (`onboarding/steps.tsx`), `/privacy`,
-   `/terms` and `public/sms-opt-in/*.png`: change any of them and the
-   registration with it (retake the screenshots from committed code). Opt-in
-   proof field: 500 characters. Until texts work, members sign in with fixed
-   codes (dashboard: Authentication → Sign In / Providers → Phone → Test phone
-   numbers; each number 11 digits starting with 1, or it falls through to
-   Twilio as "could not be sent"). When texts work, ask, then: clear that
-   list, set Twilio's geo permissions to US only, and set a spend cap.
+2. **Twilio is dropped** (the owner, 2026-10-10). Sign-in moves to email,
+   Google, Apple and passkeys; invites go by email. The plan, its decisions
+   and its workstreams are in `EMAIL-SIGN-IN-PLAN.md`; nothing is built yet.
+   Until it ships, members still sign in with fixed codes (dashboard:
+   Authentication → Sign In / Providers → Phone → Test phone numbers), and
+   Phone stays on until every existing account has a confirmed email.
 3. **Supabase free plan**: pauses after a quiet week, small limits, **no
    backups**. Move to the paid tier (daily backups) and test a restore before
    real members arrive.
