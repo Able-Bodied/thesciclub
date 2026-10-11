@@ -84,16 +84,13 @@ export function BlockedScreen({
                     is the screen where knowing who to contact is the whole
                     point. It falls back to the tile on its own. */}
                 <OrganizationBadge organization={organization} />
-                <span className="min-w-0">
+                {/* The name and the place, not the description (the owner,
+                    2026-10-11): the descriptions are written for the
+                    organization's own page, and this screen only needs
+                    somebody to recognise who to contact. */}
+                <span className="min-w-0 self-center">
                   <span className="block font-extrabold font-head text-[0.875rem]">
                     {organization.name}
-                  </span>
-                  {/* Clamped: these descriptions are written for the
-                      organization's own page, and this screen wants the name,
-                      the place, and enough to recognise it by — not a
-                      paragraph somebody has to read while being turned away. */}
-                  <span className="mt-0.5 line-clamp-2 block text-[0.78125rem] text-grey leading-[1.42]">
-                    {organization.description}
                   </span>
                   <span className="mt-0.5 block text-[0.75rem] text-grey">{organization.city}</span>
                 </span>

@@ -65,6 +65,15 @@ describe('the screen somebody is turned away on', () => {
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.queryByText('Wheel with Me')).toBeNull();
   });
+
+  // The owner, 2026-10-11: the name and the place are enough here.
+  it('names each organization and its place, without its description', () => {
+    orgs.list = [organization()];
+    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
+    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.getByText('Northern California')).toBeInTheDocument();
+    expect(screen.queryByText(/peer mentor programme every member/)).toBeNull();
+  });
 });
 
 describe('the way out', () => {
