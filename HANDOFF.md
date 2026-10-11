@@ -40,6 +40,14 @@ the product definition and wins over this file.
 
 ## Open
 
+- **Owner to-do, after the soft launch: Apple "Hide My Email" senders** (2026-10-11). Apple
+  Developer → Services → Sign in with Apple for Email Communication lists `thesciclub.com`,
+  `send.thesciclub.com`, `invites@thesciclub.com` and `hello@thesciclub.com`. Only `send.` passes
+  SPF: `thesciclub.com` has no SPF record. Ask the domain holder to add at Spaceship a **TXT**,
+  host `@`, value `v=spf1 include:send.forge.rmta.net ~all`, then re-check the three red entries
+  in Apple (Verify, or delete and add again). Until then mail to a hidden Apple address (a
+  password link, Forgot password) does not arrive; signing in with Apple still works.
+
 0. **Audit fixes, released** (2026-10-09): findings 1–5, 7 and 8 in AUDIT.md
    are corrected in this release. Events and organizations stay behind membership
    at the owner's word; the old public-events requirement is withdrawn. The owner
