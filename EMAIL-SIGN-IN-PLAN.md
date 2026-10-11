@@ -21,6 +21,23 @@ HANDOFF.md.
   - [ ] seed.sql and local config.toml
   - [ ] SQL probes pass to the probe standard
   - [ ] `pnpm check` exit 0, committed
+  - Notes for the next session (contract changes are made in place above; "as built"):
+    - Ticks trail by one commit: a hash cannot sit in the commit it names, so each tick lands in the commit after the work it cites.
+    - **Seeded local accounts** (password `local-dev-password`): `alfred@local.test` (admin), `maya@local.test` (mentor, has a phone),
+      `sam@local.test`; `invited@local.test` (account, invited, no member row), `stranger@local.test` (account, not invited),
+      `newcomer@local.test` (invited by Maya, no account: sign up, confirm in the local inbox).
+    - **Start the local stack with mailpit** now (`-x imgproxy,studio,edge-runtime,logflare,vector,supavisor`, not HANDOFF's
+      `-x ...mailpit...`): confirmations are on, so a sign-up can only be finished from http://127.0.0.1:54324.
+    - `scripts/shoot.mjs` and `scripts/demo-member.mjs` still sign in with the removed test OTP numbers and are broken until
+      they use the seeded passwords (Session 3, with dev-login). HANDOFF's Environment "Test numbers" lines go in Session 5.
+    - **`send-invite` must use the service role** after checking the caller: a client cannot write `token_hash`/`sent_at`, and an
+      administrator has no select policy on `invites` (read `admin_invites`, or check `is_admin()`, then use the service client).
+    - `mentor-invites.ts` must move to `create_my_invite` (a direct insert is now `permission denied for table invites`) and select
+      `email`, not only `phone`. Admin reads blocks from `admin_blocked_emails`, members from `admin_members` (now with `email`, `username`).
+    - Retired probes: `claim-carries-profile.sql` (the seed-claim branch is gone) and `only-a-phone-makes-an-account.sql`
+      (function dropped). `claim-preview.sql` still passes; `my_claimable_profile` is untouched and unused.
+    - Found wrong in the plan, fixed above: Release order step 2 (Admin invites and mentor invites break at the push, not only
+      the join flow); `my_number_is_invited` could not be dropped (`find_inviters` calls it); the dev port is 5183, not only 5173.
 - [ ] **Session 2: B, Email and Apple secret**
   - [ ] `send-invite` and its tests
   - [ ] Auth email templates
@@ -166,6 +183,8 @@ members
   username       citext null unique  -- NULL only for rows that predate this; onboarding requires it.
                  check (username ~ '^[a-z0-9._]{3,20}$' and username !~ '^[._]|[._]$|\.\.')
                  -- reserved list enforced in claim/set functions, not the check.
+                 -- (as built: a trigger lowercases it, the check is case-sensitive on text,
+                 -- and an insert by `authenticated` must carry one and not a reserved one)
 
 invites
   email          citext null         -- normalized: trimmed, lowercase
@@ -176,6 +195,10 @@ invites
   sent_at        timestamptz null    -- last time the email went out
   constraint invites_email_or_phone check (email is not null or phone_raw is not null)
   unique index invites_live_email_idx on (email) where status in ('pending','consumed') and email is not null
+  -- as built: `phone` (generated) is now NULL when there is no phone_raw; it was '' and would have
+  -- collided in invites_live_phone_idx. A client can no longer INSERT into invites at all, and can
+  -- UPDATE only status and revoked_at (a mentor withdrawing their own pending invite). Everything
+  -- else goes through the functions below, or the service role (send-invite writes token_hash, sent_at).
 
 blocked_emails  (email citext primary key, blocked_at, blocked_by, note)
                 -- same RLS shape as blocked_numbers; admins only
@@ -186,23 +209,38 @@ blocked_emails  (email citext primary key, blocked_at, blocked_by, note)
 | Function | Returns | Who / what |
 |---|---|---|
 | `claim_invite(token text)` | `boolean` | Signed in, not a member. Hashes the token, finds a `pending` invite, sets `claimed_by = auth.uid()`. False for an unknown, used or revoked token. It never says which. |
-| `my_invite_status()` | `(invited boolean)` | **Redefined.** True when a pending invite has `claimed_by = auth.uid()`, or when `email` equals the caller's **confirmed** `auth.users.email` (read from `auth.users`, checking `email_confirmed_at is not null`, not just the JWT). Blocked emails → false. The `claimable_member_id` column is dropped (the seeded directory is gone, 20261010020000). |
-| `my_number_is_invited()` | replaced by `i_am_invited()` | Same rule as above, used by the members insert policy. |
+| `my_invite_status()` | `(invited boolean)` | **Redefined.** True when a live invite has `claimed_by = auth.uid()`, or when `email` equals the caller's **confirmed** `auth.users.email` (read from `auth.users`, checking `email_confirmed_at is not null`, not just the JWT). Blocked emails → false. The `claimable_member_id` column is dropped (the seeded directory is gone, 20261010020000). It is `select i_am_invited()`. |
+| `i_am_invited()` | `boolean` | The rule above, used by the members insert policy. "Live" means `pending` **or `consumed`**: the policy is judged after the consume trigger has run, so a pending-only rule would refuse every join. A member who joined without an invite (the owner, the seeded accounts) answers false; the client checks for the member row first. |
+| `my_number_is_invited()` | kept, unused | **Not dropped** (the plan said "replaced"): `find_inviters` still calls it. Drop both in the later cleanup. |
 | `consume_invite_for_new_member()` trigger | — | **Redefined.** Consumes the invite `claimed_by = new.id`, else the one whose email matches the confirmed account email. Sets `new.invite_id`. Drops the seed-claim branch. |
 | `username_available(name text)` | `boolean` | Signed in. Case-insensitive; false for reserved names. |
 | `suggest_usernames(full_name text)` | `setof text` (≤ 5) | Signed in. Free, valid candidates: `first`, `firstlast`, `first.last`, `first_last`, `firstl`, then `firstlast` + 2 digits. Accents stripped. |
 | `set_my_username(name text)` | `void` | A member changes theirs; raises `23505` with "That username is taken." |
-| `admin_create_invite(raw_email text, organization_id uuid, note text)` | `invites` row | **Redefined** for email. Refuses a blocked or already-live email. |
-| `create_my_invite(raw_email text, note text)` | `invites` row | Mentor/org/representative invites, with the existing limits (`my_invite_permissions`). Replaces the direct insert in `mentor-invites.ts`. |
-| `admin_block_email(raw_email text, note text)` / `admin_unblock_email(raw_email text)` | `void` | Admin only. Blocking revokes live invites for that address. |
+| `admin_create_invite(raw_email text, organization_id uuid default null, note text default null)` | `invites` row | **Redefined** for email; the phone signature and `claim_member` are gone. Stores the address trimmed and lowercase. Refuses a blocked or already-live email (23505), a malformed one (22023), an organization that cannot invite. |
+| `create_my_invite(raw_email text, note text)` | `invites` row | Mentor/org/representative invites, with the existing limits (`my_invite_permissions`). Replaces the direct insert in `mentor-invites.ts`, which is now **refused by privilege**. Errors: `42501` "You cannot add another invite." (not allowed, or allowance spent), `23505` already on the list, `22023` not an address, `P0001` blocked. |
+| `admin_block_email(raw_email text, note text)` / `admin_unblock_email(raw_email text)` | `void` | Admin only. Blocking revokes live (pending **and** consumed) invites for that address. It does **not** remove an existing member (use Remove member), and refuses the caller's own address and an administrator's. |
+| `admin_revoke_invite(target uuid)` | `void` | **Redefined**: "already used" is judged by `members.invite_id`, not by the invite's number (an email invite has none, so the old check let an administrator revoke a used invite). |
+| `admin_block_number(...)` | `void` | **Redefined**: finds the member to remove by `auth.users.phone` (what Auth verified), not `members.phone`, which a member can now type to anything. |
+| `claim_invite` also | | Returns false (never an error) for an anonymous, empty, unknown, used, revoked or someone-else's token, for an existing member, and for a caller whose confirmed address is blocked. Claiming your own claimed token again is true. It does not require a confirmed email (Supabase will not sign an unconfirmed password account in). |
+| `username_available(name)` | | also true for the caller's **own** current name, so Me does not say "taken" for what they already have. |
 | `admin_set_member_phone` | — | Not needed; members edit their own `phone` (existing update policy plus `guard_own_member_row`, checked). |
 | `event_host_contacts(event_id uuid)` | `(member_id, display_name, email, phone)` | Admin only. For the owner's practice of passing Going members to the host. Email from `auth.users`. |
-| `delete_my_account()` | — | **Redefined** to free email invites (`claimed_by` or matching email) as it freed numbers. |
+| `delete_my_account()` | — | **Redefined** to free email invites (`claimed_by` or the *confirmed* account email) as it freed numbers. The old-number branch now uses only the JWT's verified phone, never `members.phone`. |
 
 Retire `only_a_phone_makes_an_account`. Drop the function after the hook is off
-on hosted, in that order. Otherwise every new account is refused. Leave
+on hosted, in that order. Otherwise every new account is refused. (The hook is
+off on hosted since 2026-10-10, so the migration drops it.) Leave
 `find_inviters` in place, unused: it already refuses anybody without a JWT
 phone. Drop it in a later cleanup.
+
+### Views (as built)
+
+- `admin_invites`: adds `email`, `claimed_by`, `claimed_at`, `sent_at`; `has_account` / `account_created_at` also
+  answer from the claiming account or a confirmed account at the address. `held_by` finds the member by `invite_id`.
+- `admin_members`: adds `email` (through `private.account_email`, which answers only an administrator, so no view
+  names `auth.users`: `admin-invites-no-auth-users.sql` step 6 fails otherwise) and `username`.
+- `admin_blocked_emails` (new): email, note, blocked_at, blocked_by. Replaces `admin_blocked_numbers` for the UI.
+- `browse_members`: adds `username`.
 
 ### Edge function `send-invite` (Resend)
 
@@ -291,7 +329,8 @@ H is the owner's, and has to be done before release.
 - `supabase/config.toml`, local only:
   - `[auth.email] enable_confirmations = true`, `secure_password_change = true`
   - `minimum_password_length = 8`
-  - `site_url = "http://127.0.0.1:5173"`, with redirect URLs for 5173
+  - `site_url = "http://127.0.0.1:5173"`, with redirect URLs for 5173 (and 5183, the
+    port HANDOFF runs the local-stack app on)
   - the `[auth.hook.before_user_created]` block removed
   - `[auth.passkey] enabled = true` and `[auth.webauthn]` for `localhost`
   - SMS test numbers removed
@@ -518,8 +557,11 @@ Accounts:
 
 1. Owner H1–H8 (H8 last), and the Apple steps whenever approval arrives.
 2. `db push` Workstream A's migration (dry run first; it should list only
-   this). The old client keeps working for members who are signed in. The
-   phone join flow breaks, which is fine because nobody new is joining tonight.
+   this). The old client keeps working for members who are signed in, except
+   the phone join flow (fine: nobody new is joining tonight) **and Admin's
+   invite/block forms and the mentor invites page, which call `admin_create_invite`
+   with a phone and insert into `invites` directly**. Those break from the push
+   until step 5, so do steps 2 to 5 together, not hours apart.
 3. Deploy `send-invite`.
 4. Merge B–G. Run `pnpm check`, which must exit 0, then `pnpm test` and
    `pnpm build`.
