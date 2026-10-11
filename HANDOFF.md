@@ -458,7 +458,7 @@ the product definition and wins over this file.
     the post's own picture and linked name, so the asker had been shown
     only as plain text there.
 
-29. **Repeating events added by hand** (2026-10-10, unreleased). Add an
+29. **Repeating events added by hand** (2026-10-10, released). Add an
     event → Repeats, after Google Calendar: Does not repeat (default), Daily,
     Weekly on <weekday>, Monthly on the <nth weekday>, Custom (every 1–30
     days/weeks/months; ends Never, on a date, or after 2–100 dates). Daily,
@@ -509,7 +509,33 @@ the product definition and wins over this file.
     up to date and production REST confirms both tables and chat_set_reaction
     exist. The reaction client can now be published.
 
-31. **Compact message actions, release authorized** (2026-10-10, no migration).
+31. **Formatting in an event's "About it"** (2026-10-10, no migration). A
+    toolbar (Bold, Italic, Heading, Bulleted list, Numbered list, Link,
+    Preview) writes a small Markdown into the box (`lib/markdown.ts`): no
+    fonts or sizes, which the text-size setting owns. Still plain text in
+    `description`; `EventDescription` converts it and passes it through the
+    same `sanitizeHtml` allowlist as a scraped description, so the sanitizer
+    is what makes it safe (tests: typed `<script>`, `javascript:` links, a
+    quote in an address). Plain text from before reads as it did. Link asks
+    for the address beside the toolbar, not in a browser prompt.
+
+32. **A cover picture on an event added by hand** (2026-10-10). One picture,
+    shown whole (never cropped, as flyers carry words) at the top of the
+    event's page and as a small square on its card; optional words for a
+    screen reader. `20261011070000`: `events.photo_path`/`photo_alt`, files
+    at `events/<event id>/<random>` in the private photos bucket, written by
+    whoever may change the event (`may_change_event`, save_event's rule) and
+    read by members as every photograph is; `set_event_photo` sets the
+    column only to a file in that folder that was uploaded, as the logo's
+    does. On a repeating event it sets this date, every later date and the
+    template, so nightly dates copy it (`extend_event_series` restated); the
+    previous file comes back to delete only when nothing names it. Deleting
+    an event leaves its file. The form uploads after saving the event (the
+    folder is its id); a failed upload reopens the edit form saying the
+    event is saved. PGlite: 45 checks with the repeat ones. **Migration
+    before the client**: `EVENT_COLUMNS` now names `photo_path`.
+
+33. **Compact message actions, release authorized** (2026-10-10, no migration).
     The owner requested less clutter beneath messages and posts. Room posts,
     questions/replies and private/group messages now show one 44px ellipsis
     button. It opens a keyboard-accessible sheet containing React and the

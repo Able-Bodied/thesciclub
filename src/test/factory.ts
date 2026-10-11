@@ -58,6 +58,8 @@ export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
     startTime: '2026-09-05T17:00:00.000Z',
     seriesId: null,
     handAdded: false,
+    photoPath: null,
+    photoAlt: null,
     endTime: null,
     timezone: 'America/Los_Angeles',
     location: 'Somewhere',

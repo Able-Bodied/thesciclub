@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { GOING_SHARES_NUMBER } from '@/routes/events/event-card';
+import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
@@ -141,6 +142,8 @@ export default function EventDetailPage() {
             ← {backLabel(location)}
           </button>
 
+          <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
+
           {/* A calendar, because the line is a date. This was a map pin, which
               says "place" in front of text that says "Friday 11 September". */}
           <div className="flex items-center gap-1.5 font-bold text-gold-hi text-[0.71875rem] uppercase tracking-[0.07em]">
@@ -239,7 +242,7 @@ export default function EventDetailPage() {
         <EventDescription
           html={event.descriptionHtml}
           text={event.description}
-          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_li]:ml-4 [&_li]:list-disc [&_p]:mt-2.5"
+          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_ul]:mt-2 [&_ul]:list-disc"
         />
 
         {registerHref || pageHref ? (

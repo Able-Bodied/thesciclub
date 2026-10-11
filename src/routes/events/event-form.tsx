@@ -1,14 +1,22 @@
 import { useMemo, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
-import { saveEvent, saveEventSeries, useEvents } from '@/lib/events';
+import {
+  type CoverChange,
+  saveEvent,
+  saveEventCover,
+  saveEventSeries,
+  useEvents,
+} from '@/lib/events';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
+import { CoverField } from '@/routes/events/cover-field';
+import { DescriptionEditor } from '@/routes/events/description-editor';
 import {
   CITY_MAX,
   DESCRIPTION_MAX,
@@ -49,6 +57,7 @@ import { EVENT_FORMAT_LABELS, EVENT_FORMATS, type EventFormat } from '@/types/do
  */
 export default function EventFormPage() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
   const mine = useMyOrganizations(memberId);
@@ -96,10 +105,18 @@ export default function EventFormPage() {
           ? draftFromEvent(existing)
           : emptyDraft(!account.isAdmin && options.length === 1 ? (options[0]?.id ?? null) : null)
       }
+      initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
+      initialFailure={coverFailureFrom(location.state)}
       isAdmin={account.isAdmin}
       options={options}
     />
   );
+}
+
+/** The message a save left for the form it reopened, if it left one. */
+function coverFailureFrom(state: unknown): string | null {
+  const said = (state as { coverFailure?: unknown } | null)?.coverFailure;
+  return typeof said === 'string' ? said : null;
 }
 
 /** A field's look without its width or spacing, for the boxes that sit in a row. */
@@ -112,19 +129,26 @@ const HINT = 'mt-1 text-[0.71875rem] text-grey leading-[1.45]';
 function EventForm({
   eventId,
   initial,
+  initialCover,
+  initialFailure,
   isAdmin,
   options,
 }: {
   eventId: string | null;
   initial: EventDraft;
+  /** The picture the event has, and its words, before anything is changed. */
+  initialCover: { path: string | null; alt: string };
+  /** A picture that did not go up when the event was saved, said on arrival. */
+  initialFailure: string | null;
   isAdmin: boolean;
   options: { id: string; name: string }[];
 }) {
   const navigate = useNavigate();
   const announce = useAnnounce();
   const [draft, setDraft] = useState<EventDraft>(initial);
+  const [cover, setCover] = useState<CoverChange>({ kind: 'keep', ...initialCover });
   const [saving, setSaving] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(initialFailure);
   const isNew = eventId === null;
 
   // Read once per keystroke; cheap, and the button and the line under it
@@ -141,30 +165,51 @@ function EventForm({
     setFailure(null);
   }
 
+  // Whether saving has anything to do to the picture: a new one, taking one
+  // off, or new words for the one it has.
+  const coverChanged =
+    cover.kind === 'new' ||
+    (cover.kind === 'remove' && initialCover.path !== null) ||
+    (cover.kind === 'keep' && cover.path !== null && cover.alt !== initialCover.alt);
+
   function submit() {
     if (!reading.ok || saving) return;
     setSaving(true);
     const repeat = reading.repeat;
-    (repeat
-      ? saveEventSeries(reading.payload, repeat)
-      : saveEvent({ id: eventId, ...reading.payload })
-    )
-      .then((result) => {
-        if (!result.ok) {
-          setFailure(result.error);
+    const payload = reading.payload;
+    void (async () => {
+      const result = repeat
+        ? await saveEventSeries(payload, repeat)
+        : await saveEvent({ id: eventId, ...payload });
+      if (!result.ok) {
+        setFailure(result.error);
+        return;
+      }
+      // The picture after the event, because it is filed under the event's
+      // id. The event is saved either way; a picture that did not go up
+      // reopens this form on the saved event, saying so, rather than leaving
+      // a filled-in "add" form that would add the event a second time.
+      if (coverChanged) {
+        const saved = await saveEventCover(result.id, cover);
+        if (!saved.ok) {
+          void navigate(`/events/${result.id}/edit`, {
+            replace: true,
+            state: { coverFailure: `The event is saved. ${saved.error}` },
+          });
           return;
         }
-        announce(
-          !isNew
-            ? 'Changes saved.'
-            : repeat
-              ? 'The event and its dates are on the calendar.'
-              : 'The event is on the calendar.',
-        );
-        // Replacing this screen: Back from the event should not land on a
-        // filled-in form that would add it a second time.
-        void navigate(`/events/${result.id}`, { replace: true });
-      })
+      }
+      announce(
+        !isNew
+          ? 'Changes saved.'
+          : repeat
+            ? 'The event and its dates are on the calendar.'
+            : 'The event is on the calendar.',
+      );
+      // Replacing this screen: Back from the event should not land on a
+      // filled-in form that would add it a second time.
+      void navigate(`/events/${result.id}`, { replace: true });
+    })()
       .catch((e: unknown) => {
         setFailure(describeThrown(e, 'The event was not saved.'));
       })
@@ -367,18 +412,28 @@ function EventForm({
         <label htmlFor="event-description" className={LABEL}>
           About it (optional)
         </label>
-        <textarea
+        <DescriptionEditor
           id="event-description"
           value={draft.description}
-          rows={6}
           maxLength={DESCRIPTION_MAX}
-          onChange={(e) => {
-            set('description', e.target.value);
+          onChange={(next) => {
+            set('description', next);
           }}
           placeholder="What happens, who it is for, what to bring, and whether the venue is step-free."
-          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
+          hintClassName={HINT}
         />
-        <p className={HINT}>{DESCRIPTION_MAX - draft.description.length} characters left.</p>
+
+        {/* ----------------------------------------------------- cover */}
+        <CoverField
+          value={cover}
+          onChange={(next) => {
+            setCover(next);
+            setFailure(null);
+          }}
+          labelClassName={LABEL}
+          hintClassName={HINT}
+          fieldClassName={FIELD}
+        />
 
         <label htmlFor="event-registration" className={LABEL}>
           Sign-up link (optional)

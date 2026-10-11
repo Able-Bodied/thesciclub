@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
+import { EventCover } from '@/routes/events/event-cover';
 import { isOnline } from '@/routes/events/filters';
 import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
@@ -278,6 +279,7 @@ export function EventCard({
 
           <AttendeeRow attendees={goingOnly} />
         </span>
+        <EventCover path={event.photoPath} alt={event.photoAlt} size="card" className="-mr-1" />
       </button>
 
       {/* Capped and left-aligned rather than stretched across the card. On a

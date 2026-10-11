@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { preparePhoto } from '@/lib/image';
+import { PHOTOS_BUCKET } from '@/lib/photos';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 import type { ClubEvent, EventAttendee, EventFormat, EventTag, RsvpStatus } from '@/types/domain';
@@ -38,7 +40,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt';
 
 interface EventRow {
   id: string;
@@ -57,6 +59,8 @@ interface EventRow {
   /** Null for an event added by hand (20261005020000). */
   feed_id: string | null;
   series_id: string | null;
+  photo_path: string | null;
+  photo_alt: string | null;
 }
 
 interface TagRow {
@@ -145,6 +149,8 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       hostName: row.host_name,
       handAdded: row.feed_id === null,
       seriesId: row.series_id,
+      photoPath: row.photo_path,
+      photoAlt: row.photo_alt,
       // Sorted so a card's chips do not reshuffle between renders.
       tags: (tagsByEvent.get(row.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
       // An event nobody has RSVPed to has no row in the counts view rather
@@ -601,6 +607,72 @@ export async function deleteEventAndLater(eventId: string): Promise<WriteResult>
     return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, refusal) };
+  }
+}
+
+/** The long edge a cover is kept at: the event page draws it full width, at most 720 CSS px. */
+const COVER_EDGE = 1600;
+const COVER_REFUSAL = {
+  attempt: 'The picture was not saved.',
+  refused: 'You cannot change this event.',
+  missing: 'That event is not on the calendar any more.',
+};
+
+/**
+ * What to do with an event's cover picture when it is saved: keep it, put a
+ * new one in, or take it off. `alt` is what a screen reader says for it.
+ */
+export type CoverChange =
+  | { kind: 'keep'; path: string | null; alt: string }
+  | { kind: 'new'; file: File; alt: string }
+  | { kind: 'remove' };
+
+/**
+ * Gives an event a cover picture, or none (20261011070000). On a date of a
+ * repeating event it applies to that date and every later one.
+ *
+ * Upload, then point the row at it, then delete the file it replaced — the
+ * logo's order (lib/organization-management.ts), for the same reason. The
+ * database hands back a file to delete only when no date still shows it.
+ * Shrunk and re-encoded first, which also drops the location and camera
+ * details a phone writes into a photograph (lib/image.ts).
+ */
+export async function saveEventCover(
+  eventId: string,
+  change: CoverChange,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = getSupabase();
+  try {
+    let path: string | null = null;
+    let alt: string | null = null;
+    if (change.kind === 'new') {
+      const { blob, ext } = await preparePhoto(change.file, COVER_EDGE, '#ffffff');
+      path = `events/${eventId}/${crypto.randomUUID()}.${ext}`;
+      const upload = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(path, blob, { upsert: false, contentType: blob.type });
+      if (upload.error) return { ok: false, error: describeError(upload.error, COVER_REFUSAL) };
+      alt = change.alt;
+    } else if (change.kind === 'keep') {
+      path = change.path;
+      alt = change.alt;
+    }
+    const { data, error } = (await supabase.rpc('set_event_photo', {
+      event: eventId,
+      photo_path: path,
+      photo_alt: alt,
+    })) as { data: string | null; error: Failure | null };
+    if (error) {
+      if (change.kind === 'new' && path) await supabase.storage.from(PHOTOS_BUCKET).remove([path]);
+      return { ok: false, error: describeError(error, COVER_REFUSAL) };
+    }
+    if (data && data !== path) {
+      // Its failure is not reported: the event's picture is saved either way.
+      await supabase.storage.from(PHOTOS_BUCKET).remove([data]);
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, COVER_REFUSAL) };
   }
 }
 

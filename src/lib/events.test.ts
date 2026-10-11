@@ -24,6 +24,8 @@ function eventRow(overrides: Record<string, unknown> = {}) {
     host_name: null,
     feed_id: 'feed-1',
     series_id: null,
+    photo_path: null,
+    photo_alt: null,
     ...overrides,
   };
 }

@@ -473,6 +473,10 @@ export interface ClubEvent {
    * or deleted here; a scraped one is changed on its organization's own site.
    */
   handAdded: boolean;
+  /** The cover picture in the photos bucket, for an event added by hand (20261011070000). */
+  photoPath: string | null;
+  /** What a screen reader says for the cover picture. */
+  photoAlt: string | null;
   tags: EventTag[];
   goingCount: number;
   interestedCount: number;
