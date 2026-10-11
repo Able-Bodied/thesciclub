@@ -1,15 +1,20 @@
 import { ShieldCheck } from 'lucide-react';
 import { useOrganizations } from '@/lib/organizations';
+import { CONSULTATION_URL } from '@/lib/invite-request';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import { AskSomebody } from '@/routes/onboarding/ask-somebody';
+import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
- * The number verified, and it is not on the list.
+ * The address confirmed, and it is not on the list.
  *
  * Written as a closed door rather than as an error, because it is one. It names
  * the organizations who can open it, so somebody who wants in knows exactly
  * what to do next — a dead end with no route out of it is the thing that makes
  * an invite-only product feel like a snub rather than a club.
+ *
+ * "Ask somebody you know for an invite" is hidden for launch (the owner,
+ * 2026-10-10); `ask-somebody.tsx` is kept, unreferenced, for later. This
+ * screen keeps the consultation link only.
  *
  * ---------------------------------------------------------------------------
  * The list is read, not written here
@@ -25,17 +30,18 @@ import { AskSomebody } from '@/routes/onboarding/ask-somebody';
  *
  * When the query fails there is no fallback list, deliberately. The sentence
  * above it still says a member organization or a mentor has to add the number,
- * and "Try another number" still works — a shorter true page beats a complete
+ * and "Sign out and try another email" still works — a shorter true page beats a complete
  * one that might name the wrong body.
  */
 
 export function BlockedScreen({
   onTryAnother,
-  phone,
+  email,
 }: {
+  /** Signs them out and goes back to the doors. */
   onTryAnother: () => void;
-  /** The number they verified, for the text asking to be added. */
-  phone: string;
+  /** The address they signed in with, so they can see which one was refused. */
+  email: string | null;
 }) {
   const { organizations, loading } = useOrganizations();
   const vouchers = organizations.filter((organization) => organization.canInvite);
@@ -47,11 +53,16 @@ export function BlockedScreen({
           <ShieldCheck className="h-6 w-6" />
         </div>
         <h1 className="mt-4 font-extrabold font-display text-[1.5625rem] text-ink leading-tight tracking-[-0.01em]">
-          This number isn't on the list
+          This email isn't on the list
         </h1>
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
-          The club is closed. A member organization or a peer mentor has to add your number before
-          you can join — the app itself cannot let you in.
+          {email ? <b className="text-ink">{email}</b> : 'This account'} has not been invited. The
+          club is closed: a member organization or a peer mentor has to invite your email address
+          before you can join — the app itself cannot let you in.
+        </p>
+        <p className="mt-3 text-[0.8875rem] text-ink2 leading-[1.52]">
+          You may have joined with another email. If you were invited, open the link in your
+          invitation while signed in, or sign in with the address it was sent to.
         </p>
 
         {loading || vouchers.length > 0 ? (
@@ -86,11 +97,13 @@ export function BlockedScreen({
           </div>
         ) : null}
 
-        <AskSomebody ownPhone={phone} />
+        <p className="mt-4 text-[0.8875rem] text-ink2 leading-[1.5]">
+          No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
+        </p>
 
         <p className="mt-4 text-[0.78125rem] text-grey leading-[1.5]">
           If a member gave you a QR code, it gets you the app — it does not get you in. Someone
-          still has to add your number.
+          still has to invite your email address.
         </p>
       </div>
 
@@ -100,7 +113,7 @@ export function BlockedScreen({
           onClick={onTryAnother}
           className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
         >
-          Try another number
+          Sign out and try another email
         </button>
       </footer>
     </main>

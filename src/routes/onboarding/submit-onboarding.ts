@@ -1,5 +1,6 @@
 import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
+import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
 import { injuryDateOf, type OnboardingData } from '@/routes/onboarding/types';
 import { rangeForExact } from '@/types/domain';
@@ -7,14 +8,12 @@ import { rangeForExact } from '@/types/domain';
 /**
  * Turning the wizard's answers into the member row.
  *
- * The phone written here is the one auth verified, taken from the session
- * rather than from what was typed — the insert policy compares against
- * `auth.jwt()`, so a typed value that had drifted would be refused anyway, and
- * reading it from the session means it cannot drift in the first place.
- *
- * The invite is consumed and any claimed seed row retired by a database
- * trigger, not here. Doing it in the client would mean an interrupted signup
- * could leave an invite spent with no member behind it.
+ * The member row's id is the signed-in account's. The invite is consumed by a
+ * database trigger, not here: doing it in the client would mean an
+ * interrupted signup could leave an invite spent with no member behind it.
+ * The phone is the optional number "for events" the member typed, unverified
+ * (the account is the email now), so it is written as given and left null when
+ * skipped.
  */
 
 export interface SubmitResult {
@@ -27,6 +26,8 @@ export interface SubmitResult {
    * lets them in.
    */
   photoRefused?: boolean;
+  /** The @name was taken between the check and the insert: back to that step. */
+  usernameRefused?: boolean;
 }
 
 /** Whether a declinable detail was given after all. Keys as `DECLINABLE_DETAILS`. */
@@ -44,8 +45,8 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
 
   const { data: sessionData } = await supabase.auth.getSession();
   const user = sessionData.session?.user;
-  if (!user?.phone) {
-    return { ok: false, error: 'You are not signed in. Start again from your phone number.' };
+  if (!user) {
+    return { ok: false, error: 'You are not signed in. Start again from the sign-in screen.' };
   }
 
   // Everything past the birthday can be skipped, so none of it is required
@@ -84,7 +85,8 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
 
   const { error } = await supabase.from('members').insert({
     id: user.id,
-    phone: user.phone,
+    username: data.username.trim().toLowerCase(),
+    phone: toE164(data.phone),
     display_name: data.displayName.trim(),
     birth_date: data.birthDate,
     // Asked once, as an exact level; the range is derived so the two cannot
@@ -108,19 +110,20 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     // A decline lifts once the thing is answered, as on the details form:
     // somebody who declined, went Back and filled it in has answered it.
     declined: data.declined.filter((key) => !answered(key, data, injury !== null)),
-    // "Start fresh" on a claim: the trigger retires the seeded profile and
-    // copies none of it. Read and cleared there, never stored.
-    start_fresh: data.startFresh,
   });
 
   // The 18+ trigger and the name check are the two refusals a person can
   // cause from here, and the trigger already speaks in a sentence.
   if (error) {
+    // Someone took the @name in the moment between the check and this insert.
+    if (error.message.includes('members_username_key')) {
+      return { ok: false, usernameRefused: true, error: 'That username was just taken. Choose another.' };
+    }
     return {
       ok: false,
       error: describeError(error, {
         attempt: 'Your profile was not saved.',
-        duplicate: 'There is already a member on this number.',
+        duplicate: 'You are already a member.',
         constraints: { members_display_name_check: 'A name cannot be blank.' },
       }),
     };

@@ -98,11 +98,15 @@ HANDOFF.md.
    - A passkey can only be added to an account that already exists, so it is
      offered after onboarding and on Me.
    - **New members join only by email + password, Google or Apple** (the
-     owner, 2026-10-10). No phone option anywhere in the join flow. Phone
-     sign-in stays on in Supabase solely so existing members with fixed codes
-     (Ajay and Ran, until they link Google or add an email) can get in. It
-     can't make a new member: Twilio sends nothing, and the members insert
-     needs an email invite (Session 1).
+     owner, 2026-10-10). No phone option anywhere in the app, for joining
+     **or signing in**. Once Session 3 ships there is no phone screen, so
+     fixed codes stop being a way in.
+   - **Existing members without Google or an email** (Ajay and Ran at
+     2026-10-10) get in by staying signed in and linking Google, or adding an
+     email + password on Me (Session 4). If one is signed out first, the owner
+     runs `scripts/set-member-email.mjs` for them and they use **Forgot
+     password?**. Session 6 runs the script for both if the owner has their
+     emails, so neither depends on staying signed in.
 2. **Email confirmation is required** for email + password sign-ups before
    anything else happens. Without it, whoever types an invited address first
    would get that person's invite. Google and Apple addresses are already
@@ -581,9 +585,9 @@ Accounts:
     then they use **Forgot password** or Google with that address.
 17. Pending phone invites: Admin → invites → "Re-invite by email", for each
     person you have an email for.
-18. Once every existing account has a confirmed email, turn **Phone** off in
-    Providers. Until then leave it on: fixed codes are the only way back in for
-    someone signed out before migrating.
+18. Turn **Phone** off in Providers after the release. It does nothing once
+    the app has no phone screen. Someone signed out before migrating gets back
+    in through `set-member-email.mjs` and Forgot password, not fixed codes.
 
 ## Release order
 
