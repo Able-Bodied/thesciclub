@@ -508,18 +508,14 @@ export default function MemberDetailPage() {
             {/* The provenance sentence is only true of the seeded directory rows.
             Somebody who signed up never published anything in a directory, and
             telling them they did is a small lie that undermines every other
-            claim on the page. The contact promise applies to everybody, so it
-            is the half that always shows. */}
-            <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-gold-ink leading-[1.5]">
-              {member.isSeed ? (
-                <>
-                  Everything here is what {member.displayName} chose to publish in the NorCal SCI
-                  mentor directory.{' '}
-                </>
-              ) : null}
-              The club never shows a phone number, an address or an email — first contact always
-              goes through a message.
-            </div>
+            claim on the page, so for them there is no box at all. (It used to
+            carry a second sentence about contact details, removed 2026-10-10.) */}
+            {member.isSeed ? (
+              <div className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-[0.7875rem] text-gold-ink leading-[1.5]">
+                Everything here is what {member.displayName} chose to publish in the NorCal SCI
+                mentor directory.
+              </div>
+            ) : null}
           </div>
         </div>
         <div className="h-6" />

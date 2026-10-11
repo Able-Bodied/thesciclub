@@ -246,8 +246,6 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByText(/NorCal SCI mentor directory/)).not.toBeInTheDocument();
   });
 
-  // The panel at the foot says the club never shows a phone number, an address
-  // or an email. This button is what makes that a promise rather than a limit.
   it('offers a message as the one action on somebody else’s card', () => {
     state.current = ok(makeMember({ id: 'jan', displayName: 'Jan' }));
     renderDetail();
@@ -263,10 +261,22 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByRole('button', { name: /^Message/ })).not.toBeInTheDocument();
   });
 
-  it('promises no contact details to everybody, seeded or not', () => {
+  // The notice about contact details was removed (2026-10-10). For a member
+  // who joined, that left an empty box, so there is no box either.
+  it('says nothing about contact details, and draws no empty notice box', () => {
     state.current = ok(makeMember({ isSeed: false }));
-    renderDetail();
-    expect(screen.getByText(/never shows a phone number/)).toBeInTheDocument();
+    const { container } = renderDetail();
+    expect(screen.queryByText(/never shows a phone number/)).toBeNull();
+    expect(container.querySelector('.border-gold.bg-gold-lt')).toBeNull();
+  });
+
+  it('keeps only the directory provenance sentence on a seeded row', () => {
+    state.current = ok(makeMember({ displayName: 'Todd', isSeed: true }));
+    const { container } = renderDetail();
+    expect(screen.queryByText(/never shows a phone number/)).toBeNull();
+    const box = container.querySelector('.border-gold.bg-gold-lt');
+    expect(box).not.toBeNull();
+    expect(box).toHaveTextContent(/Todd chose to publish in the NorCal SCI mentor directory\.$/);
   });
 
   it('tells a signed-out visitor the club is members only', () => {
