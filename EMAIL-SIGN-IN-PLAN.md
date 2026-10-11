@@ -168,6 +168,15 @@ HANDOFF.md.
   - [x] profile page: the "never shows a phone number…" notice removed, and the box with it (it held only that sentence for a
     member who joined; a seeded row keeps the box for its directory provenance sentence) (`2809118`)
   - [x] "Type it again" on the email sign-up and on Me's add-an-email-and-password form, matching `/reset-password` (`0c76bbb`)
+  - [x] auth error sentences rewritten for email and password in `describe-error.ts` (`69b2f5d`; its `reset-password` test file
+    was only valid from the next commit, `HEAD` at the time: see `git log`). `invalid_credentials` is "That email or password is not
+    right."; the rate limits (`over_email_send_rate_limit`, `over_request_rate_limit`, the "only request this after" wording) say
+    "Too many attempts or emails."; "Error sending … email" says the email could not be sent; `otp_expired` and "Email link is
+    invalid or has expired" say the link has expired or was used. `sms_send_failed`, `over_sms_send_rate_limit` and "Error sending
+    sms" are gone. Tests: the table in `describe-error.test.ts` with real GoTrue codes, and sign-up, resend, Forgot password and
+    `/reset-password` showing the sentences; the rate-limit sentence put back to "codes" failed 4 tests, then restored. Stale comments
+    in `src/lib/account.tsx` (the path given as `me/account.tsx`) and `blocked.tsx` fixed. The sign-in screen keeps its own fixed
+    "That email and password did not match." (it never reaches `describeError`).
   - [x] tests, checks, committed (work: `0460270`, `9df36d1`, `c03be86`, `97dc60e`, `c550eff`, `7710453`, `e9295c5`; tests went in with each commit;
     this plan edit is the commit after). `pnpm check` exit 0, `pnpm test` (181 files, 2511 tests) and `pnpm build` clean at the tip.
   - Notes for the next session ("as built"):
@@ -211,10 +220,7 @@ HANDOFF.md.
       ignoring the second field failed 1 banner test. Restored. `OnboardingData.passwordAgain` is cleared with `password`.
     - **Remaining phone or SMS wording in `src/`** (searched 2026-10-10; none of it is a sign-in screen). **Updated after the
       removal: the `findable-switch.tsx`, `ask-somebody.tsx` and `invite-request.ts` items below are gone.**
-      - `src/lib/describe-error.ts` `AUTH` list: `invalid_credentials` still reads "That code is not right, or it has expired. Ask
-        for a new one.", the rate-limit sentence says "Too many codes were asked for.", and a send failure says "The code could
-        not be sent." These are what **email** flows show if they reach `describeError` (`auth-email.ts` does, for sign-up, resend and
-        reset). **Worth fixing before release**, with `describe-error.test.ts` (its fixtures use `over_sms_send_rate_limit`).
+      - ~~`describe-error.ts` `AUTH` list~~ rewritten for email (see the line above).
       - `src/routes/me/findable-switch.tsx:35` still says people "can ... text you"; that is the hidden "Ask somebody" feature, whose
         switch is still on Me for inviters although its door is hidden. Hide the switch or reword it: the owner's call.
       - `src/routes/onboarding/ask-somebody.tsx` and `src/lib/invite-request.ts` (`smsHref`, "text them to ask"): unreferenced
