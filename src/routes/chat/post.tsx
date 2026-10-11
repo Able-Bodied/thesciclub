@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { cloneElement, type ReactElement, type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -10,6 +10,7 @@ import { Composer } from '@/routes/chat/composer';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+import type { ReactionBarProps } from '@/routes/chat/reaction-bar';
 import { ReportControl } from '@/routes/chat/report-control';
 import { ViewCount } from '@/routes/chat/view-count';
 
@@ -157,7 +158,7 @@ export function Post({
     | undefined;
   /** Distinct members delivered this post, including zero. */
   viewCount?: number | null | undefined;
-  reactions?: ReactNode;
+  reactions?: ReactElement<ReactionBarProps>;
   /** How many replies `children` holds, for the hide control. */
   replies?: number;
   /** Lit up once: the post a notification or a link was about. */
@@ -181,6 +182,53 @@ export function Post({
   const whose = canEdit ? 'your' : `${name}'s`;
   const control =
     'font-semibold text-[0.75rem] text-grey underline decoration-line underline-offset-2';
+
+  const controls = (
+    <>
+      {canEdit && !hideBody ? (
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label="Edit your post"
+          data-target="small"
+          className={`${control} hover:text-emphasis`}
+        >
+          Edit
+        </button>
+      ) : null}
+      {canReply ? (
+        <button
+          type="button"
+          onClick={onReply}
+          aria-label={`Reply to ${whose} post`}
+          data-target="small"
+          className={`${control} hover:text-emphasis`}
+        >
+          Reply
+        </button>
+      ) : null}
+      {canRemove ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          disabled={removing}
+          aria-label={`Remove ${whose} post`}
+          data-target="small"
+          className={`${control} hover:text-destructive`}
+        >
+          {removing ? 'Removing…' : 'Remove'}
+        </button>
+      ) : canReport ? (
+        <ReportControl
+          reported={reported}
+          label={`Report ${name}'s post`}
+          onReport={onReport}
+          buttonClassName={`${control} hover:text-destructive`}
+          noteClassName="font-semibold text-[0.75rem] text-grey"
+        />
+      ) : null}
+    </>
+  );
 
   return (
     <article
@@ -303,48 +351,7 @@ export function Post({
             />
           ) : null}
           <ViewCount count={viewCount} />
-          {canEdit && !hideBody ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              aria-label="Edit your post"
-              data-target="small"
-              className={`${control} hover:text-emphasis`}
-            >
-              Edit
-            </button>
-          ) : null}
-          {canReply ? (
-            <button
-              type="button"
-              onClick={onReply}
-              aria-label={`Reply to ${whose} post`}
-              data-target="small"
-              className={`${control} hover:text-emphasis`}
-            >
-              Reply
-            </button>
-          ) : null}
-          {canRemove ? (
-            <button
-              type="button"
-              onClick={onRemove}
-              disabled={removing}
-              aria-label={`Remove ${whose} post`}
-              data-target="small"
-              className={`${control} hover:text-destructive`}
-            >
-              {removing ? 'Removing…' : 'Remove'}
-            </button>
-          ) : canReport ? (
-            <ReportControl
-              reported={reported}
-              label={`Report ${name}'s post`}
-              onReport={onReport}
-              buttonClassName={`${control} hover:text-destructive`}
-              noteClassName="font-semibold text-[0.75rem] text-grey"
-            />
-          ) : null}
+          {reactions ? cloneElement(reactions, { compact: true, actions: controls }) : controls}
         </div>
       )}
       {likes?.failure && !editing ? (
@@ -353,7 +360,6 @@ export function Post({
         </p>
       ) : null}
 
-      {!editing ? reactions : null}
       {replies > 0 ? (
         <button
           type="button"

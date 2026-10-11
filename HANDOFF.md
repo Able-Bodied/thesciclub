@@ -509,6 +509,18 @@ the product definition and wins over this file.
     up to date and production REST confirms both tables and chat_set_reaction
     exist. The reaction client can now be published.
 
+31. **Compact message actions, release authorized** (2026-10-10, no migration).
+    The owner requested less clutter beneath messages and posts. Room posts,
+    questions/replies and private/group messages now show one 44px ellipsis
+    button. It opens a keyboard-accessible sheet containing React and the
+    existing Reply/Edit/Remove/Report actions as appropriate. Reaction count
+    chips stay visible; Like and view counts remain. Home retains its React
+    button and whole-card topic navigation. Mobile bottom sheet and desktop
+    centered dialog use the existing focus trap. Tests cover menu visibility,
+    reaction selection, reply activation and keyboard focus restoration.
+    Browser checks cover mobile message reaction/reply/report, room question
+    reaction and desktop reply menu. All 2,238 tests pass; check/build pass.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

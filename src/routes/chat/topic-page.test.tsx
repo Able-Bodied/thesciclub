@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { PropsWithChildren } from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Attachments from '@/lib/chat/attachments';
@@ -1147,4 +1148,8 @@ vi.mock('@/lib/chat/reactions', async (importOriginal) => ({
     choose: vi.fn(),
     reload: vi.fn(),
   }),
+}));
+
+vi.mock('@/routes/chat/item-actions', () => ({
+  ItemActions: ({ children }: PropsWithChildren) => <>{children}</>,
 }));

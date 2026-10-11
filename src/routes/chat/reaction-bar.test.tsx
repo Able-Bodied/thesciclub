@@ -22,6 +22,64 @@ const state = (extra: Partial<ReactionsState> = {}): ReactionsState => ({
   ...extra,
 });
 describe('reaction controls', () => {
+  it('keeps only counts and one actions button visible in a conversation', async () => {
+    const data = state({ rows: [{ target_id: 'm1', member_id: 'other', emoji: '❤️' }] });
+    render(
+      <ReactionBar
+        compact
+        target="m1"
+        what="the message"
+        readerId="me"
+        state={data}
+        actions={<button type="button">Reply</button>}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /Love: 1 reaction/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'React to the message' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reply' })).toBeNull();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
+    await user.click(screen.getByRole('button', { name: 'React to the message' }));
+    expect(screen.queryByRole('dialog', { name: 'Actions for the message' })).toBeNull();
+    const picker = screen.getByRole('dialog', { name: 'React to the message' });
+    await user.click(within(picker).getByRole('button', { name: 'Love' }));
+    expect(data.choose).toHaveBeenCalledWith('m1', '❤️');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('performs an existing action and closes the menu', async () => {
+    const reply = vi.fn();
+    render(
+      <ReactionBar
+        compact
+        target="m1"
+        what="the message"
+        readerId="me"
+        state={state()}
+        actions={
+          <button type="button" onClick={reply}>
+            Reply
+          </button>
+        }
+      />,
+    );
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Actions for the message' }));
+    await user.click(screen.getByRole('button', { name: 'Reply' }));
+    expect(reply).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('restores keyboard focus to the actions button after closing the picker', async () => {
+    render(<ReactionBar compact target="m1" what="the message" readerId="me" state={state()} />);
+    const user = userEvent.setup();
+    const opener = screen.getByRole('button', { name: 'Actions for the message' });
+    await user.click(opener);
+    await user.click(screen.getByRole('button', { name: 'React to the message' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(opener).toHaveFocus();
+  });
   it('opens a keyboard accessible picker, shows names and saves a choice', async () => {
     const data = state({ rows: [{ target_id: 'p1', member_id: 'other', emoji: '❤️' }] });
     render(<ReactionBar target="p1" what="the question" readerId="me" state={data} />);

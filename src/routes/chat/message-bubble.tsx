@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
@@ -7,6 +7,7 @@ import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+import type { ReactionBarProps } from '@/routes/chat/reaction-bar';
 import { ReportControl } from '@/routes/chat/report-control';
 
 /**
@@ -108,7 +109,7 @@ export function MessageBubble({
   mine: boolean;
   /** A saved outgoing message read by another member, or no receipt yet. */
   receipt?: string | null;
-  reactions?: ReactNode;
+  reactions?: ReactElement<ReactionBarProps>;
   /** The message this one answers, or null. */
   quote: Quote | null;
   onQuoteTap: (messageId: string) => void;
@@ -262,8 +263,11 @@ export function MessageBubble({
             ? 'Sending…'
             : `You · ${chatTime(message.createdAt)}${edited}${receipt && !removed ? ` · ${receipt}` : ''}`}
         </p>
-        {!removed && !message.pending && !editing ? reactions : null}
-        {controls}
+        {!removed && !message.pending && !editing
+          ? reactions
+            ? cloneElement(reactions, { compact: true, actions: controls })
+            : controls
+          : null}
       </div>
     );
   }
@@ -312,8 +316,11 @@ export function MessageBubble({
           {quoteBlock}
           {words}
         </div>
-        {!removed && !message.pending && !editing ? reactions : null}
-        {controls}
+        {!removed && !message.pending && !editing
+          ? reactions
+            ? cloneElement(reactions, { compact: true, actions: controls })
+            : controls
+          : null}
       </div>
     </div>
   );

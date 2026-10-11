@@ -1,5 +1,5 @@
 import { SmilePlus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useChatAuthors } from '@/lib/chat/authors';
 import {
@@ -9,25 +9,45 @@ import {
   type ReactionsState,
 } from '@/lib/chat/reactions';
 import { useDialogFocus } from '@/lib/dialog-focus';
+import { ItemActions } from '@/routes/chat/item-actions';
 
 /** Visible, generously sized controls: no long press or hover required.
  * Home's stretched topic links sit below these positioned buttons. */
+export interface ReactionBarProps {
+  target: string;
+  what: string;
+  state: ReactionsState;
+  readerId: string | null;
+  compact?: boolean;
+  actions?: ReactNode;
+}
 export function ReactionBar({
   target,
   what,
   state,
   readerId,
-}: {
-  target: string;
-  what: string;
-  state: ReactionsState;
-  readerId: string | null;
-}) {
+  compact = false,
+  actions,
+}: ReactionBarProps) {
   const [open, setOpen] = useState(false);
   const rows = state.rows.filter((r) => r.target_id === target && r.emoji !== null);
   const mine = rows.find((r) => r.member_id === readerId)?.emoji ?? null;
   const pending = state.pending.has(target);
   const disabled = !readerId || pending || state.loading;
+  const trigger = (
+    <button
+      type="button"
+      disabled={disabled}
+      aria-label={`React to ${what}`}
+      onClick={() => {
+        setOpen(true);
+      }}
+      className="relative inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold text-emphasis hover:bg-tint disabled:opacity-50"
+    >
+      <SmilePlus aria-hidden="true" className="h-4 w-4" />
+      {pending ? 'Saving…' : 'React'}
+    </button>
+  );
   async function choose(emoji: ReactionEmoji) {
     if (await state.choose(target, mine === emoji ? null : emoji)) setOpen(false);
   }
@@ -56,18 +76,14 @@ export function ReactionBar({
               </button>
             ) : null;
           })}
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={`React to ${what}`}
-          onClick={() => {
-            setOpen(true);
-          }}
-          className="relative inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold text-emphasis hover:bg-tint disabled:opacity-50"
-        >
-          <SmilePlus aria-hidden="true" className="h-4 w-4" />
-          {pending ? 'Saving…' : 'React'}
-        </button>
+        {compact ? (
+          <ItemActions what={what}>
+            {trigger}
+            {actions}
+          </ItemActions>
+        ) : (
+          trigger
+        )}
       </div>
       {state.error ? (
         <p className="relative text-grey">
