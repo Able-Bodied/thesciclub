@@ -60,13 +60,61 @@ HANDOFF.md.
       the local `config.toml` with subjects; the dashboard gets the same files pasted (see the hand-over list in the session reply).
     - `set-member-email.mjs <member id | display name> <email>` needs `SUPABASE_SERVICE_ROLE_KEY` in the environment;
       `SUPABASE_URL` defaults to the live project. It refuses a name shared by two members.
-- [ ] **Session 3: C + D, Sign-in, joining, onboarding questions**
-  - [ ] sign-in and join screens, check-email, `/reset-password`
-  - [ ] invite token and `claim_invite`
-  - [ ] Google as a way to join; Apple and passkeys behind switches
-  - [ ] name prefill, username step, phone-for-events step, Agree without SMS
-  - [ ] blocked screen without Ask somebody; dev-login by password
-  - [ ] tests updated; `pnpm check`, `pnpm test` and `pnpm build` clean, committed
+- [x] **Session 3: C + D, Sign-in, joining, onboarding questions**
+  - [x] sign-in and join screens, check-email, `/reset-password` (`f9b9ce8`)
+  - [x] invite token and `claim_invite` (`c0e877d`)
+  - [x] Google as a way to join; Apple and passkeys behind switches (`0adb8ff`)
+  - [x] name prefill, username step, phone-for-events step, Agree without SMS (`35668d0`)
+  - [x] blocked screen without Ask somebody; dev-login by password (`7ae759f`)
+  - [x] tests updated; `pnpm check`, `pnpm test` and `pnpm build` clean, committed (updated tests and
+    both scripts: `4875759`, which the owner's commit swept up from the working tree under another
+    message; new tests: `e706701`; this plan edit is the commit after)
+  - Notes for the next session ("as built"):
+    - **Commits are not individually green.** The five source commits above were made before their tests were
+      updated; the tests and scripts landed in `4875759` and `e706701`. Only the tip passes `pnpm check`
+      (exit 0), `pnpm test` (169 files, 2378 tests) and `pnpm build`.
+    - **Verified on the real local stack** (`db reset`, GoTrue and mailpit, app on 5183), not only against mocks:
+      `stranger@` signs in and gets the blocked screen; `invited@` gets Agree, then a name prefilled from the
+      seeded metadata, then real `suggest_usernames` chips and a real "@alfred is taken"; `newcomer@` signs up,
+      the mailpit link lands on `/join?confirmed=1` and goes on to Agree (matched by confirmed address);
+      `someone.else@` with `?invite=<token>` is claimed whatever its address; an uninvited sign-up is blocked after
+      confirming; Forgot password → mailpit link → `/reset-password` → new password → Home; `pnpm shoot` and
+      `pnpm demo-member` sign in with the seeded passwords. Not tried: Apple and passkeys (switches off, no
+      credentials), and the Resend side (`send-invite` needs the edge runtime).
+    - **Broken on purpose, each failing the tests that guard it:** `claim_invite` skipped (6 page tests); username
+      accepted without its availability check (6, in the page and `types` tests); the reset link sent to `/me`
+      (2); Skip on the phone step keeping the typed number (1).
+    - **Local stack now needs mailpit** (as Session 1 said); this session stopped it and started it with
+      `-x imgproxy,studio,edge-runtime,logflare,vector,supavisor`, then `db reset`.
+    - Client names: `src/lib/auth-email.ts` (`signUpWithEmail`, `signInWithEmail`, `sendPasswordReset`,
+      `resendConfirmation`, `MIN_PASSWORD`; `signInWithEmail` also returns `unconfirmed: true` so the page offers
+      the link again), `invite-token.ts` (`captureInviteToken`, `claimHeldInvite`, `forgetInviteToken`),
+      `usernames.ts` (`normalizeUsername`, `isValidUsername`, `suggestUsernames`, `usernameAvailable`; no wrapper
+      for `set_my_username` yet, which is Session 4's), `apple-sign-in.ts`, `passkeys.ts` (`passkeysAvailable`,
+      `signInWithPasskey`, `registerPasskey`, `listPasskeys`, `deletePasskey`; a cancelled browser sheet returns
+      `{ok:false, error:''}`, so show a sentence only when `error` is non-empty). `GOOGLE_NOT_SIGNED_IN` replaces
+      `GOOGLE_NOT_LINKED`; `isPhoneless` is gone. Linking Google from Me (`linkGoogle`, `unlinkGoogle`) is unchanged.
+    - **The one invite check** is `afterSignIn()` in `src/routes/onboarding/page.tsx`: it runs when the account is
+      signed in with no member row while a door is showing, claims the held token, asks `my_invite_status`, then
+      shows Blocked or goes to Agree. The steps are `welcome, signin, forgot, join, check-email, checking, agree,
+      name, username, birthday, injury, city, phone, photo` (seven counted).
+    - `OnboardingData` lost `code`, `smsConsent` and `startFresh`; the claim step, `ClaimStep` and
+      `start_fresh` on the insert are gone (the migration drops the seed-claim branch). `usernameChecked` holds the
+      name last found free, and the step goes on only when it equals `username`.
+    - `members.phone` is written as 1 + ten digits (`toE164`), or null when skipped, the same shape as before.
+    - **Kept on purpose:** `ask-somebody.tsx` (unreferenced) and `src/lib/invite-request.ts`, because Me's
+      `findable-switch.tsx` uses `useFindableForInvites` and the welcome screen uses `CONSULTATION_URL`.
+    - The static `/join` page (`src/routes/legal/static.tsx`) is now just the welcome screen; its `<noscript>`
+      text-message form went, since `PhoneStep` and the consent constants are gone. Privacy and Terms still carry the
+      SMS sentences until Session 5, and `static.test.tsx` still asserts them.
+    - **CSP checked:** no change. The Apple and Google round trips are navigations, not form posts, and Apple's
+      POST goes from Apple's page to supabase.co; every form here is submitted in the page.
+    - **Not done, not mine to do here:** `src/routes/me/` and `src/routes/admin/` untouched, so Me's
+      `google-sign-in.tsx` still says "the phone number stays", and Admin and the mentor invites page still use the
+      old phone forms. `scripts/realtime-check.mjs` still signs in with the removed test phones (the task named only
+      `shoot.mjs` and `demo-member.mjs`). HANDOFF's "Test numbers" lines are Session 5's.
+    - `/reset-password` handles both links; it signs nobody in itself, it waits for the session the link creates and
+      says "This link has expired" without one. It goes to `/home`, and the guard there sends a non-member to `/join`.
 - [ ] **Session 4: E, Me, profiles, events**
   - [ ] Me sign-in section (email, password, Google/Apple, passkeys, phone, username)
   - [ ] add-an-email banner for phone accounts
