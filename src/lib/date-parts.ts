@@ -84,14 +84,25 @@ export function splitWholeDate(text: string): DateParts | null {
 /**
  * What one box keeps of a keystroke. Digits only for the day and year, at
  * most as many as they can hold; the month takes digits or letters, so a name
- * can be typed or said.
+ * can be typed or said. The month keeps four digits, not two, so a year typed
+ * into it can be recognised and moved to the year box (`yearInMonth`).
  */
 export function cleanPart(part: DatePart, text: string): string {
   if (part === 'day') return text.replace(/\D/g, '').slice(0, 2);
   if (part === 'year') return text.replace(/\D/g, '').slice(0, 4);
   const t = text.trimStart();
-  if (/^\d/.test(t)) return t.replace(/\D/g, '').slice(0, 2);
+  if (/^\d/.test(t)) return t.replace(/\D/g, '').slice(0, 4);
   return t.replace(/[^a-z]/gi, '').slice(0, 9);
+}
+
+/**
+ * A year typed into the month box, which belongs in the year box instead.
+ * The injury date takes a year on its own, but its boxes run month, day,
+ * year like the birthday's, and the cursor starts in Month: somebody who
+ * only knows the year types "2013" straight into it.
+ */
+export function yearInMonth(text: string): boolean {
+  return /^\d{4}$/.test(text);
 }
 
 /**
@@ -153,7 +164,9 @@ export function readDate(
   // even while another box is still empty.
   const m = month ? monthNumber(month) : null;
   if (month && m === null) {
-    const stillTyping = /^0$/.test(month) || /^[a-z]{1,2}$/i.test(month);
+    // "19" and "20" may be a year on its way to the year box.
+    const stillTyping =
+      /^0$/.test(month) || /^[a-z]{1,2}$/i.test(month) || /^(19|20)\d?$/.test(month);
     if (!stillTyping) {
       return {
         kind: 'invalid',

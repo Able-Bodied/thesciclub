@@ -7,6 +7,7 @@ import {
   partsFromIso,
   readDate,
   splitWholeDate,
+  yearInMonth,
 } from '@/lib/date-parts';
 
 const NOW = new Date('2026-09-11T12:00:00Z');
@@ -71,6 +72,12 @@ describe('what a box keeps', () => {
   it('lets the month be typed as a number or a name', () => {
     expect(cleanPart('month', '5')).toBe('5');
     expect(cleanPart('month', 'May.')).toBe('May');
+  });
+
+  it('keeps a year typed into the month, so it can be moved to the year', () => {
+    expect(cleanPart('month', '2013')).toBe('2013');
+    expect(yearInMonth('2013')).toBe(true);
+    expect(yearInMonth('12')).toBe(false);
   });
 });
 

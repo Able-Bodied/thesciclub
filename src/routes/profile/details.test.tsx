@@ -202,12 +202,28 @@ describe('Your details', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
   });
 
-  it('moves from a full injury year to the month', async () => {
+  // Month, day, year, as the birthday and onboarding ask it.
+  it('runs the injury date month, day, year', async () => {
     renderDetails();
     const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
     await userEvent.clear(injury.getByLabelText('Year'));
-    await userEvent.type(injury.getByLabelText('Year'), '2013');
-    expect(injury.getByLabelText('Month')).toHaveFocus();
+    await userEvent.type(injury.getByLabelText('Month'), '06');
+    expect(injury.getByLabelText('Day')).toHaveFocus();
+    await userEvent.keyboard('14');
+    expect(injury.getByLabelText('Year')).toHaveFocus();
+    await userEvent.keyboard('2013');
+    expect(screen.getByText('June 14, 2013')).toBeInTheDocument();
+  });
+
+  it('moves a year typed into the injury Month across to Year', async () => {
+    renderDetails();
+    const injury = within(await screen.findByRole('group', { name: 'When were you injured?' }));
+    await userEvent.clear(injury.getByLabelText('Year'));
+    await userEvent.type(injury.getByLabelText('Month'), '2013');
+    expect(injury.getByLabelText('Month')).toHaveValue('');
+    expect(injury.getByLabelText('Year')).toHaveValue('2013');
+    expect(injury.getByLabelText('Year')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
   });
 
   // Somebody correcting the start of a box is not done with it.

@@ -2,7 +2,7 @@ import { ChevronLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
-import { BIRTHDAY_ORDER, DateFields, YEAR_FIRST_ORDER } from '@/components/date-fields';
+import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { type DateParts, EMPTY_DATE_PARTS, partsFromIso, readDate } from '@/lib/date-parts';
@@ -411,8 +411,9 @@ export default function ProfileDetailsPage() {
                   <DateFields
                     id="d-injury"
                     labelledBy="d-injury-label"
-                    hint="The year on its own is a complete answer."
-                    order={YEAR_FIRST_ORDER}
+                    hint="For example, 6 14 2013 — or just 2013."
+                    order={BIRTHDAY_ORDER}
+                    yearAlone
                     parts={injuryParts}
                     reading={injuryReading}
                     onChange={(next) => {

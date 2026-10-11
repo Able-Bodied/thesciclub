@@ -1,6 +1,6 @@
 import { Loader2, LocateFixed } from 'lucide-react';
 import { useState } from 'react';
-import { BIRTHDAY_ORDER, DateFields, YEAR_FIRST_ORDER } from '@/components/date-fields';
+import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
 import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
@@ -349,7 +349,7 @@ export function BirthdayStep({ data, set }: StepProps) {
 }
 
 export function InjuryStep({ data, set }: StepProps) {
-  const injuryYearRef = useAutoFocus();
+  const injuryDateRef = useAutoFocus();
   const injury = injuryDateOf(data);
   const age = ageFrom(data.birthDate || null);
   const injuredAt =
@@ -415,14 +415,15 @@ export function InjuryStep({ data, set }: StepProps) {
       <DateFields
         id="injury"
         labelledBy="injury-date-heading"
-        hint="The year on its own is a complete answer. Add more only if you want to."
-        order={YEAR_FIRST_ORDER}
+        hint="For example, 6 14 2013 — or just 2013, if the year is all you want to say."
+        order={BIRTHDAY_ORDER}
+        yearAlone
         parts={injuryPartsOf(data)}
         reading={readDate(injuryPartsOf(data), { needs: 'year' })}
         onChange={(next) => {
           set({ injuryYear: next.year, injuryMonth: next.month, injuryDay: next.day });
         }}
-        firstRef={injuryYearRef}
+        firstRef={injuryDateRef}
       />
 
       {injury && injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (

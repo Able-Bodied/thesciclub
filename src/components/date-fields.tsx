@@ -6,6 +6,7 @@ import {
   type DateReading,
   partIsFull,
   splitWholeDate,
+  yearInMonth,
 } from '@/lib/date-parts';
 import { cn } from '@/lib/utils';
 
@@ -25,6 +26,9 @@ import { cn } from '@/lib/utils';
  * fills a box that can take no more (`partIsFull`) — never on a value that is
  * wrong, never on a month typed as a name, never when the cursor is mid-box —
  * and Backspace in an empty box goes back, so fixing a slip works both ways.
+ *
+ * A year typed into Month goes to Year, with the cursor after it, since a
+ * date that takes the year alone still starts in Month (`yearInMonth`).
  */
 
 const LABELS: Record<DatePart, string> = { month: 'Month', day: 'Day', year: 'Year' };
@@ -36,9 +40,8 @@ const BASIS: Record<DatePart, string> = {
   year: 'flex-[3_1_6em]',
 };
 
+/** Every date in the app, the injury date too: the year alone is `yearAlone`, not a different order. */
 export const BIRTHDAY_ORDER: readonly DatePart[] = ['month', 'day', 'year'];
-/** The year first where the year alone is a whole answer. */
-export const YEAR_FIRST_ORDER: readonly DatePart[] = ['year', 'month', 'day'];
 
 export function DateFields({
   id,
@@ -50,6 +53,7 @@ export function DateFields({
   labelledBy,
   hint,
   birthday = false,
+  yearAlone = false,
   firstRef,
 }: {
   /** Prefix for the boxes' ids: `${id}-month`, `${id}-day`, `${id}-year`. */
@@ -66,6 +70,12 @@ export function DateFields({
   hint?: string;
   /** Lets the browser or a password manager fill all three from a saved birthday. */
   birthday?: boolean;
+  /**
+   * The year on its own is a whole answer, so a year typed into Month is
+   * likely, and a month of 2 waits for a second digit rather than moving on:
+   * it is as likely the start of 2013 as it is February.
+   */
+  yearAlone?: boolean;
   firstRef?: RefObject<HTMLInputElement | null>;
 }) {
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
@@ -82,9 +92,16 @@ export function DateFields({
       return;
     }
     const next = cleanPart(part, text);
+    const yearAt = order.indexOf('year');
+    if (part === 'month' && yearAt !== -1 && yearInMonth(next)) {
+      onChange({ ...parts, month: '', year: next });
+      moveTo(yearAt, true);
+      return;
+    }
     onChange({ ...parts, [part]: next });
     const typedForward = next.length > parts[part].length && input.selectionStart === text.length;
-    if (typedForward && partIsFull(part, next)) moveTo(index + 1);
+    const mayBeYear = yearAlone && part === 'month' && next === '2';
+    if (typedForward && partIsFull(part, next) && !mayBeYear) moveTo(index + 1);
   }
 
   /** Into a box with an answer already, that answer is selected, as `useAutoFocus` does. */

@@ -1091,6 +1091,77 @@ describe('steps that move on by themselves', () => {
   });
 });
 
+// Month, day, year like the birthday, but the year alone is a whole answer.
+describe('the injury date boxes', () => {
+  async function reachInjuryStep() {
+    await reachCodeStep();
+    await userEvent.type(screen.getByPlaceholderText('000000'), '111111');
+    await userEvent.type(await screen.findByPlaceholderText('Alex'), 'Dana');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Tell us about your injury');
+    // Without moving the cursor, which the step put in Month.
+    fireEvent.change(screen.getByLabelText('Level of injury'), { target: { value: 'C5' } });
+  }
+
+  it('runs month, day, year, starting in Month, as the birthday does', async () => {
+    await reachInjuryStep();
+    const boxes = ['Month', 'Day', 'Year'].map((name) => screen.getByLabelText(name));
+    expect(boxes[0]).toHaveFocus();
+    expect(boxes[0]?.compareDocumentPosition(boxes[1] as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(boxes[1]?.compareDocumentPosition(boxes[2] as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    await userEvent.keyboard('06');
+    expect(screen.getByLabelText('Day')).toHaveFocus();
+    await userEvent.keyboard('14');
+    expect(screen.getByLabelText('Year')).toHaveFocus();
+    await userEvent.keyboard('2013');
+    expect(await screen.findByText('June 14, 2013')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('goes on with the year alone', async () => {
+    await reachInjuryStep();
+    await userEvent.type(screen.getByLabelText('Year'), '2013');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  // The cursor starts in Month, and somebody who only knows the year types it there.
+  it('moves a year typed into Month across to Year, with no error on the way', async () => {
+    await reachInjuryStep();
+    await userEvent.keyboard('20');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    await userEvent.keyboard('13');
+    expect(screen.getByLabelText('Month')).toHaveValue('');
+    expect(screen.getByLabelText('Year')).toHaveValue('2013');
+    expect(screen.getByLabelText('Year')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('moves a year from the 1900s across too', async () => {
+    await reachInjuryStep();
+    await userEvent.keyboard('1998');
+    expect(screen.getByLabelText('Year')).toHaveValue('1998');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('still takes February, once the Day box is reached', async () => {
+    await reachInjuryStep();
+    await userEvent.keyboard('2');
+    expect(screen.getByLabelText('Month')).toHaveFocus();
+    await userEvent.click(screen.getByLabelText('Day'));
+    await userEvent.keyboard('14');
+    await userEvent.keyboard('2013');
+    expect(await screen.findByText('February 14, 2013')).toBeInTheDocument();
+  });
+});
+
 describe('notifications, as they enter', () => {
   async function finishLater() {
     await reachCodeStep();
