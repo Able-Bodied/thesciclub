@@ -17,7 +17,7 @@ place to resume. Notes for the next session go under the session's line, not in
 HANDOFF.md.
 
 - [ ] **Session 1: A, Database**
-  - [ ] migration written
+  - [x] migration written (`8c10561`)
   - [ ] seed.sql and local config.toml
   - [ ] SQL probes pass to the probe standard
   - [ ] `pnpm check` exit 0, committed
