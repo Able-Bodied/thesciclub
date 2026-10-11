@@ -229,7 +229,12 @@ HANDOFF.md.
         and the history in `src/sw.ts`, `legal/static.tsx`, `privacy.tsx`, `terms.tsx` that says why the SMS text went.
       - Intended: `src/routes/me/add-email-banner.tsx:84` ("no longer sends codes by text message") explains the change to a phone member.
 - [ ] **Session 6: Release, with the owner**
-  - [ ] owner H steps confirmed one by one
+  - [x] owner H steps confirmed one by one (2026-10-11). The Apple secret (H4/H13) and H16b were already marked done and were not
+    re-asked. **H9** `RESEND_API_KEY` and `INVITE_FROM`, and **H9a** `REMINDER_TO` and the vault URL `sign_in_reminder_url`, set by the
+    owner (`secrets list` shows all three; the vault URL is on the owner's word, the CLI cannot see it). **H14** calendar reminder set
+    by the owner. **H17** (re-invite the two pending phone invites): the owner said not to. Read-only check before the push: 4 members,
+    4 accounts, 4 confirmed emails, nobody missing. The reminder email is `sign-in-reminder`: 30, 14, 7, 3, 1 days before, the day, then
+    daily until Admin → Sign-in has the new date; the first is 2027-03-10.
   - [ ] `db push` (dry run first)
   - [ ] `send-invite` deployed with secrets
   - [ ] `sign-in-reminder` deployed, secrets set, vault URL added (H9a)
@@ -661,8 +666,8 @@ Supabase dashboard, project `erijdvqnxavwezsbbojv`:
 > (minimum interval per user 60 s), rate limit, Email provider (confirm email,
 > secure email and password change on, current password **not** required,
 > minimum length 8, no character rules), URL configuration, Passkeys, hook
-> off. Still open: templates (H6, after session 2), `send-invite` secrets
-> (H9). The Apple secret is in the Apple provider (owner, 2026-10-10).
+> off. The templates (H6) and the `send-invite` secrets (H9) are done since. The
+> Apple secret is in the Apple provider (owner, 2026-10-10).
 1. **Resend** (**verified 2026-10-10**: SPF/DKIM via CNAME + TXT and DMARC
    `p=none`, added at Spaceship by the domain holder)
    - Finish domain verification for `thesciclub.com`: SPF, DKIM, and add a
