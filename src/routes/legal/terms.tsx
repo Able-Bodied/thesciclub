@@ -4,19 +4,18 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
 /**
  * The Terms of Service, at /terms.
  *
- * The club's full terms, at the owner's word (2026-10-01): membership, the
- * four ways to lose it, and the text-message terms the carriers' registration
- * links to. The four are the ones CONTEXT.md has always held, which said they
- * would go "in the terms of service when there is one to link to". This is it.
+ * The club's full terms, at the owner's word (2026-10-01): membership and the
+ * four ways to lose it. The four are the ones CONTEXT.md has always held, which
+ * said they would go "in the terms of service when there is one to link to".
+ * This is it.
  *
- * "Text messages" carries what carriers ask of SMS terms: the program name,
- * what the texts are, how often, "Message and data rates may apply", support,
- * HELP and STOP in bold, the privacy link, and the carriers' liability line.
- * It has to say what the registration says: keep the two in step.
+ * The text-message terms went on 2026-10-11 with phone sign-in
+ * (EMAIL-SIGN-IN-PLAN.md): the club sends no texts, so there is no SMS program
+ * to describe. "Email" says what it does send.
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 1, 2026">
+    <LegalPage title="Terms of Service" updated="October 11, 2026">
       <Section title="The club">
         <P>
           The SCI Club is a private community for adults living with spinal cord injury, run by Able
@@ -32,8 +31,9 @@ export default function TermsPage() {
       <Section title="Membership">
         <List>
           <li>
-            <b>Invite only.</b> A member organization or a mentor puts your phone number on the
-            club’s list before you can join. The app cannot let you in by itself.
+            <b>Invite only.</b> A member organization or a mentor puts your email address on the
+            club’s list, and the club emails you a link, before you can join. The app cannot let you
+            in by itself.
           </li>
           <li>
             <b>Adults only.</b> You must be 18 or over.
@@ -64,28 +64,17 @@ export default function TermsPage() {
         </P>
       </Section>
 
-      <Section title="Text messages">
+      <Section title="Email">
         <P>
-          <b>The SCI Club sign-in codes.</b> When you ask for a code to sign in, Able Bodied Inc.
-          texts a one-time code to the number you entered. That is the only text the club sends: one
-          message each time you ask for a code, and none otherwise. You agree to these texts by
-          ticking the box when you join, and by continuing past the line that says so when you sign
-          back in.
+          <b>What the club emails you.</b> Able Bodied Inc. emails you to run your account: the link
+          that confirms your address, a link to reset or change your password, and an invitation
+          link when somebody invites you. It does not send newsletters or promotions. Questions or
+          trouble getting an email: <ContactEmail />.
         </P>
         <P>
-          <b>Message and data rates may apply.</b>
-        </P>
-        <P>
-          <b>Text HELP</b> to the number the code came from for help, or email <ContactEmail />.
-        </P>
-        <P>
-          <b>Text STOP</b> to stop the texts. You will get one message confirming it, and no more,
-          including sign-in codes, so you will not be able to sign in until you <b>text START</b> to
-          get them again.
-        </P>
-        <P>
-          Carriers are not liable for delayed or undelivered messages. How we handle your phone
-          number is in the{' '}
+          <b>A phone number is optional.</b> If you add one, it is only so the host of an event you
+          choose Going for can reach you about that event. It is never used to sign you in. How we
+          handle it is in the{' '}
           <Link to="/privacy" className="font-semibold text-emphasis underline">
             Privacy Policy
           </Link>

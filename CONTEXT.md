@@ -17,8 +17,8 @@ bowel programme, transfers, catheters. That vocabulary is the product. It is why
 a question here they could not ask anywhere else, and it is the one thing that cannot be
 retrofitted later onto something broader.
 
-**Invite only.** A member organization or a peer mentor puts your phone number on the list before
-you can join. The app itself cannot let you in. This is not a growth tactic — it is what makes the
+**Invite only.** A member organization or a peer mentor puts your email address on the list, and
+the club emails you a link, before you can join. The app itself cannot let you in. This is not a growth tactic — it is what makes the
 first two true. A closed room of two hundred people who have all been through it is worth more
 than an open one with twenty thousand registrations and fifty monthly visitors.
 
@@ -56,9 +56,10 @@ deleting what you sent is not a way out of it. The person reported is not told.
 ## Leaving
 
 A member can delete their own account from Me (2026-10-01, for members'
-privacy and Twilio's requirements). It erases the person: name, phone number,
-photo, birthday, injury and everything they answered, the sign-in account, and
-every invite holding their number — coming back takes a new invite. What they
+privacy and Twilio's requirements). It erases the person: name, username, email
+address, phone number, photo, birthday, injury and everything they answered, the
+sign-in account, and every invite holding their address — coming back takes a
+new invite. What they
 wrote in Chat stays, so other people's conversations still make sense, and says
 "Deleted member" where their name was; a report keeps its copy of reported words
 with nobody named. The member left in a direct conversation with a deleted
@@ -74,8 +75,13 @@ Use these words exactly. Do not invent synonyms.
 - **Member** — anybody in the club. Everybody is one.
 - **Mentor** — a member who has agreed to be one, and appears first to newly injured members. An
   attribute of a member, not a separate kind of person.
-- **Organization** — a hospital, foundation or programme that can vouch for numbers and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09). Administrator-linked accounts show “Represents” tags on their member profiles, linking to the organizations they speak for; self-described affiliations remain separate.
-- **Invite** — one phone number, placed on the list by an organization or a mentor.
+- **Organization** — a hospital, foundation or programme that can vouch for people and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09). Administrator-linked accounts show “Represents” tags on their member profiles, linking to the organizations they speak for; self-described affiliations remain separate.
+- **Invite** — one email address, placed on the list by an organization or a mentor, and emailed
+  a one-time link. Whoever opens the link while signed in takes the invite, whatever address they
+  signed up with; signing up at the exact invited address, once confirmed, also matches (2026-10-10).
+  Invites made by phone before then stay on the record, marked old, and can be re-issued by email.
+- **Username** — the `@name` a member picks when they join (3–20 characters: lowercase letters,
+  digits, `.` and `_`). Unique, shown on profiles and member cards, changeable on Me.
 
 There is no "user", no "peer" as an identity (the Peers tab is a surface, not a class of person),
 and no "coordinator" — that role belongs to a different product.
@@ -110,7 +116,7 @@ Five surfaces are real, and everything else is deliberately not yet.
 | **Home** | Real | Where the app opens (2026-09-30). A second way in to rooms, events and members that already exist, not a new kind of content: recent topics and photographs from the open rooms included in Home (administrators toggle each room in Admin → Rooms, independently of whether it is open; 2026-10-10), upcoming events with their RSVPs, and members worth meeting, under Everything · Topics · Photos · Events · People, narrowed by room and place. Asking a question there starts a topic in a room, typed into a box at the top of Home (and of every room) and posted from it, General unless the asker picks another; a question asked as one is drawn large on a coloured band, and the asker or an administrator can move it to the right room afterwards (2026-10-09); sharing a photograph starts a topic whose first post has it; a comment is a reply on the topic page. Likes, with the names shown to every member who can read the room, and a notification to the post's author for each (2026-10-01, at the owner's word). Every standing post has Like, a like count and a view count, including zero; members may like their own posts too (2026-10-10, the owner). Emoji reactions on messages, questions, posts and replies/comments (2026-10-10): one per member per item, change or remove it, with counts and names visible to readers of the original; Home uses the opening post’s reactions. Built in eight steps, 2026-09-29 to 2026-10-01. A bell on Home (the top bar on a desktop) opens the notifications of the last 30 days, each opening the message, post or event it is about (2026-10-09). No anonymous asking, no search across it, no comments sheet. |
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. Administrators add, edit and remove organizations in Admin, and link accounts that speak for them (2026-10-09). Administrators and designated organization representatives can also add, change and delete events entered in the club (2026-10-06); a representative acts only for their organizations. Administrators can name a community host. Scraped events are changed on their source calendar. |
-| **Onboarding + profile** | Real | Invite check, phone verification, then the profile survey. |
+| **Onboarding + profile** | Real | Sign in or join by email and password, Google or Apple (Apple and passkeys sit behind switches), the invite check, then the profile survey with a username and an optional phone number for events (2026-10-11; replaced phone sign-in, which Twilio never approved). |
 | **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. Any member writes in any open room, no joining (2026-09-29). A member edits their own post or message, readers see "Edited", and administrators can read every earlier version; a reply to a post sits under it, and a reply to a message quotes it (all 2026-09-29). Replies can answer specific replies at any depth, with each conversation branch independently collapsible; like counts say "5 likes" without a thumbs-up icon (2026-10-09). Sent messages show "Read" in direct conversations and "Read by X of Y" in groups, updating live when other participants open the conversation (2026-10-08). Anybody in a group can rename it or give it a picture, and the conversation says who; an event's group keeps the event's name (2026-09-30). A conversation starts from a profile's Message button or from New message on Chat (2026-10-10). No search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. A link shows its page's picture and title, read once by the club so a reader's phone contacts nobody (earlier links are caught up when previews are switched on), and a YouTube video plays in place on a press; Instagram and everything else open their page (2026-10-06). Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that
@@ -170,7 +176,7 @@ The club's content is not intended for search indexing.
 A public directory of disabled people with names, photos, injury levels and
 catheter preferences is a scraping target and a training-data donation. Member pages carry
 `noindex`, and the API requires a session. `browse_members` is the single projection through which
-one member is visible to another, and it does not select `phone` or `birth_date` at all.
+one member is visible to another, and it does not select `phone`, `email` or `birth_date` at all.
 
 Photographs are behind sign-in too. Until 2026-10-01 they were not: the photos bucket was public,
 and a link copied out of the app opened a member's face for anyone, for ever. The owner chose to
@@ -180,12 +186,16 @@ photograph; anybody signed in sees the organizations' logos, which are public on
 anyway, and their own upload; somebody part-way through joining sees the face on the profile they
 may claim. Nobody signed out sees any of them.
 
-Phone numbers stay inside the club with one exception, the owner's practice from 2026-10-08:
-**when a member chooses Going for an event, that event's host receives their phone number**, for
-that event only, to tell them about changes, remind them and look after the people who come, and
-never for marketing, fundraising or promotions. Choosing Interested shares nothing. The Going button
-says so before it is pressed, and the Privacy Policy's "Event hosts" says so at length; the two are
-kept in step. The app does not hand the numbers over itself.
+Email addresses and phone numbers stay inside the club with one exception, the owner's practice
+from 2026-10-08, widened on 2026-10-10 when the email address became the account: **when a member
+chooses Going for an event, that event's host receives their email address, and their phone number
+if they added one**, for that event only, to tell them about changes, remind them and look after the
+people who come, and never for marketing, fundraising or promotions. Choosing Interested shares
+nothing. The phone number is optional and only for this: it is asked for when joining and again on
+pressing Going without one, and it never signs anybody in. The Going button says so before it is
+pressed, and the Privacy Policy's "Event hosts" says so at length; the two are kept in step. The app
+does not hand the details over itself: an administrator copies who is going from Admin → Going and
+passes it on.
 
 ## How injury is recorded
 

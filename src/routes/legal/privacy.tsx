@@ -5,30 +5,25 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  * The Privacy Policy, at /privacy.
  *
  * Written for the club, not borrowed from ablebodied.org's, which covers
- * riders and donors and never mentions the app or text messages. What it says
- * the club collects and who sees it is what the code does: change one and
- * the other changes with it. What Able Bodied Inc. does with it beyond the app
- * (matching through organization mentors, grant applications a member asks
- * for) is the owner's answer, 2026-10-01.
+ * riders and donors and never mentions the app. What it says the club collects
+ * and who sees it is what the code does: change one and the other changes
+ * with it. What Able Bodied Inc. does with it beyond the app (matching through
+ * organization mentors, grant applications a member asks for) is the owner's
+ * answer, 2026-10-01.
  *
- * The bold statements under "Text messages (SMS)" are the wording carriers ask
- * for, and the text-message registration links here: keep them word for word.
- * The campaign was rejected on 2026-10-02 (Twilio error 30908). The first
- * statement is the "passing" sentence from that error's documentation,
- * verbatim; the page also says a privacy policy behind a website opt-in must
- * give the message frequency and "message and data rates may apply", which is
- * the line above it. The older sentence said none of affiliates, promotional or
- * consent. The grant section says it excludes them too, so no sharing clause
- * reads as a conflict.
+ * Rewritten 2026-10-11 for email sign-in (EMAIL-SIGN-IN-PLAN.md). The club no
+ * longer sends text messages, so the SMS section and the carriers' wording
+ * went with the Twilio registration, which was never approved. A phone number
+ * is now optional and only for the host of an event the member chose Going for.
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 8, 2026">
+    <LegalPage title="Privacy Policy" updated="October 11, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
           injury. It is run by Able Bodied Inc., a nonprofit organization (“we”, “us”). This policy
-          covers The SCI Club app and the text messages it sends.
+          covers The SCI Club app and the emails it sends.
         </P>
       </Section>
 
@@ -36,11 +31,16 @@ export default function PrivacyPage() {
         <P>When you join, and as you use the club, we keep:</P>
         <List>
           <li>
-            <b>Your phone number</b>, which is your account.
+            <b>Your email address</b>, which is your account, and a password if you choose one. We
+            keep a scrambled form of the password, never the password itself.
           </li>
           <li>
-            <b>About you:</b> your name, birthday, city and state, and a photograph with its
-            description if you add one.
+            <b>About you:</b> your name, your username (the <b>@name</b> others see), your birthday,
+            city and state, and a photograph with its description if you add one.
+          </li>
+          <li>
+            <b>A phone number, only if you add one</b>, for the hosts of events you choose Going
+            for. It is never used to sign you in.
           </li>
           <li>
             <b>About your injury:</b> its level, whether it is complete, when it happened, and how,
@@ -59,8 +59,13 @@ export default function PrivacyPage() {
             <b>Your notification settings</b>, if you turn notifications on for a device.
           </li>
           <li>
-            <b>If you link a Google account</b> to sign in with: the name, email address and account
-            number Google sends us. Linking is optional, and your phone number stays your account.
+            <b>If you sign in with Google or Apple:</b> the name, email address and account number
+            they send us. If you use Apple’s Hide My Email, the address we hold is the one Apple
+            makes for us.
+          </li>
+          <li>
+            <b>If you add a passkey:</b> a public key and the name of the device it is on. Your
+            fingerprint or face never leaves your device.
           </li>
         </List>
         <P>
@@ -84,8 +89,8 @@ export default function PrivacyPage() {
       <Section title="How we use it">
         <List>
           <li>
-            To sign you in, with your phone number or a Google account you have linked, and to check
-            that your number is on the club’s invite list.
+            To sign you in, with your email and password, Google, Apple or a passkey, and to check
+            that you were invited.
           </li>
           <li>
             To show your profile to other members and to suggest peers and mentors to you, using
@@ -100,21 +105,21 @@ export default function PrivacyPage() {
         <List>
           <li>
             <b>Other members</b> see your profile: your name, photograph, injury, age, where you
-            live and what you have chosen to share. They never see your phone number or your
-            birthday; your age is worked out from your birthday on our side. You can hide yourself
-            from Peers, on Me.
+            live and what you have chosen to share. They never see your email address, your phone
+            number or your birthday; your age is worked out from your birthday on our side. You can
+            hide yourself from Peers, on Me.
           </li>
           <li>
             <b>Mentors and administrators from member organizations</b>, such as hospitals and peer
             support programs, see the same profile inside the app, to help match members with peers
-            and mentors. They do not see your phone number in the app; a host receives it only as
-            described under Event hosts, below.
+            and mentors. They do not see your email address or phone number in the app; a host
+            receives them only as described under Event hosts, below.
           </li>
           <li>
-            <b>Your phone number</b> is shown only to the club’s administrators and to whoever added
-            it to the invite list, who already had it. Outside the club it goes only to the host of
-            an event you choose Going for (see Event hosts) and to the service providers that run
-            the club.
+            <b>Your email address and phone number</b> are shown only to the club’s administrators
+            and, for the address, to whoever invited you, who already had it. Outside the club they
+            go only to the host of an event you choose Going for (see Event hosts) and to the
+            service providers that run the club.
           </li>
           <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody
@@ -126,9 +131,9 @@ export default function PrivacyPage() {
             administrators can read it. Nobody else can, you included.
           </li>
           <li>
-            <b>What Google sends us</b> when you link it is used only to sign you in. It is not
-            shown to other members or to organizations, and it is never shared. Unlink Google on Me
-            and it is no longer used to sign you in.
+            <b>What Google or Apple sends us</b> is used only to sign you in. It is not shown to
+            other members or to organizations, and it is never shared. Unlink either on Me and it is
+            no longer used to sign you in.
           </li>
           <li>
             <b>Photographs</b> are only shown to people signed in to the club. Nobody outside it can
@@ -137,17 +142,17 @@ export default function PrivacyPage() {
         </List>
       </Section>
 
-      {/* The owner's practice, 2026-10-08: hosts receive the numbers of the
-          members going to their event. The Going button says so before it is
+      {/* The owner's practice, 2026-10-08 (email added 2026-10-10): hosts
+          receive the contact details of the members going to their event. The Going button says so before it is
           pressed (GOING_SHARES_CONTACT in events/event-card.tsx); keep the two
           in step. */}
       <Section title="Event hosts">
         <P>
-          When you choose <b>Going</b> for an event, the organization hosting it receives your phone
-          number, for that event only: to tell you about changes, to remind you, and to look after
-          the people who come. Choosing Interested shares nothing. Hosts agree not to use your
-          number for marketing, fundraising or promotions, and not to pass it on. The Going button
-          says this before you press it.
+          When you choose <b>Going</b> for an event, the organization hosting it receives your email
+          address, and your phone number if you have added one, for that event only: to tell you
+          about changes, to remind you, and to look after the people who come. Choosing Interested
+          shares nothing. Hosts agree not to use your details for marketing, fundraising or
+          promotions, and not to pass them on. The Going button says this before you press it.
         </P>
       </Section>
 
@@ -155,65 +160,44 @@ export default function PrivacyPage() {
         <P>
           If you ask Able Bodied Inc. to help you apply for a grant, such as for equipment or
           adaptive sport, we may share what is on your profile with the grant-maker, only for that
-          application and only because you asked. This never includes your phone number or your
-          text-message opt-in data and consent.
+          application and only because you asked. This never includes your email address or your
+          phone number.
         </P>
       </Section>
 
-      <Section title="Text messages (SMS)">
+      <Section title="Emails">
         <P>
-          We text you a one-time code each time you sign in with your phone number, and nothing
-          else. Your phone number is used to send those codes and to identify your account.
-        </P>
-        <P>
-          <b>Message frequency:</b> one text each time you ask for a sign-in code.{' '}
-          <b>Message and data rates may apply.</b>
-        </P>
-        <P>
-          <b>
-            We do not share, sell, or provide your mobile phone number or messaging consent data to
-            third parties or affiliates for marketing or promotional purposes.
-          </b>
+          We email you only to run your account: the link that confirms your address, a link to
+          reset or change your password, and the invitation link if somebody invites you. Invitation
+          links are sent by the club on behalf of the member or organization that invited you. We do
+          not send newsletters or promotions.
         </P>
         <P>
           <b>
-            No mobile information will be shared with third parties or affiliates for marketing or
-            promotional purposes. Text messaging opt-in data and consent will not be shared with any
-            third parties.
-          </b>
+            We do not sell or share your email address or phone number with third parties for
+            marketing or promotional purposes.
+          </b>{' '}
+          They reach the service providers that send the emails and run the app (see Service
+          providers, below) and, if you choose Going for an event, that event’s host, for that event
+          only (see Event hosts).
         </P>
         <P>
-          <b>
-            We do not sell or share your SMS opt-in data or personal information with third parties
-            for marketing purposes.
-          </b>
-        </P>
-        <P>
-          Every kind of sharing described in this policy excludes your text messaging opt-in data
-          and consent: the record that you agreed to the texts is never shared. Your phone number
-          itself reaches the service providers that send the texts and run the app (see Service
-          providers, below), so they can do that, and, if you choose Going for an event, that
-          event’s host, for that event only (see Event hosts). Neither may use it for marketing or
-          promotional purposes.
-        </P>
-        <P>
-          Text <b>HELP</b> for help and <b>STOP</b> to stop the texts. The{' '}
+          The{' '}
           <Link to="/terms" className="font-semibold text-emphasis underline">
             Terms of Service
           </Link>{' '}
-          say more about them.
+          say more about membership.
         </P>
       </Section>
 
       {/* Kinds of provider, not their names (the owner, 2026-10-03). The
-          kinds are what California's CalOPPA asks a policy to list, and the
-          text-message exception above leans on this section being here. */}
+          kinds are what California's CalOPPA asks a policy to list. */}
       <Section title="Service providers">
         <P>
           We do not sell your information or share it for advertising. We share it only with the
-          service providers that run the club for us: hosting, our database and sign-in, text
-          messages, location lookup, device notifications, and Google, if you sign in with it. They
-          receive only what they need to do that work.
+          service providers that run the club for us: hosting, our database and sign-in, email
+          delivery, location lookup, device notifications, and Google or Apple, if you sign in with
+          them. They receive only what they need to do that work.
         </P>
       </Section>
 
@@ -227,12 +211,13 @@ export default function PrivacyPage() {
       <Section title="Deleting your account">
         <P>
           You can delete your account yourself, from <b>Delete my account</b> at the foot of Me.
-          That erases your name, phone number, photograph, birthday, injury, any Google account you
-          linked, and everything you answered about yourself, and takes your number off the invite
-          list. What you wrote in Chat stays, so other people’s conversations still make sense, but
-          it says “Deleted member” instead of your name. The other person in a one-to-one
-          conversation can then delete it, with everything both of you wrote and every photograph in
-          it. A report keeps its copy of the reported words, with nobody named.
+          That erases your name, username, email address, phone number, photograph, birthday,
+          injury, any Google or Apple account you linked, and everything you answered about
+          yourself, and takes your address off the invite list. What you wrote in Chat stays, so
+          other people’s conversations still make sense, but it says “Deleted member” instead of
+          your name. The other person in a one-to-one conversation can then delete it, with
+          everything both of you wrote and every photograph in it. A report keeps its copy of the
+          reported words, with nobody named.
         </P>
         <P>
           Administrators cannot delete their own account in the app, and anybody can ask us to

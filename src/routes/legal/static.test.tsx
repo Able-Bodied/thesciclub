@@ -4,8 +4,8 @@ import shell from '../../../index.html?raw';
 
 /**
  * What a program that does not run JavaScript gets from /privacy and /terms:
- * the real index.html with the page written into it. Twilio's pre-check is
- * one, and it looks for the title, the SMS sentence and the brand.
+ * the real index.html with the page written into it: a link preview or a
+ * crawler reads the title and the words without running the app.
  */
 
 const privacy = STATIC_PAGES.find((p) => p.file === 'privacy.html');
@@ -21,18 +21,15 @@ describe('the static Privacy Policy', () => {
     expect(html).not.toContain('<title>The Sci Club</title>');
   });
 
-  it('carries the SMS sentence and the brand in the HTML itself', () => {
+  it('carries the no-marketing sentence and the brand in the HTML itself', () => {
     expect(html).toContain(
-      'We do not sell or share your SMS opt-in data or personal information with third parties for marketing purposes.',
+      'We do not sell or share your email address or phone number with third parties for marketing or promotional purposes.',
     );
     expect(html).toContain('Able Bodied Inc.');
-    expect(html).toContain(
-      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
-    );
-    expect(html).toContain(
-      'We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.',
-    );
-    expect(html).toContain('Message and data rates may apply.');
+  });
+
+  it('says nothing of text messages', () => {
+    expect(html).not.toMatch(/text message|SMS opt-in|Message and data rates/i);
   });
 
   it('is not marked noindex, and still starts the app', () => {
@@ -44,10 +41,11 @@ describe('the static Privacy Policy', () => {
 describe('the static Terms of Service', () => {
   const html = withPage(shell, terms.title, terms.Page);
 
-  it('is titled Terms of Service and carries the text-message terms', () => {
+  it('is titled Terms of Service and has no text-message terms', () => {
     expect(html).toContain('<title>Terms of Service · The Sci Club</title>');
-    expect(html).toContain('Carriers are not liable for delayed or undelivered messages');
-    expect(html).toContain('<b>Text STOP</b>');
+    expect(html).not.toContain('Carriers are not liable');
+    expect(html).not.toContain('Text STOP');
+    expect(html).toContain('What the club emails you.');
   });
 });
 

@@ -207,8 +207,8 @@ export default function OrganizationDetailPage() {
 
         {organization.canInvite ? (
           <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
-            {organization.name} can put a phone number on the club's list. Membership is granted by
-            a person, never claimed by a form.
+            {organization.name} can invite people by email. Membership is granted by a person, never
+            claimed by a form.
           </p>
         ) : null}
       </div>

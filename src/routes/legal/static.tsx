@@ -10,14 +10,14 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  *
  * Every other path is the same empty shell until the app's JavaScript draws
  * it, and that was true of these two: a program that fetched /privacy without
- * running scripts got a page titled "The Sci Club" with nothing in it. Twilio's
- * pre-check of the text-message registration is such a program, and what it
- * looks for is a page titled "Privacy Policy" that carries the SMS sentence
- * and the brand's name (2026-10-01, "could not verify"). So these two paths
- * are served as HTML with their words already in them; the app then starts as
- * usual and draws the same page over it.
+ * running scripts got a page titled "The Sci Club" with nothing in it. Link
+ * previews and crawlers are such programs (Twilio's pre-check of the old
+ * text-message registration was the first to be caught by it, 2026-10-01). So
+ * these two paths are served as HTML with their words already in them; the app
+ * then starts as usual and draws the same page over it.
  *
- * And /join, which was the opt-in page the registration named. See `JoinPage`.
+ * And /join, kept as a static page because the old registration named it. See
+ * `JoinPage`.
  *
  * Not the member pages. Those stay an empty shell on purpose, and keep the
  * noindex this removes from the two policies.
