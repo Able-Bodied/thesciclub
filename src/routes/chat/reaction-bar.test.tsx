@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactionsState } from '@/lib/chat/reactions';
-import { ReactionBar } from '@/routes/chat/reaction-bar';
+import { excerpt, ReactionBar } from '@/routes/chat/reaction-bar';
 
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () =>
@@ -36,12 +36,12 @@ describe('reaction controls', () => {
       />,
     );
     expect(screen.getByRole('button', { name: /Love: 1 reaction/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'React to the message' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'React to “the message”' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'React to the message' }));
-    const picker = screen.getByRole('dialog', { name: 'React to the message' });
+    await user.click(screen.getByRole('button', { name: 'React to “the message”' }));
+    const picker = screen.getByRole('dialog', { name: 'React to “the message”' });
     await user.click(within(picker).getByRole('button', { name: 'Love' }));
     expect(data.choose).toHaveBeenCalledWith('m1', '❤️');
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -53,7 +53,7 @@ describe('reaction controls', () => {
     });
     render(<ReactionBar compact target="m1" what="the message" readerId="me" state={data} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'React to the message' }));
+    await user.click(screen.getByRole('button', { name: 'React to “the message”' }));
     await user.click(screen.getByRole('button', { name: 'Love' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Love' }));
@@ -64,7 +64,7 @@ describe('reaction controls', () => {
     const data = state({ rows: [{ target_id: 'm1', member_id: 'me', emoji: '❤️' }] });
     render(<ReactionBar compact target="m1" what="the message" readerId="me" state={data} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'React to the message' }));
+    await user.click(screen.getByRole('button', { name: 'React to “the message”' }));
     const choice = within(screen.getByRole('dialog')).getByRole('button', { name: 'Love' });
     expect(choice).toHaveAttribute('aria-pressed', 'true');
     await user.click(choice);
@@ -129,7 +129,7 @@ describe('reaction controls', () => {
     const data = state({ rows: [{ target_id: 'p1', member_id: 'other', emoji: '❤️' }] });
     render(<ReactionBar target="p1" what="the question" readerId="me" state={data} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'React to the question' }));
+    await user.click(screen.getByRole('button', { name: 'React to “the question”' }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText(/Sam/)).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Celebrate' }));
@@ -148,12 +148,12 @@ describe('reaction controls', () => {
     const data = state({ choose: vi.fn(() => Promise.resolve(false)) });
     render(<ReactionBar target="p1" what="the reply" readerId="me" state={data} />);
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: 'React to the reply' }));
+    await user.click(screen.getByRole('button', { name: 'React to “the reply”' }));
     await user.click(screen.getByRole('button', { name: 'Love' }));
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('button', { name: 'React to the reply' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'React to “the reply”' })).toHaveFocus();
   });
   it('does not show stale counts after a read failure', () => {
     const data = state({
@@ -163,5 +163,56 @@ describe('reaction controls', () => {
     render(<ReactionBar target="p1" what="the reply" readerId="me" state={data} />);
     expect(screen.queryByRole('button', { name: /Thumbs up/ })).toBeNull();
     expect(screen.getByRole('button', { name: 'Retry reactions' })).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-10: the picker is the emoji, not the message again.
+  it('quotes only the start of a long message, in plain words, with no Done button', async () => {
+    const long =
+      'Has anybody flown with a power chair recently? The airline says it is fine, but I have heard otherwise from two people.';
+    const data = state();
+    render(<ReactionBar target="m1" what={long} readerId="me" state={data} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /^React to “Has anybody flown/ }));
+    const dialog = screen.getByRole('dialog');
+    const quote = within(dialog).getByText(/^“Has anybody flown/);
+    expect(quote.textContent).toBe(`“${excerpt(long)}”`);
+    expect(quote.tagName).not.toBe('H2');
+    expect(quote.className).not.toMatch(/font-bold/);
+    expect(within(dialog).queryByRole('button', { name: 'Done' })).toBeNull();
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+    // A choice closes it.
+    await user.click(within(dialog).getByRole('button', { name: 'Love' }));
+    expect(data.choose).toHaveBeenCalledWith('m1', '❤️');
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('does not put a description such as "this photograph" in quotes', () => {
+    render(
+      <ReactionBar
+        target="m1"
+        what="this photograph"
+        quoted={false}
+        readerId="me"
+        state={state()}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'React to this photograph' })).toBeInTheDocument();
+  });
+});
+
+describe('excerpt', () => {
+  it('keeps a short text whole, on one line', () => {
+    expect(excerpt('Rugby\non Tuesdays')).toBe('Rugby on Tuesdays');
+  });
+
+  it('cuts at a word within 80 characters, with an ellipsis', () => {
+    const cut = excerpt('word '.repeat(40));
+    expect(Array.from(cut).length).toBeLessThanOrEqual(81);
+    expect(cut.endsWith('word…')).toBe(true);
+  });
+
+  it('never cuts an emoji in half', () => {
+    const cut = excerpt('🙂'.repeat(100));
+    expect(cut).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
   });
 });
