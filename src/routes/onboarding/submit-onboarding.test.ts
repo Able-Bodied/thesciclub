@@ -11,6 +11,8 @@ import { INITIAL_ONBOARDING_DATA } from '@/routes/onboarding/types';
  */
 
 const db = vi.hoisted(() => ({
+  signedIn: true,
+  insertError: null as { message: string; code?: string } | null,
   uploadError: null as { name: string; message: string; code?: string } | null,
   uploads: [] as string[],
   inserts: [] as Record<string, unknown>[],
@@ -24,7 +26,10 @@ vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     auth: {
       getSession: () =>
-        Promise.resolve({ data: { session: { user: { id: 'u1', phone: '14085550112' } } } }),
+        Promise.resolve({
+          // An email account: no phone on the session at all.
+          data: { session: db.signedIn ? { user: { id: 'u1', email: 'dana@example.com' } } : null },
+        }),
     },
     storage: {
       from: () => ({
@@ -37,7 +42,7 @@ vi.mock('@/lib/supabase', () => ({
     from: () => ({
       insert: (row: Record<string, unknown>) => {
         db.inserts.push(row);
-        return Promise.resolve({ error: null });
+        return Promise.resolve({ error: db.insertError });
       },
     }),
   }),
@@ -54,6 +59,8 @@ const data = (o: Partial<OnboardingData> = {}): OnboardingData => ({
 const photo = () => new File(['x'], 'photo.heic', { type: 'image/heic' });
 
 beforeEach(() => {
+  db.signedIn = true;
+  db.insertError = null;
   db.uploadError = null;
   db.uploads = [];
   db.inserts = [];
@@ -97,13 +104,48 @@ describe('submitOnboarding and the photograph', () => {
     expect(db.inserts[0]?.photo_path).toBe('u1/profile.heic');
   });
 
-  // Read by the claim trigger: true retires a claimed seed without copying it
-  // (20261002000000). An insert that leaves it out gets the old behaviour.
-  it('carries "Start fresh" to the insert', async () => {
-    await submitOnboarding(data({ startFresh: true }));
-    await submitOnboarding(data());
+  it('writes the username, lowercase, and no longer asks for a phone on the session', async () => {
+    const result = await submitOnboarding(data({ username: ' Dana.S ' }));
 
-    expect(db.inserts.map((row) => row.start_fresh)).toEqual([true, false]);
+    expect(result).toEqual({ ok: true });
+    expect(db.inserts[0]?.username).toBe('dana.s');
+    expect(db.inserts[0]?.id).toBe('u1');
+  });
+
+  it('writes the typed number "for events", or null when it was skipped', async () => {
+    await submitOnboarding(data({ phone: '(408) 555-0112' }));
+    await submitOnboarding(data({ phone: '' }));
+    await submitOnboarding(data({ phone: '408555' }));
+
+    expect(db.inserts.map((row) => row.phone)).toEqual(['14085550112', null, null]);
+  });
+
+  it('sends nothing about a seeded profile', async () => {
+    await submitOnboarding(data());
+    expect(db.inserts[0]).not.toHaveProperty('start_fresh');
+  });
+
+  it('refuses without a session, and writes nothing', async () => {
+    db.signedIn = false;
+    const result = await submitOnboarding(data());
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/not signed in/);
+    expect(db.inserts).toEqual([]);
+  });
+
+  it('sends them back to the username when somebody else took it a moment ago', async () => {
+    db.insertError = {
+      message: 'duplicate key value violates unique constraint "members_username_key"',
+      code: '23505',
+    };
+    const result = await submitOnboarding(data({ username: 'dana' }));
+
+    expect(result).toEqual({
+      ok: false,
+      usernameRefused: true,
+      error: 'That username was just taken. Choose another.',
+    });
   });
 
   // Declined, then gone Back to and answered: the answer wins, as on the

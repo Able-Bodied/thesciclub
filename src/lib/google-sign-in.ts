@@ -82,10 +82,11 @@ export async function signInWithGoogleToken(
     token,
     nonce,
   });
-  return error
-    ? { ok: false, error: describeError(error, 'Google did not sign you in.') }
-    : { ok: true };
+  return error ? { ok: false, error: GOOGLE_NOT_SIGNED_IN } : { ok: true };
 }
+
+/** Said when Google's widget picked an account and Supabase refused it. */
+export const GOOGLE_NOT_SIGNED_IN = 'Google did not sign you in. Try again, or use your email.';
 
 /** Links the Google account picked in Google's widget to the signed-in member. */
 export async function linkGoogleToken(

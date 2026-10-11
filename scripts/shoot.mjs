@@ -24,9 +24,10 @@
  * Signing in
  * ---------------------------------------------------------------------------
  * Everything behind the tab bar needs a member session, so this signs in with
- * the test phone number and OTP from supabase/config.toml before navigating.
- * Those are test credentials that never reach Twilio and never leave a local
- * machine; they are already in the repo.
+ * email and password before navigating: one of the accounts supabase/seed.sql
+ * makes on the local stack, all with the password `local-dev-password`
+ * (`sam@local.test` unless SHOOT_EMAIL says otherwise). They exist only on a
+ * local database and are already in the repo.
  *
  * ---------------------------------------------------------------------------
  * Why the libraries are on LD_LIBRARY_PATH
@@ -42,9 +43,9 @@ import { chromium } from 'playwright';
 const BASE = process.env.SHOOT_BASE ?? 'http://localhost:5181';
 const OUT = 'screenshots';
 
-/** Test credentials from supabase/config.toml — intercepted before Twilio. */
-const TEST_PHONE = process.env.SHOOT_PHONE ?? '11111111111';
-const TEST_OTP = process.env.SHOOT_OTP ?? '111111';
+/** A seeded local account (supabase/seed.sql), signed in through the real sign-in screen. */
+const TEST_EMAIL = process.env.SHOOT_EMAIL ?? 'sam@local.test';
+const TEST_PASSWORD = process.env.SHOOT_PASSWORD ?? 'local-dev-password';
 
 const WIDTHS = { phone: 430, desktop: 1280 };
 
@@ -73,23 +74,14 @@ async function signIn(page) {
   await page.getByRole('button', { name: /already have an account/i }).click();
   await page.waitForTimeout(500);
 
-  // By autocomplete, not position: onboarding keeps a hidden input ahead of
-  // the phone box to hold the iPhone keyboard open (`keyboardHold`), and
-  // `input` first lands in that.
-  // The sign-in door sends the code on the tenth digit (2026-10-06), so
-  // there is no Continue to press: wait for the code box instead.
-  await page.locator('input[autocomplete="tel"]').fill(TEST_PHONE);
-  await page.locator('input[autocomplete="one-time-code"]').waitFor({ timeout: 10_000 });
-
-  await page.locator('input[autocomplete="one-time-code"]').fill(TEST_OTP);
-  await page.waitForTimeout(400);
-  const verify = page.getByRole('button', { name: /continue|verify/i });
-  if (await verify.count()) await verify.first().click();
+  await page.locator('input[type="email"]').fill(TEST_EMAIL);
+  await page.locator('input[type="password"]').fill(TEST_PASSWORD);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForTimeout(2500);
 
   if (/\/join/.test(page.url())) {
-    // Landed in onboarding rather than inside the club, which means the test
-    // account has no member row. Say so instead of quietly shooting a
+    // Landed in onboarding rather than inside the club, which means the
+    // account has no member row (or was refused as not invited). Say so instead of quietly shooting a
     // half-filled signup form and calling it the Events page.
     throw new Error(
       'Signed in but not a member — run `pnpm demo-member` first (a db reset drops the auth schema too).',

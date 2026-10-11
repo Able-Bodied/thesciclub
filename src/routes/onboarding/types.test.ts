@@ -5,6 +5,7 @@ import {
   injuryDateOf,
   injuryStepDeclined,
   type OnboardingData,
+  type Step,
   stepNumber,
   withInjuryDeclined,
 } from '@/routes/onboarding/types';
@@ -47,28 +48,41 @@ describe('injuryDateOf', () => {
 });
 
 describe('canAdvance', () => {
-  it('needs ten digits of phone, however they are punctuated', () => {
-    const agreed = { smsConsent: true, termsAgreed: true };
-    expect(canAdvance('phone', data({ phone: '(408) 555-0112', ...agreed }))).toBe(true);
-    expect(canAdvance('phone', data({ phone: '408555', ...agreed }))).toBe(false);
+  it('needs a terms tick before the agree step is done', () => {
+    expect(canAdvance('agree', data())).toBe(false);
+    expect(canAdvance('agree', data({ termsAgreed: true }))).toBe(true);
   });
 
-  it('needs both boxes ticked before a code is sent', () => {
-    const phone = '(408) 555-0112';
-    expect(canAdvance('phone', data({ phone }))).toBe(false);
-    expect(canAdvance('phone', data({ phone, smsConsent: true }))).toBe(false);
-    expect(canAdvance('phone', data({ phone, termsAgreed: true }))).toBe(false);
-    expect(canAdvance('phone', data({ phone, smsConsent: true, termsAgreed: true }))).toBe(true);
+  it('needs a name', () => {
+    expect(canAdvance('name', data({ displayName: '  ' }))).toBe(false);
+    expect(canAdvance('name', data({ displayName: 'Dana' }))).toBe(true);
   });
 
-  it('needs no ticks on the sign-in door, only the number', () => {
-    expect(canAdvance('phone', data({ phone: '(408) 555-0112' }), true)).toBe(true);
-    expect(canAdvance('phone', data({ phone: '408555' }), true)).toBe(false);
+  it('needs a username that is valid and has been found free', () => {
+    expect(canAdvance('username', data({ username: 'dana', usernameChecked: '' }))).toBe(false);
+    expect(canAdvance('username', data({ username: 'dana', usernameChecked: 'dana' }))).toBe(true);
   });
 
-  it('needs exactly six digits of code', () => {
-    expect(canAdvance('code', data({ code: '111111' }))).toBe(true);
-    expect(canAdvance('code', data({ code: '11111' }))).toBe(false);
+  it('does not count a check made for a name that has since been edited', () => {
+    expect(canAdvance('username', data({ username: 'dana2', usernameChecked: 'dana' }))).toBe(
+      false,
+    );
+  });
+
+  it('refuses a username the database would, even if it were marked free', () => {
+    for (const bad of ['ab', 'Dana', 'dana smith', '.dana', 'dana.', 'da..na', 'a'.repeat(21)]) {
+      expect(canAdvance('username', data({ username: bad, usernameChecked: bad }))).toBe(false);
+    }
+    for (const good of ['abc', 'a.b_c', 'dana99', 'a'.repeat(20)]) {
+      expect(canAdvance('username', data({ username: good, usernameChecked: good }))).toBe(true);
+    }
+  });
+
+  it('lets the phone for events be empty, but not half a number', () => {
+    expect(canAdvance('phone', data())).toBe(true);
+    expect(canAdvance('phone', data({ phone: '   ' }))).toBe(true);
+    expect(canAdvance('phone', data({ phone: '(408) 555-0112' }))).toBe(true);
+    expect(canAdvance('phone', data({ phone: '408555' }))).toBe(false);
   });
 
   it('needs a level and a year before the injury step is done', () => {
@@ -112,14 +126,26 @@ describe('the age gate', () => {
 });
 
 describe('stepNumber', () => {
-  it('numbers only the five counted steps', () => {
-    expect(stepNumber('name')).toBe(1);
-    expect(stepNumber('photo')).toBe(5);
+  it('numbers the seven questions, in order', () => {
+    expect(
+      ['name', 'username', 'birthday', 'injury', 'city', 'phone', 'photo'].map((s) =>
+        stepNumber(s as Step),
+      ),
+    ).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
-  it('does not number the conditional steps', () => {
-    expect(stepNumber('claim')).toBeNull();
-    expect(stepNumber('phone')).toBeNull();
+  it('does not number the doors or the agree step', () => {
+    for (const door of [
+      'welcome',
+      'signin',
+      'forgot',
+      'join',
+      'check-email',
+      'checking',
+      'agree',
+    ]) {
+      expect(stepNumber(door as Step)).toBeNull();
+    }
   });
 });
 

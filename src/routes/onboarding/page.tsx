@@ -15,7 +15,12 @@ import {
   signUpWithEmail,
 } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
-import { GOOGLE_RETURN_PARAM, signInWithGoogle, signInWithGoogleToken } from '@/lib/google-sign-in';
+import {
+  GOOGLE_NOT_SIGNED_IN,
+  GOOGLE_RETURN_PARAM,
+  signInWithGoogle,
+  signInWithGoogleToken,
+} from '@/lib/google-sign-in';
 import {
   captureInviteToken,
   claimHeldInvite,
@@ -216,7 +221,7 @@ export default function OnboardingPage() {
     setError(null);
     const result = await signInWithGoogleToken(token, nonce).catch(() => ({
       ok: false as const,
-      error: 'Google did not sign you in.',
+      error: GOOGLE_NOT_SIGNED_IN,
     }));
     setBusy(false);
     if (!result.ok) setError(result.error);

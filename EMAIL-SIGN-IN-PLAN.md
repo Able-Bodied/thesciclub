@@ -574,6 +574,15 @@ Apple Developer:
 14. Calendar reminder: rotate the Apple secret by 2027-04-01.
 
 Accounts:
+> **Done 2026-10-10, for all four admins** (Alfred Shaheen, Wojtek, Ajay,
+> Ran) with `set-member-email.mjs` on the live project. Each has a confirmed
+> email on their existing account; admin rights, history and phone were left
+> as they were. Alfred and Wojtek got the Gmail they had already linked
+> (linking Google had **not** filled in `user.email`, which confirms the
+> Session 4 note). Ajay and Ran got the addresses they chose. The addresses
+> are deliberately not recorded here. H15 and the admin half of H16 need
+> nothing more.
+
 15. Set the owner's account email to their Gmail:
     `node scripts/set-member-email.mjs`, or Supabase → Users → alfred → edit.
     Sign in with Google once afterwards to confirm it's the same account.
