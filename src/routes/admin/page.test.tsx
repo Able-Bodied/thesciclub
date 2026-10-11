@@ -1301,6 +1301,7 @@ describe('the tabs', () => {
       'Invites',
       'Organizations',
       'Rooms',
+      'Sign-in',
     ]);
   });
 });

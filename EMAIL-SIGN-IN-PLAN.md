@@ -51,6 +51,7 @@ HANDOFF.md.
   - [ ] owner H steps confirmed one by one
   - [ ] `db push` (dry run first)
   - [ ] `send-invite` deployed with secrets
+  - [ ] `sign-in-reminder` deployed, secrets set, vault URL added (H9a)
   - [ ] full checks
   - [ ] pushed to main
   - [ ] smoke test on the live site
@@ -474,6 +475,15 @@ Supabase dashboard, project `erijdvqnxavwezsbbojv`:
    `only_a_phone_makes_an_account`.
 9. **Edge functions**: deploy `send-invite` and set the `RESEND_API_KEY` and
    `INVITE_FROM` secrets.
+9a. **Apple renewal reminder** (built 2026-10-10, migration
+    `20261011080000`, goes up with the same `db push`):
+    - Deploy `sign-in-reminder` (`verify_jwt = false`, as in config.toml).
+    - Set its secrets: `RESEND_API_KEY`, and `REMINDER_TO` = the owner's
+      Gmail (the one the Google sign-in uses).
+    - Add the vault secret `sign_in_reminder_url` =
+      `https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/sign-in-reminder`.
+      Until it's set, the 16:10 UTC cron does nothing.
+    - Admin → **Sign-in** shows the status either way.
 10. **Netlify** environment: `VITE_APPLE_SIGN_IN=1` once Apple works,
     `VITE_PASSKEYS=1` once the passkey check passes. Rebuild after.
 

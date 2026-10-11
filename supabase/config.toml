@@ -432,6 +432,12 @@ verify_jwt = false
 [functions.link-preview]
 verify_jwt = false
 
+# Apple sign-in's renewal reminder. Called by the database (pg_net, from
+# sign_in_secret_remind) with the vault's sign_in_reminder_secret, which
+# sign_in_secret_due checks; no member calls it.
+[functions.sign-in-reminder]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
