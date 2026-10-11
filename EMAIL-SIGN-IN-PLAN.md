@@ -169,7 +169,7 @@ HANDOFF.md.
     member who joined; a seeded row keeps the box for its directory provenance sentence) (`2809118`)
   - [x] "Type it again" on the email sign-up and on Me's add-an-email-and-password form, matching `/reset-password` (`0c76bbb`)
   - [x] auth error sentences rewritten for email and password in `describe-error.ts` (`69b2f5d`; its `reset-password` test file
-    was only valid from the next commit, `HEAD` at the time: see `git log`). `invalid_credentials` is "That email or password is not
+    had a misplaced brace, fixed in `cd61293`, so only the tip is green). `invalid_credentials` is "That email or password is not
     right."; the rate limits (`over_email_send_rate_limit`, `over_request_rate_limit`, the "only request this after" wording) say
     "Too many attempts or emails."; "Error sending … email" says the email could not be sent; `otp_expired` and "Email link is
     invalid or has expired" say the link has expired or was used. `sms_send_failed`, `over_sms_send_rate_limit` and "Error sending
