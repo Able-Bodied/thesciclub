@@ -6,45 +6,45 @@ import { getSupabase } from '@/lib/supabase';
  * A programmatic sign-in, for development.
  *
  * Signed-in surfaces gate on a real Supabase session — `browse_members` is
- * granted to `authenticated` only — and clicking through phone and code screens
- * every time you want to look at the deck is slow.
+ * granted to `authenticated` only — and typing an address and password every
+ * time you want to look at the deck is slow.
  *
- * **This is not a bypass.** It makes the same two calls the onboarding wizard
- * makes, `signInWithOtp` then `verifyOtp`, against the same project. A wrong
- * number or a wrong code fails here exactly as it would in the UI, because it
- * is the same credential check. What it skips is the typing, not the auth.
+ * **This is not a bypass.** It makes the same call the sign-in screen makes,
+ * `signInWithPassword`, against the same project. A wrong address or password
+ * fails here exactly as it would in the UI, because it is the same credential
+ * check. What it skips is the typing, not the auth.
  *
- * It works with the project's configured test numbers, which never dispatch a
- * real SMS. Unlisted — not linked from anywhere in the app.
+ * It works with the accounts supabase/seed.sql makes on the local stack, all
+ * with the password `local-dev-password`: `alfred@local.test` (administrator),
+ * `maya@local.test` (mentor), `sam@local.test`, `invited@local.test` (invited,
+ * not yet a member) and `stranger@local.test` (not invited). Unlisted — not
+ * linked from anywhere in the app, and left out of a production build.
  *
- *   /dev-login?phone=11111111111&code=111111&next=/peers
+ *   /dev-login?email=alfred@local.test&next=/peers
+ *   /dev-login?email=maya@local.test&password=local-dev-password
  */
+const SEEDED_PASSWORD = 'local-dev-password';
+
 export default function DevLoginPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [status, setStatus] = useState('Signing in…');
   const started = useRef(false);
 
-  const phone = params.get('phone') ?? '';
-  const code = params.get('code') ?? '';
+  const email = params.get('email') ?? '';
+  const password = params.get('password') ?? SEEDED_PASSWORD;
   // Where the app opens, as `/` does, unless told otherwise.
   const next = params.get('next') ?? '/home';
 
   const run = useCallback(async () => {
-    if (!phone || !code) {
-      setStatus('Pass ?phone=…&code=… — for example /dev-login?phone=11111111111&code=111111');
+    if (!email) {
+      setStatus('Pass ?email=… — for example /dev-login?email=alfred@local.test');
       return;
     }
     try {
-      const supabase = getSupabase();
-      const sent = await supabase.auth.signInWithOtp({ phone });
-      if (sent.error) {
-        setStatus(`Could not request a code: ${sent.error.message}`);
-        return;
-      }
-      const verified = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' });
-      if (verified.error) {
-        setStatus(`Could not verify: ${verified.error.message}`);
+      const { error } = await getSupabase().auth.signInWithPassword({ email, password });
+      if (error) {
+        setStatus(`Could not sign in: ${error.message}`);
         return;
       }
       // react-router v7's navigate returns a promise; we do not need to wait on it.
@@ -52,11 +52,11 @@ export default function DevLoginPage() {
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Sign-in failed.');
     }
-  }, [phone, code, next, navigate]);
+  }, [email, password, next, navigate]);
 
   useEffect(() => {
-    // StrictMode double-invokes effects in development; verifyOtp is not
-    // idempotent, so guard rather than burning the code on the first render.
+    // StrictMode double-invokes effects in development; sign-in once rather
+    // than twice on the first render.
     if (started.current) return;
     started.current = true;
     void run();

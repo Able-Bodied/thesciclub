@@ -1,6 +1,6 @@
 import { ShieldCheck } from 'lucide-react';
-import { useOrganizations } from '@/lib/organizations';
 import { CONSULTATION_URL } from '@/lib/invite-request';
+import { useOrganizations } from '@/lib/organizations';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
