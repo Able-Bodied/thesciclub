@@ -323,7 +323,8 @@ HANDOFF.md.
     - Accounts made before the hook is on are not affected; an unconfirmed one re-signing up gets its confirmation resent by
       Supabase without reaching the hook.
   - [x] **Follow-up, the owner's word 2026-10-11: Me no longer changes the account's email.** Released with `788dc8b`.
-    The owner cleared the Change email address template, then pasted it back: the banner still sends it. Same branch,
+    The owner cleared the Change email address template and was given it again to paste back (the banner still sends
+    it); whether it was saved is on the owner's word, not checked. Same branch,
     `signup-invite-gate`, no migration. Me → Signing in → Email is read only: the address, and "it can't be changed here. If
     you lose access to it, ask an administrator" (the owner runs `scripts/set-member-email.mjs`). The add-an-email banner for
     an account with no email is unchanged, and still uses `changeEmail` and `/me?email=changed`. Supabase's API would still
