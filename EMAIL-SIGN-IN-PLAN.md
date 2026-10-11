@@ -527,7 +527,7 @@ Supabase dashboard, project `erijdvqnxavwezsbbojv`:
    - Site URL `https://thesciclub.com`.
    - Redirect URLs `https://thesciclub.com/**`, plus
      `http://127.0.0.1:5173/**` for local.
-6. **Authentication → Emails → Templates**: paste Workstream B's templates.
+6. **Authentication → Emails → Templates**: paste Workstream B's templates. **Done 2026-10-10** (all four, with the subjects from Session 2's notes).
 7. **Authentication → Passkeys**
    - Enable.
    - Relying party ID `thesciclub.com`, name `The SCI Club`, origin
