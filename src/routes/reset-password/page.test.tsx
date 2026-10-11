@@ -93,7 +93,6 @@ describe('choosing a new password', () => {
     expect(auth.updated).toEqual([]);
   });
 
-describe('when Supabase refuses the new password', () => {
   it('says a used or expired link has expired, not that a code is wrong', async () => {
     auth.error = { code: 'otp_expired', message: 'Email link is invalid or has expired' };
     renderPage();
