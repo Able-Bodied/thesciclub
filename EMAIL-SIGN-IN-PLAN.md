@@ -247,6 +247,19 @@ HANDOFF.md.
     merged tip, then pushed the branch and `HEAD:main`. Netlify's `/sw.js` matched the local build within 30 s.
   - [ ] smoke test on the live site
   - [ ] switches for Apple and passkeys
+  - [ ] **Follow-up, the owner's word 2026-10-11 (during the smoke test): the invite link fills in its address.** Built and
+    committed on the branch (`528443b` database and probe, `7a4dbe1` client), **not yet applied or pushed**: it needs a `db push`
+    of one migration (`20261012030000_invite_address_for_link`) and a push to main. `invite_address_for_token(token)` answers the
+    address of a pending, unclaimed invite and null for everything else, the same null each time, and is callable by anon
+    (the token guards it; 32 random bytes). The address is **not** put in the link: that would sit in history, logs and previews
+    beside a secret token, and links already sent would not have it. A held invite now opens at Join, not Welcome, with the Email
+    field filled in unless something was typed; the field stays theirs (Decision 3). Probe `invite-address-for-link.sql` on the
+    local and a **fresh** stack (ports 553xx, stopped after): spaces trimmed as `claim_invite` does, every other case null, anon
+    may call it and sees no invites. **Broken on purpose, each failing the section that guards it:** status check removed (used
+    and revoked leak), claimed-by removed, blocked check removed, raw token compared instead of its hash. Client broken three
+    ways (overwrites what was typed; opens at Welcome; asks when signed in), each failing 1, 7 and 3 tests. `pnpm check`
+    exit 0, `pnpm test` 181 files and 2545 tests, `pnpm build` exit 0. Not tried on a phone or the live site. A newline is not
+    trimmed in the database (nor in `claim_invite`); the client's `trim()` is what keeps one out.
 
 ## Decisions (the owner's, 2026-10-10)
 
@@ -407,6 +420,7 @@ blocked_emails  (email citext primary key, blocked_at, blocked_by, note)
 | `admin_block_number(...)` | `void` | **Redefined**: finds the member to remove by `auth.users.phone` (what Auth verified), not `members.phone`, which a member can now type to anything. |
 | `claim_invite` also | | Returns false (never an error) for an anonymous, empty, unknown, used, revoked or someone-else's token, for an existing member, and for a caller whose confirmed address is blocked. Claiming your own claimed token again is true. It does not require a confirmed email (Supabase will not sign an unconfirmed password account in). |
 | `username_available(name)` | | also true for the caller's **own** current name, so Me does not say "taken" for what they already have. |
+| `invite_address_for_token(token text)` | `text` | **Added 2026-10-11 (`20261012030000`).** Callable by `anon` and `authenticated`: the join page has no session. The lowercase address of the `pending`, unclaimed, unblocked email invite whose `token_hash` matches; null for every other reason, alike. For prefilling the Email field only. |
 | `admin_set_member_phone` | — | Not needed; members edit their own `phone` (existing update policy plus `guard_own_member_row`, checked). |
 | `event_host_contacts(event_id uuid)` | `(member_id, display_name, email, phone)` | Admin only. For the owner's practice of passing Going members to the host. Email from `auth.users`. |
 | `delete_my_account()` | — | **Redefined** to free email invites (`claimed_by` or the *confirmed* account email) as it freed numbers. The old-number branch now uses only the JWT's verified phone, never `members.phone`. |
