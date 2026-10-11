@@ -49,8 +49,17 @@ HANDOFF.md.
   - [x] Auth email templates (`18a1572`)
   - [x] `scripts/apple-secret.mjs` (written early, 2026-10-10; the first secret
     expires **2027-04-09**; key id `C9397R83YF`, `.p8` in the owner's Downloads)
-  - [ ] `scripts/set-member-email.mjs`
-  - [ ] committed
+  - [x] `scripts/set-member-email.mjs` (`008c63b`)
+  - [x] `pnpm check` exit 0, committed (work: `0ba1c6b`, `18a1572`, `008c63b`; lint fixes and this plan edit are the commit after)
+  - Notes for the next session ("as built"):
+    - `send-invite` returns `200 {sent:true}`, `400` bad body, `401` not signed in, `404` unknown **or not yours** (alike, so ids
+      cannot be probed), `409` not pending, `422` phone-only invite (no address), `429` sent under 60 s ago, `502` Resend refused.
+      Mentors may send only their own invites; **organization invites are administrators' only**. It has CORS, so
+      `supabase.functions.invoke('send-invite', { body: { invite_id } })` works. The new token is stored before the email goes out.
+    - The Auth templates are `confirmation`, `recovery`, `email_change`, `reauthentication` in `supabase/templates/`, wired into
+      the local `config.toml` with subjects; the dashboard gets the same files pasted (see the hand-over list in the session reply).
+    - `set-member-email.mjs <member id | display name> <email>` needs `SUPABASE_SERVICE_ROLE_KEY` in the environment;
+      `SUPABASE_URL` defaults to the live project. It refuses a name shared by two members.
 - [ ] **Session 3: C + D, Sign-in, joining, onboarding questions**
   - [ ] sign-in and join screens, check-email, `/reset-password`
   - [ ] invite token and `claim_invite`

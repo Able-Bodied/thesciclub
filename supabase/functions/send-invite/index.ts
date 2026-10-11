@@ -140,7 +140,7 @@ Deno.serve(async (request) => {
     console.error('send-invite: RESEND_API_KEY or INVITE_FROM is not set');
     return reply(500, { error: 'not configured' });
   }
-  const payload = await request.json().catch(() => null);
+  const payload: unknown = await request.json().catch(() => null);
   const result = await sendInvite(request.headers.get('Authorization'), payload, deps);
   return reply(result.status, result.body);
 });

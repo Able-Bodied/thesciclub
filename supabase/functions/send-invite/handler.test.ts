@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { inviteEmail, inviteLink } from './compose.ts';
-import { type Deps, type InviteRow, RESEND_WAIT_SECONDS, sendInvite, sha256Hex } from './handler.ts';
+import {
+  type Deps,
+  type InviteRow,
+  RESEND_WAIT_SECONDS,
+  sendInvite,
+  sha256Hex,
+} from './handler.ts';
 
 const INVITE_ID = '11111111-1111-4111-8111-111111111111';
 const MAYA = '22222222-2222-4222-8222-222222222222';
@@ -22,20 +28,21 @@ function invite(overrides: Partial<InviteRow> = {}): InviteRow {
 function setup(row: InviteRow | null = invite(), admins: string[] = []) {
   const log = { hashes: [] as string[], sent: [] as { to: string; text: string }[], marked: 0 };
   const deps: Deps = {
-    callerId: async (jwt) => ({ maya: MAYA, sam: SAM }[jwt] ?? null),
-    isAdmin: async (id) => admins.includes(id),
-    loadInvite: async () => row,
-    inviterName: async () => 'Maya',
-    saveTokenHash: async (_id, hash) => {
+    callerId: (jwt) => Promise.resolve(jwt === 'maya' ? MAYA : jwt === 'sam' ? SAM : null),
+    isAdmin: (id) => Promise.resolve(admins.includes(id)),
+    loadInvite: () => Promise.resolve(row),
+    inviterName: () => Promise.resolve('Maya'),
+    saveTokenHash: (_id, hash) => {
       log.hashes.push(hash);
-      return true;
+      return Promise.resolve(true);
     },
-    markSent: async () => {
+    markSent: () => {
       log.marked += 1;
+      return Promise.resolve();
     },
-    sendEmail: async (to, email) => {
+    sendEmail: (to, email) => {
       log.sent.push({ to, text: email.text });
-      return true;
+      return Promise.resolve(true);
     },
     now: () => NOW,
     newToken: () => `token-${log.hashes.length + 1}`,
@@ -105,7 +112,7 @@ describe('send-invite', () => {
 
   it('refuses when the invite stops being pending between the read and the write', async () => {
     const { deps, log } = setup();
-    deps.saveTokenHash = async () => false;
+    deps.saveTokenHash = () => Promise.resolve(false);
     expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(409);
     expect(log.sent).toHaveLength(0);
   });
@@ -125,7 +132,9 @@ describe('send-invite', () => {
   it('makes a new token for each send, and waits a minute between them', async () => {
     const recent = new Date(NOW.getTime() - (RESEND_WAIT_SECONDS - 5) * 1000).toISOString();
     const early = setup(invite({ sent_at: recent }));
-    expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, early.deps)).status).toBe(429);
+    expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, early.deps)).status).toBe(
+      429,
+    );
     expect(early.log.sent).toHaveLength(0);
 
     const old = new Date(NOW.getTime() - (RESEND_WAIT_SECONDS + 5) * 1000).toISOString();
@@ -137,7 +146,7 @@ describe('send-invite', () => {
 
   it('says so when Resend refuses, and does not mark it sent', async () => {
     const { deps, log } = setup();
-    deps.sendEmail = async () => false;
+    deps.sendEmail = () => Promise.resolve(false);
     expect((await sendInvite('Bearer maya', { invite_id: INVITE_ID }, deps)).status).toBe(502);
     expect(log.marked).toBe(0);
   });
