@@ -11,51 +11,55 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * the list is consulted, and every way in ends at the same check.
  */
 
-const calls = vi.hoisted(() => ({
-  order: [] as string[],
-  listeners: new Set<() => void>(),
-  status: 'signed-out',
-  /** What a successful password sign-in makes the account: a stranger to the club, or a member. */
-  afterPassword: 'signed-up',
-  passwordError: null as { message: string; code?: string } | null,
-  signUpError: null as string | null,
-  signUpOptions: null as { emailRedirectTo?: string } | null,
-  resetRedirect: null as string | null,
-  /** The signed-in account, as the session shows it. */
-  user: {
+const calls = vi.hoisted(() => {
+  const account = (): { email: string; user_metadata: Record<string, unknown> } => ({
     email: 'dana@example.com',
-    user_metadata: {} as Record<string, unknown>,
-  } as { email: string; user_metadata: Record<string, unknown> } | null,
-  invited: true,
-  claimResult: true,
-  claimError: false,
-  claimedWith: null as string | null,
-  /** Usernames the club says are taken. */
-  taken: [] as string[],
-  suggestions: ['dana', 'dana.s', 'dana_s'] as string[],
-  checked: [] as string[],
-  submitted: null as Record<string, unknown> | null,
-  /** What each submit answers, in turn; ok when the list runs out. */
-  submitResults: [] as {
-    ok: boolean;
-    error?: string;
-    photoRefused?: boolean;
-    usernameRefused?: boolean;
-  }[],
-  /** Null is the club unable to send, which is the default for these tests. */
-  vapidKey: null as string | null,
-  notificationState: 'off',
-  /** Whether Google's script loaded; 'unavailable' shows the club's button. */
-  widget: 'unavailable',
-  onToken: null as ((token: string, nonce: string) => void) | null,
-  promptAsked: false,
-  idTokenError: null as string | null,
-  passkeyError: null as { name?: string; message: string } | null,
-  setStatus(next: string) {
-    calls.status = next;
-    for (const listener of calls.listeners) listener();
-  },
-}));
+    user_metadata: {},
+  });
+  return {
+    account,
+    order: [] as string[],
+    listeners: new Set<() => void>(),
+    status: 'signed-out',
+    /** What a successful password sign-in makes the account: a stranger to the club, or a member. */
+    afterPassword: 'signed-up',
+    passwordError: null as { message: string; code?: string } | null,
+    signUpError: null as string | null,
+    signUpOptions: null as { emailRedirectTo?: string } | null,
+    resetRedirect: null as string | null,
+    /** The signed-in account, as the session shows it. */
+    user: account(),
+    invited: true,
+    claimResult: true,
+    claimError: false,
+    claimedWith: null as string | null,
+    /** Usernames the club says are taken. */
+    taken: [] as string[],
+    suggestions: ['dana', 'dana.s', 'dana_s'] as string[],
+    checked: [] as string[],
+    submitted: null as Record<string, unknown> | null,
+    /** What each submit answers, in turn; ok when the list runs out. */
+    submitResults: [] as {
+      ok: boolean;
+      error?: string;
+      photoRefused?: boolean;
+      usernameRefused?: boolean;
+    }[],
+    /** Null is the club unable to send, which is the default for these tests. */
+    vapidKey: null as string | null,
+    notificationState: 'off',
+    /** Whether Google's script loaded; 'unavailable' shows the club's button. */
+    widget: 'unavailable',
+    onToken: null as ((token: string, nonce: string) => void) | null,
+    promptAsked: false,
+    idTokenError: null as string | null,
+    passkeyError: null as { name?: string; message: string } | null,
+    setStatus(next: string) {
+      calls.status = next;
+      for (const listener of calls.listeners) listener();
+    },
+  };
+});
 
 vi.mock('@/lib/google-identity', () => ({
   useGoogleButton: ({
@@ -166,7 +170,7 @@ vi.mock('@/lib/supabase', () => ({
       },
       getSession: () =>
         Promise.resolve({
-          data: { session: calls.user ? { user: calls.user } : null },
+          data: { session: { user: calls.user } },
         }),
       signInWithPassword: (credentials: { email: string; password: string }) => {
         calls.order.push(`signInWithPassword:${credentials.email}`);
@@ -720,7 +724,10 @@ describe('Google, Apple and passkeys', () => {
 
   describe('passkeys', () => {
     it('are hidden unless VITE_PASSKEYS is set', async () => {
-      Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, configurable: true });
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
       expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
@@ -735,7 +742,10 @@ describe('Google, Apple and passkeys', () => {
 
     it('sign in with one tap when both are there', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
-      Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, configurable: true });
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
       await userEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
@@ -744,7 +754,10 @@ describe('Google, Apple and passkeys', () => {
 
     it('say nothing when the browser’s own sheet is cancelled', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
-      Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, configurable: true });
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
       calls.passkeyError = { name: 'NotAllowedError', message: 'cancelled' };
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
@@ -991,7 +1004,10 @@ describe('the passkey offer after joining', () => {
 
   it('is made when the switch is on and the browser can', async () => {
     vi.stubEnv('VITE_PASSKEYS', '1');
-    Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, configurable: true });
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: () => undefined,
+      configurable: true,
+    });
     await finishLater();
     expect(await screen.findByText('Sign in faster next time?')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Set up a passkey' }));
@@ -1001,7 +1017,10 @@ describe('the passkey offer after joining', () => {
 
   it('can be put off', async () => {
     vi.stubEnv('VITE_PASSKEYS', '1');
-    Object.defineProperty(window, 'PublicKeyCredential', { value: class {}, configurable: true });
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: () => undefined,
+      configurable: true,
+    });
     await finishLater();
     await userEvent.click(await screen.findByRole('button', { name: 'Not now' }));
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
