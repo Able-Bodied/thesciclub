@@ -662,7 +662,7 @@ Supabase dashboard, project `erijdvqnxavwezsbbojv`:
 > secure email and password change on, current password **not** required,
 > minimum length 8, no character rules), URL configuration, Passkeys, hook
 > off. Still open: templates (H6, after session 2), `send-invite` secrets
-> (H9), and the Apple secret in the Apple provider if it wasn't pasted.
+> (H9). The Apple secret is in the Apple provider (owner, 2026-10-10).
 1. **Resend** (**verified 2026-10-10**: SPF/DKIM via CNAME + TXT and DMARC
    `p=none`, added at Spaceship by the domain holder)
    - Finish domain verification for `thesciclub.com`: SPF, DKIM, and add a
@@ -717,8 +717,8 @@ Apple Developer:
      `com.thesciclub.web`, Team ID `3RZ3A2CJ9N`.
 13. Create a Key with Sign in with Apple, download the `.p8` (only possible
     once), and keep it outside the repo. **Done 2026-10-10**; the owner holds
-    the `.p8` and the Key ID. Still to do: make the secret (B's script) and
-    paste it into Supabase's Apple provider (H4).
+    the `.p8` and the Key ID. The secret was made with B's script and is
+    pasted into Supabase's Apple provider (H4), the owner confirmed 2026-10-10.
 14. Calendar reminder: rotate the Apple secret by 2027-04-01.
 
 Accounts:
