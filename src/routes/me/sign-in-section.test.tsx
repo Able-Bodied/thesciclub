@@ -178,20 +178,15 @@ describe('Email', () => {
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
   });
 
-  it('changes it by link, and says to check both inboxes', async () => {
-    renderSection();
-    await userEvent.click(screen.getByRole('button', { name: 'Change email' }));
-    await userEvent.type(screen.getByLabelText('New email'), 'New@Example.com');
-    await userEvent.click(screen.getByRole('button', { name: 'Send links' }));
-    expect(state.calls).toEqual(['change:New@Example.com']);
-    expect(reload).toHaveBeenCalled();
-  });
-
-  it('says the old address still works while the new one waits', () => {
+  // Read only (the owner, 2026-10-11): the address is how they were invited.
+  it('offers no way to change it, and says who can', () => {
     renderSection(ready({ pendingEmail: 'new@example.com' }));
-    expect(
-      screen.getByText(/Until then you\s+still sign in with dana@example.com/),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change email' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('New email')).not.toBeInTheDocument();
+    expect(screen.queryByText(/new@example.com/)).not.toBeInTheDocument();
+    expect(screen.getByText(/can't be changed here/)).toBeInTheDocument();
+    expect(screen.getByText(/ask an administrator/)).toBeInTheDocument();
+    expect(state.calls).toEqual([]);
   });
 
   it('points a phone account at the banner rather than offering Change', () => {

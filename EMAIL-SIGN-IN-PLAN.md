@@ -283,6 +283,12 @@ HANDOFF.md.
       Hook before client would leave the live join form showing a bare sentence and dropping the invite token.
     - Accounts made before the hook is on are not affected; an unconfirmed one re-signing up gets its confirmation resent by
       Supabase without reaching the hook.
+  - [ ] **Follow-up, the owner's word 2026-10-11: Me no longer changes the account's email.** Same branch,
+    `signup-invite-gate`, no migration. Me → Signing in → Email is read only: the address, and "it can't be changed here. If
+    you lose access to it, ask an administrator" (the owner runs `scripts/set-member-email.mjs`). The add-an-email banner for
+    an account with no email is unchanged, and still uses `changeEmail` and `/me?email=changed`. Supabase's API would still
+    let a signed-in member call `updateUser({ email })` on their own account; nothing in the app offers it, and it moves only
+    their own account. Test: the card offers no change and names who can; with the old card put back it fails.
 
 ## Decisions (the owner's, 2026-10-10)
 
