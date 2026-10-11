@@ -324,6 +324,12 @@ HANDOFF.md.
     an account with no email is unchanged, and still uses `changeEmail` and `/me?email=changed`. Supabase's API would still
     let a signed-in member call `updateUser({ email })` on their own account; nothing in the app offers it, and it moves only
     their own account. Test: the card offers no change and names who can; with the old card put back it fails.
+  - [ ] **Follow-up, 2026-10-11, seen by the owner on production: the closed door's logos for a refused sign-up.** The
+    closed door now also opens for somebody not signed in (refused at sign-up), and `anon` could not sign `organizations/…`
+    in the private photos bucket, so the logos fell back to tiles. Migration `20261012050000_anyone_sees_organization_logos`
+    adds one select policy `to anon` for the `organizations` folder of `photos` only. Fresh stack: as anon a logo signs and
+    loads (200), a member's photo is refused, an anon upload into `organizations/` is refused. **Broken on purpose:** with
+    the policy dropped the logo is refused; restored, it loads. No client change.
 
 ## Decisions (the owner's, 2026-10-10)
 
