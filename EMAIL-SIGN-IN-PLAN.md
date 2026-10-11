@@ -440,6 +440,13 @@ H is the owner's, and has to be done before release.
   - `updateUser({ email, password })` sets the password at once and sends the
     confirmation link.
   - The banner stays until `user.email` is confirmed.
+  - **If Google is already linked** (the owner's advice to the four admins,
+    2026-10-10, was to link Google on Me while still signed in by phone):
+    linking may not fill in `user.email`. When `user.email` is empty and a
+    Google identity exists, the banner offers **"Use my Google address
+    (name@gmail.com)"** as one tap. It sets that address with
+    `updateUser({ email })`, which sends the confirmation link. The
+    email + password form stays below it as the alternative.
 - `@username` on `me/hero.tsx`, `peers/member-detail.tsx` and the peers cards.
   The `browse_members` view needs the `username` column, which Workstream A
   adds.
@@ -550,7 +557,10 @@ Accounts:
 15. Set the owner's account email to their Gmail:
     `node scripts/set-member-email.mjs`, or Supabase → Users → alfred → edit.
     Sign in with Google once afterwards to confirm it's the same account.
-16. Message each phone admin and member: "Open Me and add your email before
+16. Tell the four admins tonight: **Me → link Google**. It's live already, and
+    their account, admin rights and history stay. Anyone not using Google adds
+    an email + password on Me once session 4 ships.
+16b. Message each phone admin and member: "Open Me and add your email before
     tomorrow". If one is signed out and stuck, set their email with the script,
     then they use **Forgot password** or Google with that address.
 17. Pending phone invites: Admin → invites → "Re-invite by email", for each
