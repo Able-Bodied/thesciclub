@@ -31,13 +31,17 @@ export function AddEmailForm({
   const announce = useAnnounce();
   const emailId = useId();
   const passwordId = useId();
+  const againId = useId();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [again, setAgain] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const emailOk = looksLikeEmail(email);
   const passwordOk = password.length >= MIN_PASSWORD;
+  const mismatch = again !== '' && password !== again;
+  const ready = emailOk && passwordOk && password === again;
 
   async function run(work: () => ReturnType<typeof changeEmail>, sentence: string) {
     setBusy(true);
@@ -77,7 +81,7 @@ export function AddEmailForm({
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (busy || !emailOk || !passwordOk) return;
+          if (busy || !ready) return;
           void run(
             () => addEmailAndPassword(email, password),
             `We sent a link to ${email.trim()}.`,
@@ -115,9 +119,27 @@ export function AddEmailForm({
         <p id={`${passwordId}-hint`} className="mt-1 text-[0.78125rem] text-grey">
           At least {MIN_PASSWORD} characters.
         </p>
+        <label htmlFor={againId} className={FIELD_LABEL}>
+          Type it again
+        </label>
+        <input
+          id={againId}
+          type="password"
+          autoComplete="new-password"
+          value={again}
+          onChange={(event) => {
+            setAgain(event.target.value);
+          }}
+          className={FIELD}
+        />
+        {mismatch ? (
+          <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+            The two passwords do not match.
+          </p>
+        ) : null}
         <button
           type="submit"
-          disabled={busy || !emailOk || !passwordOk}
+          disabled={busy || !ready}
           className={googleAddress ? CARD_BUTTON : PRIMARY_BUTTON}
         >
           {busy ? 'One moment…' : 'Add email'}

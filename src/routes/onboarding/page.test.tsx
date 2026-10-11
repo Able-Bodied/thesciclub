@@ -282,9 +282,12 @@ async function typeBirthday(iso: string) {
   await userEvent.type(screen.getByLabelText('Year'), year);
 }
 
+/** Fills the sign-in or join form. The join form also asks for the password twice. */
 async function fillDoor(email: string, password: string) {
   await userEvent.type(screen.getByLabelText('Email'), email);
   await userEvent.type(screen.getByLabelText('Password'), password);
+  const again = screen.queryByLabelText('Type it again');
+  if (again) await userEvent.type(again, password);
 }
 
 beforeEach(() => {
@@ -359,7 +362,51 @@ describe('joining by email', () => {
     await fillDoor('dana@example.com', 'seven77');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Password'), '8');
+    // Typed once more: the second field still says the old, shorter one.
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Type it again'), '8');
     expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
+  });
+
+  describe('typing the password twice', () => {
+    it('asks for it again on joining, with the right autocomplete', async () => {
+      await openJoin();
+      const again = screen.getByLabelText('Type it again');
+      expect(again).toHaveAttribute('type', 'password');
+      expect(again).toHaveAttribute('autocomplete', 'new-password');
+    });
+
+    it('says they do not match as an alert, and will not create the account', async () => {
+      await openJoin();
+      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+      await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+      await userEvent.type(screen.getByLabelText('Type it again'), 'a long passwor');
+      expect(await screen.findByRole('alert')).toHaveTextContent('The two passwords do not match.');
+      expect(screen.getByRole('button', { name: 'Create account' })).toBeDisabled();
+      expect(calls.order.filter((c) => c.startsWith('signUp'))).toEqual([]);
+    });
+
+    it('goes on once they match', async () => {
+      await openJoin();
+      await fillDoor('dana@example.com', 'a long password');
+      expect(screen.queryByText('The two passwords do not match.')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Create account' })).toBeEnabled();
+    });
+
+    it('does not submit a mismatch with Enter either', async () => {
+      await openJoin();
+      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+      await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+      await userEvent.type(screen.getByLabelText('Type it again'), 'another long one{Enter}');
+      expect(calls.order.filter((c) => c.startsWith('signUp'))).toEqual([]);
+    });
+
+    it('keeps sign-in to one password field', async () => {
+      renderJoin('/join');
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(screen.getByLabelText('Password')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Type it again')).toBeNull();
+    });
   });
 
   it('never asks whether the address is invited before it is confirmed', async () => {

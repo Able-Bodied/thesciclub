@@ -278,7 +278,7 @@ export default function OnboardingPage() {
     const result = await signInWithEmail(data.email, data.password);
     setBusy(false);
     if (result.ok) {
-      set({ password: '' });
+      set({ password: '', passwordAgain: '' });
       return;
     }
     if (result.unconfirmed) {
@@ -298,7 +298,7 @@ export default function OnboardingPage() {
       setError(result.error);
       return;
     }
-    set({ password: '' });
+    set({ password: '', passwordAgain: '' });
     setResendLeft(RESEND_WAIT);
     setStep('check-email');
   }
@@ -419,7 +419,7 @@ export default function OnboardingPage() {
             setPhase('wizard');
             setStep('signin');
             setBlockedEmail(null);
-            set({ password: '' });
+            set({ password: '', passwordAgain: '' });
           });
         }}
       />
@@ -473,7 +473,12 @@ export default function OnboardingPage() {
   /** The doors take an address, not a question's answer. */
   function doorReady(): boolean {
     if (step === 'signin') return looksLikeEmail(data.email) && data.password.length > 0;
-    if (step === 'join') return looksLikeEmail(data.email) && data.password.length >= MIN_PASSWORD;
+    if (step === 'join')
+      return (
+        looksLikeEmail(data.email) &&
+        data.password.length >= MIN_PASSWORD &&
+        data.password === data.passwordAgain
+      );
     if (step === 'forgot') return looksLikeEmail(data.email);
     if (step === 'checking') return error !== null;
     return false;

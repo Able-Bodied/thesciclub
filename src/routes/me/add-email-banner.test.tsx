@@ -62,6 +62,7 @@ describe('the add-an-email banner', () => {
     ).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('Email'), 'Dana@Example.com');
     await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+    await userEvent.type(screen.getByLabelText('Type it again'), 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Add email' }));
     // The address is cleaned by the client function, not by the form.
     expect(calls.list).toEqual(['add:Dana@Example.com:a long password']);
@@ -72,7 +73,37 @@ describe('the add-an-email banner', () => {
     renderBanner(details());
     await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
     await userEvent.type(screen.getByLabelText('Password'), 'short');
+    await userEvent.type(screen.getByLabelText('Type it again'), 'short');
     expect(screen.getByRole('button', { name: 'Add email' })).toBeDisabled();
+  });
+
+  describe('typing the password twice', () => {
+    it('asks again, as a new password', () => {
+      renderBanner(details());
+      const again = screen.getByLabelText('Type it again');
+      expect(again).toHaveAttribute('type', 'password');
+      expect(again).toHaveAttribute('autocomplete', 'new-password');
+    });
+
+    it('says they do not match as an alert, and sends nothing', async () => {
+      renderBanner(details());
+      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+      await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+      await userEvent.type(screen.getByLabelText('Type it again'), 'a long passwor');
+      expect(await screen.findByRole('alert')).toHaveTextContent('The two passwords do not match.');
+      expect(screen.getByRole('button', { name: 'Add email' })).toBeDisabled();
+      await userEvent.keyboard('{Enter}');
+      expect(calls.list).toEqual([]);
+    });
+
+    it('goes on once they match', async () => {
+      renderBanner(details());
+      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+      await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+      await userEvent.type(screen.getByLabelText('Type it again'), 'a long password');
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Add email' })).toBeEnabled();
+    });
   });
 
   it('draws nothing for an account that has a confirmed email', () => {

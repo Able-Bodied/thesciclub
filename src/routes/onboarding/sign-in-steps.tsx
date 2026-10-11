@@ -188,6 +188,23 @@ export function JoinStep({
           set({ password: e.target.value });
         }}
       />
+      <label htmlFor="password-again" className="mt-4 block font-bold text-[0.8125rem] text-ink">
+        Type it again
+      </label>
+      <Field
+        id="password-again"
+        type="password"
+        autoComplete="new-password"
+        value={data.passwordAgain}
+        onChange={(e) => {
+          set({ passwordAgain: e.target.value });
+        }}
+      />
+      {data.passwordAgain !== '' && data.password !== data.passwordAgain ? (
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+          The two passwords do not match.
+        </p>
+      ) : null}
       <Fine>
         At least {MIN_PASSWORD} characters. We will email you a link to confirm the address.
       </Fine>
