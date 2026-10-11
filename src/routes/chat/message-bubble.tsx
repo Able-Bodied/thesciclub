@@ -202,7 +202,7 @@ export function MessageBubble({
       type="button"
       onClick={onReply}
       aria-label={`Reply to ${whose} message`}
-      className="relative inline-flex min-h-11 items-center rounded-full px-3 font-semibold text-[0.8125rem] text-emphasis hover:bg-tint"
+      className="relative inline-flex min-h-11 items-center rounded-full px-3 text-[0.6875rem] text-grey hover:bg-tint"
     >
       Reply
     </button>

@@ -46,9 +46,9 @@ export function ReactionBar({
       onClick={() => {
         setOpen(true);
       }}
-      className="relative inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 font-semibold text-emphasis hover:bg-tint disabled:opacity-50"
+      className="relative inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-[0.6875rem] text-grey hover:bg-tint disabled:opacity-50"
     >
-      <SmilePlus aria-hidden="true" className="h-4 w-4" />
+      <SmilePlus aria-hidden="true" className="h-3 w-3" />
       {pending ? 'Saving…' : 'React'}
     </button>
   );
