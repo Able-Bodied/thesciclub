@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { STATIC_PAGES, withPage } from '@/routes/legal/static';
-import { PHONE_BUTTON, SIGN_IN_CONSENT, SMS_CONSENT } from '@/routes/onboarding/steps';
 import shell from '../../../index.html?raw';
 
 /**
@@ -52,30 +51,19 @@ describe('the static Terms of Service', () => {
   });
 });
 
-/**
- * The opt-in page the registration names. Rejected a second time on
- * 2026-10-09 while it was an empty shell: a reviewer that did not run the app
- * found no Privacy Policy linked from it.
- */
+/** The first screen of /join, readable without running the app. */
 describe('the static join page', () => {
   const html = withPage(shell, join.title, join.Page, join.indexed);
-  const escaped = (s: string) => s.replaceAll('&', '&amp;').replaceAll("'", '&#x27;');
 
   it('links the Privacy Policy and the Terms from the first screen', () => {
-    const welcome = html.slice(0, html.indexOf('<noscript>'));
-    expect(welcome).toContain('Join the club');
-    expect(welcome).toContain('href="/privacy"');
-    expect(welcome).toContain('href="/terms"');
+    expect(html).toContain('Join the club');
+    expect(html).toContain('href="/privacy"');
+    expect(html).toContain('href="/terms"');
   });
 
-  it('carries the join door and the sign-in line as registered, with the boxes unticked', () => {
-    const form = html.slice(html.indexOf('<noscript>'));
-    expect(form).toContain(escaped(SMS_CONSENT));
-    expect(form).toContain(escaped(SIGN_IN_CONSENT));
-    expect(form).toContain(PHONE_BUTTON);
-    expect(form).toContain('id="sms-consent"');
-    expect(form).toContain('id="terms-agreed"');
-    expect(form).not.toMatch(/checked/);
+  it('no longer carries the text-message sign-in form', () => {
+    expect(html).not.toContain('Text me my code');
+    expect(html).not.toContain('sms-consent');
   });
 
   it('keeps its noindex and still starts the app', () => {

@@ -2,8 +2,6 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
-import { NewTabLink, PHONE_BUTTON, PhoneStep, SIGN_IN_CONSENT } from '@/routes/onboarding/steps';
-import { INITIAL_ONBOARDING_DATA } from '@/routes/onboarding/types';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
 
 /**
@@ -19,10 +17,7 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  * are served as HTML with their words already in them; the app then starts as
  * usual and draws the same page over it.
  *
- * And /join, the opt-in page the registration names. It was empty to the
- * same programs, so the reviewer found no Privacy Policy linked from it, and
- * the campaign was rejected a second time with the same error (2026-10-09,
- * Twilio support: "tied to the MESSAGE_FLOW section"). See `JoinPage`.
+ * And /join, which was the opt-in page the registration named. See `JoinPage`.
  *
  * Not the member pages. Those stay an empty shell on purpose, and keep the
  * noindex this removes from the two policies.
@@ -36,36 +31,11 @@ function noop() {
 /**
  * /join as a program without JavaScript reads it: the welcome screen, which is
  * what the app paints first anyway, so somebody whose browser does run it sees
- * no jump; then, under <noscript>, the join door's phone step with its two
- * unticked boxes, its button and the sign-in door's line. These are the words
- * the message flow quotes, rendered from the same components and constants as
- * the app's, so they cannot drift apart.
+ * no jump. It links the Privacy Policy and the Terms. The text-message opt-in
+ * form that used to follow it went with the phone sign-in.
  */
 function JoinPage() {
-  return (
-    <>
-      <WelcomeScreen onJoin={noop} onSignIn={noop} />
-      <noscript>
-        <main className="mx-auto w-full max-w-[480px] px-[22px] py-8">
-          <h2 className="font-extrabold font-display text-[1.375rem] text-ink">Join the club</h2>
-          <PhoneStep data={INITIAL_ONBOARDING_DATA} set={noop} mode="join" />
-          <button
-            type="button"
-            className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
-          >
-            {PHONE_BUTTON}
-          </button>
-          <h2 className="mt-8 font-extrabold font-display text-[1.375rem] text-ink">
-            Already a member? Sign in
-          </h2>
-          <p className="mt-3 text-[0.84375rem] text-ink2 leading-[1.5]">
-            {SIGN_IN_CONSENT} <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
-            <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
-          </p>
-        </main>
-      </noscript>
-    </>
-  );
+  return <WelcomeScreen onJoin={noop} onSignIn={noop} />;
 }
 
 export const STATIC_PAGES = [

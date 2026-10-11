@@ -2,38 +2,54 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
-import { GoogleButton } from '@/components/google-button';
 import { signOut, useAccount } from '@/lib/account';
-import { describeError } from '@/lib/describe-error';
+import { APPLE_RETURN_PARAM, signInWithApple } from '@/lib/apple-sign-in';
 import {
-  GOOGLE_NOT_LINKED,
-  GOOGLE_RETURN_PARAM,
-  isPhoneless,
-  signInWithGoogle,
-  signInWithGoogleToken,
-} from '@/lib/google-sign-in';
-import { formatPhoneInput, toE164 } from '@/lib/phone';
+  CONFIRMED_PARAM,
+  cleanEmail,
+  looksLikeEmail,
+  MIN_PASSWORD,
+  resendConfirmation,
+  sendPasswordReset,
+  signInWithEmail,
+  signUpWithEmail,
+} from '@/lib/auth-email';
+import { describeError } from '@/lib/describe-error';
+import { GOOGLE_RETURN_PARAM, signInWithGoogle, signInWithGoogleToken } from '@/lib/google-sign-in';
+import {
+  captureInviteToken,
+  claimHeldInvite,
+  forgetInviteToken,
+  heldInviteToken,
+  INVITE_PARAM,
+} from '@/lib/invite-token';
+import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
 import { vapidPublicKey } from '@/lib/push/notifications';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
-import { LinkButton, PrimaryButton, StepFrame } from '@/routes/onboarding/chrome';
+import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 import { NotificationsStep } from '@/routes/onboarding/notifications-step';
+import { nameFromMetadata } from '@/routes/onboarding/prefill';
+import {
+  CheckEmailStep,
+  ForgotStep,
+  JoinStep,
+  PasskeyOffer,
+  SignInStep,
+} from '@/routes/onboarding/sign-in-steps';
 import {
   AgreeStep,
   BirthdayStep,
   CityStep,
-  ClaimStep,
-  CodeStep,
   InjuryStep,
   NameStep,
-  PHONE_BUTTON,
-  PhoneStep,
+  PhoneForEventsStep,
   PhotoStep,
+  UsernameStep,
 } from '@/routes/onboarding/steps';
 import { submitOnboarding } from '@/routes/onboarding/submit-onboarding';
 import {
-  type ClaimableProfile,
   COUNTED_STEPS,
   canAdvance,
   cityStepDeclined,
@@ -48,125 +64,159 @@ import {
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
 
 /**
- * Joining the club.
+ * Joining the club, and signing back in.
  *
- * The order of the first three screens is the security decision in this file.
- * The number is verified *before* the club says whether it is on the list,
- * because a check that anybody can run against any number would disclose who
- * has a spinal cord injury. See the migration for my_invite_status().
+ * The order is the security decision in this file. Nobody is told whether an
+ * address is on the list until they have *proved* it is theirs: a check that
+ * anybody can run against any address would disclose who has a spinal cord
+ * injury. So whichever way in someone takes (email and password, once the
+ * emailed link has confirmed it; Google; Apple; a passkey) they come out the
+ * other side as a signed-in account, and only then does `afterSignIn` ask the
+ * database whether that account is invited (my_invite_status) — after first
+ * claiming the invite their emailed link carried (claim_invite), if it did.
  *
- * So: number, code, and only then does the answer come back — either the
- * blocked screen, or the rest of the questions. It costs an SMS to somebody who
- * turns out not to be invited. That is the cheaper of the two mistakes.
+ * Leftover accounts are allowed: an uninvited address can make an account.
+ * That is the cost of never saying, at sign-up, who is invited.
  */
 
-/** `notifications` is after the profile is saved, before Home: see NotificationsStep. */
-type Phase = 'wizard' | 'blocked' | 'submitting' | 'notifications';
+/** `notifications` and `passkey` are after the profile is saved, before Home. */
+type Phase = 'wizard' | 'blocked' | 'submitting' | 'notifications' | 'passkey';
 
-/**
- * Which door somebody came through.
- *
- * It changes the wording and nothing else. Where they end up after verifying is
- * decided by what is actually true of their number — whether they already have
- * a profile, and whether they are on the list — not by which button they
- * pressed. Somebody who taps Join but already has a profile should simply be
- * let in, and somebody who taps Sign in but has never finished signing up
- * should be handed the questions rather than an error.
- */
-type Mode = 'join' | 'signin';
+/** Where the invite check is run from: the doors, before anybody is through. */
+const DOORS: Step[] = ['welcome', 'signin', 'forgot', 'join', 'check-email'];
 
-/** What my_invite_status() returns. See the migration of the same name. */
-interface InviteStatus {
-  invited: boolean;
-  claimable_member_id: string | null;
-}
-
-/** What my_claimable_profile() returns, before it is given camel case. */
-interface ClaimableProfileRow {
-  id: string;
-  display_name: string;
-  photo_path: string | null;
-  photo_alt: string | null;
-  city: string | null;
-  state: string;
-  level_range: ClaimableProfile['levelRange'];
-  exact_level: ClaimableProfile['exactLevel'];
-  completeness: ClaimableProfile['completeness'];
-  affiliations: string[] | null;
-}
+const RESEND_WAIT = 60;
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const account = useAccount();
   const [step, setStep] = useState<Step>('welcome');
-  const [mode, setMode] = useState<Mode>('join');
   const [phase, setPhase] = useState<Phase>('wizard');
   const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
-  const [claimable, setClaimable] = useState<ClaimableProfile | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [resendLeft, setResendLeft] = useState(0);
+  const [blockedEmail, setBlockedEmail] = useState<string | null>(null);
 
   const set = useCallback((patch: Partial<OnboardingData>) => {
     setData((d) => ({ ...d, ...patch }));
   }, []);
 
-  /**
-   * Back from Google without getting in.
-   *
-   * A member whose Google is linked comes back signed in, and the guard below
-   * sends them to Home. Anybody else comes back to the sign-in door with a
-   * sentence: they pressed Cancel, or the Google account is linked to nobody.
-   * In that second case the account Google made is signed back out — it has
-   * no phone number, so it can never be a member (src/lib/google-sign-in.ts).
-   * That is checked whenever an account is signed up, not only on the way
-   * back, so one left over from an earlier visit is not walked into the
-   * questions.
-   */
   const [params, setParams] = useSearchParams();
   const destination = signInDestination(params.toString());
-  const fromGoogle = params.get(GOOGLE_RETURN_PARAM) === 'signin';
+
+  // The invite link's token has to outlive this page (a confirmation email or
+  // Google's round trip comes first), so it is kept the moment /join loads.
+  const [invited] = useState(() => captureInviteToken(params.toString()) !== null);
   useEffect(() => {
-    if (account.status === 'loading' || account.status === 'error' || account.status === 'member')
-      return;
-    if (account.status === 'suspended') return;
-    const controller = new AbortController();
-    const cancelled = () => controller.signal.aborted;
-    void (async () => {
-      // A failed check is not a stray: the questions are the safe default
-      // for a signed-up account, and the database refuses the rest.
-      const stray = account.status === 'signed-up' && (await isPhoneless().catch(() => false));
-      if (cancelled() || (!stray && !fromGoogle)) return;
-      if (stray) await signOut();
-      if (cancelled()) return;
-      setMode('signin');
-      setStep('phone');
-      setError(GOOGLE_NOT_LINKED);
-      if (fromGoogle) {
-        setParams(
-          (p) => {
-            p.delete(GOOGLE_RETURN_PARAM);
-            return p;
-          },
-          { replace: true },
-        );
-      }
-    })();
-    return () => {
-      controller.abort();
-    };
-  }, [account.status, fromGoogle, setParams]);
+    if (!params.has(INVITE_PARAM)) return;
+    setParams(
+      (p) => {
+        p.delete(INVITE_PARAM);
+        return p;
+      },
+      { replace: true },
+    );
+  }, [params, setParams]);
+
+  // Somebody with a profile has no use for a held invite.
+  useEffect(() => {
+    if (account.status === 'member' || account.status === 'suspended') forgetInviteToken();
+  }, [account.status]);
 
   /**
-   * Google's widget picked an account. A linked one becomes a session, and the
-   * guard below takes it to Home; an unlinked one is refused by the database
-   * and gets the same sentence as the redirect.
+   * Back from a round trip without getting in: Cancel at Google or Apple, or an
+   * emailed link that has expired. Once, on the first answer about the account.
    */
+  const handledReturn = useRef(false);
+  useEffect(() => {
+    if (handledReturn.current || account.status === 'loading') return;
+    handledReturn.current = true;
+    if (account.status !== 'signed-out') return;
+    const google = params.get(GOOGLE_RETURN_PARAM) === 'signin';
+    const apple = params.get(APPLE_RETURN_PARAM) === 'signin';
+    const confirmed = params.get(CONFIRMED_PARAM) === '1';
+    const expired = window.location.hash.includes('error_code=');
+    if (!google && !apple && !confirmed && !expired) return;
+    setStep('signin');
+    if (expired)
+      setError('That link has expired or was already used. Sign in, or ask for a new one.');
+    else if (google) setError('Google did not sign you in. Try again, or use your email.');
+    else if (apple) setError('Apple did not sign you in. Try again, or use your email.');
+    else setNotice('Your email is confirmed. Sign in to go on.');
+    setParams(
+      (p) => {
+        for (const key of [GOOGLE_RETURN_PARAM, APPLE_RETURN_PARAM, CONFIRMED_PARAM]) p.delete(key);
+        return p;
+      },
+      { replace: true },
+    );
+  }, [account.status, params, setParams]);
+
+  /**
+   * Signed in, with no member row: claim the invite the link carried, then ask
+   * whether this account is invited. Run on each sign-in while the doors are
+   * showing, whichever way it happened.
+   */
+  const afterSignIn = useCallback(async () => {
+    setError(null);
+    setNotice(null);
+    const supabase = getSupabase();
+    const claim = await claimHeldInvite();
+    if (claim === 'failed') {
+      setError('Could not check your invitation. Try again.');
+      return;
+    }
+    const statusResult = await supabase.rpc('my_invite_status').single();
+    if (statusResult.error) {
+      setError(describeError(statusResult.error, 'Could not check whether you are on the list.'));
+      return;
+    }
+    const { data: sessionData } = await supabase.auth.getSession();
+    const user = sessionData.session?.user;
+    if (!(statusResult.data as { invited: boolean }).invited) {
+      setBlockedEmail(user?.email ?? null);
+      setPhase('blocked');
+      return;
+    }
+    // The name Google or Apple gave, only into an empty box.
+    const given = nameFromMetadata(user?.user_metadata);
+    setData((d) => ({ ...d, displayName: d.displayName.trim() ? d.displayName : given }));
+    setStep(data.termsAgreed ? 'name' : 'agree');
+  }, [data.termsAgreed]);
+
+  const gateRan = useRef(false);
+  useEffect(() => {
+    if (account.status !== 'signed-up') {
+      gateRan.current = false;
+      return;
+    }
+    if (phase !== 'wizard' || !DOORS.includes(step) || gateRan.current) return;
+    gateRan.current = true;
+    setStep('checking');
+    void afterSignIn();
+  }, [account.status, phase, step, afterSignIn]);
+
+  // The wait before the confirmation link can be asked for again.
+  useEffect(() => {
+    if (resendLeft <= 0) return;
+    const timer = window.setTimeout(() => {
+      setResendLeft((n) => n - 1);
+    }, 1000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [resendLeft]);
+
+  /** Google's widget picked an account; a session follows and the gate takes over. */
   async function signInWithToken(token: string, nonce: string) {
     setBusy(true);
     setError(null);
     const result = await signInWithGoogleToken(token, nonce).catch(() => ({
       ok: false as const,
-      error: GOOGLE_NOT_LINKED,
+      error: 'Google did not sign you in.',
     }));
     setBusy(false);
     if (!result.ok) setError(result.error);
@@ -183,143 +233,110 @@ export default function OnboardingPage() {
     }
   }
 
-  /**
-   * Holds the phone's number pad open between the number and the code.
-   *
-   * iOS opens the keyboard only for a focus that happens inside a tap, and
-   * the code step appears after `signInWithOtp` has answered — long after the
-   * tap on Text me my code — so its field took focus with the keyboard shut, and a
-   * member had to tap the box for the pad (the owner, 2026-10-01). Focus
-   * moved *from* one field *to* another keeps the keyboard up, though, so the
-   * tap itself puts focus here, in an invisible numeric field that stays
-   * mounted through the wait, and the code field takes it over when it
-   * appears (`useAutoFocus`). If the code is not sent, focus goes back to the
-   * number. 16px, or iOS zooms the page to it.
-   */
-  const keyboardHold = useRef<HTMLInputElement>(null);
-
-  /** Send the code. No invite check here, on purpose — see the file header. */
-  async function requestCode(typed: string = data.phone) {
-    // Supabase wants E.164; the field holds what the person typed.
-    const phone = toE164(typed);
-    if (!phone) {
-      setError('That does not look like a ten-digit US number.');
-      return;
-    }
+  async function continueWithApple() {
     setBusy(true);
     setError(null);
-    const { error: otpError } = await getSupabase().auth.signInWithOtp({ phone });
-    setBusy(false);
-    if (otpError) {
-      setError(describeError(otpError, 'The code was not sent.'));
-      document.getElementById('phone')?.focus({ preventScroll: true });
-      return;
+    const result = await signInWithApple();
+    if (!result.ok) {
+      setBusy(false);
+      setError(result.error);
     }
-    setStep('code');
   }
 
-  /**
-   * Verify, then — and only then — ask whether this number is on the list.
-   *
-   * Runs on its own when the sixth digit goes in (the owner, 2026-10-01), as
-   * well as from Continue, so `token` is handed in: the keystroke that
-   * completes the code has not reached `data` yet.
-   */
-  async function verifyCode(token: string = data.code) {
-    if (busy) return;
+  async function continueWithPasskey() {
     setBusy(true);
     setError(null);
-    const supabase = getSupabase();
-    const phone = toE164(data.phone);
-    if (!phone) {
-      setBusy(false);
-      setError('That does not look like a ten-digit US number.');
-      return;
-    }
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: 'sms',
-    });
-    if (verifyError) {
-      setBusy(false);
-      setError(describeError(verifyError, 'That code was not accepted.'));
-      return;
-    }
-
-    // Taken whole rather than destructured: rpc() types its payload as `any`,
-    // and destructuring would launder that straight into a branch that decides
-    // whether somebody is let into the club.
-    // Already a member? Then this was a sign-in, whichever button was pressed.
-    // Checked before the invite list, because somebody who has joined does not
-    // need to be re-vetted — and because their invite is consumed, not pending.
-    const existing = await supabase.from('members').select('id').maybeSingle();
-    if (existing.error) {
-      setBusy(false);
-      setError(describeError(existing.error, 'Could not check your membership. Try again.'));
-      return;
-    }
-    if (existing.data) {
-      setBusy(false);
-      void navigate(destination, { replace: true });
-      return;
-    }
-
-    const statusResult = await supabase.rpc('my_invite_status').single();
+    const result = await signInWithPasskey();
     setBusy(false);
-    if (statusResult.error) {
-      setError(describeError(statusResult.error, 'Could not check whether you are on the list.'));
+    if (!result.ok && result.error) setError(result.error);
+  }
+
+  const ways = {
+    busy,
+    onGoogleToken: (token: string, nonce: string) => {
+      void signInWithToken(token, nonce);
+    },
+    onGoogleRedirect: () => {
+      void continueWithGoogle();
+    },
+    onApple: () => {
+      void continueWithApple();
+    },
+    onPasskey: () => {
+      void continueWithPasskey();
+    },
+  };
+
+  async function submitSignIn() {
+    setBusy(true);
+    setError(null);
+    const result = await signInWithEmail(data.email, data.password);
+    setBusy(false);
+    if (result.ok) {
+      set({ password: '' });
       return;
     }
-
-    const row = statusResult.data as InviteStatus;
-    if (!row.invited) {
-      setPhase('blocked');
+    if (result.unconfirmed) {
+      setStep('check-email');
+      setNotice(result.error);
       return;
     }
+    setError(result.error);
+  }
 
-    // The sign-in door asked for no ticks, and this is a join. See AgreeStep.
-    const agreed = data.smsConsent && data.termsAgreed;
-
-    if (row.claimable_member_id) {
-      // Not `browse_members`. That view requires the viewer to be an active
-      // member — correctly, since 20260911110000 — and somebody part-way
-      // through onboarding is not one, so it answered nothing and the claim
-      // was silently skipped while the seeded row was retired anyway.
-      // my_claimable_profile() is a definer function keyed on the caller's
-      // own verified number.
-      const profileResult = await supabase.rpc('my_claimable_profile').maybeSingle();
-      const profile = profileResult.data as ClaimableProfileRow | null;
-      if (profile) {
-        setClaimable({
-          id: profile.id,
-          displayName: profile.display_name,
-          photoPath: profile.photo_path,
-          photoAlt: profile.photo_alt,
-          city: profile.city,
-          state: profile.state,
-          levelRange: profile.level_range,
-          exactLevel: profile.exact_level,
-          completeness: profile.completeness,
-          affiliations: profile.affiliations ?? [],
-        });
-        setStep(agreed ? 'claim' : 'agree');
-        return;
-      }
+  async function submitJoin() {
+    setBusy(true);
+    setError(null);
+    const result = await signUpWithEmail(data.email, data.password);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
     }
-    setStep(agreed ? 'name' : 'agree');
+    set({ password: '' });
+    setResendLeft(RESEND_WAIT);
+    setStep('check-email');
+  }
+
+  async function submitForgot() {
+    setBusy(true);
+    setError(null);
+    const result = await sendPasswordReset(data.email);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setForgotSent(true);
+  }
+
+  async function resend() {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const result = await resendConfirmation(data.email);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setResendLeft(RESEND_WAIT);
+    setNotice('Sent again. Look in spam if it does not arrive.');
+  }
+
+  function leaveToPasskeyOrHome() {
+    if (passkeysAvailable()) {
+      setPhase('passkey');
+      return;
+    }
+    void navigate(destination, { replace: true });
   }
 
   /**
    * `patch` is for "Skip for now", which must submit without the photograph
    * it skips. It used to `set` the file away and then call this, but this
-   * reads `data` from the same render, so the file went up anyway — which,
-   * once the bucket refused files, would have kept Skip on the photo step.
+   * reads `data` from the same render, so the file went up anyway.
    */
-  function enterTheClub() {
-    void navigate(destination, { replace: true });
-  }
-
   async function finish(patch: Partial<OnboardingData> = {}) {
     setPhase('submitting');
     const result = await submitOnboarding({ ...data, ...patch });
@@ -333,6 +350,10 @@ export default function OnboardingPage() {
         set({ photoFile: null, photoPreviewUrl: null });
         setStep('photo');
       }
+      if (result.usernameRefused) {
+        set({ usernameChecked: '' });
+        setStep('username');
+      }
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
@@ -341,7 +362,7 @@ export default function OnboardingPage() {
       setPhase('notifications');
       return;
     }
-    void navigate(destination, { replace: true });
+    leaveToPasskeyOrHome();
   }
 
   if (account.status === 'error') return <AccountProblem account={account} />;
@@ -349,7 +370,27 @@ export default function OnboardingPage() {
   // Before the check below: the row now exists, and should the account be
   // read again meanwhile, this screen must not vanish under a tap.
   if (phase === 'notifications') {
-    return <NotificationsStep userId={account.userId} onDone={enterTheClub} />;
+    return <NotificationsStep userId={account.userId} onDone={leaveToPasskeyOrHome} />;
+  }
+  if (phase === 'passkey') {
+    return (
+      <PasskeyOffer
+        busy={busy}
+        error={error}
+        onAdd={() => {
+          setBusy(true);
+          setError(null);
+          void registerPasskey().then((result) => {
+            setBusy(false);
+            if (result.ok) void navigate(destination, { replace: true });
+            else if (result.error) setError(result.error);
+          });
+        }}
+        onSkip={() => {
+          void navigate(destination, { replace: true });
+        }}
+      />
+    );
   }
 
   // Somebody who already finished has no business being asked again.
@@ -366,11 +407,15 @@ export default function OnboardingPage() {
   if (phase === 'blocked') {
     return (
       <BlockedScreen
-        phone={formatPhoneInput(data.phone)}
+        email={blockedEmail}
         onTryAnother={() => {
-          setPhase('wizard');
-          setStep('phone');
-          set({ code: '' });
+          void signOut().then(() => {
+            forgetInviteToken();
+            setPhase('wizard');
+            setStep('signin');
+            setBlockedEmail(null);
+            set({ password: '' });
+          });
         }}
       />
     );
@@ -380,12 +425,10 @@ export default function OnboardingPage() {
     return (
       <WelcomeScreen
         onJoin={() => {
-          setMode('join');
-          setStep('phone');
+          setStep('join');
         }}
         onSignIn={() => {
-          setMode('signin');
-          setStep('phone');
+          setStep('signin');
         }}
       />
     );
@@ -393,53 +436,91 @@ export default function OnboardingPage() {
 
   const back: Record<Step, Step | undefined> = {
     welcome: undefined,
-    phone: 'welcome',
-    code: 'phone',
-    // No way back past a verified number: the account already exists.
+    signin: 'welcome',
+    forgot: 'signin',
+    join: 'welcome',
+    'check-email': 'join',
+    // No way back past a confirmed account: it already exists.
+    checking: undefined,
     agree: undefined,
-    claim: undefined,
     name: undefined,
-    birthday: 'name',
+    username: 'name',
+    birthday: 'username',
     injury: 'birthday',
     city: 'injury',
-    photo: 'city',
+    phone: 'city',
+    photo: 'phone',
   };
 
   /**
    * Where the way out appears. The birthday included, once it is a valid one:
-   * name and age are the two answers a row cannot be written without, so the
-   * moment both are in, the rest is optional and there is no reason to make
+   * name, username and age are the answers a row cannot be written without, so
+   * the moment all are in, the rest is optional and there is no reason to make
    * somebody click Continue first to be told so.
    *
    * Everything after them is nullable in the schema — `level_range` has a
-   * 'Not sure yet' value, `exact_level`, `injury_date`, `city`, `state` and
-   * the photograph are all optional — and Me is where they get filled in.
+   * 'Not sure yet' value, `exact_level`, `injury_date`, `city`, `state`, the
+   * phone and the photograph are all optional — and Me is where they get
+   * filled in. The phone step has its own, plainer, Skip.
    */
   const SKIPPABLE: Step[] = ['birthday', 'injury', 'city', 'photo'];
 
+  /** The doors take an address, not a question's answer. */
+  function doorReady(): boolean {
+    if (step === 'signin') return looksLikeEmail(data.email) && data.password.length > 0;
+    if (step === 'join') return looksLikeEmail(data.email) && data.password.length >= MIN_PASSWORD;
+    if (step === 'forgot') return looksLikeEmail(data.email);
+    if (step === 'checking') return error !== null;
+    return false;
+  }
+
   const n = stepNumber(step);
-  const ready = canAdvance(step, data, mode === 'signin');
+  const ready = DOORS.includes(step) || step === 'checking' ? doorReady() : canAdvance(step, data);
   const previous = back[step];
+  const working = busy || phase === 'submitting';
 
   /** What finishing this step does. Shared by the button and by Enter. */
   function advance() {
-    if (!ready || busy || phase === 'submitting') return;
-    if (step === 'phone') {
-      // Inside the tap, before anything is awaited — see `keyboardHold`.
-      keyboardHold.current?.focus({ preventScroll: true });
-      return void requestCode();
-    }
-    if (step === 'code') return void verifyCode();
-    // On to whatever verifying found: the claim, if there is one to offer.
-    if (step === 'agree') {
-      setStep(claimable ? 'claim' : 'name');
-      return;
+    if (!ready || working) return;
+    if (step === 'signin') return void submitSignIn();
+    if (step === 'join') return void submitJoin();
+    if (step === 'forgot') return void (forgotSent ? undefined : submitForgot());
+    if (step === 'checking') {
+      gateRan.current = false;
+      return void afterSignIn();
     }
     if (step === 'photo') return void finish();
-    const order: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
+    const order: Step[] = [
+      'agree',
+      'name',
+      'username',
+      'birthday',
+      'injury',
+      'city',
+      'phone',
+      'photo',
+    ];
     const next = order[order.indexOf(step) + 1];
     if (next) setStep(next);
   }
+
+  const primaryLabel =
+    step === 'photo'
+      ? 'Enter the club'
+      : step === 'signin'
+        ? 'Sign in'
+        : step === 'join'
+          ? 'Create account'
+          : step === 'forgot'
+            ? 'Send the link'
+            : step === 'checking'
+              ? 'Try again'
+              : 'Continue';
+
+  const showPrimary =
+    step !== 'check-email' &&
+    !(step === 'forgot' && forgotSent) &&
+    !(step === 'checking' && !error);
 
   return (
     <StepFrame
@@ -449,6 +530,9 @@ export default function OnboardingPage() {
       onBack={
         previous
           ? () => {
+              setError(null);
+              setNotice(null);
+              setForgotSent(false);
               setStep(previous);
             }
           : undefined
@@ -460,29 +544,19 @@ export default function OnboardingPage() {
               {error}
             </p>
           ) : null}
-          {step === 'claim' ? null : (
-            <PrimaryButton disabled={!ready || busy || phase === 'submitting'}>
-              {busy || phase === 'submitting' ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : step === 'photo' ? (
-                'Enter the club'
-              ) : step === 'phone' ? (
-                // Says what the press does, as the carriers' web-form example
-                // asks of a submit button (the owner, 2026-10-08). The
-                // registration's message flow names it: change both.
-                PHONE_BUTTON
-              ) : (
-                'Continue'
-              )}
+          {notice && step !== 'signin' ? (
+            <p role="status" className="mb-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+              {notice}
+            </p>
+          ) : null}
+          {showPrimary ? (
+            <PrimaryButton disabled={!ready || working}>
+              {working ? <Loader2 className="h-4 w-4 animate-spin" /> : primaryLabel}
             </PrimaryButton>
-          )}
+          ) : null}
           {/* Once the birthday is in, everything left is optional — the
-              schema says so: `level_range` has a 'Not sure yet' value,
-              `injury_date`, `city`, `state` and the photograph are all
-              nullable. So the rest of the wizard is answerable later from Me,
-              and somebody claiming a seeded profile has had most of it
-              answered for them already. Name and birthday stay required
-              because a row needs a name and the club is 18+.
+              schema says so — so the rest of the wizard is answerable later
+              from Me.
 
               "Finish later" rather than "Skip for now" anywhere but the
               photo: it skips the remaining questions and enters the club, and
@@ -498,9 +572,7 @@ export default function OnboardingPage() {
            *
            * It is not "Finish later" and the two have to stay apart. Finish
            * later abandons the whole of the rest of the wizard; this answers
-           * this one page and goes on to the next, which until now was not
-           * possible at all — somebody who did not want to give their level had
-           * to leave the flow to get past it.
+           * this one page and goes on to the next.
            *
            * It declines the level and the date together, the way the survey
            * declines a screen. Complete-or-incomplete is not included: 'Do not
@@ -527,7 +599,7 @@ export default function OnboardingPage() {
             </LinkButton>
           ) : null}
           {/* The same for where they live: both halves, as the details form
-              declines them, and on to the photograph. */}
+              declines them, and on to the phone. */}
           {step === 'city' ? (
             <LinkButton
               onClick={() => {
@@ -536,10 +608,20 @@ export default function OnboardingPage() {
                   declined: withCityDeclined(data, declining),
                   ...(declining ? { city: '', state: '', zip: '' } : {}),
                 });
-                if (declining) setStep('photo');
+                if (declining) setStep('phone');
               }}
             >
               {cityStepDeclined(data) ? 'Rather not say ✓' : 'Rather not say'}
+            </LinkButton>
+          ) : null}
+          {step === 'phone' ? (
+            <LinkButton
+              onClick={() => {
+                set({ phone: '' });
+                setStep('photo');
+              }}
+            >
+              Skip for now
             </LinkButton>
           ) : null}
           {SKIPPABLE.includes(step) && (step !== 'birthday' || ready) ? (
@@ -553,120 +635,79 @@ export default function OnboardingPage() {
               {step === 'photo' ? 'Skip for now' : 'Finish later — enter the club'}
             </LinkButton>
           ) : null}
-          {/* Offered to everybody on the sign-in door, because nothing here
-              knows who is signing in until they have. It opens only an
-              account Google has been linked to from Me; any other comes back
-              here with a sentence saying so. Not on the join door: nobody
-              joins through Google. */}
-          {step === 'phone' && mode === 'signin' ? (
-            <div className="mt-2">
-              <GoogleButton
-                text="signin_with"
-                prompt
-                disabled={busy}
-                fallbackLabel="Sign in with Google"
-                onToken={(token, nonce) => {
-                  void signInWithToken(token, nonce);
-                }}
-                onFallback={() => {
-                  void continueWithGoogle();
-                }}
-              />
-            </div>
-          ) : null}
-          {/* Landing on the wrong door should not mean starting over. The two
-              flows share every screen up to here, so switching costs nothing
-              but the wording. */}
-          {step === 'phone' ? (
+          {/* Landing on the wrong door should not mean starting over. */}
+          {step === 'signin' || step === 'join' ? (
             <LinkButton
               onClick={() => {
-                setMode(mode === 'join' ? 'signin' : 'join');
+                setStep(step === 'join' ? 'signin' : 'join');
                 setError(null);
+                setNotice(null);
               }}
             >
-              {mode === 'signin'
-                ? "Don't have an account yet? Join the club"
-                : 'Already a member? Sign in'}
+              {step === 'signin' ? 'New here? Join the club' : 'Already a member? Sign in'}
+            </LinkButton>
+          ) : null}
+          {step === 'forgot' && forgotSent ? (
+            <LinkButton
+              onClick={() => {
+                setForgotSent(false);
+                setStep('signin');
+              }}
+            >
+              Back to sign in
             </LinkButton>
           ) : null}
         </>
       }
     >
-      {/* Always rendered, in the same place, so it is still mounted when the
-          code step replaces the phone step. Out of the reading order and
-          the tab order; see `keyboardHold`. */}
-      <input
-        ref={keyboardHold}
-        aria-hidden="true"
-        tabIndex={-1}
-        inputMode="numeric"
-        // Not readOnly: iOS opens no keyboard for a read-only field. What is
-        // typed here in the moment before the code step is never read.
-        className="pointer-events-none fixed top-0 left-0 h-px w-px text-[16px] opacity-0"
-      />
-      {step === 'phone' ? (
-        <PhoneStep
+      {step === 'signin' ? (
+        <SignInStep
           data={data}
           set={set}
-          mode={mode}
-          onComplete={
-            mode === 'signin'
-              ? (phone) => {
-                  if (busy) return;
-                  // Inside the keystroke or the autofill, as advance() does
-                  // inside the tap — see `keyboardHold`. The number is passed
-                  // in because `data` here is from before this change.
-                  keyboardHold.current?.focus({ preventScroll: true });
-                  void requestCode(phone);
-                }
-              : undefined
-          }
-        />
-      ) : null}
-      {step === 'code' ? (
-        <CodeStep
-          data={data}
-          set={set}
-          onComplete={(code) => {
-            void verifyCode(code);
+          ways={ways}
+          notice={notice}
+          onForgot={() => {
+            setError(null);
+            setStep('forgot');
           }}
         />
+      ) : null}
+      {step === 'forgot' ? <ForgotStep data={data} set={set} sent={forgotSent} /> : null}
+      {step === 'join' ? (
+        <JoinStep
+          data={data}
+          set={set}
+          ways={ways}
+          invited={invited || heldInviteToken() !== null}
+        />
+      ) : null}
+      {step === 'check-email' ? (
+        <CheckEmailStep
+          email={cleanEmail(data.email)}
+          secondsLeft={resendLeft}
+          onResend={() => {
+            void resend();
+          }}
+          onChangeAddress={() => {
+            setError(null);
+            setNotice(null);
+            setStep('join');
+          }}
+        />
+      ) : null}
+      {step === 'checking' ? (
+        <>
+          <Question>Checking your invitation</Question>
+          <Sub>One moment.</Sub>
+        </>
       ) : null}
       {step === 'agree' ? <AgreeStep data={data} set={set} /> : null}
-      {step === 'claim' && claimable ? (
-        <ClaimStep
-          profile={claimable}
-          // Straight to the birthday, not to the name. The claim has already
-          // answered the name, the level, the completeness and the place, so
-          // walking somebody through five screens to confirm what an
-          // organization asserted about them is asking them to type their
-          // own profile back in. The birthday is the one thing a claim cannot
-          // supply — the row requires it and the club is 18+ — and once it is
-          // in, "Finish later" is on the next screen.
-          onAccept={() => {
-            set({
-              displayName: claimable.displayName,
-              exactLevel: claimable.exactLevel,
-              completeness: claimable.completeness,
-              city: claimable.city ?? '',
-              state: claimable.state,
-            });
-            setStep('birthday');
-          }}
-          // Declining starts at the name and carries nothing across: the
-          // pre-fill only happens on accept, and `startFresh` tells the claim
-          // trigger not to copy the rest of the seed. There is no way back
-          // to this step, so the choice cannot be changed after it.
-          onDecline={() => {
-            set({ startFresh: true });
-            setStep('name');
-          }}
-        />
-      ) : null}
       {step === 'name' ? <NameStep data={data} set={set} /> : null}
+      {step === 'username' ? <UsernameStep data={data} set={set} /> : null}
       {step === 'birthday' ? <BirthdayStep data={data} set={set} /> : null}
       {step === 'injury' ? <InjuryStep data={data} set={set} /> : null}
       {step === 'city' ? <CityStep data={data} set={set} /> : null}
+      {step === 'phone' ? <PhoneForEventsStep data={data} set={set} /> : null}
       {step === 'photo' ? (
         <PhotoStep
           data={data}

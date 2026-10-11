@@ -39,6 +39,7 @@ import PeersPage from '@/routes/peers/page';
 import ProfileAnswersPage from '@/routes/profile/answers';
 import ProfileDetailsPage from '@/routes/profile/details';
 import ProfileSurveyPage from '@/routes/profile/page';
+import ResetPasswordPage from '@/routes/reset-password/page';
 
 /**
  * The signed-in shell: one scrolling surface above a fixed five-tab bar.
@@ -233,14 +234,23 @@ function AppRoutes() {
           </InLight>
         }
       />
+      {/* Forgot password and change password both land here, from an emailed
+          link. Outside the shell, always light, like /join. */}
+      <Route
+        path="/reset-password"
+        element={
+          <InLight>
+            <ResetPasswordPage />
+          </InLight>
+        }
+      />
       {/* Outside the shell: its own footer, no tab bar. */}
       <Route path="/profile" element={<ProfileSurveyPage />} />
       <Route path="/profile/answers" element={<ProfileAnswersPage />} />
       <Route path="/profile/details" element={<ProfileDetailsPage />} />
-      {/* Development only: the live project's Auth accepts fixed test codes
-          until texts are approved, and this page printed one. In a build the
-          condition is false, so the route and the page itself are dropped
-          from the bundle. See the page's file header. */}
+      {/* Development only: signs in the accounts the local seed makes. In a
+          build the condition is false, so the route and the page itself are
+          dropped from the bundle. See the page's file header. */}
       {import.meta.env.DEV && <Route path="/dev-login" element={<DevLoginPage />} />}
       {/* Public, with no account: somebody on the phone step reads them before
           they have one, and so do the carriers checking the text-message
