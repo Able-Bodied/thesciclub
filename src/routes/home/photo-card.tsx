@@ -5,6 +5,7 @@ import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
+import { markdownToPlain } from '@/lib/markdown';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
@@ -144,7 +145,7 @@ export function PhotoCard({
       </Link>
       {opening?.body ? (
         <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink leading-[1.52] [&_a]:relative [&_a]:z-[1]">
-          <LinkedText text={opening.body} />
+          <LinkedText text={markdownToPlain(opening.body)} />
         </p>
       ) : null}
       {opening?.linkPreview ? (

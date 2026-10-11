@@ -478,6 +478,16 @@ describe('a topic', () => {
     expect(within(article).queryByRole('link')).toBeNull();
   });
 
+  // The first post's toolbar writes a small Markdown; the page shows it
+  // formatted, and a typed tag as text.
+  it('shows a post formatted, and a typed tag as text', () => {
+    db.posts = [post({ id: '1', body: '**Bring water**\n- Gloves\n<b>not bold</b>' })];
+    renderTopic();
+    expect(screen.getByText('Bring water').tagName).toBe('STRONG');
+    expect(screen.getByText('Gloves').tagName).toBe('LI');
+    expect(screen.getByText(/<b>not bold<\/b>/)).toBeInTheDocument();
+  });
+
   it('links to a member who is still in the directory, and not to one who is not', () => {
     db.authors = new Map([
       ['nicole', author({ id: 'nicole' })],

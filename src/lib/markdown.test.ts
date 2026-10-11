@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markdownToHtml } from '@/lib/markdown';
+import { markdownToHtml, markdownToPlain } from '@/lib/markdown';
 import { sanitizeHtml } from '@/routes/events/rich-text';
 
 /** What a member's browser gets: converted, then through the allowlist. */
@@ -65,5 +65,19 @@ describe('what is shown, after the allowlist', () => {
 
   it('opens links in a new tab, without the club as referrer', () => {
     expect(shown('[Sign up](https://norcalsci.org)')).toContain('rel="noopener noreferrer"');
+  });
+});
+
+describe('markdownToPlain', () => {
+  it('takes the marks out and keeps the words and the lines', () => {
+    expect(
+      markdownToPlain('## What to bring\n- **Water**\n- A *friend*\n[Sign up](https://a.org)'),
+    ).toBe('What to bring\nWater\nA friend\nSign up');
+  });
+
+  it('leaves plain text, arithmetic and snake_case alone', () => {
+    expect(markdownToPlain('2 * 3 * 4 and room_one_two\nhttps://norcalsci.org')).toBe(
+      '2 * 3 * 4 and room_one_two\nhttps://norcalsci.org',
+    );
   });
 });

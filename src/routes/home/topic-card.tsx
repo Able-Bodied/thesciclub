@@ -4,6 +4,7 @@ import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
+import { markdownToPlain } from '@/lib/markdown';
 import { ROOM_ICON_COLOUR } from '@/routes/chat/continue-in-room';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
@@ -161,7 +162,7 @@ export function TopicCard({
             </span>
           </p>
           <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52]">
-            {reply.body || 'Replied with a photograph.'}
+            {reply.body ? markdownToPlain(reply.body) : 'Replied with a photograph.'}
           </p>
           {reply.linkPreview ? (
             <LinkPreviewCard preview={reply.linkPreview} className="relative" />

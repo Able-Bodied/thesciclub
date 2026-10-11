@@ -122,3 +122,26 @@ function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+/**
+ * The same text with its Markdown marks taken out, for the places that show
+ * a few lines of a post rather than the post: a Home card's opening or first
+ * reply, a notification's excerpt. Bold and italic become their words, a
+ * heading its line, a list item its text, a link its words. Line breaks stay,
+ * for the clamped previews that keep them.
+ */
+export function markdownToPlain(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) =>
+      line
+        .replace(/^(\s*)#{1,3}\s+/, '$1')
+        .replace(/^(\s*)[-*•]\s+/, '$1')
+        .replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, '$1')
+        .replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/g, '$1')
+        .replace(/(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])/g, '$1')
+        .replace(/(?<![\w_])_(?=\S)(.+?)(?<=\S)_(?![\w_])/g, '$1'),
+    )
+    .join('\n');
+}

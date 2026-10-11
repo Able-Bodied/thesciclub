@@ -614,6 +614,18 @@ the product definition and wins over this file.
     ingest published. The first nightly import with an override is the real
     check that a change survives it.
 
+40. **Formatting in a room's first post** (2026-10-11, no migration). New
+    topic's first post has the event form's toolbar (`DescriptionEditor`:
+    bold, italic, heading, lists, link, preview). Every post on a topic page
+    is now drawn from that small Markdown through `EventDescription`, the
+    same allowlist as an event description, so a reply someone formats by
+    hand is formatted too; plain text reads as it did. Previews that show a
+    few lines of a post — a Home card's opening or first reply, a
+    notification's excerpt — use `markdownToPlain`, so no `**` or `##` shows.
+    Not changed: messages in conversations, and the push notification text
+    built by the `push-notify` edge function (it would show marks in a
+    formatted reply's preview until that function strips them too).
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

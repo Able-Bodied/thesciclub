@@ -7,6 +7,7 @@ import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
+import { DescriptionEditor } from '@/routes/events/description-editor';
 import { backToHome } from '@/routes/home/back';
 
 /**
@@ -228,17 +229,16 @@ export default function NewTopicPage() {
             Optional when there is a photograph.
           </p>
         ) : null}
-        <textarea
+        {/* The event form's toolbar (the owner, 2026-10-11): bold, italic, a
+            heading, lists and a link, written as a small Markdown that the
+            topic page shows formatted (post.tsx). */}
+        <DescriptionEditor
           id="topic-body"
           value={body}
-          rows={sharing ? 4 : 7}
           maxLength={4000}
-          aria-describedby={sharing ? 'topic-body-hint' : undefined}
-          onChange={(event) => {
-            setBody(event.target.value);
-          }}
+          onChange={setBody}
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
-          className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
+          hintClassName="mt-1 text-[0.71875rem] text-grey leading-[1.45]"
         />
 
         {sharing ? null : <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />}
