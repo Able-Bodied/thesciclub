@@ -1,14 +1,20 @@
 import { Loader2, LocateFixed } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
 import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
-import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
-import { usePhotoUrl } from '@/lib/photos';
+import { formatPhoneInput } from '@/lib/phone';
+import {
+  isValidUsername,
+  normalizeUsername,
+  suggestUsernames,
+  USERNAME_MAX,
+  usernameAvailable,
+} from '@/lib/usernames';
 import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
-import type { ClaimableProfile, OnboardingData } from '@/routes/onboarding/types';
+import type { OnboardingData } from '@/routes/onboarding/types';
 import { birthPartsOf, injuryDateOf, injuryPartsOf } from '@/routes/onboarding/types';
 import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
 
@@ -27,111 +33,18 @@ interface StepProps {
   set: (patch: Partial<OnboardingData>) => void;
 }
 
-export function PhoneStep({
-  data,
-  set,
-  mode,
-  onComplete,
-}: StepProps & {
-  mode: 'join' | 'signin';
-  /**
-   * Called with the number when it becomes complete, typed or autofilled.
-   * Passed on the sign-in door only (the owner, 2026-10-06): a returning
-   * member has agreed by the line under the field, which is on screen before
-   * they type. The join door waits for its two boxes and a press of Text me my code,
-   * as registered with the carriers.
-   */
-  onComplete?: ((phone: string) => void) | undefined;
-}) {
-  const phoneRef = useAutoFocus();
-  return (
-    <>
-      <Question>{mode === 'signin' ? 'Welcome back' : "What's your number?"}</Question>
-      <Sub>
-        {mode === 'signin'
-          ? 'Your number is your account. We will text you a code to sign you back in.'
-          : 'Your number is your account, and it is how the club checks you against the list of people a member organization or a mentor has vouched for. It is never shown to another member.'}
-      </Sub>
-      <label htmlFor="phone" className="mt-5 block font-bold text-[0.8125rem] text-ink">
-        Phone number
-      </label>
-      <div className="flex items-stretch gap-2.5">
-        {/* A fixed +1 rather than a country picker: the club is US-only today,
-            and a picker would imply otherwise. */}
-        <span className="mt-2.5 grid flex-none place-items-center rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-semibold text-[1rem] text-ink2">
-          +1
-        </span>
-        <Field
-          ref={phoneRef}
-          id="phone"
-          type="tel"
-          inputMode="tel"
-          autoComplete="tel"
-          placeholder="(408) 555-0112"
-          value={data.phone}
-          onChange={(e) => {
-            const phone = formatPhoneInput(e.target.value);
-            set({ phone });
-            // Only as the number becomes complete, not on every change to a
-            // complete one: correcting a digit in the middle should not send
-            // a code before the correction is finished.
-            if (onComplete && isCompletePhone(phone) && !isCompletePhone(data.phone)) {
-              onComplete(phone);
-            }
-          }}
-        />
-      </div>
-      {mode === 'signin' ? (
-        /* One line instead of two boxes on the sign-in door, at the owner's
-           word (2026-10-01): a returning member asking for a code to their
-           own account agrees by continuing. The join door keeps the boxes. */
-        <p className="mt-3 text-[0.84375rem] text-ink2 leading-[1.5]">
-          {SIGN_IN_CONSENT} <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
-          <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
-        </p>
-      ) : (
-        <JoinConsent data={data} set={set} />
-      )}
-    </>
-  );
-}
-
 /**
- * The two boxes again, for somebody who came through the sign-in door with a
- * number that is not a member yet.
+ * Terms and privacy, asked once the club has said yes to this address.
  *
- * The sign-in line agrees to the code text, and that text has been sent. But
- * this is joining, and joining asks for both ticks (the Terms say so), so the
- * questions wait for them. Until 2026-10-01 they did not: a new member could
- * tap "I already have an account" and be handed the questions with neither box
- * ever shown (the owner found it).
+ * After the invite check rather than before it, so somebody turned away is
+ * not asked to agree to a club they are not in. Somebody who already has a
+ * profile never sees it.
  */
 export function AgreeStep({ data, set }: StepProps) {
   return (
     <>
       <Question>Before you join</Question>
-      <Sub>
-        This number is not a member yet, so this is joining rather than signing in. Joining asks for
-        both of these.
-      </Sub>
-      <JoinConsent data={data} set={set} before="you go on" />
-    </>
-  );
-}
-
-/** The join door's two boxes, and why the button waits for them. */
-function JoinConsent({ data, set, before = 'the code is sent' }: StepProps & { before?: string }) {
-  return (
-    <>
-      <ConsentBox
-        id="sms-consent"
-        checked={data.smsConsent}
-        onChange={(smsConsent) => {
-          set({ smsConsent });
-        }}
-      >
-        {SMS_CONSENT}
-      </ConsentBox>
+      <Sub>You are on the list. Joining the club means agreeing to its terms.</Sub>
       <ConsentBox
         id="terms-agreed"
         checked={data.termsAgreed}
@@ -142,45 +55,14 @@ function JoinConsent({ data, set, before = 'the code is sent' }: StepProps & { b
         I agree to the <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
         <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
       </ConsentBox>
-      {/* Said, not just shown by a dimmed button, the way the birthday step
-          says why an under-18 date goes no further. Only once the number is
-          in, so it is not the first thing read on an empty screen. */}
-      {isCompletePhone(data.phone) && !(data.smsConsent && data.termsAgreed) ? (
-        <Fine>
-          Both boxes need a tick before {before}: the club signs you in by text, and using it means
-          agreeing to its terms.
-        </Fine>
-      ) : null}
     </>
   );
 }
 
 /**
- * The words of the first box, exactly as the club's text-message
- * registration with the carriers quotes them (2026-10-01). Change one and
- * the registration has to change with it.
- */
-export const SMS_CONSENT =
-  'Text me a one-time sign-in code from The SCI Club. One text each time I ask for a code. Message and data rates may apply. Reply HELP for help, STOP to opt out.';
-
-/** The sign-in door's line, before its two links. Registered as well. */
-/** The phone step's button, on both doors: it says what pressing it does. */
-export const PHONE_BUTTON = 'Text me my code';
-
-/**
- * "By entering your number", not by pressing anything: the sign-in door sends
- * the code on the tenth digit, before any button (see `onComplete` above), and
- * this line is on screen before the first digit is typed (2026-10-08).
- */
-export const SIGN_IN_CONSENT =
-  'By entering your number, you agree to get a one-time sign-in code by text from The SCI Club (Msg & data rates may apply; reply HELP for help, STOP to opt out) and to the';
-
-/**
- * One of the two boxes on the phone step.
+ * The agreement box.
  *
- * A real checkbox, unticked to begin with: carriers reject a box that starts
- * ticked, and agreement to the texts has to be a box of its own, apart from the
- * terms. The whole row is the label, so the target is the sentence and not
+ * A real checkbox, unticked to begin with. The whole row is the label, so the target is the sentence and not
  * only the square, and the square is sized in em so it grows with the text.
  */
 function ConsentBox({
@@ -214,7 +96,7 @@ function ConsentBox({
 }
 
 /**
- * A link out of the phone step that leaves it where it was. In the same tab,
+ * A link out of a step that leaves it where it was. In the same tab,
  * reading the terms would throw away the number and the ticks, and the way
  * back would start again at the welcome screen.
  */
@@ -229,39 +111,6 @@ export function NewTabLink({ href, children }: { href: string; children: React.R
       {children}
       <span className="sr-only"> (opens in a new tab)</span>
     </a>
-  );
-}
-
-/**
- * `onComplete` runs when the sixth digit goes in, typed or filled in by the
- * phone from the text message, so nobody has to find Continue as well.
- */
-export function CodeStep({
-  data,
-  set,
-  onComplete,
-}: StepProps & { onComplete: (code: string) => void }) {
-  const codeRef = useAutoFocus();
-  return (
-    <>
-      <Question>Enter your code</Question>
-      <Sub>We sent six digits to {data.phone || 'your phone'}.</Sub>
-      <Field
-        ref={codeRef}
-        id="code"
-        inputMode="numeric"
-        autoComplete="one-time-code"
-        maxLength={6}
-        placeholder="000000"
-        className="text-center font-extrabold text-[1.5rem] tracking-[.42em]"
-        value={data.code}
-        onChange={(e) => {
-          const code = e.target.value.replace(/\D/g, '').slice(0, 6);
-          set({ code });
-          if (code.length === 6 && code !== data.code) onComplete(code);
-        }}
-      />
-    </>
   );
 }
 
@@ -282,6 +131,170 @@ export function NameStep({ data, set }: StepProps) {
           set({ displayName: e.target.value });
         }}
       />
+    </>
+  );
+}
+
+/**
+ * The @name, with free suggestions made from the name just given.
+ *
+ * The availability is asked after a short pause in typing, and spoken by a
+ * live region, so somebody who cannot see the field change hears "@alex is
+ * available" without leaving it. A name edited after the answer arrives is
+ * simply not yet checked: the step goes on only when the answer is for the
+ * name now in the box (`usernameChecked`).
+ */
+export function UsernameStep({ data, set }: StepProps) {
+  const usernameRef = useAutoFocus();
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [verdict, setVerdict] = useState<'idle' | 'checking' | 'available' | 'taken' | 'unknown'>(
+    'idle',
+  );
+  const { username, displayName } = data;
+
+  useEffect(() => {
+    let cancelled = false;
+    void suggestUsernames(displayName).then((names) => {
+      if (!cancelled) setSuggestions(names);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [displayName]);
+
+  useEffect(() => {
+    if (!isValidUsername(username)) {
+      setVerdict('idle');
+      return;
+    }
+    if (data.usernameChecked === username) {
+      setVerdict('available');
+      return;
+    }
+    setVerdict('checking');
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void usernameAvailable(username).then((free) => {
+        if (cancelled) return;
+        if (free === null) setVerdict('unknown');
+        else if (free) {
+          setVerdict('available');
+          set({ usernameChecked: username });
+        } else setVerdict('taken');
+      });
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [username, data.usernameChecked, set]);
+
+  const message = !username
+    ? ''
+    : !isValidUsername(username)
+      ? '3 to 20 letters, numbers, dots or underscores, not starting or ending with a dot or underscore.'
+      : verdict === 'checking'
+        ? `Checking @${username}…`
+        : verdict === 'available'
+          ? `@${username} is available.`
+          : verdict === 'taken'
+            ? `@${username} is taken. Try another.`
+            : verdict === 'unknown'
+              ? 'Could not check that name. Try again.'
+              : '';
+
+  return (
+    <>
+      <Question>Pick a username</Question>
+      <Sub>Other members see it as @name on your profile. You can change it later.</Sub>
+      {suggestions.length > 0 ? (
+        <div className="mt-4">
+          <p className="mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+            Suggestions
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((name) => (
+              <Chip
+                key={name}
+                selected={username === name}
+                onClick={() => {
+                  set({ username: name, usernameChecked: name });
+                }}
+              >
+                @{name}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <label htmlFor="username" className="mt-5 block font-bold text-[0.8125rem] text-ink">
+        Username
+      </label>
+      <Field
+        ref={usernameRef}
+        id="username"
+        autoComplete="off"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        placeholder="alex"
+        maxLength={USERNAME_MAX}
+        value={username}
+        onChange={(e) => {
+          set({ username: normalizeUsername(e.target.value) });
+        }}
+      />
+      <p
+        role="status"
+        aria-live="polite"
+        className={
+          verdict === 'taken' || (username && !isValidUsername(username))
+            ? 'mt-2 text-[0.8125rem] text-destructive leading-[1.45]'
+            : 'mt-2 text-[0.8125rem] text-ink2 leading-[1.45]'
+        }
+      >
+        {message}
+      </p>
+    </>
+  );
+}
+
+/**
+ * A number for event hosts, and optional.
+ *
+ * Not verified and not an account: the club never texts it. The host of an
+ * event gets it, with the email, when the member chooses Going.
+ */
+export function PhoneForEventsStep({ data, set }: StepProps) {
+  const phoneRef = useAutoFocus();
+  return (
+    <>
+      <Question>A number for events?</Question>
+      <Sub>
+        Optional. Event hosts get your email, and this number if you give one, when you choose Going
+        on their event. Nobody else sees it.
+      </Sub>
+      <label htmlFor="phone" className="mt-5 block font-bold text-[0.8125rem] text-ink">
+        Phone number
+      </label>
+      <div className="flex items-stretch gap-2.5">
+        <span className="mt-2.5 grid flex-none place-items-center rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-semibold text-[1rem] text-ink2">
+          +1
+        </span>
+        <Field
+          ref={phoneRef}
+          id="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          placeholder="(408) 555-0112"
+          value={data.phone}
+          onChange={(e) => {
+            set({ phone: formatPhoneInput(e.target.value) });
+          }}
+        />
+      </div>
+      <Fine>Skip it and you can add one later on Me, or when you first choose Going.</Fine>
     </>
   );
 }
@@ -602,66 +615,6 @@ export function PhotoStep({ data, set }: StepProps) {
         />
       </label>
       <Fine>Skip, and your tile is made from your initials.</Fine>
-    </>
-  );
-}
-
-export function ClaimStep({
-  profile,
-  onAccept,
-  onDecline,
-}: {
-  /** Ten fields, not a profile — see ClaimableProfile for why. */
-  profile: ClaimableProfile;
-  onAccept: () => void;
-  onDecline: () => void;
-}) {
-  const photo = usePhotoUrl(profile.photoPath);
-  return (
-    <>
-      <Question>Is this you?</Question>
-      <Sub>
-        {profile.affiliations[0] ?? 'A member organization'} already has a profile for this number.
-        You can carry it across, or start from scratch — either way it stops being separate from
-        you.
-      </Sub>
-      <div className="mt-4 flex items-center gap-3.5 rounded-[17px] border border-line bg-paper p-3.5">
-        {photo ? (
-          <img
-            src={photo}
-            alt=""
-            className="h-[62px] w-[62px] flex-none rounded-[18px] object-cover"
-          />
-        ) : null}
-        <span>
-          <span className="block font-extrabold font-head text-[1.03125rem]">
-            {profile.displayName}
-          </span>
-          <span className="mt-0.5 block text-[0.8125rem] text-ink2">
-            {[profile.exactLevel ?? profile.levelRange, profile.city].filter(Boolean).join(' · ')}
-          </span>
-        </span>
-      </div>
-      <div className="mt-4 grid gap-2">
-        <button
-          type="button"
-          onClick={onAccept}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-action font-bold font-head text-[0.9375rem] text-white"
-        >
-          Yes, that's me
-        </button>
-        <button
-          type="button"
-          onClick={onDecline}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis"
-        >
-          Start fresh
-        </button>
-      </div>
-      <Fine>
-        Starting fresh removes the old profile too. Either way there is only ever one of you in the
-        club.
-      </Fine>
     </>
   );
 }

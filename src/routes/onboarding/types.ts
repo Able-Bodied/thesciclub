@@ -1,20 +1,35 @@
 import { readDate } from '@/lib/date-parts';
 import { isAdult } from '@/lib/injury';
 import { isCompletePhone } from '@/lib/phone';
-import type { Completeness, DatePrecision, ExactLevel, LevelRange } from '@/types/domain';
+import { isValidUsername } from '@/lib/usernames';
+import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
 
 /**
  * The shape onboarding collects, and the order it collects it in.
  *
  * Ordered so the cost of each question rises as the person's investment does.
- * The number comes first because it is the account; the photo is last because
+ * The way in comes first because it is the account; the photo is last because
  * it is the only optional one and the flow should be finishable without it.
  */
 
 export interface OnboardingData {
-  phone: string;
-  code: string;
+  /** The sign-in and join forms. Never stored in the member row. */
+  email: string;
+  password: string;
   displayName: string;
+  /** The @name, lowercase and without the "@". */
+  username: string;
+  /**
+   * The username `username_available` last said yes to. The step goes on only
+   * when it equals `username`, so a name edited after the check, or a check
+   * still on its way, never counts.
+   */
+  usernameChecked: string;
+  /**
+   * An optional contact number "for events", typed by the member and never
+   * verified. Event hosts get it when the member chooses Going.
+   */
+  phone: string;
   /**
    * The ISO date, or '' until the three boxes below make a real one. Kept
    * beside them so everything past the birthday step reads one value.
@@ -45,26 +60,17 @@ export interface OnboardingData {
    * once, so a decline is another answer to carry to the insert.
    */
   declined: string[];
-  /**
-   * "Start fresh" was pressed on a claimed seeded profile. Sent with the
-   * insert so the claim trigger retires the seed without copying any of it
-   * into the new row — see 20261002000000. Until then the trigger could not
-   * tell the two buttons apart and copied either way.
-   */
-  startFresh: boolean;
-  /**
-   * The two boxes on the phone step, both unticked to begin with: agreeing to
-   * the sign-in texts, and to the Terms of Service and Privacy Policy. Kept
-   * apart because carriers require it — see `ConsentBox` in steps.tsx.
-   */
-  smsConsent: boolean;
+  /** Terms of Service and Privacy Policy, asked once the invite check has passed. */
   termsAgreed: boolean;
 }
 
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
-  phone: '',
-  code: '',
+  email: '',
+  password: '',
   displayName: '',
+  username: '',
+  usernameChecked: '',
+  phone: '',
   birthDate: '',
   birthMonth: '',
   birthDay: '',
@@ -80,34 +86,42 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   photoFile: null,
   photoPreviewUrl: null,
   declined: [],
-  startFresh: false,
-  smsConsent: false,
   termsAgreed: false,
 };
 
 /**
- * `claim` appears only when the invite points at a seeded profile, and `blocked`
- * only when the verified number turns out not to be on the list. `agree`
- * appears only for somebody who came through the sign-in door and turned out
- * to be joining. None is a step somebody walks through in order, so none is
- * counted in the progress bar.
+ * The first six are the doors and the waiting rooms, and `agree` follows the
+ * invite check for somebody who is joining: none is a step somebody walks
+ * through in order, so none is counted in the progress bar.
  */
 export const STEPS = [
   'welcome',
-  'phone',
-  'code',
+  'signin',
+  'forgot',
+  'join',
+  'check-email',
+  'checking',
   'agree',
-  'claim',
   'name',
+  'username',
   'birthday',
   'injury',
   'city',
+  'phone',
   'photo',
 ] as const;
 export type Step = (typeof STEPS)[number];
 
-/** The five that carry a "step N of 5" label. */
-export const COUNTED_STEPS: Step[] = ['name', 'birthday', 'injury', 'city', 'photo'];
+/** The seven that carry a "step N of 7" label. */
+export const COUNTED_STEPS: Step[] = [
+  'name',
+  'username',
+  'birthday',
+  'injury',
+  'city',
+  'phone',
+  'photo',
+];
 
 export function stepNumber(step: Step): number | null {
   const index = COUNTED_STEPS.indexOf(step);
@@ -134,20 +148,17 @@ export function birthPartsOf(data: OnboardingData) {
 }
 
 /** Whether the current step has enough to move on. */
-export function canAdvance(step: Step, data: OnboardingData, signIn = false): boolean {
+export function canAdvance(step: Step, data: OnboardingData): boolean {
   switch (step) {
-    case 'phone':
-      // No code is sent to somebody joining without both ticks: the text is
-      // the one thing the club sends to a phone, and carriers require
-      // agreement before it. The sign-in door asks with a line instead, and
-      // continuing past it is the agreement.
-      return isCompletePhone(data.phone) && (signIn || (data.smsConsent && data.termsAgreed));
-    case 'code':
-      return data.code.replace(/\D/g, '').length === 6;
     case 'agree':
-      return data.smsConsent && data.termsAgreed;
+      return data.termsAgreed;
     case 'name':
       return data.displayName.trim().length > 0;
+    case 'username':
+      return isValidUsername(data.username) && data.usernameChecked === data.username;
+    case 'phone':
+      // Optional: empty is an answer. A number half typed is not.
+      return data.phone.trim() === '' || isCompletePhone(data.phone);
     case 'birthday':
       // Not just a well-formed date: the club is 18+, and the database
       // refuses anybody younger, so the form must not let them get that far.
@@ -168,29 +179,6 @@ export function canAdvance(step: Step, data: OnboardingData, signIn = false): bo
     default:
       return true;
   }
-}
-
-/**
- * The seeded profile an invite entitles its holder to claim, as much of it as
- * the claim card needs and no more.
- *
- * Not a `BrowseMember`. The person reading this card is not a member yet, and
- * on a mistyped invite is not the person on the card either — so it carries a
- * photograph, a name, a level and a city, and not the bio, which on these
- * rows describes catheters and bowel programmes. `my_claimable_profile()`
- * returns exactly these columns.
- */
-export interface ClaimableProfile {
-  id: string;
-  displayName: string;
-  photoPath: string | null;
-  photoAlt: string | null;
-  city: string | null;
-  state: string;
-  levelRange: LevelRange;
-  exactLevel: ExactLevel | null;
-  completeness: Completeness;
-  affiliations: string[];
 }
 
 /**

@@ -4,15 +4,13 @@ import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Google as a second way in, for a member who already has an account.
+ * Google, a way to join and a way to come back.
  *
- * The phone number stays the account. It is what an invite names and what the
- * club checks against its list, so nobody joins through Google: a member signs
- * in with their number, links Google from Me, and from then on either door
- * opens the same account. A Google account nobody has linked opens nothing —
- * see `20261007010000_only_a_phone_makes_an_account.sql`, which refuses to make
- * an account from it, and `isPhoneless`, which signs it straight back out when
- * that hook is not switched on.
+ * Google's address is already confirmed by Google, so it needs no link in an
+ * email. Whether the account may enter is decided afterwards, as for every
+ * other way in: a member row, a claimed invite, or an invited address. A
+ * Google account with none of those sees the blocked screen, and linking from
+ * Me stays as an extra way into an account that already exists.
  *
  * Both trips leave the app for Google and come back to it. The query string
  * they come back with says which trip it was, because a member who pressed
@@ -49,7 +47,7 @@ export async function linkGoogle(): Promise<{ ok: false; error: string } | { ok:
     : { ok: true };
 }
 
-/** Takes Google off. The phone number is left, so the account always has a way in. */
+/** Takes Google off. Callers keep one other way in. */
 export async function unlinkGoogle(
   identity: UserIdentity,
 ): Promise<{ ok: false; error: string } | { ok: true }> {
@@ -74,9 +72,6 @@ export async function signInWithGoogle(): Promise<{ ok: false; error: string } |
 
 /**
  * Signs in with the ID token Google's widget handed back (src/lib/google-identity.ts).
- *
- * A Google account linked to nobody is refused by the database's hook, and
- * that refusal is the sentence every other way in gives.
  */
 export async function signInWithGoogleToken(
   token: string,
@@ -87,7 +82,9 @@ export async function signInWithGoogleToken(
     token,
     nonce,
   });
-  return error ? { ok: false, error: GOOGLE_NOT_LINKED } : { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'Google did not sign you in.') }
+    : { ok: true };
 }
 
 /** Links the Google account picked in Google's widget to the signed-in member. */
@@ -105,19 +102,3 @@ export async function linkGoogleToken(
 /** Said when the Google account picked already signs in to somebody else. */
 export const GOOGLE_TAKEN =
   'That Google account already signs in to another member. Choose a different one.';
-
-/**
- * Whether the session is an account Google made on its own.
- *
- * Every real account has a phone number, because the only way to make one is
- * to verify a number. An account without one is a Google account that was
- * never linked to a member, let in because the hook that refuses it is off.
- */
-export async function isPhoneless(): Promise<boolean> {
-  const { data } = await getSupabase().auth.getUser();
-  return data.user !== null && !data.user.phone;
-}
-
-/** Said when Google came back without letting somebody in. */
-export const GOOGLE_NOT_LINKED =
-  'Google did not sign you in. If you have not linked Google yet, sign in with your phone number, then link it from Me.';

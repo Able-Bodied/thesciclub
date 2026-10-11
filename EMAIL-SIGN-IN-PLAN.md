@@ -97,6 +97,12 @@ HANDOFF.md.
      works, with "Forgot password?" under it.
    - A passkey can only be added to an account that already exists, so it is
      offered after onboarding and on Me.
+   - **New members join only by email + password, Google or Apple** (the
+     owner, 2026-10-10). No phone option anywhere in the join flow. Phone
+     sign-in stays on in Supabase solely so existing members with fixed codes
+     (Ajay and Ran, until they link Google or add an email) can get in. It
+     can't make a new member: Twilio sends nothing, and the members insert
+     needs an email invite (Session 1).
 2. **Email confirmation is required** for email + password sign-ups before
    anything else happens. Without it, whoever types an invited address first
    would get that person's invite. Google and Apple addresses are already

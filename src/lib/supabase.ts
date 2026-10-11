@@ -24,6 +24,10 @@ export function getSupabase(): SupabaseClient {
     );
   }
 
-  client = createClient(url, key);
+  // Passkeys are a Supabase beta behind VITE_PASSKEYS (src/lib/passkeys.ts):
+  // switched off, the client is exactly the one it always was.
+  client = import.meta.env.VITE_PASSKEYS
+    ? createClient(url, key, { auth: { experimental: { passkey: true } } })
+    : createClient(url, key);
   return client;
 }
