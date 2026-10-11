@@ -61,13 +61,12 @@ select current_user, public.is_admin() as admin;
 
 \echo ''
 \echo '== 1. before the ban, the number is admissible (expect t) =='
-\echo '   Asked as that number signing in, the way the members insert policy'
-\echo '   asks: nobody else can ask about it (20261003040000).'
-select set_config('request.jwt.claims',
-  '{"sub":"15015015-0000-0000-0000-000000000150","role":"authenticated","phone":"14085550150"}', true) is not null as ok;
-select public.my_number_is_invited() as can_join;
-select set_config('request.jwt.claims',
-  '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
+\echo '   Asked as the superuser: my_number_is_invited was dropped with'
+\echo '   "Ask somebody" (20261012020000), and has_active_invite is the rule it'
+\echo '   delegated to, which a signed-in account cannot call (20261003040000).'
+reset role;
+select public.has_active_invite('14085550150') as can_join;
+set local role authenticated;
 
 \echo ''
 \echo '== 2. ban it (expect no error) =='
@@ -88,12 +87,10 @@ select status from public.admin_invites where phone = '14085550150';
 
 \echo ''
 \echo '== 4. the gate refuses them (expect f) =='
-\echo '   This is the one that matters: the members insert policy calls it.'
-select set_config('request.jwt.claims',
-  '{"sub":"15015015-0000-0000-0000-000000000150","role":"authenticated","phone":"14085550150"}', true) is not null as ok;
-select public.my_number_is_invited() as can_join;
-select set_config('request.jwt.claims',
-  '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
+\echo '   The rule a phone invite is judged by; the trigger step below is the other half.'
+reset role;
+select public.has_active_invite('14085550150') as can_join;
+set local role authenticated;
 
 \echo ''
 \echo '== 5. a phone invite for them is still refused, by the trigger on invites =='

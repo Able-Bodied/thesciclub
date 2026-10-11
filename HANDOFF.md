@@ -291,21 +291,12 @@ the product definition and wins over this file.
     "Showing: … · Show all events" line; old sport/online links open
     everything. 2,145 tests, check and build pass.
 
-17. **Asking somebody you know for an invite, unreleased** (2026-10-10).
-    `20261011000000`: `members.findable_for_invites` (on by default, the
-    owner's choice; a switch in Me's Club tools for anybody who can invite),
-    `invite_lookups` (counts only, no numbers), and `find_inviters(numbers)`:
-    only for a verified, uninvited non-member, numbers only back, 100 a look,
-    5 looks a day. The closed door (`blocked.tsx` → `ask-somebody.tsx`) checks
-    a typed number everywhere and the Contact Picker where the browser has it
-    (Chrome on Android; no iPhone browser or Home Screen app can read contacts),
-    then an `sms:` text from the person's own phone; and the consultation with
-    Wojtek (`CONSULTATION_URL`), also on the welcome screen. **Hidden for
-    launch** (2026-10-10): the blocked screen keeps the consultation link only;
-    `ask-somebody.tsx` stays, unreferenced.
-    Probe `find-inviters.sql`: 7 true, 6 refusals on local and fresh stacks;
-    ignoring the switch failed one. Browser check on a fresh stack: join with
-    an uninvited test number, match, text link, and the daily limit.
+17. **"Ask somebody" is removed** (the owner, 2026-10-10). The door, its
+    Me switch, `invite-request.ts` and `find_inviters` are gone;
+    `20261012020000` drops `find_inviters`, `my_number_is_invited`,
+    `invite_lookups` and `members.findable_for_invites`. The blocked screen and
+    the welcome screen keep the consultation link (`src/lib/consultation.ts`).
+    Old history: `git show 4b1673b:HANDOFF.md`.
 
 18. **Topic views were never recorded, fixed, unreleased** (2026-10-10).
     `useTopicPosts` sent `chat_mark_topic_read_through` as a bare

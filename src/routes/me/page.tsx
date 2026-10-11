@@ -17,7 +17,6 @@ import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
-import { FindableSwitch } from '@/routes/me/findable-switch';
 import { MeHero } from '@/routes/me/hero';
 import { NotificationSettings } from '@/routes/me/notification-settings';
 import { SignInSection } from '@/routes/me/sign-in-section';
@@ -329,9 +328,6 @@ export default function MePage() {
                               : `As a mentor you can invite ${MENTOR_ALLOWANCE} people by email.`
                           }
                         />
-                      ) : null}
-                      {invitePermissions.canInvite && userId ? (
-                        <FindableSwitch userId={userId} />
                       ) : null}
                       {invitePermissions.error ? (
                         <div>

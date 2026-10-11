@@ -1,5 +1,5 @@
 import { ClubMark } from '@/components/club-mark';
-import { CONSULTATION_URL } from '@/lib/invite-request';
+import { CONSULTATION_URL } from '@/lib/consultation';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**

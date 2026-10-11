@@ -1,5 +1,5 @@
 import { ShieldCheck } from 'lucide-react';
-import { CONSULTATION_URL } from '@/lib/invite-request';
+import { CONSULTATION_URL } from '@/lib/consultation';
 import { useOrganizations } from '@/lib/organizations';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { NewTabLink } from '@/routes/onboarding/steps';
@@ -12,9 +12,8 @@ import { NewTabLink } from '@/routes/onboarding/steps';
  * what to do next — a dead end with no route out of it is the thing that makes
  * an invite-only product feel like a snub rather than a club.
  *
- * "Ask somebody you know for an invite" is hidden for launch (the owner,
- * 2026-10-10); `ask-somebody.tsx` is kept, unreferenced, for later. This
- * screen keeps the consultation link only.
+ * "Ask somebody you know for an invite" was removed (the owner, 2026-10-10).
+ * This screen keeps the consultation link only.
  *
  * ---------------------------------------------------------------------------
  * The list is read, not written here

@@ -105,21 +105,6 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
 
 // The Notifications row reads the browser and the club; neither belongs in a
 // test of this page. It has its own test, and draws nothing while null.
-// The "ask me for an invite" switch reads the member's row; stubbed.
-const findable = vi.hoisted((): { value: boolean | null; sets: boolean[] } => ({
-  value: true,
-  sets: [],
-}));
-vi.mock('@/lib/invite-request', () => ({
-  useFindableForInvites: () => ({
-    findable: findable.value,
-    saving: false,
-    error: null,
-    set: (next: boolean) => {
-      findable.sets.push(next);
-    },
-  }),
-}));
 vi.mock('@/lib/push/notifications', () => ({
   useDeviceNotifications: () => ({
     state: null,
@@ -563,22 +548,13 @@ describe('the three tabs', () => {
   });
 });
 
-describe('being found by somebody who has your number', () => {
-  it('is offered, on, to a mentor, and turns off', async () => {
-    findable.value = true;
-    findable.sets = [];
+describe('no longer being asked for an invite by number', () => {
+  // The switch went with "Ask somebody" (2026-10-10): nobody can look a
+  // member up by their number any more, so there is nothing to switch.
+  it('offers a mentor no such switch', () => {
     own.member = ownMember({ type: 'mentor' });
     renderMe();
-    const box = screen.getByRole('checkbox', { name: /Let people who have my number ask me/ });
-    expect(box).toBeChecked();
-    await userEvent.click(box);
-    expect(findable.sets).toEqual([false]);
-  });
-
-  it('is not offered to somebody who cannot invite', () => {
-    renderMe();
-    expect(
-      screen.queryByRole('checkbox', { name: /Let people who have my number ask me/ }),
-    ).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /have my number/ })).toBeNull();
+    expect(screen.queryByText(/ask me for an invite/i)).toBeNull();
   });
 });
