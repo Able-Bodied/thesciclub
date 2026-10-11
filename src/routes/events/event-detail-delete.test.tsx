@@ -20,16 +20,19 @@ const state = vi.hoisted(() => ({
   events: [] as ClubEvent[],
   deleteEvent: vi.fn(),
   deleteEventAndLater: vi.fn(),
+  revertImportedEvent: vi.fn(),
+  reload: vi.fn(),
 }));
 
 vi.mock('@/lib/events', async (importOriginal) => ({
   rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
-  useEvents: () => ({ events: state.events, loading: false, error: null }),
+  useEvents: () => ({ events: state.events, loading: false, error: null, reload: state.reload }),
   useAttendeesByEvent: () => ({ byEvent: new Map(), loading: false, error: null }),
   useViewerEvents: () => ({ rsvps: new Map(), loading: false, error: null, reload: vi.fn() }),
   setRsvp: vi.fn(),
   deleteEvent: (id: string) => state.deleteEvent(id) as unknown,
   deleteEventAndLater: (id: string) => state.deleteEventAndLater(id) as unknown,
+  revertImportedEvent: (id: string) => state.revertImportedEvent(id) as unknown,
 }));
 
 vi.mock('@/lib/account', () => ({
@@ -80,6 +83,8 @@ function event(overrides: Partial<ClubEvent> = {}): ClubEvent {
 beforeEach(() => {
   state.deleteEvent = vi.fn().mockResolvedValue({ ok: true });
   state.deleteEventAndLater = vi.fn().mockResolvedValue({ ok: true });
+  state.revertImportedEvent = vi.fn().mockResolvedValue({ ok: true });
+  state.reload = vi.fn();
 });
 
 describe('deleting an event added by hand', () => {
@@ -129,5 +134,28 @@ describe('deleting an event added by hand', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('You cannot delete this event.');
     await user.click(screen.getByRole('button', { name: 'Keep it' }));
     expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+  });
+});
+
+describe('changing an imported event, as an administrator', () => {
+  it('offers Change and no Delete, since the import would bring it back', () => {
+    state.events = [event({ handAdded: false, adminChanged: [] })];
+    renderDetail();
+    expect(
+      screen.getByRole('heading', { name: "From the organization's calendar" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Change' })).toHaveAttribute('href', '/events/hh/edit');
+    expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Revert to the calendar' })).toBeNull();
+  });
+
+  it("reverts a changed one to the calendar's version, after asking", async () => {
+    state.events = [event({ handAdded: false, adminChanged: ['title'] })];
+    const user = userEvent.setup();
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Revert to the calendar' }));
+    await user.click(screen.getByRole('button', { name: 'Revert' }));
+    expect(state.revertImportedEvent).toHaveBeenCalledWith('hh');
+    expect(state.reload).toHaveBeenCalled();
   });
 });

@@ -479,6 +479,13 @@ export interface ClubEvent {
   photoPath: string | null;
   /** What a screen reader says for the cover picture. */
   photoAlt: string | null;
+  /**
+   * On an imported event, the fields an administrator changed
+   * (`title`, `start_time`, …); empty when it reads as its calendar has it.
+   */
+  adminChanged: string[];
+  /** What the organization's calendar says for exactly those fields. */
+  calendarValues: Record<string, unknown> | null;
   tags: EventTag[];
   goingCount: number;
   interestedCount: number;

@@ -589,6 +589,25 @@ the product definition and wins over this file.
     the backdrop and Escape remain. A hint to take a reaction back shows only
     once you have one.
 
+39. **Administrators change imported events** (2026-10-11). The owner:
+    anything the event form has, on an event from an organization's
+    calendar; the administrator's version wins until reverted.
+    `20261012060000`: `events.admin_override` (changed fields and values) and
+    `feed_values` (what the calendar says for exactly those fields).
+    `admin_change_imported_event` keeps only fields that differ from the
+    calendar (saving unchanged fields freezes nothing; changing one back lets
+    it go); a changed description also empties the calendar's HTML so the
+    new words are drawn. `admin_revert_imported_event` restores
+    `feed_values` at once. The event's own columns hold the corrected values,
+    so pages, lists, reminders and notifications read them unchanged. **The
+    ingest** reads `admin_override` (`withAdminOverride`): the override goes
+    back over the scrape and the scraped value into `feed_values`; untouched
+    fields keep updating. No Delete on an imported event (the import would
+    bring it back), and no cover picture. Form note lists what the calendar
+    says for each changed field; the event page has Change and Revert.
+    PGlite: 18 checks; 5 ingest tests. **Migration before the client and
+    before the next nightly import**: both now read `admin_override`.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run
