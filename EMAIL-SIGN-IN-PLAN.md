@@ -505,7 +505,8 @@ Supabase dashboard, project `erijdvqnxavwezsbbojv`:
 > minimum length 8, no character rules), URL configuration, Passkeys, hook
 > off. Still open: templates (H6, after session 2), `send-invite` secrets
 > (H9), and the Apple secret in the Apple provider if it wasn't pasted.
-1. **Resend**
+1. **Resend** (**verified 2026-10-10**: SPF/DKIM via CNAME + TXT and DMARC
+   `p=none`, added at Spaceship by the domain holder)
    - Finish domain verification for `thesciclub.com`: SPF, DKIM, and add a
      DMARC record.
    - Create an API key for SMTP and one for the edge function. One key is
