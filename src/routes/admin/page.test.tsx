@@ -11,7 +11,7 @@ import {
   inviteState,
   type Strike,
   vouchedBy,
-  withdrawnNumbers,
+  withdrawnInvites,
 } from '@/routes/admin/members-admin';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
@@ -28,15 +28,16 @@ const api = vi.hoisted(() => ({
   typeCalls: [] as [string, string][],
   created: [] as unknown[],
   blocked: [] as {
-    id: string;
-    phone: string;
+    email: string;
     reason: string | null;
     blockedAt: string;
     blockedBy: string | null;
   }[],
+  /** [address or number, reason] for every block, whether from an invite row or a member. */
   blockCalls: [] as [string, string | null][],
   unblocked: [] as string[],
-  claimable: [] as { id: string; displayName: string; city: string; state: string }[],
+  resent: [] as string[],
+  reinvited: [] as [string, string][],
   failWith: null as string | null,
   /**
    * Whether admin_add_strike reports the new count.
@@ -72,22 +73,43 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   ...(await importOriginal<typeof MembersAdmin>()),
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
-  fetchBlockedNumbers: () => Promise.resolve(api.blocked),
-  blockNumber: (phone: string, reason: string | null) => {
+  fetchBlockedEmails: () => Promise.resolve(api.blocked),
+  blockEmail: (email: string, reason: string | null) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
-    api.blockCalls.push([phone, reason]);
+    api.blockCalls.push([email, reason]);
     return Promise.resolve({ ok: true });
   },
-  unblockNumber: (phone: string) => {
-    api.unblocked.push(phone);
-    api.blocked = api.blocked.filter((b) => b.phone !== phone);
+  // The real one calls blockEmail and deleteMember inside the module, which a
+  // mock of those two cannot intercept; its own two-step order is tested in
+  // members-admin.test.ts. Here: one call that blocks and removes.
+  removeAndBlock: (
+    m: { id: string; email: string | null; phone: string | null },
+    reason: string | null,
+  ) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.blockCalls.push([m.email ?? m.phone ?? '', reason]);
+    api.members = api.members.filter((x) => x.id !== m.id);
+    return Promise.resolve({ ok: true });
+  },
+  unblockEmail: (email: string) => {
+    api.unblocked.push(email);
+    api.blocked = api.blocked.filter((b) => b.email !== email);
     return Promise.resolve({ ok: true });
   },
   fetchInvitingOrganizations: () =>
     Promise.resolve([{ id: 'org1', name: 'NorCal SCI', shortCode: 'NCS' }]),
-  fetchClaimableProfiles: () => Promise.resolve(api.claimable),
   createInvite: (input: unknown) => {
     api.created.push(input);
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    return Promise.resolve({ ok: true });
+  },
+  resendInvite: (id: string) => {
+    if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
+    api.resent.push(id);
+    return Promise.resolve({ ok: true });
+  },
+  reinviteByEmail: (old: { id: string }, email: string) => {
+    api.reinvited.push([old.id, email]);
     return Promise.resolve({ ok: true });
   },
   revokeInvite: (id: string) => {
@@ -131,12 +153,20 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
 }));
 
+// The Going tab reads events and who is going; neither is what this file tests
+// (event-contacts-section.test.tsx does), but the page imports the section.
+vi.mock('@/routes/admin/event-contacts-section', () => ({
+  EventContactsSection: () => <p>Going section</p>,
+}));
+
 const { default: AdminPage } = await import('@/routes/admin/page');
 
 const member = (o: Partial<AdminMember> = {}): AdminMember => ({
   id: 'm1',
   displayName: 'Alfred S',
   phone: '12222222222',
+  email: 'alfred.s@example.com',
+  username: null,
   type: 'peer',
   status: 'active',
   isAdmin: false,
@@ -187,7 +217,8 @@ beforeEach(() => {
   api.blocked = [];
   api.blockCalls = [];
   api.unblocked = [];
-  api.claimable = [{ id: 'seed1', displayName: 'Bob', city: 'Aptos', state: 'CA' }];
+  api.resent = [];
+  api.reinvited = [];
   api.failWith = null;
   api.openReports = 0;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -220,10 +251,21 @@ describe('AdminPage', () => {
     expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
   });
 
-  it('lists joined members with the phone an admin needs to identify them', async () => {
+  it('lists joined members with the email an admin needs to identify them, and the phone if given', async () => {
+    api.members = [member({ username: 'alfred.s' })];
     renderAdmin();
     expect(await screen.findByText('Alfred S')).toBeInTheDocument();
+    expect(screen.getByText(/alfred\.s@example\.com/)).toBeInTheDocument();
     expect(screen.getByText(/12222222222/)).toBeInTheDocument();
+    expect(screen.getByText(/@alfred\.s/)).toBeInTheDocument();
+  });
+
+  // A phone member who has not added an email yet: the list says so rather
+  // than printing nothing, which would read as a row that failed to load.
+  it('says when a member has no email yet', async () => {
+    api.members = [member({ email: null })];
+    renderAdmin();
+    expect(await screen.findByText(/no email yet/)).toBeInTheDocument();
   });
 
   it('separates people who joined from the seeded directory', async () => {
@@ -435,7 +477,7 @@ describe('somebody who started and stopped', () => {
   });
 });
 
-describe('blocking a number', () => {
+describe('blocking an address', () => {
   async function openInvites(user: ReturnType<typeof userEvent.setup>) {
     renderAdmin();
     await screen.findByRole('tab', { name: 'Invites' });
@@ -447,12 +489,14 @@ describe('blocking a number', () => {
   // administrator who ticks nothing must not be blocking a number.
   it('removes without blocking unless the box is ticked', async () => {
     const user = userEvent.setup();
-    api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
+    api.members = [member({ id: 'm9', displayName: 'Nuisance', email: 'nuisance@example.com' })];
     renderAdmin();
     await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
 
-    expect(screen.getByRole('checkbox', { name: /Block this number too/ })).not.toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: /Block this email address too/ }),
+    ).not.toBeChecked();
     await user.click(screen.getByRole('button', { name: 'Remove them' }));
 
     await waitFor(() => {
@@ -463,11 +507,11 @@ describe('blocking a number', () => {
 
   it('blocks instead, with a reason, when the box is ticked', async () => {
     const user = userEvent.setup();
-    api.members = [member({ id: 'm9', displayName: 'Nuisance', phone: '14085550150' })];
+    api.members = [member({ id: 'm9', displayName: 'Nuisance', email: 'nuisance@example.com' })];
     renderAdmin();
     await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
-    await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Block this email address too/ }));
 
     // The button says what it will do, rather than leaving the tick to be
     // remembered.
@@ -475,25 +519,25 @@ describe('blocking a number', () => {
     await user.click(screen.getByRole('button', { name: 'Remove and block' }));
 
     await waitFor(() => {
-      expect(api.blockCalls).toEqual([['14085550150', 'Harassing members']]);
+      expect(api.blockCalls).toEqual([['nuisance@example.com', 'Harassing members']]);
     });
-    // blockNumber deletes the member itself — two calls would be two
-    // round trips with a gap where the number is blocked and they are not.
+    // One call, removeAndBlock, rather than a block and a separate delete
+    // from the page: the order of the two is that function's to keep.
     expect(api.deleted).toEqual([]);
   });
 
   it('records no reason rather than an empty one', async () => {
     const user = userEvent.setup();
-    api.members = [member({ id: 'm9', phone: '14085550150' })];
+    api.members = [member({ id: 'm9', email: 'nuisance@example.com' })];
     renderAdmin();
     await manage();
     await user.click(await screen.findByRole('button', { name: 'Remove' }));
-    await user.click(screen.getByRole('checkbox', { name: /Block this number too/ }));
+    await user.click(screen.getByRole('checkbox', { name: /Block this email address too/ }));
     await user.type(screen.getByLabelText(/Reason/), '   ');
     await user.click(screen.getByRole('button', { name: 'Remove and block' }));
 
     await waitFor(() => {
-      expect(api.blockCalls).toEqual([['14085550150', null]]);
+      expect(api.blockCalls).toEqual([['nuisance@example.com', null]]);
     });
   });
 
@@ -543,7 +587,13 @@ describe('blocking a number', () => {
   it('offers the block option on a directory row too', async () => {
     const user = userEvent.setup();
     api.members = [
-      member({ id: 's1', displayName: 'Seeded Sam', phone: '15555550000', isSeed: true }),
+      member({
+        id: 's1',
+        displayName: 'Seeded Sam',
+        phone: '15555550000',
+        email: null,
+        isSeed: true,
+      }),
     ];
     renderAdmin();
     await manage();
@@ -560,8 +610,7 @@ describe('blocking a number', () => {
     const user = userEvent.setup();
     api.blocked = [
       {
-        id: 'b1',
-        phone: '14085550150',
+        email: 'nuisance@example.com',
         reason: 'Harassing members',
         blockedAt: '2026-09-13T00:00:00Z',
         blockedBy: 'Admin',
@@ -572,7 +621,7 @@ describe('blocking a number', () => {
     expect(await screen.findByText('Harassing members', { exact: false })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Unblock' }));
     await waitFor(() => {
-      expect(api.unblocked).toEqual(['14085550150']);
+      expect(api.unblocked).toEqual(['nuisance@example.com']);
     });
   });
 });
@@ -601,28 +650,27 @@ describe('with the seeded directory removed (20261010020000)', () => {
     expect(screen.getByText('From the directory')).toBeInTheDocument();
   });
 
-  it('asks no "already in the directory" question when there is nobody to claim', async () => {
-    api.claimable = [];
+  it('has no directory question on the invite form any more', async () => {
     const user = userEvent.setup();
     renderAdmin();
     await user.click(await screen.findByRole('tab', { name: 'Invites' }));
     expect(await screen.findByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Is this someone already in the directory?')).toBeNull();
+    expect(screen.queryByLabelText(/already in the directory/)).toBeNull();
   });
 });
 
 describe('the withdrawn list', () => {
-  const revoked = (phone: string, id: string, createdAt: string) =>
-    invite({ id, phone, status: 'revoked', createdAt });
+  const revoked = (email: string, id: string, createdAt: string) =>
+    invite({ id, email, status: 'revoked', createdAt });
 
   // Re-inviting writes a new row rather than reviving the old one, which is
   // right — a second invitation is a separate act. Withdraw that too and the
   // number has two revoked rows, then three, and the list reads as broken.
   it('collapses repeated cycles on one number to a single row', () => {
-    const rows = withdrawnNumbers([
-      revoked('14085550112', 'a', '2026-09-01T00:00:00Z'),
-      revoked('14085550112', 'b', '2026-09-05T00:00:00Z'),
-      revoked('14085550112', 'c', '2026-09-03T00:00:00Z'),
+    const rows = withdrawnInvites([
+      revoked('a@example.com', 'a', '2026-09-01T00:00:00Z'),
+      revoked('a@example.com', 'b', '2026-09-05T00:00:00Z'),
+      revoked('a@example.com', 'c', '2026-09-03T00:00:00Z'),
     ]);
     expect(rows).toHaveLength(1);
     expect(rows[0]?.times).toBe(3);
@@ -633,44 +681,44 @@ describe('the withdrawn list', () => {
   // The most confusing thing this list could do: show a number as withdrawn
   // while it is sitting in "The list" above.
   it('drops a number that has since been invited again', () => {
-    const rows = withdrawnNumbers([
-      revoked('14085550112', 'old', '2026-09-01T00:00:00Z'),
-      invite({ id: 'new', phone: '14085550112', status: 'pending' }),
+    const rows = withdrawnInvites([
+      revoked('a@example.com', 'old', '2026-09-01T00:00:00Z'),
+      invite({ id: 'new', email: 'a@example.com', status: 'pending' }),
     ]);
     expect(rows).toEqual([]);
   });
 
   it('drops a number that is blocked, which has its own list', () => {
-    const rows = withdrawnNumbers(
-      [revoked('14085550112', 'old', '2026-09-01T00:00:00Z')],
-      ['14085550112'],
+    const rows = withdrawnInvites(
+      [revoked('a@example.com', 'old', '2026-09-01T00:00:00Z')],
+      ['a@example.com'],
     );
     expect(rows).toEqual([]);
   });
 
   it('keeps distinct numbers apart, newest first', () => {
-    const rows = withdrawnNumbers([
-      revoked('14085550112', 'a', '2026-09-01T00:00:00Z'),
-      revoked('14085550113', 'b', '2026-09-09T00:00:00Z'),
+    const rows = withdrawnInvites([
+      revoked('a@example.com', 'a', '2026-09-01T00:00:00Z'),
+      revoked('b@example.com', 'b', '2026-09-09T00:00:00Z'),
     ]);
-    expect(rows.map((r) => r.invite.phone)).toEqual(['14085550113', '14085550112']);
+    expect(rows.map((r) => r.invite.email)).toEqual(['b@example.com', 'a@example.com']);
     expect(rows.every((r) => r.times === 1)).toBe(true);
   });
 
   it('says how many times, on screen, only when it is more than once', async () => {
     const user = userEvent.setup();
     api.invites = [
-      revoked('14085550112', 'a', '2026-09-01T00:00:00Z'),
-      revoked('14085550112', 'b', '2026-09-05T00:00:00Z'),
-      revoked('14085550113', 'c', '2026-09-02T00:00:00Z'),
+      revoked('a@example.com', 'a', '2026-09-01T00:00:00Z'),
+      revoked('a@example.com', 'b', '2026-09-05T00:00:00Z'),
+      revoked('b@example.com', 'c', '2026-09-02T00:00:00Z'),
     ];
     renderAdmin();
     await screen.findByRole('tab', { name: 'Invites' });
     await user.click(screen.getByRole('tab', { name: 'Invites' }));
 
     expect(await screen.findByText(/withdrawn 2 times/)).toBeInTheDocument();
-    expect(screen.getAllByText('14085550112')).toHaveLength(1);
-    expect(screen.getByText('14085550113')).toBeInTheDocument();
+    expect(screen.getAllByText('a@example.com')).toHaveLength(1);
+    expect(screen.getByText('b@example.com')).toBeInTheDocument();
   });
 });
 
@@ -680,8 +728,8 @@ describe('the three lists', () => {
   it('keeps withdrawn numbers out of the list that says they are on it', async () => {
     const user = userEvent.setup();
     api.invites = [
-      invite({ id: 'live', phone: '14085550001', status: 'pending' }),
-      invite({ id: 'gone', phone: '14085550002', status: 'revoked' }),
+      invite({ id: 'live', email: 'live@example.com', status: 'pending' }),
+      invite({ id: 'gone', email: 'gone@example.com', status: 'revoked' }),
     ];
     renderAdmin();
     await screen.findByRole('tab', { name: 'Invites' });
@@ -694,9 +742,9 @@ describe('the three lists', () => {
       screen.getByText(title).parentElement?.nextElementSibling?.nextElementSibling as HTMLElement;
 
     await screen.findByText('The list');
-    expect(within(rowsUnder('The list')).getByText('14085550001')).toBeInTheDocument();
-    expect(within(rowsUnder('The list')).queryByText('14085550002')).toBeNull();
-    expect(within(rowsUnder('Withdrawn')).getByText('14085550002')).toBeInTheDocument();
+    expect(within(rowsUnder('The list')).getByText('live@example.com')).toBeInTheDocument();
+    expect(within(rowsUnder('The list')).queryByText('gone@example.com')).toBeNull();
+    expect(within(rowsUnder('Withdrawn')).getByText('gone@example.com')).toBeInTheDocument();
   });
 
   it('says nothing about withdrawn or blocked when there are none', async () => {
@@ -714,14 +762,16 @@ describe('the three lists', () => {
 
 const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   id: 'i1',
-  phone: '14085551234',
+  email: 'invitee@example.com',
+  phone: null,
+  sentAt: null,
+  claimedAt: null,
   status: 'pending',
   note: null,
   createdAt: '2026-09-11T09:00:00Z',
   invitedByOrganization: 'NorCal SCI',
   invitedByMember: null,
   invitedByMemberIsAdmin: undefined,
-  claimableName: null,
   heldBy: null,
   heldByStatus: null,
   hasAccount: false,
@@ -740,19 +790,23 @@ describe('the invite list', () => {
     expect(await screen.findByText(/1 invite waiting/)).toBeInTheDocument();
   });
 
-  it('shows the list with who vouched for each number', async () => {
+  it('shows the list with who vouched for each address', async () => {
     api.invites = [invite()];
     await openInvites();
-    expect(screen.getByText('14085551234')).toBeInTheDocument();
+    expect(screen.getByText('invitee@example.com')).toBeInTheDocument();
     // The form's organization dropdown also says "NorCal SCI"; the row's meta
     // line is the one followed by a separator.
     expect(screen.getByText(/NorCal SCI ·/)).toBeInTheDocument();
   });
 
-  it('marks an invite that carries a claim', async () => {
-    api.invites = [invite({ claimableName: 'Bob' })];
+  it('says whether the link has gone out, and when', async () => {
+    api.invites = [
+      invite({ id: 'i1', email: 'unsent@example.com', sentAt: null }),
+      invite({ id: 'i2', email: 'sent@example.com', sentAt: '2026-10-03T12:00:00Z' }),
+    ];
     await openInvites();
-    expect(screen.getByText('claims Bob')).toBeInTheDocument();
+    expect(screen.getByText(/link not sent yet/)).toBeInTheDocument();
+    expect(screen.getByText(/link sent Oct 3/)).toBeInTheDocument();
   });
 
   it('revokes a pending invite, after confirming', async () => {
@@ -774,78 +828,128 @@ describe('the invite list', () => {
   });
 
   it('offers revoke on an invite nobody is on', async () => {
-    // There is no member to remove instead, and the dead row keeps the number
+    // There is no member to remove instead, and the dead row keeps the address
     // off the list until somebody can clear it.
     api.invites = [invite({ status: 'consumed', heldBy: null })];
     await openInvites();
     expect(screen.getByRole('button', { name: 'Revoke' })).toBeInTheDocument();
   });
 
-  it('will not add a number until it is complete', async () => {
+  it('sends the link again from a pending invite, and not from one already used', async () => {
+    api.invites = [invite({ sentAt: '2026-10-03T12:00:00Z' })];
     await openInvites();
-    const add = screen.getByRole('button', { name: 'Add to the list' });
+    await userEvent.click(screen.getByRole('button', { name: 'Resend link' }));
+    await waitFor(() => {
+      expect(api.resent).toEqual(['i1']);
+    });
+  });
+
+  it('offers no resend once the invite is used or withdrawn', async () => {
+    api.invites = [
+      invite({ id: 'u', email: 'used@example.com', status: 'consumed', heldBy: 'Bob' }),
+      invite({ id: 'r', email: 'gone@example.com', status: 'revoked' }),
+    ];
+    await openInvites();
+    expect(screen.queryByRole('button', { name: /^(Resend|Send) link$/ })).toBeNull();
+  });
+
+  it('blocks an invited address, after asking, with the reason', async () => {
+    const user = userEvent.setup();
+    api.invites = [invite()];
+    await openInvites();
+    await user.click(screen.getByRole('button', { name: 'Block…' }));
+    await user.type(screen.getByLabelText(/Reason/), 'Not a member of our community');
+    await user.click(screen.getByRole('button', { name: 'Block' }));
+    await waitFor(() => {
+      expect(api.blockCalls).toEqual([['invitee@example.com', 'Not a member of our community']]);
+    });
+  });
+
+  describe('an invite made by phone before email sign-in', () => {
+    const old = () => invite({ id: 'p1', email: null, phone: '14085551234', note: 'Met at rugby' });
+
+    it('is marked as old, and offers no resend and no block', async () => {
+      api.invites = [old()];
+      await openInvites();
+      expect(screen.getByText('14085551234')).toBeInTheDocument();
+      expect(screen.getByText('phone invite (old)')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^(Resend|Send) link$/ })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Block…' })).toBeNull();
+    });
+
+    it('is re-invited by email through the one action that withdraws it', async () => {
+      const user = userEvent.setup();
+      api.invites = [old()];
+      await openInvites();
+      await user.click(screen.getByRole('button', { name: 'Re-invite by email' }));
+      await user.type(screen.getByLabelText(/Email address for 14085551234/), 'dana@example.com');
+      await user.click(screen.getByRole('button', { name: 'Send the link' }));
+      await waitFor(() => {
+        expect(api.reinvited).toEqual([['p1', 'dana@example.com']]);
+      });
+    });
+
+    it('will not send to something that is not an address', async () => {
+      const user = userEvent.setup();
+      api.invites = [old()];
+      await openInvites();
+      await user.click(screen.getByRole('button', { name: 'Re-invite by email' }));
+      await user.type(screen.getByLabelText(/Email address for/), 'dana');
+      expect(screen.getByRole('button', { name: 'Send the link' })).toBeDisabled();
+    });
+  });
+
+  it('will not add an address until it looks like one', async () => {
+    await openInvites();
+    const add = screen.getByRole('button', { name: 'Add and send the link' });
     expect(add).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Phone number'), '4085550112');
-    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeEnabled();
+    await userEvent.type(screen.getByLabelText('Email address'), 'dana@example');
+    expect(add).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Email address'), '.com');
+    expect(add).toBeEnabled();
   });
 
-  it('only offers seeded profiles nobody has joined as yet', async () => {
+  it('has no phone field on the form', async () => {
     await openInvites();
-    const select = screen.getByLabelText(/already in the directory/);
-    expect(within(select).getByRole('option', { name: /Bob/ })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Phone number')).toBeNull();
   });
 
-  it('warns before attaching somebody else’s profile to a number', async () => {
-    await openInvites();
-    await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
-    expect(
-      screen.getByText(/Attach it only if you know the number belongs to them/),
-    ).toBeInTheDocument();
-  });
-
-  // An administrator adding a number by hand — the launch allowlist, somebody
-  // met at an event — should be able to say so rather than attributing it to
-  // an organization that had nothing to do with it.
+  // An administrator adding an address by hand — somebody met at an event —
+  // should be able to say so rather than attributing it to an organization
+  // that had nothing to do with it.
   it('vouches as the club by default, sending no organization', async () => {
     await openInvites();
-    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await userEvent.type(screen.getByLabelText('Email address'), '  Dana@Example.com ');
+    await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
     await waitFor(() => {
+      // Trimmed here; lowercased by the database (normalize_email).
       expect(api.created).toEqual([
-        { phone: '(408) 555-0112', organizationId: null, claimMemberId: null, note: null },
+        { email: 'Dana@Example.com', organizationId: null, note: null },
       ]);
     });
+    expect(await screen.findByText(/on its way to Dana@Example.com/)).toBeInTheDocument();
   });
 
-  it('sends the organization when one is chosen', async () => {
+  it('sends the organization and the note when they are chosen', async () => {
     await openInvites();
-    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
+    await userEvent.type(screen.getByLabelText('Email address'), 'dana@example.com');
     await userEvent.selectOptions(screen.getByLabelText(/Vouched for by/), 'org1');
-    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
+    await userEvent.type(screen.getByLabelText(/Note/), 'Met at rugby');
+    await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
     await waitFor(() => {
       expect(api.created).toEqual([
-        { phone: '(408) 555-0112', organizationId: 'org1', claimMemberId: null, note: null },
+        { email: 'dana@example.com', organizationId: 'org1', note: 'Met at rugby' },
       ]);
     });
   });
 
-  // The rule against this came from a policy about mentors, who cannot reach
-  // this form at all and whose own insert policy still forbids them a claim.
-  // An administrator can already delete any member and block any number, so
-  // withholding a claim protected nothing and forced a false attribution
-  // into the record of who vouched.
-  it('lets the club vouch for a directory claim', async () => {
+  it('shows the database’s refusal and keeps what was typed', async () => {
+    api.failWith = 'That email address is blocked from the club and cannot be invited';
     await openInvites();
-    await userEvent.type(screen.getByPlaceholderText('(408) 555-0112'), '4085550112');
-    await userEvent.selectOptions(screen.getByLabelText(/already in the directory/), 'seed1');
-
-    expect(screen.getByRole('button', { name: 'Add to the list' })).toBeEnabled();
-    await userEvent.click(screen.getByRole('button', { name: 'Add to the list' }));
-    await waitFor(() => {
-      expect(api.created).toEqual([
-        { phone: '(408) 555-0112', organizationId: null, claimMemberId: 'seed1', note: null },
-      ]);
-    });
+    await userEvent.type(screen.getByLabelText('Email address'), 'dana@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Add and send the link' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/blocked from the club/);
+    expect(screen.getByLabelText('Email address')).toHaveValue('dana@example.com');
   });
 });
 
@@ -1036,7 +1140,7 @@ describe('three strikes is the limit', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Give the strike' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Remove them from the club' }));
     expect(screen.getByText('Remove Ordinary from the club?')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Block this number too/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Block this email address too/)).toBeInTheDocument();
     expect(api.deleted).toEqual([]);
   });
 
@@ -1235,6 +1339,14 @@ describe('finding members', () => {
   });
 });
 
+describe('the Going tab', () => {
+  it('shows who is going to an event, for passing to the host', async () => {
+    renderAdmin();
+    await userEvent.click(await screen.findByRole('tab', { name: 'Going' }));
+    expect(await screen.findByText('Going section')).toBeInTheDocument();
+  });
+});
+
 describe('a roster that fits on a phone', () => {
   it('shows each member closed, with their controls one tap away', async () => {
     renderAdmin();
@@ -1299,6 +1411,7 @@ describe('the tabs', () => {
       'Members',
       'Reports',
       'Invites',
+      'Going',
       'Organizations',
       'Rooms',
       'Sign-in',

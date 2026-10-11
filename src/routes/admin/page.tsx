@@ -5,31 +5,41 @@ import { BackLink } from '@/components/back-link';
 import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
+import { looksLikeEmail } from '@/lib/auth-email';
 import { useAdminReports } from '@/lib/chat/reports';
 import { describeThrown } from '@/lib/describe-error';
 import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
+import { EventContactsSection } from '@/routes/admin/event-contacts-section';
 import { InviteForm } from '@/routes/admin/invite-form';
 import {
   type AdminInvite,
   type AdminMember,
   addStrike,
-  type BlockedNumber,
-  blockNumber,
+  type BlockedEmail,
+  blockEmail,
   canRevoke,
   deleteMember,
+  deliveryNote,
   fetchAdminMembers,
-  fetchBlockedNumbers,
+  fetchBlockedEmails,
   fetchInvites,
+  fetchInvitingOrganizations,
   fetchStrikes,
+  type InvitingOrganization,
+  inviteLabel,
   inviteState,
+  isOldPhoneInvite,
+  reinviteByEmail,
+  removeAndBlock,
+  resendInvite,
   revokeInvite,
   type Strike,
   setMemberStatus,
   setMemberType,
-  unblockNumber,
+  unblockEmail,
   vouchedBy as vouchedBy_,
-  withdrawnNumbers,
+  withdrawnInvites,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
 import { OrganizationsSection } from '@/routes/admin/organizations-section';
@@ -45,6 +55,7 @@ const ADMIN_TAB_VALUES = [
   'members',
   'reports',
   'invites',
+  'going',
   'organizations',
   'rooms',
   'sign-in',
@@ -73,8 +84,9 @@ export default function AdminPage() {
   const [members, setMembers] = useState<AdminMember[]>([]);
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
-  const [blocked, setBlocked] = useState<BlockedNumber[]>([]);
+  const [blocked, setBlocked] = useState<BlockedEmail[]>([]);
   const [organizationRevision, setOrganizationRevision] = useState(0);
+  const [inviters, setInviters] = useState<InvitingOrganization[]>([]);
   const [tab, setTab] = useTabParam(ADMIN_TAB_VALUES, 'members');
   // Read here, not in the panel, so the tab itself can say when Apple needs
   // renewing: the reminder an administrator sees without opening it.
@@ -104,7 +116,7 @@ export default function AdminPage() {
     const [memberResult, inviteResult, blockedRows, strikeResult] = await Promise.all([
       fetchAdminMembers(),
       fetchInvites(),
-      fetchBlockedNumbers(),
+      fetchBlockedEmails(),
       fetchStrikes(),
     ]);
     if (memberResult.ok) setMembers(memberResult.members);
@@ -121,7 +133,10 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (account.status === 'member') void load();
+    if (account.status === 'member') {
+      void load();
+      void fetchInvitingOrganizations().then(setInviters);
+    }
   }, [account.status, load]);
 
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
@@ -196,6 +211,8 @@ export default function AdminPage() {
   const matching = members.filter((member) => {
     const words = [
       member.displayName,
+      member.email,
+      member.username,
       member.phone,
       member.city,
       member.state,
@@ -207,7 +224,7 @@ export default function AdminPage() {
       .toLocaleLowerCase();
     return (
       words.includes(query) ||
-      (phoneQuery.length > 0 && member.phone.replace(/\D/g, '').includes(phoneQuery))
+      (phoneQuery.length > 0 && (member.phone ?? '').replace(/\D/g, '').includes(phoneQuery))
     );
   });
   const needsAttention = (m: AdminMember) => !m.isSeed && (m.status !== 'active' || m.strikes > 0);
@@ -222,14 +239,14 @@ export default function AdminPage() {
   const directoryCount = members.length - joinedCount;
   const attentionCount = members.filter(needsAttention).length;
   const pending = invites.filter((i) => i.status === 'pending');
-  // Three lists, because "The list" should mean the numbers that are on it.
+  // Three lists, because "The list" should mean the people who are on it.
   // Withdrawn rows used to sit among them and accumulate forever, which is
   // what made deleting them look necessary — they carry who vouched and when,
   // and the partial unique index means they cost nothing where they are.
   const onTheList = invites.filter((i) => i.status !== 'revoked');
-  const withdrawn = withdrawnNumbers(
+  const withdrawn = withdrawnInvites(
     invites,
-    blocked.map((b) => b.phone),
+    blocked.map((b) => b.email),
   );
 
   return (
@@ -264,6 +281,7 @@ export default function AdminPage() {
           { value: 'members', label: 'Members' },
           { value: 'reports', label: 'Reports', count: reports.openCount, countLabel: 'waiting' },
           { value: 'invites', label: 'Invites' },
+          { value: 'going', label: 'Going' },
           { value: 'organizations', label: 'Organizations' },
           { value: 'rooms', label: 'Rooms' },
           {
@@ -304,7 +322,7 @@ export default function AdminPage() {
                     onChange={(event) => {
                       setSearch(event.target.value);
                     }}
-                    placeholder="Name, phone, location or account type"
+                    placeholder="Name, email, @username, location or account type"
                     className="min-h-[44px] min-w-0 flex-1 basis-[14rem] rounded-[10px] border border-line bg-canvas px-3 text-[0.875rem] text-ink outline-none focus:border-emphasis"
                   />
                   {search ? (
@@ -347,6 +365,7 @@ export default function AdminPage() {
               </div>
             ) : null}
 
+            {tab === 'going' ? <EventContactsSection /> : null}
             {tab === 'rooms' ? <RoomsSection /> : null}
             {tab === 'sign-in' ? (
               <SignInSection health={apple.health} onRenewed={apple.reload} />
@@ -387,7 +406,7 @@ export default function AdminPage() {
                 <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
                   <Section
                     title="Add to the list"
-                    subtitle="Nobody can join without a number on it."
+                    subtitle="Nobody can join without an invite. Add an email address and the club sends the link."
                   >
                     <div className="p-3">
                       <InviteForm
@@ -401,7 +420,7 @@ export default function AdminPage() {
                 <div className="min-w-0">
                   <Section
                     title="The list"
-                    subtitle="A number nobody is on can be taken off the list."
+                    subtitle="An invite nobody has used can be taken off the list, or its link sent again."
                   >
                     {onTheList.map((invite) => (
                       <InviteRow
@@ -411,8 +430,15 @@ export default function AdminPage() {
                         onRevoke={() => {
                           act(invite.id, () => revokeInvite(invite.id));
                         }}
+                        onResend={() => {
+                          act(invite.id, () => resendInvite(invite.id));
+                        }}
+                        onReinvite={(email) => {
+                          act(invite.id, () => reinviteByEmail(invite, email, inviters));
+                        }}
                         onBlock={(reason) => {
-                          act(invite.id, () => blockNumber(invite.phone, reason));
+                          if (invite.email)
+                            act(invite.id, () => blockEmail(invite.email ?? '', reason));
                         }}
                       />
                     ))}
@@ -439,8 +465,15 @@ export default function AdminPage() {
                           onRevoke={() => {
                             act(invite.id, () => revokeInvite(invite.id));
                           }}
+                          onResend={() => {
+                            act(invite.id, () => resendInvite(invite.id));
+                          }}
+                          onReinvite={(email) => {
+                            act(invite.id, () => reinviteByEmail(invite, email, inviters));
+                          }}
                           onBlock={(reason) => {
-                            act(invite.id, () => blockNumber(invite.phone, reason));
+                            if (invite.email)
+                              act(invite.id, () => blockEmail(invite.email ?? '', reason));
                           }}
                         />
                       ))}
@@ -454,27 +487,27 @@ export default function AdminPage() {
                     >
                       {blocked.map((row) => (
                         <div
-                          key={row.id}
+                          key={row.email}
                           className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
                         >
                           <span className="min-w-0 flex-1">
                             <span className="block font-extrabold font-head text-[0.90625rem]">
-                              {row.phone}
+                              {row.email}
                             </span>
                             <span className="mt-0.5 block text-[0.75rem] text-grey">
                               {row.reason ?? 'No reason recorded'}
                               {row.blockedBy ? ` · blocked by ${row.blockedBy}` : ''}
                             </span>
                           </span>
-                          {busyId === row.id ? (
+                          {busyId === row.email ? (
                             <Loader2 className="h-4 w-4 animate-spin text-grey" />
                           ) : (
                             <SmallButton
                               onClick={() => {
                                 const ok = window.confirm(
-                                  `Unblock ${row.phone}?\n\nThey can be invited again. It does not bring their profile back — that was deleted when the number was blocked.`,
+                                  `Unblock ${row.email}?\n\nThey can be invited again. It does not bring back a profile that was deleted when they were removed.`,
                                 );
-                                if (ok) act(row.id, () => unblockNumber(row.phone));
+                                if (ok) act(row.email, () => unblockEmail(row.email));
                               }}
                             >
                               Unblock
@@ -512,12 +545,9 @@ export default function AdminPage() {
                     act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
                   onRemove={(block, reason) => {
-                    // Blocking deletes the member as part of blocking, inside
-                    // one function, so a dropped connection cannot leave the
-                    // number blocked and the person still in the deck.
-                    act(m.id, () =>
-                      block ? blockNumber(m.phone, reason, m.id) : deleteMember(m.id),
-                    );
+                    // Blocks the address first, then removes: see
+                    // removeAndBlock for why that order.
+                    act(m.id, () => (block ? removeAndBlock(m, reason) : deleteMember(m.id)));
                   }}
                   onStrike={(reason) => {
                     act(
@@ -581,12 +611,9 @@ export default function AdminPage() {
                     act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
                   onRemove={(block, reason) => {
-                    // Blocking deletes the member as part of blocking, inside
-                    // one function, so a dropped connection cannot leave the
-                    // number blocked and the person still in the deck.
-                    act(m.id, () =>
-                      block ? blockNumber(m.phone, reason, m.id) : deleteMember(m.id),
-                    );
+                    // Blocks the address first, then removes: see
+                    // removeAndBlock for why that order.
+                    act(m.id, () => (block ? removeAndBlock(m, reason) : deleteMember(m.id)));
                   }}
                   onStrike={(reason) => {
                     act(
@@ -738,7 +765,10 @@ function Row({
           {isSelf ? <span className="ml-2 text-[0.6875rem] text-grey">you</span> : null}
         </span>
         <span className="mt-0.5 block text-[0.75rem] text-grey">
-          {member.phone} · {[member.city, member.state].filter(Boolean).join(', ')} ·{' '}
+          {member.username ? `@${member.username} · ` : ''}
+          {member.email ?? 'no email yet'}
+          {member.phone ? ` · ${member.phone}` : ''} ·{' '}
+          {[member.city, member.state].filter(Boolean).join(', ')} ·{' '}
           <span className={cn(member.status !== 'active' && 'font-bold text-destructive')}>
             {member.status}
           </span>
@@ -904,7 +934,7 @@ function Row({
           </p>
           <p className="mt-1.5">
             Pausing keeps their profile and their record of what they have been to, and is undone
-            with Resume. Removing deletes both, and can also block the number.
+            with Resume. Removing deletes both, and can also block their email address.
           </p>
         </Panel>
       ) : null}
@@ -1049,7 +1079,7 @@ function Row({
               event_rsvps, event_dismissals, organization_follows and
               member_strikes are all `on delete cascade` on member_id, so
               removing somebody takes their whole record of what they went to
-              and who they followed — and rejoining on the same number does not
+              and who they followed — and rejoining later does not
               bring it back, because it is a new row. That was found the way
               these things are: by removing an account to test the button and
               watching Been to empty itself. */}
@@ -1075,7 +1105,7 @@ function Row({
             conversation is deleted by somebody leaving it.
           </p>
           {/* The one question worth asking at this moment, and the only thing
-              separating this from a ban. Left unticked, the number is free
+              separating this from a ban. Left unticked, the address is free
               and anybody can invite them back tomorrow.
 
               Offered on every row, directory ones included. It was hidden on
@@ -1100,7 +1130,9 @@ function Row({
               className="mt-0.5 h-4 w-4 flex-none accent-[var(--destructive)]"
             />
             <span>
-              <span className="block font-bold text-ink">Block this number too</span>
+              <span className="block font-bold text-ink">
+                {member.email ? 'Block this email address too' : 'Block this number too'}
+              </span>
               <span className="block text-grey">
                 Nobody — no organization and no mentor — can put it back on the list until an
                 administrator unblocks it.
@@ -1219,32 +1251,37 @@ function InviteRow({
   times = 1,
   busy,
   onRevoke,
+  onResend,
+  onReinvite,
   onBlock,
 }: {
   invite: AdminInvite;
-  /** How many times this number has been invited and withdrawn. */
+  /** How many times this address has been invited and withdrawn. */
   times?: number;
   busy: boolean;
   onRevoke: () => void;
+  onResend: () => void;
+  onReinvite: (email: string) => void;
   onBlock: (reason: string | null) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [reinviting, setReinviting] = useState(false);
+  const [email, setEmail] = useState('');
   const [reason, setReason] = useState('');
   const vouchedBy = vouchedBy_(invite);
+  const oldPhone = isOldPhoneInvite(invite);
+  const delivery = deliveryNote(invite);
+  const who = inviteLabel(invite);
   return (
     <div className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0">
-      {/* A basis rather than a bare flex-1. With only `flex-1` this column
-          shrank towards nothing to keep three buttons on one line, so at the
-          largest text setting the phone and city wrapped into a four-character
-          ribbon underneath them. Given a basis it holds its width and the
-          buttons wrap to their own row, which is what `flex-wrap` on the row
-          was there for. */}
+      {/* A basis rather than a bare flex-1, so at the largest text setting
+          this column holds its width and the buttons wrap to their own row. */}
       <span className="min-w-0 flex-1 basis-[13rem]">
-        <span className="block font-extrabold font-head text-[0.90625rem]">
-          {invite.phone}
-          {invite.claimableName ? (
+        <span className="block break-words font-extrabold font-head text-[0.90625rem]">
+          {who}
+          {oldPhone ? (
             <span className="ml-2 rounded-full bg-tint px-2 py-0.5 font-bold text-[0.625rem] text-emphasis">
-              claims {invite.claimableName}
+              phone invite (old)
             </span>
           ) : null}
         </span>
@@ -1253,21 +1290,17 @@ function InviteRow({
           <span
             className={cn(
               // A member is on it: the healthy case, and the only one worth
-              // weight. An invite backing nobody reads like the rest of the
-              // list rather than like an alarm — it is not a problem, it is a
-              // number somebody can put back on the list.
+              // weight. Pending with an account behind it is the one row that
+              // asks the reader to do something: somebody tried and stopped.
               invite.status === 'consumed' && invite.heldBy !== null && 'font-bold text-emphasis',
               invite.status === 'revoked' && 'text-destructive',
-              // Somebody tried and stopped. The only row on this list that
-              // asks the reader to do something about it.
               invite.status === 'pending' && invite.hasAccount === true && 'font-bold text-gold-dp',
             )}
           >
             {inviteState(invite)}
           </span>
+          {delivery ? ` · ${delivery}` : ''}
           {invite.note ? ` · ${invite.note}` : ''}
-          {/* A number that keeps coming back is worth seeing as a number
-              rather than as five rows that look like a bug. */}
           {times > 1 ? ` · withdrawn ${times} times` : ''}
         </span>
       </span>
@@ -1276,12 +1309,26 @@ function InviteRow({
         <Loader2 className="h-4 w-4 animate-spin text-grey" />
       ) : (
         <span className="flex flex-wrap gap-1.5">
+          {invite.status === 'pending' && invite.email ? (
+            <SmallButton onClick={onResend}>
+              {invite.sentAt ? 'Resend link' : 'Send link'}
+            </SmallButton>
+          ) : null}
+          {oldPhone && invite.status !== 'consumed' ? (
+            <SmallButton
+              onClick={() => {
+                setReinviting((open) => !open);
+              }}
+            >
+              Re-invite by email
+            </SmallButton>
+          ) : null}
           {canRevoke(invite) ? (
             <SmallButton
               destructive
               onClick={() => {
                 const ok = window.confirm(
-                  `Take ${invite.phone} off the list?\n\nThey will not be able to join. The number can be added again later.`,
+                  `Take ${who} off the list?\n\nThey will not be able to join with it. They can be added again later.`,
                 );
                 if (ok) onRevoke();
               }}
@@ -1289,25 +1336,65 @@ function InviteRow({
               Revoke
             </SmallButton>
           ) : null}
-          {/* Offered on every row, including one already revoked and one a
-              member is on. Revoke asks "is this number on the list"; Block
-              asks "should this number ever be", and those have different
-              answers — a withdrawn invite is exactly where somebody decides
-              the answer is never. */}
-          <SmallButton
-            destructive
-            onClick={() => {
-              setConfirming(true);
-            }}
-          >
-            Block…
-          </SmallButton>
+          {/* Offered on every email row, including one already revoked and one
+              a member is on. Revoke asks "is this person on the list"; Block
+              asks "should this address ever be", and a withdrawn invite is
+              exactly where somebody decides the answer is never. An old phone
+              invite has no address to block. */}
+          {invite.email ? (
+            <SmallButton
+              destructive
+              onClick={() => {
+                setConfirming(true);
+              }}
+            >
+              Block…
+            </SmallButton>
+          ) : null}
         </span>
       )}
 
-      {confirming ? (
+      {reinviting && !busy ? (
+        <form
+          className="flex basis-full flex-wrap items-end gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!looksLikeEmail(email)) return;
+            setReinviting(false);
+            onReinvite(email.trim());
+            setEmail('');
+          }}
+        >
+          <span className="min-w-[12rem] flex-1">
+            <label htmlFor={`reinvite-${invite.id}`} className="block font-bold text-[0.75rem]">
+              Email address for {invite.phone}
+            </label>
+            <input
+              id={`reinvite-${invite.id}`}
+              type="email"
+              inputMode="email"
+              autoCapitalize="none"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
+              placeholder="name@example.com"
+              className="mt-1 min-h-[44px] w-full rounded-[10px] border border-line bg-canvas px-3 text-[0.875rem] outline-none focus:border-emphasis"
+            />
+          </span>
+          <button
+            type="submit"
+            disabled={!looksLikeEmail(email)}
+            className="min-h-[44px] rounded-full bg-action px-4 font-bold font-head text-[0.8125rem] text-white disabled:opacity-40"
+          >
+            Send the link
+          </button>
+        </form>
+      ) : null}
+
+      {confirming && invite.email ? (
         <ConfirmPanel
-          title={`Block ${invite.phone}?`}
+          title={`Block ${invite.email}?`}
           confirmLabel="Block"
           onCancel={() => {
             setConfirming(false);
@@ -1319,9 +1406,9 @@ function InviteRow({
           }}
         >
           <p>
-            Nobody — no organization and no mentor — can put this number on the list until an
-            administrator unblocks it.
-            {invite.heldBy ? ` ${invite.heldBy}'s profile is deleted with it.` : ''}
+            Nobody — no organization and no mentor — can put this address on the list until an
+            administrator unblocks it. Its invite is withdrawn.
+            {invite.heldBy ? ` ${invite.heldBy} stays a member; remove them separately.` : ''}
           </p>
           <ReasonField id={`reason-invite-${invite.id}`} value={reason} onChange={setReason} />
         </ConfirmPanel>

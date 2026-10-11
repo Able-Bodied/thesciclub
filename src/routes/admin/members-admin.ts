@@ -1,4 +1,5 @@
 import { describeError } from '@/lib/describe-error';
+import { addedButNotSent, SEND_FAILED, sendInvite } from '@/lib/send-invite';
 import { getSupabase } from '@/lib/supabase';
 import { memberType } from '@/types/domain';
 
@@ -14,7 +15,11 @@ import { memberType } from '@/types/domain';
 export interface AdminMember {
   id: string;
   displayName: string;
-  phone: string;
+  /** The optional contact number for events, typed by the member. Not what signs them in. */
+  phone: string | null;
+  /** The account's address, from Auth. Null for an account that has none yet (a phone member). */
+  email: string | null;
+  username: string | null;
   type: 'peer' | 'mentor' | 'organization';
   status: 'active' | 'suspended' | 'removed';
   isAdmin: boolean;
@@ -40,7 +45,9 @@ export interface AdminMember {
 interface AdminMemberRow {
   id: string;
   display_name: string;
-  phone: string;
+  phone: string | null;
+  email?: string | null;
+  username?: string | null;
   type: string;
   status: string;
   is_admin: boolean;
@@ -58,6 +65,8 @@ function toAdminMember(row: AdminMemberRow): AdminMember {
     id: row.id,
     displayName: row.display_name,
     phone: row.phone,
+    email: row.email ?? null,
+    username: row.username ?? null,
     type: memberType(row.type),
     status: row.status as AdminMember['status'],
     isAdmin: row.is_admin,
@@ -137,7 +146,13 @@ export async function deleteMember(target: string): Promise<{ ok: boolean; error
 
 export interface AdminInvite {
   id: string;
-  phone: string;
+  /** The address the link goes to. Null on an old phone invite. */
+  email: string | null;
+  /** Only on an invite made before email sign-in; null on every email invite. */
+  phone: string | null;
+  /** When the link last went out; null until it has. */
+  sentAt: string | null;
+  claimedAt: string | null;
   status: 'pending' | 'consumed' | 'revoked';
   note: string | null;
   createdAt: string;
@@ -145,8 +160,6 @@ export interface AdminInvite {
   invitedByMember: string | null;
   /** Whether that member is the club's administrator rather than a mentor. */
   invitedByMemberIsAdmin: boolean | undefined;
-  /** The seeded profile this invite entitles its holder to claim, if any. */
-  claimableName: string | null;
   /**
    * The member on this number.
    *
@@ -178,14 +191,16 @@ export interface AdminInvite {
 
 interface AdminInviteRow {
   id: string;
-  phone: string;
+  email?: string | null;
+  phone: string | null;
+  sent_at?: string | null;
+  claimed_at?: string | null;
   status: string;
   note: string | null;
   created_at: string;
   invited_by_organization: string | null;
   invited_by_member: string | null;
   invited_by_member_is_admin: boolean | null;
-  claimable_name: string | null;
   held_by: string | null;
   held_by_status: string | null;
   has_account: boolean | null;
@@ -195,13 +210,6 @@ export interface InvitingOrganization {
   id: string;
   name: string;
   shortCode: string;
-}
-
-export interface ClaimableProfile {
-  id: string;
-  displayName: string;
-  city: string | null;
-  state: string;
 }
 
 export async function fetchInvites(): Promise<
@@ -217,14 +225,16 @@ export async function fetchInvites(): Promise<
     ok: true,
     invites: (result.data as AdminInviteRow[]).map((row) => ({
       id: row.id,
+      email: row.email ?? null,
       phone: row.phone,
+      sentAt: row.sent_at ?? null,
+      claimedAt: row.claimed_at ?? null,
       status: row.status as AdminInvite['status'],
       note: row.note,
       createdAt: row.created_at,
       invitedByOrganization: row.invited_by_organization,
       invitedByMember: row.invited_by_member,
       invitedByMemberIsAdmin: row.invited_by_member_is_admin ?? undefined,
-      claimableName: row.claimable_name,
       heldBy: row.held_by,
       heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
       hasAccount: row.has_account ?? undefined,
@@ -248,17 +258,6 @@ export async function fetchInvitingOrganizations(): Promise<InvitingOrganization
   }));
 }
 
-export async function fetchClaimableProfiles(): Promise<ClaimableProfile[]> {
-  const result = await getSupabase()
-    .from('admin_claimable_members')
-    .select('id, display_name, city, state')
-    .order('display_name');
-  if (result.error) return [];
-  return (
-    result.data as { id: string; display_name: string; city: string | null; state: string }[]
-  ).map((m) => ({ id: m.id, displayName: m.display_name, city: m.city, state: m.state }));
-}
-
 /**
  * admin_create_invite refuses in its own sentences — a blocked number, an
  * organization that cannot invite — and those pass through. The unique index
@@ -266,23 +265,41 @@ export async function fetchClaimableProfiles(): Promise<ClaimableProfile[]> {
  */
 const INVITE_REFUSAL = {
   attempt: 'The invite was not added.',
-  duplicate: 'That number is already on the club’s list.',
+  duplicate: 'That email address is already on the club’s list.',
 };
 
+/**
+ * Adds an address to the list, then emails its link.
+ *
+ * The two are separate on purpose. An invite that is on the list but whose
+ * email failed is still a real invite, so that case comes back `ok` with
+ * `sendError` set and the row visible, ready for Resend; reporting it as a
+ * failure would invite a second Add, which the unique index then refuses.
+ */
 export async function createInvite(input: {
-  phone: string;
+  email: string;
   /** Null when the administrator is vouching in their own name. */
   organizationId: string | null;
-  claimMemberId: string | null;
   note: string | null;
-}): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await getSupabase().rpc('admin_create_invite', {
-    raw_phone: input.phone,
-    organization: input.organizationId,
-    claim_member: input.claimMemberId,
-    invite_note: input.note,
+}): Promise<{ ok: boolean; error?: string; sendError?: string }> {
+  // Not destructured: the client types rpc data as `any`.
+  const result = await getSupabase().rpc('admin_create_invite', {
+    raw_email: input.email,
+    organization_id: input.organizationId,
+    note: input.note,
   });
-  return error ? { ok: false, error: describeError(error, INVITE_REFUSAL) } : { ok: true };
+  if (result.error) return { ok: false, error: describeError(result.error, INVITE_REFUSAL) };
+  const created: unknown = result.data;
+  const id = (created as { id?: unknown } | null)?.id;
+  if (typeof id !== 'string') return { ok: true, sendError: SEND_FAILED };
+  const sent = await sendInvite(id);
+  return sent.ok ? { ok: true } : { ok: true, sendError: addedButNotSent(sent.error) };
+}
+
+/** Another link to the same address; the old link stops working. */
+export async function resendInvite(id: string): Promise<{ ok: boolean; error?: string }> {
+  const sent = await sendInvite(id);
+  return sent.ok ? { ok: true } : { ok: false, error: sent.error };
 }
 
 export async function revokeInvite(target: string): Promise<{ ok: boolean; error?: string }> {
@@ -345,20 +362,36 @@ export function inviteState(invite: AdminInvite): string {
   return `used by ${invite.heldBy}`;
 }
 
-/* --------------------------------------------------------- blocked numbers */
+/** Dates the way the list reads them: "3 Oct". */
+const shortDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
 
-export interface BlockedNumber {
-  id: string;
-  phone: string;
+/**
+ * Where an email invite's link has got to: sent, or not sent yet. Said on its
+ * own line from the state because "not used yet" does not tell an
+ * administrator whether the person has been emailed at all.
+ */
+export function deliveryNote(invite: AdminInvite): string | null {
+  if (invite.status === 'revoked' || invite.email === null) return null;
+  if (invite.sentAt === null) return 'link not sent yet';
+  const sent = `link sent ${shortDate(invite.sentAt)}`;
+  return invite.claimedAt && invite.status === 'pending'
+    ? `${sent}, opened ${shortDate(invite.claimedAt)}`
+    : sent;
+}
+
+/* ---------------------------------------------------------- blocked emails */
+
+export interface BlockedEmail {
+  email: string;
   reason: string | null;
   blockedAt: string;
   blockedBy: string | null;
 }
 
-interface BlockedNumberRow {
-  id: string;
-  phone: string;
-  reason: string | null;
+interface BlockedEmailRow {
+  email: string;
+  note: string | null;
   blocked_at: string;
   blocked_by: string | null;
 }
@@ -368,119 +401,174 @@ interface BlockedNumberRow {
  *
  * Empty rather than failing when the view is absent: the app is deployed
  * ahead of the database often enough in this project that a missing view
- * should cost a section of a screen, not the screen. `/admin` still lists
- * members and invites on a database that has not been migrated.
+ * should cost a section of a screen, not the screen.
  */
-export async function fetchBlockedNumbers(): Promise<BlockedNumber[]> {
+export async function fetchBlockedEmails(): Promise<BlockedEmail[]> {
   const result = await getSupabase()
-    .from('admin_blocked_numbers')
+    .from('admin_blocked_emails')
     .select('*')
     .order('blocked_at', { ascending: false });
   if (result.error) return [];
-  return (result.data as BlockedNumberRow[]).map((row) => ({
-    id: row.id,
-    phone: row.phone,
-    reason: row.reason,
+  return (result.data as BlockedEmailRow[]).map((row) => ({
+    email: row.email,
+    reason: row.note,
     blockedAt: row.blocked_at,
     blockedBy: row.blocked_by,
   }));
 }
 
 /**
- * Ban a number: the member on it is deleted, their invite revoked, and the
- * number barred from the list until somebody unblocks it.
- *
- * All of that happens inside `admin_block_number` rather than as three calls
- * from here. A ban half-applied — number blocked, member still in the deck —
- * is the state this is meant to prevent, and a dropped connection between two
- * client calls is exactly how you would get one.
+ * Bar an address from the list until somebody unblocks it. Live invites for it
+ * are withdrawn inside `admin_block_email`; a member already on that address is
+ * not touched (see `removeAndBlock`).
  */
-export async function blockNumber(
-  phone: string,
+export async function blockEmail(
+  email: string,
   reason: string | null,
-  /**
-   * The member on that number, where there is one.
-   *
-   * Blocking deletes them as part of blocking, so their photograph has to go
-   * too — but the function takes a phone number and the storage folder is keyed
-   * by member id, so the caller passes the id it already has on the row. Absent
-   * for a number with nobody on it, which is the ordinary case for blocking an
-   * invite that was never used.
-   */
-  memberId?: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await getSupabase().rpc('admin_block_number', {
-    raw_phone: phone,
-    block_reason: reason,
+  const { error } = await getSupabase().rpc('admin_block_email', {
+    raw_email: email,
+    note: reason,
   });
-  if (error) return { ok: false, error: describeError(error, 'The number was not blocked.') };
-  if (memberId) await clearPhotoFolder(memberId);
-  return { ok: true };
+  return error
+    ? { ok: false, error: describeError(error, 'The address was not blocked.') }
+    : { ok: true };
 }
 
-export async function unblockNumber(phone: string): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await getSupabase().rpc('admin_unblock_number', { raw_phone: phone });
+export async function unblockEmail(email: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_unblock_email', { raw_email: email });
   return error
-    ? { ok: false, error: describeError(error, 'The number was not unblocked.') }
+    ? { ok: false, error: describeError(error, 'The address was not unblocked.') }
     : { ok: true };
 }
 
 /**
- * The withdrawn list: one row per number, and only numbers that are actually
- * off the list.
+ * Remove a member and bar the way back in.
+ *
+ * `admin_block_email` does not remove a member, so this is two calls, **block
+ * first**: if the second fails the address is barred and the member is still
+ * there, which an administrator can see and finish; the other order could
+ * leave somebody removed and free to be invited again, and look like it
+ * worked. A member with no email (a phone account that never added one) is
+ * blocked by number, which does both in one function.
+ */
+export async function removeAndBlock(
+  member: { id: string; email: string | null; phone: string | null },
+  reason: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  if (member.email) {
+    const blocked = await blockEmail(member.email, reason);
+    if (!blocked.ok) return blocked;
+    const removed = await deleteMember(member.id);
+    return removed.ok
+      ? removed
+      : {
+          ok: false,
+          error: `${member.email} is blocked, but the member was not removed: ${removed.error ?? 'try again'}`,
+        };
+  }
+  if (!member.phone) {
+    return {
+      ok: false,
+      error: 'They have no email address or number on file to block. Remove them without blocking.',
+    };
+  }
+  const { error } = await getSupabase().rpc('admin_block_number', {
+    raw_phone: member.phone,
+    block_reason: reason,
+  });
+  if (error) return { ok: false, error: describeError(error, 'They were not removed.') };
+  // admin_block_number removes the member found by the number Auth verified. A
+  // row with no such account (a seeded profile, or a member whose typed number
+  // differs) is still there, so finish the removal; "No such member" means the
+  // first call already did it.
+  const removed = await deleteMember(member.id);
+  if (!removed.ok && removed.error !== 'No such member') return removed;
+  await clearPhotoFolder(member.id);
+  return { ok: true };
+}
+
+/**
+ * The withdrawn list: one row per person, and only people actually off the
+ * list.
  *
  * Revoking does not delete, deliberately — the row keeps who vouched and
- * when, and the partial unique index means a revoked row costs nothing where
- * it is. But re-inviting a number writes a *new* row rather than reviving the
- * old one, which is also right: the second invitation is a separate act, by
- * possibly a different person, for possibly a different reason. Withdraw that
- * one too and the number has two revoked rows, then three.
+ * when. Re-inviting writes a *new* row rather than reviving the old one, so
+ * withdrawing that one too leaves two revoked rows, then three. Sound in the
+ * database and unreadable on a screen, so the grouping happens here:
  *
- * All of which is sound in the database and unreadable on a screen. So the
- * grouping happens here:
+ * - An address with a live invite is not withdrawn, whatever its history says.
+ * - A blocked address belongs in Blocked, not in both.
+ * - Everything else collapses to its most recent invitation, with a count.
  *
- * - A number with a live invite is not withdrawn, whatever its history says.
- *   Without this a re-invited number appears in "The list" and in "Withdrawn"
- *   simultaneously, which is the most confusing thing this list could do.
- * - A blocked number belongs in Blocked, not in both.
- * - Everything else collapses to its most recent invitation, with a count
- *   when there has been more than one. Repeatedly inviting and withdrawing
- *   the same number is worth seeing as a number, not as five rows that look
- *   like a bug.
- *
- * Most recent first, by when the invitation was created: `admin_invites` does
- * not carry `revoked_at`, and the newest invitation for a number is the one
- * whose withdrawal came last anyway.
+ * The key is the email, or the phone for an old phone invite. Most recent
+ * first, by when the invitation was created.
  */
-export interface WithdrawnNumber {
-  /** The most recent withdrawn invitation for this number. */
+export interface WithdrawnInvite {
+  /** The most recent withdrawn invitation for this address. */
   invite: AdminInvite;
-  /** How many times this number has been invited and withdrawn. */
+  /** How many times this address has been invited and withdrawn. */
   times: number;
 }
 
-export function withdrawnNumbers(
-  invites: AdminInvite[],
-  blockedPhones: string[] = [],
-): WithdrawnNumber[] {
-  const onTheList = new Set(invites.filter((i) => i.status !== 'revoked').map((i) => i.phone));
-  const blocked = new Set(blockedPhones);
+const inviteKey = (i: AdminInvite): string => (i.email ?? i.phone ?? i.id).toLowerCase();
 
-  const byPhone = new Map<string, AdminInvite[]>();
+export function withdrawnInvites(
+  invites: AdminInvite[],
+  blockedEmails: string[] = [],
+): WithdrawnInvite[] {
+  const onTheList = new Set(invites.filter((i) => i.status !== 'revoked').map(inviteKey));
+  const blocked = new Set(blockedEmails.map((e) => e.toLowerCase()));
+
+  const byKey = new Map<string, AdminInvite[]>();
   for (const invite of invites) {
     if (invite.status !== 'revoked') continue;
-    if (onTheList.has(invite.phone) || blocked.has(invite.phone)) continue;
-    const group = byPhone.get(invite.phone);
+    const key = inviteKey(invite);
+    if (onTheList.has(key) || blocked.has(key)) continue;
+    const group = byKey.get(key);
     if (group) group.push(invite);
-    else byPhone.set(invite.phone, [invite]);
+    else byKey.set(key, [invite]);
   }
 
-  return [...byPhone.values()]
+  return [...byKey.values()]
     .map((group) => {
       const newest = group.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b));
       return { invite: newest, times: group.length };
     })
     .sort((a, b) => b.invite.createdAt.localeCompare(a.invite.createdAt));
+}
+
+/** An invite made when the phone was the account. It cannot be used now; it can be re-issued by email. */
+export function isOldPhoneInvite(invite: AdminInvite): boolean {
+  return invite.email === null && invite.phone !== null;
+}
+
+/** What to call whoever an invite is for. */
+export function inviteLabel(invite: AdminInvite): string {
+  return invite.email ?? invite.phone ?? 'Unknown';
+}
+
+/**
+ * Re-issue an old phone invite by email: a new invite at the address, then the
+ * phone one withdrawn so the person is not on the list twice. The new invite
+ * keeps the old one's organization (matched by name) and note.
+ */
+export async function reinviteByEmail(
+  old: AdminInvite,
+  email: string,
+  organizations: InvitingOrganization[],
+): Promise<{ ok: boolean; error?: string; sendError?: string }> {
+  const org = old.invitedByOrganization
+    ? organizations.find((o) => o.name === old.invitedByOrganization)
+    : undefined;
+  const created = await createInvite({
+    email,
+    organizationId: org?.id ?? null,
+    note: old.note,
+  });
+  if (!created.ok) return created;
+  if (old.status === 'pending') await revokeInvite(old.id);
+  return created;
 }
 
 /**
