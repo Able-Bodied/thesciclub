@@ -603,7 +603,10 @@ the product definition and wins over this file.
     ingest** reads `admin_override` (`withAdminOverride`): the override goes
     back over the scrape and the scraped value into `feed_values`; untouched
     fields keep updating. No Delete on an imported event (the import would
-    bring it back), and no cover picture. Form note lists what the calendar
+    bring it back). A cover picture too, since `20261012070000` (the owner,
+    2026-10-11): `may_change_event` lets an administrator change an
+    imported event, so `set_event_photo` and the bucket's policies follow;
+    the ingest never writes the cover, so it stays. Form note lists what the calendar
     says for each changed field; the event page has Change and Revert.
     PGlite: 18 checks; 5 ingest tests. Released 2026-10-11: the migration
     went live first (the client and the ingest both read `admin_override`),

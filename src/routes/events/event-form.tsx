@@ -208,7 +208,7 @@ function EventForm({
       // id. The event is saved either way; a picture that did not go up
       // reopens this form on the saved event, saying so, rather than leaving
       // a filled-in "add" form that would add the event a second time.
-      if (coverChanged && !imported) {
+      if (coverChanged) {
         const saved = await saveEventCover(result.id, cover);
         if (!saved.ok) {
           void navigate(`/events/${result.id}/edit`, {
@@ -444,20 +444,18 @@ function EventForm({
         />
 
         {/* ----------------------------------------------------- cover */}
-        {/* Not on an imported event: covers are for events added in the club
-            (set_event_photo refuses the rest). */}
-        {imported ? null : (
-          <CoverField
-            value={cover}
-            onChange={(next) => {
-              setCover(next);
-              setFailure(null);
-            }}
-            labelClassName={LABEL}
-            hintClassName={HINT}
-            fieldClassName={FIELD}
-          />
-        )}
+        {/* On an imported event too, for an administrator (20261012070000);
+            the import never writes the cover, so it stays. */}
+        <CoverField
+          value={cover}
+          onChange={(next) => {
+            setCover(next);
+            setFailure(null);
+          }}
+          labelClassName={LABEL}
+          hintClassName={HINT}
+          fieldClassName={FIELD}
+        />
 
         <label htmlFor="event-registration" className={LABEL}>
           Sign-up link (optional)
