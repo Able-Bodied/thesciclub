@@ -852,6 +852,7 @@ Accounts:
 18. Turn **Phone** off in Providers after the release. It does nothing once
     the app has no phone screen. Someone signed out before migrating gets back
     in through `set-member-email.mjs` and Forgot password, not fixed codes.
+    **Done 2026-10-11** (owner): Phone is off in Providers.
 
 ## Release order
 
