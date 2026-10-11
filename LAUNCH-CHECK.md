@@ -5,8 +5,9 @@ was captured by local Mailpit; automated tests block network access.
 
 ## Readiness
 
-The tested member flows work. Two database privacy fixes are prepared and
-tested; **production application is pending the owner's approval**:
+The tested member flows work. Two database privacy fixes were **applied to
+production on 2026-10-11** at the owner's word. They were renumbered from
+060000/070000, which anatol's released imported-event migrations had taken:
 
 - `20261012080000_events_require_membership.sql`: event pages already require
   membership, but the live REST API still returns event records anonymously.
@@ -17,10 +18,10 @@ tested; **production application is pending the owner's approval**:
   barrier lost when the chat-author view was recreated with usernames. The
   existing membership filter stays in place.
 
-The linked dry run lists exactly these two migrations, with no seeds or roles.
-Neither migration sends emails or deletes data. No frontend release is needed
-for these fixes. `HANDOFF.md` reserves the production database push for the
-owner; the command, after approval, is `pnpm exec supabase db push --linked`.
+The dry run listed exactly these two; both applied. Afterwards, signed out, the
+live API returned no events, series or tag links and refused RSVP counts, while
+organizations stayed readable; signed in, the owner saw Events and Going counts
+as before. Neither sends email or deletes data; no frontend release was needed.
 
 ## Checks completed
 
