@@ -4,6 +4,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { InstallSettings } from '@/components/install-nudge';
 import { type PageTab, PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { signOut, useAccount } from '@/lib/account';
+import { EMAIL_RETURN_PARAM, useSignInDetails } from '@/lib/account-email';
+import { APPLE_RETURN_PARAM } from '@/lib/apple-sign-in';
 import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
@@ -15,9 +17,9 @@ import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { FindableSwitch } from '@/routes/me/findable-switch';
-import { GoogleSignIn } from '@/routes/me/google-sign-in';
 import { MeHero } from '@/routes/me/hero';
 import { NotificationSettings } from '@/routes/me/notification-settings';
+import { SignInSection } from '@/routes/me/sign-in-section';
 import { StandingCard } from '@/routes/me/standing';
 import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
 import { MeStats } from '@/routes/me/stats';
@@ -145,9 +147,16 @@ export default function MePage() {
   // return address is on Supabase's allowed list, as written.
   const [params] = useSearchParams();
   const [initialTab] = useState<MeTab | undefined>(() =>
-    params.has(GOOGLE_RETURN_PARAM) ? 'account' : undefined,
+    params.has(GOOGLE_RETURN_PARAM) ||
+    params.has(APPLE_RETURN_PARAM) ||
+    params.has(EMAIL_RETURN_PARAM)
+      ? 'account'
+      : undefined,
   );
   const [tab, setTab] = useTabParam(ME_TAB_VALUES, 'profile', initialTab);
+  const signIn = useSignInDetails();
+  // The hero is read once; a username changed on Account is shown at once.
+  const [changedUsername, setChangedUsername] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [percent, setPercent] = useState<number | null>(null);
@@ -234,7 +243,7 @@ export default function MePage() {
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       {member ? (
-        <MeHero member={member} />
+        <MeHero member={changedUsername ? { ...member, username: changedUsername } : member} />
       ) : (
         <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
@@ -313,7 +322,7 @@ export default function MePage() {
                           description={
                             invitePermissions.unlimited
                               ? 'You can invite people without a limit.'
-                              : `As a mentor you can put ${MENTOR_ALLOWANCE} numbers on the club’s list.`
+                              : `As a mentor you can invite ${MENTOR_ALLOWANCE} people by email.`
                           }
                         />
                       ) : null}
@@ -387,9 +396,15 @@ export default function MePage() {
             <p className="text-[0.875rem] text-ink2 leading-[1.5]">
               Signed in as {member?.displayName ?? displayName ?? '—'}.
             </p>
-            {/* Kept mounted on this tab alone, which is why Google's return
-                opens Me here: see `initialTab`. */}
-            <GoogleSignIn />
+            {/* Kept mounted on this tab alone, which is why Google's, Apple's
+                and the email link's returns open Me here: see `initialTab`. */}
+            <SignInSection
+              userId={userId}
+              state={signIn.state}
+              reload={signIn.reload}
+              username={changedUsername ?? member?.username ?? null}
+              onUsernameChanged={setChangedUsername}
+            />
             <section
               aria-labelledby="me-leaving-heading"
               // DeleteAccount brings its own top margin, sized for following

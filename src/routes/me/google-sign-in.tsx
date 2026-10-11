@@ -12,19 +12,30 @@ import {
   loadGoogleIdentity,
   unlinkGoogle,
 } from '@/lib/google-sign-in';
+import { CARD_BUTTON, SignInCard } from '@/routes/me/sign-in-card';
 
 /**
  * Link Google, so the sign-in screen's Google button opens this account.
  *
- * The phone number stays: it is the account, and unlinking Google leaves it,
- * so nobody can be left with no way in. See src/lib/google-sign-in.ts.
+ * Google is one way in among several (the email card, Apple, a passkey), and
+ * Unlink is offered only while another remains: `canUnlink` comes from
+ * `waysIn` in src/lib/account-email.ts, which does not count a phone number.
+ * See src/lib/google-sign-in.ts.
  *
  * Linking leaves the app for Google and comes back here with `?google=linked`.
  * That return says nothing about whether it worked — pressing Cancel at Google
  * comes back the same way — so the identity is read again and the sentence is
  * chosen from what is actually there.
  */
-export function GoogleSignIn() {
+export function GoogleSignIn({
+  canUnlink,
+  onChanged,
+}: {
+  /** Another way in would remain. False until the account has been read. */
+  canUnlink: boolean;
+  /** Linked or unlinked: the account is read again. */
+  onChanged: () => void;
+}) {
   const announce = useAnnounce();
   const [params, setParams] = useSearchParams();
   // Read once: the parameter is taken off the address below, and the answer
@@ -50,8 +61,10 @@ export function GoogleSignIn() {
         }
         setIdentity(result.identity);
         if (returned) {
-          if (result.identity) announce('Google is linked.');
-          else
+          if (result.identity) {
+            announce('Google is linked.');
+            onChanged();
+          } else
             setError(
               'Google was not linked. If that Google account already signs in to another member, use a different one.',
             );
@@ -68,7 +81,7 @@ export function GoogleSignIn() {
     return () => {
       cancelled = true;
     };
-  }, [returned, announce, setParams]);
+  }, [returned, announce, setParams, onChanged]);
 
   async function link() {
     setBusy(true);
@@ -100,6 +113,7 @@ export function GoogleSignIn() {
       if (reread.ok && reread.identity) {
         setIdentity(reread.identity);
         announce('Google is linked.');
+        onChanged();
       } else setError(reread.ok ? 'Google was not linked.' : reread.error);
     } catch (e: unknown) {
       setError(describeThrown(e, 'Google was not linked.'));
@@ -116,6 +130,7 @@ export function GoogleSignIn() {
       if (result.ok) {
         setIdentity(null);
         announce('Google is no longer linked.');
+        onChanged();
       } else setError(result.error);
     } catch (e: unknown) {
       setError(describeThrown(e, 'Google is still linked.'));
@@ -128,54 +143,51 @@ export function GoogleSignIn() {
   const email = identity ? googleEmail(identity) : null;
 
   return (
-    <section aria-labelledby="google-sign-in-heading" className="mt-6">
-      <h2
-        id="google-sign-in-heading"
-        className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-      >
-        Signing in
-      </h2>
+    <SignInCard title="Google">
+      <p aria-live="polite" className="text-[0.875rem] text-ink2 leading-[1.45]">
+        {identity
+          ? `You can sign in with Google${email ? ` as ${email}` : ''}.${
+              canUnlink
+                ? ''
+                : ' It is your only way in, so add an email and password before you unlink it.'
+            }`
+          : 'Link Google to sign in with it in one tap, without typing a password.'}
+      </p>
 
-      <div className="rounded-[17px] border border-line bg-paper p-3.5">
-        <p aria-live="polite" className="text-[0.875rem] text-ink2 leading-[1.45]">
-          {identity
-            ? `You can sign in with Google${email ? ` as ${email}` : ''}, or with your phone number.`
-            : 'You sign in with your phone number. Link Google to sign in with it instead, without waiting for a code.'}
-        </p>
-
-        {identity ? (
+      {identity ? (
+        canUnlink ? (
           <button
             type="button"
             onClick={() => {
               void unlink(identity);
             }}
             disabled={busy}
-            className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-50"
+            className={CARD_BUTTON}
           >
             {busy ? 'One moment…' : 'Unlink Google'}
           </button>
-        ) : (
-          <div className="mt-3">
-            <GoogleButton
-              text="continue_with"
-              disabled={busy}
-              fallbackLabel="Link Google"
-              onToken={(token, nonce) => {
-                void linkWithToken(token, nonce);
-              }}
-              onFallback={() => {
-                void link();
-              }}
-            />
-          </div>
-        )}
+        ) : null
+      ) : (
+        <div className="mt-3">
+          <GoogleButton
+            text="continue_with"
+            disabled={busy}
+            fallbackLabel="Link Google"
+            onToken={(token, nonce) => {
+              void linkWithToken(token, nonce);
+            }}
+            onFallback={() => {
+              void link();
+            }}
+          />
+        </div>
+      )}
 
-        {error ? (
-          <p role="alert" className="mt-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
-            {error}
-          </p>
-        ) : null}
-      </div>
-    </section>
+      {error ? (
+        <p role="alert" className="mt-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
+      ) : null}
+    </SignInCard>
   );
 }

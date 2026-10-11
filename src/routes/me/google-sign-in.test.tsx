@@ -47,13 +47,14 @@ vi.mock('@/lib/google-sign-in', async (importOriginal) => ({
   },
 }));
 
+const changed = vi.fn();
 const { GoogleSignIn } = await import('@/routes/me/google-sign-in');
 
 function Where() {
   return <p data-testid="where">{useLocation().search}</p>;
 }
 
-function renderIt(path = '/me') {
+function renderIt(path = '/me', canUnlink = true) {
   render(
     <AnnounceProvider>
       <MemoryRouter initialEntries={[path]}>
@@ -62,7 +63,7 @@ function renderIt(path = '/me') {
             path="/me"
             element={
               <>
-                <GoogleSignIn />
+                <GoogleSignIn canUnlink={canUnlink} onChanged={changed} />
                 <Where />
               </>
             }
@@ -88,6 +89,7 @@ beforeEach(() => {
   google.linkTokenError = null;
   google.widget = 'unavailable';
   google.onToken = null;
+  changed.mockClear();
 });
 
 describe('Signing in, on Me', () => {
@@ -97,13 +99,11 @@ describe('Signing in, on Me', () => {
     expect(google.calls).toEqual(['link']);
   });
 
-  it('names the linked account and keeps the phone number as a way in', async () => {
+  it('names the linked account', async () => {
     google.identity = LINKED;
     renderIt();
     expect(
-      await screen.findByText(
-        'You can sign in with Google as nicole@gmail.com, or with your phone number.',
-      ),
+      await screen.findByText('You can sign in with Google as nicole@gmail.com.'),
     ).toBeInTheDocument();
   });
 
@@ -142,6 +142,25 @@ describe('Signing in, on Me', () => {
   });
 });
 
+describe('the last way in', () => {
+  // Nobody is left with nothing: with Google the only way in, Unlink is not
+  // offered, and the card says what to add first.
+  it('offers no Unlink when Google is the only way in', async () => {
+    google.identity = LINKED;
+    renderIt('/me', false);
+    expect(await screen.findByText(/It is your only way in/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Unlink Google' })).not.toBeInTheDocument();
+  });
+
+  it('tells Me to read the account again after linking and unlinking', async () => {
+    google.identity = LINKED;
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: 'Unlink Google' }));
+    await screen.findByRole('button', { name: 'Link Google' });
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('linking with the account picked in Google’s widget', () => {
   it('links it without leaving Me, and names it', async () => {
     google.widget = 'ready';
@@ -149,9 +168,7 @@ describe('linking with the account picked in Google’s widget', () => {
     await screen.findByRole('button', { name: /Use Google’s sign-in page/ });
     google.onToken?.('id-token', 'raw-nonce');
     expect(
-      await screen.findByText(
-        'You can sign in with Google as nicole@gmail.com, or with your phone number.',
-      ),
+      await screen.findByText('You can sign in with Google as nicole@gmail.com.'),
     ).toBeInTheDocument();
     expect(google.calls).toEqual(['linkToken:id-token:raw-nonce']);
   });

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 interface Answer {
   data: unknown;
-  error: { message: string } | null;
+  error: { message: string; code?: string } | null;
 }
 
 const db = vi.hoisted(() => {
@@ -19,9 +19,8 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
-const { isValidUsername, normalizeUsername, suggestUsernames, usernameAvailable } = await import(
-  '@/lib/usernames'
-);
+const usernamesModule = await import('@/lib/usernames');
+const { isValidUsername, normalizeUsername, suggestUsernames, usernameAvailable } = usernamesModule;
 
 beforeEach(() => {
   db.asked = [];
@@ -84,5 +83,33 @@ describe('usernameAvailable', () => {
   it('is null, not no, when it could not be asked', async () => {
     db.answer = { data: null, error: { message: 'offline' } };
     expect(await usernameAvailable('dana')).toBeNull();
+  });
+});
+
+describe('setMyUsername', () => {
+  const { setMyUsername, USERNAME_TAKEN } = usernamesModule;
+
+  it('asks the database to change it', async () => {
+    const result = await setMyUsername('dana.s');
+    expect(result).toEqual({ ok: true });
+    expect(db.asked).toEqual([{ name: 'set_my_username', args: { name: 'dana.s' } }]);
+  });
+
+  it('says taken for a taken or reserved name, which read alike', async () => {
+    db.answer = { data: null, error: { message: 'x', code: '23505' } };
+    expect(await setMyUsername('dana.s')).toEqual({ ok: false, error: USERNAME_TAKEN });
+  });
+
+  it('says what a name must look like when it is malformed', async () => {
+    db.answer = { data: null, error: { message: 'x', code: '22023' } };
+    const result = await setMyUsername('Da');
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.error).toMatch(/3 to 20/);
+  });
+
+  it('does not show the database’s own words for anything else', async () => {
+    db.answer = { data: null, error: { message: 'relation "members" is locked' } };
+    const result = await setMyUsername('dana.s');
+    expect(!result.ok && result.error).toBe('Your username was not changed. Try again.');
   });
 });

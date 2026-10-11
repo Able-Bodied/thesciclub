@@ -37,3 +37,22 @@ export async function usernameAvailable(name: string): Promise<boolean | null> {
   if (result.error || typeof free !== 'boolean') return null;
   return free;
 }
+
+/** Said when the name is taken or reserved; the two read alike on purpose. */
+export const USERNAME_TAKEN = 'That username is taken.';
+
+/** Changes the signed-in member's @name. The database refuses a taken or reserved one. */
+export async function setMyUsername(
+  name: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await getSupabase().rpc('set_my_username', { name });
+  if (!error) return { ok: true };
+  if (error.code === '23505') return { ok: false, error: USERNAME_TAKEN };
+  if (error.code === '22023') {
+    return {
+      ok: false,
+      error: 'Use 3 to 20 lowercase letters, digits, dots or underscores.',
+    };
+  }
+  return { ok: false, error: 'Your username was not changed. Try again.' };
+}

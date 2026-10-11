@@ -305,7 +305,7 @@ describe('MePage', () => {
     renderMe();
     const invites = screen.getByRole('link', { name: /Your invites/ });
     expect(invites).toHaveAttribute('href', '/invites');
-    expect(invites).toHaveAccessibleDescription(/As a mentor you can put \d+ numbers/);
+    expect(invites).toHaveAccessibleDescription(/As a mentor you can invite \d+ people by email/);
   });
 
   it('keeps what can end a membership reachable, without printing it', () => {

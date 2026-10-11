@@ -118,7 +118,7 @@ HANDOFF.md.
 - [ ] **Session 4: E, Me, profiles, events**
   - [ ] Me sign-in section (email, password, Google/Apple, passkeys, phone, username)
   - [ ] add-an-email banner for phone accounts
-  - [ ] @username on profiles and cards
+  - [x] @username on profiles and cards (`a16980f`)
   - [ ] Going wording and phone sheet
   - [ ] tests, checks, committed
 - [ ] **Session 5: F + G, Admin, invites, words**
