@@ -18,7 +18,7 @@ HANDOFF.md.
 
 - [ ] **Session 1: A, Database**
   - [x] migration written (`8c10561`)
-  - [ ] seed.sql and local config.toml
+  - [x] seed.sql and local config.toml (`4d8313d`)
   - [ ] SQL probes pass to the probe standard
   - [ ] `pnpm check` exit 0, committed
   - Notes for the next session (contract changes are made in place above; "as built"):

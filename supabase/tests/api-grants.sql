@@ -34,9 +34,13 @@ values
 insert into public.member_strikes (member_id, reason, issued_by)
 values ('cccccccc-4444-0000-0000-00000000000c', 'Sold supplements in a room', 'aaaaaaaa-4444-0000-0000-00000000000a');
 
--- A number on the list that has not joined, for 9 and 12.
-insert into public.invites (phone_raw, invited_by_organization_id)
-select '4085550440', id from public.organizations where short_code = 'NCS';
+-- An address on the list that has not joined, for 6, 10 and 11; and two
+-- confirmed accounts, one at that address and one at none.
+insert into public.invites (email, invited_by_organization_id)
+select 'joiner@probe.test', id from public.organizations where short_code = 'NCS';
+insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at) values
+  ('44044044-0000-0000-0000-000000000440', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'joiner@probe.test', now()),
+  ('44144144-0000-0000-0000-000000000441', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'nobody@probe.test', now());
 
 select set_config('request.jwt.claims',
   '{"sub":"dddddddd-4444-0000-0000-00000000000d","role":"authenticated"}', true) is not null as ok;
@@ -75,10 +79,13 @@ select public.active_strike_count('cccccccc-4444-0000-0000-00000000000c') as str
        public.live_invite_count('cccccccc-4444-0000-0000-00000000000c') as invites;
 
 \echo ''
-\echo '== 6. nor whether a number is invited (expect ERROR: permission denied for function) =='
+\echo '== 6. nor whether a number or an address is invited (expect two ERRORs: permission denied for function) =='
 savepoint oracle;
 select public.has_active_invite('4085550440');
 rollback to savepoint oracle;
+savepoint address_oracle;
+select public.is_blocked_email('joiner@probe.test');
+rollback to savepoint address_oracle;
 
 \echo ''
 \echo '== 7. the member asks about themself (expect 1 | 0) =='
@@ -99,25 +106,25 @@ update public.admin_members set display_name = 'renamed' where id = 'cccccccc-44
 rollback to savepoint admin_update;
 
 \echo ''
-\echo '== 10. a number signing in asks about itself only (expect t, then f) =='
+\echo '== 10. an address signing in asks about itself only (expect t, then f) =='
 select set_config('request.jwt.claims',
-  '{"sub":"44044044-0000-0000-0000-000000000440","role":"authenticated","phone":"14085550440"}', true) is not null as ok;
-select public.my_number_is_invited() as invited;
+  '{"sub":"44044044-0000-0000-0000-000000000440","role":"authenticated"}', true) is not null as ok;
+select public.i_am_invited() as invited;
 select set_config('request.jwt.claims',
-  '{"sub":"44144144-0000-0000-0000-000000000441","role":"authenticated","phone":"14085550441"}', true) is not null as ok;
-select public.my_number_is_invited() as invited;
+  '{"sub":"44144144-0000-0000-0000-000000000441","role":"authenticated"}', true) is not null as ok;
+select public.i_am_invited() as invited;
 
 \echo ''
-\echo '== 11. the invited number joins, and the trigger still consumes the invite =='
+\echo '== 11. the invited address joins, and the trigger still consumes the invite =='
 \echo '   expect: INSERT 0 1, then consumed (read by the administrator, through'
 \echo '   admin_invites: nobody else can read the invites table)'
 select set_config('request.jwt.claims',
-  '{"sub":"44044044-0000-0000-0000-000000000440","role":"authenticated","phone":"14085550440"}', true) is not null as ok;
-insert into public.members (id, type, display_name, phone, birth_date, level_range, state)
-values ('44044044-0000-0000-0000-000000000440', 'peer', 'Joiner', '14085550440', '1990-01-01', 'C5–C8', 'CA');
+  '{"sub":"44044044-0000-0000-0000-000000000440","role":"authenticated"}', true) is not null as ok;
+insert into public.members (id, type, display_name, username, birth_date, level_range, state)
+values ('44044044-0000-0000-0000-000000000440', 'peer', 'Joiner', 'joiner.probe', '1990-01-01', 'C5–C8', 'CA');
 select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-4444-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
-select status from public.admin_invites where phone = '14085550440';
+select status from public.admin_invites where email = 'joiner@probe.test';
 
 \echo ''
 \echo '== 12. signed out (expect ERROR, ERROR, ERROR, ERROR, then t) =='

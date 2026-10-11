@@ -13,12 +13,26 @@
 --     -f - < supabase/tests/blocked-numbers.sql
 --
 -- Rolls back. Do not point it at the hosted project.
+--
+-- Since 20261012000000 blocking is by email (email-is-the-account.sql,
+-- email-invites-and-admin.sql). Blocked NUMBERS remain for the old phone
+-- invites and members: what is left to prove is the trigger on phone invites,
+-- that blocking removes the member Auth verified on that number (auth.users,
+-- never the number a member typed), and the administrator guards. No function
+-- or policy writes a phone invite any more, so those are written here as the
+-- superuser.
 -- ============================================================================
 
 \set ON_ERROR_STOP off
 \pset pager off
 
 begin;
+
+-- The numbers Auth verified. admin_block_number finds members through these.
+insert into auth.users (id, instance_id, aud, role, phone) values
+  ('aaaaaaaa-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '19990000010'),
+  ('cccccccc-0000-0000-0000-00000000000c', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '14085550150'),
+  ('eeeeeeee-0000-0000-0000-00000000000e', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '19990000012');
 
 insert into public.members (id, type, status, display_name, phone, birth_date, level_range, state, is_admin)
 values
@@ -82,16 +96,19 @@ select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
 
 \echo ''
-\echo '== 5. an administrator cannot re-add them by accident =='
+\echo '== 5. a phone invite for them is still refused, by the trigger on invites =='
+\echo '   (written as the superuser: nothing else writes a phone invite any more)'
 \echo '   expect: ERROR ... blocked from the club'
+reset role;
 savepoint readd;
-select public.admin_create_invite('4085550150',
-  (select id from public.organizations where short_code = 'NCS'), null, 'Met at rugby');
+insert into public.invites (phone_raw, invited_by_organization_id)
+select '4085550150', id from public.organizations where short_code = 'NCS';
 rollback to savepoint readd;
+set local role authenticated;
 
 \echo ''
-\echo '== 6. nor can a mentor, writing through their own policy =='
-\echo '   expect: ERROR ... blocked from the club'
+\echo '== 6. and a mentor can no longer write to invites at all =='
+\echo '   expect: ERROR ... permission denied for table invites'
 savepoint mentor_readd;
 select set_config('request.jwt.claims',
   '{"sub":"bbbbbbbb-0000-0000-0000-00000000000b","role":"authenticated"}', true) is not null as ok;
@@ -133,11 +150,15 @@ select public.admin_block_number('4085559000', 'Never invited, still unwelcome')
 
 \echo ''
 \echo '== 10. unblocking puts the number back where it started =='
-\echo '   expect: no error, then one uuid (the new invite’s id — admin_create_invite'
-\echo '   returns it) — invitable again, not readmitted'
+\echo '   expect: no error, then INSERT 0 1 (the same phone invite step 5 refused is'
+\echo '   accepted now) — invitable again, not readmitted'
 select public.admin_unblock_number('4085550150');
-select public.admin_create_invite('4085550150',
-  (select id from public.organizations where short_code = 'NCS'), null, 'Second chance');
+reset role;
+insert into public.invites (phone_raw, invited_by_organization_id, note)
+select '4085550150', id, 'Second chance' from public.organizations where short_code = 'NCS';
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
 
 \echo ''
 \echo '== 11. the membership does NOT come back with the number (expect 0) =='

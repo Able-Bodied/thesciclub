@@ -3,7 +3,7 @@
 -- ============================================================================
 -- 20261003090000. Before it, every one of the refusals below succeeded with a
 -- member's own session: joining as an administrator, a suspended member
--- reinstating themselves, a peer making themselves a mentor, a changed phone,
+-- reinstating themselves, a peer making themselves a mentor, a changed username,
 -- an administrator deleting their own row. And every allowance below has to
 -- keep working, or the guard has broken a screen: Your details, the survey,
 -- joining, and the administrators' own doors.
@@ -35,11 +35,16 @@ values
 -- joiner tries to claim in step 11. Read here, as the superuser: a member
 -- cannot read invites, so selecting it in the step itself inserted nothing
 -- and passed without testing anything (the first run of this file).
-insert into public.invites (phone_raw, invited_by_organization_id, note)
-select '19990000093', id, 'probe' from public.organizations where short_code = 'NCS';
-insert into public.invites (phone_raw, invited_by_organization_id, note)
-select '19990000094', id, 'probe, not theirs' from public.organizations where short_code = 'NCS';
-select id as other_invite from public.invites where phone = '19990000094' \gset
+insert into public.invites (email, invited_by_organization_id, note)
+select 'joiner.promote@probe.test', id, 'probe' from public.organizations where short_code = 'NCS';
+insert into public.invites (email, invited_by_organization_id, note)
+select 'other.promote@probe.test', id, 'probe, not theirs' from public.organizations where short_code = 'NCS';
+select id as other_invite from public.invites where email = 'other.promote@probe.test' \gset
+
+-- The joiner's confirmed account, which is what the invite matches.
+insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at)
+values ('dddddddd-9090-0000-0000-00000000000d', '00000000-0000-0000-0000-000000000000',
+        'authenticated', 'authenticated', 'joiner.promote@probe.test', now());
 
 -- ============================================================ as the peer
 select set_config('request.jwt.claims',
@@ -66,11 +71,18 @@ update public.members set type = 'mentor' where id = 'bbbbbbbb-9090-0000-0000-00
 rollback to savepoint self_mentor;
 
 \echo ''
-\echo '== 4. changing your own phone is refused =='
-\echo '   expect: ERROR, your phone number is your account'
-savepoint self_phone;
+\echo '== 4. changing your own phone is allowed now: it is a contact number for events =='
+\echo '   (20261012000000; it was the club identity before, and refused)'
+\echo '   expect: UPDATE 1, then UPDATE 1 (cleared)'
 update public.members set phone = '19990000097' where id = 'bbbbbbbb-9090-0000-0000-00000000000b';
-rollback to savepoint self_phone;
+update public.members set phone = null where id = 'bbbbbbbb-9090-0000-0000-00000000000b';
+
+\echo ''
+\echo '== 4b. but the username changes only through set_my_username =='
+\echo '   expect: ERROR, your username is changed with set_my_username'
+savepoint self_username;
+update public.members set username = 'peer.sneaky' where id = 'bbbbbbbb-9090-0000-0000-00000000000b';
+rollback to savepoint self_username;
 
 \echo ''
 \echo '== 5. marking yourself a seeded profile is refused (expect ERROR, a record of how you joined) =='
@@ -106,7 +118,7 @@ reset role;
 
 -- ========================================================== as the joiner
 select set_config('request.jwt.claims',
-  '{"sub":"dddddddd-9090-0000-0000-00000000000d","role":"authenticated","phone":"19990000093"}', true) is not null as ok;
+  '{"sub":"dddddddd-9090-0000-0000-00000000000d","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
 
 \echo ''
@@ -114,28 +126,28 @@ set local role authenticated;
 \echo '   expect: ERROR, a new member joins as an active peer'
 \echo '   This is the one that was open: the flag trigger only watched updates.'
 savepoint join_admin;
-insert into public.members (id, display_name, phone, birth_date, level_range, state, is_admin)
-values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', '19990000093', '1985-01-01', 'T1–T6', 'CA', true);
+insert into public.members (id, display_name, username, birth_date, level_range, state, is_admin)
+values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', 'joiner.promote', '1985-01-01', 'T1–T6', 'CA', true);
 rollback to savepoint join_admin;
 
 \echo ''
 \echo '== 10. joining as a mentor is refused (expect ERROR, a new member joins as an active peer) =='
 savepoint join_mentor;
-insert into public.members (id, display_name, phone, birth_date, level_range, state, type)
-values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', '19990000093', '1985-01-01', 'T1–T6', 'CA', 'mentor');
+insert into public.members (id, display_name, username, birth_date, level_range, state, type)
+values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', 'joiner.promote', '1985-01-01', 'T1–T6', 'CA', 'mentor');
 rollback to savepoint join_mentor;
 
 \echo ''
 \echo '== 11. joining on somebody else''s invite id is refused (expect ERROR, a new member joins as an active peer) =='
 savepoint join_invite;
-insert into public.members (id, display_name, phone, birth_date, level_range, state, invite_id)
-values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', '19990000093', '1985-01-01', 'T1–T6', 'CA', :'other_invite');
+insert into public.members (id, display_name, username, birth_date, level_range, state, invite_id)
+values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', 'joiner.promote', '1985-01-01', 'T1–T6', 'CA', :'other_invite');
 rollback to savepoint join_invite;
 
 \echo ''
 \echo '== 12. joining as the app does still works (expect INSERT 0 1) =='
-insert into public.members (id, display_name, phone, birth_date, level_range, state)
-values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', '19990000093', '1985-01-01', 'T1–T6', 'CA');
+insert into public.members (id, display_name, username, birth_date, level_range, state)
+values ('dddddddd-9090-0000-0000-00000000000d', 'Joiner', 'joiner.promote', '1985-01-01', 'T1–T6', 'CA');
 
 reset role;
 

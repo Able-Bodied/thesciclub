@@ -28,6 +28,11 @@
 
 begin;
 
+-- admin_block_number finds the member by the number Auth verified
+-- (auth.users.phone), since members.phone is typed by the member (20261012).
+insert into auth.users (id, instance_id, aud, role, phone) values
+  ('eeeeeeee-1111-0000-0000-00000000000e', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', '19990000021');
+
 insert into public.members (id, type, status, display_name, phone, birth_date, level_range, state, is_admin)
 values
   ('aaaaaaaa-1111-0000-0000-00000000000a', 'peer', 'active', 'The Admin', '19990000020', '1980-01-01', 'T1–T6', 'CA', true),
@@ -87,13 +92,17 @@ rollback to savepoint pause_self;
 
 \echo ''
 \echo '== 8. nothing stuck: both administrators are still active (expect 2) =='
-select count(*) as admins_active from public.admin_members where is_admin and status = 'active';
+-- Only this file's two: the local seed has an administrator of its own.
+select count(*) as admins_active from public.admin_members
+ where is_admin and status = 'active'
+   and id in ('aaaaaaaa-1111-0000-0000-00000000000a', 'eeeeeeee-1111-0000-0000-00000000000e');
 
 \echo ''
 \echo '== 9. an administrator is a mentor, whatever the insert said (expect 2) =='
 \echo '   Both were inserted as peers at the top of this file.'
 select count(*) as admins_who_are_mentors
-  from public.admin_members where is_admin and type = 'mentor';
+  from public.admin_members where is_admin and type = 'mentor'
+   and id in ('aaaaaaaa-1111-0000-0000-00000000000a', 'eeeeeeee-1111-0000-0000-00000000000e');
 
 \echo ''
 \echo '== 10. and cannot be made a peer (expect ERROR) =='

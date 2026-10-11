@@ -22,21 +22,21 @@ select public.admin_set_member_type('aaaaaaaa-9090-0000-0000-000000000005','orga
 select type = 'organization' and not is_admin as organization_not_admin from public.admin_members where id='aaaaaaaa-9090-0000-0000-000000000005';
 select public.admin_add_representative(:'org','aaaaaaaa-9090-0000-0000-000000000002');
 select public.admin_add_representative(:'org','aaaaaaaa-9090-0000-0000-000000000003');
-\echo '== 2. eleven invites from admin, organization account and representative: expect t | t | t =='
-insert into public.invites (phone_raw,invited_by_member_id) select '199900092'||lpad(i::text,2,'0'),auth.uid() from generate_series(1,11) i;
+\echo '== 2. eleven invites from admin, organization account and representative: expect t, t (eleven made, eleven counted) three times =='
+select count(public.create_my_invite('adm'||i||'@probe.test'))=11 as admin_eleven_made from generate_series(1,11) i;
 select public.live_invite_count(auth.uid())=11 as admin_unlimited;
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000002","role":"authenticated"}';
-insert into public.invites (phone_raw,invited_by_member_id) select '199900093'||lpad(i::text,2,'0'),auth.uid() from generate_series(1,11) i;
+select count(public.create_my_invite('org'||i||'@probe.test'))=11 as organization_eleven_made from generate_series(1,11) i;
 select public.live_invite_count(auth.uid())=11 as organization_unlimited;
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000003","role":"authenticated"}';
-insert into public.invites (phone_raw,invited_by_member_id) select '199900094'||lpad(i::text,2,'0'),auth.uid() from generate_series(1,11) i;
+select count(public.create_my_invite('rep'||i||'@probe.test'))=11 as representative_eleven_made from generate_series(1,11) i;
 select public.live_invite_count(auth.uid())=11 as representative_unlimited;
-\echo '== 3. mentors still get ten: expect t then one ERROR =='
+\echo '== 3. mentors still get ten: expect t, t, then one ERROR, You cannot add another invite =='
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000004","role":"authenticated"}';
-insert into public.invites (phone_raw,invited_by_member_id) select '199900095'||lpad(i::text,2,'0'),auth.uid() from generate_series(1,10) i;
+select count(public.create_my_invite('mentor'||i||'@probe.test'))=10 as mentor_ten_made from generate_series(1,10) i;
 select public.live_invite_count(auth.uid())=10 as mentor_ten;
 savepoint mentor_cap;
-insert into public.invites (phone_raw,invited_by_member_id) values ('19990009511',auth.uid());
+select public.create_my_invite('mentor.eleventh@probe.test');
 rollback to mentor_cap;
 \echo '== 4. scoped organization edit and no privilege escalation: expect t, seven ERRORs =='
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000002","role":"authenticated"}';
@@ -68,28 +68,28 @@ set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000004","rol
 savepoint self_type;
 update public.members set type='organization' where id=auth.uid();
 rollback to self_type;
-\echo '== 5. unlinking removes unlimited access immediately: expect t and one ERROR =='
+\echo '== 5. unlinking removes unlimited access immediately: expect t and one ERROR, You cannot add another invite =='
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000001","role":"authenticated"}';
 select public.admin_remove_representative(:'org','aaaaaaaa-9090-0000-0000-000000000003');
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000003","role":"authenticated"}';
 select not can_invite and not unlimited as unlinked_permissions from public.my_invite_permissions();
 savepoint unlinked_invite;
-insert into public.invites (phone_raw,invited_by_member_id) values ('19990009412',auth.uid());
+select public.create_my_invite('unlinked@probe.test');
 rollback to unlinked_invite;
-\echo '== 6. suspended organization cannot invite: expect t and one ERROR =='
+\echo '== 6. suspended organization cannot invite: expect t and one ERROR, You cannot add another invite =='
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000001","role":"authenticated"}';
 select public.admin_set_member_status('aaaaaaaa-9090-0000-0000-000000000002','suspended');
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000002","role":"authenticated"}';
 select not can_invite and not unlimited as suspended_permissions from public.my_invite_permissions();
 savepoint suspended_invite;
-insert into public.invites (phone_raw,invited_by_member_id) values ('19990009312',auth.uid());
+select public.create_my_invite('suspended.org@probe.test');
 rollback to suspended_invite;
-\echo '== 7. removing organization preserves inviter history and drops links: expect t | t, one ERROR =='
+\echo '== 7. removing organization preserves inviter history and drops links: expect scoped.history@probe.test, t | t, one ERROR =='
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000001","role":"authenticated"}';
-select public.admin_create_invite('19990009601', :'org');
+select email from public.admin_create_invite('scoped.history@probe.test', :'org');
 select public.admin_remove_organization(:'org');
 select removed_at is not null and not can_invite as removed_from_directory from public.organizations where id=:'org';
-select exists(select 1 from public.admin_invites where phone='19990009601' and invited_by_organization='Organization scoped edit')
+select exists(select 1 from public.admin_invites where email='scoped.history@probe.test' and invited_by_organization='Organization scoped edit')
   and not exists(select 1 from public.admin_organization_representatives() where organization_id=:'org') as history_without_links;
 savepoint removed_link;
 select public.admin_add_representative(:'org','aaaaaaaa-9090-0000-0000-000000000003');
@@ -98,7 +98,7 @@ rollback to removed_link;
 select public.admin_set_member_type('aaaaaaaa-9090-0000-0000-000000000005','peer');
 set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000005","role":"authenticated"}';
 savepoint peer_invite;
-insert into public.invites (phone_raw,invited_by_member_id) values ('19990009602',auth.uid());
+select public.create_my_invite('peer@probe.test');
 rollback to peer_invite;
 savepoint peer_type;
 update public.members set type='organization' where id=auth.uid();
