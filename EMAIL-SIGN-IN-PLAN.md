@@ -24,7 +24,8 @@ HANDOFF.md.
 - [ ] **Session 2: B, Email and Apple secret**
   - [ ] `send-invite` and its tests
   - [ ] Auth email templates
-  - [ ] `scripts/apple-secret.mjs`
+  - [x] `scripts/apple-secret.mjs` (written early, 2026-10-10; the first secret
+    expires **2027-04-09**; key id `C9397R83YF`, `.p8` in the owner's Downloads)
   - [ ] `scripts/set-member-email.mjs`
   - [ ] committed
 - [ ] **Session 3: C + D, Sign-in, joining, onboarding questions**
