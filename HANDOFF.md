@@ -478,7 +478,7 @@ the product definition and wins over this file.
     <organization>" counts dates, so a new weekly series reads as ~13 new
     events and each nightly date as 1 — as scraped series already do.
 
-30. **Emoji reactions, unreleased** (2026-10-10). Messages (direct/group),
+30. **Emoji reactions, release authorized** (2026-10-10). Messages (direct/group),
     room questions, posts and nested replies/comments, and Home openers have
     React and eight common emoji choices. One reaction per member per item;
     choosing another replaces it, choosing yours removes it. Counts and names
@@ -494,7 +494,7 @@ the product definition and wins over this file.
     errors without invented counts, retry, and scope changes discard stale
     results. Picker controls are visible and at least 44px; its portal avoids
     Home card stacking contexts and its dialog traps/restores focus.
-    All 2,224 tests and standalone check/build pass. Authenticated SQL probes
+    All 2,235 tests after merging main, and standalone check/build pass. Authenticated SQL probes
     pass on local and fresh stacks (24 assertions each); removing the active
     gate makes the probe fail, and restoring it passes. Local browser checks
     cover Home/question/nested reply/private message, saved changes/removal,
@@ -504,11 +504,10 @@ the product definition and wins over this file.
     emoji glyphs; supported phone/desktop system emoji fonts draw the symbols.
     **Database before release:** reactions originally used version
     20261011050000, which the other contributor also used for repeating events.
-    That live event migration made the CLI report up to date, despite the
-    reaction tables/function being absent. Reactions now use 20261011060000.
-    The migration was released separately on main as 6a3ab78;
-    the owner applies it before the reaction client is published.
-
+    Reactions were renumbered to 20261011060000 and released separately on
+    main as 6a3ab78. The owner applied the migration: linked dry run is now
+    up to date and production REST confirms both tables and chat_set_reaction
+    exist. The reaction client can now be published.
 
 ## Rules the owner set
 
