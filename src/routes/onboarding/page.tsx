@@ -25,6 +25,7 @@ import {
   captureInviteToken,
   claimHeldInvite,
   forgetInviteToken,
+  heldInviteAddress,
   heldInviteToken,
   INVITE_PARAM,
 } from '@/lib/invite-token';
@@ -95,7 +96,6 @@ const RESEND_WAIT = 60;
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const account = useAccount();
-  const [step, setStep] = useState<Step>('welcome');
   const [phase, setPhase] = useState<Phase>('wizard');
   const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
   const [busy, setBusy] = useState(false);
@@ -115,6 +115,11 @@ export default function OnboardingPage() {
   // The invite link's token has to outlive this page (a confirmation email or
   // Google's round trip comes first), so it is kept the moment /join loads.
   const [invited] = useState(() => captureInviteToken(params.toString()) !== null);
+  // An invitation goes straight to joining: its link is the reason they came, and
+  // the Welcome screen's "Join the club" would only ask what the link already said.
+  const [step, setStep] = useState<Step>(invited ? 'join' : 'welcome');
+  // The address the invitation was sent to, once the club has said, for the Email field.
+  const [inviteAddress, setInviteAddress] = useState<string | null>(null);
   useEffect(() => {
     if (!params.has(INVITE_PARAM)) return;
     setParams(
@@ -125,6 +130,22 @@ export default function OnboardingPage() {
       { replace: true },
     );
   }, [params, setParams]);
+
+  // Asked once, signed out, and only filled in when nothing has been typed yet: a
+  // typo in the address is a confirmation email that goes nowhere. It stays a
+  // suggestion: the Email field is theirs to change (Decision 3, any address works).
+  const askedAddress = useRef(false);
+  useEffect(() => {
+    if (askedAddress.current || account.status !== 'signed-out' || heldInviteToken() === null) {
+      return;
+    }
+    askedAddress.current = true;
+    void heldInviteAddress().then((address) => {
+      if (address === null) return;
+      setInviteAddress(address);
+      setData((d) => (d.email.trim() === '' ? { ...d, email: address } : d));
+    });
+  }, [account.status]);
 
   // Somebody with a profile has no use for a held invite.
   useEffect(() => {
@@ -689,6 +710,11 @@ export default function OnboardingPage() {
           set={set}
           ways={ways}
           invited={invited || heldInviteToken() !== null}
+          inviteAddress={
+            inviteAddress !== null && cleanEmail(data.email) === inviteAddress
+              ? inviteAddress
+              : null
+          }
         />
       ) : null}
       {step === 'check-email' ? (

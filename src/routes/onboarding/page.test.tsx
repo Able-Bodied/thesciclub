@@ -35,6 +35,12 @@ const calls = vi.hoisted(() => {
     claimResult: true,
     claimError: false,
     claimedWith: null as string | null,
+    /** What the club says the held link was sent to; null is any token that is not a live one. */
+    inviteAddress: null as string | null,
+    addressError: false,
+    addressAskedWith: null as string | null,
+    /** Holds the answer back until a test lets it go, to type first. */
+    addressGate: null as Promise<void> | null,
     /** Usernames the club says are taken. */
     taken: [] as string[],
     suggestions: ['dana', 'dana.s', 'dana_s'] as string[],
@@ -221,6 +227,14 @@ vi.mock('@/lib/supabase', () => ({
           ? { data: null, error: { message: 'offline' } }
           : { data: calls.claimResult, error: null };
       }
+      if (name === 'invite_address_for_token') {
+        calls.addressAskedWith = String(args?.token);
+        result = calls.addressError
+          ? { data: null, error: { message: 'offline' } }
+          : { data: calls.inviteAddress, error: null };
+        const answered = (calls.addressGate ?? Promise.resolve()).then(() => result);
+        return Object.assign(answered, { single: () => answered });
+      }
       if (name === 'suggest_usernames') result = { data: calls.suggestions, error: null };
       if (name === 'username_available') {
         const asked = String(args?.name);
@@ -308,6 +322,10 @@ beforeEach(() => {
   calls.claimResult = true;
   calls.claimError = false;
   calls.claimedWith = null;
+  calls.inviteAddress = null;
+  calls.addressError = false;
+  calls.addressAskedWith = null;
+  calls.addressGate = null;
   calls.taken = [];
   calls.suggestions = ['dana', 'dana.s', 'dana_s'];
   calls.checked = [];
@@ -555,7 +573,7 @@ describe('the invite link', () => {
   it('keeps it through the sign-up and the email, and claims it after', async () => {
     renderJoin('/join?invite=tok-123');
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBe('tok-123');
-    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    // Straight to joining: the link is why they came, so no Welcome screen first.
     expect(screen.getByText(/You have an invitation/)).toBeInTheDocument();
     await fillDoor('hidden.relay@privaterelay.example', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
@@ -598,6 +616,93 @@ describe('the invite link', () => {
     calls.claimError = false;
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Before you join')).toBeInTheDocument();
+  });
+
+  it('opens at the join form, not the Welcome screen', () => {
+    renderJoin('/join?invite=tok-123');
+    expect(screen.getByRole('heading', { name: 'Join the club' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Join the club' })).not.toBeInTheDocument();
+    // A way back to the Welcome screen and to signing in is still there.
+    expect(screen.getByRole('button', { name: 'Already a member? Sign in' })).toBeInTheDocument();
+  });
+
+  it('fills in the address the invitation was sent to, and says so', async () => {
+    calls.inviteAddress = 'dana@example.com';
+    renderJoin('/join?invite=tok-123');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    });
+    expect(calls.addressAskedWith).toBe('tok-123');
+    expect(screen.getByText(/the address your invitation was sent to/i)).toBeInTheDocument();
+  });
+
+  it('leaves the field theirs: another address is used as typed, and the note goes', async () => {
+    calls.inviteAddress = 'dana@example.com';
+    renderJoin('/join?invite=tok-123');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    });
+    await userEvent.clear(screen.getByLabelText('Email'));
+    await userEvent.type(screen.getByLabelText('Email'), 'dana.s@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'a long password');
+    await userEvent.type(screen.getByLabelText('Type it again'), 'a long password');
+    expect(screen.queryByText(/the address your invitation was sent to/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await screen.findByText('Check your email');
+    expect(calls.order).toContain('signUp:dana.s@example.com');
+  });
+
+  it('does not write over what they have already typed', async () => {
+    let release: () => void = () => undefined;
+    calls.addressGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    calls.inviteAddress = 'dana@example.com';
+    renderJoin('/join?invite=tok-123');
+    await userEvent.type(screen.getByLabelText('Email'), 'mine@example.com');
+    release();
+    await waitFor(() => {
+      expect(calls.addressAskedWith).toBe('tok-123');
+    });
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
+    expect(screen.getByLabelText('Email')).toHaveValue('mine@example.com');
+    expect(screen.queryByText(/the address your invitation was sent to/i)).not.toBeInTheDocument();
+  });
+
+  it('leaves the field empty, and says nothing, when the club has no address for it', async () => {
+    calls.inviteAddress = null;
+    renderJoin('/join?invite=used');
+    await waitFor(() => {
+      expect(calls.addressAskedWith).toBe('used');
+    });
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('carries on without it when the lookup fails', async () => {
+    calls.addressError = true;
+    renderJoin('/join?invite=tok-123');
+    await waitFor(() => {
+      expect(calls.addressAskedWith).toBe('tok-123');
+    });
+    expect(screen.getByLabelText('Email')).toHaveValue('');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('does not ask for the address of a link that is not there', async () => {
+    renderJoin('/join');
+    await screen.findByRole('button', { name: 'Join the club' });
+    expect(calls.order).not.toContain('invite_address_for_token');
+  });
+
+  it('does not ask once signed in: the claim comes first, and the form is gone', async () => {
+    calls.status = 'signed-up';
+    calls.inviteAddress = 'dana@example.com';
+    renderJoin('/join?invite=tok-123');
+    await screen.findByText('Before you join');
+    expect(calls.order).not.toContain('invite_address_for_token');
   });
 
   it('is let go when the person is already a member', async () => {

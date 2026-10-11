@@ -39,6 +39,23 @@ export function forgetInviteToken(): void {
 }
 
 /**
+ * The address the held invite was sent to, for the join form to fill in: a typo
+ * there is a confirmation email that goes nowhere.
+ *
+ * `invite_address_for_token` answers null for every token that is not a live,
+ * unclaimed invite and says which of them it was to nobody. A failed call is
+ * null too: this is a convenience, and the address can always be typed.
+ */
+export async function heldInviteAddress(): Promise<string | null> {
+  const token = heldInviteToken();
+  if (!token) return null;
+  const result = await getSupabase().rpc('invite_address_for_token', { token });
+  if (result.error) return null;
+  const address: unknown = result.data;
+  return typeof address === 'string' && address !== '' ? address : null;
+}
+
+/**
  * Claims the held invite for the signed-in account.
  *
  * `claim_invite` answers false for every kind of refusal and says which of

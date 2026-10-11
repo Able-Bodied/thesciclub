@@ -147,7 +147,8 @@ export function JoinStep({
   set,
   ways,
   invited,
-}: FieldsProps & { ways: WaysIn; invited: boolean }) {
+  inviteAddress,
+}: FieldsProps & { ways: WaysIn; invited: boolean; inviteAddress: string | null }) {
   const emailRef = useAutoFocus();
   return (
     <>
@@ -175,6 +176,11 @@ export function JoinStep({
           set({ email: e.target.value });
         }}
       />
+      {inviteAddress !== null ? (
+        <Fine>
+          This is the address your invitation was sent to. Change it if you prefer another.
+        </Fine>
+      ) : null}
       <label htmlFor="password" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         Password
       </label>

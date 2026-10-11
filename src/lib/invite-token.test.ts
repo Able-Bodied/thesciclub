@@ -19,9 +19,13 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
-const { captureInviteToken, claimHeldInvite, forgetInviteToken, heldInviteToken } = await import(
-  '@/lib/invite-token'
-);
+const {
+  captureInviteToken,
+  claimHeldInvite,
+  forgetInviteToken,
+  heldInviteAddress,
+  heldInviteToken,
+} = await import('@/lib/invite-token');
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -77,5 +81,34 @@ describe('claimHeldInvite', () => {
     db.answer = { data: null, error: { message: 'offline' } };
     expect(await claimHeldInvite()).toBe('failed');
     expect(heldInviteToken()).toBe('abc');
+  });
+});
+
+describe('the address the held link was sent to', () => {
+  it('asks the club with the held token and returns what it says', async () => {
+    window.localStorage.setItem('sciclub.inviteToken', 'held');
+    db.answer = { data: 'dana@example.com', error: null };
+    expect(await heldInviteAddress()).toBe('dana@example.com');
+    expect(db.asked).toEqual([{ name: 'invite_address_for_token', args: { token: 'held' } }]);
+  });
+
+  it('asks nothing when no link is held', async () => {
+    expect(await heldInviteAddress()).toBeNull();
+    expect(db.asked).toEqual([]);
+  });
+
+  it('is null for a token the club does not know, however it says so', async () => {
+    window.localStorage.setItem('sciclub.inviteToken', 'held');
+    for (const data of [null, '', true, 7]) {
+      db.answer = { data, error: null };
+      expect(await heldInviteAddress()).toBeNull();
+    }
+  });
+
+  it('is null, not a throw, when the call fails, and keeps the token for the claim', async () => {
+    window.localStorage.setItem('sciclub.inviteToken', 'held');
+    db.answer = { data: null, error: { message: 'offline' } };
+    expect(await heldInviteAddress()).toBeNull();
+    expect(window.localStorage.getItem('sciclub.inviteToken')).toBe('held');
   });
 });
