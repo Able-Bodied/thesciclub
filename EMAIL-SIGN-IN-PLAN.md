@@ -119,7 +119,7 @@ HANDOFF.md.
   - [x] Me sign-in section (email, password, Google/Apple, passkeys, phone, username) (`6dcd316`)
   - [x] add-an-email banner for phone accounts, with Use my Google address (`4a7eafa`)
   - [x] @username on profiles and cards (`a16980f`)
-  - [ ] Going wording and phone sheet
+  - [x] Going wording and phone sheet (`9bee253`)
   - [ ] tests, checks, committed
 - [ ] **Session 5: F + G, Admin, invites, words**
   - [ ] admin invites and blocks by email, resend and revoke, re-invite old phone invites

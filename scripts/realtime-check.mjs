@@ -4,8 +4,8 @@
  *   pnpm realtime-check
  *
  * Unit tests mock the channel, so nothing in `pnpm test` says that a message
- * one member writes reaches another. This does: two browsers, two test numbers,
- * and two things that have to move on their own.
+ * one member writes reaches another. This does: two browsers, two seeded
+ * accounts, and two things that have to move on their own.
  *
  *   1. Alex has the conversation open. Bo writes into it from another browser.
  *      Alex's screen shows it without anybody touching Alex's browser.
@@ -29,11 +29,13 @@
  *     python3 -c 'import json,sys; print(json.load(sys.stdin)["PUBLISHABLE_KEY"])') \
  *   ./node_modules/.bin/vite --port 5183 --strictPort
  *
- * Both test numbers need a member row: `pnpm demo-member`, then again with
- * `DEMO_PHONE=12222222222 DEMO_OTP=222222`.
+ * Both accounts need a member row. The two seeded here (`sam@local.test` and
+ * `maya@local.test`, password `local-dev-password`, see supabase/seed.sql) have
+ * one after a `db reset`; for any other pair, set RT_EMAIL_A / RT_EMAIL_B and
+ * RT_PASSWORD, and run `pnpm demo-member` for an account that has no row.
  *
- * Local only, and it refuses to run anywhere else: it signs in with fixed OTPs
- * and writes messages.
+ * Local only, and it refuses to run anywhere else: it signs in with a fixed
+ * password and writes messages.
  */
 
 import { chromium } from 'playwright';
@@ -42,9 +44,10 @@ const BASE = process.env.SHOOT_BASE ?? 'http://localhost:5183';
 const API = process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321';
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+const PASSWORD = process.env.RT_PASSWORD ?? 'local-dev-password';
 const ACCOUNTS = [
-  { phone: process.env.RT_PHONE_A ?? '11111111111', otp: process.env.RT_OTP_A ?? '111111' },
-  { phone: process.env.RT_PHONE_B ?? '12222222222', otp: process.env.RT_OTP_B ?? '222222' },
+  { email: process.env.RT_EMAIL_A ?? 'sam@local.test', password: PASSWORD },
+  { email: process.env.RT_EMAIL_B ?? 'maya@local.test', password: PASSWORD },
 ];
 
 if (!/127\.0\.0\.1|localhost/.test(BASE) || !/127\.0\.0\.1|localhost/.test(API)) {
@@ -56,34 +59,35 @@ if (!KEY) {
   process.exit(1);
 }
 
-/** The member id behind a test number, read with the service role. */
-async function memberIdFor(phone) {
-  const response = await fetch(`${API}/rest/v1/members?phone=eq.${phone}&select=id,display_name`, {
-    headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
+/** The member row behind an account's email, read with the service role. */
+async function memberFor(email) {
+  const headers = { apikey: KEY, Authorization: `Bearer ${KEY}` };
+  const users = await fetch(`${API}/auth/v1/admin/users?per_page=1000`, { headers });
+  const body = await users.json();
+  const user = (body.users ?? []).find((u) => u.email?.toLowerCase() === email.toLowerCase());
+  if (!user) throw new Error(`${email} has no account — run \`supabase db reset\`.`);
+  const response = await fetch(`${API}/rest/v1/members?id=eq.${user.id}&select=id,display_name`, {
+    headers,
   });
   const [row] = await response.json();
-  if (!row) throw new Error(`${phone} has no member row — run pnpm demo-member for it.`);
+  if (!row) throw new Error(`${email} has no member row — run pnpm demo-member for it.`);
   return row;
 }
 
-async function signIn(page, { phone, otp }) {
+async function signIn(page, { email, password }) {
   await page.goto(`${BASE}/join`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: /already have an account/i }).click();
   await page.waitForTimeout(500);
-  await page.locator('input').first().fill(phone);
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await page.waitForTimeout(2500);
-  await page.locator('input').first().fill(otp);
-  await page.waitForTimeout(400);
-  const verify = page.getByRole('button', { name: /continue|verify/i });
-  if (await verify.count()) await verify.first().click();
+  await page.locator('input[type="email"]').fill(email);
+  await page.locator('input[type="password"]').fill(password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForTimeout(2500);
   if (/\/join/.test(page.url())) {
-    throw new Error(`${phone} signed in but is not a member — run pnpm demo-member for it.`);
+    throw new Error(`${email} signed in but is not a member — run pnpm demo-member for it.`);
   }
 }
 
-const [a, b] = await Promise.all(ACCOUNTS.map((account) => memberIdFor(account.phone)));
+const [a, b] = await Promise.all(ACCOUNTS.map((account) => memberFor(account.email)));
 
 const browser = await chromium.launch();
 // Separate contexts, so the two are two different people and not two tabs.
