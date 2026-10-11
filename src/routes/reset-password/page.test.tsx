@@ -92,4 +92,16 @@ describe('choosing a new password', () => {
     expect(await screen.findByRole('heading', { name: 'Join' })).toBeInTheDocument();
     expect(auth.updated).toEqual([]);
   });
+
+describe('when Supabase refuses the new password', () => {
+  it('says a used or expired link has expired, not that a code is wrong', async () => {
+    auth.error = { code: 'otp_expired', message: 'Email link is invalid or has expired' };
+    renderPage();
+    await userEvent.type(await screen.findByLabelText('New password'), 'a new password');
+    await userEvent.type(screen.getByLabelText('Type it again'), 'a new password');
+    await userEvent.click(screen.getByRole('button', { name: 'Save password' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That link has expired or was already used. Ask for a new one.',
+    );
+  });
 });

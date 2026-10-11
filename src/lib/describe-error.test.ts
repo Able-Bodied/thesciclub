@@ -321,27 +321,60 @@ describe('the photo bucket', () => {
   });
 });
 
-describe('signing in', () => {
-  it('a wrong or stale code, by code and by wording', () => {
+// The errors GoTrue returns for the email flows, with their real codes.
+describe('signing in by email', () => {
+  it('a wrong email or password, by code and by wording', () => {
     expect(
-      describeError({ code: 'otp_expired', message: 'Token has expired or is invalid' }),
-    ).toMatch(/not right, or it has expired/);
-    expect(describeError({ message: 'Token has expired or is invalid' })).toMatch(
-      /not right, or it has expired/,
-    );
-    expect(describeError({ message: 'Invalid login credentials' })).toMatch(
-      /not right, or it has expired/,
+      describeError({ code: 'invalid_credentials', message: 'Invalid login credentials' }),
+    ).toBe('That email or password is not right.');
+    expect(describeError({ message: 'Invalid login credentials' })).toBe(
+      'That email or password is not right.',
     );
   });
 
-  it('asking for codes too fast', () => {
+  it('a link that has expired or been used, by code and by wording', () => {
     expect(
-      describeError({
-        code: 'over_sms_send_rate_limit',
+      describeError({ code: 'otp_expired', message: 'Email link is invalid or has expired' }),
+    ).toBe('That link has expired or was already used. Ask for a new one.');
+    expect(describeError({ message: 'Token has expired or is invalid' })).toMatch(
+      /link has expired/,
+    );
+  });
+
+  it('asking for emails too fast', () => {
+    for (const error of [
+      { code: 'over_email_send_rate_limit', message: 'email rate limit exceeded' },
+      { code: 'over_request_rate_limit', message: 'Request rate limit reached' },
+      {
+        code: 'over_email_send_rate_limit',
         message: 'For security purposes, you can only request this after 59 seconds.',
-      }),
-    ).toMatch(/Too many codes/);
-    expect(describeError({ message: 'Email rate limit exceeded' })).toMatch(/Too many codes/);
+      },
+      { message: 'For security purposes, you can only request this after 59 seconds.' },
+    ]) {
+      expect(describeError(error)).toBe(
+        'Too many attempts or emails. Wait a minute and try again.',
+      );
+    }
+  });
+
+  it('an email that could not be sent', () => {
+    expect(
+      describeError({ code: 'unexpected_failure', message: 'Error sending confirmation email' }),
+    ).toBe('The email could not be sent. Try again in a minute.');
+    expect(describeError({ message: 'Error sending recovery email' })).toBe(
+      'The email could not be sent. Try again in a minute.',
+    );
+  });
+
+  // Nothing phone-shaped is recognised any more: these are not sign-in
+  // errors this app can produce, and must not be given a sentence about codes.
+  it('no longer has anything to say about text-message codes', () => {
+    expect(describeError({ code: 'sms_send_failed', message: 'Error sending sms' })).not.toMatch(
+      /code/i,
+    );
+    expect(
+      describeError({ code: 'over_sms_send_rate_limit', message: 'x' }, 'Could not do that.'),
+    ).not.toMatch(/Too many/);
   });
 });
 

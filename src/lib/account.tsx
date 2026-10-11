@@ -11,9 +11,10 @@ import { getSupabase } from '@/lib/supabase';
  * places:
  *
  *  - `signed-out`      — no session. Start at the welcome screen.
- *  - `signed-up`       — verified a number but has no member row yet, because
- *                        they abandoned the wizard partway. Send them back into
- *                        it rather than into an app with no profile behind them.
+ *  - `signed-up`       — has an account (an email, Google, Apple) but no member
+ *                        row yet, because they abandoned the wizard partway.
+ *                        Send them back into it rather than into an app with no
+ *                        profile behind them.
  *  - `member`          — a row in `members`. Let them in.
  *
  * The membership check reads the viewer's own row through `members`, which is

@@ -24,7 +24,9 @@ const calls = vi.hoisted(() => {
     /** What a successful password sign-in makes the account: a stranger to the club, or a member. */
     afterPassword: 'signed-up',
     passwordError: null as { message: string; code?: string } | null,
-    signUpError: null as string | null,
+    signUpError: null as { message: string; code?: string } | null,
+    resendError: null as { message: string; code?: string } | null,
+    resetError: null as { message: string; code?: string } | null,
     signUpOptions: null as { emailRedirectTo?: string } | null,
     resetRedirect: null as string | null,
     /** The signed-in account, as the session shows it. */
@@ -186,17 +188,17 @@ vi.mock('@/lib/supabase', () => ({
         calls.order.push(`signUp:${credentials.email}`);
         calls.signUpOptions = credentials.options ?? null;
         return Promise.resolve({
-          error: calls.signUpError ? { message: calls.signUpError } : null,
+          error: calls.signUpError,
         });
       },
       resend: (options: { type: string; email: string }) => {
         calls.order.push(`resend:${options.type}:${options.email}`);
-        return Promise.resolve({ error: null });
+        return Promise.resolve({ error: calls.resendError });
       },
       resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => {
         calls.order.push(`resetPasswordForEmail:${email}`);
         calls.resetRedirect = options?.redirectTo ?? null;
-        return Promise.resolve({ error: null });
+        return Promise.resolve({ error: calls.resetError });
       },
       signInWithPasskey: () => {
         calls.order.push('signInWithPasskey');
@@ -297,6 +299,8 @@ beforeEach(() => {
   calls.afterPassword = 'signed-up';
   calls.passwordError = null;
   calls.signUpError = null;
+  calls.resendError = null;
+  calls.resetError = null;
   calls.signUpOptions = null;
   calls.resetRedirect = null;
   calls.user = { email: 'dana@example.com', user_metadata: {} };
@@ -418,12 +422,79 @@ describe('joining by email', () => {
   });
 
   it('says what went wrong when the sign-up is refused', async () => {
-    calls.signUpError = 'Signups not allowed for this instance';
+    calls.signUpError = {
+      message: 'Signups not allowed for this instance',
+      code: 'signup_disabled',
+    };
     await openJoin();
     await fillDoor('dana@example.com', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.queryByText('Check your email')).toBeNull();
+  });
+
+  // The sentences for what Supabase really returns, on the three screens that
+  // send an email: sign-up, resend, and Forgot password.
+  describe('the email errors, in words', () => {
+    const TOO_MANY = 'Too many attempts or emails. Wait a minute and try again.';
+    const NOT_SENT = 'The email could not be sent. Try again in a minute.';
+
+    it('sign-up: too many emails', async () => {
+      calls.signUpError = {
+        code: 'over_email_send_rate_limit',
+        message: 'email rate limit exceeded',
+      };
+      await openJoin();
+      await fillDoor('dana@example.com', 'a long password');
+      await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(TOO_MANY);
+    });
+
+    it('sign-up: the confirmation email could not be sent', async () => {
+      calls.signUpError = {
+        code: 'unexpected_failure',
+        message: 'Error sending confirmation email',
+      };
+      await openJoin();
+      await fillDoor('dana@example.com', 'a long password');
+      await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(NOT_SENT);
+      expect(screen.getByRole('alert')).not.toHaveTextContent(/code/i);
+    });
+
+    it('resend: asked too soon', async () => {
+      calls.passwordError = { message: 'Email not confirmed', code: 'email_not_confirmed' };
+      calls.resendError = {
+        code: 'over_email_send_rate_limit',
+        message: 'For security purposes, you can only request this after 59 seconds.',
+      };
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await fillDoor('dana@example.com', 'a long password');
+      await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+      await userEvent.click(await screen.findByRole('button', { name: 'Send it again' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(TOO_MANY);
+    });
+
+    it('reset: the email could not be sent', async () => {
+      calls.resetError = { code: 'unexpected_failure', message: 'Error sending recovery email' };
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+      await userEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(NOT_SENT);
+    });
+
+    it('reset: asked too many times', async () => {
+      calls.resetError = { code: 'over_request_rate_limit', message: 'Request rate limit reached' };
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Forgot password?' }));
+      await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+      await userEvent.click(screen.getByRole('button', { name: 'Send the link' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent(TOO_MANY);
+    });
   });
 
   it('keeps the resend button waiting for a minute, and lets the address be changed', async () => {

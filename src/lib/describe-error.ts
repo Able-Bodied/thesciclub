@@ -108,20 +108,34 @@ const STORAGE: [RegExp, string][] = [
   [/exceeded the maximum allowed size|too large/i, 'That photo is too large. Try a smaller one.'],
 ];
 
-/** GoTrue's codes and, for the versions that send only a message, its wording. */
+/**
+ * GoTrue's codes and, for the versions that send only a message, its wording.
+ *
+ * Email and password only: there is no phone sign-in, so nothing here is about
+ * codes sent by text. What Supabase returns for the email flows:
+ *
+ *   invalid_credentials   "Invalid login credentials"
+ *   otp_expired           "Email link is invalid or has expired" (the
+ *                         confirmation and reset links), older: "Token has
+ *                         expired or is invalid"
+ *   over_email_send_rate_limit   "email rate limit exceeded"
+ *   over_request_rate_limit      "Request rate limit reached"
+ *   (no code, 429)        "For security purposes, you can only request this
+ *                         after 59 seconds."
+ *   unexpected_failure    "Error sending confirmation email" (and the same
+ *                         for recovery, email change and reauthentication)
+ */
 const AUTH: [RegExp, string][] = [
+  [/^invalid_credentials$|Invalid login credentials/i, 'That email or password is not right.'],
   [
-    /^(otp_expired|invalid_credentials)$|Token has expired|Invalid login credentials/i,
-    'That code is not right, or it has expired. Ask for a new one.',
+    /^otp_expired$|Email link is invalid or has expired|Token has expired/i,
+    'That link has expired or was already used. Ask for a new one.',
   ],
   [
-    /^over_(sms|email)_send_rate_limit$|rate limit|only request this after/i,
-    'Too many codes were asked for. Wait a minute and try again.',
+    /^over_(email_send|request)_rate_limit$|rate limit|only request this after/i,
+    'Too many attempts or emails. Wait a minute and try again.',
   ],
-  [
-    /^sms_send_failed$|Error sending sms|Unable to send/i,
-    'The code could not be sent. Try again in a minute.',
-  ],
+  [/Error sending .*email/i, 'The email could not be sent. Try again in a minute.'],
 ];
 
 function lead(attempt: string | undefined, rest: string): string {

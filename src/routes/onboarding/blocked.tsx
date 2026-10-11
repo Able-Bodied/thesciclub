@@ -28,7 +28,7 @@ import { NewTabLink } from '@/routes/onboarding/steps';
  * that possible on a screen nobody is signed in to yet.
  *
  * When the query fails there is no fallback list, deliberately. The sentence
- * above it still says a member organization or a mentor has to add the number,
+ * above it still says a member organization or a mentor has to invite the address,
  * and "Sign out and try another email" still works — a shorter true page beats a complete
  * one that might name the wrong body.
  */
