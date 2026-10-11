@@ -614,7 +614,7 @@ the product definition and wins over this file.
     ingest published. The first nightly import with an override is the real
     check that a change survives it.
 
-40. **Formatting in a room's first post** (2026-10-11, no migration). New
+40. **Formatting in a room's first post** (2026-10-11, no migration, released). New
     topic's first post has the event form's toolbar (`DescriptionEditor`:
     bold, italic, heading, lists, link, preview). Every post on a topic page
     is now drawn from that small Markdown through `EventDescription`, the
@@ -626,8 +626,9 @@ the product definition and wins over this file.
     stripped too, in the `push-notify` edge function (`plainPost` in
     compose.ts, restated from `markdownToPlain` because the function is
     deployed on its own): replies and the post quoted in a like, never a
-    conversation's message. That needs `supabase functions deploy
-    push-notify` to take effect.
+    conversation's message. Released 2026-10-11: the client, and
+    `push-notify` deployed as version 5 at the owner's word (from the repo,
+    which matched the live version 4 apart from this change).
 
 ## Rules the owner set
 
