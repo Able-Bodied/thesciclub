@@ -245,8 +245,39 @@ HANDOFF.md.
   - [x] pushed to main (2026-10-11, `395015b`). Main had one commit this branch lacked (`80bbf6a`, the React picker, by another
     author); merged it in (clean), re-ran `pnpm check` exit 0, `pnpm test` (181 files, 2533 tests) and `pnpm build` exit 0 on the
     merged tip, then pushed the branch and `HEAD:main`. Netlify's `/sw.js` matched the local build within 30 s.
-  - [ ] smoke test on the live site
-  - [ ] switches for Apple and passkeys
+  - [x] smoke test on the live site (2026-10-11, the owner: "passed except passkeys"). What each step rests on, since the
+    database and the owner's word do not cover the same ground:
+    - **Email join:** database-verified. Account, confirmation 75 s later, member with a username, invite consumed. It joined by
+      the **address match**, not the link (the confirmation link was opened outside the incognito window that held the token).
+    - **Claim by link:** database-verified through Google: an invite's `claimed_by` was set after Google's round trip, so the
+      token survives the redirect. That account's invite was then revoked by the owner and it never became a member.
+    - **Google join, to the end:** owner-confirmed only; the database showed the claim, not a finished member.
+    - **Not invited:** an uninvited address confirmed and signed in, with no member row and no invite; owner-confirmed screen.
+      This is the **old** behaviour (the check comes after confirmation); `signup-invite-gate` changes it.
+    - **Forgot password:** owner-confirmed; no recovery timestamp is recorded for any account that day.
+    - **Change email:** not run. The owner removed it from Me on `signup-invite-gate` (`2b9ba71`, not yet released), so the live
+      site still has it until that branch goes out.
+    - **Existing account:** the owner's real admin account signed in with Google: fresh `last_sign_in_at`, still an
+      administrator, phone, Google and email identities all kept, no duplicate account, 5 members and 4 admins. The Google
+      identity's own timestamp did not move (Supabase may not refresh it on a repeat sign-in), so the method is the owner's word.
+      A throwaway email account signing in with Google was auto-linked to its existing account, not duplicated.
+    - **Phone member:** not applicable, no live member is phone-only.
+    - **Apple:** see the next line. **Passkeys:** see the line after it.
+    - **Open, not resolved:** the `Test` member has a phone number on file although the smoke step said to skip it (stored as
+      1 + ten digits, so typed in the app, not from sign-in). The owner has not said whether Skip was pressed; if it was, that is a bug.
+    - **Left to do:** remove the `Test` member and the unconfirmed strays from the live list; turn **Phone off** in Supabase
+      Providers (H18).
+  - [x] Apple (2026-10-11, the owner: "Apple works"). Found wrong at the smoke test and fixed: the **Client ID in Supabase's Apple
+    provider was the App ID `com.thesciclub.app`**; it must be the **Services ID `com.thesciclub.web`**, and is now. The plan
+    already said Services ID (H4, H12); the dashboard did not match. `scripts/apple-secret.mjs` signs the secret for the Services
+    ID, so the Client ID has to be the same value. What the database shows: an Apple identity linked to the owner's **existing
+    admin account** at 16:01 UTC and a sign-in with it at 16:03, not Hide My Email. **Not exercised:** step 9's "join with Apple
+    using Hide My Email through the invite link". I did not check whether `VITE_APPLE_SIGN_IN` is on in Netlify production; that
+    is the owner's switch (H10).
+  - [ ] Passkeys: **later** (the owner, 2026-10-11). `VITE_PASSKEYS` stays off and the smoke step was not run. It still needs the
+    steps in Release order 6 on a real iPhone (Safari and the installed app) and Android Chrome, and a Netlify preview with the
+    switch on, since the button is hidden while it is off. The client is built and tested behind the switch; Decision 10 allows
+    launching without it.
   - [ ] **Follow-up, the owner's word 2026-10-11 (during the smoke test): the invite link fills in its address.** Built and
     committed on the branch (`528443b` database and probe, `7a4dbe1` client), **not yet applied or pushed**: it needs a `db push`
     of one migration (`20261012030000_invite_address_for_link`) and a push to main. `invite_address_for_token(token)` answers the
@@ -260,6 +291,9 @@ HANDOFF.md.
     ways (overwrites what was typed; opens at Welcome; asks when signed in), each failing 1, 7 and 3 tests. `pnpm check`
     exit 0, `pnpm test` 181 files and 2545 tests, `pnpm build` exit 0. Not tried on a phone or the live site. A newline is not
     trimmed in the database (nor in `claim_invite`); the client's `trim()` is what keeps one out.
+    **Not to be released from this session** (the owner, 2026-10-11): `signup-invite-gate` (worktree
+    `thesciclub-signup-gate`) is built on top of these commits, so it carries them, and the session that owns it releases both
+    together. Its `db push` dry run should list `20261012030000` and `20261012040000`.
 
 ## Decisions (the owner's, 2026-10-10)
 
@@ -743,6 +777,8 @@ Apple Developer:
     once), and keep it outside the repo. **Done 2026-10-10**; the owner holds
     the `.p8` and the Key ID. The secret was made with B's script and is
     pasted into Supabase's Apple provider (H4), the owner confirmed 2026-10-10.
+    **Corrected 2026-10-11, at the smoke test:** the provider's Client ID had been set to the App ID `com.thesciclub.app`.
+    It is the Services ID `com.thesciclub.web` (the same value the secret is signed for), and Apple sign-in works with it.
 14. Calendar reminder: rotate the Apple secret by 2027-04-01.
 
 Accounts:
