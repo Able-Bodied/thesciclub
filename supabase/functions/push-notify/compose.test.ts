@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compose, LIKED_LENGTH, type Owed, PREVIEW_LENGTH, shorten } from './compose.ts';
+import { compose, LIKED_LENGTH, type Owed, PREVIEW_LENGTH, plainPost, shorten } from './compose.ts';
 
 const owed = (over: Partial<Owed>): Owed => ({
   endpoint: 'https://web.push.apple.com/x',
@@ -215,5 +215,32 @@ describe('shorten', () => {
         .slice(0, -1)
         .every((c) => c === '🙂'),
     ).toBe(true);
+  });
+});
+
+// 2026-10-11: a room post can be formatted; a notification is plain text.
+describe('a formatted post in a notification', () => {
+  it('drops the marks from a reply and keeps the words', () => {
+    expect(
+      compose(owed({ kind: 'reply', body: '**Gate check** it, and take the *joystick*' }))?.body,
+    ).toBe('Gate check it, and take the joystick');
+    expect(
+      compose(owed({ kind: 'reply_participant', body: '## Tips\n- [United](https://united.com)' }))
+        ?.body,
+    ).toBe('Tips United');
+  });
+
+  it('drops them from the post quoted in a like', () => {
+    expect(compose(owed({ kind: 'like', body: '**Bring water**' }))?.body).toBe('“Bring water”');
+  });
+
+  it('leaves a message in a conversation as typed', () => {
+    expect(compose(owed({ kind: 'direct', body: 'see you at **8**' }))?.body).toBe(
+      'see you at **8**',
+    );
+  });
+
+  it('keeps arithmetic and snake_case', () => {
+    expect(plainPost('2 * 3 * 4 and room_one_two')).toBe('2 * 3 * 4 and room_one_two');
   });
 });

@@ -622,9 +622,12 @@ the product definition and wins over this file.
     hand is formatted too; plain text reads as it did. Previews that show a
     few lines of a post — a Home card's opening or first reply, a
     notification's excerpt — use `markdownToPlain`, so no `**` or `##` shows.
-    Not changed: messages in conversations, and the push notification text
-    built by the `push-notify` edge function (it would show marks in a
-    formatted reply's preview until that function strips them too).
+    Not changed: messages in conversations. The phone notification text is
+    stripped too, in the `push-notify` edge function (`plainPost` in
+    compose.ts, restated from `markdownToPlain` because the function is
+    deployed on its own): replies and the post quoted in a like, never a
+    conversation's message. That needs `supabase functions deploy
+    push-notify` to take effect.
 
 ## Rules the owner set
 

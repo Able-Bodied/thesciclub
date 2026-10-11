@@ -91,9 +91,34 @@ function photographs(count: number): string {
   return count === 1 ? 'Sent a photograph.' : `Sent ${count} photographs.`;
 }
 
+/**
+ * A room post's words without their formatting marks (2026-10-11): the first
+ * post's toolbar writes a small Markdown, and a notification is plain text,
+ * so "**Bring water**" arrives as "Bring water". The same rules as
+ * src/lib/markdown.ts `markdownToPlain` — restated, since this function is
+ * deployed on its own and cannot import the app — and only for posts:
+ * conversations are not formatted, so a typed asterisk there stays.
+ */
+export function plainPost(text: string): string {
+  return text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) =>
+      line
+        .replace(/^(\s*)#{1,3}\s+/, '$1')
+        .replace(/^(\s*)[-*•]\s+/, '$1')
+        .replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, '$1')
+        .replace(/\*\*(?=\S)(.+?)(?<=\S)\*\*/g, '$1')
+        .replace(/(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])/g, '$1')
+        .replace(/(?<![\w_])_(?=\S)(.+?)(?<=\S)_(?![\w_])/g, '$1'),
+    )
+    .join('\n');
+}
+
 /** What the message said, or what it carried when it said nothing. */
-function words(owed: Owed): string {
-  const text = shorten(owed.body ?? '');
+function words(owed: Owed, post = false): string {
+  const said = owed.body ?? '';
+  const text = shorten(post ? plainPost(said) : said);
   if (text !== '') return text;
   return owed.photo_count > 0 ? photographs(owed.photo_count) : '';
 }
@@ -121,18 +146,18 @@ export function compose(owed: Owed): PushMessage | null {
     case 'reply':
       return {
         title: `${name} replied to your topic`,
-        body: words(owed) || `${name} replied to your topic.`,
+        body: words(owed, true) || `${name} replied to your topic.`,
         ...where,
       };
     case 'reply_participant':
       return {
         title: `${name} replied in a topic you posted in`,
-        body: words(owed) || `${name} replied in a topic you posted in.`,
+        body: words(owed, true) || `${name} replied in a topic you posted in.`,
         ...where,
       };
     case 'like': {
       // The member's own words, quoted so they read as theirs and not Bo's.
-      const own = shorten(owed.body ?? '', LIKED_LENGTH);
+      const own = shorten(plainPost(owed.body ?? ''), LIKED_LENGTH);
       const what = owed.detail === 'topic' ? 'topic' : 'post';
       return {
         title: `${name} liked your ${what}`,
