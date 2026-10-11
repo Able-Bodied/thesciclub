@@ -740,6 +740,9 @@ Accounts:
 16b. Message each phone admin and member: "Open Me and add your email before
     tomorrow". If one is signed out and stuck, set their email with the script,
     then they use **Forgot password** or Google with that address.
+    **Done 2026-10-10** (owner): every member now has an email on their
+    account, set with the script in another session. Addresses are
+    deliberately not recorded here.
 17. Pending phone invites: Admin → invites → "Re-invite by email", for each
     person you have an email for.
 18. Turn **Phone** off in Providers after the release. It does nothing once
