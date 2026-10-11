@@ -475,8 +475,12 @@ Apple Developer:
     `com.thesciclub.web`).
     - Domain `erijdvqnxavwezsbbojv.supabase.co`.
     - Return URL `https://erijdvqnxavwezsbbojv.supabase.co/auth/v1/callback`.
+   - **Done 2026-10-10.** App ID `com.thesciclub.app`, Services ID
+     `com.thesciclub.web`, Team ID `3RZ3A2CJ9N`.
 13. Create a Key with Sign in with Apple, download the `.p8` (only possible
-    once), and keep it outside the repo.
+    once), and keep it outside the repo. **Done 2026-10-10**; the owner holds
+    the `.p8` and the Key ID. Still to do: make the secret (B's script) and
+    paste it into Supabase's Apple provider (H4).
 14. Calendar reminder: rotate the Apple secret by 2027-04-01.
 
 Accounts:
