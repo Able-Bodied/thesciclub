@@ -242,7 +242,9 @@ HANDOFF.md.
   - [x] `sign-in-reminder` deployed, secrets set, vault URL added (H9a) (2026-10-11, v1, `verify_jwt` false: 401 "not the reminder"
     without the secret; `REMINDER_TO` set; the vault URL is on the owner's word)
   - [x] full checks (`pnpm check` exit 0, `pnpm test` 181 files and 2528 tests, `pnpm build` exit 0, 2026-10-11)
-  - [ ] pushed to main
+  - [x] pushed to main (2026-10-11, `395015b`). Main had one commit this branch lacked (`80bbf6a`, the React picker, by another
+    author); merged it in (clean), re-ran `pnpm check` exit 0, `pnpm test` (181 files, 2533 tests) and `pnpm build` exit 0 on the
+    merged tip, then pushed the branch and `HEAD:main`. Netlify's `/sw.js` matched the local build within 30 s.
   - [ ] smoke test on the live site
   - [ ] switches for Apple and passkeys
 
