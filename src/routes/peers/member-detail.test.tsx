@@ -70,6 +70,20 @@ beforeEach(() => {
   chatRooms.rooms = [];
 });
 
+describe('the @username', () => {
+  it('is under the name on a profile', () => {
+    state.current = ok(makeMember({ displayName: 'Nicole', username: 'nicole.s' }));
+    renderDetail();
+    expect(screen.getByText('@nicole.s')).toBeInTheDocument();
+  });
+
+  it('is left out for a member who has none, rather than drawing a bare @', () => {
+    state.current = ok(makeMember({ displayName: 'Nicole', username: null }));
+    renderDetail();
+    expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
+  });
+});
+
 describe('backFrom', () => {
   // The button goes back through history either way; the label is what can
   // be wrong.

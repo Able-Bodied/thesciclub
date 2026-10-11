@@ -66,6 +66,11 @@ export function MeHero({ member }: { member: OwnMember }) {
           <h1 className="font-extrabold font-head text-[1.3125rem] leading-[1.2] tracking-[-0.01em]">
             {member.displayName}
           </h1>
+          {member.username ? (
+            <p className="mt-0.5 font-semibold text-[#DCE6F2] text-[0.875rem]">
+              @{member.username}
+            </p>
+          ) : null}
           {summary ? <p className="mt-[3px] text-[#B9CADF] text-[0.8125rem]">{summary}</p> : null}
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Chip>Member since {memberSince(member.createdAt)}</Chip>

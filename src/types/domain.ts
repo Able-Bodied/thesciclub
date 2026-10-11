@@ -263,6 +263,8 @@ export interface BrowseMember {
   id: string;
   type: MemberType;
   displayName: string;
+  /** The @name, without the "@". Null only for a member who joined before usernames. */
+  username: string | null;
   /** Path inside the `photos` bucket, not a URL. `usePhotoUrl()` signs one,
    *  so the project ref is never baked into the data. */
   photoPath: string | null;

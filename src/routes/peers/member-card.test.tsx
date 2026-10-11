@@ -97,6 +97,23 @@ describe('MemberCard', () => {
     expect(screen.getByText('C6 incomplete · 28 · Santa Clara')).toBeInTheDocument();
   });
 
+  it('shows the @username under the name, and nothing for a member who has none', () => {
+    const { rerender } = render(
+      <MemberCard
+        member={makeMember({ displayName: 'Nicole', username: 'nicole.s' })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.getByText('@nicole.s')).toBeInTheDocument();
+    rerender(
+      <MemberCard
+        member={makeMember({ displayName: 'Nicole', username: null })}
+        onOpen={() => undefined}
+      />,
+    );
+    expect(screen.queryByText(/^@/)).not.toBeInTheDocument();
+  });
+
   it('flags a mentor, so they are recognisable while scrolling', () => {
     render(<MemberCard member={makeMember({ type: 'mentor' })} onOpen={() => undefined} />);
     expect(screen.getByText('Mentor')).toBeInTheDocument();

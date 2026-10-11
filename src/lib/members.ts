@@ -20,6 +20,8 @@ export interface BrowseMemberRow {
   id: string;
   type: string;
   display_name: string;
+  /** Optional: absent from a database before 20261012000000. */
+  username?: string | null;
   photo_path: string | null;
   photo_alt: string | null;
   avatar_color: string | null;
@@ -72,6 +74,7 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     id: row.id,
     type: memberType(row.type),
     displayName: row.display_name,
+    username: row.username ?? null,
     photoPath: row.photo_path,
     photoAlt: row.photo_alt,
     avatarColor: row.avatar_color,
@@ -313,12 +316,15 @@ export function useBrowseMember(id: string | undefined): MemberState {
  * *to another member*, which is a different statement from never leaving it at
  * all, and the Me hero shows an age and a birthday derived from it.
  *
- * `phone` is still not selected. Nothing on this screen shows it, and a column
- * you do not fetch cannot end up somewhere it should not be.
+ * `phone` is still not selected here. Me's "Phone for events" card and the
+ * Going sheet read it on their own (src/lib/event-phone.ts), so a column you
+ * do not fetch cannot end up somewhere it should not be.
  */
 export interface OwnMember {
   id: string;
   displayName: string;
+  /** The @name, without the "@". */
+  username: string | null;
   type: MemberType;
   photoPath: string | null;
   photoAlt: string | null;
@@ -366,7 +372,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
           supabase
             .from('members')
             .select(
-              'id, display_name, type, photo_path, photo_alt, city, state, level_range, exact_level, birth_date, created_at, is_admin, wants_to_mentor',
+              'id, display_name, username, type, photo_path, photo_alt, city, state, level_range, exact_level, birth_date, created_at, is_admin, wants_to_mentor',
             )
             .abortSignal(signal)
             .maybeSingle(),
@@ -391,6 +397,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
             ? {
                 id: row.id as string,
                 displayName: row.display_name as string,
+                username: (row.username as string | null) ?? null,
                 type: memberType(row.type),
                 photoPath: (row.photo_path as string | null) ?? null,
                 photoAlt: (row.photo_alt as string | null) ?? null,

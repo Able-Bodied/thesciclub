@@ -171,6 +171,11 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
         <span className="block font-extrabold font-display text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
           {member.displayName}
         </span>
+        {member.username ? (
+          <span className="mt-0.5 block font-semibold text-[0.84375rem] text-[#DCE6F2] leading-[1.35] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
+            @{member.username}
+          </span>
+        ) : null}
         <span className="mt-[7px] block text-[0.84375rem] text-[#DCE6F2] leading-[1.45] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
           {summaryLine(member)}
         </span>

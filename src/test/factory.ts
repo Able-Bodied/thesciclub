@@ -8,6 +8,7 @@ export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember 
     id: Math.random().toString(36).slice(2),
     type: 'peer',
     displayName: 'Test',
+    username: null,
     photoPath: null,
     photoAlt: null,
     avatarColor: null,

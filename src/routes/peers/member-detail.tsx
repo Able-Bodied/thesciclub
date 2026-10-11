@@ -355,6 +355,11 @@ export default function MemberDetailPage() {
                 <h1 className="font-extrabold font-display text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
                   {member.displayName}
                 </h1>
+                {member.username ? (
+                  <p className="mt-0.5 font-semibold text-[0.9375rem] text-[#D3DFEE]">
+                    @{member.username}
+                  </p>
+                ) : null}
                 <p className="mt-1 text-[0.875rem] text-[#D3DFEE]">{summaryLine(member)}</p>
                 {injury ? (
                   <p className="mt-0.5 text-[0.78125rem] text-[#B9CADF]">{injury}</p>
