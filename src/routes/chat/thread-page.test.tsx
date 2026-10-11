@@ -169,6 +169,7 @@ const message = (o: Partial<ChatMessage> & { id: string }): ChatMessage => ({
 const jan: ChatAuthor = {
   id: 'jan',
   displayName: 'Jan',
+  username: null,
   photoPath: null,
   photoAlt: null,
   avatarColor: null,

@@ -54,7 +54,12 @@ export function MemberPicker({
     const needle = filter.trim().toLowerCase();
     return members
       .filter((member) => !exclude.has(member.id))
-      .filter((member) => needle === '' || member.displayName.toLowerCase().includes(needle));
+      .filter(
+        (member) =>
+          needle === '' ||
+          member.displayName.toLowerCase().includes(needle) ||
+          (member.username ?? '').includes(needle.replace(/^@/, '')),
+      );
   }, [members, exclude, filter]);
 
   const chosen = new Set(picked);
@@ -135,7 +140,9 @@ export function MemberPicker({
                     {member.displayName}
                   </span>
                   <span className="block text-[0.71875rem] text-grey">
-                    {[level, member.city].filter(Boolean).join(' · ')}
+                    {[member.username ? `@${member.username}` : null, level, member.city]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </span>
               </label>

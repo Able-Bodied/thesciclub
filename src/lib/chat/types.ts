@@ -92,6 +92,8 @@ export type ChatSegment = (typeof CHAT_SEGMENTS)[number];
 export interface ChatAuthor {
   id: string;
   displayName: string;
+  /** The @name, without the "@". Null for a member who joined before usernames. */
+  username: string | null;
   photoPath: string | null;
   photoAlt: string | null;
   avatarColor: string | null;

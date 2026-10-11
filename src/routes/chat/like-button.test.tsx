@@ -14,6 +14,7 @@ vi.mock('@/lib/chat/authors', () => ({
 
 const author = (o: Partial<ChatAuthor> & { id: string }): ChatAuthor => ({
   displayName: 'Jan',
+  username: null,
   photoPath: null,
   photoAlt: null,
   avatarColor: null,

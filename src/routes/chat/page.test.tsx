@@ -100,6 +100,7 @@ const thread = (o: Partial<ChatThread> & { id: string }): ChatThread => ({
 
 const author = (o: Partial<ChatAuthor> & { id: string }): ChatAuthor => ({
   displayName: 'Jan',
+  username: null,
   photoPath: null,
   photoAlt: null,
   avatarColor: null,
@@ -347,6 +348,7 @@ describe('the chat screen', () => {
         {
           id: 'ada',
           displayName: 'Ada A',
+          username: null,
           photoPath: null,
           photoAlt: null,
           avatarColor: null,

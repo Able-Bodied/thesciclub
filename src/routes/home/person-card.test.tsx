@@ -21,6 +21,16 @@ describe('a member worth meeting', () => {
     expect(links[0]).toHaveAttribute('href', '/peers/sam');
   });
 
+  it('shows their @username under the name, and nothing when they have none', () => {
+    const { unmount } = renderCard(
+      makeMember({ displayName: 'Sam Okafor', username: 'sam.rolls' }),
+    );
+    expect(screen.getByText('@sam.rolls')).toBeInTheDocument();
+    unmount();
+    renderCard(makeMember({ displayName: 'Sam Okafor', username: null }));
+    expect(screen.queryByText(/^@/)).toBeNull();
+  });
+
   it('says who they are and what they do', () => {
     renderCard(
       makeMember({

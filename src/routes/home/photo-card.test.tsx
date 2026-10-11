@@ -25,6 +25,7 @@ beforeEach(() => {
 const jan: ChatAuthor = {
   id: 'jan',
   displayName: 'Jan',
+  username: null,
   photoPath: null,
   photoAlt: null,
   avatarColor: null,

@@ -67,6 +67,20 @@ describe('starting a conversation from Chat', () => {
     expect(screen.queryByRole('button', { name: 'Message Me' })).toBeNull();
   });
 
+  it('shows each person’s @username, and finds them by it', async () => {
+    const user = userEvent.setup();
+    db.members = [
+      makeMember({ id: 'me', displayName: 'Me' }),
+      makeMember({ id: 'jan', displayName: 'Jan', username: 'jan.k' }),
+      makeMember({ id: 'sam', displayName: 'Sam', username: 'wheels' }),
+    ];
+    renderPage();
+    expect(screen.getByText(/@jan\.k/)).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'To' }), '@wheel');
+    expect(screen.getByRole('button', { name: 'Message Sam' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Message Jan' })).toBeNull();
+  });
+
   it('narrows by name, and says so when nobody matches', async () => {
     const user = userEvent.setup();
     renderPage();

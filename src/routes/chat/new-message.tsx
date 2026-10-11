@@ -31,7 +31,12 @@ export default function NewMessagePage() {
     const needle = filter.trim().toLowerCase();
     return members
       .filter((member) => member.id !== viewerId)
-      .filter((member) => needle === '' || member.displayName.toLowerCase().includes(needle));
+      .filter(
+        (member) =>
+          needle === '' ||
+          member.displayName.toLowerCase().includes(needle) ||
+          (member.username ?? '').includes(needle.replace(/^@/, '')),
+      );
   }, [members, viewerId, filter]);
 
   function open(memberId: string) {
@@ -143,7 +148,9 @@ export default function NewMessagePage() {
                       <span className="block text-[0.75rem] text-grey">
                         {opening === member.id
                           ? 'Opening…'
-                          : [level, member.city].filter(Boolean).join(' · ')}
+                          : [member.username ? `@${member.username}` : null, level, member.city]
+                              .filter(Boolean)
+                              .join(' · ')}
                       </span>
                     </span>
                   </button>

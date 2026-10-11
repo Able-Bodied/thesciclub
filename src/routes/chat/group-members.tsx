@@ -226,7 +226,11 @@ export default function GroupMembersPage() {
                       <span className="font-normal text-grey"> — you</span>
                     ) : null}
                   </span>
-                  <span className="block text-[0.71875rem] text-grey">{author?.level ?? ''}</span>
+                  <span className="block text-[0.71875rem] text-grey">
+                    {[author?.username ? `@${author.username}` : null, author?.level]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
                 </span>
               </div>
             );

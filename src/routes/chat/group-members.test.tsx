@@ -124,6 +124,7 @@ const { default: GroupMembersPage } = await import('@/routes/chat/group-members'
 const author = (o: Partial<ChatAuthor> = {}): ChatAuthor => ({
   id: 'jan',
   displayName: 'Jan',
+  username: null,
   photoPath: null,
   photoAlt: null,
   avatarColor: null,
@@ -195,6 +196,15 @@ describe('who is in a group', () => {
     expect(screen.getByRole('heading', { name: '2 members' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Jan' })).toHaveAttribute('href', '/peers/jan');
     expect(screen.getByText('— you')).toBeInTheDocument();
+  });
+
+  it('shows each member’s @username beside their level', () => {
+    db.authors = new Map([
+      ['me', author({ id: 'me', displayName: 'Alex', username: null })],
+      ['jan', author({ username: 'jan.k' })],
+    ]);
+    renderPage();
+    expect(screen.getByText('@jan.k · T4')).toBeInTheDocument();
   });
 
   it('offers no way to put anybody else out', () => {

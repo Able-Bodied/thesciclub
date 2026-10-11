@@ -52,6 +52,8 @@ export function resetChatAuthors(): void {
 interface ChatAuthorRow {
   id: string;
   display_name: string;
+  /** Optional: absent from a database before 20261012010000. */
+  username?: string | null;
   photo_path: string | null;
   photo_alt: string | null;
   avatar_color: string | null;
@@ -65,6 +67,7 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
   return {
     id: row.id,
     displayName: row.display_name,
+    username: row.username ?? null,
     photoPath: row.photo_path,
     photoAlt: row.photo_alt,
     avatarColor: row.avatar_color,
@@ -88,7 +91,7 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
     const { data, error } = await getSupabase()
       .from('chat_authors')
       .select(
-        'id, display_name, photo_path, photo_alt, avatar_color, level_range, exact_level, is_admin, has_profile',
+        'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, is_admin, has_profile',
       )
       .in('id', wanted);
     // A failure leaves the ids uncached, so the next render tries again. The

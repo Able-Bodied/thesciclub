@@ -46,6 +46,11 @@ export function PersonCard({ member, linkState }: { member: BrowseMember; linkSt
           >
             {member.displayName}
           </Link>
+          {member.username ? (
+            <span className="mt-px block font-semibold text-[0.78125rem] text-grey leading-[1.35]">
+              @{member.username}
+            </span>
+          ) : null}
           <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
             {summaryLine(member)}
           </span>
