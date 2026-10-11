@@ -117,7 +117,11 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
   if (error) {
     // Someone took the @name in the moment between the check and this insert.
     if (error.message.includes('members_username_key')) {
-      return { ok: false, usernameRefused: true, error: 'That username was just taken. Choose another.' };
+      return {
+        ok: false,
+        usernameRefused: true,
+        error: 'That username was just taken. Choose another.',
+      };
     }
     return {
       ok: false,
