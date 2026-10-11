@@ -589,7 +589,7 @@ the product definition and wins over this file.
     the backdrop and Escape remain. A hint to take a reaction back shows only
     once you have one.
 
-39. **Administrators change imported events** (2026-10-11). The owner:
+39. **Administrators change imported events** (2026-10-11, released). The owner:
     anything the event form has, on an event from an organization's
     calendar; the administrator's version wins until reverted.
     `20261012060000`: `events.admin_override` (changed fields and values) and
@@ -605,8 +605,11 @@ the product definition and wins over this file.
     fields keep updating. No Delete on an imported event (the import would
     bring it back), and no cover picture. Form note lists what the calendar
     says for each changed field; the event page has Change and Revert.
-    PGlite: 18 checks; 5 ingest tests. **Migration before the client and
-    before the next nightly import**: both now read `admin_override`.
+    PGlite: 18 checks; 5 ingest tests. Released 2026-10-11: the migration
+    went live first (the client and the ingest both read `admin_override`),
+    columns and both functions confirmed on production, then the client and
+    ingest published. The first nightly import with an override is the real
+    check that a change survives it.
 
 ## Rules the owner set
 
