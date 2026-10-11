@@ -519,6 +519,22 @@ the product definition and wins over this file.
     quote in an address). Plain text from before reads as it did. Link asks
     for the address beside the toolbar, not in a browser prompt.
 
+32. **A cover picture on an event added by hand** (2026-10-10). One picture,
+    shown whole (never cropped, as flyers carry words) at the top of the
+    event's page and as a small square on its card; optional words for a
+    screen reader. `20261011070000`: `events.photo_path`/`photo_alt`, files
+    at `events/<event id>/<random>` in the private photos bucket, written by
+    whoever may change the event (`may_change_event`, save_event's rule) and
+    read by members as every photograph is; `set_event_photo` sets the
+    column only to a file in that folder that was uploaded, as the logo's
+    does. On a repeating event it sets this date, every later date and the
+    template, so nightly dates copy it (`extend_event_series` restated); the
+    previous file comes back to delete only when nothing names it. Deleting
+    an event leaves its file. The form uploads after saving the event (the
+    folder is its id); a failed upload reopens the edit form saying the
+    event is saved. PGlite: 45 checks with the repeat ones. **Migration
+    before the client**: `EVENT_COLUMNS` now names `photo_path`.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

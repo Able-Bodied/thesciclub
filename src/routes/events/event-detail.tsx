@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { GOING_SHARES_NUMBER } from '@/routes/events/event-card';
+import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
@@ -140,6 +141,8 @@ export default function EventDetailPage() {
           >
             ← {backLabel(location)}
           </button>
+
+          <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
 
           {/* A calendar, because the line is a date. This was a map pin, which
               says "place" in front of text that says "Friday 11 September". */}
