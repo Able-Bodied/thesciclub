@@ -154,12 +154,57 @@ HANDOFF.md.
       (only the comment naming the constant changed); `event_host_contacts` has no screen yet; HANDOFF's "Test numbers"
       lines; the home page's `person-card.tsx` and chat lists do not show `@username` (the task named profiles and
       peer cards).
-- [ ] **Session 5: F + G, Admin, invites, words**
-  - [ ] admin invites and blocks by email, resend and revoke, re-invite old phone invites
-  - [ ] mentor invites by email
-  - [ ] event host contacts
-  - [ ] privacy, terms, CONTEXT, HANDOFF; `public/sms-opt-in/` removed
-  - [ ] tests, checks, committed
+- [x] **Session 5: F + G, Admin, invites, words**
+  - [x] admin invites and blocks by email, resend and revoke, re-invite old phone invites (`9df36d1`, with `send-invite` client `0460270`)
+  - [x] mentor invites by email (`c03be86`)
+  - [x] event host contacts (reader and section `0460270`, the Going tab `9df36d1`)
+  - [x] privacy, terms, CONTEXT, HANDOFF; `public/sms-opt-in/` removed (`c550eff`, `e9295c5`)
+  - [x] @username on Home's person cards and in chat lists, which Session 4 left out (`97dc60e`; new migration `20261012010000`)
+  - [x] phone-only member and an upcoming event in seed.sql; dev-login by phone (`7710453`)
+  - [x] tests, checks, committed (work: `0460270`, `9df36d1`, `c03be86`, `97dc60e`, `c550eff`, `7710453`, `e9295c5`; tests went in with each commit;
+    this plan edit is the commit after). `pnpm check` exit 0, `pnpm test` (181 files, 2511 tests) and `pnpm build` clean at the tip.
+  - Notes for the next session ("as built"):
+    - **Broken on purpose, each failing the tests that guard it:** `removeAndBlock` deleting the member before blocking (2 tests);
+      `createInvite` not emailing the link (3); the mentor `createMyInvite` back to a direct insert (5); Resend offered on a used
+      mentor invite (1) and on a used admin invite (1). New SQL probe `chat-authors-username.sql` fails with the view's column
+      removed. Each was restored and the files re-run green.
+    - **Verified on the real local stack and a real browser** (`db reset`, app on 5183, headless Chromium), the two things Session 4
+      could not try: as phone-only Phoebe (`/dev-login?phone=14155550199`) Me shows the add-an-email banner, "Add email" sends the
+      confirmation to mailpit, and its link lands on `/me?email=changed` with the banner gone and the address shown. As `sam@`
+      (no number on file) Going saves the RSVP and opens the phone sheet; Save stored `14155550123` (1 + ten digits); Skip holds for
+      the browser session. As `alfred@`: Admin → Invites adds an address (the email step fails locally because the edge runtime is
+      not running, and the form says "on the list, but the email did not go out"), re-issues an old phone invite by email, blocks
+      an address; Admin → Going lists Maya and Phoebe with email and phone.
+    - **Not tried:** `send-invite` end to end (needs the edge runtime and Resend), Apple, passkeys.
+    - **Client names:** `src/lib/send-invite.ts` (`sendInvite`, `addedButNotSent`); in `members-admin.ts` `createInvite({email,
+      organizationId, note})` (returns `{ok, sendError?}`: on the list but the email failed is **ok**, so nobody adds it twice),
+      `resendInvite`, `reinviteByEmail`, `blockEmail`/`unblockEmail`/`fetchBlockedEmails`, `removeAndBlock`, `withdrawnInvites`,
+      `deliveryNote`, `isOldPhoneInvite`; `mentor-invites.ts` `createMyInvite({email, note})` and `resendMyInvite`;
+      `src/routes/admin/event-contacts*.ts(x)`. `AdminMember` gained `email`, `username` (phone is nullable); `AdminInvite` gained
+      `email`, `sentAt`, `claimedAt` and lost `claimableName`; `fetchClaimableProfiles` and the claim question are gone.
+    - **Removing a member and blocking** is two calls, **block first** (`admin_block_email`, then `admin_delete_member`): a failure
+      leaves the address barred and the member visibly still there. A member with no email is blocked by number
+      (`admin_block_number`), and then removed too if that did not already (a typed `members.phone` need not match the verified one).
+    - **Old phone invites** show "phone invite (old)" with no Resend and no Block (no address); "Re-invite by email" creates the
+      email invite (same organization by name, same note), emails it, then revokes the phone one only if it was still pending.
+    - **`chat_authors.username`** needed a migration, `20261012010000_chat_authors_username.sql`: **Session 6's `db push` dry run
+      should list two migrations, not one** (`20261012000000` and this). `ChatAuthor.username` is required, so test fixtures carry it.
+    - **seed.sql** now has Phoebe (phone-only; her `members.phone` is set, as the live phone members' are, so Going does not ask her)
+      and one upcoming event with Maya going. The Going sheet opens only for a member with no number: use `sam@`.
+    - **The Going tab** lists upcoming events somebody is going to (from yesterday on) and copies one line a person: name, email,
+      phone if given. The app still does not hand the details to the host itself.
+    - **Remaining phone or SMS wording in `src/`** (searched 2026-10-10; none of it is a sign-in screen):
+      - `src/lib/describe-error.ts` `AUTH` list: `invalid_credentials` still reads "That code is not right, or it has expired. Ask
+        for a new one.", the rate-limit sentence says "Too many codes were asked for.", and a send failure says "The code could
+        not be sent." These are what **email** flows show if they reach `describeError` (`auth-email.ts` does, for sign-up, resend and
+        reset). **Worth fixing before release**, with `describe-error.test.ts` (its fixtures use `over_sms_send_rate_limit`).
+      - `src/routes/me/findable-switch.tsx:35` still says people "can ... text you"; that is the hidden "Ask somebody" feature, whose
+        switch is still on Me for inviters although its door is hidden. Hide the switch or reword it: the owner's call.
+      - `src/routes/onboarding/ask-somebody.tsx` and `src/lib/invite-request.ts` (`smsHref`, "text them to ask"): unreferenced
+        on purpose (Decision 8).
+      - Comments only: `src/lib/account.tsx:14` ("verified a number"), `src/routes/onboarding/blocked.tsx:32` ("add the number"),
+        and the history in `src/sw.ts`, `legal/static.tsx`, `privacy.tsx`, `terms.tsx` that says why the SMS text went.
+      - Intended: `src/routes/me/add-email-banner.tsx:84` ("no longer sends codes by text message") explains the change to a phone member.
 - [ ] **Session 6: Release, with the owner**
   - [ ] owner H steps confirmed one by one
   - [ ] `db push` (dry run first)

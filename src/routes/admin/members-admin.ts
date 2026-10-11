@@ -176,7 +176,8 @@ export interface AdminInvite {
   heldBy: string | null | undefined;
   heldByStatus: 'active' | 'suspended' | 'removed' | null | undefined;
   /**
-   * Whether anybody has ever verified this number.
+   * Whether an account exists for this invite: one that claimed its link, or a
+   * confirmed one at the invited address (an old phone invite: a verified number).
    *
    * Not the same question as `heldBy`, and the gap between them is the point:
    * an invite that is still pending while an account exists is somebody who
@@ -338,7 +339,8 @@ export function inviteState(invite: AdminInvite): string {
   if (invite.status === 'revoked') return 'revoked';
 
   // Pending with an account behind it is the case nobody could see: they
-  // verified the number, landed in onboarding and stopped. Worth saying,
+  // got an account (opened the link, or confirmed the address), landed in
+  // onboarding and stopped. Worth saying,
   // because it is the one state on this list somebody would act on — the
   // person tried and something got in the way.
   if (invite.status === 'pending') {
