@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0;padding:24px;background:#ffffff;color:#111111;font-family:Arial,Helvetica,sans-serif;font-size:20px;line-height:1.5;">
+    <p style="margin:0 0 24px;font-size:22px;font-weight:bold;">The SCI Club</p>
+    <p style="margin:0 0 20px;">Someone asked to change the email address on a SCI Club account from <strong>{{ .Email }}</strong> to <strong>{{ .NewEmail }}</strong>.</p>
+    <p style="margin:0 0 20px;">To approve the change, open the link below. You may get one of these at each address, and both need to be approved.</p>
+    <p style="margin:0 0 28px;">
+      <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:16px 28px;background:#111111;color:#ffffff;font-size:20px;font-weight:bold;text-decoration:none;border-radius:8px;">Approve the change</a>
+    </p>
+    <p style="margin:0 0 8px;">Or open this link:</p>
+    <p style="margin:0 0 28px;word-break:break-all;"><a href="{{ .ConfirmationURL }}" style="color:#0b3d91;">{{ .ConfirmationURL }}</a></p>
+    <p style="margin:0;font-size:18px;color:#333333;">If you did not ask for this, do not open the link. Your address stays as it is.</p>
+  </body>
+</html>

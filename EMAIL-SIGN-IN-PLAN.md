@@ -45,7 +45,7 @@ HANDOFF.md.
     - Found wrong in the plan, fixed above: Release order step 2 (Admin invites and mentor invites break at the push, not only
       the join flow); `my_number_is_invited` could not be dropped (`find_inviters` calls it); the dev port is 5183, not only 5173.
 - [ ] **Session 2: B, Email and Apple secret**
-  - [ ] `send-invite` and its tests
+  - [x] `send-invite` and its tests (`0ba1c6b`)
   - [ ] Auth email templates
   - [x] `scripts/apple-secret.mjs` (written early, 2026-10-10; the first secret
     expires **2027-04-09**; key id `C9397R83YF`, `.p8` in the owner's Downloads)
