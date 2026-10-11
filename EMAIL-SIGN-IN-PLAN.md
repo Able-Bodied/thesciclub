@@ -235,10 +235,13 @@ HANDOFF.md.
     by the owner. **H17** (re-invite the two pending phone invites): the owner said not to. Read-only check before the push: 4 members,
     4 accounts, 4 confirmed emails, nobody missing. The reminder email is `sign-in-reminder`: 30, 14, 7, 3, 1 days before, the day, then
     daily until Admin → Sign-in has the new date; the first is 2027-03-10.
-  - [ ] `db push` (dry run first)
-  - [ ] `send-invite` deployed with secrets
-  - [ ] `sign-in-reminder` deployed, secrets set, vault URL added (H9a)
-  - [ ] full checks
+  - [x] `db push` (dry run first) 2026-10-11: **four** migrations, the three below and `20261011080000` (the owner approved all four;
+    step 2 now says so). Checks were run before the push at the owner's word (`pnpm check` exit 0, `pnpm test` 181 files and 2528
+    tests, `pnpm build` exit 0), so the old client was broken on live for as short a time as possible.
+  - [x] `send-invite` deployed with secrets (2026-10-11, v1, `verify_jwt` true: 401 with no JWT; `RESEND_API_KEY` and `INVITE_FROM` set)
+  - [x] `sign-in-reminder` deployed, secrets set, vault URL added (H9a) (2026-10-11, v1, `verify_jwt` false: 401 "not the reminder"
+    without the secret; `REMINDER_TO` set; the vault URL is on the owner's word)
+  - [x] full checks (`pnpm check` exit 0, `pnpm test` 181 files and 2528 tests, `pnpm build` exit 0, 2026-10-11)
   - [ ] pushed to main
   - [ ] smoke test on the live site
   - [ ] switches for Apple and passkeys
@@ -757,9 +760,11 @@ Accounts:
 ## Release order
 
 1. Owner H1–H8 (H8 last), and the Apple steps whenever approval arrives.
-2. `db push` the migrations (dry run first; it should list exactly three:
-   `20261012000000_email_is_the_account`, `20261012010000_chat_authors_username`
-   and `20261012020000_remove_ask_somebody`, and nothing else). The last one
+2. `db push` the migrations (dry run first; it should list exactly four: the Apple
+   renewal date `20261011080000_apple_sign_in_has_a_renewal_date` (H9a; Admin's
+   Sign-in tab reads its table), `20261012000000_email_is_the_account`,
+   `20261012010000_chat_authors_username` and `20261012020000_remove_ask_somebody`,
+   and nothing else). The last one
    drops `find_inviters`, `my_number_is_invited`, `invite_lookups` and
    `members.findable_for_invites`; the client that used them is gone in the
    same release, but an old tab open on the live site would fail on them,
