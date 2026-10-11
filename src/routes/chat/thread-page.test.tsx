@@ -514,10 +514,13 @@ describe('editing a message', () => {
     expect(screen.getByLabelText('Your message')).toHaveValue('Saturday works.!');
   });
 
-  it('says Edited, with the time, on an edited bubble', () => {
+  it('labels an edited bubble and keeps its edit date available', () => {
     db.messages = [message({ id: 'm1', editedAt: '2026-09-18T10:05:00Z' })];
     renderThread();
-    expect(screen.getByText(/· Edited /)).toBeInTheDocument();
+    expect(screen.getByText('Edited ·')).toHaveAttribute(
+      'title',
+      expect.stringContaining('September 2026'),
+    );
   });
 
   it('is not offered on a removed message, nor to an administrator on somebody else’s', () => {
@@ -737,7 +740,7 @@ describe('read receipts', () => {
       ['jan', '2026-09-18T10:00:00Z'],
     ]);
     renderThread();
-    expect(screen.getByText(/You · .* · Read$/)).toBeInTheDocument();
+    expect(screen.getByText(/· Read$/)).toBeInTheDocument();
   });
   it('shows the number of readers in a group', () => {
     db.thread = thread({ kind: 'group', name: 'Friends', otherMemberId: null, memberCount: 3 });

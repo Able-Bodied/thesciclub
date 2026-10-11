@@ -547,6 +547,18 @@ the product definition and wins over this file.
     Browser checks cover mobile message reaction/reply/report, room question
     reaction and desktop reply menu. All 2,238 tests pass; check/build pass.
 
+34. **Attached chat reactions and bubble timestamps** (2026-10-10, no migration).
+    The owner's WhatsApp reference puts small reaction pills against a message
+    and its clock inside the lower-right corner. Conversation messages now
+    follow that layout: 28px reaction pills inside 44px tap targets and a clock
+    inside each incoming/outgoing bubble. Old messages retain their time of
+    day; the full date is on the semantic time element. Edited, Sending and
+    read receipt states remain. Room/Home post layouts retain their counts.
+    All 2,260 tests, standalone check and build pass. Mobile/desktop browser
+    checks confirm the pill overlaps its bubble edge, time is inside, no
+    overflow/page errors and reactions can be saved/removed. T3 preview's
+    explicit unavailable response authorized the local headless fallback.
+
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run

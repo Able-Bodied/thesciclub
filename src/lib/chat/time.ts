@@ -98,3 +98,11 @@ export function chatTimeLong(iso: string, timeZone?: string): string {
   const clock = `${parts.hour}:${parts.minute}${(parts.dayPeriod ?? '').toLowerCase()}`;
   return `${parts.day} ${parts.month} ${parts.year} at ${clock}`;
 }
+
+/** The clock inside a message bubble, including on older messages. */
+export function messageTime(iso: string, timeZone?: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '';
+  const parts = partsIn(at, timeZone, { hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${parts.hour}:${parts.minute} ${parts.dayPeriod ?? ''}`;
+}

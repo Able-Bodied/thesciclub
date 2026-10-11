@@ -2,7 +2,7 @@ import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
-import { chatTime } from '@/lib/chat/time';
+import { chatTimeLong, messageTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { Composer } from '@/routes/chat/composer';
@@ -142,7 +142,23 @@ export function MessageBubble({
   const gone = message.removedByAdmin ? 'Removed by an administrator.' : 'Removed by its author.';
   const name = author ? author.displayName : 'a deleted member';
   const whose = mine ? 'your' : `${name}'s`;
-  const edited = message.editedAt ? ` · Edited ${chatTime(message.editedAt)}` : '';
+  const timestamp = (
+    <p
+      className={`mt-1 text-right text-[0.6875rem] leading-snug ${mine ? 'text-white/75' : 'text-grey'}`}
+    >
+      {message.pending ? (
+        'Sending…'
+      ) : (
+        <>
+          {message.editedAt ? <span title={chatTimeLong(message.editedAt)}>Edited · </span> : null}
+          <time dateTime={message.createdAt} title={chatTimeLong(message.createdAt)}>
+            {messageTime(message.createdAt)}
+          </time>
+          {receipt && mine && !removed ? ` · ${receipt}` : ''}
+        </>
+      )}
+    </p>
+  );
   const control =
     'font-semibold text-[0.71875rem] text-grey underline decoration-line underline-offset-2';
   const anchor = `message-${message.id}`;
@@ -256,16 +272,12 @@ export function MessageBubble({
           >
             {quoteBlock}
             {words}
+            {timestamp}
           </div>
         )}
-        <p className="mt-1 font-semibold text-[0.71875rem] text-grey">
-          {message.pending
-            ? 'Sending…'
-            : `You · ${chatTime(message.createdAt)}${edited}${receipt && !removed ? ` · ${receipt}` : ''}`}
-        </p>
         {!removed && !message.pending && !editing
           ? reactions
-            ? cloneElement(reactions, { compact: true, actions: controls })
+            ? cloneElement(reactions, { compact: true, attached: true, actions: controls })
             : controls
           : null}
       </div>
@@ -304,8 +316,7 @@ export function MessageBubble({
           ) : (
             'Deleted member'
           )}
-          {author?.level ? ` · ${author.level}` : ''} · {chatTime(message.createdAt)}
-          {edited}
+          {author?.level ? ` · ${author.level}` : ''}
         </p>
         <div
           className={
@@ -315,10 +326,11 @@ export function MessageBubble({
         >
           {quoteBlock}
           {words}
+          {timestamp}
         </div>
         {!removed && !message.pending && !editing
           ? reactions
-            ? cloneElement(reactions, { compact: true, actions: controls })
+            ? cloneElement(reactions, { compact: true, attached: true, actions: controls })
             : controls
           : null}
       </div>

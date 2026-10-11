@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chatTime, chatTimeLong } from '@/lib/chat/time';
+import { chatTime, chatTimeLong, messageTime } from '@/lib/chat/time';
 
 /**
  * Every case is pinned to a fixed `now` and an explicit zone. A test that reads
@@ -75,5 +75,18 @@ describe('chatTimeLong', () => {
 
   it('gives nothing for a timestamp it cannot read', () => {
     expect(chatTimeLong('', UTC)).toBe('');
+  });
+});
+
+// Older bubbles still show their clock; the full date is available on the time.
+describe('messageTime', () => {
+  it('keeps the time of day for an older message in the reader’s zone', () => {
+    expect(messageTime('2020-01-18T21:45:00Z', 'America/Los_Angeles')).toBe('1:45 PM');
+    expect(messageTime('2020-01-18T21:45:00Z', 'UTC')).toBe('9:45 PM');
+  });
+  it('formats noon and midnight and handles invalid dates', () => {
+    expect(messageTime('2020-01-18T12:00:00Z', 'UTC')).toBe('12:00 PM');
+    expect(messageTime('2020-01-18T00:05:00Z', 'UTC')).toBe('12:05 AM');
+    expect(messageTime('invalid')).toBe('');
   });
 });
