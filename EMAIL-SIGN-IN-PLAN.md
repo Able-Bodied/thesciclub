@@ -899,7 +899,7 @@ Accounts:
 - **Apple's name.** Apple sends the name only on the first authorization, and
   Supabase's web flow may not keep it. The name step simply starts empty then.
 - **The installed iPhone app and OAuth.** The Google and Apple redirects from
-  the Home Screen app have never been tried (HANDOFF Open 9). If the return
+  the Home Screen app have never been tried (HANDOFF Open 9, `git show b04b003:HANDOFF.md`). If the return
   lands in Safari instead of the app, members on the installed app use email
   and password or a passkey.
 - **Passkeys are a Supabase beta** and the API may change. It's behind a
