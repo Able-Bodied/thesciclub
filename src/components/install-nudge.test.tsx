@@ -63,7 +63,7 @@ describe('the Home Screen nudge', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('goes away for two weeks on Not now', async () => {
+  it('goes away for three days on Not now', async () => {
     browserIs(IPHONE_SAFARI);
     const view = renderAfterWait();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Not now' }));

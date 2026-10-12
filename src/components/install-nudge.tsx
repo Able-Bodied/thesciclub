@@ -24,8 +24,8 @@ import {
  *
  * A card above the tab bar rather than a box over the screen: it pushes the
  * page up instead of covering it, and it is closed with one press, which
- * snoozes it for two weeks. Me, then Settings, keeps the same steps for
- * whenever somebody wants them. Where the browser offers its own install
+ * snoozes it for three days (the owner, 2026-10-11; it was two weeks). Me,
+ * then Settings, keeps the same steps for whenever somebody wants them. Where the browser offers its own install
  * prompt (Chrome and Samsung Internet on Android), the button is Install and
  * shows that prompt; everywhere else it shows the steps for this browser.
  *

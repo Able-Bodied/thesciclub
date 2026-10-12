@@ -115,7 +115,7 @@ export function useInstallPrompt(): {
 }
 
 /** How long "not now" lasts. */
-export const NUDGE_SNOOZE_DAYS = 14;
+export const NUDGE_SNOOZE_DAYS = 3;
 const SNOOZE_KEY = 'club:install-nudge-snoozed';
 
 export function nudgeSnoozed(now = Date.now()): boolean {
