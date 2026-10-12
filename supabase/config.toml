@@ -447,6 +447,11 @@ verify_jwt = false
 [functions.sign-in-reminder]
 verify_jwt = false
 
+# The Home Screen app has no session yet when it calls this; the single-use
+# code is what it presents (20261012100000).
+[functions.home-screen-handoff]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

@@ -7,6 +7,7 @@ import { InstalledApp } from '@/components/installed-app';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
+import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import OrganizationManagementPage from '@/routes/admin/organization-management-page';
 import AdminPage from '@/routes/admin/page';
@@ -151,6 +152,7 @@ export default function App() {
           it — see src/lib/announce.tsx. */}
       <AnnounceProvider>
         <InstalledApp />
+        <LeaveHomeScreenHandoff />
         <RouteChange />
         <FollowNotification />
         <AppRoutes />
