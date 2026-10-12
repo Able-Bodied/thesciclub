@@ -16,17 +16,18 @@ the product definition and wins over this file.
 - **Git**: work on `scaffold-and-peers-deck`. Release: `git push origin
   scaffold-and-peers-deck && git push origin HEAD:main`.
   `git log --oneline origin/main..HEAD` empty means nothing is unreleased.
-- **Database**: hosted project `erijdvqnxavwezsbbojv`, migrations through
-  `20261011020000` live (linked `db push` 2026-10-10; the dry run before it
-  listed nothing else pending). **On the branch, not live**: later migrations
-  through `20261012010000` (email sign-in, then `chat_authors.username`);
-  Session 6 of `EMAIL-SIGN-IN-PLAN.md` pushes them,
-  including `20261006010000` (link previews) and `20261006020000` (earlier
-  links), deployed at the owner's word 2026-10-06. Edge functions
-  `push-notify` v2 and `link-preview` v2 live; the preview switch is set and
-  the earlier-links backfill ran (Open 1). `20261005010000` and
-  `20261005020000` (events added by hand) went live 2026-10-06 ahead of their
-  client; the client is included in this release (Open 8).
+- **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
+  `20261012100000` is live (linked dry run 2026-10-11 listed nothing else).
+  Edge functions live: `push-notify`, `link-preview`, `send-invite`,
+  `sign-in-reminder` and `home-screen-handoff` (the last with `verify_jwt` off).
+- **Sign-in**: email + password, Google, Apple; passkeys built but off
+  (`VITE_PASSKEYS`). An uninvited email sign-up is refused before any email by
+  the Before User Created hook `signup_needs_an_invite` (the owner's choice,
+  knowing it reveals whether an address is invited). A signed-in iPhone browser
+  tab leaves a single-use code in a cookie that iOS copies into the Home Screen
+  app, which trades it for its own session (`src/lib/home-screen-handoff.ts`,
+  `20261012100000`); confirmed in Safari and Chrome on the owner's iPhone,
+  2026-10-11.
 - **Checks**: 2,015 tests on the combined release, no unhandled errors;
   `pnpm check` and `pnpm build` clean. Local browser checks covered creating,
   editing and deleting an event, the organization-management screen, and
