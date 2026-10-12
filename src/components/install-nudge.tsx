@@ -187,8 +187,8 @@ export function InstallSheet({
         </ol>
         {ios ? (
           <p className="mt-4 text-[0.8125rem] text-grey leading-[1.5]">
-            The Home Screen app signs in separately from your browser, so you will sign in once more
-            inside it. On an iPhone, notifications only work from there.
+            The Home Screen app signs in separately from your browser, so sign in inside it. On an
+            iPhone, notifications only work from there.
           </p>
         ) : null}
         <button

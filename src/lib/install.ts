@@ -140,11 +140,15 @@ export const INSTALL_STEPS: Record<InstallPlatform, { intro?: string; steps: str
   // The iPhone share sheet can hide "Add to Home Screen" behind View More, the
   // round down-arrow button at the right of its row of actions (the owner's
   // screenshots, 2026-10-10). Said in every iPhone browser's steps.
+  // Safari on iOS 26 puts the address bar at the bottom with ••• beside it,
+  // and Share inside that menu (the owner, 2026-10-11, a friend's iPhone);
+  // other layouts still show Share itself. It also asks "Open as Web App",
+  // which has to stay on for the club to open as an app.
   'ios-safari': {
     steps: [
-      'Tap Share, the square with an arrow pointing up, at the bottom of the screen (at the top on an iPad).',
+      'Tap Share, the square with an arrow pointing up. If you don’t see it, tap ••• next to the address bar, then Share.',
       'If you see View More, the round button with a down arrow on the right, tap it. Then scroll down and choose “Add to Home Screen”.',
-      'Tap Add, then open The Sci Club from your Home Screen.',
+      'Leave “Open as Web App” switched on if you see it. Tap Add, then open The Sci Club from your Home Screen.',
     ],
   },
   'ios-chrome': {

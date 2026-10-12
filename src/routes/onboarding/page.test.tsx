@@ -362,6 +362,54 @@ describe('the welcome screen', () => {
   });
 });
 
+// The owner, 2026-10-11: the Home Screen nudge also sits under the sign-in
+// doors on a phone, so an iPhone adds the club before signing in, once.
+describe('the Home Screen nudge on the doors', () => {
+  const IPHONE =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
+  const DESKTOP =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  function afterTheWait() {
+    act(() => {
+      vi.advanceTimersByTime(3100);
+    });
+  }
+
+  it('shows under the welcome screen on an iPhone, after a moment', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderJoin();
+    expect(screen.queryByText('Put the club on your Home Screen')).toBeNull();
+    afterTheWait();
+    expect(screen.getByText('Put the club on your Home Screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+  });
+
+  it('stays under the join form when they go on to join', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderJoin();
+    fireEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    afterTheWait();
+    expect(await screen.findByRole('button', { name: 'Create account' })).toBeInTheDocument();
+    expect(screen.getByText('Put the club on your Home Screen')).toBeInTheDocument();
+  });
+
+  it('is not shown on a computer', () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(DESKTOP);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderJoin();
+    afterTheWait();
+    expect(screen.queryByText(/Home Screen|Install the club/)).toBeNull();
+  });
+});
+
 describe('joining by email', () => {
   async function openJoin(path = '/join') {
     renderJoin(path);

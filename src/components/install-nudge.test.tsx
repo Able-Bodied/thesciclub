@@ -55,7 +55,10 @@ describe('the Home Screen nudge', () => {
     const sheet = screen.getByRole('dialog', { name: 'Add the club to your Home Screen' });
     expect(sheet).toHaveTextContent('Tap Share');
     expect(sheet).toHaveTextContent('Add to Home Screen');
-    expect(sheet).toHaveTextContent('sign in once more');
+    expect(sheet).toHaveTextContent('sign in inside it');
+    // iOS 26's Safari hides Share under ••• (the owner, 2026-10-11).
+    expect(sheet).toHaveTextContent('tap ••• next to the address bar, then Share');
+    expect(sheet).toHaveTextContent('Open as Web App');
     await user.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
