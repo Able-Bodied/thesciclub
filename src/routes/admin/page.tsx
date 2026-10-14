@@ -48,6 +48,7 @@ import { RepresentativesSection } from '@/routes/admin/representatives-section';
 import { RoomsSection } from '@/routes/admin/rooms-section';
 import { useAppleHealth } from '@/routes/admin/sign-in-health';
 import { SignInSection } from '@/routes/admin/sign-in-section';
+import { StatsSection } from '@/routes/admin/stats-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
 
@@ -59,6 +60,7 @@ const ADMIN_TAB_VALUES = [
   'organizations',
   'rooms',
   'sign-in',
+  'stats',
 ] as const;
 
 type MemberFilter = 'all' | 'joined' | 'directory' | 'attention';
@@ -290,6 +292,7 @@ export default function AdminPage() {
             count: appleNeedsAttention ? 1 : 0,
             countLabel: 'needs renewing',
           },
+          { value: 'stats', label: 'Stats' },
         ]}
       />
 
@@ -367,6 +370,7 @@ export default function AdminPage() {
 
             {tab === 'going' ? <EventContactsSection /> : null}
             {tab === 'rooms' ? <RoomsSection /> : null}
+            {tab === 'stats' ? <StatsSection /> : null}
             {tab === 'sign-in' ? (
               <SignInSection health={apple.health} onRenewed={apple.reload} />
             ) : null}

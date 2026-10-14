@@ -1415,6 +1415,7 @@ describe('the tabs', () => {
       'Organizations',
       'Rooms',
       'Sign-in',
+      'Stats',
     ]);
   });
 });
