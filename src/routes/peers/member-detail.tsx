@@ -343,27 +343,26 @@ export default function MemberDetailPage() {
                   they are above it. */}
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 top-0 h-[90px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0.55),rgba(10,29,54,0))] lg:hidden"
+                className="absolute inset-x-0 top-0 h-[90px] bg-gradient-to-b from-black/50 to-transparent lg:hidden"
               />
-              {/* The mock's scrim: clear at the top, navy at the foot, so the
+              {/* Clear at the top, a neutral shade at the foot (the owner,
+                  2026-10-13: not navy, so the photo keeps its colours), so the
                   name reads on a light photograph and on the gradient alike. */}
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--plate)_80%,transparent)_60%,var(--plate))]"
+                className="absolute inset-x-0 bottom-0 h-[190px] bg-gradient-to-b from-transparent via-black/55 via-60% to-black/75"
               />
               <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
                 <h1 className="font-extrabold font-display text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
                   {member.displayName}
                 </h1>
                 {member.username ? (
-                  <p className="mt-0.5 font-semibold text-[0.9375rem] text-[#D3DFEE]">
+                  <p className="mt-0.5 font-semibold text-[0.9375rem] text-white">
                     @{member.username}
                   </p>
                 ) : null}
-                <p className="mt-1 text-[0.875rem] text-[#D3DFEE]">{summaryLine(member)}</p>
-                {injury ? (
-                  <p className="mt-0.5 text-[0.78125rem] text-[#B9CADF]">{injury}</p>
-                ) : null}
+                <p className="mt-1 text-[0.875rem] text-white">{summaryLine(member)}</p>
+                {injury ? <p className="mt-0.5 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>
 
