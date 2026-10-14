@@ -32,6 +32,7 @@ import InvitesPage from '@/routes/invites/page';
 import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
 import MePage from '@/routes/me/page';
+import QrCodePage from '@/routes/me/qr-page';
 import NotFoundPage from '@/routes/not-found/page';
 import NotificationsPage from '@/routes/notifications/page';
 import OnboardingPage from '@/routes/onboarding/page';
@@ -121,6 +122,8 @@ function AppShell() {
           <Route path="/events/:id/edit" element={<EventFormPage />} />
           <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
           <Route path="/me" element={<MePage />} />
+          {/* Administrators only; the page sends anybody else to Me. */}
+          <Route path="/me/qr" element={<QrCodePage />} />
           {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
             of the top bar (desktop) lead here. */}
           <Route path="/notifications" element={<NotificationsPage />} />
