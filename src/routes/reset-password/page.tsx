@@ -3,20 +3,24 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { MIN_PASSWORD } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
+import { forgetRecoveryLink, recoveryLinkWorked } from '@/lib/recovery-link';
 import { getSupabase } from '@/lib/supabase';
 import { Field, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 
 /**
  * Choosing a new password, from the link in a "reset your password" email.
  *
- * Forgot password and Change password both land here: the link signs the
- * person in on arrival, so the page waits to see a session, and without one
- * (an expired or already-used link) says so and points back to the sign-in
- * screen to ask for another.
+ * Forgot password and Me's "Email me a link" both land here. The form is shown
+ * only when this visit's link worked (recovery-link.ts), never because
+ * somebody is signed in: a used or hour-old link is refused by Supabase but
+ * leaves an existing session in place, and that session used to be enough to
+ * reach the form (the owner, 2026-10-14). Anything else says the link no
+ * longer works and where to ask for another.
  */
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState<'loading' | 'yes' | 'no'>('loading');
+  const [signedIn, setSignedIn] = useState(false);
   const [password, setPassword] = useState('');
   const [again, setAgain] = useState('');
   const [busy, setBusy] = useState(false);
@@ -25,11 +29,15 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const supabase = getSupabase();
     let cancelled = false;
+    // getSession waits for the client to finish reading the address, so the
+    // link has been judged by the time it answers.
     void supabase.auth.getSession().then(({ data }) => {
-      if (!cancelled) setSession(data.session ? 'yes' : 'no');
+      if (cancelled) return;
+      setSignedIn(data.session !== null);
+      setSession(data.session && recoveryLinkWorked() ? 'yes' : 'no');
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      if (!cancelled && next) setSession('yes');
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!cancelled && event === 'PASSWORD_RECOVERY' && next) setSession('yes');
     });
     return () => {
       cancelled = true;
@@ -50,6 +58,7 @@ export default function ResetPasswordPage() {
       setError(describeError(failure, 'Your password was not changed. Try again.'));
       return;
     }
+    forgetRecoveryLink();
     // A non-member is sent on to /join by the guard at Home.
     void navigate('/home', { replace: true });
   }
@@ -66,17 +75,19 @@ export default function ResetPasswordPage() {
     return (
       <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas px-[18px] pt-12">
         <h1 className="font-extrabold font-display text-[1.5625rem] text-ink leading-tight tracking-[-0.01em]">
-          This link has expired
+          This link no longer works
         </h1>
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
-          Reset links work once, for a short while. Ask for a new one from the sign-in screen with
-          Forgot password.
+          A reset link works once, within an hour of being sent.{' '}
+          {signedIn
+            ? 'Ask for a new one under Account, with Email me a link.'
+            : 'Ask for a new one from the sign-in screen with Forgot password.'}
         </p>
         <Link
-          to="/join"
+          to={signedIn ? '/me?tab=account' : '/join'}
           className="mt-6 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
         >
-          Go to sign in
+          {signedIn ? 'Go to Account' : 'Go to sign in'}
         </Link>
       </main>
     );
