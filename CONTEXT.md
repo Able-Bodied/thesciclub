@@ -35,7 +35,7 @@ So membership is granted by a person, not claimed by a form:
 
 - A **member organization** (NorCal SCI, SCVMC SCI Peer Support) adds numbers.
 - A **peer mentor** can add ten. Administrators, organization accounts, and members linked to speak for an organization can invite without a limit (2026-10-09).
-- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number, unless an administrator has opened joining.
+- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number, unless an administrator has opened joining. An administrator's own QR code (Me → Your QR code, 2026-10-14) gives them the credit for whoever joins from it while joining is open, and lets nobody in while it is closed: it says who to ask instead.
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
   fact, or repeating outside a room what was said in it — any of those end it.
 
