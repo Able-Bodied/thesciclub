@@ -51,6 +51,16 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
+- **Text-message sign-in, back as a way in, once Twilio is ready** (the
+  owner, 2026-10-13; not before). "Text me a code" as the main button on Sign
+  in and Join; email, Google and Apple stay; joining by phone through the
+  invite link (its token in `signInWithOtp`'s data, so `signup_needs_an_invite`
+  can let a `phone` sign-up with a live token through). Through **Twilio
+  Verify**, which Twilio says is exempt from A2P 10DLC registration with its
+  pooled sender, so the rejected campaign is not needed: set Supabase's Phone
+  provider to Twilio Verify. The campaign was refused (2026-10-12) because the
+  opt-in is behind sign-up; its old public proof is `public/sms-opt-in/` at
+  `c550eff^`.
 - **Supabase free plan**: pauses after a quiet week, small limits, **no
   backups**. Move to the paid tier (daily backups) and test a restore.
 - **Passkeys**: turn on only after a real-phone check (EMAIL-SIGN-IN-PLAN.md,
