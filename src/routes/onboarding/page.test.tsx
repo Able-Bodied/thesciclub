@@ -34,6 +34,8 @@ const calls = vi.hoisted(() => {
     invited: true,
     /** Whether anybody can join (20261014000000): only what the doors say. */
     joiningOpen: false,
+    /** What qr_code_details answers for a held administrator's code; null says nothing. */
+    qrDetails: null as Record<string, unknown> | null,
     claimResult: true,
     claimError: false,
     claimedWith: null as string | null,
@@ -224,6 +226,10 @@ vi.mock('@/lib/supabase', () => ({
       // the order the other tests read.
       if (name === 'joining_is_open')
         return Promise.resolve({ data: calls.joiningOpen, error: null });
+      if (name === 'qr_code_details') {
+        const answer = Promise.resolve({ data: calls.qrDetails, error: null });
+        return Object.assign(answer, { maybeSingle: () => answer });
+      }
       calls.order.push(name);
       let result: { data: unknown; error: unknown } = { data: null, error: null };
       if (name === 'my_invite_status') result = { data: { invited: calls.invited }, error: null };
@@ -326,6 +332,7 @@ beforeEach(() => {
   calls.user = { email: 'dana@example.com', user_metadata: {} };
   calls.invited = true;
   calls.joiningOpen = false;
+  calls.qrDetails = null;
   calls.claimResult = true;
   calls.claimError = false;
   calls.claimedWith = null;
@@ -396,6 +403,76 @@ describe('while anybody can join', () => {
     calls.joiningOpen = true;
     renderJoin('/join?invite=tok-123');
     expect(await screen.findByText(/^You have an invitation\./)).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-10-14: an administrator's QR code gives credit, never entry.
+describe("an administrator's QR code", () => {
+  const ALFRED = { inviter_name: 'Alfred', event_name: 'Abilities Expo LA' };
+
+  it('goes straight to joining, and says who invited them while anybody can join', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: true, contact_email: null };
+    renderJoin('/join?from=abc123');
+    expect(
+      await screen.findByText(
+        'Alfred invited you to The SCI Club. Join with any email or account.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
+    expect(window.localStorage.getItem('sciclub.qrCode')).toBe('abc123');
+  });
+
+  it('says who to ask, with their email, while joining is closed', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: false, contact_email: 'alfred@example.com' };
+    renderJoin('/join?from=abc123');
+    expect(
+      await screen.findByText(/Joining is by invitation right now\. Ask Alfred for an invite\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'alfred@example.com' })).toHaveAttribute(
+      'href',
+      'mailto:alfred@example.com',
+    );
+  });
+
+  it('says the same on the closed door when the sign-up is refused', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: false, contact_email: 'alfred@example.com' };
+    calls.signUpError = { message: 'This email is not on the invite list.', status: 403 };
+    renderJoin('/join?from=abc123');
+    await screen.findByText(/Ask Alfred for an invite/);
+    await fillDoor('dana@example.com', 'a long password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByText("This email isn't on the list")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'alfred@example.com' })).toBeInTheDocument();
+    expect(screen.queryByText(/it gets you the app/)).toBeNull();
+  });
+
+  it('reads like any join page for a code that says nothing', async () => {
+    renderJoin('/join?from=turned-off');
+    expect(await screen.findByRole('button', { name: 'Create account' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Joining is by invitation\. Use the email address/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/invited you/)).toBeNull();
+  });
+
+  it('claims the code for the account after sign-in, before asking about the invite', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: true, contact_email: null };
+    calls.status = 'signed-up';
+    renderJoin('/join?from=abc123');
+    await waitFor(() => {
+      expect(calls.order).toContain('my_invite_status');
+    });
+    expect(calls.order.indexOf('claim_qr_code')).toBeGreaterThan(-1);
+    expect(calls.order.indexOf('claim_qr_code')).toBeLessThan(
+      calls.order.indexOf('my_invite_status'),
+    );
+    expect(window.localStorage.getItem('sciclub.qrCode')).toBeNull();
+  });
+
+  it('is forgotten by somebody already in the club', () => {
+    calls.status = 'member';
+    renderJoin('/join?from=abc123');
+    expect(window.localStorage.getItem('sciclub.qrCode')).toBeNull();
   });
 });
 

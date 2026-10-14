@@ -3,6 +3,7 @@ import { GoogleButton } from '@/components/google-button';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { MIN_PASSWORD } from '@/lib/auth-email';
 import { passkeysAvailable } from '@/lib/passkeys';
+import type { QrCodeDetails } from '@/lib/qr-codes';
 import { Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { OnboardingData } from '@/routes/onboarding/types';
 
@@ -149,23 +150,32 @@ export function JoinStep({
   invited,
   inviteAddress,
   joiningOpen = false,
+  fromCode = null,
 }: FieldsProps & {
   ways: WaysIn;
   invited: boolean;
   inviteAddress: string | null;
   /** Anybody can join right now (20261014000000). */
   joiningOpen?: boolean;
+  /** The administrator's QR code they came by (20261014020000), if it says anything. */
+  fromCode?: QrCodeDetails | null;
 }) {
   const emailRef = useAutoFocus();
   return (
     <>
       <Question>Join the club</Question>
       <Sub>
-        {invited
-          ? 'You have an invitation. Join with any email or account, and it will be waiting.'
-          : joiningOpen
-            ? 'Anybody can join right now. Join with any email or account.'
-            : 'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'}
+        {invited ? (
+          'You have an invitation. Join with any email or account, and it will be waiting.'
+        ) : fromCode?.joiningOpen ? (
+          `${fromCode.inviterName} invited you to The SCI Club. Join with any email or account.`
+        ) : fromCode ? (
+          <AskForInvite who={fromCode} />
+        ) : joiningOpen ? (
+          'Anybody can join right now. Join with any email or account.'
+        ) : (
+          'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'
+        )}
       </Sub>
       <SocialButtons mode="join" ways={ways} />
       <Divider>or join with your email</Divider>
@@ -347,5 +357,30 @@ export function PasskeyOffer({
         </button>
       </footer>
     </main>
+  );
+}
+
+/**
+ * A QR code scanned while joining is closed (20261014020000): it lets nobody
+ * in, so it says who to ask, with the email they chose to show. The owner,
+ * 2026-10-14: "Ask Alfred for an invite. Email: …".
+ */
+export function AskForInvite({ who }: { who: QrCodeDetails }) {
+  return (
+    <>
+      Joining is by invitation right now. Ask {who.inviterName} for an invite.
+      {who.contactEmail ? (
+        <>
+          {' '}
+          Email:{' '}
+          <a
+            href={`mailto:${who.contactEmail}`}
+            className="break-all font-bold text-emphasis underline"
+          >
+            {who.contactEmail}
+          </a>
+        </>
+      ) : null}
+    </>
   );
 }

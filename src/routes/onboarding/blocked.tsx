@@ -1,7 +1,9 @@
 import { ShieldCheck } from 'lucide-react';
 import { CONSULTATION_URL } from '@/lib/consultation';
 import { useOrganizations } from '@/lib/organizations';
+import type { QrCodeDetails } from '@/lib/qr-codes';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
@@ -39,6 +41,7 @@ export function BlockedScreen({
   onTryAnother,
   email,
   signedIn = true,
+  fromCode = null,
 }: {
   /** Signs them out (when signed in) and goes back to the doors. */
   onTryAnother: () => void;
@@ -46,6 +49,8 @@ export function BlockedScreen({
   email: string | null;
   /** False when the join form was refused: there is no account to sign out of. */
   signedIn?: boolean;
+  /** An administrator's QR code they came by (20261014020000): who to ask. */
+  fromCode?: QrCodeDetails | null;
 }) {
   const { organizations, loading } = useOrganizations();
   const vouchers = organizations.filter((organization) => organization.canInvite);
@@ -64,6 +69,13 @@ export function BlockedScreen({
           club is closed: a member organization or a peer mentor has to invite your email address
           before you can join — the app itself cannot let you in.
         </p>
+        {/* Only while joining is closed: open, the code would have let them
+            in, so whatever refused them is not something to ask about. */}
+        {fromCode && !fromCode.joiningOpen ? (
+          <p className="mt-3 rounded-[14px] border border-line bg-paper p-3.5 text-[0.9375rem] text-ink leading-[1.52]">
+            <AskForInvite who={fromCode} />
+          </p>
+        ) : null}
         <p className="mt-3 text-[0.8875rem] text-ink2 leading-[1.52]">
           {signedIn
             ? 'You may have joined with another email. If you were invited, open the link in your invitation while signed in, or sign in with the address it was sent to.'
@@ -103,10 +115,12 @@ export function BlockedScreen({
           No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
         </p>
 
-        <p className="mt-4 text-[0.78125rem] text-grey leading-[1.5]">
-          If a member gave you a QR code, it gets you the app — it does not get you in. Someone
-          still has to invite your email address.
-        </p>
+        {fromCode && !fromCode.joiningOpen ? null : (
+          <p className="mt-4 text-[0.78125rem] text-grey leading-[1.5]">
+            If a member gave you a QR code, it gets you the app — it does not get you in. Someone
+            still has to invite your email address.
+          </p>
+        )}
       </div>
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">

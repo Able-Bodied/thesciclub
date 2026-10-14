@@ -33,6 +33,14 @@ import {
 import { useJoiningIsOpen } from '@/lib/joining';
 import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
 import { vapidPublicKey } from '@/lib/push/notifications';
+import {
+  captureQrCode,
+  claimHeldQrCode,
+  fetchQrCodeDetails,
+  forgetQrCode,
+  QR_PARAM,
+  type QrCodeDetails,
+} from '@/lib/qr-codes';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
@@ -119,18 +127,32 @@ export default function OnboardingPage() {
   // The invite link's token has to outlive this page (a confirmation email or
   // Google's round trip comes first), so it is kept the moment /join loads.
   const [invited] = useState(() => captureInviteToken(params.toString()) !== null);
+  // An administrator's QR code (20261014020000), kept the same way: credit for
+  // whoever joins from it, claimed once there is an account.
+  const [heldCode] = useState(() => captureQrCode(params.toString()));
+  const [cameByCode] = useState(() => params.has(QR_PARAM));
+  // Who the code is from, for the join screen: "Alfred invited you", or, while
+  // joining is closed, who to ask and their email. Null for a code that says
+  // nothing (unknown, turned off, its maker no longer an administrator).
+  const [fromCode, setFromCode] = useState<QrCodeDetails | null>(null);
+  useEffect(() => {
+    if (heldCode === null) return;
+    void fetchQrCodeDetails(heldCode).then(setFromCode);
+  }, [heldCode]);
   // Only what the doors say; the database decides who gets in.
   const joiningOpen = useJoiningIsOpen();
   // An invitation goes straight to joining: its link is the reason they came, and
   // the Welcome screen's "Join the club" would only ask what the link already said.
-  const [step, setStep] = useState<Step>(invited ? 'join' : 'welcome');
+  // So does a scanned code: it was held up so that somebody would join.
+  const [step, setStep] = useState<Step>(invited || cameByCode ? 'join' : 'welcome');
   // The address the invitation was sent to, once the club has said, for the Email field.
   const [inviteAddress, setInviteAddress] = useState<string | null>(null);
   useEffect(() => {
-    if (!params.has(INVITE_PARAM)) return;
+    if (!params.has(INVITE_PARAM) && !params.has(QR_PARAM)) return;
     setParams(
       (p) => {
         p.delete(INVITE_PARAM);
+        p.delete(QR_PARAM);
         return p;
       },
       { replace: true },
@@ -153,9 +175,12 @@ export default function OnboardingPage() {
     });
   }, [account.status]);
 
-  // Somebody with a profile has no use for a held invite.
+  // Somebody with a profile has no use for a held invite, or a held code.
   useEffect(() => {
-    if (account.status === 'member' || account.status === 'suspended') forgetInviteToken();
+    if (account.status === 'member' || account.status === 'suspended') {
+      forgetInviteToken();
+      forgetQrCode();
+    }
   }, [account.status]);
 
   /**
@@ -201,6 +226,8 @@ export default function OnboardingPage() {
       setError('Could not check your invitation. Try again.');
       return;
     }
+    // Credit only: nothing waits on it, and a failure is tried again next time.
+    await claimHeldQrCode();
     const statusResult = await supabase.rpc('my_invite_status').single();
     if (statusResult.error) {
       setError(describeError(statusResult.error, 'Could not check whether you are on the list.'));
@@ -448,6 +475,7 @@ export default function OnboardingPage() {
       <BlockedScreen
         email={blockedEmail}
         signedIn={!blockedAtSignUp}
+        fromCode={fromCode}
         onTryAnother={() => {
           if (blockedAtSignUp) {
             // The invite link, if any, stays held: it may still be good for the
@@ -738,6 +766,7 @@ export default function OnboardingPage() {
           ways={ways}
           invited={invited || heldInviteToken() !== null}
           joiningOpen={joiningOpen}
+          fromCode={fromCode}
           inviteAddress={
             inviteAddress !== null && cleanEmail(data.email) === inviteAddress
               ? inviteAddress
