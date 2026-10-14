@@ -50,7 +50,8 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   (`lib/google-identity.ts`, its redirect page as the fallback; the CSP allows
   Google's `/gsi/` files only); its OAuth client allows only the origin
   `https://thesciclub.com`, so Google cannot sign in locally.
-  Email goes through Resend: the free plan sends 100 a day. `thesciclub.com`
+  Email goes through Resend: the free plan sends 100 a day. Supabase's own
+  cap (`rate_limit_email_sent`) is 100 an hour since 2026-10-14 (was 30). `thesciclub.com`
   has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
   private relay accepts the club's mail: `thesciclub.com`,
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
