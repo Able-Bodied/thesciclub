@@ -153,6 +153,18 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
 }));
 
+// Read on every render for the Invites tab; what the switch itself does is
+// tested in joining-section.test.tsx and lib/joining.test.ts.
+const joining = vi.hoisted(() => ({ open: false }));
+vi.mock('@/lib/joining', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useJoiningSetting: () => ({
+    setting: { open: joining.open, changedAt: null },
+    error: null,
+    reload: () => undefined,
+  }),
+}));
+
 // The Going tab reads events and who is going; neither is what this file tests
 // (event-contacts-section.test.tsx does), but the page imports the section.
 vi.mock('@/routes/admin/event-contacts-section', () => ({
@@ -221,6 +233,7 @@ beforeEach(() => {
   api.reinvited = [];
   api.failWith = null;
   api.openReports = 0;
+  joining.open = false;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   // vi.spyOn on an already-spied method hands back the *existing* spy, so
   // without this the call history survives from one test to the next and
@@ -1402,6 +1415,26 @@ describe('the tabs', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
     expect(screen.queryByRole('searchbox', { name: 'Find a member' })).toBeNull();
+  });
+
+  it('puts who can join on the Invites tab, and the form says what an invite is for', async () => {
+    renderAdmin('/admin?tab=invites');
+    expect(await screen.findByRole('switch', { name: 'Anybody can join' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    expect(screen.getByText(/^Nobody can join without an invite\./)).toBeInTheDocument();
+  });
+
+  it('stops saying an invite is needed while anybody can join', async () => {
+    joining.open = true;
+    renderAdmin('/admin?tab=invites');
+    expect(await screen.findByRole('switch', { name: 'Anybody can join' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByText(/^Anybody can join right now, but an invite/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Nobody can join without an invite/)).toBeNull();
   });
 
   it('puts Reports second, so its count is on screen on a narrow phone', async () => {
