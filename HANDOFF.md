@@ -38,6 +38,10 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   trades it for its own session (`src/lib/home-screen-handoff.ts`,
   `20261012100000`); confirmed in Safari and Chrome on the owner's iPhone.
   Somebody with no way in: `scripts/set-member-email.mjs`, then Forgot password.
+  A reset link works once, for an hour (`mailer_otp_exp` 3600, hosted);
+  `/reset-password` shows the form only on that visit's PASSWORD_RECOVERY
+  (`lib/recovery-link.ts`), never just because somebody is signed in. Saving
+  a password signs out the account's other devices (GoTrue's own).
   Apple: the provider's Client ID is the Services ID `com.thesciclub.web` (not
   the App ID); the client secret expires **2027-04-09**, and
   `scripts/apple-secret.mjs` makes the next. Google uses its own widget
@@ -50,7 +54,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
   (Apple Developer → Services → Sign in with Apple for Email Communication,
   2026-10-13).
-- **Checks**: 2,619 tests in 186 files on 2026-10-14; `pnpm check` (alone),
+- **Checks**: 2,624 tests in 187 files on 2026-10-14; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
