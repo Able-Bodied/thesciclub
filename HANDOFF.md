@@ -40,20 +40,17 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   (`lib/google-identity.ts`, its redirect page as the fallback; the CSP allows
   Google's `/gsi/` files only); its OAuth client allows only the origin
   `https://thesciclub.com`, so Google cannot sign in locally.
-  Email goes through Resend: the free plan sends 100 a day.
+  Email goes through Resend: the free plan sends 100 a day. `thesciclub.com`
+  has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
+  private relay accepts the club's mail: `thesciclub.com`,
+  `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
+  (Apple Developer → Services → Sign in with Apple for Email Communication,
+  2026-10-13).
 - **Checks**: 2,594 tests in 184 files at `b04b003`; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
-- **Owner, after the soft launch: Apple "Hide My Email" senders.** Apple
-  Developer → Services → Sign in with Apple for Email Communication lists
-  `thesciclub.com`, `send.thesciclub.com`, `invites@` and `hello@thesciclub.com`;
-  only `send.` passes SPF, as `thesciclub.com` has no SPF record. Ask the domain
-  holder to add at Spaceship a TXT, host `@`, value
-  `v=spf1 include:send.forge.rmta.net ~all`, then re-check the three red
-  entries (Verify, or delete and add again). Until then mail to a hidden Apple
-  address (a password link) does not arrive; signing in with Apple works.
 - **Supabase free plan**: pauses after a quiet week, small limits, **no
   backups**. Move to the paid tier (daily backups) and test a restore.
 - **Passkeys**: turn on only after a real-phone check (EMAIL-SIGN-IN-PLAN.md,
