@@ -41,7 +41,9 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   A reset link works once, for an hour (`mailer_otp_exp` 3600, hosted);
   `/reset-password` shows the form only on that visit's PASSWORD_RECOVERY
   (`lib/recovery-link.ts`), never just because somebody is signed in. Saving
-  a password signs out the account's other devices (GoTrue's own).
+  a password signs out the account's other devices (GoTrue's own), and emails
+  "Your SCI Club password was changed" (on since 2026-10-14, set through the
+  Management API; template in `supabase/templates/`).
   Apple: the provider's Client ID is the Services ID `com.thesciclub.web` (not
   the App ID); the client secret expires **2027-04-09**, and
   `scripts/apple-secret.mjs` makes the next. Google uses its own widget
