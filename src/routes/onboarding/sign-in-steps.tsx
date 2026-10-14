@@ -148,7 +148,14 @@ export function JoinStep({
   ways,
   invited,
   inviteAddress,
-}: FieldsProps & { ways: WaysIn; invited: boolean; inviteAddress: string | null }) {
+  joiningOpen = false,
+}: FieldsProps & {
+  ways: WaysIn;
+  invited: boolean;
+  inviteAddress: string | null;
+  /** Anybody can join right now (20261014000000). */
+  joiningOpen?: boolean;
+}) {
   const emailRef = useAutoFocus();
   return (
     <>
@@ -156,7 +163,9 @@ export function JoinStep({
       <Sub>
         {invited
           ? 'You have an invitation. Join with any email or account, and it will be waiting.'
-          : 'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'}
+          : joiningOpen
+            ? 'Anybody can join right now. Join with any email or account.'
+            : 'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'}
       </Sub>
       <SocialButtons mode="join" ways={ways} />
       <Divider>or join with your email</Divider>

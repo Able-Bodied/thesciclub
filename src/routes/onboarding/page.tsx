@@ -30,6 +30,7 @@ import {
   heldInviteToken,
   INVITE_PARAM,
 } from '@/lib/invite-token';
+import { useJoiningIsOpen } from '@/lib/joining';
 import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
 import { vapidPublicKey } from '@/lib/push/notifications';
 import { signInDestination } from '@/lib/sign-in-destination';
@@ -118,6 +119,8 @@ export default function OnboardingPage() {
   // The invite link's token has to outlive this page (a confirmation email or
   // Google's round trip comes first), so it is kept the moment /join loads.
   const [invited] = useState(() => captureInviteToken(params.toString()) !== null);
+  // Only what the doors say; the database decides who gets in.
+  const joiningOpen = useJoiningIsOpen();
   // An invitation goes straight to joining: its link is the reason they came, and
   // the Welcome screen's "Join the club" would only ask what the link already said.
   const [step, setStep] = useState<Step>(invited ? 'join' : 'welcome');
@@ -472,6 +475,7 @@ export default function OnboardingPage() {
     return (
       <WithInstallNudge>
         <WelcomeScreen
+          joiningOpen={joiningOpen}
           onJoin={() => {
             setStep('join');
           }}
@@ -733,6 +737,7 @@ export default function OnboardingPage() {
           set={set}
           ways={ways}
           invited={invited || heldInviteToken() !== null}
+          joiningOpen={joiningOpen}
           inviteAddress={
             inviteAddress !== null && cleanEmail(data.email) === inviteAddress
               ? inviteAddress

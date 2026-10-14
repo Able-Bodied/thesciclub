@@ -32,6 +32,8 @@ const calls = vi.hoisted(() => {
     /** The signed-in account, as the session shows it. */
     user: account(),
     invited: true,
+    /** Whether anybody can join (20261014000000): only what the doors say. */
+    joiningOpen: false,
     claimResult: true,
     claimError: false,
     claimedWith: null as string | null,
@@ -218,6 +220,10 @@ vi.mock('@/lib/supabase', () => ({
     // rpc() is awaited as it is, and `.single()` is chained on the one that
     // returns a row; both are the same answer here.
     rpc: (name: string, args?: Record<string, unknown>) => {
+      // Asked once as the page opens, whatever happens next, so kept out of
+      // the order the other tests read.
+      if (name === 'joining_is_open')
+        return Promise.resolve({ data: calls.joiningOpen, error: null });
       calls.order.push(name);
       let result: { data: unknown; error: unknown } = { data: null, error: null };
       if (name === 'my_invite_status') result = { data: { invited: calls.invited }, error: null };
@@ -319,6 +325,7 @@ beforeEach(() => {
   calls.resetRedirect = null;
   calls.user = { email: 'dana@example.com', user_metadata: {} };
   calls.invited = true;
+  calls.joiningOpen = false;
   calls.claimResult = true;
   calls.claimError = false;
   calls.claimedWith = null;
@@ -359,6 +366,36 @@ describe('the welcome screen', () => {
     renderJoin();
     expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-10-14: for events, an administrator can let anybody join.
+// The doors stop sending a walk-in to find an invite; the database decides.
+describe('while anybody can join', () => {
+  it('says joining is by invitation, and offers the call, while it is not', async () => {
+    renderJoin();
+    expect(screen.getByText(/No invite yet\?/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    expect(screen.getByText(/^Joining is by invitation\./)).toBeInTheDocument();
+  });
+
+  it('says anybody can join, and drops the call for an invite', async () => {
+    calls.joiningOpen = true;
+    renderJoin();
+    await waitFor(() => {
+      expect(screen.queryByText(/No invite yet\?/)).toBeNull();
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    expect(
+      screen.getByText('Anybody can join right now. Join with any email or account.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Joining is by invitation/)).toBeNull();
+  });
+
+  it('still greets somebody with an invitation as invited', async () => {
+    calls.joiningOpen = true;
+    renderJoin('/join?invite=tok-123');
+    expect(await screen.findByText(/^You have an invitation\./)).toBeInTheDocument();
   });
 });
 

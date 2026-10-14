@@ -44,7 +44,9 @@ export function AgreeStep({ data, set }: StepProps) {
   return (
     <>
       <Question>Before you join</Question>
-      <Sub>You are on the list. Joining the club means agreeing to its terms.</Sub>
+      {/* Not "on the list": while anybody can join (20261014000000), a
+          walk-in is let in without being on it. */}
+      <Sub>You can join. It means agreeing to the club's terms.</Sub>
       <ConsentBox
         id="terms-agreed"
         checked={data.termsAgreed}
