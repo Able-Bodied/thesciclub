@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { EventContactsSection } from '@/routes/admin/event-contacts-section';
 import { InviteForm } from '@/routes/admin/invite-form';
+import { JoinTally } from '@/routes/admin/join-tally';
 import { JoiningSection } from '@/routes/admin/joining-section';
 import {
   type AdminInvite,
@@ -32,6 +33,7 @@ import {
   inviteLabel,
   inviteState,
   isOldPhoneInvite,
+  joinTally,
   reinviteByEmail,
   removeAndBlock,
   resendInvite,
@@ -431,6 +433,7 @@ export default function AdminPage() {
                   </Section>
                 </div>
                 <div className="min-w-0">
+                  <JoinTally rows={joinTally(invites)} />
                   <Section
                     title="The list"
                     subtitle="An invite nobody has used can be taken off the list, or its link sent again."

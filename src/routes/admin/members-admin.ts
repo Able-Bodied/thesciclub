@@ -193,6 +193,10 @@ export interface AdminInvite {
    * (20261014010000): nobody vouched, and the list says so instead.
    */
   joinedWhileOpen: boolean;
+  /** Joined from an administrator's QR code (20261014020000); the inviter is that administrator. */
+  fromQrCode: boolean;
+  /** The event that code was made for; null for "No event". */
+  qrEventName: string | null;
 }
 
 interface AdminInviteRow {
@@ -212,6 +216,9 @@ interface AdminInviteRow {
   has_account: boolean | null;
   /** Absent before 20261014010000. */
   joined_while_open?: boolean | null;
+  /** Absent before 20261014020000. */
+  from_qr_code?: boolean | null;
+  qr_event_name?: string | null;
 }
 
 export interface InvitingOrganization {
@@ -247,6 +254,8 @@ export async function fetchInvites(): Promise<
       heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
       hasAccount: row.has_account ?? undefined,
       joinedWhileOpen: row.joined_while_open === true,
+      fromQrCode: row.from_qr_code === true,
+      qrEventName: row.qr_event_name ?? null,
     })),
   };
 }
@@ -596,6 +605,11 @@ export async function reinviteByEmail(
  * be asked about it.
  */
 export function vouchedBy(invite: AdminInvite): string {
+  // An administrator's QR code: who held it up, and where.
+  if (invite.fromQrCode) {
+    const who = `Invited by ${invite.invitedByMember ?? 'an administrator no longer here'}`;
+    return invite.qrEventName ? `${who} · ${invite.qrEventName}` : who;
+  }
   // Nobody vouched, and "unknown" would read as a lost record.
   if (invite.joinedWhileOpen) return 'Joined when invite only was off';
   if (invite.invitedByOrganization) return invite.invitedByOrganization;
@@ -721,4 +735,47 @@ export async function withdrawStrike(
   return error
     ? { ok: false, error: describeError(error, 'The strike was not withdrawn.') }
     : { ok: true };
+}
+
+/* ------------------------------------------------------------------ tally */
+
+export interface TallyRow {
+  /** The event's name as typed; null is "No event", and walk-ins have their own row. */
+  label: string;
+  joined: number;
+  /** Per administrator, most first. Empty for walk-ins. */
+  byAdmin: { name: string; joined: number }[];
+}
+
+/**
+ * Who joined while anybody could join, counted the owner's way (2026-10-14):
+ * by event, then by the administrator whose code it was, and the walk-ins who
+ * came with no code on a line of their own. Events are grouped by the name
+ * exactly as typed. Only invites still in use count: a member removed or gone
+ * is not somebody the event brought in now.
+ */
+export function joinTally(invites: AdminInvite[]): TallyRow[] {
+  const events = new Map<string, Map<string, number>>();
+  let walkIns = 0;
+  for (const invite of invites) {
+    if (invite.status !== 'consumed' || !invite.joinedWhileOpen) continue;
+    if (!invite.fromQrCode) {
+      walkIns += 1;
+      continue;
+    }
+    const label = invite.qrEventName ?? 'No event';
+    const admins = events.get(label) ?? new Map<string, number>();
+    const name = invite.invitedByMember ?? 'An administrator no longer here';
+    admins.set(name, (admins.get(name) ?? 0) + 1);
+    events.set(label, admins);
+  }
+  const rows: TallyRow[] = [...events].map(([label, admins]) => {
+    const byAdmin = [...admins]
+      .map(([name, joined]) => ({ name, joined }))
+      .sort((a, b) => b.joined - a.joined || a.name.localeCompare(b.name));
+    return { label, joined: byAdmin.reduce((sum, a) => sum + a.joined, 0), byAdmin };
+  });
+  rows.sort((a, b) => b.joined - a.joined || a.label.localeCompare(b.label));
+  if (walkIns > 0) rows.push({ label: 'Walk-ins, no code', joined: walkIns, byAdmin: [] });
+  return rows;
 }

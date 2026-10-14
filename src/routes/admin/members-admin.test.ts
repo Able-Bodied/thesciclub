@@ -6,6 +6,7 @@ import {
   fetchInvites,
   inviteLabel,
   isOldPhoneInvite,
+  joinTally,
   reinviteByEmail,
   removeAndBlock,
   withdrawnInvites,
@@ -73,6 +74,8 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   heldByStatus: null,
   hasAccount: false,
   joinedWhileOpen: false,
+  fromQrCode: false,
+  qrEventName: null,
   ...o,
 });
 
@@ -275,6 +278,20 @@ describe('reading the list', () => {
     expect(result.ok && result.invites.map((i) => i.joinedWhileOpen)).toEqual([true, false]);
   });
 
+  it("carries the QR code's mark and event from the view", async () => {
+    calls.inviteRows = [
+      row({ joined_while_open: true, from_qr_code: true, qr_event_name: 'Expo' }),
+      row({ id: 'i2', joined_while_open: true, from_qr_code: true, qr_event_name: null }),
+      row({ id: 'i3', joined_while_open: true }),
+    ];
+    const result = await fetchInvites();
+    expect(result.ok && result.invites.map((i) => [i.fromQrCode, i.qrEventName])).toEqual([
+      [true, 'Expo'],
+      [true, null],
+      [false, null],
+    ]);
+  });
+
   it('reads a view from before the mark as nobody walking in', async () => {
     calls.inviteRows = [row()];
     const result = await fetchInvites();
@@ -287,5 +304,63 @@ describe('a walk-in on the list', () => {
     expect(
       deliveryNote(invite({ status: 'consumed', joinedWhileOpen: true, sentAt: null })),
     ).toBeNull();
+  });
+});
+
+describe('the tally of who joined while open', () => {
+  const joined = (o: Partial<AdminInvite>) =>
+    invite({
+      status: 'consumed',
+      joinedWhileOpen: true,
+      heldBy: 'X',
+      heldByStatus: 'active',
+      ...o,
+    });
+
+  it('counts by event, then administrator, most first, with walk-ins last', () => {
+    expect(
+      joinTally([
+        joined({ fromQrCode: true, invitedByMember: 'Sam', qrEventName: 'Expo' }),
+        joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'Expo' }),
+        joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'Expo' }),
+        joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: null }),
+        joined({}),
+        joined({}),
+      ]),
+    ).toEqual([
+      {
+        label: 'Expo',
+        joined: 3,
+        byAdmin: [
+          { name: 'Alfred', joined: 2 },
+          { name: 'Sam', joined: 1 },
+        ],
+      },
+      { label: 'No event', joined: 1, byAdmin: [{ name: 'Alfred', joined: 1 }] },
+      { label: 'Walk-ins, no code', joined: 2, byAdmin: [] },
+    ]);
+  });
+
+  it('counts names exactly as typed', () => {
+    const rows = joinTally([
+      joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'Expo' }),
+      joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'expo' }),
+    ]);
+    expect(rows.map((r) => r.label).sort()).toEqual(['Expo', 'expo']);
+  });
+
+  it('leaves out invites, pending ones, revoked ones and joins on a real invite', () => {
+    expect(
+      joinTally([
+        invite({ status: 'pending' }),
+        joined({
+          status: 'revoked',
+          fromQrCode: true,
+          invitedByMember: 'Alfred',
+          qrEventName: 'Expo',
+        }),
+        invite({ status: 'consumed', joinedWhileOpen: false, invitedByMember: 'Alfred' }),
+      ]),
+    ).toEqual([]);
   });
 });

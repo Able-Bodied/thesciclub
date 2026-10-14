@@ -472,6 +472,18 @@ describe('who vouched', () => {
     );
   });
 
+  it('names the administrator whose QR code it was, and the event', () => {
+    const fromCode = { fromQrCode: true, joinedWhileOpen: true, invitedByOrganization: null };
+    expect(
+      vouchedBy(
+        invite({ ...fromCode, invitedByMember: 'Alfred', qrEventName: 'Abilities Expo LA' }),
+      ),
+    ).toBe('Invited by Alfred · Abilities Expo LA');
+    expect(vouchedBy(invite({ ...fromCode, invitedByMember: 'Alfred', qrEventName: null }))).toBe(
+      'Invited by Alfred',
+    );
+  });
+
   it('says a walk-in joined while invite only was off, not "unknown"', () => {
     expect(
       vouchedBy(
@@ -805,6 +817,8 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   heldByStatus: null,
   hasAccount: false,
   joinedWhileOpen: false,
+  fromQrCode: false,
+  qrEventName: null,
   ...o,
 });
 
@@ -827,6 +841,53 @@ describe('the invite list', () => {
     // The form's organization dropdown also says "NorCal SCI"; the row's meta
     // line is the one followed by a separator.
     expect(screen.getByText(/NorCal SCI ·/)).toBeInTheDocument();
+  });
+
+  it('counts who joined while open, by event and administrator', async () => {
+    const joined = (o: Partial<AdminInvite>) =>
+      invite({
+        status: 'consumed',
+        joinedWhileOpen: true,
+        invitedByOrganization: null,
+        heldBy: 'X',
+        heldByStatus: 'active',
+        ...o,
+      });
+    api.invites = [
+      joined({
+        id: 'a',
+        email: 'a@x.com',
+        fromQrCode: true,
+        invitedByMember: 'Alfred',
+        qrEventName: 'Expo',
+      }),
+      joined({
+        id: 'b',
+        email: 'b@x.com',
+        fromQrCode: true,
+        invitedByMember: 'Sam',
+        qrEventName: 'Expo',
+      }),
+      joined({
+        id: 'c',
+        email: 'c@x.com',
+        fromQrCode: true,
+        invitedByMember: 'Alfred',
+        qrEventName: 'Expo',
+      }),
+      joined({ id: 'd', email: 'd@x.com' }),
+    ];
+    await openInvites();
+    const table = screen.getByRole('table');
+    const expo = within(table).getByRole('row', { name: /Expo/ });
+    expect(expo).toHaveTextContent('Expo3Alfred 2 · Sam 1');
+    expect(within(table).getByRole('row', { name: /Walk-ins, no code/ })).toHaveTextContent('1');
+  });
+
+  it('draws no tally when nobody joined while open', async () => {
+    api.invites = [invite()];
+    await openInvites();
+    expect(screen.queryByRole('table')).toBeNull();
   });
 
   it('lists a walk-in by address, and says under it how they came', async () => {

@@ -72,4 +72,15 @@ describe('what a notification says', () => {
       'NorCal SCI added a new event',
     );
   });
+
+  it("says a join came from the administrator's QR code, and where", () => {
+    expect(
+      notificationSentence(
+        n({ kind: 'invite_joined', place: 'Dana', detail: 'qr:Abilities Expo LA' }),
+      ),
+    ).toBe('Dana joined from your QR code at Abilities Expo LA');
+    expect(notificationSentence(n({ kind: 'invite_joined', place: 'Dana', detail: 'qr:' }))).toBe(
+      'Dana joined from your QR code',
+    );
+  });
 });
