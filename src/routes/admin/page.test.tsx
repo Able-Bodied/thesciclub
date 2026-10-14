@@ -446,6 +446,14 @@ describe('what an invite says it is', () => {
     ).toBe('used by Bob, who was removed');
   });
 
+  it('names a walk-in without saying they used an invite', () => {
+    const walkIn = { status: 'consumed' as const, joinedWhileOpen: true, heldBy: 'Dana' };
+    expect(inviteState(invite({ ...walkIn, heldByStatus: 'active' }))).toBe('Dana');
+    expect(inviteState(invite({ ...walkIn, heldByStatus: 'removed' }))).toBe(
+      'Dana, who was removed',
+    );
+  });
+
   it('puts the other two states in English too', () => {
     expect(inviteState(invite({ status: 'pending' }))).toBe('not used yet');
     expect(inviteState(invite({ status: 'revoked' }))).toBe('revoked');
@@ -462,6 +470,14 @@ describe('who vouched', () => {
     expect(vouchedBy(invite({ invitedByOrganization: null, invitedByMember: 'Todd' }))).toBe(
       'Todd (mentor)',
     );
+  });
+
+  it('says a walk-in joined while invite only was off, not "unknown"', () => {
+    expect(
+      vouchedBy(
+        invite({ invitedByOrganization: null, invitedByMember: null, joinedWhileOpen: true }),
+      ),
+    ).toBe('Joined when invite only was off');
   });
 
   it('says so when the inviter’s account is gone', () => {
@@ -788,6 +804,7 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   heldBy: null,
   heldByStatus: null,
   hasAccount: false,
+  joinedWhileOpen: false,
   ...o,
 });
 
@@ -810,6 +827,25 @@ describe('the invite list', () => {
     // The form's organization dropdown also says "NorCal SCI"; the row's meta
     // line is the one followed by a separator.
     expect(screen.getByText(/NorCal SCI ·/)).toBeInTheDocument();
+  });
+
+  it('lists a walk-in by address, and says under it how they came', async () => {
+    api.invites = [
+      invite({
+        email: 'walkin@example.com',
+        status: 'consumed',
+        invitedByOrganization: null,
+        joinedWhileOpen: true,
+        heldBy: 'Dana S',
+        heldByStatus: 'active',
+      }),
+    ];
+    await openInvites();
+    expect(screen.getByText('walkin@example.com')).toBeInTheDocument();
+    expect(screen.getByText(/^Joined when invite only was off ·/)).toBeInTheDocument();
+    expect(screen.getByText('Dana S')).toBeInTheDocument();
+    expect(screen.queryByText(/link not sent yet/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();
   });
 
   it('says whether the link has gone out, and when', async () => {

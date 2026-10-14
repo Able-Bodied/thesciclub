@@ -3,6 +3,7 @@ import {
   type AdminInvite,
   createInvite,
   deliveryNote,
+  fetchInvites,
   inviteLabel,
   isOldPhoneInvite,
   reinviteByEmail,
@@ -13,6 +14,8 @@ import {
 const calls = vi.hoisted(() => ({
   log: [] as string[],
   rpc: new Map<string, { data?: unknown; error?: { message: string; code?: string } | null }>(),
+  /** What admin_invites answers. */
+  inviteRows: [] as Record<string, unknown>[],
 }));
 const send = vi.hoisted(() => {
   const result: { ok: boolean; error?: string } = { ok: true };
@@ -26,6 +29,16 @@ vi.mock('@/lib/supabase', () => ({
       const answer = calls.rpc.get(name) ?? {};
       return Promise.resolve({ data: answer.data ?? null, error: answer.error ?? null });
     },
+    from: (table: string) => ({
+      select: () => ({
+        order: () =>
+          Promise.resolve(
+            table === 'admin_invites'
+              ? { data: calls.inviteRows, error: null }
+              : { data: null, error: { message: `unexpected ${table}` } },
+          ),
+      }),
+    }),
     storage: {
       from: () => ({
         list: () => Promise.resolve({ data: [], error: null }),
@@ -59,10 +72,12 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   heldBy: null,
   heldByStatus: null,
   hasAccount: false,
+  joinedWhileOpen: false,
   ...o,
 });
 
 beforeEach(() => {
+  calls.inviteRows = [];
   calls.log = [];
   calls.rpc.clear();
   send.result = { ok: true };
@@ -231,5 +246,46 @@ describe('the withdrawn list by address', () => {
       invite({ id: 'p', email: null, phone: '14085551234', status: 'revoked' }),
     ]);
     expect(rows.map((r) => r.invite.id)).toEqual(['p']);
+  });
+});
+
+describe('reading the list', () => {
+  const row = (o: Record<string, unknown> = {}) => ({
+    id: 'i1',
+    email: 'walkin@example.com',
+    phone: null,
+    status: 'consumed',
+    note: null,
+    created_at: '2026-10-14T00:00:00Z',
+    invited_by_organization: null,
+    invited_by_member: null,
+    invited_by_member_is_admin: null,
+    held_by: 'Dana S',
+    held_by_status: 'active',
+    has_account: true,
+    ...o,
+  });
+
+  it('carries the walk-in mark from the view', async () => {
+    calls.inviteRows = [
+      row({ joined_while_open: true }),
+      row({ id: 'i2', joined_while_open: false }),
+    ];
+    const result = await fetchInvites();
+    expect(result.ok && result.invites.map((i) => i.joinedWhileOpen)).toEqual([true, false]);
+  });
+
+  it('reads a view from before the mark as nobody walking in', async () => {
+    calls.inviteRows = [row()];
+    const result = await fetchInvites();
+    expect(result.ok && result.invites[0]?.joinedWhileOpen).toBe(false);
+  });
+});
+
+describe('a walk-in on the list', () => {
+  it('says nothing about a link that was never owed', () => {
+    expect(
+      deliveryNote(invite({ status: 'consumed', joinedWhileOpen: true, sentAt: null })),
+    ).toBeNull();
   });
 });
