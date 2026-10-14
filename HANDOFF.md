@@ -60,7 +60,11 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   pooled sender, so the rejected campaign is not needed: set Supabase's Phone
   provider to Twilio Verify. The campaign was refused (2026-10-12) because the
   opt-in is behind sign-up; its old public proof is `public/sms-opt-in/` at
-  `c550eff^`.
+  `c550eff^`. **Waiting on Twilio**: on 2026-10-13 the owner replied to Varun
+  (Onboarding and Compliance Support) with the October 1 screenshots, the
+  timeline, and two questions: Verify with the pooled US sender (then withdraw
+  the campaign), or keep the campaign with a public opt-in page and the SMS
+  terms back in Privacy and Terms. Build to whichever Twilio confirms.
 - **Supabase free plan**: pauses after a quiet week, small limits, **no
   backups**. Move to the paid tier (daily backups) and test a restore.
 - **Passkeys**: turn on only after a real-phone check (EMAIL-SIGN-IN-PLAN.md,
