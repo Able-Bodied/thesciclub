@@ -83,16 +83,7 @@ export function backFrom(state: unknown): string {
  * A refusal is printed under the button rather than swallowed. The one that
  * will actually happen is a suspended member, who reads and does not write.
  */
-function MessageButton({
-  memberId,
-  name,
-  onDark = false,
-}: {
-  memberId: string;
-  name: string;
-  /** Inside the navy band under a hero, where destructive red would not read. */
-  onDark?: boolean;
-}) {
+function MessageButton({ memberId, name }: { memberId: string; name: string }) {
   const account = useAccount();
   const navigate = useNavigate();
   const [opening, setOpening] = useState(false);
@@ -101,7 +92,7 @@ function MessageButton({
   if (!account.userId || account.userId === memberId) return null;
 
   return (
-    <div className={onDark ? '' : 'mt-3 max-w-[20rem]'}>
+    <div>
       <button
         type="button"
         disabled={opening}
@@ -129,10 +120,7 @@ function MessageButton({
         {opening ? 'Opening…' : `Message ${name}`}
       </button>
       {failure ? (
-        <p
-          role="alert"
-          className={`mt-2 text-[0.78125rem] leading-[1.45] ${onDark ? 'text-white/90' : 'text-destructive'}`}
-        >
+        <p role="alert" className="mt-2 text-[0.78125rem] text-destructive leading-[1.45]">
           {failure}
         </p>
       ) : null}
@@ -366,14 +354,13 @@ export default function MemberDetailPage() {
               </div>
             </div>
 
-            {/* The mock's navy band under the hero, holding one gold button.
-                The mock has two — Message and Ask — and Ask is not built and
-                was not wanted; a two-up grid with one button in it is a hole,
-                so the one it has takes the width. Not drawn at all on your own
-                card, where there is nothing to press. */}
+            {/* One gold button straight under the photograph, on the page
+                (the owner, 2026-10-13: no band behind it). Full width; from
+                `lg` it closes the floated card on paper. Not drawn on your
+                own profile, where there is nothing to press. */}
             {canMessage ? (
-              <div className="bg-plate px-[18px] pt-3.5 pb-4">
-                <MessageButton memberId={member.id} name={member.displayName} onDark />
+              <div className="px-[18px] pt-4 lg:bg-paper lg:pb-4">
+                <MessageButton memberId={member.id} name={member.displayName} />
               </div>
             ) : null}
           </div>
