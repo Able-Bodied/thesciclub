@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-11. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-14. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. Older handoffs:
 `git show b04b003:HANDOFF.md` (every release to 2026-10-11 with its checks),
 `git show 4b1673b:HANDOFF.md` (what comments citing a HANDOFF section mean),
@@ -29,7 +29,9 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   (`VITE_PASSKEYS`). No phone sign-in anywhere; the Phone provider is off.
   An uninvited email sign-up is refused before any email by the Before User
   Created hook `signup_needs_an_invite` (the owner's choice, knowing it reveals
-  whether an address is invited). A signed-in iPhone browser tab leaves a
+  whether an address is invited). Admin → Invites → "Anybody can join" opens
+  joining to anybody for events (`20261014000000`, `club_joining`; the hook and
+  `i_am_invited` both read it); a blocked address stays out either way. A signed-in iPhone browser tab leaves a
   single-use code in a cookie that iOS copies into the Home Screen app, which
   trades it for its own session (`src/lib/home-screen-handoff.ts`,
   `20261012100000`); confirmed in Safari and Chrome on the owner's iPhone.
@@ -46,10 +48,17 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
   (Apple Developer → Services → Sign in with Apple for Email Communication,
   2026-10-13).
-- **Checks**: 2,594 tests in 184 files at `b04b003`; `pnpm check` (alone),
+- **Checks**: 2,613 tests in 186 files on 2026-10-14; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
+
+- **"Anybody can join" is not live yet** (2026-10-14): push `20261014000000`
+  (dry run first), then release the client. Nothing to change in the Supabase
+  dashboard: the hook keeps its name. Resend's free 100 emails a day are each
+  email sign-up's confirmation, so a busy event can reach it; Google and Apple
+  send none. The local stack's auth container started before the hook was in
+  config.toml: restart the stack to have it refuse locally.
 
 - **Text-message sign-in, back as a way in, once Twilio is ready** (the
   owner, 2026-10-13; not before). "Text me a code" as the main button on Sign

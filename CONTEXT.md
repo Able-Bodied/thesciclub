@@ -19,7 +19,10 @@ retrofitted later onto something broader.
 
 **Invite only.** A member organization or a peer mentor puts your email address on the list, and
 the club emails you a link, before you can join. The app itself cannot let you in. This is not a growth tactic — it is what makes the
-first two true. A closed room of two hundred people who have all been through it is worth more
+first two true. The one exception is an administrator's: for a few weeks of events, joining can be
+opened to anybody, so somebody met there joins on the spot, and closed again afterwards (Admin →
+Invites, 2026-10-14). A blocked address stays out either way, and whoever joined while it was open
+stays a member. A closed room of two hundred people who have all been through it is worth more
 than an open one with twenty thousand registrations and fifty monthly visitors.
 
 ## Why closed, specifically
@@ -32,7 +35,7 @@ So membership is granted by a person, not claimed by a form:
 
 - A **member organization** (NorCal SCI, SCVMC SCI Peer Support) adds numbers.
 - A **peer mentor** can add ten. Administrators, organization accounts, and members linked to speak for an organization can invite without a limit (2026-10-09).
-- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number.
+- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number, unless an administrator has opened joining.
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
   fact, or repeating outside a room what was said in it — any of those end it.
 
