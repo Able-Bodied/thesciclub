@@ -111,7 +111,8 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   Your answers, a described photo); the date boxes with Voice Control and
   birthday autofill; a notification arriving end to end and its tap from the
   lock screen, cold and warm; signed photos on a phone; pinch zoom in the
-  installed app (iOS and Android); joining with Apple's Hide My Email through
+  installed app (iOS and Android), and in the photograph viewer (Chromium
+  touch only, 2026-10-15); joining with Apple's Hide My Email through
   an invite link; the first nightly import after an administrator changed an
   imported event; repeating events on a Supabase stack (checked in PGlite).
 - **Small, not asked for**: the "Rather not say" toggles on Your details are
