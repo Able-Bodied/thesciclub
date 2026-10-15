@@ -40,6 +40,16 @@ export interface StatsWeek {
   people: number;
 }
 
+export type OnboardingStepKey =
+  | 'agree'
+  | 'name'
+  | 'username'
+  | 'birthday'
+  | 'injury'
+  | 'city'
+  | 'phone'
+  | 'photo';
+
 export interface ProfileCounts {
   username: number;
   birthday: number;
@@ -73,6 +83,13 @@ export interface ClubStats {
   reachedHome: number;
   /** …and those members with notifications on now. */
   notificationsOn: number;
+  /**
+   * Of those accounts, how many reached each step of onboarding
+   * (20261015015000). Kept only since that went live: see `stepsSince`.
+   */
+  steps: Record<OnboardingStepKey, number>;
+  /** When the first step was kept, or null while none has been. */
+  stepsSince: string | null;
   /**
    * Of those who reached Home, how many have each part of a profile. What
    * finished members added, not where anybody stopped: onboarding keeps

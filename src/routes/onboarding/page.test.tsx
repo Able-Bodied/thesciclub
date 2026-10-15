@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as ProgressModule from '@/routes/onboarding/progress';
 
 /**
  * Joining and signing in by email.
@@ -139,12 +140,43 @@ vi.mock('@/lib/account', async () => {
           calls.listeners.delete(bump);
         };
       }, []);
-      return { status: calls.status, userId: null, isAdmin: false, displayName: null };
+      return {
+        status: calls.status,
+        userId: calls.status === 'signed-out' ? null : 'user-1',
+        isAdmin: false,
+        displayName: null,
+      };
     },
     signOut: () => {
       calls.order.push('signOut');
       calls.setStatus('signed-out');
       return Promise.resolve({ ok: true });
+    },
+  };
+});
+
+// Where an account left off (progress.ts has its own tests): what this file
+// cares about is that the wizard opens there, and keeps each step as it goes.
+const progress = vi.hoisted(() => ({
+  saved: null as null | { step: string; answers: Record<string, unknown>; savedAt: string },
+  device: [] as string[],
+  account: [] as { step: string; answers: Record<string, unknown> }[],
+  forgotten: [] as string[],
+}));
+vi.mock('@/routes/onboarding/progress', async (original) => {
+  const real = await original<typeof ProgressModule>();
+  return {
+    ...real,
+    savedProgress: () => Promise.resolve(progress.saved),
+    saveOnDevice: (_user: string, step: string) => {
+      progress.device.push(step);
+    },
+    saveToAccount: (step: string, data: Record<string, unknown>) => {
+      progress.account.push({ step, answers: real.keptAnswers(data) });
+      return Promise.resolve();
+    },
+    forgetOnDevice: (user: string) => {
+      progress.forgotten.push(user);
     },
   };
 });
@@ -321,6 +353,10 @@ async function fillDoor(email: string, password: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  progress.saved = null;
+  progress.device = [];
+  progress.account = [];
+  progress.forgotten = [];
   calls.order = [];
   calls.status = 'signed-out';
   calls.afterPassword = 'signed-up';
@@ -731,6 +767,63 @@ describe('joining by email', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send it again' }));
     await waitFor(() => {
       expect(calls.order).toContain('resend:signup:dana@example.com');
+    });
+  });
+});
+
+describe('leaving halfway and coming back', () => {
+  it('opens at the step it was left on, with the answers given', async () => {
+    progress.saved = {
+      step: 'birthday',
+      answers: {
+        termsAgreed: true,
+        displayName: 'Dana',
+        username: 'dana',
+        usernameChecked: 'dana',
+      },
+      savedAt: '2026-10-15T20:00:00Z',
+    };
+    calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
+    calls.status = 'signed-up';
+    renderJoin();
+    expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
+    expect(screen.getByText(/You are where you left off/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Pick a username')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByPlaceholderText('Alex')).toHaveValue('Dana');
+  });
+
+  it('asks for the terms again when they were never agreed', async () => {
+    progress.saved = {
+      step: 'agree',
+      answers: { termsAgreed: false },
+      savedAt: '2026-10-15T20:00:00Z',
+    };
+    calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
+    calls.status = 'signed-up';
+    renderJoin();
+    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(screen.queryByText(/You are where you left off/)).toBeNull();
+  });
+
+  it('keeps each step on the account as it moves on, never the password', async () => {
+    await reachBirthday('Dana');
+    const steps = progress.account.map((saved) => saved.step);
+    expect(steps).toEqual(['agree', 'name', 'username', 'birthday']);
+    const last = progress.account.at(-1)?.answers ?? {};
+    expect(last).toMatchObject({ termsAgreed: true, displayName: 'Dana', username: 'dana' });
+    expect(Object.keys(last)).not.toContain('password');
+    expect(Object.keys(last)).not.toContain('email');
+    expect(progress.device).toContain('birthday');
+  });
+
+  it('lets the device copy go once the member is made', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1985-04-12');
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+    await waitFor(() => {
+      expect(progress.forgotten).toEqual(['user-1']);
     });
   });
 });

@@ -42,6 +42,17 @@ const STATS: ClubStats = {
   signedIn: 26,
   reachedHome: 24,
   notificationsOn: 15,
+  steps: {
+    agree: 20,
+    name: 20,
+    username: 19,
+    birthday: 18,
+    injury: 16,
+    city: 15,
+    phone: 15,
+    photo: 14,
+  },
+  stepsSince: '2026-10-16T17:00:00Z',
   profile: {
     username: 24,
     birthday: 24,
@@ -153,6 +164,16 @@ describe('Admin → Stats', () => {
     expect(row('Added a profile picture')).toHaveTextContent('1250%');
     expect(row('Turned on notifications')).toHaveTextContent('1563%');
     expect(screen.getByText(/Of the 24 members who joined ever/)).toBeInTheDocument();
+  });
+
+  it('says how many reached each step, of those past the invite check, and since when', async () => {
+    render(<StatsSection />);
+    const row = (label: string) => screen.getByText(label).parentElement;
+    await screen.findByText('Got past the invite check');
+    expect(row('Got past the invite check')).toHaveTextContent('20100%');
+    expect(row('Injury or condition')).toHaveTextContent('1680%');
+    expect(row('Profile picture')).toHaveTextContent('1470%');
+    expect(screen.getByText(/Kept since October 16/)).toBeInTheDocument();
   });
 
   it('lists the last eight weeks newest first, this one marked as so far', async () => {

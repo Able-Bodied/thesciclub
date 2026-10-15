@@ -18,7 +18,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 10, 2026">
+    <LegalPage title="Privacy Policy" updated="October 15, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -56,6 +56,12 @@ export default function PrivacyPage() {
             reply to, the organizations you follow, the posts you like, and anything you report.
           </li>
           <li>
+            <b>Your answers while you join:</b> what you have answered so far and the step you are
+            on, so you can pick up where you left off, on this device or another. They are deleted
+            once you finish joining, or after 90 days if you do not. We also note which steps you
+            reached; administrators see only how many people reached each step, never who.
+          </li>
+          <li>
             <b>Your notification settings</b>, if you turn notifications on for a device.
           </li>
           <li>
@@ -70,8 +76,9 @@ export default function PrivacyPage() {
         </List>
         <P>
           If you look up your city by ZIP code or by your device’s location, that is used once to
-          find a city and state and is not kept. There is no advertising, analytics or tracking in
-          the app.
+          find a city and state and is not kept. There is no advertising in the app, and nothing
+          about how you use it goes to anyone outside the club: administrators see counts, such as
+          how many members opened the app this week, never who.
         </P>
         <P>
           The sign-in screen and Me show Google’s sign-in button, which is loaded from Google, so

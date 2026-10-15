@@ -40,6 +40,10 @@
 -- (members before 20261015000000 have only the level). A location is a city
 -- or a state.
 --
+-- Steps (20261015015000): of the accounts made in the period, how many reached
+-- each step of onboarding. Kept only from the day that went live, which
+-- stepsSince says, so an earlier account has no steps.
+--
 -- The eight weeks at the bottom do not follow the period. Weeks start on
 -- Monday in California, where the owner is.
 -- ============================================================================
@@ -169,6 +173,14 @@ begin
     'signedIn', (select count(*) from cohort where signed_in),
     'reachedHome', (select count(*) from cohort where member),
     'notificationsOn', (select count(*) from cohort where notifications),
+    'steps', (
+      select jsonb_object_agg(o.step, (
+               select count(*) from public.onboarding_steps r
+                 join cohort c on c.id = r.user_id
+                where r.step = o.step))
+        from unnest(array['agree', 'name', 'username', 'birthday', 'injury', 'city', 'phone', 'photo']) o(step)
+    ),
+    'stepsSince', (select min(r.reached_at) from public.onboarding_steps r),
     'profile', (
       select jsonb_build_object(
         'username', count(*) filter (where username),

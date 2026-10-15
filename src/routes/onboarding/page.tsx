@@ -47,6 +47,13 @@ import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 import { nameFromMetadata } from '@/routes/onboarding/prefill';
 import {
+  forgetOnDevice,
+  isResumable,
+  savedProgress,
+  saveOnDevice,
+  saveToAccount,
+} from '@/routes/onboarding/progress';
+import {
   CheckEmailStep,
   ForgotStep,
   JoinStep,
@@ -241,9 +248,38 @@ export default function OnboardingPage() {
     }
     // The name Google or Apple gave, only into an empty box.
     const given = nameFromMetadata(user?.user_metadata);
-    setData((d) => ({ ...d, displayName: d.displayName.trim() ? d.displayName : given }));
-    setStep(data.termsAgreed ? 'name' : 'agree');
+    // Where this account left off, on this device or another (progress.ts).
+    const saved = user?.id ? await savedProgress(user.id) : null;
+    setData((d) => {
+      const resumed = { ...d, ...saved?.answers };
+      return {
+        ...resumed,
+        displayName: resumed.displayName.trim() ? resumed.displayName : given,
+      };
+    });
+    const termsAgreed = saved?.answers.termsAgreed ?? data.termsAgreed;
+    if (saved && termsAgreed && saved.step !== 'agree') {
+      setStep(saved.step);
+      setNotice('Welcome back. You are where you left off.');
+      return;
+    }
+    setStep(termsAgreed ? 'name' : 'agree');
   }, [data.termsAgreed]);
+
+  // Kept as it is typed on this device, and on the account each time the
+  // wizard moves on, so leaving halfway costs nothing (progress.ts). Only a
+  // signed-in account that is not yet a member has anything to keep.
+  const keeping = account.status === 'signed-up' && account.userId !== null && phase === 'wizard';
+  useEffect(() => {
+    if (!keeping || !account.userId || !isResumable(step)) return;
+    saveOnDevice(account.userId, step, data);
+  }, [keeping, account.userId, step, data]);
+  const latest = useRef(data);
+  latest.current = data;
+  useEffect(() => {
+    if (!keeping || !isResumable(step)) return;
+    void saveToAccount(step, latest.current);
+  }, [keeping, step]);
 
   const gateRan = useRef(false);
   useEffect(() => {
@@ -427,6 +463,7 @@ export default function OnboardingPage() {
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
+    if (account.userId) forgetOnDevice(account.userId);
     // No notifications question here (the owner, 2026-10-14): most people
     // join in a browser before they install the app, so asking now asks the
     // wrong place. The installed app asks once as it opens (AskOnOpening), and
@@ -587,7 +624,10 @@ export default function OnboardingPage() {
       'photo',
     ];
     const next = order[order.indexOf(step) + 1];
-    if (next) setStep(next);
+    if (next) {
+      setNotice(null);
+      setStep(next);
+    }
   }
 
   const primaryLabel =

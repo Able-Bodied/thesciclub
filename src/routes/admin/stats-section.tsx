@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   type ClubStats,
+  type OnboardingStepKey,
   PERIODS,
   periodPhrase,
   type StatsPeriod,
@@ -108,6 +109,61 @@ function Joining({ stats }: { stats: ClubStats }) {
   );
 }
 
+const STEP_ROWS: { key: OnboardingStepKey; label: string }[] = [
+  { key: 'agree', label: 'Got past the invite check' },
+  { key: 'name', label: 'Name' },
+  { key: 'username', label: 'Username' },
+  { key: 'birthday', label: 'Birthday' },
+  { key: 'injury', label: 'Injury or condition' },
+  { key: 'city', label: 'Location' },
+  { key: 'phone', label: 'Phone number' },
+  { key: 'photo', label: 'Profile picture' },
+];
+
+/** A labelled count with a bar, as a share of `of`. */
+function BarRow({ label, value, of }: { label: string; value: number; of: number }) {
+  const share = of ? Math.round((value / of) * 100) : 0;
+  return (
+    <li className="border-line border-b py-2.5 last:border-b-0">
+      <div className="flex items-baseline justify-between gap-3 text-[0.8125rem]">
+        <span className="text-ink">{label}</span>
+        <span className="shrink-0 tabular-nums">
+          <b className="font-extrabold font-head text-ink">{value}</b>
+          {of ? <span className="ml-1.5 text-grey">{share}%</span> : null}
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-tint" aria-hidden="true">
+        <div className="h-full rounded-full bg-gold" style={{ width: `${share}%` }} />
+      </div>
+    </li>
+  );
+}
+
+function Steps({ stats }: { stats: ClubStats }) {
+  const since = stats.stepsSince
+    ? new Date(stats.stepsSince).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+    : null;
+  return (
+    <>
+      <h3 className={`${HEADING} mt-5`}>Step by step</h3>
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+        Of the accounts made {periodPhrase(stats.period)}, how many reached each step of onboarding.{' '}
+        {since ? `Kept since ${since}; earlier accounts have no steps.` : 'Nothing kept yet.'}
+      </p>
+      <ul className={`${CARD} mt-2 px-3.5 py-1`}>
+        {STEP_ROWS.map((row) => (
+          <BarRow
+            key={row.key}
+            label={row.label}
+            value={stats.steps[row.key]}
+            of={stats.steps.agree}
+          />
+        ))}
+      </ul>
+    </>
+  );
+}
+
 const PROFILE_ROWS: { key: keyof ClubStats['profile']; label: string }[] = [
   { key: 'username', label: 'Created a username' },
   { key: 'birthday', label: 'Added a birthday' },
@@ -125,27 +181,12 @@ function Profiles({ stats }: { stats: ClubStats }) {
       <h3 className={`${HEADING} mt-5`}>Profiles</h3>
       <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
         Of the {plural(of, 'member')} who joined {periodPhrase(stats.period)}, how many added each.
-        Nothing is kept until onboarding ends, so this can’t show where anybody stopped.
+        Step by step, above, shows where people stop.
       </p>
       <ul className={`${CARD} mt-2 px-3.5 py-1`}>
-        {PROFILE_ROWS.map((row) => {
-          const value = stats.profile[row.key];
-          const share = of ? Math.round((value / of) * 100) : 0;
-          return (
-            <li key={row.key} className="border-line border-b py-2.5 last:border-b-0">
-              <div className="flex items-baseline justify-between gap-3 text-[0.8125rem]">
-                <span className="text-ink">{row.label}</span>
-                <span className="shrink-0 tabular-nums">
-                  <b className="font-extrabold font-head text-ink">{value}</b>
-                  {of ? <span className="ml-1.5 text-grey">{share}%</span> : null}
-                </span>
-              </div>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-tint" aria-hidden="true">
-                <div className="h-full rounded-full bg-gold" style={{ width: `${share}%` }} />
-              </div>
-            </li>
-          );
-        })}
+        {PROFILE_ROWS.map((row) => (
+          <BarRow key={row.key} label={row.label} value={stats.profile[row.key]} of={of} />
+        ))}
       </ul>
     </>
   );
@@ -262,6 +303,7 @@ export function StatsSection() {
         <>
           <Summary stats={stats} />
           <Joining stats={stats} />
+          <Steps stats={stats} />
           <Profiles stats={stats} />
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
