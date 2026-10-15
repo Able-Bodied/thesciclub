@@ -124,7 +124,7 @@ end;
 $$;
 
 comment on function public.admin_club_stats() is
-  'Admin → Stats: counts of members, use and activity, never who. See 20261013000000.';
+  'Admin → Stats: counts of members, use and activity, never who. See 20261015020000.';
 
 revoke all on function public.admin_club_stats() from public, anon;
 grant execute on function public.admin_club_stats() to authenticated;

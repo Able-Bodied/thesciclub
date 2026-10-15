@@ -3,7 +3,7 @@ import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * How the club is being used, for Admin → Stats (20261013000000).
+ * How the club is being used, for Admin → Stats (20261015020000).
  *
  * In place of Google Analytics (the owner, 2026-10-13): counts of rows the club
  * already keeps, read by an administrator, sent nowhere. Counts only, never who.
