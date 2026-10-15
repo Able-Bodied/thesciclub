@@ -1704,6 +1704,31 @@ describe('the club is adults only', () => {
 // of all for them. See lib/date-parts.ts.
 
 describe('the birthday boxes', () => {
+  // The owner, 2026-10-15: the year is the last box, so typing it is done.
+  it('goes on by itself once the year is typed', async () => {
+    await reachBirthday('Sam');
+    await typeBirthday('1985-04-12');
+    expect(await screen.findByText('Your spinal cord')).toBeInTheDocument();
+  });
+
+  it('does not bounce forward again on coming Back to it', async () => {
+    await reachBirthday('Sam');
+    await typeBirthday('1985-04-12');
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(screen.getByText('When is your birthday?')).toBeInTheDocument();
+  });
+
+  it('stays put for somebody under 18', async () => {
+    await reachBirthday('Sam');
+    const year = String(new Date().getFullYear() - 10);
+    await typeBirthday(`${year}-04-12`);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(screen.getByText('When is your birthday?')).toBeInTheDocument();
+  });
+
   it('reads the date back in words, the month typed as its name', async () => {
     await reachBirthday('Sam');
     await userEvent.type(screen.getByLabelText('Month'), 'may');

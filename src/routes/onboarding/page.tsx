@@ -109,6 +109,9 @@ const DOORS: Step[] = ['welcome', 'signin', 'forgot', 'join', 'check-email'];
 
 const RESEND_WAIT = 60;
 
+/** How long the birthday is read back before the step goes on by itself. */
+const BIRTHDAY_PAUSE_MS = 600;
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const account = useAccount();
@@ -280,6 +283,32 @@ export default function OnboardingPage() {
     if (!keeping || !isResumable(step)) return;
     void saveToAccount(step, latest.current);
   }, [keeping, step]);
+
+  // The birthday goes on by itself once the year is typed (the owner,
+  // 2026-10-15): the year is the last box, so a whole, adult date is done.
+  // Only on typing the year, never on arriving with one already there, or
+  // Back from the next step would bounce straight forward again. A moment's
+  // wait shows the date read back first, and typing on cancels it.
+  const yearOnArrival = useRef<string | null>(null);
+  useEffect(() => {
+    if (step !== 'birthday') {
+      yearOnArrival.current = null;
+      return;
+    }
+    if (yearOnArrival.current === null) {
+      yearOnArrival.current = data.birthYear;
+      return;
+    }
+    if (data.birthYear === yearOnArrival.current) return;
+    if (data.birthYear.length !== 4 || !canAdvance('birthday', data)) return;
+    const timer = window.setTimeout(() => {
+      setNotice(null);
+      setStep('injury');
+    }, BIRTHDAY_PAUSE_MS);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [step, data]);
 
   const gateRan = useRef(false);
   useEffect(() => {
