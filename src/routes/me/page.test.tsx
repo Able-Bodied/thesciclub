@@ -28,6 +28,8 @@ const completeDetails: MemberDetails = {
   displayName: 'Dana',
   birthDate: '1990-04-02',
   exactLevel: 'C7',
+  injuryType: 'quad',
+  conditionName: '',
   completeness: 'Incomplete',
   injuryDate: '2013-01-01',
   injuryDatePrecision: 'year',

@@ -1,7 +1,8 @@
 import { ChevronLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
@@ -83,16 +84,7 @@ export function backFrom(state: unknown): string {
  * A refusal is printed under the button rather than swallowed. The one that
  * will actually happen is a suspended member, who reads and does not write.
  */
-function MessageButton({
-  memberId,
-  name,
-  onDark = false,
-}: {
-  memberId: string;
-  name: string;
-  /** Inside the navy band under a hero, where destructive red would not read. */
-  onDark?: boolean;
-}) {
+function MessageButton({ memberId, name }: { memberId: string; name: string }) {
   const account = useAccount();
   const navigate = useNavigate();
   const [opening, setOpening] = useState(false);
@@ -101,7 +93,7 @@ function MessageButton({
   if (!account.userId || account.userId === memberId) return null;
 
   return (
-    <div className={onDark ? '' : 'mt-3 max-w-[20rem]'}>
+    <div>
       <button
         type="button"
         disabled={opening}
@@ -129,10 +121,7 @@ function MessageButton({
         {opening ? 'Opening…' : `Message ${name}`}
       </button>
       {failure ? (
-        <p
-          role="alert"
-          className={`mt-2 text-[0.78125rem] leading-[1.45] ${onDark ? 'text-white/90' : 'text-destructive'}`}
-        >
+        <p role="alert" className="mt-2 text-[0.78125rem] text-destructive leading-[1.45]">
           {failure}
         </p>
       ) : null}
@@ -211,6 +200,10 @@ export default function MemberDetailPage() {
   const { organizations } = useOrganizations();
   const account = useAccount();
   const photo = usePhotoUrl(member?.photoPath);
+  // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
+  const [photoOpen, setPhotoOpen] = useState(false);
+  // Focus goes back here on close: Safari does not focus a button it clicks.
+  const photoButton = useRef<HTMLButtonElement | null>(null);
 
   if (loading) {
     return <Centered role="status">Loading…</Centered>;
@@ -343,38 +336,72 @@ export default function MemberDetailPage() {
                   they are above it. */}
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 top-0 h-[90px] bg-[linear-gradient(to_bottom,rgba(10,29,54,0.55),rgba(10,29,54,0))] lg:hidden"
+                className="absolute inset-x-0 top-0 h-[90px] bg-gradient-to-b from-black/50 to-transparent lg:hidden"
               />
-              {/* The mock's scrim: clear at the top, navy at the foot, so the
+              {/* Clear at the top, a neutral shade at the foot (the owner,
+                  2026-10-13: not navy, so the photo keeps its colours), so the
                   name reads on a light photograph and on the gradient alike. */}
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-0 h-[190px] bg-[linear-gradient(to_bottom,transparent,color-mix(in_srgb,var(--plate)_80%,transparent)_60%,var(--plate))]"
+                className="absolute inset-x-0 bottom-0 h-[190px] bg-gradient-to-b from-transparent via-black/55 via-60% to-black/75"
               />
-              <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
+              {/* The hero crops the photograph to a banner. Pressing it shows
+                  the whole of it, and zooms (src/components/photo-viewer.tsx).
+                  A layer over the picture rather than round it, so the name
+                  over its foot is pressed through, not in the way. */}
+              {photo ? (
+                <button
+                  ref={photoButton}
+                  type="button"
+                  aria-label={`Open ${member.displayName}’s photograph`}
+                  onClick={(event) => {
+                    photoButton.current = event.currentTarget;
+                    setPhotoOpen(true);
+                  }}
+                  className="absolute inset-0 cursor-zoom-in"
+                />
+              ) : null}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
                 <h1 className="font-extrabold font-display text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
                   {member.displayName}
                 </h1>
                 {member.username ? (
-                  <p className="mt-0.5 font-semibold text-[0.9375rem] text-[#D3DFEE]">
+                  <p className="mt-0.5 font-semibold text-[0.9375rem] text-white">
                     @{member.username}
                   </p>
                 ) : null}
-                <p className="mt-1 text-[0.875rem] text-[#D3DFEE]">{summaryLine(member)}</p>
-                {injury ? (
-                  <p className="mt-0.5 text-[0.78125rem] text-[#B9CADF]">{injury}</p>
-                ) : null}
+                <p className="mt-1 text-[0.875rem] text-white">{summaryLine(member)}</p>
+                {injury ? <p className="mt-0.5 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>
 
-            {/* The mock's navy band under the hero, holding one gold button.
-                The mock has two — Message and Ask — and Ask is not built and
-                was not wanted; a two-up grid with one button in it is a hole,
-                so the one it has takes the width. Not drawn at all on your own
-                card, where there is nothing to press. */}
+            {photoOpen && photo ? (
+              <PhotoViewer
+                url={photo}
+                // Their own description, when they wrote one.
+                label={
+                  member.photoAlt?.trim()
+                    ? member.photoAlt.trim()
+                    : `Photograph of ${member.displayName}`
+                }
+                title={`${member.displayName}’s photograph`}
+                index={0}
+                count={1}
+                onStep={() => undefined}
+                onClose={() => {
+                  setPhotoOpen(false);
+                  photoButton.current?.focus();
+                }}
+              />
+            ) : null}
+
+            {/* One gold button straight under the photograph, on the page
+                (the owner, 2026-10-13: no band behind it). Full width; from
+                `lg` it closes the floated card on paper. Not drawn on your
+                own profile, where there is nothing to press. */}
             {canMessage ? (
-              <div className="bg-plate px-[18px] pt-3.5 pb-4">
-                <MessageButton memberId={member.id} name={member.displayName} onDark />
+              <div className="px-[18px] pt-4 lg:bg-paper lg:pb-4">
+                <MessageButton memberId={member.id} name={member.displayName} />
               </div>
             ) : null}
           </div>

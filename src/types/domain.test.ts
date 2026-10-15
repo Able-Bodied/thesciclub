@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  asksCompleteness,
   EXACT_LEVELS,
+  injuryLabel,
+  levelsForType,
   rangeForExact,
   regionForRange,
+  SPINAL_CORD_CONDITIONS,
   stateCodeForName,
   stateNameFor,
+  typeForLevel,
   US_STATES,
 } from '@/types/domain';
 
@@ -63,5 +68,75 @@ describe('US states', () => {
   it('returns null for something that is not a state', () => {
     expect(stateCodeForName('Ontario')).toBeNull();
     expect(stateNameFor('XX')).toBeNull();
+  });
+});
+
+describe('the spinal cord question', () => {
+  it('offers a para the levels from T1 down, and a quad or central cord the neck', () => {
+    const para = levelsForType('para');
+    expect(para[0]).toBe('T1');
+    expect(para).toContain('S5');
+    expect(para).toContain('T11/12');
+    expect(para.some((l) => l.startsWith('C'))).toBe(false);
+    const quad = levelsForType('quad');
+    expect(quad).toEqual(levelsForType('central_cord'));
+    expect(quad.every((l) => l.startsWith('C') || l === 'Do not know')).toBe(true);
+    expect(quad).toContain('C5/6');
+  });
+
+  it('offers a condition, or no answer yet, every level, with "Do not know" last', () => {
+    expect(levelsForType('condition')).toHaveLength(EXACT_LEVELS.length);
+    expect(levelsForType(null).at(-1)).toBe('Do not know');
+    expect(levelsForType('para').at(-1)).toBe('Do not know');
+  });
+
+  it('includes central cord and the syndromes the owner asked about', () => {
+    expect(SPINAL_CORD_CONDITIONS).toContain('Transverse myelitis');
+    expect(SPINAL_CORD_CONDITIONS).toContain('Cauda equina syndrome');
+    expect(SPINAL_CORD_CONDITIONS).toContain('Brown-Séquard syndrome');
+  });
+
+  it('labels each kind the way it is said', () => {
+    const base = { conditionName: null, exactLevel: null, levelRange: 'Not sure yet' };
+    expect(injuryLabel({ ...base, injuryType: 'para', exactLevel: 'T6' })).toBe('T6');
+    expect(injuryLabel({ ...base, injuryType: 'para' })).toBe('Para');
+    expect(injuryLabel({ ...base, injuryType: 'quad', exactLevel: 'Do not know' })).toBe('Quad');
+    expect(injuryLabel({ ...base, injuryType: 'central_cord', exactLevel: 'C5' })).toBe(
+      'C5 central cord',
+    );
+    expect(injuryLabel({ ...base, injuryType: 'central_cord' })).toBe('Central cord syndrome');
+    expect(
+      injuryLabel({ ...base, injuryType: 'condition', conditionName: 'Transverse myelitis' }),
+    ).toBe('Transverse myelitis');
+    expect(
+      injuryLabel({
+        ...base,
+        injuryType: 'condition',
+        conditionName: 'Spina bifida',
+        exactLevel: 'L4',
+      }),
+    ).toBe('Spina bifida · L4');
+    expect(injuryLabel({ ...base, injuryType: 'condition' })).toBe('Spinal cord condition');
+  });
+
+  it('reads a member from before the question exactly as before', () => {
+    expect(
+      injuryLabel({ injuryType: null, conditionName: null, exactLevel: 'C6', levelRange: 'C5–C8' }),
+    ).toBe('C6');
+    expect(
+      injuryLabel({ injuryType: null, conditionName: null, exactLevel: null, levelRange: 'C5–C8' }),
+    ).toBe('C5–C8');
+  });
+
+  it('starts an older member from their level, and asks completeness of injuries only', () => {
+    expect(typeForLevel('C6')).toBe('quad');
+    expect(typeForLevel('T10')).toBe('para');
+    expect(typeForLevel('S2')).toBe('para');
+    expect(typeForLevel('Do not know')).toBeNull();
+    expect(typeForLevel(null)).toBeNull();
+    expect(asksCompleteness('para')).toBe(true);
+    expect(asksCompleteness(null)).toBe(true);
+    expect(asksCompleteness('central_cord')).toBe(false);
+    expect(asksCompleteness('condition')).toBe(false);
   });
 });

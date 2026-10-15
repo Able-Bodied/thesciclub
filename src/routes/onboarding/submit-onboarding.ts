@@ -2,7 +2,7 @@ import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { toE164 } from '@/lib/phone';
 import { getSupabase } from '@/lib/supabase';
-import { injuryDateOf, type OnboardingData } from '@/routes/onboarding/types';
+import { injuryDateOf, type OnboardingData, spinalCordAnswered } from '@/routes/onboarding/types';
 import { rangeForExact } from '@/types/domain';
 
 /**
@@ -32,7 +32,12 @@ export interface SubmitResult {
 
 /** Whether a declinable detail was given after all. Keys as `DECLINABLE_DETAILS`. */
 function answered(key: string, data: OnboardingData, hasInjuryDate: boolean): boolean {
-  if (key === 'exactLevel') return data.exactLevel !== null && data.exactLevel !== 'Do not know';
+  if (key === 'exactLevel') {
+    return (
+      (data.exactLevel !== null && data.exactLevel !== 'Do not know') ||
+      (data.injuryType === 'condition' && data.conditionName.trim() !== '')
+    );
+  }
   if (key === 'injuryDate') return hasInjuryDate;
   if (key === 'city') return data.city.trim() !== '';
   if (key === 'state') return data.state.trim() !== '';
@@ -56,6 +61,9 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
   // inventing a rule the database does not have — and it is the rule that
   // would stop somebody claiming a seeded profile getting in.
   const injury = injuryDateOf(data);
+  // A kind with what it needs. An answer outranks a decline, as `answered`
+  // has it for the level.
+  const spinalCord = spinalCordAnswered(data);
 
   let photoPath: string | null = null;
   if (data.photoFile) {
@@ -94,6 +102,10 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     level_range: data.exactLevel ? rangeForExact(data.exactLevel) : 'Not sure yet',
     exact_level: !data.exactLevel || data.exactLevel === 'Do not know' ? null : data.exactLevel,
     completeness: data.completeness,
+    // Unsaid (null) until it has what it needs: a kind with no level or name.
+    injury_type: spinalCord ? data.injuryType : null,
+    condition_name:
+      spinalCord && data.injuryType === 'condition' ? data.conditionName.trim() || null : null,
     // Paired: members_injury_date_precision_paired requires both or neither.
     injury_date: injury?.date ?? null,
     injury_date_precision: injury?.precision ?? null,

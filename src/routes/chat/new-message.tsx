@@ -6,6 +6,7 @@ import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
 import { useBrowseMembers } from '@/lib/members';
+import { injuryLabel } from '@/types/domain';
 
 /**
  * Starting a conversation from Chat (the owner, 2026-10-10): until now the only
@@ -121,7 +122,7 @@ export default function NewMessagePage() {
         ) : (
           <ul className="mt-2.5 overflow-hidden rounded-[14px] border border-line bg-paper">
             {offered.map((member) => {
-              const level = member.exactLevel ?? member.levelRange;
+              const level = injuryLabel(member);
               return (
                 <li key={member.id} className="border-line border-b last:border-b-0">
                   <button

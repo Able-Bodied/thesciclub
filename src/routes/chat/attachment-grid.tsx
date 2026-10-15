@@ -1,10 +1,11 @@
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { useAttachmentUrls } from '@/lib/chat/attachments';
-import { useDialogFocus } from '@/lib/dialog-focus';
 
 /**
- * The photographs on a message or a post, and the one-at-a-time view of them.
+ * The photographs on a message or a post. Opened, one at a time, in
+ * PhotoViewer (src/components/photo-viewer.tsx), which steps through them,
+ * zooms, and is a dialog that gives focus back to the tile that opened it.
  *
  * ---------------------------------------------------------------------------
  * A grid of up to four, then the picture itself
@@ -29,36 +30,6 @@ import { useDialogFocus } from '@/lib/dialog-focus';
  * behind each one showed as a grey box around a single photograph that was
  * not the bubble's shape — a landscape picture in a letterbox — and as a
  * flash before every load. A photograph is drawn as itself.
- *
- * ---------------------------------------------------------------------------
- * From one photograph to the next without going back
- * ---------------------------------------------------------------------------
- * When a message carries more than one, the open picture has a way to the
- * previous and the next: the arrow controls, the arrow keys, and a sideways
- * swipe. The label counts along ("2 of 4") so a screen reader knows it moved.
- * The ends do not wrap; the control at an end is disabled rather than hidden,
- * so the layout does not jump and a keyboard user is not left guessing.
- *
- * ---------------------------------------------------------------------------
- * The picture is a button, and the viewer closes three ways
- * ---------------------------------------------------------------------------
- * Tap, Enter or Space opens it; the close control, the backdrop and Escape all
- * close it. Members here drive with a switch, a head pointer or a keyboard as
- * often as a finger, and a viewer that closes only by tapping outside is a
- * trap for all three. The open picture takes focus so Escape reaches it.
- *
- * ---------------------------------------------------------------------------
- * The viewer is a dialog, and focus goes back where it came from
- * ---------------------------------------------------------------------------
- * It covers the page, so it says so: `role="dialog"` and `aria-modal`, and
- * Tab goes round its own controls instead of walking out into the chat that
- * is hidden behind it. When it closes, focus goes back to the tile that
- * opened it. Without that, a keyboard or switch user would land at the top of
- * the page and have to find their place in the conversation again.
- *
- * The backdrop is out of the Tab order. It is there for a pointer. A keyboard
- * already has the close control and Escape, and a focus ring round the whole
- * screen would say nothing about where focus is.
  *
  * ---------------------------------------------------------------------------
  * Alt text
@@ -138,10 +109,10 @@ export function AttachmentGrid({
         ))}
       </div>
       {open !== null && shown[open] ? (
-        <Lightbox
+        <PhotoViewer
           url={urls.get(shown[open]) ?? ''}
           label={`Photograph ${open + 1} of ${shown.length} from ${from}`}
-          from={from}
+          title={`Photographs from ${from}`}
           index={open}
           count={shown.length}
           onStep={(to) => {
@@ -154,145 +125,5 @@ export function AttachmentGrid({
         />
       ) : null}
     </>
-  );
-}
-
-/** A sideways swipe of at least this many px, and more sideways than up, steps. */
-const SWIPE_PX = 48;
-
-function Lightbox({
-  url,
-  label,
-  from,
-  index,
-  count,
-  onStep,
-  onClose,
-}: {
-  url: string;
-  label: string;
-  from: string;
-  index: number;
-  count: number;
-  onStep: (to: number) => void;
-  onClose: () => void;
-}) {
-  const hasPrevious = index > 0;
-  const hasNext = index < count - 1;
-  const touch = useRef<{ x: number; y: number } | null>(null);
-  const dialog = useRef<HTMLDivElement | null>(null);
-
-  const picture = useRef<HTMLImageElement | null>(null);
-
-  // In, round and back, as every sheet: focus starts on the picture, Tab goes
-  // round the viewer's own controls (a disabled step control is skipped, and
-  // Shift+Tab from the picture goes to the last control), Escape closes.
-  useDialogFocus(dialog, picture, onClose);
-
-  // The viewer's own keys: the arrows step, as a swipe does.
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'ArrowLeft' && hasPrevious) onStep(index - 1);
-      else if (event.key === 'ArrowRight' && hasNext) onStep(index + 1);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onStep, index, hasPrevious, hasNext]);
-
-  // 44px round controls in the same white-on-scrim as the close control,
-  // clear of the picture's edges and of each other on a phone.
-  const stepClass =
-    'absolute top-1/2 z-20 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white/15 text-white backdrop-blur-[4px] transition-colors hover:bg-white/30 disabled:opacity-30 disabled:hover:bg-white/15';
-
-  return (
-    // The backdrop is the third way out. It is a button so that it has a name
-    // and a keyboard, not a div with an onClick.
-    <div
-      ref={dialog}
-      role="dialog"
-      aria-modal="true"
-      // The count is the picture's own name, so it is not said twice on the
-      // way in.
-      aria-label={`Photographs from ${from}`}
-      className="fixed inset-0 z-50 grid place-items-center bg-[#0A1D36]/92 p-3"
-      onTouchStart={(event) => {
-        const t = event.touches[0];
-        touch.current = t ? { x: t.clientX, y: t.clientY } : null;
-      }}
-      onTouchEnd={(event) => {
-        const start = touch.current;
-        const t = event.changedTouches[0];
-        touch.current = null;
-        if (!start || !t) return;
-        const dx = t.clientX - start.x;
-        const dy = t.clientY - start.y;
-        if (Math.abs(dx) < SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return;
-        if (dx < 0 && hasNext) onStep(index + 1);
-        if (dx > 0 && hasPrevious) onStep(index - 1);
-      }}
-    >
-      <button
-        type="button"
-        aria-label="Close the photograph"
-        onClick={onClose}
-        tabIndex={-1}
-        className="absolute inset-0 h-full w-full cursor-default"
-      />
-      <img
-        // Keyed on the URL so a new photograph is a new element and takes
-        // focus again, and so the old one is not shown stretched while the
-        // next loads.
-        key={url}
-        src={url}
-        alt={label}
-        // Above the backdrop button, and focusable so Escape has somewhere to
-        // land and a screen reader lands on the picture rather than on the
-        // close control behind it.
-        className="relative z-10 max-h-[92dvh] max-w-full rounded-[8px] object-contain shadow-[0_18px_48px_rgba(0,0,0,.5)]"
-        // The hook focuses the first picture; a step brings a new element,
-        // which takes focus here.
-        ref={(element) => {
-          picture.current = element;
-          element?.focus();
-        }}
-        tabIndex={-1}
-      />
-      <button
-        type="button"
-        aria-label="Close the photograph"
-        onClick={onClose}
-        className="absolute top-3 right-3 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-[4px] transition-colors hover:bg-white/30"
-      >
-        <X className="h-5 w-5" aria-hidden="true" />
-      </button>
-      {count > 1 ? (
-        <>
-          <button
-            type="button"
-            aria-label="Previous photograph"
-            disabled={!hasPrevious}
-            onClick={() => {
-              onStep(index - 1);
-            }}
-            className={`${stepClass} left-3`}
-          >
-            <ChevronLeft className="h-6 w-6" aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next photograph"
-            disabled={!hasNext}
-            onClick={() => {
-              onStep(index + 1);
-            }}
-            className={`${stepClass} right-3`}
-          >
-            <ChevronRight className="h-6 w-6" aria-hidden="true" />
-          </button>
-        </>
-      ) : null}
-    </div>
   );
 }

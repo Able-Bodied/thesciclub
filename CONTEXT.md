@@ -15,11 +15,17 @@ than features:
 shares a vocabulary from the first screen — level, complete or incomplete, years since injury,
 bowel programme, transfers, catheters. That vocabulary is the product. It is why a member can ask
 a question here they could not ask anywhere else, and it is the one thing that cannot be
-retrofitted later onto something broader.
+retrofitted later onto something broader. "Spinal cord injury" includes a spinal cord disease or
+condition that paralyses or weakens the same way — transverse myelitis, spina bifida, cauda equina
+syndrome, central cord syndrome and the like (the owner, 2026-10-14): the same body, the same
+vocabulary, a different cause.
 
 **Invite only.** A member organization or a peer mentor puts your email address on the list, and
 the club emails you a link, before you can join. The app itself cannot let you in. This is not a growth tactic — it is what makes the
-first two true. A closed room of two hundred people who have all been through it is worth more
+first two true. The one exception is an administrator's: for a few weeks of events, joining can be
+opened to anybody, so somebody met there joins on the spot, and closed again afterwards (Admin →
+Invites, 2026-10-14). A blocked address stays out either way, and whoever joined while it was open
+stays a member. A closed room of two hundred people who have all been through it is worth more
 than an open one with twenty thousand registrations and fifty monthly visitors.
 
 ## Why closed, specifically
@@ -32,7 +38,7 @@ So membership is granted by a person, not claimed by a form:
 
 - A **member organization** (NorCal SCI, SCVMC SCI Peer Support) adds numbers.
 - A **peer mentor** can add ten. Administrators, organization accounts, and members linked to speak for an organization can invite without a limit (2026-10-09).
-- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number.
+- The QR code gets somebody the app. It does not get them in. Somebody still has to add the number, unless an administrator has opened joining. An administrator's own QR code (Me → Your QR code, 2026-10-14) gives them the credit for whoever joins from it while joining is open, and lets nobody in while it is closed: it says who to ask instead.
 - Membership can be taken away. Selling to members, harassing anyone, giving medical advice as
   fact, or repeating outside a room what was said in it — any of those end it.
 
@@ -199,11 +205,14 @@ passes it on.
 
 ## How injury is recorded
 
-**Level, completeness, and date of injury.** Not a disability type, not a duration bucket.
+**Kind, level, completeness, and date of injury.** Not a disability type, not a duration bucket.
 
-Onboarding asks for a coarse level range (C1–C4, C5–C8, T1–T6, T7–T12, L1–S5, or not sure yet)
-because that is answerable in one tap by somebody who may be filling this in from a hospital bed.
-The profile survey refines it to an exact level later, for anybody who wants to.
+Onboarding asks, on one screen, which describes somebody best — paraplegia, quadriplegia, central
+cord syndrome, or another spinal cord condition (typed in their own words, with suggestions) — and
+then only what that answer needs: a level from a list cut to fit, complete or incomplete for an
+injury with a level, and a level only if they know one for a condition (2026-10-14). The coarse
+range (C1–C4 … L1–S5, or not sure yet) is derived from the level, for browsing. Members who joined
+before the kind was asked read as their level, as they always did.
 
 Duration is a **date**, not a number of years. A stored year count is wrong within twelve months
 of being entered and needs something to roll it forward; a date is simply correct forever. Because

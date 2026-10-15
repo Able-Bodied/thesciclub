@@ -56,6 +56,8 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   displayName: 'Nicole',
   birthDate: '1998-04-02',
   exactLevel: 'C6',
+  injuryType: 'quad',
+  conditionName: '',
   completeness: 'Incomplete',
   injuryDate: '2016-01-01',
   injuryDatePrecision: 'year',
@@ -130,11 +132,16 @@ describe('Your details', () => {
   it('re-derives the browse range from a changed level, so the two cannot come apart', async () => {
     renderDetails();
     await screen.findByLabelText('Level of injury');
+    // A quad's list has no T levels: changing to para offers them, and clears
+    // the C6 that no longer fits.
+    await userEvent.click(screen.getByRole('radio', { name: /Paraplegia/ }));
+    expect(screen.getByLabelText('Level of injury')).toHaveValue('');
     await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'T10');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => {
       expect(api.saves[0]?.levelRange).toBe('T7–T12');
     });
+    expect(api.saves[0]?.details.injuryType).toBe('para');
   });
 
   it('says that members see an age and not the date', async () => {

@@ -103,6 +103,123 @@ export function rangeForExact(level: ExactLevel): LevelRange {
   return 'L1–S5';
 }
 
+/**
+ * What kind of spinal cord injury or condition, asked first (the owner,
+ * 2026-10-14: the club is for anybody with a spinal cord injury or disease).
+ * Central cord syndrome has its own answer because it is neither a level nor
+ * a disease, and people with it name it that way. Null for a member who joined
+ * before it was asked, or who would rather not say.
+ */
+export const INJURY_TYPES = ['para', 'quad', 'central_cord', 'condition'] as const;
+export type InjuryType = (typeof INJURY_TYPES)[number];
+
+export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string; hint: string }> = {
+  para: { title: 'Paraplegia', hint: 'Mainly the legs and lower body. A level from T1 down.' },
+  quad: {
+    title: 'Quadriplegia (tetraplegia)',
+    hint: 'Arms and legs. A level in the neck, C1 to C8.',
+  },
+  central_cord: {
+    title: 'Central cord syndrome',
+    hint: 'An incomplete neck injury, often affecting the arms more than the legs.',
+  },
+  condition: {
+    title: 'Another spinal cord condition',
+    hint: 'A disease or syndrome, like transverse myelitis, spina bifida or cauda equina syndrome.',
+  },
+};
+
+/**
+ * Suggestions for "Which condition?", never a closed list: there are too many,
+ * and whatever somebody types is kept as they wrote it. Each can paralyse or
+ * weaken movement through the spinal cord or the nerve roots at its end.
+ */
+export const SPINAL_CORD_CONDITIONS = [
+  'Transverse myelitis',
+  'Spina bifida',
+  'Multiple sclerosis',
+  'Neuromyelitis optica (NMOSD)',
+  'Spinal cord tumor',
+  'Spinal cord stroke',
+  'Spinal arteriovenous malformation (AVM)',
+  'Syringomyelia',
+  'Tethered cord syndrome',
+  'Cervical myelopathy (spinal stenosis)',
+  'Cauda equina syndrome',
+  'Conus medullaris syndrome',
+  'Brown-Séquard syndrome',
+  'Anterior cord syndrome',
+  'Hereditary spastic paraplegia',
+  'Acute flaccid myelitis',
+  'Spinal cord infection or abscess',
+  'Spinal muscular atrophy (SMA)',
+  'ALS (motor neuron disease)',
+  'Post-polio syndrome',
+] as const;
+
+/** Longest a typed condition may be; the database holds it to the same. */
+export const CONDITION_NAME_MAX = 100;
+
+/**
+ * The levels worth offering for each answer: a para's from T1 down, a quad's
+ * and a central cord's in the neck, and every level for a condition (which may
+ * have one, or not). "Do not know" is always last.
+ */
+export function levelsForType(type: InjuryType | null): ExactLevel[] {
+  const all = EXACT_LEVELS.filter((l) => l !== 'Do not know');
+  const neck = (l: ExactLevel) => l.startsWith('C');
+  const chosen =
+    type === 'para'
+      ? all.filter((l) => !neck(l))
+      : type === 'quad' || type === 'central_cord'
+        ? all.filter(neck)
+        : all;
+  return [...chosen, 'Do not know'];
+}
+
+/**
+ * How somebody's injury reads in a line: "T6", "C5 central cord",
+ * "Transverse myelitis · T8", "Para". One function, so a card, a post and an
+ * event's list say the same thing about the same person.
+ */
+export function injuryLabel(member: {
+  injuryType: InjuryType | null;
+  conditionName: string | null;
+  exactLevel: string | null;
+  levelRange: string | null;
+}): string {
+  const level = member.exactLevel && member.exactLevel !== 'Do not know' ? member.exactLevel : null;
+  switch (member.injuryType) {
+    case 'condition': {
+      const name = member.conditionName ?? 'Spinal cord condition';
+      return level ? `${name} · ${level}` : name;
+    }
+    case 'central_cord':
+      return level ? `${level} central cord` : 'Central cord syndrome';
+    case 'para':
+      return level ?? 'Para';
+    case 'quad':
+      return level ?? 'Quad';
+    default:
+      return level ?? member.levelRange ?? 'Not sure yet';
+  }
+}
+
+/**
+ * A starting answer for somebody who gave a level before the kind was asked:
+ * a neck level reads as quad, any other as para. Only ever a form's default,
+ * never written without the member saving it.
+ */
+export function typeForLevel(level: ExactLevel | null): InjuryType | null {
+  if (!level || level === 'Do not know') return null;
+  return level.startsWith('C') ? 'quad' : 'para';
+}
+
+/** Whether "complete or incomplete" belongs to this answer: an injury with a level, not a condition or a syndrome. */
+export function asksCompleteness(type: InjuryType | null): boolean {
+  return type !== 'condition' && type !== 'central_cord';
+}
+
 export const COMPLETENESS = ['Complete', 'Incomplete', 'Do not know'] as const;
 export type Completeness = (typeof COMPLETENESS)[number];
 
@@ -276,6 +393,10 @@ export interface BrowseMember {
 
   levelRange: LevelRange;
   exactLevel: ExactLevel | null;
+  /** Null before 20261015000000, or for somebody who would rather not say. */
+  injuryType: InjuryType | null;
+  /** Only with injuryType 'condition': in the member's words. */
+  conditionName: string | null;
   completeness: Completeness;
   injuryDate: string | null;
   injuryDatePrecision: DatePrecision | null;
@@ -381,6 +502,12 @@ export type PeersSegment = (typeof PEERS_SEGMENTS)[number];
 
 export interface MemberFilters {
   regions: InjuryRegion[];
+  /**
+   * Members with a spinal cord condition (20261015000000), in the same group
+   * as the regions: either matches. Its own field, not a region, because a
+   * condition with a level is in a region as well.
+   */
+  condition: boolean;
   cities: string[];
   topics: string[];
   search: string;
@@ -388,6 +515,7 @@ export interface MemberFilters {
 
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   regions: [],
+  condition: false,
   cities: [],
   topics: [],
   search: '',
@@ -512,6 +640,8 @@ export interface EventAttendee {
   city: string | null;
   levelRange: string;
   exactLevel: string | null;
+  injuryType: InjuryType | null;
+  conditionName: string | null;
   type: MemberType;
 }
 

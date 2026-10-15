@@ -11,8 +11,9 @@ import { useEffect, useRef, useState } from 'react';
  * signed ID token, and Supabase signs them in, or links it, with that.
  *
  * The redirect stays as the fallback, for a browser where this script does not
- * load or its window does not come back — the installed iPhone app is the one
- * that has not been tried.
+ * load or its window does not come back. Not in the iPhone Home Screen app:
+ * neither finds an account there (the owner, 2026-10-14), so sign-in there
+ * goes by way of Chrome or Safari instead (src/lib/google-in-browser.ts).
  *
  * ---------------------------------------------------------------------------
  * The nonce

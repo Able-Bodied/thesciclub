@@ -273,11 +273,12 @@ content_path = "./supabase/templates/email_change.html"
 subject = "Your SCI Club confirmation code"
 content_path = "./supabase/templates/reauthentication.html"
 
-# Uncomment to customize notification email template
-# [auth.email.notification.password_changed]
-# enabled = true
-# subject = "Your password has been changed"
-# content_path = "./supabase/templates/password_changed_notification.html"
+# Sent whenever a password is changed (the owner, 2026-10-14), so a change
+# somebody else made does not go unnoticed. Hosted: set by the Management API.
+[auth.email.notification.password_changed]
+enabled = true
+subject = "Your SCI Club password was changed"
+content_path = "./supabase/templates/password_changed_notification.html"
 
 [auth.sms]
 # Allow/disallow new user signups via SMS to your project.

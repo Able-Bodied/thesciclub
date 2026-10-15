@@ -209,8 +209,18 @@ export function notificationSentence(n: AppNotification): string {
       return `${name} added you to ${n.place ?? 'a group'}`;
     case 'report':
       return n.count > 1 ? `${n.count} new reports to look at` : 'A member reported something';
-    case 'invite_joined':
+    case 'invite_joined': {
+      // From an administrator's QR code, detail is 'qr:' and the event, if
+      // any (20261014020000).
+      if (n.detail?.startsWith('qr:')) {
+        const event = n.detail.slice('qr:'.length);
+        const who = n.place ?? 'Somebody';
+        return event
+          ? `${who} joined from your QR code at ${event}`
+          : `${who} joined from your QR code`;
+      }
       return `${n.place ?? 'Somebody you invited'} joined the club on your invite`;
+    }
     case 'event_reminder':
       return n.detail
         ? `Tomorrow at ${n.detail}: ${n.place ?? 'an event you are going to'}`

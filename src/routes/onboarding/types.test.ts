@@ -85,10 +85,36 @@ describe('canAdvance', () => {
     expect(canAdvance('phone', data({ phone: '408555' }))).toBe(false);
   });
 
-  it('needs a level and a year before the injury step is done', () => {
-    expect(canAdvance('injury', data({ exactLevel: 'C6' }))).toBe(false);
+  it('needs the kind, a level and a year before the injury step is done', () => {
+    expect(canAdvance('injury', data({ injuryType: 'quad', exactLevel: 'C6' }))).toBe(false);
     expect(canAdvance('injury', data({ injuryYear: '2013' }))).toBe(false);
-    expect(canAdvance('injury', data({ exactLevel: 'C6', injuryYear: '2013' }))).toBe(true);
+    expect(canAdvance('injury', data({ exactLevel: 'C6', injuryYear: '2013' }))).toBe(false);
+    expect(canAdvance('injury', data({ injuryType: 'quad', injuryYear: '2013' }))).toBe(false);
+    expect(
+      canAdvance('injury', data({ injuryType: 'quad', exactLevel: 'C6', injuryYear: '2013' })),
+    ).toBe(true);
+    // "Do not know" is a level answer.
+    expect(
+      canAdvance(
+        'injury',
+        data({ injuryType: 'para', exactLevel: 'Do not know', injuryYear: '2013' }),
+      ),
+    ).toBe(true);
+  });
+
+  it('takes a condition by its name, with or without a level', () => {
+    const condition = { injuryType: 'condition' as const, injuryYear: '2013' };
+    expect(canAdvance('injury', data({ ...condition, conditionName: '  ' }))).toBe(false);
+    expect(canAdvance('injury', data({ ...condition, conditionName: 'Transverse myelitis' }))).toBe(
+      true,
+    );
+    expect(
+      canAdvance('injury', data({ ...condition, conditionName: 'Spina bifida', exactLevel: 'L4' })),
+    ).toBe(true);
+  });
+
+  it('lets the whole step be declined instead', () => {
+    expect(canAdvance('injury', data({ declined: ['exactLevel', 'injuryDate'] }))).toBe(true);
   });
 
   it('lets the photo step through without a photo — it is the optional one', () => {

@@ -32,6 +32,10 @@ const calls = vi.hoisted(() => {
     /** The signed-in account, as the session shows it. */
     user: account(),
     invited: true,
+    /** Whether anybody can join (20261014000000): only what the doors say. */
+    joiningOpen: false,
+    /** What qr_code_details answers for a held administrator's code; null says nothing. */
+    qrDetails: null as Record<string, unknown> | null,
     claimResult: true,
     claimError: false,
     claimedWith: null as string | null,
@@ -218,6 +222,14 @@ vi.mock('@/lib/supabase', () => ({
     // rpc() is awaited as it is, and `.single()` is chained on the one that
     // returns a row; both are the same answer here.
     rpc: (name: string, args?: Record<string, unknown>) => {
+      // Asked once as the page opens, whatever happens next, so kept out of
+      // the order the other tests read.
+      if (name === 'joining_is_open')
+        return Promise.resolve({ data: calls.joiningOpen, error: null });
+      if (name === 'qr_code_details') {
+        const answer = Promise.resolve({ data: calls.qrDetails, error: null });
+        return Object.assign(answer, { maybeSingle: () => answer });
+      }
       calls.order.push(name);
       let result: { data: unknown; error: unknown } = { data: null, error: null };
       if (name === 'my_invite_status') result = { data: { invited: calls.invited }, error: null };
@@ -247,6 +259,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 const { default: OnboardingPage } = await import('@/routes/onboarding/page');
+const { leadingWayIn } = await import('@/routes/onboarding/sign-in-steps');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
 // of HANDOFF.md "What Home is". Until then it was Peers.
@@ -319,6 +332,8 @@ beforeEach(() => {
   calls.resetRedirect = null;
   calls.user = { email: 'dana@example.com', user_metadata: {} };
   calls.invited = true;
+  calls.joiningOpen = false;
+  calls.qrDetails = null;
   calls.claimResult = true;
   calls.claimError = false;
   calls.claimedWith = null;
@@ -359,6 +374,106 @@ describe('the welcome screen', () => {
     renderJoin();
     expect(screen.getByRole('img', { name: 'The SCI Club' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-10-14: for events, an administrator can let anybody join.
+// The doors stop sending a walk-in to find an invite; the database decides.
+describe('while anybody can join', () => {
+  it('says joining is by invitation, and offers the call, while it is not', async () => {
+    renderJoin();
+    expect(screen.getByText(/No invite yet\?/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    expect(screen.getByText(/^Joining is by invitation\./)).toBeInTheDocument();
+  });
+
+  it('says anybody can join, and drops the call for an invite', async () => {
+    calls.joiningOpen = true;
+    renderJoin();
+    await waitFor(() => {
+      expect(screen.queryByText(/No invite yet\?/)).toBeNull();
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    expect(
+      screen.getByText('Anybody can join right now. Join with any email or account.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Joining is by invitation/)).toBeNull();
+  });
+
+  it('still greets somebody with an invitation as invited', async () => {
+    calls.joiningOpen = true;
+    renderJoin('/join?invite=tok-123');
+    expect(await screen.findByText(/^You have an invitation\./)).toBeInTheDocument();
+  });
+});
+
+// The owner, 2026-10-14: an administrator's QR code gives credit, never entry.
+describe("an administrator's QR code", () => {
+  const ALFRED = { inviter_name: 'Alfred', event_name: 'Abilities Expo LA' };
+
+  it('goes straight to joining, and says who invited them while anybody can join', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: true, contact_email: null };
+    renderJoin('/join?from=abc123');
+    expect(
+      await screen.findByText(
+        'Alfred invited you to The SCI Club. Join with any email or account.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
+    expect(window.localStorage.getItem('sciclub.qrCode')).toBe('abc123');
+  });
+
+  it('says who to ask, with their email, while joining is closed', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: false, contact_email: 'alfred@example.com' };
+    renderJoin('/join?from=abc123');
+    expect(
+      await screen.findByText(/Joining is by invitation right now\. Ask Alfred for an invite\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'alfred@example.com' })).toHaveAttribute(
+      'href',
+      'mailto:alfred@example.com',
+    );
+  });
+
+  it('says the same on the closed door when the sign-up is refused', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: false, contact_email: 'alfred@example.com' };
+    calls.signUpError = { message: 'This email is not on the invite list.', status: 403 };
+    renderJoin('/join?from=abc123');
+    await screen.findByText(/Ask Alfred for an invite/);
+    await fillDoor('dana@example.com', 'a long password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByText("This email isn't on the list")).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'alfred@example.com' })).toBeInTheDocument();
+    expect(screen.queryByText(/it gets you the app/)).toBeNull();
+  });
+
+  it('reads like any join page for a code that says nothing', async () => {
+    renderJoin('/join?from=turned-off');
+    expect(await screen.findByRole('button', { name: 'Create account' })).toBeInTheDocument();
+    expect(
+      screen.getByText(/^Joining is by invitation\. Use the email address/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/invited you/)).toBeNull();
+  });
+
+  it('claims the code for the account after sign-in, before asking about the invite', async () => {
+    calls.qrDetails = { ...ALFRED, joining_open: true, contact_email: null };
+    calls.status = 'signed-up';
+    renderJoin('/join?from=abc123');
+    await waitFor(() => {
+      expect(calls.order).toContain('my_invite_status');
+    });
+    expect(calls.order.indexOf('claim_qr_code')).toBeGreaterThan(-1);
+    expect(calls.order.indexOf('claim_qr_code')).toBeLessThan(
+      calls.order.indexOf('my_invite_status'),
+    );
+    expect(window.localStorage.getItem('sciclub.qrCode')).toBeNull();
+  });
+
+  it('is forgotten by somebody already in the club', () => {
+    calls.status = 'member';
+    renderJoin('/join?from=abc123');
+    expect(window.localStorage.getItem('sciclub.qrCode')).toBeNull();
   });
 });
 
@@ -996,6 +1111,30 @@ describe('Google, Apple and passkeys', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('in the iPhone Home Screen app, sends Google to a browser instead of its widget', async () => {
+    calls.widget = 'ready';
+    const agent = vi
+      .spyOn(navigator, 'userAgent', 'get')
+      .mockReturnValue(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+      );
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+    try {
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(
+        screen.getByText('Opens Chrome or Safari, where your Google accounts are.'),
+      ).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+      // Google's own widget, which finds no accounts there, is not drawn.
+      expect(calls.promptAsked).toBe(false);
+      expect(screen.queryByRole('button', { name: /Google’s sign-in page/ })).toBeNull();
+    } finally {
+      agent.mockRestore();
+      Reflect.deleteProperty(navigator, 'standalone');
+    }
+  });
+
   it('says so when Google’s account is refused', async () => {
     calls.idTokenError = 'bad token';
     calls.widget = 'ready';
@@ -1023,6 +1162,69 @@ describe('Google, Apple and passkeys', () => {
     it('says what to do when Apple comes back without signing anybody in', async () => {
       renderJoin('/join?apple=signin');
       expect(await screen.findByRole('alert')).toHaveTextContent('Apple did not sign you in.');
+    });
+  });
+
+  describe('which way in leads', () => {
+    const SAFARI_IPHONE =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
+    const ANDROID =
+      'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+
+    function onDevice(userAgent: string) {
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
+      return vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+    }
+
+    it('on an iPhone, Apple, with Google under Other ways', async () => {
+      const agent = onDevice(SAFARI_IPHONE);
+      try {
+        renderJoin();
+        await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+        expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Sign in with Google' })).toBeNull();
+        const others = screen.getByRole('button', { name: 'Other ways to sign in' });
+        expect(others).toHaveAttribute('aria-expanded', 'false');
+        await userEvent.click(others);
+        expect(others).toHaveAttribute('aria-expanded', 'true');
+        await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
+        expect(calls.order).toEqual(['signInWithOAuth:google']);
+      } finally {
+        agent.mockRestore();
+      }
+    });
+
+    it('on Android, Google, with Apple under Other ways', async () => {
+      const agent = onDevice(ANDROID);
+      try {
+        renderJoin();
+        await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+        expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
+        await userEvent.click(screen.getByRole('button', { name: 'Other ways to join' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+        expect(calls.order).toEqual(['signInWithOAuth:apple']);
+      } finally {
+        agent.mockRestore();
+      }
+    });
+
+    it('on a computer, both, and no Other ways', async () => {
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Other ways/ })).toBeNull();
+    });
+
+    it('with Apple off, Google alone everywhere', () => {
+      expect(leadingWayIn('ios-safari', false)).toBe('google');
+      expect(leadingWayIn('ios-safari', true)).toBe('apple');
+      expect(leadingWayIn('ios-chrome', true)).toBe('apple');
+      expect(leadingWayIn('android', true)).toBe('google');
+      expect(leadingWayIn('desktop', true)).toBe('both');
+      expect(leadingWayIn('in-app', true)).toBe('both');
     });
   });
 
@@ -1667,9 +1869,11 @@ describe('the injury date boxes', () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Tell us about your injury');
-    // Without moving the cursor, which the step put in Month.
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegia/ }));
     fireEvent.change(screen.getByLabelText('Level of injury'), { target: { value: 'C5' } });
+    // The step opens on the kind, not the date: the date is reached by hand.
+    await userEvent.click(screen.getByLabelText('Month'));
   }
 
   it('runs month, day, year, starting in Month, as the birthday does', async () => {
@@ -1689,6 +1893,22 @@ describe('the injury date boxes', () => {
     await userEvent.keyboard('2013');
     expect(await screen.findByText('June 14, 2013')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('takes a condition by name, and "Since birth" for its date', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('radio', { name: /Another spinal cord condition/ }));
+    expect(screen.getByText('When did it start?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
+    await userEvent.click(screen.getByRole('button', { name: 'Since birth' }));
+    expect(screen.getByLabelText('Year')).toHaveValue('1990');
+    expect(screen.getByText(/since birth\./)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
   });
 
   it('goes on with the year alone', async () => {
@@ -1729,54 +1949,19 @@ describe('the injury date boxes', () => {
   });
 });
 
-describe('notifications, as they enter', () => {
-  async function finishLater() {
+// The owner, 2026-10-14: most people join in a browser before installing, so
+// signing up no longer asks; the installed app asks once (AskOnOpening).
+describe('notifications, not while signing up', () => {
+  it('goes straight to Home, even when the club can send', async () => {
+    calls.vapidKey = 'key';
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
-  }
-
-  it('asks somebody who pressed Finish later, and Not now goes to Home', async () => {
-    calls.vapidKey = 'key';
-    await finishLater();
-    expect(await screen.findByText('Turn on notifications?')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Turn on notifications?')).toBeNull();
     expect(calls.order).not.toContain('turnOn');
-    // So the installed app does not ask this phone again (AskOnOpening).
-    expect(calls.order).toContain('asked');
-  });
-
-  it('asks the device when they say yes', async () => {
-    calls.vapidKey = 'key';
-    await finishLater();
-    await userEvent.click(await screen.findByRole('button', { name: 'Turn on notifications' }));
-    expect(calls.order).toContain('turnOn');
-  });
-
-  it('says how on an iPhone that has not added the club to its Home Screen', async () => {
-    calls.vapidKey = 'key';
-    calls.notificationState = 'install';
-    await finishLater();
-    expect(await screen.findByText('Get notifications on your iPhone')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    // Nothing was asked, only how to install: the installed app still asks.
+    // Not marked as asked, so the installed app still asks this phone.
     expect(calls.order).not.toContain('asked');
-  });
-
-  it('does not ask a device that has already answered', async () => {
-    calls.vapidKey = 'key';
-    calls.notificationState = 'refused';
-    await finishLater();
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.queryByText('Turn on notifications?')).toBeNull();
-  });
-
-  it('does not ask while the club cannot send', async () => {
-    await finishLater();
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.queryByText('Turn on notifications?')).toBeNull();
   });
 });
 

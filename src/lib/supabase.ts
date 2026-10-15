@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { watchForRecoveryLink } from '@/lib/recovery-link';
 
 /**
  * The one Supabase client.
@@ -29,5 +30,7 @@ export function getSupabase(): SupabaseClient {
   client = import.meta.env.VITE_PASSKEYS
     ? createClient(url, key, { auth: { experimental: { passkey: true } } })
     : createClient(url, key);
+  // Before the client's first await, so a reset link it reads is seen.
+  watchForRecoveryLink(client);
   return client;
 }

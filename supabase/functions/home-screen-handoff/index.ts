@@ -9,6 +9,10 @@
  * and the app exchanges its hash for a session of its own (verifyOtp). Nothing
  * is emailed. The rules are in handler.ts.
  *
+ * `POST { pairing }` is the other way in (the owner, 2026-10-14;
+ * 20261015010000): the secret the app kept when it sent the member to Chrome or
+ * Safari for Google, collecting the sign-in that browser left for it.
+ *
  * verify_jwt is off in config.toml: the caller has no JWT to verify.
  * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
  */
@@ -55,6 +59,19 @@ Deno.serve(async (request) => {
       });
       if (!response.ok) {
         console.error('home-screen-handoff: redeem failed', response.status);
+        return null;
+      }
+      const email: unknown = await response.json();
+      return typeof email === 'string' && email !== '' ? email : null;
+    },
+    async redeemPairing(secret) {
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/redeem_home_screen_pairing`, {
+        method: 'POST',
+        headers: serviceHeaders,
+        body: JSON.stringify({ secret }),
+      });
+      if (!response.ok) {
+        console.error('home-screen-handoff: redeem pairing failed', response.status);
         return null;
       }
       const email: unknown = await response.json();

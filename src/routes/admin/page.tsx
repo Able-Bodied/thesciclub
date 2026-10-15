@@ -8,10 +8,13 @@ import { useAccount } from '@/lib/account';
 import { looksLikeEmail } from '@/lib/auth-email';
 import { useAdminReports } from '@/lib/chat/reports';
 import { describeThrown } from '@/lib/describe-error';
+import { useJoiningSetting } from '@/lib/joining';
 import { cn } from '@/lib/utils';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
 import { EventContactsSection } from '@/routes/admin/event-contacts-section';
 import { InviteForm } from '@/routes/admin/invite-form';
+import { JoinTally } from '@/routes/admin/join-tally';
+import { JoiningSection } from '@/routes/admin/joining-section';
 import {
   type AdminInvite,
   type AdminMember,
@@ -30,6 +33,7 @@ import {
   inviteLabel,
   inviteState,
   isOldPhoneInvite,
+  joinTally,
   reinviteByEmail,
   removeAndBlock,
   resendInvite,
@@ -105,6 +109,8 @@ export default function AdminPage() {
   // A complaint waiting unseen behind a tab that looks like every other tab is
   // the failure this number exists to prevent.
   const reports = useAdminReports();
+  // Here and not in the section: the invite form's own sentence depends on it.
+  const joining = useJoiningSetting();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -408,9 +414,18 @@ export default function AdminPage() {
               // are done together.
               <div className="grid items-start gap-x-8 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
                 <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
+                  <JoiningSection
+                    setting={joining.setting}
+                    error={joining.error}
+                    onChanged={joining.reload}
+                  />
                   <Section
                     title="Add to the list"
-                    subtitle="Nobody can join without an invite. Add an email address and the club sends the link."
+                    subtitle={
+                      joining.setting?.open
+                        ? 'Anybody can join right now, but an invite still sends somebody the link. Add an email address and the club sends it.'
+                        : 'Nobody can join without an invite. Add an email address and the club sends the link.'
+                    }
                   >
                     <div className="p-3">
                       <InviteForm
@@ -422,6 +437,7 @@ export default function AdminPage() {
                   </Section>
                 </div>
                 <div className="min-w-0">
+                  <JoinTally rows={joinTally(invites)} />
                   <Section
                     title="The list"
                     subtitle="An invite nobody has used can be taken off the list, or its link sent again."

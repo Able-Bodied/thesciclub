@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
@@ -125,15 +125,15 @@ describe('the photographs on a message', () => {
     await user.click(screen.getByRole('button', { name: 'Photograph 1 of 2 from Bo. Open it.' }));
     const viewer = screen.getByRole('dialog');
 
-    // Close, then Next (Previous is disabled at the start), then round again.
-    // Eight presses is round the ring several times.
+    // Close, Zoom in, then Next (Previous and Zoom out are disabled at the
+    // start), then round again. Nine presses is round the ring several times.
     const reached = new Set<string>();
-    for (let press = 0; press < 8; press += 1) {
+    for (let press = 0; press < 9; press += 1) {
       await user.tab();
       expect(viewer).toContainElement(document.activeElement as HTMLElement);
       reached.add(document.activeElement?.getAttribute('aria-label') ?? '');
     }
-    expect(reached).toEqual(new Set(['Close the photograph', 'Next photograph']));
+    expect(reached).toEqual(new Set(['Close the photograph', 'Zoom in', 'Next photograph']));
 
     for (let press = 0; press < 5; press += 1) {
       await user.tab({ shift: true });
@@ -224,5 +224,127 @@ describe('filling a card', () => {
     expect(screen.getByRole('img', { name: 'Photograph 1 of 1 from Bo' })).toHaveClass(
       'object-contain',
     );
+  });
+});
+
+describe('zooming into a photograph', () => {
+  // Every browser has it; the test's document does not.
+  beforeEach(() => {
+    HTMLElement.prototype.setPointerCapture = () => undefined;
+  });
+
+  const scaleOf = (picture: HTMLElement) =>
+    Number(/scale\(([\d.]+)\)/.exec(picture.style.transform)?.[1] ?? 'NaN');
+
+  async function openFirst(paths = ['threads/t/a.webp', 'threads/t/b.webp']) {
+    const user = userEvent.setup();
+    render(<AttachmentGrid paths={paths} from="Bo" />);
+    const [first] = screen.getAllByRole('button', { name: /Open it/ });
+    if (!first) throw new Error('there should be a photograph to open');
+    await user.click(first);
+    return user;
+  }
+
+  it('opens unzoomed, with Zoom out not yet offered', async () => {
+    await openFirst();
+    expect(scaleOf(screen.getByRole('img', { name: /Photograph 1/ }))).toBe(1);
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeEnabled();
+  });
+
+  // A switch, a head pointer or a keyboard cannot pinch.
+  it('zooms with the buttons and the keys, and 0 goes back', async () => {
+    const user = await openFirst();
+    const picture = () => screen.getByRole('img', { name: /Photograph 1/ });
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(scaleOf(picture())).toBe(2.5);
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toBeEnabled();
+    await user.keyboard('+');
+    expect(scaleOf(picture())).toBe(3.75);
+    await user.keyboard('-');
+    expect(scaleOf(picture())).toBe(2.5);
+    await user.keyboard('0');
+    expect(scaleOf(picture())).toBe(1);
+  });
+
+  it('stops at five times', async () => {
+    const user = await openFirst();
+    for (let press = 0; press < 8; press += 1) await user.keyboard('+');
+    expect(scaleOf(screen.getByRole('img', { name: /Photograph 1/ }))).toBe(5);
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeDisabled();
+  });
+
+  it('zoomed, the arrow keys move round the picture instead of stepping', async () => {
+    const user = await openFirst();
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('img', { name: /Photograph 1/ })).toBeInTheDocument();
+    await user.keyboard('0');
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('img', { name: /Photograph 2/ })).toBeInTheDocument();
+  });
+
+  it('starts the next photograph unzoomed', async () => {
+    const user = await openFirst();
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await user.click(screen.getByRole('button', { name: 'Next photograph' }));
+    expect(scaleOf(screen.getByRole('img', { name: /Photograph 2/ }))).toBe(1);
+  });
+
+  it('a double tap zooms in, and another zooms back out', async () => {
+    await openFirst();
+    const picture = screen.getByRole('img', { name: /Photograph 1/ });
+    function tap(at: number) {
+      fireEvent.pointerDown(picture, { pointerId: 1, clientX: 100, clientY: 100, timeStamp: at });
+      fireEvent.pointerUp(picture, { pointerId: 1, clientX: 100, clientY: 100, timeStamp: at });
+    }
+    tap(1000);
+    expect(scaleOf(picture)).toBe(1);
+    tap(1150);
+    expect(scaleOf(picture)).toBe(2.5);
+    tap(2000);
+    tap(2150);
+    expect(scaleOf(picture)).toBe(1);
+  });
+
+  it('a pinch zooms, and is never taken for a swipe', async () => {
+    await openFirst();
+    const picture = screen.getByRole('img', { name: /Photograph 1/ });
+    fireEvent.pointerDown(picture, { pointerId: 1, clientX: 100, clientY: 100 });
+    fireEvent.pointerDown(picture, { pointerId: 2, clientX: 140, clientY: 100 });
+    fireEvent.pointerMove(picture, { pointerId: 2, clientX: 180, clientY: 100 });
+    expect(scaleOf(picture)).toBe(2);
+    fireEvent.pointerUp(picture, { pointerId: 2, clientX: 180, clientY: 100 });
+    fireEvent.pointerUp(picture, { pointerId: 1, clientX: 100, clientY: 100 });
+    expect(scaleOf(picture)).toBe(2);
+
+    // The same fingers, seen as touches: a sideways sweep, but two fingers.
+    const viewer = screen.getByRole('dialog');
+    fireEvent.touchStart(viewer, { touches: [{ clientX: 200, clientY: 100 }] });
+    fireEvent.touchStart(viewer, {
+      touches: [
+        { clientX: 200, clientY: 100 },
+        { clientX: 240, clientY: 100 },
+      ],
+    });
+    fireEvent.touchEnd(viewer, { touches: [], changedTouches: [{ clientX: 20, clientY: 100 }] });
+    expect(screen.getByRole('img', { name: /Photograph 1/ })).toBeInTheDocument();
+  });
+
+  it('zoomed, a one-finger swipe moves round the picture rather than stepping', async () => {
+    const user = await openFirst();
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    const viewer = screen.getByRole('dialog');
+    fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 100 }] });
+    fireEvent.touchEnd(viewer, { touches: [], changedTouches: [{ clientX: 100, clientY: 100 }] });
+    expect(screen.getByRole('img', { name: /Photograph 1/ })).toBeInTheDocument();
+  });
+
+  it('unzoomed, the same swipe still steps', async () => {
+    await openFirst();
+    const viewer = screen.getByRole('dialog');
+    fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 100 }] });
+    fireEvent.touchEnd(viewer, { touches: [], changedTouches: [{ clientX: 100, clientY: 100 }] });
+    expect(screen.getByRole('img', { name: /Photograph 2/ })).toBeInTheDocument();
   });
 });

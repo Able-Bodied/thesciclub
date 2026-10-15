@@ -1,6 +1,7 @@
 import type { OwnMember } from '@/lib/members';
 import { usePhotoUrl } from '@/lib/photos';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
+import { injuryLabel } from '@/types/domain';
 
 /**
  * The navy hero at the top of Me, from `mePage()` in the mock.
@@ -40,9 +41,7 @@ export function MeHero({ member }: { member: OwnMember }) {
   const [from, to] = gradientFor(member.id);
   const age = ageFrom(member.birthDate);
 
-  const summary = [member.exactLevel ?? member.levelRange, age, member.city]
-    .filter(Boolean)
-    .join(' · ');
+  const summary = [injuryLabel(member), age, member.city].filter(Boolean).join(' · ');
 
   return (
     <div className="bg-plate px-4 pt-[18px] pb-[26px] text-white">

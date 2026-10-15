@@ -9,6 +9,7 @@ import { backLabel, backToEvents } from '@/routes/events/back';
 import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { injuryLabel } from '@/types/domain';
 
 /**
  * One organization, from `orgPage()` in the mock: who they are, the members who
@@ -193,9 +194,7 @@ export default function OrganizationDetailPage() {
                       {member.displayName}
                     </span>
                     <span className="block text-[0.78125rem] text-grey">
-                      {[member.exactLevel ?? member.levelRange, member.city]
-                        .filter(Boolean)
-                        .join(' · ')}
+                      {[injuryLabel(member), member.city].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />

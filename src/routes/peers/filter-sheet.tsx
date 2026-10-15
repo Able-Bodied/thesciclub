@@ -32,6 +32,8 @@ export const TOPICS_SHOWN = 24;
 
 export interface FilterSheetProps {
   regions: InjuryRegion[];
+  /** Somebody in the deck has a spinal cord condition: offer its chip. */
+  conditions: boolean;
   cities: string[];
   /** Every topic, most common first. The sheet decides how many to draw. */
   topics: string[];
@@ -46,6 +48,7 @@ export interface FilterSheetProps {
 
 export function FilterSheet({
   regions,
+  conditions,
   cities,
   topics,
   filters,
@@ -81,8 +84,8 @@ export function FilterSheet({
       clearCount={activeCount}
       applyLabel={`Show ${matchCount}`}
     >
-      {regions.length > 0 ? (
-        <FilterGroup title="Level of injury">
+      {regions.length > 0 || conditions ? (
+        <FilterGroup title="Level or condition">
           {regions.map((region) => (
             <FilterChip
               key={region}
@@ -93,6 +96,15 @@ export function FilterSheet({
               }}
             />
           ))}
+          {conditions ? (
+            <FilterChip
+              label="Spinal cord condition"
+              on={filters.condition}
+              onClick={() => {
+                onChange({ ...filters, condition: !filters.condition });
+              }}
+            />
+          ) : null}
         </FilterGroup>
       ) : null}
 

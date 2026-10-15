@@ -52,9 +52,7 @@ describe('Your answers', () => {
     const about = await screen.findByRole('region', { name: 'About you' });
     expect(within(about).getByText('English, Spanish')).toBeInTheDocument();
     expect(within(section('Brief bio')).getByText('Rugby on Tuesdays.')).toBeInTheDocument();
-    expect(
-      within(section('How were you paralyzed?')).getByText('Rather not say'),
-    ).toBeInTheDocument();
+    expect(within(section('How it began')).getByText('Rather not say')).toBeInTheDocument();
     expect(within(section('Work')).getByText('Not answered yet')).toBeInTheDocument();
   });
 

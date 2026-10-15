@@ -2,7 +2,7 @@ import { readDate } from '@/lib/date-parts';
 import { isAdult } from '@/lib/injury';
 import { isCompletePhone } from '@/lib/phone';
 import { isValidUsername } from '@/lib/usernames';
-import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
+import type { Completeness, DatePrecision, ExactLevel, InjuryType } from '@/types/domain';
 
 /**
  * The shape onboarding collects, and the order it collects it in.
@@ -41,7 +41,11 @@ export interface OnboardingData {
   birthMonth: string;
   birthDay: string;
   birthYear: string;
+  /** Para, quad, central cord or another condition: asked first (spinal-cord-fields.tsx). */
+  injuryType: InjuryType | null;
   exactLevel: ExactLevel | null;
+  /** Only for a condition: typed, so '' while blank. */
+  conditionName: string;
   completeness: Completeness;
   /** Stored as a date; asked as a year, refined only if somebody wants to. */
   injuryYear: string;
@@ -78,7 +82,9 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   birthMonth: '',
   birthDay: '',
   birthYear: '',
+  injuryType: null,
   exactLevel: null,
+  conditionName: '',
   completeness: 'Do not know',
   injuryYear: '',
   injuryMonth: '',
@@ -172,7 +178,7 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
       // somebody does not want to answer was "Finish later", which abandons
       // the rest of the wizard — a much bigger thing than declining one page.
       return (
-        (data.exactLevel !== null || data.declined.includes('exactLevel')) &&
+        (spinalCordAnswered(data) || data.declined.includes('exactLevel')) &&
         (injuryDateOf(data) !== null || data.declined.includes('injuryDate'))
       );
     case 'city':
@@ -182,6 +188,15 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
     default:
       return true;
   }
+}
+
+/**
+ * The kind, and what that kind needs: a condition's name (its level is
+ * optional), or a level for an injury ("Do not know" is a level answer).
+ */
+export function spinalCordAnswered(data: OnboardingData): boolean {
+  if (data.injuryType === 'condition') return data.conditionName.trim() !== '';
+  return data.injuryType !== null && data.exactLevel !== null;
 }
 
 /**

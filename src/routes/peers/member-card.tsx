@@ -2,7 +2,7 @@ import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import type { BrowseMember } from '@/types/domain';
+import { asksCompleteness, type BrowseMember, injuryLabel } from '@/types/domain';
 
 /**
  * The full-bleed browse card, matching `.pcard` in docs/index.html. The photo
@@ -48,9 +48,13 @@ export function initialsOf(displayName: string): string {
  * "C6 do not know" says nothing.
  */
 export function summaryLine(member: BrowseMember): string {
-  const level = member.exactLevel ?? member.levelRange;
+  const level = injuryLabel(member);
+  // A condition or central cord syndrome says what it is; complete or
+  // incomplete belongs to an injury with a level.
   const levelPart =
-    member.completeness === 'Do not know' ? level : `${level} ${member.completeness.toLowerCase()}`;
+    member.completeness === 'Do not know' || !asksCompleteness(member.injuryType)
+      ? level
+      : `${level} ${member.completeness.toLowerCase()}`;
   return [levelPart, member.age, member.city].filter(Boolean).join(' · ');
 }
 
@@ -140,8 +144,12 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
         />
       ) : null}
 
-      <span className="absolute inset-x-0 top-0 h-[120px] bg-gradient-to-b from-[#0A1D3699] via-[#0A1D3640] to-transparent" />
-      <span className="absolute inset-x-0 bottom-0 h-[230px] bg-gradient-to-b from-transparent via-[#0A1D36CC] to-[#0A1D36F2]" />
+      {/* Neutral shade, not navy (the owner, 2026-10-13): the photo keeps its
+          colours. The top one carries the white name on a light photo; the
+          bottom one is lighter, as the chips and marks there are on their
+          own white pills. */}
+      <span className="absolute inset-x-0 top-0 h-[210px] bg-gradient-to-b from-black/65 via-black/45 via-55% to-transparent" />
+      <span className="absolute inset-x-0 bottom-0 h-[160px] bg-gradient-to-b from-transparent to-black/45" />
 
       {/* Stacked, not side by side: the name keeps the same room beside one
           flag or two. Admin is white on the photograph so it is not read as a
@@ -168,15 +176,15 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
       ) : null}
 
       <span className="absolute inset-x-0 top-0 block px-[18px] pt-[18px] pr-[104px]">
-        <span className="block font-extrabold font-display text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(10,29,54,.75)]">
+        <span className="block font-extrabold font-display text-[1.75rem] text-white leading-tight tracking-[-0.01em] [text-shadow:0_1px_12px_rgba(0,0,0,.75)]">
           {member.displayName}
         </span>
         {member.username ? (
-          <span className="mt-0.5 block font-semibold text-[0.84375rem] text-[#DCE6F2] leading-[1.35] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
+          <span className="mt-0.5 block font-semibold text-[0.84375rem] text-white leading-[1.35] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
             @{member.username}
           </span>
         ) : null}
-        <span className="mt-[7px] block text-[0.84375rem] text-[#DCE6F2] leading-[1.45] [text-shadow:0_1px_10px_rgba(10,29,54,.8)]">
+        <span className="mt-[7px] block text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
           {summaryLine(member)}
         </span>
       </span>

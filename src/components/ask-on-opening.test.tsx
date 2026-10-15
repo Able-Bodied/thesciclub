@@ -81,7 +81,7 @@ describe('the first time the installed app opens', () => {
     expect(localStorage.getItem('thesciclub.notificationsAsked')).not.toBeNull();
   });
 
-  it('is drawn in light, as it is at the end of signing up', () => {
+  it('is drawn in light', () => {
     renderOpening();
     expect(document.documentElement.dataset.forceLight).toBe('');
   });

@@ -9,9 +9,9 @@ import { NotificationsStep } from '@/routes/onboarding/notifications-step';
  * notifications?" before anything else (the owner, 2026-10-05). Why, and what
  * "the first time" means: `askOnOpening` in src/lib/push/notifications.ts.
  *
- * The same screen the end of signing up shows, in the same light it was shown
- * in there, because it is the same question; NotificationsStep remembers that
- * this phone has been asked. Decided once, on the first render: the facts are
+ * Since 2026-10-14 the only place it is asked unprompted: signing up no
+ * longer asks, because most people join in a browser before installing.
+ * NotificationsStep remembers that this phone has been asked. Decided once, on the first render: the facts are
  * synchronous, so a member who is not asked never sees this flash past.
  */
 export function AskOnOpening({ children }: { children: React.ReactNode }) {

@@ -153,6 +153,18 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
 }));
 
+// Read on every render for the Invites tab; what the switch itself does is
+// tested in joining-section.test.tsx and lib/joining.test.ts.
+const joining = vi.hoisted(() => ({ open: false }));
+vi.mock('@/lib/joining', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useJoiningSetting: () => ({
+    setting: { open: joining.open, changedAt: null },
+    error: null,
+    reload: () => undefined,
+  }),
+}));
+
 // The Going tab reads events and who is going; neither is what this file tests
 // (event-contacts-section.test.tsx does), but the page imports the section.
 vi.mock('@/routes/admin/event-contacts-section', () => ({
@@ -221,6 +233,7 @@ beforeEach(() => {
   api.reinvited = [];
   api.failWith = null;
   api.openReports = 0;
+  joining.open = false;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   // vi.spyOn on an already-spied method hands back the *existing* spy, so
   // without this the call history survives from one test to the next and
@@ -433,6 +446,14 @@ describe('what an invite says it is', () => {
     ).toBe('used by Bob, who was removed');
   });
 
+  it('names a walk-in without saying they used an invite', () => {
+    const walkIn = { status: 'consumed' as const, joinedWhileOpen: true, heldBy: 'Dana' };
+    expect(inviteState(invite({ ...walkIn, heldByStatus: 'active' }))).toBe('Dana');
+    expect(inviteState(invite({ ...walkIn, heldByStatus: 'removed' }))).toBe(
+      'Dana, who was removed',
+    );
+  });
+
   it('puts the other two states in English too', () => {
     expect(inviteState(invite({ status: 'pending' }))).toBe('not used yet');
     expect(inviteState(invite({ status: 'revoked' }))).toBe('revoked');
@@ -449,6 +470,26 @@ describe('who vouched', () => {
     expect(vouchedBy(invite({ invitedByOrganization: null, invitedByMember: 'Todd' }))).toBe(
       'Todd (mentor)',
     );
+  });
+
+  it('names the administrator whose QR code it was, and the event', () => {
+    const fromCode = { fromQrCode: true, joinedWhileOpen: true, invitedByOrganization: null };
+    expect(
+      vouchedBy(
+        invite({ ...fromCode, invitedByMember: 'Alfred', qrEventName: 'Abilities Expo LA' }),
+      ),
+    ).toBe('Invited by Alfred · Abilities Expo LA');
+    expect(vouchedBy(invite({ ...fromCode, invitedByMember: 'Alfred', qrEventName: null }))).toBe(
+      'Invited by Alfred',
+    );
+  });
+
+  it('says a walk-in joined while invite only was off, not "unknown"', () => {
+    expect(
+      vouchedBy(
+        invite({ invitedByOrganization: null, invitedByMember: null, joinedWhileOpen: true }),
+      ),
+    ).toBe('Joined when invite only was off');
   });
 
   it('says so when the inviter’s account is gone', () => {
@@ -775,6 +816,9 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
   heldBy: null,
   heldByStatus: null,
   hasAccount: false,
+  joinedWhileOpen: false,
+  fromQrCode: false,
+  qrEventName: null,
   ...o,
 });
 
@@ -797,6 +841,72 @@ describe('the invite list', () => {
     // The form's organization dropdown also says "NorCal SCI"; the row's meta
     // line is the one followed by a separator.
     expect(screen.getByText(/NorCal SCI ·/)).toBeInTheDocument();
+  });
+
+  it('counts who joined while open, by event and administrator', async () => {
+    const joined = (o: Partial<AdminInvite>) =>
+      invite({
+        status: 'consumed',
+        joinedWhileOpen: true,
+        invitedByOrganization: null,
+        heldBy: 'X',
+        heldByStatus: 'active',
+        ...o,
+      });
+    api.invites = [
+      joined({
+        id: 'a',
+        email: 'a@x.com',
+        fromQrCode: true,
+        invitedByMember: 'Alfred',
+        qrEventName: 'Expo',
+      }),
+      joined({
+        id: 'b',
+        email: 'b@x.com',
+        fromQrCode: true,
+        invitedByMember: 'Sam',
+        qrEventName: 'Expo',
+      }),
+      joined({
+        id: 'c',
+        email: 'c@x.com',
+        fromQrCode: true,
+        invitedByMember: 'Alfred',
+        qrEventName: 'Expo',
+      }),
+      joined({ id: 'd', email: 'd@x.com' }),
+    ];
+    await openInvites();
+    const table = screen.getByRole('table');
+    const expo = within(table).getByRole('row', { name: /Expo/ });
+    expect(expo).toHaveTextContent('Expo3Alfred 2 · Sam 1');
+    expect(within(table).getByRole('row', { name: /Walk-ins, no code/ })).toHaveTextContent('1');
+  });
+
+  it('draws no tally when nobody joined while open', async () => {
+    api.invites = [invite()];
+    await openInvites();
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('lists a walk-in by address, and says under it how they came', async () => {
+    api.invites = [
+      invite({
+        email: 'walkin@example.com',
+        status: 'consumed',
+        invitedByOrganization: null,
+        joinedWhileOpen: true,
+        heldBy: 'Dana S',
+        heldByStatus: 'active',
+      }),
+    ];
+    await openInvites();
+    expect(screen.getByText('walkin@example.com')).toBeInTheDocument();
+    expect(screen.getByText(/^Joined when invite only was off ·/)).toBeInTheDocument();
+    expect(screen.getByText('Dana S')).toBeInTheDocument();
+    expect(screen.queryByText(/link not sent yet/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Revoke' })).toBeNull();
   });
 
   it('says whether the link has gone out, and when', async () => {
@@ -1402,6 +1512,26 @@ describe('the tabs', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Add to the list' })).toBeInTheDocument();
     expect(screen.queryByRole('searchbox', { name: 'Find a member' })).toBeNull();
+  });
+
+  it('puts who can join on the Invites tab, and the form says what an invite is for', async () => {
+    renderAdmin('/admin?tab=invites');
+    expect(await screen.findByRole('switch', { name: 'Anybody can join' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    expect(screen.getByText(/^Nobody can join without an invite\./)).toBeInTheDocument();
+  });
+
+  it('stops saying an invite is needed while anybody can join', async () => {
+    joining.open = true;
+    renderAdmin('/admin?tab=invites');
+    expect(await screen.findByRole('switch', { name: 'Anybody can join' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByText(/^Anybody can join right now, but an invite/)).toBeInTheDocument();
+    expect(screen.queryByText(/^Nobody can join without an invite/)).toBeNull();
   });
 
   it('puts Reports second, so its count is on screen on a narrow phone', async () => {

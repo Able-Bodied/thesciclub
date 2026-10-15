@@ -11,6 +11,7 @@ import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import OrganizationManagementPage from '@/routes/admin/organization-management-page';
 import AdminPage from '@/routes/admin/page';
+import AppSignInPage from '@/routes/app-sign-in/page';
 import GroupMembersPage from '@/routes/chat/group-members';
 import NewGroupPage from '@/routes/chat/new-group';
 import NewMessagePage from '@/routes/chat/new-message';
@@ -32,6 +33,7 @@ import InvitesPage from '@/routes/invites/page';
 import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
 import MePage from '@/routes/me/page';
+import QrCodePage from '@/routes/me/qr-page';
 import NotFoundPage from '@/routes/not-found/page';
 import NotificationsPage from '@/routes/notifications/page';
 import OnboardingPage from '@/routes/onboarding/page';
@@ -121,6 +123,8 @@ function AppShell() {
           <Route path="/events/:id/edit" element={<EventFormPage />} />
           <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
           <Route path="/me" element={<MePage />} />
+          {/* Administrators only; the page sends anybody else to Me. */}
+          <Route path="/me/qr" element={<QrCodePage />} />
           {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
             of the top bar (desktop) lead here. */}
           <Route path="/notifications" element={<NotificationsPage />} />
@@ -243,6 +247,17 @@ function AppRoutes() {
         element={
           <InLight>
             <ResetPasswordPage />
+          </InLight>
+        }
+      />
+      {/* Chrome or Safari, opened by the iPhone Home Screen app to sign in
+          with Google there (src/lib/google-in-browser.ts). Outside the shell,
+          always light, like /join. */}
+      <Route
+        path="/app-sign-in"
+        element={
+          <InLight>
+            <AppSignInPage />
           </InLight>
         }
       />

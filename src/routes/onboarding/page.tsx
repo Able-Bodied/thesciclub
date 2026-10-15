@@ -16,6 +16,7 @@ import {
   signUpWithEmail,
 } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
+import { useGoogleInBrowser } from '@/lib/google-in-browser';
 import {
   GOOGLE_NOT_SIGNED_IN,
   GOOGLE_RETURN_PARAM,
@@ -30,13 +31,20 @@ import {
   heldInviteToken,
   INVITE_PARAM,
 } from '@/lib/invite-token';
+import { useJoiningIsOpen } from '@/lib/joining';
 import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
-import { vapidPublicKey } from '@/lib/push/notifications';
+import {
+  captureQrCode,
+  claimHeldQrCode,
+  fetchQrCodeDetails,
+  forgetQrCode,
+  QR_PARAM,
+  type QrCodeDetails,
+} from '@/lib/qr-codes';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
-import { NotificationsStep } from '@/routes/onboarding/notifications-step';
 import { nameFromMetadata } from '@/routes/onboarding/prefill';
 import {
   CheckEmailStep,
@@ -86,8 +94,8 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  * That is the cost of never saying, at sign-up, who is invited.
  */
 
-/** `notifications` and `passkey` are after the profile is saved, before Home. */
-type Phase = 'wizard' | 'blocked' | 'submitting' | 'notifications' | 'passkey';
+/** `passkey` is after the profile is saved, before Home. */
+type Phase = 'wizard' | 'blocked' | 'submitting' | 'passkey';
 
 /** Where the invite check is run from: the doors, before anybody is through. */
 const DOORS: Step[] = ['welcome', 'signin', 'forgot', 'join', 'check-email'];
@@ -118,16 +126,32 @@ export default function OnboardingPage() {
   // The invite link's token has to outlive this page (a confirmation email or
   // Google's round trip comes first), so it is kept the moment /join loads.
   const [invited] = useState(() => captureInviteToken(params.toString()) !== null);
+  // An administrator's QR code (20261014020000), kept the same way: credit for
+  // whoever joins from it, claimed once there is an account.
+  const [heldCode] = useState(() => captureQrCode(params.toString()));
+  const [cameByCode] = useState(() => params.has(QR_PARAM));
+  // Who the code is from, for the join screen: "Alfred invited you", or, while
+  // joining is closed, who to ask and their email. Null for a code that says
+  // nothing (unknown, turned off, its maker no longer an administrator).
+  const [fromCode, setFromCode] = useState<QrCodeDetails | null>(null);
+  useEffect(() => {
+    if (heldCode === null) return;
+    void fetchQrCodeDetails(heldCode).then(setFromCode);
+  }, [heldCode]);
+  // Only what the doors say; the database decides who gets in.
+  const joiningOpen = useJoiningIsOpen();
   // An invitation goes straight to joining: its link is the reason they came, and
   // the Welcome screen's "Join the club" would only ask what the link already said.
-  const [step, setStep] = useState<Step>(invited ? 'join' : 'welcome');
+  // So does a scanned code: it was held up so that somebody would join.
+  const [step, setStep] = useState<Step>(invited || cameByCode ? 'join' : 'welcome');
   // The address the invitation was sent to, once the club has said, for the Email field.
   const [inviteAddress, setInviteAddress] = useState<string | null>(null);
   useEffect(() => {
-    if (!params.has(INVITE_PARAM)) return;
+    if (!params.has(INVITE_PARAM) && !params.has(QR_PARAM)) return;
     setParams(
       (p) => {
         p.delete(INVITE_PARAM);
+        p.delete(QR_PARAM);
         return p;
       },
       { replace: true },
@@ -150,9 +174,12 @@ export default function OnboardingPage() {
     });
   }, [account.status]);
 
-  // Somebody with a profile has no use for a held invite.
+  // Somebody with a profile has no use for a held invite, or a held code.
   useEffect(() => {
-    if (account.status === 'member' || account.status === 'suspended') forgetInviteToken();
+    if (account.status === 'member' || account.status === 'suspended') {
+      forgetInviteToken();
+      forgetQrCode();
+    }
   }, [account.status]);
 
   /**
@@ -198,6 +225,8 @@ export default function OnboardingPage() {
       setError('Could not check your invitation. Try again.');
       return;
     }
+    // Credit only: nothing waits on it, and a failure is tried again next time.
+    await claimHeldQrCode();
     const statusResult = await supabase.rpc('my_invite_status').single();
     if (statusResult.error) {
       setError(describeError(statusResult.error, 'Could not check whether you are on the list.'));
@@ -280,8 +309,13 @@ export default function OnboardingPage() {
     if (!result.ok && result.error) setError(result.error);
   }
 
+  // On an iPhone's Home Screen, Google goes by way of Chrome or Safari. Here
+  // rather than on the button, so the sign-in is collected on any door.
+  const googleInBrowser = useGoogleInBrowser();
+
   const ways = {
     busy,
+    googleInBrowser,
     onGoogleToken: (token: string, nonce: string) => {
       void signInWithToken(token, nonce);
     },
@@ -393,11 +427,10 @@ export default function OnboardingPage() {
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
-    // Asked once, as they enter, however they finished — see NotificationsStep.
-    if (vapidPublicKey()) {
-      setPhase('notifications');
-      return;
-    }
+    // No notifications question here (the owner, 2026-10-14): most people
+    // join in a browser before they install the app, so asking now asks the
+    // wrong place. The installed app asks once as it opens (AskOnOpening), and
+    // Me → Settings has the switch.
     leaveToPasskeyOrHome();
   }
 
@@ -405,9 +438,6 @@ export default function OnboardingPage() {
 
   // Before the check below: the row now exists, and should the account be
   // read again meanwhile, this screen must not vanish under a tap.
-  if (phase === 'notifications') {
-    return <NotificationsStep userId={account.userId} onDone={leaveToPasskeyOrHome} />;
-  }
   if (phase === 'passkey') {
     return (
       <PasskeyOffer
@@ -445,6 +475,7 @@ export default function OnboardingPage() {
       <BlockedScreen
         email={blockedEmail}
         signedIn={!blockedAtSignUp}
+        fromCode={fromCode}
         onTryAnother={() => {
           if (blockedAtSignUp) {
             // The invite link, if any, stays held: it may still be good for the
@@ -472,6 +503,7 @@ export default function OnboardingPage() {
     return (
       <WithInstallNudge>
         <WelcomeScreen
+          joiningOpen={joiningOpen}
           onJoin={() => {
             setStep('join');
           }}
@@ -733,6 +765,8 @@ export default function OnboardingPage() {
           set={set}
           ways={ways}
           invited={invited || heldInviteToken() !== null}
+          joiningOpen={joiningOpen}
+          fromCode={fromCode}
           inviteAddress={
             inviteAddress !== null && cleanEmail(data.email) === inviteAddress
               ? inviteAddress

@@ -311,6 +311,13 @@ export default function MePage() {
                           description="Members, invites, organizations and moderation."
                         />
                       ) : null}
+                      {isAdmin ? (
+                        <ProfileLink
+                          to="/me/qr"
+                          title="Your QR code"
+                          description="For events: people who scan it and join are invited by you."
+                        />
+                      ) : null}
                       {member?.type === 'organization' ? (
                         <ProfileLink
                           to="/organizations/manage"

@@ -16,6 +16,8 @@ export function makeMember(overrides: Partial<BrowseMember> = {}): BrowseMember 
     state: 'CA',
     levelRange: 'T1–T6',
     exactLevel: null,
+    injuryType: null,
+    conditionName: null,
     completeness: 'Do not know',
     injuryDate: null,
     injuryDatePrecision: null,

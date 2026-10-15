@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useBrowseMembers } from '@/lib/members';
+import { injuryLabel } from '@/types/domain';
 
 /**
  * Picking members — for a new group, and for adding to one that exists.
@@ -110,7 +111,7 @@ export function MemberPicker({
         // people and still leaves the button and its sentence on screen.
         <div className="mt-2.5 max-h-[18em] overflow-y-auto rounded-[14px] border border-line bg-paper px-3.5">
           {offered.map((member) => {
-            const level = member.exactLevel ?? member.levelRange;
+            const level = injuryLabel(member);
             return (
               // The row is the label, so the whole of it is the target — a
               // 44px box on the right of a list is a miss for anybody aiming

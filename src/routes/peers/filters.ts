@@ -22,7 +22,25 @@ import type { BrowseMember, InjuryRegion, MemberFilters, PeersSegment } from '@/
 const NEARBY_CITIES = ['San Jose', 'Santa Clara', 'Sunnyvale', 'Campbell', 'Fremont'];
 
 export function activeFilterCount(filters: MemberFilters): number {
-  return filters.regions.length + filters.cities.length + filters.topics.length;
+  return (
+    filters.regions.length +
+    (filters.condition ? 1 : 0) +
+    filters.cities.length +
+    filters.topics.length
+  );
+}
+
+/**
+ * The level group: a region ticked, or "Spinal cord condition", or both, and a
+ * member matching any one of them is kept. A condition with a level is in its
+ * region too, so ticking Thoracic and the condition chip finds both kinds.
+ */
+function matchesLevel(member: BrowseMember, filters: MemberFilters): boolean {
+  if (!filters.regions.length && !filters.condition) return true;
+  return (
+    filters.regions.includes(member.region) ||
+    (filters.condition && member.injuryType === 'condition')
+  );
 }
 
 /** Toggle a value in one of the list-shaped filters. */
@@ -66,7 +84,7 @@ export function filterMembers(
 ): BrowseMember[] {
   const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
-    if (filters.regions.length && !filters.regions.includes(member.region)) return false;
+    if (!matchesLevel(member, filters)) return false;
     if (filters.cities.length && (!member.city || !filters.cities.includes(member.city))) {
       return false;
     }
@@ -112,6 +130,11 @@ export function othersOnly(members: BrowseMember[], viewerId: string | null): Br
 /** The distinct values present in a deck, for building the filter sheet's options. */
 export function regionsIn(members: BrowseMember[]): InjuryRegion[] {
   return [...new Set(members.map((m) => m.region))].sort();
+}
+
+/** Whether anybody in the deck has a condition: the chip is drawn only then. */
+export function hasConditions(members: BrowseMember[]): boolean {
+  return members.some((m) => m.injuryType === 'condition');
 }
 
 export function citiesIn(members: BrowseMember[]): string[] {

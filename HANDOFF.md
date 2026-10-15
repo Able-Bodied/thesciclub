@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-11. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-14. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. Older handoffs:
 `git show b04b003:HANDOFF.md` (every release to 2026-10-11 with its checks),
 `git show 4b1673b:HANDOFF.md` (what comments citing a HANDOFF section mean),
@@ -29,31 +29,74 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   (`VITE_PASSKEYS`). No phone sign-in anywhere; the Phone provider is off.
   An uninvited email sign-up is refused before any email by the Before User
   Created hook `signup_needs_an_invite` (the owner's choice, knowing it reveals
-  whether an address is invited). A signed-in iPhone browser tab leaves a
+  whether an address is invited). Admin → Invites → "Anybody can join" opens
+  joining to anybody for events (`20261014000000`, `club_joining`; the hook and
+  `i_am_invited` both read it); a blocked address stays out either way. A
+  walk-in goes on the invite list as a used invite marked `joined_while_open`
+  ("Joined when invite only was off", `20261014010000`). Administrators have
+  a QR code each (Me → Your QR code, `/me/qr`, `20261014020000`): an event
+  name or none, and the email shown while joining is closed; credit only,
+  never entry. A walk-in from one is invited by that administrator, who is
+  notified; Admin → Invites tallies by event. Codes can be turned off. A signed-in iPhone browser tab leaves a
   single-use code in a cookie that iOS copies into the Home Screen app, which
   trades it for its own session (`src/lib/home-screen-handoff.ts`,
   `20261012100000`); confirmed in Safari and Chrome on the owner's iPhone.
   Somebody with no way in: `scripts/set-member-email.mjs`, then Forgot password.
+  A reset link works once, for an hour (`mailer_otp_exp` 3600, hosted);
+  `/reset-password` shows the form only on that visit's PASSWORD_RECOVERY
+  (`lib/recovery-link.ts`), never just because somebody is signed in. Saving
+  a password signs out the account's other devices (GoTrue's own), and emails
+  "Your SCI Club password was changed" (on since 2026-10-14, set through the
+  Management API; template in `supabase/templates/`).
   Apple: the provider's Client ID is the Services ID `com.thesciclub.web` (not
   the App ID); the client secret expires **2027-04-09**, and
   `scripts/apple-secret.mjs` makes the next. Google uses its own widget
   (`lib/google-identity.ts`, its redirect page as the fallback; the CSP allows
   Google's `/gsi/` files only); its OAuth client allows only the origin
-  `https://thesciclub.com`, so Google cannot sign in locally.
-  Email goes through Resend: the free plan sends 100 a day.
-- **Checks**: 2,594 tests in 184 files at `b04b003`; `pnpm check` (alone),
+  `https://thesciclub.com`, so Google cannot sign in locally. In the iPhone
+  Home Screen app Google finds no accounts and its page fails, so there the
+  button opens Chrome (else Safari) on `/app-sign-in`; the member confirms and
+  the app collects the sign-in when back in front (`lib/google-in-browser.ts`,
+  `20261015010000`, `home-screen-handoff` `{ pairing }`). Me's Link Google
+  there still uses the widget.
+  Email goes through Resend: the free plan sends 100 a day. Supabase's own
+  cap (`rate_limit_email_sent`) is 100 an hour since 2026-10-14 (was 30). `thesciclub.com`
+  has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
+  private relay accepts the club's mail: `thesciclub.com`,
+  `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
+  (Apple Developer → Services → Sign in with Apple for Email Communication,
+  2026-10-13).
+- **Checks**: 2,728 tests in 194 files on 2026-10-14; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
-- **Owner, after the soft launch: Apple "Hide My Email" senders.** Apple
-  Developer → Services → Sign in with Apple for Email Communication lists
-  `thesciclub.com`, `send.thesciclub.com`, `invites@` and `hello@thesciclub.com`;
-  only `send.` passes SPF, as `thesciclub.com` has no SPF record. Ask the domain
-  holder to add at Spaceship a TXT, host `@`, value
-  `v=spf1 include:send.forge.rmta.net ~all`, then re-check the three red
-  entries (Verify, or delete and add again). Until then mail to a hidden Apple
-  address (a password link) does not arrive; signing in with Apple works.
+- **The spinal cord question is not live yet** (2026-10-14): push
+  `20261015000000` (dry run first), then release the client.
+- **Google in the iPhone Home Screen app is not live yet** (2026-10-14): push
+  `20261015010000` and deploy `home-screen-handoff` (keep `verify_jwt` off)
+  before releasing the client. Round trip passed locally with email standing
+  in for Google; never tried on an iPhone: whether `googlechromes://` and
+  `x-safari-https://` open from the Home Screen app, and `OPEN_WAIT_MS` (800). The QR-code
+  migrations before it are live. Resend's free 100 emails
+  a day are each email sign-up's confirmation, so a busy event can reach it;
+  Google and Apple send none. The local stack's auth container started before
+  the hook was in config.toml: restart the stack to have it refuse locally.
+
+- **Text-message sign-in, back as a way in, once Twilio is ready** (the
+  owner, 2026-10-13; not before). "Text me a code" as the main button on Sign
+  in and Join; email, Google and Apple stay; joining by phone through the
+  invite link (its token in `signInWithOtp`'s data, so `signup_needs_an_invite`
+  can let a `phone` sign-up with a live token through). Through **Twilio
+  Verify**, which Twilio says is exempt from A2P 10DLC registration with its
+  pooled sender, so the rejected campaign is not needed: set Supabase's Phone
+  provider to Twilio Verify. The campaign was refused (2026-10-12) because the
+  opt-in is behind sign-up; its old public proof is `public/sms-opt-in/` at
+  `c550eff^`. **Waiting on Twilio**: on 2026-10-13 the owner replied to Varun
+  (Onboarding and Compliance Support) with the October 1 screenshots, the
+  timeline, and two questions: Verify with the pooled US sender (then withdraw
+  the campaign), or keep the campaign with a public opt-in page and the SMS
+  terms back in Privacy and Terms. Build to whichever Twilio confirms.
 - **Supabase free plan**: pauses after a quiet week, small limits, **no
   backups**. Move to the paid tier (daily backups) and test a restore.
 - **Passkeys**: turn on only after a real-phone check (EMAIL-SIGN-IN-PLAN.md,
@@ -68,7 +111,8 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   Your answers, a described photo); the date boxes with Voice Control and
   birthday autofill; a notification arriving end to end and its tap from the
   lock screen, cold and warm; signed photos on a phone; pinch zoom in the
-  installed app (iOS and Android); joining with Apple's Hide My Email through
+  installed app (iOS and Android), and in the photograph viewer (Chromium
+  touch only, 2026-10-15); joining with Apple's Hide My Email through
   an invite link; the first nightly import after an administrator changed an
   imported event; repeating events on a Supabase stack (checked in PGlite).
 - **Small, not asked for**: the "Rather not say" toggles on Your details are
@@ -153,7 +197,12 @@ All live. Migration headers and the files named say how and why.
   tags on profiles come from administrator links only. Logos at
   `photos/organizations/<id>/`, 400px on white (`set_organization_logo`). An
   affiliation badge means the organization vouches: never self-picked.
-- **Members**: the profile survey's order and wording (`stepFrom` skips empty
+- **Members**: onboarding's injury step asks the kind first, on the same
+  screen (`spinal-cord-fields.tsx`, also on Your details; `injury_type`,
+  `condition_name`, `20261015000000`); labels everywhere come from
+  `injuryLabel` in `types/domain.ts`. Signing up no longer asks about
+  notifications; the installed app does, once (AskOnOpening). The profile
+  survey's order and wording (`stepFrom` skips empty
   screens; "The specifics" only after certain devices); adaptive sports
   equipment and grants are shown on Peers (`20261011040000`); `@username` on
   profiles, cards and chat lists. The seeded directory is gone (2026-10-10); the owner

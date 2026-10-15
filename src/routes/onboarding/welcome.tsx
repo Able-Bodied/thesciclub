@@ -39,7 +39,16 @@ import { NewTabLink } from '@/routes/onboarding/steps';
  * would not be on a list: nothing in the box is a control, and both buttons
  * are in the footer, which never scrolls away.
  */
-export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSignIn: () => void }) {
+export function WelcomeScreen({
+  onJoin,
+  onSignIn,
+  joiningOpen = false,
+}: {
+  onJoin: () => void;
+  onSignIn: () => void;
+  /** Anybody can join right now (20261014000000): nobody needs an invite to ask for. */
+  joiningOpen?: boolean;
+}) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">
@@ -87,9 +96,11 @@ export function WelcomeScreen({ onJoin, onSignIn }: { onJoin: () => void; onSign
         {/* For somebody with no invite (the owner, 2026-10-10). Somebody
             signed in with an address that is not on the list gets the same
             offer on the blocked screen. */}
-        <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
-          No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
-        </p>
+        {joiningOpen ? null : (
+          <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
+            No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
+          </p>
+        )}
         {/* On the first screen, so the terms are readable before anything is
             asked of anybody. */}
         <p className="mt-1.5 text-center text-[0.78125rem] text-grey">

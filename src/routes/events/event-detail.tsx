@@ -29,7 +29,7 @@ import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { placeLine } from '@/routes/events/place';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
-import type { EventAttendee, RsvpStatus } from '@/types/domain';
+import { type EventAttendee, injuryLabel, type RsvpStatus } from '@/types/domain';
 
 /**
  * One event, matching `evDetail()` in the mock: a navy hero carrying the when,
@@ -395,9 +395,7 @@ function AttendeeSection({
               {attendee.displayName}
             </span>
             <span className="block text-[0.78125rem] text-grey">
-              {[attendee.exactLevel ?? attendee.levelRange, attendee.city]
-                .filter(Boolean)
-                .join(' · ')}
+              {[injuryLabel(attendee), attendee.city].filter(Boolean).join(' · ')}
             </span>
           </span>
           <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
