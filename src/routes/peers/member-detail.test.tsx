@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MemberState } from '@/lib/members';
@@ -27,6 +28,11 @@ vi.mock('@/lib/chat/rooms', () => ({
     error: null,
     reload: () => undefined,
   }),
+}));
+
+// A signed URL for any stored photograph: signing is a storage call.
+vi.mock('@/lib/photos', () => ({
+  usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed/${path}` : null),
 }));
 
 function room(id: string, name: string, openedAt: string | null) {
@@ -428,5 +434,48 @@ describe('administrator-linked organizations', () => {
     renderDetail();
     expect(screen.getByText('Able Bodied')).toBeInTheDocument();
     expect(screen.queryByText('Represents Able Bodied')).toBeNull();
+  });
+});
+
+describe('the photograph', () => {
+  it('opens whole, over the page, and gives focus back on close', async () => {
+    const user = userEvent.setup();
+    state.current = ok(makeMember({ displayName: 'Nicole', photoPath: 'u/nicole.webp' }));
+    renderDetail();
+    const open = screen.getByRole('button', { name: 'Open Nicole’s photograph' });
+    await user.click(open);
+    const viewer = screen.getByRole('dialog', { name: 'Nicole’s photograph' });
+    expect(viewer).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('img', { name: 'Photograph of Nicole' })).toHaveAttribute(
+      'src',
+      'https://signed/u/nicole.webp',
+    );
+    // It zooms, as a chat photograph does, and has no other photograph to step to.
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Next photograph' })).toBeNull();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(open).toHaveFocus();
+  });
+
+  it('is named by the member’s own description when they wrote one', async () => {
+    const user = userEvent.setup();
+    state.current = ok(
+      makeMember({
+        displayName: 'Nicole',
+        photoPath: 'u/nicole.webp',
+        photoAlt: 'Nicole on a beach in her chair',
+      }),
+    );
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Open Nicole’s photograph' }));
+    expect(screen.getByRole('img', { name: 'Nicole on a beach in her chair' })).toBeInTheDocument();
+  });
+
+  it('offers nothing to open when there is no photograph', () => {
+    state.current = ok(makeMember({ displayName: 'Nicole', photoPath: null }));
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /photograph/ })).toBeNull();
   });
 });

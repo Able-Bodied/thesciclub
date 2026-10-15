@@ -1,7 +1,8 @@
 import { ChevronLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
+import { PhotoViewer } from '@/components/photo-viewer';
 import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
@@ -199,6 +200,10 @@ export default function MemberDetailPage() {
   const { organizations } = useOrganizations();
   const account = useAccount();
   const photo = usePhotoUrl(member?.photoPath);
+  // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
+  const [photoOpen, setPhotoOpen] = useState(false);
+  // Focus goes back here on close: Safari does not focus a button it clicks.
+  const photoButton = useRef<HTMLButtonElement | null>(null);
 
   if (loading) {
     return <Centered role="status">Loading…</Centered>;
@@ -340,7 +345,23 @@ export default function MemberDetailPage() {
                 aria-hidden="true"
                 className="absolute inset-x-0 bottom-0 h-[190px] bg-gradient-to-b from-transparent via-black/55 via-60% to-black/75"
               />
-              <div className="absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
+              {/* The hero crops the photograph to a banner. Pressing it shows
+                  the whole of it, and zooms (src/components/photo-viewer.tsx).
+                  A layer over the picture rather than round it, so the name
+                  over its foot is pressed through, not in the way. */}
+              {photo ? (
+                <button
+                  ref={photoButton}
+                  type="button"
+                  aria-label={`Open ${member.displayName}’s photograph`}
+                  onClick={(event) => {
+                    photoButton.current = event.currentTarget;
+                    setPhotoOpen(true);
+                  }}
+                  className="absolute inset-0 cursor-zoom-in"
+                />
+              ) : null}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 px-[18px] pb-3.5">
                 <h1 className="font-extrabold font-display text-[1.875rem] text-white leading-tight tracking-[-0.01em]">
                   {member.displayName}
                 </h1>
@@ -353,6 +374,26 @@ export default function MemberDetailPage() {
                 {injury ? <p className="mt-0.5 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>
             </div>
+
+            {photoOpen && photo ? (
+              <PhotoViewer
+                url={photo}
+                // Their own description, when they wrote one.
+                label={
+                  member.photoAlt?.trim()
+                    ? member.photoAlt.trim()
+                    : `Photograph of ${member.displayName}`
+                }
+                title={`${member.displayName}’s photograph`}
+                index={0}
+                count={1}
+                onStep={() => undefined}
+                onClose={() => {
+                  setPhotoOpen(false);
+                  photoButton.current?.focus();
+                }}
+              />
+            ) : null}
 
             {/* One gold button straight under the photograph, on the page
                 (the owner, 2026-10-13: no band behind it). Full width; from
