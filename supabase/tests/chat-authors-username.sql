@@ -41,7 +41,8 @@ select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1014-0000-0000-0000000
 \echo '1. expect: probe.named'
 select username from public.chat_authors where id = 'aaaaaaaa-1014-0000-0000-000000000002';
 
-\echo '2. expect: id,display_name,photo_path,photo_alt,avatar_color,level_range,exact_level,is_admin,has_profile,username'
+\echo '2. expect: id,display_name,photo_path,photo_alt,avatar_color,level_range,exact_level,is_admin,has_profile,username,injury_type,condition_name'
+\echo '   (the last two appended by 20261015000000)'
 select string_agg(attname, ',' order by attnum) as columns
   from pg_attribute
  where attrelid = 'public.chat_authors'::regclass and attnum > 0 and not attisdropped;
