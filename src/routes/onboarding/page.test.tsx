@@ -1399,23 +1399,49 @@ describe('the name', () => {
 });
 
 describe('the username', () => {
-  async function reachUsername(name = 'Dana') {
+  /** On the username step, the first suggestion chosen; cleared unless `keep`. */
+  async function reachUsername(name = 'Dana', keep = false) {
     await reachName();
     await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
     await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), name);
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Pick a username');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Username')).toHaveValue(calls.suggestions[0]);
+    });
+    if (!keep) await userEvent.clear(screen.getByLabelText('Username'));
   }
 
   it('suggests names built from the name just given', async () => {
-    await reachUsername('Dana');
+    await reachUsername('Dana', true);
     expect(await screen.findByRole('button', { name: '@dana' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '@dana.s' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '@dana_s' })).toBeInTheDocument();
     expect(calls.order).toContain('suggest_usernames');
   });
 
-  it('takes a suggestion in one tap, and goes on', async () => {
+  // The owner, 2026-10-15: the first suggestion, the whole name with dots,
+  // is chosen already, so Continue is all it takes.
+  it('chooses the first suggestion, so Continue is all it takes', async () => {
+    calls.suggestions = ['dana.smith', 'dana', 'danasmith'];
+    await reachUsername('Dana Smith', true);
+    expect(screen.getByRole('button', { name: '@dana.smith' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(await screen.findByText('@dana.smith is available.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    // Already found free by the club: not asked again.
+    expect(calls.checked).toEqual([]);
+  });
+
+  it('does not put the suggestion back once they clear the box', async () => {
+    await reachUsername();
+    expect(screen.getByLabelText('Username')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  it('takes another suggestion in one tap, and goes on', async () => {
     await reachUsername();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await userEvent.click(await screen.findByRole('button', { name: '@dana.s' }));

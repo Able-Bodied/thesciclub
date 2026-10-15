@@ -1,5 +1,5 @@
 import { Loader2, LocateFixed } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
 import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
@@ -164,6 +164,19 @@ export function UsernameStep({ data, set }: StepProps) {
       cancelled = true;
     };
   }, [displayName]);
+
+  // The first suggestion, the whole name with dots (20261015030000), is
+  // chosen for them (the owner, 2026-10-15), so Continue is all it takes.
+  // Once, and only into an empty box: a name they typed or chose stays, and
+  // clearing the box to type their own does not bring it back. The club
+  // only suggests names it has just found free, so it counts as checked.
+  const preselected = useRef(false);
+  useEffect(() => {
+    const first = suggestions[0];
+    if (preselected.current || !first) return;
+    preselected.current = true;
+    if (username === '') set({ username: first, usernameChecked: first });
+  }, [suggestions, username, set]);
 
   useEffect(() => {
     if (!isValidUsername(username)) {
