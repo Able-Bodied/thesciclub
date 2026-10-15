@@ -32,7 +32,6 @@ import {
 } from '@/lib/invite-token';
 import { useJoiningIsOpen } from '@/lib/joining';
 import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
-import { vapidPublicKey } from '@/lib/push/notifications';
 import {
   captureQrCode,
   claimHeldQrCode,
@@ -45,7 +44,6 @@ import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
-import { NotificationsStep } from '@/routes/onboarding/notifications-step';
 import { nameFromMetadata } from '@/routes/onboarding/prefill';
 import {
   CheckEmailStep,
@@ -95,8 +93,8 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  * That is the cost of never saying, at sign-up, who is invited.
  */
 
-/** `notifications` and `passkey` are after the profile is saved, before Home. */
-type Phase = 'wizard' | 'blocked' | 'submitting' | 'notifications' | 'passkey';
+/** `passkey` is after the profile is saved, before Home. */
+type Phase = 'wizard' | 'blocked' | 'submitting' | 'passkey';
 
 /** Where the invite check is run from: the doors, before anybody is through. */
 const DOORS: Step[] = ['welcome', 'signin', 'forgot', 'join', 'check-email'];
@@ -423,11 +421,10 @@ export default function OnboardingPage() {
       setError(result.error ?? 'Could not finish signing up.');
       return;
     }
-    // Asked once, as they enter, however they finished — see NotificationsStep.
-    if (vapidPublicKey()) {
-      setPhase('notifications');
-      return;
-    }
+    // No notifications question here (the owner, 2026-10-14): most people
+    // join in a browser before they install the app, so asking now asks the
+    // wrong place. The installed app asks once as it opens (AskOnOpening), and
+    // Me → Settings has the switch.
     leaveToPasskeyOrHome();
   }
 
@@ -435,9 +432,6 @@ export default function OnboardingPage() {
 
   // Before the check below: the row now exists, and should the account be
   // read again meanwhile, this screen must not vanish under a tap.
-  if (phase === 'notifications') {
-    return <NotificationsStep userId={account.userId} onDone={leaveToPasskeyOrHome} />;
-  }
   if (phase === 'passkey') {
     return (
       <PasskeyOffer

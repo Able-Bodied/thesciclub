@@ -1861,54 +1861,19 @@ describe('the injury date boxes', () => {
   });
 });
 
-describe('notifications, as they enter', () => {
-  async function finishLater() {
+// The owner, 2026-10-14: most people join in a browser before installing, so
+// signing up no longer asks; the installed app asks once (AskOnOpening).
+describe('notifications, not while signing up', () => {
+  it('goes straight to Home, even when the club can send', async () => {
+    calls.vapidKey = 'key';
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
-  }
-
-  it('asks somebody who pressed Finish later, and Not now goes to Home', async () => {
-    calls.vapidKey = 'key';
-    await finishLater();
-    expect(await screen.findByText('Turn on notifications?')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Turn on notifications?')).toBeNull();
     expect(calls.order).not.toContain('turnOn');
-    // So the installed app does not ask this phone again (AskOnOpening).
-    expect(calls.order).toContain('asked');
-  });
-
-  it('asks the device when they say yes', async () => {
-    calls.vapidKey = 'key';
-    await finishLater();
-    await userEvent.click(await screen.findByRole('button', { name: 'Turn on notifications' }));
-    expect(calls.order).toContain('turnOn');
-  });
-
-  it('says how on an iPhone that has not added the club to its Home Screen', async () => {
-    calls.vapidKey = 'key';
-    calls.notificationState = 'install';
-    await finishLater();
-    expect(await screen.findByText('Get notifications on your iPhone')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    // Nothing was asked, only how to install: the installed app still asks.
+    // Not marked as asked, so the installed app still asks this phone.
     expect(calls.order).not.toContain('asked');
-  });
-
-  it('does not ask a device that has already answered', async () => {
-    calls.vapidKey = 'key';
-    calls.notificationState = 'refused';
-    await finishLater();
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.queryByText('Turn on notifications?')).toBeNull();
-  });
-
-  it('does not ask while the club cannot send', async () => {
-    await finishLater();
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
-    expect(screen.queryByText('Turn on notifications?')).toBeNull();
   });
 });
 
