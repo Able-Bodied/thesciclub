@@ -26,13 +26,17 @@ export interface ClubStats {
   members: number;
   joined7: number;
   joined30: number;
-  withBio: number;
   opened1: number;
   opened7: number;
   opened30: number;
-  invited: number;
-  invitedWithAccount: number;
-  invitedJoined: number;
+  /** Every account, including ones whose confirmation email was never opened. */
+  accounts: number;
+  /** Accounts that signed in, and so started onboarding. */
+  signedIn: number;
+  /** Members: onboarding finished, Home reached. */
+  reachedHome: number;
+  /** Active members with notifications on now, on at least one device. */
+  notificationsOn: number;
   /** Oldest first, eight of them, ending with this week. */
   weeks: StatsWeek[];
 }

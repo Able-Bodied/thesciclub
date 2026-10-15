@@ -16,6 +16,15 @@
 -- the recent past and has no history; the weekly rows below are from content,
 -- which does.
 --
+-- The way in (the owner, 2026-10-15): accounts made, accounts that signed in
+-- and so started onboarding, members (onboarding makes the member as its last
+-- step, just before Home), and members with notifications on now, on at least
+-- one device. An account that never signed in submitted the join form and
+-- never pressed the link in its confirmation email; Google and Apple sign in
+-- as they make the account. Visitors who opened the app and left without an
+-- account are not counted: the club keeps nothing about them, and the owner
+-- chose not to start.
+--
 -- Weeks start on Monday in California, where the owner is.
 -- ============================================================================
 
@@ -38,7 +47,7 @@ begin
 
   with
   current_members as (
-    select m.id, m.created_at, m.bio
+    select m.id, m.created_at
       from public.members m
      where m.status = 'active'
   ),
@@ -85,24 +94,25 @@ begin
   weeks as (
     select w::date as week from generate_series(first_week, this_week, interval '1 week') w
   ),
-  invited as (
-    select i.status,
-           exists (select 1 from auth.users u where lower(u.email) = lower(i.email::text)) as has_account
-      from public.invites i
-     where i.status <> 'revoked'
+  accounts as (
+    select u.id, u.last_sign_in_at is not null as signed_in
+      from auth.users u
   )
   select jsonb_build_object(
     'asOf', now(),
     'members', (select count(*) from current_members),
     'joined7', (select count(*) from current_members where created_at >= now() - interval '7 days'),
     'joined30', (select count(*) from current_members where created_at >= now() - interval '30 days'),
-    'withBio', (select count(*) from current_members where coalesce(btrim(bio), '') <> ''),
     'opened1', (select count(*) from last_used where at >= now() - interval '1 day'),
     'opened7', (select count(*) from last_used where at >= now() - interval '7 days'),
     'opened30', (select count(*) from last_used where at >= now() - interval '30 days'),
-    'invited', (select count(*) from invited),
-    'invitedWithAccount', (select count(*) from invited where has_account),
-    'invitedJoined', (select count(*) from invited where status = 'consumed'),
+    'accounts', (select count(*) from accounts),
+    'signedIn', (select count(*) from accounts where signed_in),
+    'reachedHome', (select count(*) from public.members m join accounts a on a.id = m.id),
+    'notificationsOn', (
+      select count(distinct p.member_id) from public.push_subscriptions p
+        join current_members m on m.id = p.member_id
+    ),
     'weeks', (
       select coalesce(jsonb_agg(jsonb_build_object(
                'week', w.week,

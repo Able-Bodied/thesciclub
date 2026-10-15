@@ -34,13 +34,13 @@ const STATS: ClubStats = {
   members: 24,
   joined7: 5,
   joined30: 12,
-  withBio: 9,
   opened1: 7,
   opened7: 15,
   opened30: 21,
-  invited: 30,
-  invitedWithAccount: 26,
-  invitedJoined: 24,
+  accounts: 29,
+  signedIn: 26,
+  reachedHome: 24,
+  notificationsOn: 15,
   weeks: [
     week('2026-08-24'),
     week('2026-08-31'),
@@ -75,9 +75,20 @@ describe('Admin → Stats', () => {
     api.stats = STATS;
     render(<StatsSection />);
     expect(
-      await screen.findByText(/2 people made an account and stopped before finishing/),
+      await screen.findByText(/2 people signed in and stopped before Home/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/4 invites with no account yet/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/3 people filled in the join form but never pressed the link/),
+    ).toBeInTheDocument();
+  });
+
+  it('gives each step of the way in as a share of the one before', async () => {
+    api.stats = STATS;
+    render(<StatsSection />);
+    const home = (await screen.findByText('Reached the home screen')).parentElement;
+    expect(home).toHaveTextContent('24');
+    expect(home).toHaveTextContent('92%');
+    expect(screen.getByText('Notifications on').parentElement).toHaveTextContent('63%');
   });
 
   it('lists the weeks newest first, this one marked as so far', async () => {

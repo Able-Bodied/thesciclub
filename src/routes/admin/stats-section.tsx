@@ -16,6 +16,11 @@ function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
+/** "80%": of the step before. */
+function percent(n: number, of: number): string {
+  return `${Math.round((n / of) * 100)}%`;
+}
+
 function Tile({ label, value, detail }: { label: string; value: number; detail: string }) {
   return (
     <div className={`${CARD} px-3.5 py-3`}>
@@ -45,35 +50,39 @@ function Summary({ stats }: { stats: ClubStats }) {
 }
 
 function Joining({ stats }: { stats: ClubStats }) {
-  const started = stats.invitedWithAccount - stats.invitedJoined;
-  const waiting = stats.invited - stats.invitedWithAccount;
+  const unconfirmed = stats.accounts - stats.signedIn;
+  const stopped = stats.signedIn - stats.reachedHome;
   const steps = [
-    { label: 'Invited', value: stats.invited },
-    { label: 'Made an account', value: stats.invitedWithAccount },
-    { label: 'Finished joining', value: stats.invitedJoined },
-    { label: 'Wrote a bio', value: stats.withBio },
+    { label: 'Started onboarding', value: stats.signedIn, of: null },
+    { label: 'Reached the home screen', value: stats.reachedHome, of: stats.signedIn },
+    { label: 'Notifications on', value: stats.notificationsOn, of: stats.reachedHome },
   ];
   return (
     <>
       <h3 className={`${HEADING} mt-5`}>Joining</h3>
       <div className={`${CARD} mt-2 px-3.5 py-3`}>
-        <ol className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4">
+        <ol className="grid grid-cols-3 gap-x-3">
           {steps.map((step) => (
             <li key={step.label}>
               <span className="block font-extrabold font-head text-[1.125rem] text-ink">
                 {step.value}
+                {step.of ? (
+                  <span className="ml-1 font-normal font-sans text-[0.75rem] text-grey">
+                    {percent(step.value, step.of)}
+                  </span>
+                ) : null}
               </span>
-              <span className="block text-[0.75rem] text-grey">{step.label}</span>
+              <span className="block text-[0.75rem] text-grey leading-[1.3]">{step.label}</span>
             </li>
           ))}
         </ol>
         <p className="mt-3 text-[0.75rem] text-ink2 leading-[1.45]">
-          {started > 0
-            ? `${plural(started, 'person', 'people')} made an account and stopped before finishing. `
+          {stopped > 0
+            ? `${plural(stopped, 'person', 'people')} signed in and stopped before Home. `
             : ''}
-          {waiting > 0
-            ? `${plural(waiting, 'invite')} with no account yet. Admin → Invites can resend them.`
-            : 'Everybody invited has made an account.'}
+          {unconfirmed > 0
+            ? `${plural(unconfirmed, 'person', 'people')} filled in the join form but never pressed the link in the confirmation email.`
+            : 'Nobody is stuck waiting on a confirmation email.'}
         </p>
       </div>
     </>
@@ -171,8 +180,10 @@ export function StatsSection() {
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
             “Opened” means a member’s app was open and signed in at some point in that time.
-            “Active” is members who asked, replied, sent a message or RSVPed that week. Weeks start
-            on Monday.
+            “Started onboarding” is an account that has signed in; Google and Apple sign in as they
+            make it. People who opened the app and left without an account are not counted. “Active”
+            is members who asked, replied, sent a message or RSVPed that week. Weeks start on
+            Monday.
           </p>
         </>
       ) : loading ? (
