@@ -108,6 +108,49 @@ function Joining({ stats }: { stats: ClubStats }) {
   );
 }
 
+const PROFILE_ROWS: { key: keyof ClubStats['profile']; label: string }[] = [
+  { key: 'username', label: 'Created a username' },
+  { key: 'birthday', label: 'Added a birthday' },
+  { key: 'injury', label: 'Added their injury or condition' },
+  { key: 'location', label: 'Added a location' },
+  { key: 'phone', label: 'Added a phone number' },
+  { key: 'photo', label: 'Added a profile picture' },
+  { key: 'notifications', label: 'Turned on notifications' },
+];
+
+function Profiles({ stats }: { stats: ClubStats }) {
+  const of = stats.reachedHome;
+  return (
+    <>
+      <h3 className={`${HEADING} mt-5`}>Profiles</h3>
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+        Of the {plural(of, 'member')} who joined {periodPhrase(stats.period)}, how many added each.
+        Nothing is kept until onboarding ends, so this can’t show where anybody stopped.
+      </p>
+      <ul className={`${CARD} mt-2 px-3.5 py-1`}>
+        {PROFILE_ROWS.map((row) => {
+          const value = stats.profile[row.key];
+          const share = of ? Math.round((value / of) * 100) : 0;
+          return (
+            <li key={row.key} className="border-line border-b py-2.5 last:border-b-0">
+              <div className="flex items-baseline justify-between gap-3 text-[0.8125rem]">
+                <span className="text-ink">{row.label}</span>
+                <span className="shrink-0 tabular-nums">
+                  <b className="font-extrabold font-head text-ink">{value}</b>
+                  {of ? <span className="ml-1.5 text-grey">{share}%</span> : null}
+                </span>
+              </div>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-tint" aria-hidden="true">
+                <div className="h-full rounded-full bg-gold" style={{ width: `${share}%` }} />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
+
 const COLUMNS: { key: keyof Omit<ClubStats['weeks'][number], 'week'>; label: string }[] = [
   { key: 'people', label: 'Active' },
   { key: 'joined', label: 'Joined' },
@@ -219,6 +262,7 @@ export function StatsSection() {
         <>
           <Summary stats={stats} />
           <Joining stats={stats} />
+          <Profiles stats={stats} />
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
             “Opened the app” means a member’s app was open and signed in since the period began. The

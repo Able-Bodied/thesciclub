@@ -40,6 +40,18 @@ export interface StatsWeek {
   people: number;
 }
 
+export interface ProfileCounts {
+  username: number;
+  birthday: number;
+  /** The kind, an exact level, or a range other than "Not sure yet". */
+  injury: number;
+  /** A city or a state. */
+  location: number;
+  phone: number;
+  photo: number;
+  notifications: number;
+}
+
 export interface ClubStats {
   asOf: string;
   period: StatsPeriod;
@@ -61,6 +73,12 @@ export interface ClubStats {
   reachedHome: number;
   /** …and those members with notifications on now. */
   notificationsOn: number;
+  /**
+   * Of those who reached Home, how many have each part of a profile. What
+   * finished members added, not where anybody stopped: onboarding keeps
+   * nothing until its last step.
+   */
+  profile: ProfileCounts;
   questions: number;
   replies: number;
   messages: number;

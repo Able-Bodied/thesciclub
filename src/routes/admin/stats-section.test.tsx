@@ -42,6 +42,15 @@ const STATS: ClubStats = {
   signedIn: 26,
   reachedHome: 24,
   notificationsOn: 15,
+  profile: {
+    username: 24,
+    birthday: 24,
+    injury: 21,
+    location: 18,
+    phone: 9,
+    photo: 12,
+    notifications: 15,
+  },
   questions: 21,
   replies: 52,
   messages: 59,
@@ -132,6 +141,18 @@ describe('Admin → Stats', () => {
     expect(home).toHaveTextContent('24');
     expect(home).toHaveTextContent('92%');
     expect(screen.getByText('Notifications on').parentElement).toHaveTextContent('63%');
+  });
+
+  it('says how many members added each part of a profile', async () => {
+    render(<StatsSection />);
+    const row = (label: string) => screen.getByText(label).parentElement;
+    await screen.findByText('Added a profile picture');
+    expect(row('Created a username')).toHaveTextContent('24100%');
+    expect(row('Added their injury or condition')).toHaveTextContent('2188%');
+    expect(row('Added a phone number')).toHaveTextContent('938%');
+    expect(row('Added a profile picture')).toHaveTextContent('1250%');
+    expect(row('Turned on notifications')).toHaveTextContent('1563%');
+    expect(screen.getByText(/Of the 24 members who joined ever/)).toBeInTheDocument();
   });
 
   it('lists the last eight weeks newest first, this one marked as so far', async () => {

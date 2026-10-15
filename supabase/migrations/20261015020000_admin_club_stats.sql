@@ -32,6 +32,14 @@
 -- opened the app and left without an account are not counted: the club keeps
 -- nothing about them, and the owner chose not to start.
 --
+-- Profiles (the owner, 2026-10-15): of those members, how many have each part
+-- of a profile. Onboarding writes the member once, at its last step, with
+-- everything answered, so this is what finished members added, not where
+-- anybody stopped: nothing about a step is kept until the end. An injury or
+-- condition is the kind, an exact level, or a range other than 'Not sure yet'
+-- (members before 20261015000000 have only the level). A location is a city
+-- or a state.
+--
 -- The eight weeks at the bottom do not follow the period. Weeks start on
 -- Monday in California, where the owner is.
 -- ============================================================================
@@ -124,13 +132,21 @@ begin
   cohort as (
     select u.id,
            u.last_sign_in_at is not null as signed_in,
-           exists (select 1 from public.members m where m.id = u.id) as member,
+           m.id is not null as member,
+           m.username is not null as username,
+           m.birth_date is not null as birthday,
+           (m.injury_type is not null or m.exact_level is not null
+             or m.level_range <> 'Not sure yet') as injury,
+           (m.city is not null or m.state is not null) as location,
+           m.phone is not null as phone,
+           m.photo_path is not null as photo,
            exists (
              select 1 from public.push_subscriptions p
-               join current_members m on m.id = p.member_id
+               join current_members c on c.id = p.member_id
               where p.member_id = u.id
            ) as notifications
       from auth.users u
+      left join public.members m on m.id = u.id
      where u.created_at >= since and u.created_at < until
   )
   select jsonb_build_object(
@@ -153,6 +169,17 @@ begin
     'signedIn', (select count(*) from cohort where signed_in),
     'reachedHome', (select count(*) from cohort where member),
     'notificationsOn', (select count(*) from cohort where notifications),
+    'profile', (
+      select jsonb_build_object(
+        'username', count(*) filter (where username),
+        'birthday', count(*) filter (where birthday),
+        'injury', count(*) filter (where injury),
+        'location', count(*) filter (where location),
+        'phone', count(*) filter (where phone),
+        'photo', count(*) filter (where photo),
+        'notifications', count(*) filter (where notifications)
+      ) from cohort where member
+    ),
     'questions', (select count(*) from in_period where kind = 'question'),
     'replies', (select count(*) from in_period where kind = 'reply'),
     'messages', (select count(*) from in_period where kind = 'message'),
