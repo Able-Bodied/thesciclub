@@ -24,7 +24,7 @@ describe('a step puts the cursor in its own field', () => {
   it('selects an answer that is already there, so typing replaces it', () => {
     // Coming back to change something should not mean clearing it first.
     render(<NameStep data={data({ displayName: 'Alex' })} set={() => undefined} />);
-    const field = screen.getByPlaceholderText<HTMLInputElement>('Alex');
+    const field = screen.getByPlaceholderText<HTMLInputElement>('ex. Ajay Shenoy');
     expect(field).toHaveFocus();
     expect(field.selectionStart).toBe(0);
     expect(field.selectionEnd).toBe('Alex'.length);

@@ -121,13 +121,13 @@ export function NameStep({ data, set }: StepProps) {
   const nameRef = useAutoFocus();
   return (
     <>
-      <Question>What should people call you?</Question>
-      <Sub>First name is plenty.</Sub>
+      {/* The owner, 2026-10-15: the whole name, asked plainly. */}
+      <Question>What is your name?</Question>
       <Field
         ref={nameRef}
         id="name"
-        autoComplete="given-name"
-        placeholder="Alex"
+        autoComplete="name"
+        placeholder="ex. Ajay Shenoy"
         maxLength={MEMBER_TEXT_MAX.display_name}
         value={data.displayName}
         onChange={(e) => {

@@ -313,14 +313,14 @@ async function reachName() {
   renderJoin();
   await userEvent.click(await screen.findByRole('checkbox', { name: /I agree to the Terms/ }));
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-  await screen.findByPlaceholderText('Alex');
+  await screen.findByPlaceholderText('ex. Ajay Shenoy');
 }
 
 /** Through the name and the username, to the birthday. */
 async function reachBirthday(name: string) {
   await reachName();
-  await userEvent.clear(screen.getByPlaceholderText('Alex'));
-  await userEvent.type(screen.getByPlaceholderText('Alex'), name);
+  await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
+  await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), name);
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
   await userEvent.click(await screen.findByRole('button', { name: '@dana' }));
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -791,7 +791,7 @@ describe('leaving halfway and coming back', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByText('Pick a username')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(await screen.findByPlaceholderText('Alex')).toHaveValue('Dana');
+    expect(await screen.findByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
   });
 
   it('asks for the terms again when they were never agreed', async () => {
@@ -1373,36 +1373,36 @@ describe('the name', () => {
   it('starts as the name Google gave', async () => {
     calls.user = { email: 'dana@gmail.example', user_metadata: { full_name: 'Dana Smith' } };
     await reachName();
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('Dana Smith');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana Smith');
   });
 
   it('falls back to `name`, which is what some providers send', async () => {
     calls.user = { email: 'dana@example.com', user_metadata: { name: 'Dana' } };
     await reachName();
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('Dana');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
   });
 
   it('starts empty when the provider gave none, as Apple often does', async () => {
     calls.user = { email: 'relay@privaterelay.example', user_metadata: {} };
     await reachName();
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   it('can be replaced, and the replacement is what is kept', async () => {
     calls.user = { email: 'dana@gmail.example', user_metadata: { full_name: 'Dana Smith' } };
     await reachName();
-    await userEvent.clear(screen.getByPlaceholderText('Alex'));
-    await userEvent.type(screen.getByPlaceholderText('Alex'), 'Dee');
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('Dee');
+    await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), 'Dee');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dee');
   });
 });
 
 describe('the username', () => {
   async function reachUsername(name = 'Dana') {
     await reachName();
-    await userEvent.clear(screen.getByPlaceholderText('Alex'));
-    await userEvent.type(screen.getByPlaceholderText('Alex'), name);
+    await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), name);
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Pick a username');
   }
@@ -1560,7 +1560,7 @@ describe('agreeing to the terms', () => {
     await screen.findByText('Before you join');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await userEvent.keyboard('{Enter}');
-    expect(screen.queryByPlaceholderText('Alex')).toBeNull();
+    expect(screen.queryByPlaceholderText('ex. Ajay Shenoy')).toBeNull();
     expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
   });
@@ -1636,13 +1636,13 @@ describe('the passkey offer after joining', () => {
 describe('the keyboard', () => {
   it('advances a question on Enter, not only on the button', async () => {
     await reachName();
-    await userEvent.type(screen.getByPlaceholderText('Alex'), 'Dana{Enter}');
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), 'Dana{Enter}');
     expect(await screen.findByText('Pick a username')).toBeInTheDocument();
   });
 
   it('does nothing on Enter when the step is not finished', async () => {
     await reachName();
-    await userEvent.type(screen.getByPlaceholderText('Alex'), '{Enter}');
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), '{Enter}');
     expect(screen.queryByText('Pick a username')).toBeNull();
   });
 });
