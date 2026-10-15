@@ -79,6 +79,11 @@ const STATS: ClubStats = {
   ],
 };
 
+/** The funnel, the steps and the profiles are behind a button. */
+async function openDetails() {
+  await userEvent.click(await screen.findByRole('button', { name: 'Onboarding details' }));
+}
+
 beforeEach(() => {
   api.stats = STATS;
   api.error = null;
@@ -113,6 +118,7 @@ describe('Admin → Stats', () => {
     await userEvent.selectOptions(screen.getByLabelText('Period'), '7d');
     await screen.findByText('Opened the app');
     expect(api.calls.at(-1)).toEqual(['admin_club_stats', { period: '7d' }]);
+    await openDetails();
     expect(screen.getByText(/Accounts made in the last 7 days/)).toBeInTheDocument();
   });
 
@@ -136,8 +142,28 @@ describe('Admin → Stats', () => {
     expect(tile.getByText('Not kept for an earlier period')).toBeInTheDocument();
   });
 
+  it('shows onboarding starts and new accounts, and keeps the rest behind a button', async () => {
+    render(<StatsSection />);
+    const starts = await screen.findByText('Onboarding starts');
+    expect(starts.parentElement).toHaveTextContent('26');
+    expect(screen.getByText('New accounts').parentElement).toHaveTextContent('29');
+    const button = screen.getByRole('button', { name: 'Onboarding details' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Step by step')).toBeNull();
+    expect(screen.queryByText('Reached the home screen')).toBeNull();
+    expect(screen.queryByText('Added a profile picture')).toBeNull();
+    await userEvent.click(button);
+    expect(screen.getByRole('button', { name: 'Hide onboarding details' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText('Step by step')).toBeInTheDocument();
+    expect(screen.getByText('Added a profile picture')).toBeInTheDocument();
+  });
+
   it('says where people stop on the way in', async () => {
     render(<StatsSection />);
+    await openDetails();
     expect(
       await screen.findByText(/2 people signed in and stopped before Home/),
     ).toBeInTheDocument();
@@ -148,6 +174,7 @@ describe('Admin → Stats', () => {
 
   it('gives each step of the way in as a share of the one before', async () => {
     render(<StatsSection />);
+    await openDetails();
     const home = (await screen.findByText('Reached the home screen')).parentElement;
     expect(home).toHaveTextContent('24');
     expect(home).toHaveTextContent('92%');
@@ -156,6 +183,7 @@ describe('Admin → Stats', () => {
 
   it('says how many members added each part of a profile', async () => {
     render(<StatsSection />);
+    await openDetails();
     const row = (label: string) => screen.getByText(label).parentElement;
     await screen.findByText('Added a profile picture');
     expect(row('Created a username')).toHaveTextContent('24100%');
@@ -168,6 +196,7 @@ describe('Admin → Stats', () => {
 
   it('says how many reached each step, of those past the invite check, and since when', async () => {
     render(<StatsSection />);
+    await openDetails();
     const row = (label: string) => screen.getByText(label).parentElement;
     await screen.findByText('Got past the invite check');
     expect(row('Got past the invite check')).toHaveTextContent('20100%');

@@ -66,7 +66,51 @@ function Summary({ stats }: { stats: ClubStats }) {
   );
 }
 
+/**
+ * Two numbers, and the rest behind a button (the owner, 2026-10-15): the
+ * funnel, each step and each part of a profile are for when something looks
+ * wrong, not for every visit.
+ */
 function Joining({ stats }: { stats: ClubStats }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <h3 className={`${HEADING} mt-5`}>Joining</h3>
+      <div className={`${CARD} mt-2 px-3.5 py-3`}>
+        <dl className="grid grid-cols-2 gap-x-3">
+          <div>
+            <dt className="text-[0.75rem] text-grey">Onboarding starts</dt>
+            <dd className="font-extrabold font-head text-[1.375rem] text-ink">{stats.signedIn}</dd>
+          </div>
+          <div>
+            <dt className="text-[0.75rem] text-grey">New accounts</dt>
+            <dd className="font-extrabold font-head text-[1.375rem] text-ink">{stats.accounts}</dd>
+          </div>
+        </dl>
+        <div className="mt-2.5">
+          <SmallButton
+            aria-expanded={open}
+            aria-controls="onboarding-details"
+            onClick={() => {
+              setOpen((was) => !was);
+            }}
+          >
+            {open ? 'Hide onboarding details' : 'Onboarding details'}
+          </SmallButton>
+        </div>
+      </div>
+      {open ? (
+        <div id="onboarding-details">
+          <Funnel stats={stats} />
+          <Steps stats={stats} />
+          <Profiles stats={stats} />
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function Funnel({ stats }: { stats: ClubStats }) {
   const unconfirmed = stats.accounts - stats.signedIn;
   const stopped = stats.signedIn - stats.reachedHome;
   const steps = [
@@ -76,9 +120,9 @@ function Joining({ stats }: { stats: ClubStats }) {
   ];
   return (
     <>
-      <h3 className={`${HEADING} mt-5`}>Joining</h3>
+      <h3 className={`${HEADING} mt-5`}>How far they got</h3>
       <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
-        Accounts made {periodPhrase(stats.period)}, and how far they got.
+        Accounts made {periodPhrase(stats.period)}.
       </p>
       <div className={`${CARD} mt-2 px-3.5 py-3`}>
         <ol className="grid grid-cols-3 gap-x-3">
@@ -303,8 +347,6 @@ export function StatsSection() {
         <>
           <Summary stats={stats} />
           <Joining stats={stats} />
-          <Steps stats={stats} />
-          <Profiles stats={stats} />
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
             “Opened the app” means a member’s app was open and signed in since the period began. The
