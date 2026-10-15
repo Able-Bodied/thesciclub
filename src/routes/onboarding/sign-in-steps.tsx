@@ -1,7 +1,9 @@
 import { KeyRound } from 'lucide-react';
 import { GoogleButton } from '@/components/google-button';
+import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { MIN_PASSWORD } from '@/lib/auth-email';
+import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
@@ -29,6 +31,8 @@ interface WaysIn {
   busy: boolean;
   onGoogleToken: (token: string, nonce: string) => void;
   onGoogleRedirect: () => void;
+  /** The iPhone Home Screen app's way to Google, through Chrome or Safari; null elsewhere. */
+  googleInBrowser: GoogleInBrowser | null;
   onApple: () => void;
   onPasskey: () => void;
 }
@@ -61,14 +65,22 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
         </button>
       ) : null}
       <div className="mt-2">
-        <GoogleButton
-          text={mode === 'signin' ? 'signin_with' : 'continue_with'}
-          prompt={mode === 'signin'}
-          disabled={ways.busy}
-          fallbackLabel={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
-          onToken={ways.onGoogleToken}
-          onFallback={ways.onGoogleRedirect}
-        />
+        {ways.googleInBrowser ? (
+          <GoogleInBrowserButton
+            google={ways.googleInBrowser}
+            label={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
+            disabled={ways.busy}
+          />
+        ) : (
+          <GoogleButton
+            text={mode === 'signin' ? 'signin_with' : 'continue_with'}
+            prompt={mode === 'signin'}
+            disabled={ways.busy}
+            fallbackLabel={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
+            onToken={ways.onGoogleToken}
+            onFallback={ways.onGoogleRedirect}
+          />
+        )}
       </div>
       {appleSignInEnabled() ? (
         <button

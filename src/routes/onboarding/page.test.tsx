@@ -1110,6 +1110,30 @@ describe('Google, Apple and passkeys', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('in the iPhone Home Screen app, sends Google to a browser instead of its widget', async () => {
+    calls.widget = 'ready';
+    const agent = vi
+      .spyOn(navigator, 'userAgent', 'get')
+      .mockReturnValue(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148',
+      );
+    Object.defineProperty(navigator, 'standalone', { configurable: true, value: true });
+    try {
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(
+        screen.getByText('Opens Chrome or Safari, where your Google accounts are.'),
+      ).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+      // Google's own widget, which finds no accounts there, is not drawn.
+      expect(calls.promptAsked).toBe(false);
+      expect(screen.queryByRole('button', { name: /Google’s sign-in page/ })).toBeNull();
+    } finally {
+      agent.mockRestore();
+      Reflect.deleteProperty(navigator, 'standalone');
+    }
+  });
+
   it('says so when Google’s account is refused', async () => {
     calls.idTokenError = 'bad token';
     calls.widget = 'ready';

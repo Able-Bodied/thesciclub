@@ -16,6 +16,7 @@ import {
   signUpWithEmail,
 } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
+import { useGoogleInBrowser } from '@/lib/google-in-browser';
 import {
   GOOGLE_NOT_SIGNED_IN,
   GOOGLE_RETURN_PARAM,
@@ -308,8 +309,13 @@ export default function OnboardingPage() {
     if (!result.ok && result.error) setError(result.error);
   }
 
+  // On an iPhone's Home Screen, Google goes by way of Chrome or Safari. Here
+  // rather than on the button, so the sign-in is collected on any door.
+  const googleInBrowser = useGoogleInBrowser();
+
   const ways = {
     busy,
+    googleInBrowser,
     onGoogleToken: (token: string, nonce: string) => {
       void signInWithToken(token, nonce);
     },

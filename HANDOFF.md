@@ -53,7 +53,12 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `scripts/apple-secret.mjs` makes the next. Google uses its own widget
   (`lib/google-identity.ts`, its redirect page as the fallback; the CSP allows
   Google's `/gsi/` files only); its OAuth client allows only the origin
-  `https://thesciclub.com`, so Google cannot sign in locally.
+  `https://thesciclub.com`, so Google cannot sign in locally. In the iPhone
+  Home Screen app Google finds no accounts and its page fails, so there the
+  button opens Chrome (else Safari) on `/app-sign-in`; the member confirms and
+  the app collects the sign-in when back in front (`lib/google-in-browser.ts`,
+  `20261015010000`, `home-screen-handoff` `{ pairing }`). Me's Link Google
+  there still uses the widget.
   Email goes through Resend: the free plan sends 100 a day. Supabase's own
   cap (`rate_limit_email_sent`) is 100 an hour since 2026-10-14 (was 30). `thesciclub.com`
   has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
@@ -61,13 +66,18 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
   (Apple Developer → Services → Sign in with Apple for Email Communication,
   2026-10-13).
-- **Checks**: 2,697 tests in 192 files on 2026-10-14; `pnpm check` (alone),
+- **Checks**: 2,728 tests in 194 files on 2026-10-14; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
 - **The spinal cord question is not live yet** (2026-10-14): push
-  `20261015000000` (dry run first), then release the client. The QR-code
+  `20261015000000` (dry run first), then release the client.
+- **Google in the iPhone Home Screen app is not live yet** (2026-10-14): push
+  `20261015010000` and deploy `home-screen-handoff` (keep `verify_jwt` off)
+  before releasing the client. Round trip passed locally with email standing
+  in for Google; never tried on an iPhone: whether `googlechromes://` and
+  `x-safari-https://` open from the Home Screen app, and `OPEN_WAIT_MS` (800). The QR-code
   migrations before it are live. Resend's free 100 emails
   a day are each email sign-up's confirmation, so a busy event can reach it;
   Google and Apple send none. The local stack's auth container started before

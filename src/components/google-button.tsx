@@ -6,9 +6,8 @@ import { useGoogleButton } from '@/lib/google-identity';
  * While Google's script loads, the space is held so the page does not jump.
  * If it never loads, the club's own button takes its place and goes the long
  * way round, through Google's sign-in page. When it does load, a quiet link
- * under it offers that same long way: Google's window is the part that has not
- * been tried in the installed iPhone app, and a member it fails for needs a
- * way that does not depend on it.
+ * under it offers that same long way, for a member Google's window fails for.
+ * The iPhone Home Screen app has neither: see GoogleInBrowserButton.
  */
 export function GoogleButton({
   text,

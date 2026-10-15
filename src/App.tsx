@@ -11,6 +11,7 @@ import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import OrganizationManagementPage from '@/routes/admin/organization-management-page';
 import AdminPage from '@/routes/admin/page';
+import AppSignInPage from '@/routes/app-sign-in/page';
 import GroupMembersPage from '@/routes/chat/group-members';
 import NewGroupPage from '@/routes/chat/new-group';
 import NewMessagePage from '@/routes/chat/new-message';
@@ -246,6 +247,17 @@ function AppRoutes() {
         element={
           <InLight>
             <ResetPasswordPage />
+          </InLight>
+        }
+      />
+      {/* Chrome or Safari, opened by the iPhone Home Screen app to sign in
+          with Google there (src/lib/google-in-browser.ts). Outside the shell,
+          always light, like /join. */}
+      <Route
+        path="/app-sign-in"
+        element={
+          <InLight>
+            <AppSignInPage />
           </InLight>
         }
       />
