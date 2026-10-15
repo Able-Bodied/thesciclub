@@ -22,7 +22,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   nothing is unreleased. The agent's sandbox refuses `git push`: the owner
   runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261012100000` is live (linked dry run 2026-10-11 listed nothing else).
+  `20261015020000` is live (linked dry run 2026-10-15 listed nothing else).
   Edge functions live: `push-notify` (v5), `link-preview`, `send-invite`,
   `sign-in-reminder` and `home-screen-handoff` (the last with `verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
