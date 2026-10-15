@@ -1781,9 +1781,11 @@ describe('the injury date boxes', () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Tell us about your injury');
-    // Without moving the cursor, which the step put in Month.
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegia/ }));
     fireEvent.change(screen.getByLabelText('Level of injury'), { target: { value: 'C5' } });
+    // The step opens on the kind, not the date: the date is reached by hand.
+    await userEvent.click(screen.getByLabelText('Month'));
   }
 
   it('runs month, day, year, starting in Month, as the birthday does', async () => {
@@ -1803,6 +1805,22 @@ describe('the injury date boxes', () => {
     await userEvent.keyboard('2013');
     expect(await screen.findByText('June 14, 2013')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('takes a condition by name, and "Since birth" for its date', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('radio', { name: /Another spinal cord condition/ }));
+    expect(screen.getByText('When did it start?')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
+    await userEvent.click(screen.getByRole('button', { name: 'Since birth' }));
+    expect(screen.getByLabelText('Year')).toHaveValue('1990');
+    expect(screen.getByText(/since birth\./)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
   });
 
   it('goes on with the year alone', async () => {

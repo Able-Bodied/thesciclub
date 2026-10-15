@@ -1,7 +1,14 @@
 import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
-import type { Completeness, DatePrecision, ExactLevel } from '@/types/domain';
+import {
+  type Completeness,
+  type DatePrecision,
+  type ExactLevel,
+  INJURY_TYPES,
+  type InjuryType,
+  typeForLevel,
+} from '@/types/domain';
 
 /**
  * The answers onboarding collected, and the ability to correct them.
@@ -19,6 +26,10 @@ export interface MemberDetails {
   displayName: string;
   birthDate: string;
   exactLevel: ExactLevel | null;
+  /** Para, quad, central cord or another condition (20261015000000). */
+  injuryType: InjuryType | null;
+  /** Only for a condition; typed, so '' while blank. */
+  conditionName: string;
   completeness: Completeness;
   injuryDate: string | null;
   injuryDatePrecision: DatePrecision | null;
@@ -55,7 +66,7 @@ export interface MemberDetails {
  */
 export const DECLINABLE_DETAILS = [
   { key: 'photo', label: 'a photo' },
-  { key: 'exactLevel', label: 'your injury level' },
+  { key: 'exactLevel', label: 'your injury or condition' },
   { key: 'injuryDate', label: 'when you were injured' },
   { key: 'city', label: 'your city' },
   { key: 'state', label: 'your state' },
@@ -66,14 +77,16 @@ export type DetailKey = (typeof DECLINABLE_DETAILS)[number]['key'];
 /** Whether the details form has an answer for one of the five. */
 export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean {
   if (key === 'photo') return Boolean(details.photoPath);
-  if (key === 'exactLevel') return Boolean(details.exactLevel);
+  if (key === 'exactLevel') {
+    return Boolean(details.exactLevel) || details.conditionName.trim() !== '';
+  }
   if (key === 'injuryDate') return Boolean(details.injuryDate);
   if (key === 'city') return Boolean(details.city);
   return Boolean(details.state);
 }
 
 const COLUMNS =
-  'display_name, birth_date, exact_level, completeness, injury_date, injury_date_precision, city, state, photo_path, photo_alt, show_in_browse, declined';
+  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, city, state, photo_path, photo_alt, show_in_browse, declined';
 
 /* The client types individually selected columns as `any`, so each one is
  * narrowed on the way out rather than cast wholesale. A column that comes back
@@ -147,6 +160,11 @@ export async function loadDetails(): Promise<
       displayName: asText(row.display_name),
       birthDate: asText(row.birth_date),
       exactLevel: asNullableText(row.exact_level) as ExactLevel | null,
+      // Somebody who joined before the kind was asked starts from their level.
+      injuryType:
+        injuryTypeOf(row.injury_type) ??
+        typeForLevel(asNullableText(row.exact_level) as ExactLevel | null),
+      conditionName: asNullableText(row.condition_name) ?? '',
       completeness: (asNullableText(row.completeness) ?? 'Do not know') as Completeness,
       injuryDate: asNullableText(row.injury_date),
       injuryDatePrecision: asNullableText(row.injury_date_precision) as DatePrecision | null,
@@ -160,6 +178,10 @@ export async function loadDetails(): Promise<
         : [],
     },
   };
+}
+
+function injuryTypeOf(value: unknown): InjuryType | null {
+  return INJURY_TYPES.find((type) => type === value) ?? null;
 }
 
 function trimmedOrNull(value: string | null): string | null {
@@ -200,6 +222,10 @@ export async function saveDetails(
       // Derived from the exact level rather than edited separately, exactly as
       // onboarding does it, so the two cannot come apart.
       level_range: levelRange,
+      injury_type: details.injuryType,
+      // Only a condition has a name: the row refuses one anywhere else.
+      condition_name:
+        details.injuryType === 'condition' ? trimmedOrNull(details.conditionName) : null,
       completeness: details.completeness,
       injury_date: details.injuryDate,
       injury_date_precision: details.injuryDatePrecision,

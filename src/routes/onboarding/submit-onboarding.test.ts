@@ -120,6 +120,45 @@ describe('submitOnboarding and the photograph', () => {
     expect(db.inserts.map((row) => row.phone)).toEqual(['14085550112', null, null]);
   });
 
+  it("writes the kind with its level, or a condition in the member's words", async () => {
+    await submitOnboarding(data({ injuryType: 'para', exactLevel: 'T6' }));
+    await submitOnboarding(
+      data({ injuryType: 'condition', conditionName: '  Transverse myelitis ', exactLevel: null }),
+    );
+    await submitOnboarding(
+      data({ injuryType: 'central_cord', exactLevel: 'C5', completeness: 'Incomplete' }),
+    );
+    expect(
+      db.inserts.map((r) => [r.injury_type, r.condition_name, r.exact_level, r.level_range]),
+    ).toEqual([
+      ['para', null, 'T6', 'T1–T6'],
+      ['condition', 'Transverse myelitis', null, 'Not sure yet'],
+      ['central_cord', null, 'C5', 'C5–C8'],
+    ]);
+  });
+
+  it('leaves the kind unsaid when it was not answered', async () => {
+    await submitOnboarding(data({ injuryType: 'quad', exactLevel: null }));
+    await submitOnboarding(data({ injuryType: 'condition', conditionName: ' ' }));
+    await submitOnboarding(data({ injuryType: null, exactLevel: null }));
+    expect(db.inserts.map((r) => [r.injury_type, r.condition_name])).toEqual([
+      [null, null],
+      [null, null],
+      [null, null],
+    ]);
+  });
+
+  it("counts a condition's name as answering the level, so its decline is dropped", async () => {
+    await submitOnboarding(
+      data({
+        injuryType: 'condition',
+        conditionName: 'Spina bifida',
+        declined: ['exactLevel'],
+      }),
+    );
+    expect(db.inserts[0]?.declined).toEqual([]);
+  });
+
   it('sends nothing about a seeded profile', async () => {
     await submitOnboarding(data());
     expect(db.inserts[0]).not.toHaveProperty('start_fresh');

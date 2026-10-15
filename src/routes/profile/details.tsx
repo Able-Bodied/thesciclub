@@ -12,6 +12,7 @@ import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { usePhotoUrl } from '@/lib/photos';
 import { signInDoor } from '@/lib/sign-in-destination';
 import { cn } from '@/lib/utils';
+import { SpinalCordFields } from '@/routes/onboarding/spinal-cord-fields';
 import {
   DECLINABLE_DETAILS,
   type DetailKey,
@@ -23,7 +24,7 @@ import {
   savePhoto,
 } from '@/routes/profile/details-api';
 import { saveDeclined } from '@/routes/profile/profile-api';
-import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
+import { rangeForExact, US_STATES } from '@/types/domain';
 
 /**
  * Correcting what onboarding asked.
@@ -354,54 +355,30 @@ export default function ProfileDetailsPage() {
                   ) : null}
                 </Field>
               </DetailsSection>
-              <DetailsSection title="Your injury">
+              <DetailsSection title="Your injury or condition">
                 <Field
-                  label="Level of injury"
-                  htmlFor="d-level"
+                  label="Your spinal cord"
+                  labelId="d-spinal-cord-label"
                   declined={details.declined.includes('exactLevel')}
                   onToggleDecline={() => {
                     toggleDecline('exactLevel');
                   }}
                 >
-                  <Select
-                    id="d-level"
-                    value={details.exactLevel ?? ''}
-                    onChange={(v) => {
-                      set({ exactLevel: (v || null) as MemberDetails['exactLevel'] });
+                  <SpinalCordFields
+                    answer={details}
+                    onChange={(patch) => {
+                      set(patch);
                     }}
-                  >
-                    <option value="">Not set</option>
-                    {EXACT_LEVELS.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
-                  </Select>
-                  {details.exactLevel && details.exactLevel !== 'Do not know' ? (
-                    <p className="mt-1.5 text-[0.75rem] text-grey">
-                      Browsed under {rangeForExact(details.exactLevel)}.
-                    </p>
-                  ) : null}
-                </Field>
-
-                <Field label="Complete or incomplete">
-                  <div className="flex flex-wrap gap-2">
-                    {COMPLETENESS.map((c) => (
-                      <Chip
-                        key={c}
-                        selected={details.completeness === c}
-                        onClick={() => {
-                          set({ completeness: c });
-                        }}
-                      >
-                        {c}
-                      </Chip>
-                    ))}
-                  </div>
+                    browsedUnder="Browsed under"
+                  />
                 </Field>
 
                 <Field
-                  label="When were you injured?"
+                  label={
+                    details.injuryType === 'condition'
+                      ? 'When did it start, or when were you diagnosed?'
+                      : 'When were you injured?'
+                  }
                   labelId="d-injury-label"
                   declined={details.declined.includes('injuryDate')}
                   onToggleDecline={() => {
@@ -631,32 +608,5 @@ function Select({
     >
       {children}
     </select>
-  );
-}
-
-function Chip({
-  selected,
-  children,
-  onClick,
-}: {
-  selected: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onClick}
-      className={cn(
-        'rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
-        'transition-colors',
-        selected
-          ? 'bg-action text-white hover:bg-action-hi'
-          : 'border border-line bg-paper text-ink2 hover:bg-tint',
-      )}
-    >
-      {children}
-    </button>
   );
 }

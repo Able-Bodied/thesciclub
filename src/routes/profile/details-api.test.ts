@@ -1,15 +1,44 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   detailsPercent,
   listInWords,
+  loadDetails,
   type MemberDetails,
   missingDetails,
+  saveDetails,
 } from '@/routes/profile/details-api';
+
+/** Only `@/lib/supabase` is stubbed, for loading and saving. */
+const db = vi.hoisted(() => ({
+  row: null as Record<string, unknown> | null,
+  updates: [] as Record<string, unknown>[],
+}));
+
+vi.mock('@/lib/supabase', () => ({
+  getSupabase: () => ({
+    from: () => ({
+      select: () => ({
+        maybeSingle: () => Promise.resolve({ data: db.row, error: null }),
+      }),
+      update: (values: Record<string, unknown>) => {
+        db.updates.push(values);
+        return { eq: () => Promise.resolve({ error: null }) };
+      },
+    }),
+  }),
+}));
+
+beforeEach(() => {
+  db.row = null;
+  db.updates = [];
+});
 
 const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   displayName: 'Dana',
   birthDate: '1990-04-02',
   exactLevel: 'C7',
+  injuryType: 'quad',
+  conditionName: '',
   completeness: 'Incomplete',
   injuryDate: '2013-01-01',
   injuryDatePrecision: 'year',
@@ -39,7 +68,7 @@ describe('what is still blank', () => {
     });
     expect(missingDetails(bare)).toEqual([
       'a photo',
-      'your injury level',
+      'your injury or condition',
       'when you were injured',
       'your city',
       'your state',
@@ -107,5 +136,62 @@ describe('declining a detail', () => {
   it('ignores a key that is not one of the five', () => {
     const bare = details({ photoPath: null });
     expect(detailsPercent({ ...bare, declined: ['somethingElse'] })).toBe(detailsPercent(bare));
+  });
+});
+
+describe('the spinal cord answer, loaded and saved', () => {
+  const row = (o: Record<string, unknown>) => ({
+    display_name: 'Dana',
+    birth_date: '1990-04-02',
+    exact_level: null,
+    injury_type: null,
+    condition_name: null,
+    completeness: 'Do not know',
+    state: 'CA',
+    ...o,
+  });
+
+  it("loads the kind and a condition in the member's words", async () => {
+    db.row = row({ injury_type: 'condition', condition_name: 'Transverse myelitis' });
+    const loaded = await loadDetails();
+    expect(loaded.ok && [loaded.details.injuryType, loaded.details.conditionName]).toEqual([
+      'condition',
+      'Transverse myelitis',
+    ]);
+  });
+
+  it('starts somebody from before the question at their level, without saving it', async () => {
+    db.row = row({ exact_level: 'C6' });
+    const loaded = await loadDetails();
+    expect(loaded.ok && loaded.details.injuryType).toBe('quad');
+    db.row = row({ exact_level: null });
+    const blank = await loadDetails();
+    expect(blank.ok && blank.details.injuryType).toBeNull();
+    expect(db.updates).toEqual([]);
+  });
+
+  it("saves a condition's name trimmed, and none for any other kind", async () => {
+    await saveDetails(
+      'u1',
+      details({ injuryType: 'condition', conditionName: ' Spina bifida ', exactLevel: null }),
+      'Not sure yet',
+    );
+    await saveDetails(
+      'u1',
+      details({ injuryType: 'para', conditionName: 'left over', exactLevel: 'T6' }),
+      'T1–T6',
+    );
+    expect(db.updates.map((u) => [u.injury_type, u.condition_name])).toEqual([
+      ['condition', 'Spina bifida'],
+      ['para', null],
+    ]);
+  });
+
+  it("counts a condition's name as answering the level", () => {
+    expect(
+      missingDetails(
+        details({ exactLevel: null, injuryType: 'condition', conditionName: 'Spina bifida' }),
+      ),
+    ).not.toContain('your injury or condition');
   });
 });

@@ -14,9 +14,10 @@ import {
   usernameAvailable,
 } from '@/lib/usernames';
 import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
+import { SpinalCordFields } from '@/routes/onboarding/spinal-cord-fields';
 import type { OnboardingData } from '@/routes/onboarding/types';
 import { birthPartsOf, injuryDateOf, injuryPartsOf } from '@/routes/onboarding/types';
-import { COMPLETENESS, EXACT_LEVELS, rangeForExact, US_STATES } from '@/types/domain';
+import { US_STATES } from '@/types/domain';
 
 /**
  * The questions.
@@ -364,73 +365,45 @@ export function BirthdayStep({ data, set }: StepProps) {
 }
 
 export function InjuryStep({ data, set }: StepProps) {
-  const injuryDateRef = useAutoFocus();
   const injury = injuryDateOf(data);
   const age = ageFrom(data.birthDate || null);
   const injuredAt =
     injury && data.birthDate
       ? Number(injury.date.slice(0, 4)) - Number(data.birthDate.slice(0, 4))
       : null;
+  // A condition starts, or is diagnosed; an injury happens.
+  const condition = data.injuryType === 'condition';
+  // The birthday as they typed it, for "Since birth".
+  const birth = data.birthDate ? birthPartsOf(data) : null;
 
   return (
     <>
-      <Question>Tell us about your injury</Question>
-      <Sub>The things members filter on most.</Sub>
+      <Question>Your spinal cord</Question>
+      <Sub>An injury or a condition: members find each other by this.</Sub>
 
-      <label
-        htmlFor="level"
-        className="mt-5 mb-2 block font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-      >
-        Level of injury
-      </label>
-      <select
-        id="level"
-        value={data.exactLevel ?? ''}
-        onChange={(e) => {
-          set({ exactLevel: (e.target.value || null) as OnboardingData['exactLevel'] });
-        }}
-        className="w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] outline-none focus:border-emphasis"
-      >
-        <option value="">Select a level</option>
-        {EXACT_LEVELS.map((level) => (
-          <option key={level} value={level}>
-            {level}
-          </option>
-        ))}
-      </select>
-      {data.exactLevel && data.exactLevel !== 'Do not know' ? (
-        <p className="mt-2 text-[0.78125rem] text-grey leading-[1.5]">
-          Members browsing by level will find you under {rangeForExact(data.exactLevel)}.
-        </p>
-      ) : null}
-
-      <h2 className="mt-5 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-        Complete or incomplete?
-      </h2>
-      <div className="flex flex-wrap gap-2">
-        {COMPLETENESS.map((value) => (
-          <Chip
-            key={value}
-            selected={data.completeness === value}
-            onClick={() => {
-              set({ completeness: value });
-            }}
-          >
-            {value}
-          </Chip>
-        ))}
+      <div className="mt-5">
+        <SpinalCordFields
+          answer={data}
+          onChange={(patch) => {
+            set(patch);
+          }}
+        />
       </div>
 
       <h2
         id="injury-date-heading"
         className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
-        When were you injured?
+        {condition ? 'When did it start?' : 'When were you injured?'}
       </h2>
       <DateFields
         id="injury"
         labelledBy="injury-date-heading"
-        hint="For example, 6 14 2013 — or just 2013, if the year is all you want to say."
+        hint={
+          condition
+            ? 'Or when you were diagnosed. Just the year is fine.'
+            : 'For example, 6 14 2013 — or just 2013, if the year is all you want to say.'
+        }
         order={BIRTHDAY_ORDER}
         yearAlone
         parts={injuryPartsOf(data)}
@@ -438,13 +411,36 @@ export function InjuryStep({ data, set }: StepProps) {
         onChange={(next) => {
           set({ injuryYear: next.year, injuryMonth: next.month, injuryDay: next.day });
         }}
-        firstRef={injuryDateRef}
       />
+      {condition && birth ? (
+        <button
+          type="button"
+          onClick={() => {
+            set({ injuryYear: birth.year, injuryMonth: birth.month, injuryDay: birth.day });
+          }}
+          className="mt-2 inline-flex min-h-[44px] items-center font-bold text-[0.875rem] text-emphasis underline"
+        >
+          Since birth
+        </button>
+      ) : null}
 
       {injury && injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (
         <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
-          <b className="text-ink">{dateLabel(injury.date, injury.precision)}</b>: you were injured
-          at <b className="text-ink">{injuredAt}</b>. We use that to put you next to people injured
+          <b className="text-ink">{dateLabel(injury.date, injury.precision)}</b>:{' '}
+          {condition ? (
+            injuredAt === 0 ? (
+              'since birth'
+            ) : (
+              <>
+                it started when you were <b className="text-ink">{injuredAt}</b>
+              </>
+            )
+          ) : (
+            <>
+              you were injured at <b className="text-ink">{injuredAt}</b>
+            </>
+          )}
+          . We use that to put you next to people {condition ? 'whose lives changed' : 'injured'}{' '}
           around the same age, not just at the same level.
         </div>
       ) : null}
