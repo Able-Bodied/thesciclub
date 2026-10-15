@@ -53,6 +53,25 @@ describe('summaryLine', () => {
     expect(summaryLine(m)).toContain('T4');
   });
 
+  it('names a condition, and central cord syndrome, without complete or incomplete', () => {
+    const condition = makeMember({
+      injuryType: 'condition',
+      conditionName: 'Transverse myelitis',
+      completeness: 'Complete',
+      age: null,
+      city: null,
+    });
+    expect(summaryLine(condition)).toBe('Transverse myelitis');
+    const centralCord = makeMember({
+      injuryType: 'central_cord',
+      exactLevel: 'C5',
+      completeness: 'Incomplete',
+      age: null,
+      city: null,
+    });
+    expect(summaryLine(centralCord)).toBe('C5 central cord');
+  });
+
   it('drops missing parts instead of leaving a gap between separators', () => {
     const m = makeMember({ exactLevel: 'T4', completeness: 'Complete', age: null, city: null });
     expect(summaryLine(m)).toBe('T4 complete');

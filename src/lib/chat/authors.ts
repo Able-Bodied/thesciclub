@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { getSupabase } from '@/lib/supabase';
+import { type InjuryType, injuryLabel } from '@/types/domain';
 
 /**
  * Putting a name to somebody who wrote something.
@@ -59,6 +60,9 @@ interface ChatAuthorRow {
   avatar_color: string | null;
   level_range: string | null;
   exact_level: string | null;
+  /** Optional: absent from a database before 20261015000000. */
+  injury_type?: string | null;
+  condition_name?: string | null;
   is_admin: boolean;
   has_profile: boolean;
 }
@@ -71,10 +75,14 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
     photoPath: row.photo_path,
     photoAlt: row.photo_alt,
     avatarColor: row.avatar_color,
-    // The exact level when they gave one, the range otherwise — the same
-    // choice member-card.tsx makes, so the same person reads the same way on
-    // a post as on their card.
-    level: row.exact_level ?? row.level_range,
+    // The same words member-card.tsx uses (injuryLabel), so the same person
+    // reads the same way on a post as on their card.
+    level: injuryLabel({
+      injuryType: (row.injury_type ?? null) as InjuryType | null,
+      conditionName: row.condition_name ?? null,
+      exactLevel: row.exact_level,
+      levelRange: row.level_range,
+    }),
     isAdmin: row.is_admin,
     hasProfile: row.has_profile,
   };
@@ -91,7 +99,7 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
     const { data, error } = await getSupabase()
       .from('chat_authors')
       .select(
-        'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, is_admin, has_profile',
+        'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, is_admin, has_profile',
       )
       .in('id', wanted);
     // A failure leaves the ids uncached, so the next render tries again. The

@@ -2,7 +2,7 @@ import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import type { BrowseMember } from '@/types/domain';
+import { asksCompleteness, type BrowseMember, injuryLabel } from '@/types/domain';
 
 /**
  * The full-bleed browse card, matching `.pcard` in docs/index.html. The photo
@@ -48,9 +48,13 @@ export function initialsOf(displayName: string): string {
  * "C6 do not know" says nothing.
  */
 export function summaryLine(member: BrowseMember): string {
-  const level = member.exactLevel ?? member.levelRange;
+  const level = injuryLabel(member);
+  // A condition or central cord syndrome says what it is; complete or
+  // incomplete belongs to an injury with a level.
   const levelPart =
-    member.completeness === 'Do not know' ? level : `${level} ${member.completeness.toLowerCase()}`;
+    member.completeness === 'Do not know' || !asksCompleteness(member.injuryType)
+      ? level
+      : `${level} ${member.completeness.toLowerCase()}`;
   return [levelPart, member.age, member.city].filter(Boolean).join(' · ');
 }
 

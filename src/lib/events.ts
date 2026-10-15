@@ -763,6 +763,9 @@ interface AttendeeRow {
   city: string | null;
   level_range: string;
   exact_level: string | null;
+  /** Optional: absent from a database before 20261015000000. */
+  injury_type?: string | null;
+  condition_name?: string | null;
   type: string;
 }
 
@@ -777,6 +780,8 @@ export function toAttendee(row: AttendeeRow): EventAttendee {
     city: row.city,
     levelRange: row.level_range,
     exactLevel: row.exact_level,
+    injuryType: (row.injury_type ?? null) as EventAttendee['injuryType'],
+    conditionName: row.condition_name ?? null,
     type: memberType(row.type),
   };
 }
@@ -817,7 +822,7 @@ export function useEventAttendees(eventId: string | undefined): AttendeesState {
         const { data, error } = await supabase
           .from('event_attendees')
           .select(
-            'member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, type',
+            'member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, injury_type, condition_name, type',
           )
           .eq('event_id', eventId)
           .order('display_name')
@@ -892,7 +897,7 @@ export function useAttendeesByEvent(): AttendeesByEventState {
         const { data, error } = await supabase
           .from('event_attendees')
           .select(
-            'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, type',
+            'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, injury_type, condition_name, type',
           )
           .order('display_name')
           .abortSignal(signal);

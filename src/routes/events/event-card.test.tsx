@@ -16,6 +16,8 @@ function attendee(name: string, status: 'going' | 'interested' = 'going'): Event
     city: 'San Jose',
     levelRange: 'T1–T6',
     exactLevel: null,
+    injuryType: null,
+    conditionName: null,
     type: 'peer',
   };
 }

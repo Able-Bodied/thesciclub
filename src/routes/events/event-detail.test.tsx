@@ -96,6 +96,8 @@ function attendee(name: string, status: RsvpStatus = 'going'): EventAttendee {
     city: 'San Jose',
     levelRange: 'T1–T6',
     exactLevel: 'T4',
+    injuryType: null,
+    conditionName: null,
     type: 'peer',
   };
 }

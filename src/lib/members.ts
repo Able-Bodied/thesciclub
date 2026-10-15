@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
-import type { BrowseMember, MemberType } from '@/types/domain';
+import type { BrowseMember, InjuryType, MemberType } from '@/types/domain';
 import { memberType } from '@/types/domain';
 
 /**
@@ -29,6 +29,9 @@ export interface BrowseMemberRow {
   state: string;
   level_range: string;
   exact_level: string | null;
+  /** Optional: absent from a database before 20261015000000. */
+  injury_type?: string | null;
+  condition_name?: string | null;
   completeness: string;
   injury_date: string | null;
   injury_date_precision: string | null;
@@ -82,6 +85,8 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     state: row.state,
     levelRange: row.level_range as BrowseMember['levelRange'],
     exactLevel: row.exact_level as BrowseMember['exactLevel'],
+    injuryType: (row.injury_type ?? null) as BrowseMember['injuryType'],
+    conditionName: row.condition_name ?? null,
     completeness: row.completeness as BrowseMember['completeness'],
     injuryDate: row.injury_date,
     injuryDatePrecision: row.injury_date_precision as BrowseMember['injuryDatePrecision'],
@@ -332,6 +337,8 @@ export interface OwnMember {
   state: string;
   levelRange: string;
   exactLevel: string | null;
+  injuryType: InjuryType | null;
+  conditionName: string | null;
   /** ISO date. Own-row only — used for the age and the birthday chip. */
   birthDate: string;
   /** When they joined, for "Member since". */
@@ -372,7 +379,7 @@ export function useOwnMember(userId: string | null): OwnMemberState {
           supabase
             .from('members')
             .select(
-              'id, display_name, username, type, photo_path, photo_alt, city, state, level_range, exact_level, birth_date, created_at, is_admin, wants_to_mentor',
+              'id, display_name, username, type, photo_path, photo_alt, city, state, level_range, exact_level, injury_type, condition_name, birth_date, created_at, is_admin, wants_to_mentor',
             )
             .abortSignal(signal)
             .maybeSingle(),
@@ -405,6 +412,8 @@ export function useOwnMember(userId: string | null): OwnMemberState {
                 state: row.state as string,
                 levelRange: row.level_range as string,
                 exactLevel: (row.exact_level as string | null) ?? null,
+                injuryType: (row.injury_type as InjuryType | null) ?? null,
+                conditionName: (row.condition_name as string | null) ?? null,
                 birthDate: row.birth_date as string,
                 createdAt: row.created_at as string,
                 isAdmin: Boolean(row.is_admin),

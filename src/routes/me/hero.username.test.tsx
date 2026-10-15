@@ -17,6 +17,8 @@ const member: OwnMember = {
   state: 'CA',
   levelRange: 'T1–T6',
   exactLevel: 'T4',
+  injuryType: null,
+  conditionName: null,
   birthDate: '1984-06-21',
   createdAt: '2026-09-01T00:00:00.000Z',
   isAdmin: false,
