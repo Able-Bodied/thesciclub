@@ -3,6 +3,7 @@ import {
   activeFilterCount,
   citiesIn,
   filterMembers,
+  hasConditions,
   othersOnly,
   regionsIn,
   toggleFilter,
@@ -183,5 +184,53 @@ describe('option lists', () => {
 
   it('counts active filters but not the search box', () => {
     expect(activeFilterCount({ ...none, regions: ['Cervical'], search: 'x' })).toBe(1);
+  });
+});
+
+describe('the spinal cord condition filter', () => {
+  const deck = [
+    makeMember({ displayName: 'Quad', region: 'Cervical' }),
+    makeMember({ displayName: 'Para', region: 'Thoracic' }),
+    makeMember({
+      displayName: 'TM',
+      injuryType: 'condition',
+      conditionName: 'Transverse myelitis',
+      region: 'Unknown',
+    }),
+    makeMember({
+      displayName: 'SB at L4',
+      injuryType: 'condition',
+      conditionName: 'Spina bifida',
+      region: 'Lumbar & sacral',
+    }),
+  ];
+  const names = (filters: typeof none) =>
+    filterMembers(deck, filters, 'everyone').map((m) => m.displayName);
+
+  it('keeps only members with a condition, with a level or without', () => {
+    expect(names({ ...none, condition: true })).toEqual(['TM', 'SB at L4']);
+  });
+
+  it('adds to a region ticked beside it, rather than narrowing it', () => {
+    expect(names({ ...none, condition: true, regions: ['Cervical'] })).toEqual([
+      'Quad',
+      'TM',
+      'SB at L4',
+    ]);
+  });
+
+  it('still narrows with the city, as the other groups do', () => {
+    const placed = deck.map((m, i) => ({ ...m, city: i === 2 ? 'San Jose' : 'Eureka' }));
+    expect(
+      filterMembers(placed, { ...none, condition: true, cities: ['San Jose'] }, 'everyone').map(
+        (m) => m.displayName,
+      ),
+    ).toEqual(['TM']);
+  });
+
+  it('counts as one active filter, and is offered only when somebody has a condition', () => {
+    expect(activeFilterCount({ ...none, condition: true })).toBe(1);
+    expect(hasConditions(deck)).toBe(true);
+    expect(hasConditions(deck.slice(0, 2))).toBe(false);
   });
 });

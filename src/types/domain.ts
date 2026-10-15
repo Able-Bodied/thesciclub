@@ -502,6 +502,12 @@ export type PeersSegment = (typeof PEERS_SEGMENTS)[number];
 
 export interface MemberFilters {
   regions: InjuryRegion[];
+  /**
+   * Members with a spinal cord condition (20261015000000), in the same group
+   * as the regions: either matches. Its own field, not a region, because a
+   * condition with a level is in a region as well.
+   */
+  condition: boolean;
   cities: string[];
   topics: string[];
   search: string;
@@ -509,6 +515,7 @@ export interface MemberFilters {
 
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   regions: [],
+  condition: false,
   cities: [],
   topics: [],
   search: '',

@@ -9,6 +9,7 @@ import {
   activeFilterCount,
   citiesIn,
   filterMembers,
+  hasConditions,
   othersOnly,
   regionsIn,
   topicsIn,
@@ -249,6 +250,7 @@ export default function PeersPage() {
       {sheetOpen ? (
         <FilterSheet
           regions={regionsIn(members)}
+          conditions={hasConditions(members)}
           cities={citiesIn(members)}
           // Frequency-ordered. The sheet draws the common ones and keeps the
           // long tail of one-person topics behind "Show all", where it cannot
