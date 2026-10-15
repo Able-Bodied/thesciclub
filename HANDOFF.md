@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-14. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-15. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. Older handoffs:
 `git show b04b003:HANDOFF.md` (every release to 2026-10-11 with its checks),
 `git show 4b1673b:HANDOFF.md` (what comments citing a HANDOFF section mean),
@@ -132,6 +132,20 @@ All live. Migration headers and the files named say how and why.
   organizations' logos for a signed-out visitor (`anon` may read
   `photos/organizations/`, `20261012050000`) and the consultation link
   (`lib/consultation.ts`). "Ask somebody" is gone (`20261012020000`).
+- **Onboarding picks up where it was left** (2026-10-15, `20261015015000`):
+  answers so far on the device as typed and on the account at each step
+  (`save_onboarding_progress`, `src/routes/onboarding/progress.ts`), so a
+  return on any device opens at the same step. Never the password, email, ZIP
+  or photo. The account's copy goes when the member is made, or after 90 days
+  (cron `onboarding-progress-expire`); `onboarding_steps` keeps only which
+  steps were reached, for Stats. The privacy policy says both (October 15).
+- **Admin → Stats** (2026-10-15, `20261015020000`, `admin_club_stats(period)`):
+  counts only, never who, from what the club already keeps; all time by
+  default, or the last or previous 24 hours, 7 or 30 days. "Opened the app"
+  comes from `auth.sessions` and has no count for a previous period.
+  Onboarding starts and new accounts on top; Onboarding details opens the
+  funnel, each step (kept only since that release) and each part of a
+  profile. Instead of Google Analytics, which the owner turned down.
 - **Me**: tabs (`PageTabs`, `?tab=` replaced, not pushed): Profile, Settings,
   Account. The account's email is read only; an administrator changes it with
   the script. An account with no email gets the add-an-email banner. Phone is
