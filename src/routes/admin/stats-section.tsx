@@ -1,4 +1,12 @@
-import { type ClubStats, useClubStats, weekLabel } from '@/routes/admin/club-stats';
+import { useState } from 'react';
+import {
+  type ClubStats,
+  PERIODS,
+  periodPhrase,
+  type StatsPeriod,
+  useClubStats,
+  weekLabel,
+} from '@/routes/admin/club-stats';
 import { SmallButton } from '@/routes/admin/controls';
 
 /**
@@ -21,12 +29,12 @@ function percent(n: number, of: number): string {
   return `${Math.round((n / of) * 100)}%`;
 }
 
-function Tile({ label, value, detail }: { label: string; value: number; detail: string }) {
+function Tile({ label, value, detail }: { label: string; value: number | null; detail: string }) {
   return (
     <div className={`${CARD} px-3.5 py-3`}>
       <p className="text-[0.75rem] text-grey leading-[1.35]">{label}</p>
       <p className="mt-1 font-display font-extrabold text-[1.625rem] text-ink leading-none">
-        {value}
+        {value ?? '—'}
       </p>
       <p className="mt-1.5 text-[0.75rem] text-ink2 leading-[1.35]">{detail}</p>
     </div>
@@ -37,13 +45,21 @@ function Summary({ stats }: { stats: ClubStats }) {
   const of = `of ${plural(stats.members, 'member')}`;
   return (
     <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-      <Tile label="Opened the app, last day" value={stats.opened1} detail={of} />
-      <Tile label="Opened the app, last 7 days" value={stats.opened7} detail={of} />
-      <Tile label="Opened the app, last 30 days" value={stats.opened30} detail={of} />
       <Tile
-        label="Members"
-        value={stats.members}
-        detail={`${stats.joined7} new in 7 days, ${stats.joined30} in 30`}
+        label={stats.period === 'all' ? 'Ever signed in' : 'Opened the app'}
+        value={stats.opened}
+        detail={stats.opened === null ? 'Not kept for an earlier period' : of}
+      />
+      <Tile label="New members" value={stats.joined} detail={`${stats.members} members now`} />
+      <Tile
+        label="Active members"
+        value={stats.active}
+        detail="Asked, replied, messaged or RSVPed"
+      />
+      <Tile
+        label="Questions"
+        value={stats.questions}
+        detail={`${plural(stats.replies, 'reply', 'replies')}, ${plural(stats.messages, 'message')}, ${plural(stats.rsvps, 'RSVP')}`}
       />
     </div>
   );
@@ -60,6 +76,9 @@ function Joining({ stats }: { stats: ClubStats }) {
   return (
     <>
       <h3 className={`${HEADING} mt-5`}>Joining</h3>
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+        Accounts made {periodPhrase(stats.period)}, and how far they got.
+      </p>
       <div className={`${CARD} mt-2 px-3.5 py-3`}>
         <ol className="grid grid-cols-3 gap-x-3">
           {steps.map((step) => (
@@ -102,7 +121,10 @@ function Weeks({ stats }: { stats: ClubStats }) {
   const newestFirst = [...stats.weeks].reverse();
   return (
     <>
-      <h3 className={`${HEADING} mt-5`}>Week by week</h3>
+      <h3 className={`${HEADING} mt-5`}>The last eight weeks</h3>
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+        Week by week, whatever the period.
+      </p>
       <div className={`${CARD} mt-2 overflow-x-auto`}>
         <table className="w-full min-w-[520px] text-[0.8125rem]">
           <caption className="sr-only">
@@ -147,7 +169,8 @@ function Weeks({ stats }: { stats: ClubStats }) {
 }
 
 export function StatsSection() {
-  const { stats, error, loading, reload } = useClubStats();
+  const [period, setPeriod] = useState<StatsPeriod>('all');
+  const { stats, error, loading, reload } = useClubStats(period);
 
   return (
     <section aria-labelledby="stats-heading">
@@ -159,10 +182,29 @@ export function StatsSection() {
           {loading ? 'Loading…' : 'Refresh'}
         </SmallButton>
       </div>
-      <p className="mt-1 mb-3 text-[0.75rem] text-grey leading-[1.45]">
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
         Counted from what the club already keeps. Counts only, never who, and nothing is sent
         anywhere.
       </p>
+      <div className="mt-3 mb-3 max-w-[260px]">
+        <label htmlFor="stats-period" className="block font-bold text-[0.75rem] text-ink">
+          Period
+        </label>
+        <select
+          id="stats-period"
+          value={period}
+          onChange={(e) => {
+            setPeriod(e.target.value as StatsPeriod);
+          }}
+          className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
+        >
+          {PERIODS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {error ? (
         <p
@@ -179,11 +221,11 @@ export function StatsSection() {
           <Joining stats={stats} />
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
-            “Opened” means a member’s app was open and signed in at some point in that time.
-            “Started onboarding” is an account that has signed in; Google and Apple sign in as they
-            make it. People who opened the app and left without an account are not counted. “Active”
-            is members who asked, replied, sent a message or RSVPed that week. Weeks start on
-            Monday.
+            “Opened the app” means a member’s app was open and signed in since the period began. The
+            club only knows when each member last used it, so it can’t be counted for a previous
+            period. “Started onboarding” is an account that has signed in; Google and Apple sign in
+            as they make it. People who opened the app and left without an account are not counted.
+            Weeks start on Monday.
           </p>
         </>
       ) : loading ? (

@@ -1,17 +1,20 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClubStats } from '@/routes/admin/club-stats';
 
 const api = vi.hoisted(() => ({
   stats: null as ClubStats | null,
   error: null as { message: string } | null,
-  calls: [] as string[],
+  calls: [] as [string, unknown][],
 }));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
-    rpc: (name: string) => {
-      api.calls.push(name);
-      return Promise.resolve({ data: api.stats, error: api.error });
+    rpc: (name: string, args: { period: string }) => {
+      api.calls.push([name, args]);
+      const stats = api.stats ? { ...api.stats, period: args.period } : null;
+      if (stats && args.period.startsWith('prev')) stats.opened = null;
+      return Promise.resolve({ data: stats, error: api.error });
     },
   }),
 }));
@@ -31,16 +34,19 @@ const week = (iso: string, o: Partial<ClubStats['weeks'][number]> = {}) => ({
 
 const STATS: ClubStats = {
   asOf: '2026-10-13T19:00:00Z',
+  period: 'all',
   members: 24,
-  joined7: 5,
-  joined30: 12,
-  opened1: 7,
-  opened7: 15,
-  opened30: 21,
+  joined: 24,
+  opened: 22,
   accounts: 29,
   signedIn: 26,
   reachedHome: 24,
   notificationsOn: 15,
+  questions: 21,
+  replies: 52,
+  messages: 59,
+  rsvps: 23,
+  active: 20,
   weeks: [
     week('2026-08-24'),
     week('2026-08-31'),
@@ -53,26 +59,64 @@ const STATS: ClubStats = {
   ],
 };
 
+beforeEach(() => {
+  api.stats = STATS;
+  api.error = null;
+  api.calls = [];
+});
+
 describe('Admin → Stats', () => {
-  it('asks the database once, through the admin-only function', async () => {
-    api.stats = STATS;
-    api.calls = [];
+  it('starts on all time, through the admin-only function', async () => {
     render(<StatsSection />);
-    await screen.findByText('Opened the app, last 7 days');
-    expect(api.calls).toEqual(['admin_club_stats']);
+    await screen.findByText('Ever signed in');
+    expect(screen.getByLabelText('Period')).toHaveValue('all');
+    expect(api.calls).toEqual([['admin_club_stats', { period: 'all' }]]);
+  });
+
+  it('offers every period, all time first', () => {
+    render(<StatsSection />);
+    const options = within(screen.getByLabelText('Period')).getAllByRole('option');
+    expect(options.map((o) => o.textContent)).toEqual([
+      'All time',
+      'Last 24 hours',
+      'Previous 24 hours',
+      'Last 7 days',
+      'Previous 7 days',
+      'Last 30 days',
+      'Previous 30 days',
+    ]);
+  });
+
+  it('asks again for the period chosen', async () => {
+    render(<StatsSection />);
+    await screen.findByText('Ever signed in');
+    await userEvent.selectOptions(screen.getByLabelText('Period'), '7d');
+    await screen.findByText('Opened the app');
+    expect(api.calls.at(-1)).toEqual(['admin_club_stats', { period: '7d' }]);
+    expect(screen.getByText(/Accounts made in the last 7 days/)).toBeInTheDocument();
   });
 
   it('says how many opened the app, out of how many members', async () => {
-    api.stats = STATS;
     render(<StatsSection />);
-    const label = await screen.findByText('Opened the app, last 7 days');
+    const label = await screen.findByText('Ever signed in');
     const tile = within(label.parentElement ?? label);
-    expect(tile.getByText('15')).toBeInTheDocument();
+    expect(tile.getByText('22')).toBeInTheDocument();
     expect(tile.getByText('of 24 members')).toBeInTheDocument();
   });
 
+  // A session keeps only when it was last used: nobody can say who opened the
+  // app between two moments in the past, and a guess would read as a fact.
+  it('gives no count of opening the app for a previous period, and says why', async () => {
+    render(<StatsSection />);
+    await screen.findByText('Ever signed in');
+    await userEvent.selectOptions(screen.getByLabelText('Period'), 'prev7d');
+    const label = await screen.findByText('Opened the app');
+    const tile = within(label.parentElement ?? label);
+    expect(tile.getByText('—')).toBeInTheDocument();
+    expect(tile.getByText('Not kept for an earlier period')).toBeInTheDocument();
+  });
+
   it('says where people stop on the way in', async () => {
-    api.stats = STATS;
     render(<StatsSection />);
     expect(
       await screen.findByText(/2 people signed in and stopped before Home/),
@@ -83,7 +127,6 @@ describe('Admin → Stats', () => {
   });
 
   it('gives each step of the way in as a share of the one before', async () => {
-    api.stats = STATS;
     render(<StatsSection />);
     const home = (await screen.findByText('Reached the home screen')).parentElement;
     expect(home).toHaveTextContent('24');
@@ -91,8 +134,7 @@ describe('Admin → Stats', () => {
     expect(screen.getByText('Notifications on').parentElement).toHaveTextContent('63%');
   });
 
-  it('lists the weeks newest first, this one marked as so far', async () => {
-    api.stats = STATS;
+  it('lists the last eight weeks newest first, this one marked as so far', async () => {
     render(<StatsSection />);
     const rows = within(await screen.findByRole('table')).getAllByRole('row');
     // The header, then eight weeks.
@@ -104,7 +146,6 @@ describe('Admin → Stats', () => {
   });
 
   it('never names anybody: there is nothing in the answer to name them with', async () => {
-    api.stats = STATS;
     render(<StatsSection />);
     await screen.findByRole('table');
     expect(screen.queryByRole('link')).toBeNull();
@@ -115,6 +156,5 @@ describe('Admin → Stats', () => {
     api.error = { message: 'Not an administrator' };
     render(<StatsSection />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    api.error = null;
   });
 });

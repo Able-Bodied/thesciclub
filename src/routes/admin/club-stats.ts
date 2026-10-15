@@ -9,6 +9,25 @@ import { getSupabase } from '@/lib/supabase';
  * already keeps, read by an administrator, sent nowhere. Counts only, never who.
  */
 
+/** All time first: the default (the owner, 2026-10-15). */
+export const PERIODS = [
+  { value: 'all', label: 'All time' },
+  { value: '24h', label: 'Last 24 hours' },
+  { value: 'prev24h', label: 'Previous 24 hours' },
+  { value: '7d', label: 'Last 7 days' },
+  { value: 'prev7d', label: 'Previous 7 days' },
+  { value: '30d', label: 'Last 30 days' },
+  { value: 'prev30d', label: 'Previous 30 days' },
+] as const;
+
+export type StatsPeriod = (typeof PERIODS)[number]['value'];
+
+/** "in the last 7 days", or "ever" for all time. */
+export function periodPhrase(period: StatsPeriod): string {
+  const label = PERIODS.find((p) => p.value === period)?.label ?? '';
+  return period === 'all' ? 'ever' : `in the ${label.toLowerCase()}`;
+}
+
 export interface StatsWeek {
   /** The Monday the week starts on, in California, as an ISO date. */
   week: string;
@@ -23,28 +42,39 @@ export interface StatsWeek {
 
 export interface ClubStats {
   asOf: string;
+  period: StatsPeriod;
+  /** Active members now, whatever the period. */
   members: number;
-  joined7: number;
-  joined30: number;
-  opened1: number;
-  opened7: number;
-  opened30: number;
-  /** Every account, including ones whose confirmation email was never opened. */
+  /** Members made in the period. */
+  joined: number;
+  /**
+   * Members who opened the app since the period began. Null for a previous
+   * period: a session keeps only when it was last used. For all time, the
+   * members who have ever signed in.
+   */
+  opened: number | null;
+  /** Of the accounts made in the period: all of them… */
   accounts: number;
-  /** Accounts that signed in, and so started onboarding. */
+  /** …those that signed in, and so started onboarding… */
   signedIn: number;
-  /** Members: onboarding finished, Home reached. */
+  /** …those that became members, which is reaching Home… */
   reachedHome: number;
-  /** Active members with notifications on now, on at least one device. */
+  /** …and those members with notifications on now. */
   notificationsOn: number;
-  /** Oldest first, eight of them, ending with this week. */
+  questions: number;
+  replies: number;
+  messages: number;
+  rsvps: number;
+  /** Members who asked, replied, messaged or RSVPed in the period. */
+  active: number;
+  /** Oldest first, eight of them, ending with this week, whatever the period. */
   weeks: StatsWeek[];
 }
 
-export async function fetchClubStats(): Promise<
-  { ok: true; stats: ClubStats } | { ok: false; error: string }
-> {
-  const { data, error } = (await getSupabase().rpc('admin_club_stats')) as {
+export async function fetchClubStats(
+  period: StatsPeriod,
+): Promise<{ ok: true; stats: ClubStats } | { ok: false; error: string }> {
+  const { data, error } = (await getSupabase().rpc('admin_club_stats', { period })) as {
     data: ClubStats | null;
     error: Parameters<typeof describeError>[0] | null;
   };
@@ -58,14 +88,14 @@ export async function fetchClubStats(): Promise<
   return { ok: true, stats: data };
 }
 
-export function useClubStats() {
+export function useClubStats(period: StatsPeriod) {
   const [stats, setStats] = useState<ClubStats | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const result = await fetchClubStats();
+    const result = await fetchClubStats(period);
     if (result.ok) {
       setStats(result.stats);
       setError(null);
@@ -73,7 +103,7 @@ export function useClubStats() {
       setError(result.error);
     }
     setLoading(false);
-  }, []);
+  }, [period]);
 
   useEffect(() => {
     void load();
