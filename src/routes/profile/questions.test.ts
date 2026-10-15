@@ -156,7 +156,7 @@ describe('advancesItself', () => {
   });
 
   it('is false where a text answer is involved, because the person is not done until they say so', () => {
-    expect(advancesItself(screen('How were you paralyzed?'), {})).toBe(false);
+    expect(advancesItself(screen('How it began'), {})).toBe(false);
     expect(advancesItself(screen('The specifics'), {})).toBe(false);
   });
 

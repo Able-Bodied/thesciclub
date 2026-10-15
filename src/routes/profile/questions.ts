@@ -182,9 +182,12 @@ export const QUESTIONS: Question[] = [
   {
     key: 'howInjured',
     column: 'how_injured',
-    title: 'How were you paralyzed?',
+    // One wording for an injury and a condition alike (the owner,
+    // 2026-10-14): "paralyzed" fit neither a weakness nor something
+    // somebody was born with.
+    title: 'How did your injury or condition begin?',
     kind: 'text',
-    placeholder: 'Car accident on the 880, 2013…',
+    placeholder: 'A car accident on the 880 in 2013… or transverse myelitis at 34…',
   },
 
   {
@@ -331,9 +334,9 @@ export const SCREENS: Screen[] = [
     hint: 'The lines that sit on your profile. What you use, how you get about, who is around you.',
   },
   {
-    title: 'How were you paralyzed?',
+    title: 'How it began',
     keys: ['howInjured'],
-    hint: 'In your own words. Members read this to find somebody whose story rhymes with theirs.',
+    hint: 'Your injury or your condition, in your own words. Members read this to find somebody whose story rhymes with theirs.',
   },
   { title: 'Family', keys: ['maritalStatus', 'hasChildren', 'childrenWhen'] },
   { title: 'Day to day', keys: ['independence', 'employment'] },
