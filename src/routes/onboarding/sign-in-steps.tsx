@@ -1,9 +1,11 @@
-import { KeyRound } from 'lucide-react';
+import { ChevronDown, KeyRound } from 'lucide-react';
+import { useState } from 'react';
 import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
+import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import { passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
@@ -19,7 +21,8 @@ import type { OnboardingData } from '@/routes/onboarding/types';
  *
  * Apple and passkeys are shown only when their switches are on
  * (VITE_APPLE_SIGN_IN, VITE_PASSKEYS), and a passkey only in a browser that
- * can use one.
+ * can use one. Which of Google and Apple leads depends on the device
+ * (`leadingWayIn`).
  */
 
 interface FieldsProps {
@@ -50,7 +53,71 @@ function Divider({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * Which way in leads, from the device (the owner, 2026-10-15): Apple on an
+ * iPhone or iPad, Google on Android, and both, side by side, anywhere else.
+ * The one that does not lead is a tap away under "Other ways", never gone:
+ * somebody signs in the way they joined, whatever the device.
+ */
+export function leadingWayIn(
+  platform: InstallPlatform,
+  appleOn: boolean,
+): 'apple' | 'google' | 'both' {
+  if (!appleOn) return 'google';
+  if (platform.startsWith('ios')) return 'apple';
+  if (platform === 'android') return 'google';
+  return 'both';
+}
+
+/** Apple's logo, which its guidelines put on the button. */
+function AppleLogo() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] fill-current" aria-hidden="true">
+      <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+    </svg>
+  );
+}
+
 function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }) {
+  const [lead] = useState(() => leadingWayIn(currentInstallPlatform(), appleSignInEnabled()));
+  // Open from the start while the Home Screen app waits on a Google sign-in,
+  // so its "Finish in Chrome" is not hidden behind Apple.
+  const [othersOpen, setOthersOpen] = useState(
+    () => lead === 'apple' && ways.googleInBrowser?.state.step === 'waiting',
+  );
+
+  const google = (
+    <div className="mt-2">
+      {ways.googleInBrowser ? (
+        <GoogleInBrowserButton
+          google={ways.googleInBrowser}
+          label={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
+          disabled={ways.busy}
+        />
+      ) : (
+        <GoogleButton
+          text={mode === 'signin' ? 'signin_with' : 'continue_with'}
+          prompt={mode === 'signin'}
+          disabled={ways.busy}
+          fallbackLabel={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
+          onToken={ways.onGoogleToken}
+          onFallback={ways.onGoogleRedirect}
+        />
+      )}
+    </div>
+  );
+  const apple = (
+    <button
+      type="button"
+      disabled={ways.busy}
+      onClick={ways.onApple}
+      className={`${SOCIAL_BUTTON} bg-black text-white`}
+    >
+      <AppleLogo />
+      {mode === 'signin' ? 'Sign in with Apple' : 'Continue with Apple'}
+    </button>
+  );
+
   return (
     <>
       {mode === 'signin' && passkeysAvailable() ? (
@@ -64,34 +131,38 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
           Sign in with a passkey
         </button>
       ) : null}
-      <div className="mt-2">
-        {ways.googleInBrowser ? (
-          <GoogleInBrowserButton
-            google={ways.googleInBrowser}
-            label={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
-            disabled={ways.busy}
-          />
-        ) : (
-          <GoogleButton
-            text={mode === 'signin' ? 'signin_with' : 'continue_with'}
-            prompt={mode === 'signin'}
-            disabled={ways.busy}
-            fallbackLabel={mode === 'signin' ? 'Sign in with Google' : 'Continue with Google'}
-            onToken={ways.onGoogleToken}
-            onFallback={ways.onGoogleRedirect}
-          />
-        )}
-      </div>
-      {appleSignInEnabled() ? (
-        <button
-          type="button"
-          disabled={ways.busy}
-          onClick={ways.onApple}
-          className={`${SOCIAL_BUTTON} bg-black text-white`}
-        >
-          {mode === 'signin' ? 'Sign in with Apple' : 'Continue with Apple'}
-        </button>
-      ) : null}
+      {lead === 'both' ? (
+        <>
+          {google}
+          {apple}
+        </>
+      ) : (
+        <>
+          {lead === 'apple' ? apple : google}
+          {appleSignInEnabled() ? (
+            <>
+              <button
+                type="button"
+                aria-expanded={othersOpen}
+                aria-controls="other-ways-in"
+                onClick={() => {
+                  setOthersOpen((open) => !open);
+                }}
+                className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-1 font-semibold text-[0.8125rem] text-emphasis"
+              >
+                {mode === 'signin' ? 'Other ways to sign in' : 'Other ways to join'}
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
+                  aria-hidden="true"
+                />
+              </button>
+              <div id="other-ways-in" hidden={!othersOpen}>
+                {othersOpen ? (lead === 'apple' ? google : apple) : null}
+              </div>
+            </>
+          ) : null}
+        </>
+      )}
     </>
   );
 }

@@ -259,6 +259,7 @@ vi.mock('@/lib/supabase', () => ({
 }));
 
 const { default: OnboardingPage } = await import('@/routes/onboarding/page');
+const { leadingWayIn } = await import('@/routes/onboarding/sign-in-steps');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
 // of HANDOFF.md "What Home is". Until then it was Peers.
@@ -1161,6 +1162,69 @@ describe('Google, Apple and passkeys', () => {
     it('says what to do when Apple comes back without signing anybody in', async () => {
       renderJoin('/join?apple=signin');
       expect(await screen.findByRole('alert')).toHaveTextContent('Apple did not sign you in.');
+    });
+  });
+
+  describe('which way in leads', () => {
+    const SAFARI_IPHONE =
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
+    const ANDROID =
+      'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+
+    function onDevice(userAgent: string) {
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
+      return vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
+    }
+
+    it('on an iPhone, Apple, with Google under Other ways', async () => {
+      const agent = onDevice(SAFARI_IPHONE);
+      try {
+        renderJoin();
+        await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+        expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Sign in with Google' })).toBeNull();
+        const others = screen.getByRole('button', { name: 'Other ways to sign in' });
+        expect(others).toHaveAttribute('aria-expanded', 'false');
+        await userEvent.click(others);
+        expect(others).toHaveAttribute('aria-expanded', 'true');
+        await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
+        expect(calls.order).toEqual(['signInWithOAuth:google']);
+      } finally {
+        agent.mockRestore();
+      }
+    });
+
+    it('on Android, Google, with Apple under Other ways', async () => {
+      const agent = onDevice(ANDROID);
+      try {
+        renderJoin();
+        await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+        expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
+        await userEvent.click(screen.getByRole('button', { name: 'Other ways to join' }));
+        await userEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+        expect(calls.order).toEqual(['signInWithOAuth:apple']);
+      } finally {
+        agent.mockRestore();
+      }
+    });
+
+    it('on a computer, both, and no Other ways', async () => {
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Other ways/ })).toBeNull();
+    });
+
+    it('with Apple off, Google alone everywhere', () => {
+      expect(leadingWayIn('ios-safari', false)).toBe('google');
+      expect(leadingWayIn('ios-safari', true)).toBe('apple');
+      expect(leadingWayIn('ios-chrome', true)).toBe('apple');
+      expect(leadingWayIn('android', true)).toBe('google');
+      expect(leadingWayIn('desktop', true)).toBe('both');
+      expect(leadingWayIn('in-app', true)).toBe('both');
     });
   });
 
