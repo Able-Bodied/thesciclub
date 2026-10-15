@@ -61,7 +61,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
   (Apple Developer → Services → Sign in with Apple for Email Communication,
   2026-10-13).
-- **Checks**: 2,690 tests in 192 files on 2026-10-14; `pnpm check` (alone),
+- **Checks**: 2,697 tests in 192 files on 2026-10-14; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
