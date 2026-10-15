@@ -15,7 +15,10 @@ than features:
 shares a vocabulary from the first screen — level, complete or incomplete, years since injury,
 bowel programme, transfers, catheters. That vocabulary is the product. It is why a member can ask
 a question here they could not ask anywhere else, and it is the one thing that cannot be
-retrofitted later onto something broader.
+retrofitted later onto something broader. "Spinal cord injury" includes a spinal cord disease or
+condition that paralyses or weakens the same way — transverse myelitis, spina bifida, cauda equina
+syndrome, central cord syndrome and the like (the owner, 2026-10-14): the same body, the same
+vocabulary, a different cause.
 
 **Invite only.** A member organization or a peer mentor puts your email address on the list, and
 the club emails you a link, before you can join. The app itself cannot let you in. This is not a growth tactic — it is what makes the
@@ -202,11 +205,14 @@ passes it on.
 
 ## How injury is recorded
 
-**Level, completeness, and date of injury.** Not a disability type, not a duration bucket.
+**Kind, level, completeness, and date of injury.** Not a disability type, not a duration bucket.
 
-Onboarding asks for a coarse level range (C1–C4, C5–C8, T1–T6, T7–T12, L1–S5, or not sure yet)
-because that is answerable in one tap by somebody who may be filling this in from a hospital bed.
-The profile survey refines it to an exact level later, for anybody who wants to.
+Onboarding asks, on one screen, which describes somebody best — paraplegia, quadriplegia, central
+cord syndrome, or another spinal cord condition (typed in their own words, with suggestions) — and
+then only what that answer needs: a level from a list cut to fit, complete or incomplete for an
+injury with a level, and a level only if they know one for a condition (2026-10-14). The coarse
+range (C1–C4 … L1–S5, or not sure yet) is derived from the level, for browsing. Members who joined
+before the kind was asked read as their level, as they always did.
 
 Duration is a **date**, not a number of years. A stored year count is wrong within twelve months
 of being entered and needs something to roll it forward; a date is simply correct forever. Because

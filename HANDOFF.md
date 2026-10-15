@@ -61,14 +61,14 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
   (Apple Developer → Services → Sign in with Apple for Email Communication,
   2026-10-13).
-- **Checks**: 2,671 tests in 191 files on 2026-10-14; `pnpm check` (alone),
+- **Checks**: 2,690 tests in 192 files on 2026-10-14; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
-- **Administrators' QR codes are not live yet** (2026-10-14): push
-  `20261014020000` (dry run first), then release the client. The two
-  "Anybody can join" migrations before it are live. Resend's free 100 emails
+- **The spinal cord question is not live yet** (2026-10-14): push
+  `20261015000000` (dry run first), then release the client. The QR-code
+  migrations before it are live. Resend's free 100 emails
   a day are each email sign-up's confirmation, so a busy event can reach it;
   Google and Apple send none. The local stack's auth container started before
   the hook was in config.toml: restart the stack to have it refuse locally.
@@ -186,7 +186,12 @@ All live. Migration headers and the files named say how and why.
   tags on profiles come from administrator links only. Logos at
   `photos/organizations/<id>/`, 400px on white (`set_organization_logo`). An
   affiliation badge means the organization vouches: never self-picked.
-- **Members**: the profile survey's order and wording (`stepFrom` skips empty
+- **Members**: onboarding's injury step asks the kind first, on the same
+  screen (`spinal-cord-fields.tsx`, also on Your details; `injury_type`,
+  `condition_name`, `20261015000000`); labels everywhere come from
+  `injuryLabel` in `types/domain.ts`. Signing up no longer asks about
+  notifications; the installed app does, once (AskOnOpening). The profile
+  survey's order and wording (`stepFrom` skips empty
   screens; "The specifics" only after certain devices); adaptive sports
   equipment and grants are shown on Peers (`20261011040000`); `@username` on
   profiles, cards and chat lists. The seeded directory is gone (2026-10-10); the owner
