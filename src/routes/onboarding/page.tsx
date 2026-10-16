@@ -61,7 +61,6 @@ import {
   SignInStep,
 } from '@/routes/onboarding/sign-in-steps';
 import {
-  AgreeStep,
   BirthdayStep,
   CityStep,
   InjuryStep,
@@ -260,14 +259,13 @@ export default function OnboardingPage() {
         displayName: resumed.displayName.trim() ? resumed.displayName : given,
       };
     });
-    const termsAgreed = saved?.answers.termsAgreed ?? data.termsAgreed;
-    if (saved && termsAgreed && saved.step !== 'agree') {
+    if (saved && saved.step !== 'name') {
       setStep(saved.step);
       setNotice('Welcome back. You are where you left off.');
       return;
     }
-    setStep(termsAgreed ? 'name' : 'agree');
-  }, [data.termsAgreed]);
+    setStep('name');
+  }, []);
 
   // Kept as it is typed on this device, and on the account each time the
   // wizard moves on, so leaving halfway costs nothing (progress.ts). Only a
@@ -589,7 +587,8 @@ export default function OnboardingPage() {
     'check-email': 'join',
     // No way back past a confirmed account: it already exists.
     checking: undefined,
-    agree: undefined,
+    // Back from the first question signs out, for another account: see
+    // leaveForAnotherAccount.
     name: undefined,
     username: 'name',
     birthday: 'username',
@@ -626,6 +625,21 @@ export default function OnboardingPage() {
     return false;
   }
 
+  /**
+   * Back from the first question (the owner, 2026-10-15): there is nothing
+   * before it but the account itself, so Back signs out and opens the doors,
+   * where somebody who used the wrong account chooses another. What they
+   * typed stays saved for this account (progress.ts), should they come back.
+   */
+  function leaveForAnotherAccount() {
+    setError(null);
+    setNotice(null);
+    void signOut().then(() => {
+      setData(INITIAL_ONBOARDING_DATA);
+      setStep('welcome');
+    });
+  }
+
   const n = stepNumber(step);
   const ready = DOORS.includes(step) || step === 'checking' ? doorReady() : canAdvance(step, data);
   const previous = back[step];
@@ -642,16 +656,7 @@ export default function OnboardingPage() {
       return void afterSignIn();
     }
     if (step === 'photo') return void finish();
-    const order: Step[] = [
-      'agree',
-      'name',
-      'username',
-      'birthday',
-      'injury',
-      'city',
-      'phone',
-      'photo',
-    ];
+    const order: Step[] = ['name', 'username', 'birthday', 'injury', 'city', 'phone', 'photo'];
     const next = order[order.indexOf(step) + 1];
     if (next) {
       setNotice(null);
@@ -683,14 +688,16 @@ export default function OnboardingPage() {
       totalSteps={COUNTED_STEPS.length}
       onSubmit={advance}
       onBack={
-        previous
-          ? () => {
-              setError(null);
-              setNotice(null);
-              setForgotSent(false);
-              setStep(previous);
-            }
-          : undefined
+        step === 'name'
+          ? leaveForAnotherAccount
+          : previous
+            ? () => {
+                setError(null);
+                setNotice(null);
+                setForgotSent(false);
+                setStep(previous);
+              }
+            : undefined
       }
       footer={
         <>
@@ -863,7 +870,6 @@ export default function OnboardingPage() {
           <Sub>One moment.</Sub>
         </>
       ) : null}
-      {step === 'agree' ? <AgreeStep data={data} set={set} /> : null}
       {step === 'name' ? <NameStep data={data} set={set} /> : null}
       {step === 'username' ? <UsernameStep data={data} set={set} /> : null}
       {step === 'birthday' ? <BirthdayStep data={data} set={set} /> : null}

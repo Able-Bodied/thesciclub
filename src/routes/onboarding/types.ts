@@ -66,8 +66,6 @@ export interface OnboardingData {
    * once, so a decline is another answer to carry to the insert.
    */
   declined: string[];
-  /** Terms of Service and Privacy Policy, asked once the invite check has passed. */
-  termsAgreed: boolean;
 }
 
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
@@ -95,13 +93,12 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   photoFile: null,
   photoPreviewUrl: null,
   declined: [],
-  termsAgreed: false,
 };
 
 /**
- * The first six are the doors and the waiting rooms, and `agree` follows the
- * invite check for somebody who is joining: none is a step somebody walks
- * through in order, so none is counted in the progress bar.
+ * The first six are the doors and the waiting rooms: none is a step somebody
+ * walks through in order, so none is counted in the progress bar. The terms
+ * are agreed on the name step, by going on (the owner, 2026-10-15).
  */
 export const STEPS = [
   'welcome',
@@ -110,7 +107,6 @@ export const STEPS = [
   'join',
   'check-email',
   'checking',
-  'agree',
   'name',
   'username',
   'birthday',
@@ -159,8 +155,6 @@ export function birthPartsOf(data: OnboardingData) {
 /** Whether the current step has enough to move on. */
 export function canAdvance(step: Step, data: OnboardingData): boolean {
   switch (step) {
-    case 'agree':
-      return data.termsAgreed;
     case 'name':
       return data.displayName.trim().length > 0;
     case 'username':

@@ -27,7 +27,6 @@ const DATA = {
   password: 'correct horse',
   passwordAgain: 'correct horse',
   zip: '95008',
-  termsAgreed: true,
   displayName: 'Dana',
   username: 'dana',
   exactLevel: 'T4' as const,
@@ -43,7 +42,7 @@ beforeEach(() => {
 describe('what is kept', () => {
   it('never the password, the email, the ZIP or the photograph', () => {
     const kept = keptAnswers({ ...DATA, photoFile: new File(['x'], 'me.jpg') });
-    expect(kept).toMatchObject({ termsAgreed: true, displayName: 'Dana', exactLevel: 'T4' });
+    expect(kept).toMatchObject({ displayName: 'Dana', exactLevel: 'T4' });
     for (const key of ['email', 'password', 'passwordAgain', 'zip', 'photoFile', 'photoPreviewUrl'])
       expect(kept).not.toHaveProperty(key);
   });

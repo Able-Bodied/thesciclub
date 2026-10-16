@@ -48,11 +48,6 @@ describe('injuryDateOf', () => {
 });
 
 describe('canAdvance', () => {
-  it('needs a terms tick before the agree step is done', () => {
-    expect(canAdvance('agree', data())).toBe(false);
-    expect(canAdvance('agree', data({ termsAgreed: true }))).toBe(true);
-  });
-
   it('needs a name', () => {
     expect(canAdvance('name', data({ displayName: '  ' }))).toBe(false);
     expect(canAdvance('name', data({ displayName: 'Dana' }))).toBe(true);

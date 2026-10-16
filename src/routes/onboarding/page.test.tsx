@@ -311,8 +311,6 @@ function renderJoin(path = '/join') {
 async function reachName() {
   calls.status = 'signed-up';
   renderJoin();
-  await userEvent.click(await screen.findByRole('checkbox', { name: /I agree to the Terms/ }));
-  await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
   await screen.findByPlaceholderText('ex. Ajay Shenoy');
 }
 
@@ -794,25 +792,25 @@ describe('leaving halfway and coming back', () => {
     expect(await screen.findByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
   });
 
-  it('asks for the terms again when they were never agreed', async () => {
+  it('opens on the name, with no welcome back, when that is where they stopped', async () => {
     progress.saved = {
-      step: 'agree',
-      answers: { termsAgreed: false },
+      step: 'name',
+      answers: { displayName: 'Dana' },
       savedAt: '2026-10-15T20:00:00Z',
     };
     calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
     calls.status = 'signed-up';
     renderJoin();
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
     expect(screen.queryByText(/You are where you left off/)).toBeNull();
   });
 
   it('keeps each step on the account as it moves on, never the password', async () => {
     await reachBirthday('Dana');
     const steps = progress.account.map((saved) => saved.step);
-    expect(steps).toEqual(['agree', 'name', 'username', 'birthday']);
+    expect(steps).toEqual(['name', 'username', 'birthday']);
     const last = progress.account.at(-1)?.answers ?? {};
-    expect(last).toMatchObject({ termsAgreed: true, displayName: 'Dana', username: 'dana' });
+    expect(last).toMatchObject({ displayName: 'Dana', username: 'dana' });
     expect(Object.keys(last)).not.toContain('password');
     expect(Object.keys(last)).not.toContain('email');
     expect(progress.device).toContain('birthday');
@@ -832,7 +830,7 @@ describe('coming back from the confirmation link', () => {
   it('goes on to the invite check, signed in, and then the questions', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?confirmed=1');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['my_invite_status']);
   });
 
@@ -847,7 +845,7 @@ describe('the invite link', () => {
   it('claims the invite before asking whether the account is invited', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['claim_invite', 'my_invite_status']);
     expect(calls.claimedWith).toBe('tok-123');
   });
@@ -855,7 +853,7 @@ describe('the invite link', () => {
   it('lets go of the token once it has been answered', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBeNull();
   });
 
@@ -874,7 +872,7 @@ describe('the invite link', () => {
     act(() => {
       calls.setStatus('signed-up');
     });
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.claimedWith).toBe('tok-123');
   });
 
@@ -882,7 +880,7 @@ describe('the invite link', () => {
     calls.user = { email: 'someone.else@example.com', user_metadata: {} };
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.claimedWith).toBe('tok-123');
   });
 
@@ -890,7 +888,7 @@ describe('the invite link', () => {
     calls.claimResult = false;
     calls.status = 'signed-up';
     renderJoin('/join?invite=used');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.order).toEqual(['claim_invite', 'my_invite_status']);
   });
 
@@ -904,7 +902,7 @@ describe('the invite link', () => {
 
     calls.claimError = false;
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
   });
 
   it('opens at the join form, not the Welcome screen', () => {
@@ -990,7 +988,7 @@ describe('the invite link', () => {
     calls.status = 'signed-up';
     calls.inviteAddress = 'dana@example.com';
     renderJoin('/join?invite=tok-123');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.order).not.toContain('invite_address_for_token');
   });
 
@@ -1014,7 +1012,7 @@ describe('the not-invited screen', () => {
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
     expect(screen.getByText(/You may have joined with another email/)).toBeInTheDocument();
-    expect(screen.queryByText('Before you join')).toBeNull();
+    expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
   it('names only the organizations that can invite, and the consultation link', async () => {
@@ -1074,7 +1072,7 @@ describe('signing in with email', () => {
     await openSignIn();
     await fillDoor('dana@example.com', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['signInWithPassword:dana@example.com', 'my_invite_status']);
   });
 
@@ -1084,7 +1082,7 @@ describe('signing in with email', () => {
     await fillDoor('dana@example.com', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
-    expect(screen.queryByText('Before you join')).toBeNull();
+    expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
   it('says the same thing for a wrong password and an unknown address', async () => {
@@ -1166,7 +1164,7 @@ describe('Google, Apple and passkeys', () => {
       user_metadata: { full_name: 'Dana Smith' },
     };
     renderJoin('/join?google=signin');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['my_invite_status']);
   });
 
@@ -1180,7 +1178,7 @@ describe('Google, Apple and passkeys', () => {
     calls.status = 'signed-up';
     calls.invited = true;
     renderJoin('/join?google=signin');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.order).not.toContain('signOut');
   });
 
@@ -1567,28 +1565,28 @@ describe('the phone for events', () => {
   });
 });
 
+// The owner, 2026-10-15: no screen of their own and no box to tick. The
+// name step says that going on is agreeing, with both documents linked.
 describe('agreeing to the terms', () => {
-  it('asks for one box, after the club has said yes, and no text-message consent', async () => {
+  it('says so under the name, with both documents a tap away, and no box to tick', async () => {
     calls.status = 'signed-up';
     renderJoin();
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
-    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
-    expect(screen.queryByText(/Text me/)).toBeNull();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
+    expect(screen.getByText(/By continuing, you agree to our/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+    expect(screen.getByRole('link', { name: /Privacy Policy/ })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
     expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
       'target',
       '_blank',
     );
-  });
-
-  it('goes no further without the tick', async () => {
-    calls.status = 'signed-up';
-    renderJoin();
-    await screen.findByText('Before you join');
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await userEvent.keyboard('{Enter}');
-    expect(screen.queryByPlaceholderText('ex. Ajay Shenoy')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByText(/Text me/)).toBeNull();
   });
 
   it('is not asked of somebody turned away', async () => {
@@ -1596,7 +1594,20 @@ describe('agreeing to the terms', () => {
     calls.invited = false;
     renderJoin();
     await screen.findByText(/isn't on the list/i);
-    expect(screen.queryByText('Before you join')).toBeNull();
+    expect(screen.queryByText(/By continuing, you agree/)).toBeNull();
+  });
+});
+
+// Back from the first question: there is nothing before it but the account.
+describe('the wrong account', () => {
+  it('signs out from the first question, for another account', async () => {
+    calls.status = 'signed-up';
+    renderJoin();
+    await screen.findByText('What is your name?');
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+    expect(calls.order).toContain('signOut');
+    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
   });
 });
 

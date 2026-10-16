@@ -35,70 +35,6 @@ interface StepProps {
 }
 
 /**
- * Terms and privacy, asked once the club has said yes to this address.
- *
- * After the invite check rather than before it, so somebody turned away is
- * not asked to agree to a club they are not in. Somebody who already has a
- * profile never sees it.
- */
-export function AgreeStep({ data, set }: StepProps) {
-  return (
-    <>
-      <Question>Before you join</Question>
-      {/* Not "on the list": while anybody can join (20261014000000), a
-          walk-in is let in without being on it. */}
-      <Sub>You can join. It means agreeing to the club's terms.</Sub>
-      <ConsentBox
-        id="terms-agreed"
-        checked={data.termsAgreed}
-        onChange={(termsAgreed) => {
-          set({ termsAgreed });
-        }}
-      >
-        I agree to the <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
-        <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
-      </ConsentBox>
-    </>
-  );
-}
-
-/**
- * The agreement box.
- *
- * A real checkbox, unticked to begin with. The whole row is the label, so the target is the sentence and not
- * only the square, and the square is sized in em so it grows with the text.
- */
-function ConsentBox({
-  id,
-  checked,
-  onChange,
-  children,
-}: {
-  id: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      className="mt-3 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[0.84375rem] text-ink2 leading-[1.5]"
-    >
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => {
-          onChange(e.target.checked);
-        }}
-        className="mt-[0.1em] h-[1.375em] w-[1.375em] flex-none accent-emphasis"
-      />
-      <span>{children}</span>
-    </label>
-  );
-}
-
-/**
  * A link out of a step that leaves it where it was. In the same tab,
  * reading the terms would throw away the number and the ticks, and the way
  * back would start again at the welcome screen.
@@ -134,6 +70,13 @@ export function NameStep({ data, set }: StepProps) {
           set({ displayName: e.target.value });
         }}
       />
+      {/* The terms are agreed by going on (the owner, 2026-10-15), not on a
+          screen of their own with a box to tick. The first question after
+          the invite check, so somebody turned away is never asked. */}
+      <Fine>
+        By continuing, you agree to our <NewTabLink href="/terms">Terms of Service</NewTabLink> and
+        confirm you read our <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
+      </Fine>
     </>
   );
 }

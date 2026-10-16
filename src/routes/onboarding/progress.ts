@@ -20,7 +20,6 @@ import type { OnboardingData, Step } from '@/routes/onboarding/types';
  */
 
 export const RESUMABLE_STEPS = [
-  'agree',
   'name',
   'username',
   'birthday',
@@ -37,7 +36,6 @@ export function isResumable(step: Step): step is ResumableStep {
 }
 
 const KEPT = [
-  'termsAgreed',
   'displayName',
   'username',
   'usernameChecked',

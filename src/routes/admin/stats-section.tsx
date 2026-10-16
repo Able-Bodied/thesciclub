@@ -154,8 +154,9 @@ function Funnel({ stats }: { stats: ClubStats }) {
 }
 
 const STEP_ROWS: { key: OnboardingStepKey; label: string }[] = [
-  { key: 'agree', label: 'Got past the invite check' },
-  { key: 'name', label: 'Name' },
+  // The terms step went on 2026-10-15: the name is the first step now, and
+  // reaching it is getting past the invite check.
+  { key: 'name', label: 'Got past the invite check' },
   { key: 'username', label: 'Username' },
   { key: 'birthday', label: 'Birthday' },
   { key: 'injury', label: 'Injury or condition' },
@@ -200,7 +201,7 @@ function Steps({ stats }: { stats: ClubStats }) {
             key={row.key}
             label={row.label}
             value={stats.steps[row.key]}
-            of={stats.steps.agree}
+            of={stats.steps.name}
           />
         ))}
       </ul>
