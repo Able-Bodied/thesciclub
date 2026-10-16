@@ -3,13 +3,13 @@ import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * The frame every question sits in: a progress line, a back link, the question,
- * and a footer that is always in the same place.
+ * The frame every question sits in: a progress line, a back link, the
+ * question, and the buttons right below it.
  *
- * The footer is fixed to the bottom rather than flowing after the content so
- * the primary action does not move between steps. A button that jumps around
- * is harder to hit for anybody with limited hand function, which is most of the
- * people this is for.
+ * Below the question rather than fixed to the bottom of the screen (the owner,
+ * 2026-10-15): a phone's keyboard covers the bottom half, so a Continue down
+ * there was hidden on every step that is typed into. Right under the answer
+ * it stays in sight with the keyboard out, next to where the hand already is.
  */
 
 export function StepFrame({
@@ -66,7 +66,7 @@ export function StepFrame({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-[18px] pb-3">
+        <div className="flex-1 overflow-y-auto px-[18px]">
           {onBack ? (
             <button
               type="button"
@@ -80,12 +80,8 @@ export function StepFrame({
             <div className="h-4" />
           )}
           {children}
-          <div className="h-4" />
+          <footer className="pt-6 pb-[max(22px,env(safe-area-inset-bottom))]">{footer}</footer>
         </div>
-
-        <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
-          {footer}
-        </footer>
       </form>
     </main>
   );
