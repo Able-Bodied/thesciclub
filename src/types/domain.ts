@@ -152,27 +152,15 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
  * box to type in, and whatever is typed is kept as written.
  */
 export const OTHER_DISABILITIES = [
-  'Central cord syndrome',
-  'Transverse myelitis',
+  // The owner's list, 2026-10-15, then central cord syndrome.
   'Spina bifida',
+  'Cerebral palsy',
+  'Amputee',
+  'TBI',
+  'Blind/visual',
   'Multiple sclerosis',
-  'Neuromyelitis optica (NMOSD)',
-  'Spinal cord tumor',
-  'Spinal cord stroke',
-  'Spinal arteriovenous malformation (AVM)',
-  'Syringomyelia',
-  'Tethered cord syndrome',
-  'Cervical myelopathy (spinal stenosis)',
-  'Cauda equina syndrome',
-  'Conus medullaris syndrome',
-  'Brown-Séquard syndrome',
-  'Anterior cord syndrome',
-  'Hereditary spastic paraplegia',
-  'Acute flaccid myelitis',
-  'Spinal cord infection or abscess',
-  'Spinal muscular atrophy (SMA)',
-  'ALS (motor neuron disease)',
-  'Post-polio syndrome',
+  'Muscular dystrophy',
+  'Central cord syndrome',
 ] as const;
 
 /** Longest a typed condition may be; the database holds it to the same. */

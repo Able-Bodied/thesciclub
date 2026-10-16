@@ -95,11 +95,8 @@ describe('the disability question', () => {
     expect(options[0]).toBe('Choose one');
     expect(options).toContain('Central cord syndrome');
     expect(options.at(-1)).toBe('Other');
-    await userEvent.selectOptions(
-      screen.getByLabelText('Which disability?'),
-      'Transverse myelitis',
-    );
-    expect(seen.at(-1)?.conditionName).toBe('Transverse myelitis');
+    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Cerebral palsy');
+    expect(seen.at(-1)?.conditionName).toBe('Cerebral palsy');
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });

@@ -118,9 +118,17 @@ describe('the spinal cord question', () => {
     expect(asksLevel(null)).toBe(false);
   });
 
-  it('lists central cord syndrome among the other disabilities', () => {
-    expect(OTHER_DISABILITIES).toContain('Central cord syndrome');
-    expect(OTHER_DISABILITIES).toContain('Transverse myelitis');
+  it("lists the owner's other disabilities, then central cord syndrome", () => {
+    expect(OTHER_DISABILITIES).toEqual([
+      'Spina bifida',
+      'Cerebral palsy',
+      'Amputee',
+      'TBI',
+      'Blind/visual',
+      'Multiple sclerosis',
+      'Muscular dystrophy',
+      'Central cord syndrome',
+    ]);
   });
 
   it('labels each kind the way it is said', () => {
