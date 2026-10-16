@@ -255,7 +255,7 @@ export function PhoneForEventsStep({ data, set }: StepProps) {
           }}
         />
       </div>
-      <Fine>Skip it and you can add one later on Me, or when you first choose Going.</Fine>
+      <Fine>You can add one later in the “Me” tab.</Fine>
     </>
   );
 }
