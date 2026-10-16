@@ -1520,7 +1520,7 @@ describe('the phone for events', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
-    await screen.findByText('A number for events?');
+    await screen.findByText('What is your phone number?');
   }
 
   it('is optional: Continue works with nothing typed', async () => {
@@ -1543,7 +1543,11 @@ describe('the phone for events', () => {
 
   it('says who gets the number', async () => {
     await reachPhone();
-    expect(screen.getByText(/Event hosts get your email, and this number/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Event hosts can see your number if you say you are going/),
+    ).toBeInTheDocument();
+    // The club sends no texts, so the screen must not promise any.
+    expect(screen.queryByText(/text you/i)).toBeNull();
   });
 
   it('will not go on with half a number', async () => {
@@ -1918,7 +1922,7 @@ describe('a photograph the club cannot hold', () => {
     await userEvent.selectOptions(await screen.findByLabelText('State'), 'CA');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     // The phone for events is optional, and left empty.
-    await screen.findByText('A number for events?');
+    await screen.findByText('What is your phone number?');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Add a photo?');
   }
@@ -2007,7 +2011,7 @@ describe('steps that move on by themselves', () => {
     await screen.findByText('Where do you live?');
     await userEvent.click(screen.getByRole('button', { name: 'Rather not say' }));
 
-    expect(await screen.findByText('A number for events?')).toBeInTheDocument();
+    expect(await screen.findByText('What is your phone number?')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('Add a photo?')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));

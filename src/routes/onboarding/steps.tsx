@@ -228,10 +228,12 @@ export function PhoneForEventsStep({ data, set }: StepProps) {
   const phoneRef = useAutoFocus();
   return (
     <>
-      <Question>A number for events?</Question>
+      {/* The owner, 2026-10-15. Nothing here about texting: the club sends
+          no texts yet (see the privacy policy), so it may not say it will. */}
+      <Question>What is your phone number?</Question>
       <Sub>
-        Optional. Event hosts get your email, and this number if you give one, when you choose Going
-        on their event. Nobody else sees it.
+        Optional. Event hosts can see your number if you say you are going to their event. Nobody
+        else sees it.
       </Sub>
       <label htmlFor="phone" className="mt-5 block font-bold text-[0.8125rem] text-ink">
         Phone number
