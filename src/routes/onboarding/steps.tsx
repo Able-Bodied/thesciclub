@@ -500,7 +500,8 @@ export function CityStep({ data, set }: StepProps) {
   return (
     <>
       <Question>Where do you live?</Question>
-      <Sub>We show peers and events near you first. City and state only — never your address.</Sub>
+      {/* The owner, 2026-10-15. */}
+      <Sub>We can use your current location to fill in the fields below.</Sub>
 
       <button
         type="button"
