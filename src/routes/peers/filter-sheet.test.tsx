@@ -60,18 +60,18 @@ describe('the topics on the Peers filter', () => {
 describe('the spinal cord condition chip', () => {
   it('sits with the levels, only when somebody has a condition', () => {
     renderSheet({ regions: ['Cervical'], conditions: false });
-    expect(screen.queryByRole('button', { name: 'Spinal cord condition' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Other disability' })).toBeNull();
   });
 
   it('turns the condition filter on and off', async () => {
     const props = renderSheet({ regions: ['Cervical'], conditions: true });
     expect(screen.getByText('Level or condition')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Spinal cord condition' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Other disability' }));
     expect(props.onChange).toHaveBeenCalledWith({ ...EMPTY_MEMBER_FILTERS, condition: true });
   });
 
   it('is drawn even when nobody has a level to group', () => {
     renderSheet({ regions: [], conditions: true });
-    expect(screen.getByRole('button', { name: 'Spinal cord condition' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Other disability' })).toBeInTheDocument();
   });
 });

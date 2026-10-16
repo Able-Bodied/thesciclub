@@ -31,7 +31,7 @@ export function activeFilterCount(filters: MemberFilters): number {
 }
 
 /**
- * The level group: a region ticked, or "Spinal cord condition", or both, and a
+ * The level group: a region ticked, or "Other disability", or both, and a
  * member matching any one of them is kept. A condition with a level is in its
  * region too, so ticking Thoracic and the condition chip finds both kinds.
  */

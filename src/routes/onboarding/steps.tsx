@@ -389,25 +389,58 @@ export function InjuryStep({ data, set }: StepProps) {
   // The birthday as they typed it, for "Since birth".
   const birth = data.birthDate ? birthPartsOf(data) : null;
 
+  // The owner, 2026-10-15: "Disability details", the date first and
+  // optional, then the kind. A relative has no date of their own to give.
   return (
     <>
-      <Question>Your spinal cord</Question>
-      <Sub>An injury or a condition: members find each other by this.</Sub>
+      <Question>Disability details</Question>
+
+      {data.injuryType === 'family' ? null : (
+        <InjuryDate data={data} set={set} condition={condition} birth={birth} />
+      )}
+      {data.injuryType !== 'family' &&
+      injury &&
+      injuredAt !== null &&
+      age !== null &&
+      injuredAt >= 0 &&
+      injuredAt <= age ? (
+        <InjuredAt
+          label={dateLabel(injury.date, injury.precision)}
+          at={injuredAt}
+          condition={condition}
+        />
+      ) : null}
 
       <div className="mt-5">
         <SpinalCordFields
           answer={data}
           onChange={(patch) => {
-            set(patch);
+            // A relative gives no date of their own: one typed before goes.
+            set(
+              patch.injuryType === 'family'
+                ? { ...patch, injuryYear: '', injuryMonth: '', injuryDay: '' }
+                : patch,
+            );
           }}
         />
       </div>
+    </>
+  );
+}
 
+function InjuryDate({
+  data,
+  set,
+  condition,
+  birth,
+}: StepProps & { condition: boolean; birth: ReturnType<typeof birthPartsOf> | null }) {
+  return (
+    <>
       <h2
         id="injury-date-heading"
-        className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+        className="mt-4 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
-        {condition ? 'When did it start?' : 'When were you injured?'}
+        {condition ? 'When did it start? (optional)' : 'When were you injured? (optional)'}
       </h2>
       <DateFields
         id="injury"
@@ -436,28 +469,39 @@ export function InjuryStep({ data, set }: StepProps) {
           Since birth
         </button>
       ) : null}
-
-      {injury && injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (
-        <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
-          <b className="text-ink">{dateLabel(injury.date, injury.precision)}</b>:{' '}
-          {condition ? (
-            injuredAt === 0 ? (
-              'since birth'
-            ) : (
-              <>
-                it started when you were <b className="text-ink">{injuredAt}</b>
-              </>
-            )
-          ) : (
-            <>
-              you were injured at <b className="text-ink">{injuredAt}</b>
-            </>
-          )}
-          . We use that to put you next to people {condition ? 'whose lives changed' : 'injured'}{' '}
-          around the same age, not just at the same level.
-        </div>
-      ) : null}
     </>
+  );
+}
+
+/** The date read back, with the age it happened at. */
+function InjuredAt({
+  label,
+  at,
+  condition,
+}: {
+  label: string | null;
+  at: number;
+  condition: boolean;
+}) {
+  return (
+    <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
+      <b className="text-ink">{label}</b>:{' '}
+      {condition ? (
+        at === 0 ? (
+          'since birth'
+        ) : (
+          <>
+            it started when you were <b className="text-ink">{at}</b>
+          </>
+        )
+      ) : (
+        <>
+          you were injured at <b className="text-ink">{at}</b>
+        </>
+      )}
+      . We use that to put you next to people {condition ? 'whose lives changed' : 'injured'} around
+      the same age, not just at the same level.
+    </div>
   );
 }
 

@@ -177,9 +177,13 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
       // step is satisfied by either. Without this the only way past a question
       // somebody does not want to answer was "Finish later", which abandons
       // the rest of the wizard — a much bigger thing than declining one page.
+      // The date is optional (the owner, 2026-10-15): empty goes on, a
+      // whole one goes on, and only one half typed holds the step.
       return (
         (spinalCordAnswered(data) || data.declined.includes('exactLevel')) &&
-        (injuryDateOf(data) !== null || data.declined.includes('injuryDate'))
+        (injuryDateOf(data) !== null ||
+          data.declined.includes('injuryDate') ||
+          (data.injuryYear + data.injuryMonth + data.injuryDay).trim() === '')
       );
     case 'city':
       // A state is the coarsest thing we ask for. City can be blank —
@@ -191,10 +195,11 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
 }
 
 /**
- * The kind, and what that kind needs: a condition's name (its level is
- * optional), or a level for an injury ("Do not know" is a level answer).
+ * The kind, and what that kind needs: another disability's name, a level for
+ * an injury ("Do not know" is a level answer), and nothing for a relative.
  */
 export function spinalCordAnswered(data: OnboardingData): boolean {
+  if (data.injuryType === 'family') return true;
   if (data.injuryType === 'condition') return data.conditionName.trim() !== '';
   return data.injuryType !== null && data.exactLevel !== null;
 }

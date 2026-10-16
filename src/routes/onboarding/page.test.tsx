@@ -1708,13 +1708,13 @@ describe('the birthday boxes', () => {
   it('goes on by itself once the year is typed', async () => {
     await reachBirthday('Sam');
     await typeBirthday('1985-04-12');
-    expect(await screen.findByText('Your spinal cord')).toBeInTheDocument();
+    expect(await screen.findByText('Disability details')).toBeInTheDocument();
   });
 
   it('does not bounce forward again on coming Back to it', async () => {
     await reachBirthday('Sam');
     await typeBirthday('1985-04-12');
-    await screen.findByText('Your spinal cord');
+    await screen.findByText('Disability details');
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 900));
@@ -2013,10 +2013,10 @@ describe('the injury date boxes', () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Your spinal cord');
-    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegia/ }));
+    await screen.findByText('Disability details');
+    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegic/ }));
     fireEvent.change(screen.getByLabelText('Level of injury'), { target: { value: 'C5' } });
-    // The step opens on the kind, not the date: the date is reached by hand.
+    // The cursor is not put in the date: it is reached by hand.
     await userEvent.click(screen.getByLabelText('Month'));
   }
 
@@ -2039,15 +2039,36 @@ describe('the injury date boxes', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
-  it('takes a condition by name, and "Since birth" for its date', async () => {
+  // The owner, 2026-10-15: the date is optional, and a relative is not asked it.
+  it('goes on with no date at all', async () => {
+    await reachInjuryStep();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  it('asks a relative no date and no level, and goes on', async () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Your spinal cord');
-    await userEvent.click(screen.getByRole('radio', { name: /Another spinal cord condition/ }));
-    expect(screen.getByText('When did it start?')).toBeInTheDocument();
+    await screen.findByText('Disability details');
+    expect(screen.getByText('When were you injured? (optional)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /Relative/ }));
+    expect(screen.queryByText('When were you injured? (optional)')).toBeNull();
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  it('takes another disability by name, and "Since birth" for its date', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Disability details');
+    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
+    expect(screen.getByText('When did it start? (optional)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
+    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Spina bifida');
     await userEvent.click(screen.getByRole('button', { name: 'Since birth' }));
     expect(screen.getByLabelText('Year')).toHaveValue('1990');
     expect(screen.getByText(/since birth\./)).toBeInTheDocument();

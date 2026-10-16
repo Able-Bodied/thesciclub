@@ -98,7 +98,7 @@ export function FilterSheet({
           ))}
           {conditions ? (
             <FilterChip
-              label="Spinal cord condition"
+              label="Other disability"
               on={filters.condition}
               onClick={() => {
                 onChange({ ...filters, condition: !filters.condition });
