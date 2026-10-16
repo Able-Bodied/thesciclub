@@ -66,8 +66,6 @@ export interface OnboardingData {
    * once, so a decline is another answer to carry to the insert.
    */
   declined: string[];
-  /** Terms of Service and Privacy Policy, asked once the invite check has passed. */
-  termsAgreed: boolean;
 }
 
 export const INITIAL_ONBOARDING_DATA: OnboardingData = {
@@ -95,13 +93,12 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
   photoFile: null,
   photoPreviewUrl: null,
   declined: [],
-  termsAgreed: false,
 };
 
 /**
- * The first six are the doors and the waiting rooms, and `agree` follows the
- * invite check for somebody who is joining: none is a step somebody walks
- * through in order, so none is counted in the progress bar.
+ * The first six are the doors and the waiting rooms: none is a step somebody
+ * walks through in order, so none is counted in the progress bar. The terms
+ * are agreed on the name step, by going on (the owner, 2026-10-15).
  */
 export const STEPS = [
   'welcome',
@@ -110,7 +107,6 @@ export const STEPS = [
   'join',
   'check-email',
   'checking',
-  'agree',
   'name',
   'username',
   'birthday',
@@ -159,8 +155,6 @@ export function birthPartsOf(data: OnboardingData) {
 /** Whether the current step has enough to move on. */
 export function canAdvance(step: Step, data: OnboardingData): boolean {
   switch (step) {
-    case 'agree':
-      return data.termsAgreed;
     case 'name':
       return data.displayName.trim().length > 0;
     case 'username':
@@ -177,9 +171,13 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
       // step is satisfied by either. Without this the only way past a question
       // somebody does not want to answer was "Finish later", which abandons
       // the rest of the wizard — a much bigger thing than declining one page.
+      // The date is optional (the owner, 2026-10-15): empty goes on, a
+      // whole one goes on, and only one half typed holds the step.
       return (
         (spinalCordAnswered(data) || data.declined.includes('exactLevel')) &&
-        (injuryDateOf(data) !== null || data.declined.includes('injuryDate'))
+        (injuryDateOf(data) !== null ||
+          data.declined.includes('injuryDate') ||
+          (data.injuryYear + data.injuryMonth + data.injuryDay).trim() === '')
       );
     case 'city':
       // A state is the coarsest thing we ask for. City can be blank —
@@ -191,10 +189,11 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
 }
 
 /**
- * The kind, and what that kind needs: a condition's name (its level is
- * optional), or a level for an injury ("Do not know" is a level answer).
+ * The kind, and what that kind needs: another disability's name, a level for
+ * an injury ("Do not know" is a level answer), and nothing for a relative.
  */
 export function spinalCordAnswered(data: OnboardingData): boolean {
+  if (data.injuryType === 'family') return true;
   if (data.injuryType === 'condition') return data.conditionName.trim() !== '';
   return data.injuryType !== null && data.exactLevel !== null;
 }

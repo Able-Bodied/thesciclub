@@ -1,5 +1,5 @@
 import { Loader2, LocateFixed } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
 import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
@@ -35,70 +35,6 @@ interface StepProps {
 }
 
 /**
- * Terms and privacy, asked once the club has said yes to this address.
- *
- * After the invite check rather than before it, so somebody turned away is
- * not asked to agree to a club they are not in. Somebody who already has a
- * profile never sees it.
- */
-export function AgreeStep({ data, set }: StepProps) {
-  return (
-    <>
-      <Question>Before you join</Question>
-      {/* Not "on the list": while anybody can join (20261014000000), a
-          walk-in is let in without being on it. */}
-      <Sub>You can join. It means agreeing to the club's terms.</Sub>
-      <ConsentBox
-        id="terms-agreed"
-        checked={data.termsAgreed}
-        onChange={(termsAgreed) => {
-          set({ termsAgreed });
-        }}
-      >
-        I agree to the <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
-        <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
-      </ConsentBox>
-    </>
-  );
-}
-
-/**
- * The agreement box.
- *
- * A real checkbox, unticked to begin with. The whole row is the label, so the target is the sentence and not
- * only the square, and the square is sized in em so it grows with the text.
- */
-function ConsentBox({
-  id,
-  checked,
-  onChange,
-  children,
-}: {
-  id: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label
-      htmlFor={id}
-      className="mt-3 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[0.84375rem] text-ink2 leading-[1.5]"
-    >
-      <input
-        id={id}
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => {
-          onChange(e.target.checked);
-        }}
-        className="mt-[0.1em] h-[1.375em] w-[1.375em] flex-none accent-emphasis"
-      />
-      <span>{children}</span>
-    </label>
-  );
-}
-
-/**
  * A link out of a step that leaves it where it was. In the same tab,
  * reading the terms would throw away the number and the ticks, and the way
  * back would start again at the welcome screen.
@@ -121,19 +57,26 @@ export function NameStep({ data, set }: StepProps) {
   const nameRef = useAutoFocus();
   return (
     <>
-      <Question>What should people call you?</Question>
-      <Sub>First name is plenty.</Sub>
+      {/* The owner, 2026-10-15: the whole name, asked plainly. */}
+      <Question>What is your name?</Question>
       <Field
         ref={nameRef}
         id="name"
-        autoComplete="given-name"
-        placeholder="Alex"
+        autoComplete="name"
+        placeholder="ex. Ajay Shenoy"
         maxLength={MEMBER_TEXT_MAX.display_name}
         value={data.displayName}
         onChange={(e) => {
           set({ displayName: e.target.value });
         }}
       />
+      {/* The terms are agreed by going on (the owner, 2026-10-15), not on a
+          screen of their own with a box to tick. The first question after
+          the invite check, so somebody turned away is never asked. */}
+      <Fine>
+        By continuing, you agree to our <NewTabLink href="/terms">Terms of Service</NewTabLink> and
+        confirm you read our <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
+      </Fine>
     </>
   );
 }
@@ -164,6 +107,19 @@ export function UsernameStep({ data, set }: StepProps) {
       cancelled = true;
     };
   }, [displayName]);
+
+  // The first suggestion, the whole name with dots (20261015030000), is
+  // chosen for them (the owner, 2026-10-15), so Continue is all it takes.
+  // Once, and only into an empty box: a name they typed or chose stays, and
+  // clearing the box to type their own does not bring it back. The club
+  // only suggests names it has just found free, so it counts as checked.
+  const preselected = useRef(false);
+  useEffect(() => {
+    const first = suggestions[0];
+    if (preselected.current || !first) return;
+    preselected.current = true;
+    if (username === '') set({ username: first, usernameChecked: first });
+  }, [suggestions, username, set]);
 
   useEffect(() => {
     if (!isValidUsername(username)) {
@@ -272,10 +228,12 @@ export function PhoneForEventsStep({ data, set }: StepProps) {
   const phoneRef = useAutoFocus();
   return (
     <>
-      <Question>A number for events?</Question>
+      {/* The owner, 2026-10-15. Nothing here about texting: the club sends
+          no texts yet (see the privacy policy), so it may not say it will. */}
+      <Question>What is your phone number?</Question>
       <Sub>
-        Optional. Event hosts get your email, and this number if you give one, when you choose Going
-        on their event. Nobody else sees it.
+        Optional. Event hosts can see your number if you say you are going to their event. Nobody
+        else sees it.
       </Sub>
       <label htmlFor="phone" className="mt-5 block font-bold text-[0.8125rem] text-ink">
         Phone number
@@ -297,7 +255,7 @@ export function PhoneForEventsStep({ data, set }: StepProps) {
           }}
         />
       </div>
-      <Fine>Skip it and you can add one later on Me, or when you first choose Going.</Fine>
+      <Fine>You can add one later in the “Me” tab.</Fine>
     </>
   );
 }
@@ -376,25 +334,58 @@ export function InjuryStep({ data, set }: StepProps) {
   // The birthday as they typed it, for "Since birth".
   const birth = data.birthDate ? birthPartsOf(data) : null;
 
+  // The owner, 2026-10-15: "Disability details", the date first and
+  // optional, then the kind. A relative has no date of their own to give.
   return (
     <>
-      <Question>Your spinal cord</Question>
-      <Sub>An injury or a condition: members find each other by this.</Sub>
+      <Question>Disability details</Question>
+
+      {data.injuryType === 'family' ? null : (
+        <InjuryDate data={data} set={set} condition={condition} birth={birth} />
+      )}
+      {data.injuryType !== 'family' &&
+      injury &&
+      injuredAt !== null &&
+      age !== null &&
+      injuredAt >= 0 &&
+      injuredAt <= age ? (
+        <InjuredAt
+          label={dateLabel(injury.date, injury.precision)}
+          at={injuredAt}
+          condition={condition}
+        />
+      ) : null}
 
       <div className="mt-5">
         <SpinalCordFields
           answer={data}
           onChange={(patch) => {
-            set(patch);
+            // A relative gives no date of their own: one typed before goes.
+            set(
+              patch.injuryType === 'family'
+                ? { ...patch, injuryYear: '', injuryMonth: '', injuryDay: '' }
+                : patch,
+            );
           }}
         />
       </div>
+    </>
+  );
+}
 
+function InjuryDate({
+  data,
+  set,
+  condition,
+  birth,
+}: StepProps & { condition: boolean; birth: ReturnType<typeof birthPartsOf> | null }) {
+  return (
+    <>
       <h2
         id="injury-date-heading"
-        className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+        className="mt-4 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
-        {condition ? 'When did it start?' : 'When were you injured?'}
+        {condition ? 'When did it start? (optional)' : 'When were you injured? (optional)'}
       </h2>
       <DateFields
         id="injury"
@@ -423,28 +414,39 @@ export function InjuryStep({ data, set }: StepProps) {
           Since birth
         </button>
       ) : null}
-
-      {injury && injuredAt !== null && age !== null && injuredAt >= 0 && injuredAt <= age ? (
-        <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
-          <b className="text-ink">{dateLabel(injury.date, injury.precision)}</b>:{' '}
-          {condition ? (
-            injuredAt === 0 ? (
-              'since birth'
-            ) : (
-              <>
-                it started when you were <b className="text-ink">{injuredAt}</b>
-              </>
-            )
-          ) : (
-            <>
-              you were injured at <b className="text-ink">{injuredAt}</b>
-            </>
-          )}
-          . We use that to put you next to people {condition ? 'whose lives changed' : 'injured'}{' '}
-          around the same age, not just at the same level.
-        </div>
-      ) : null}
     </>
+  );
+}
+
+/** The date read back, with the age it happened at. */
+function InjuredAt({
+  label,
+  at,
+  condition,
+}: {
+  label: string | null;
+  at: number;
+  condition: boolean;
+}) {
+  return (
+    <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
+      <b className="text-ink">{label}</b>:{' '}
+      {condition ? (
+        at === 0 ? (
+          'since birth'
+        ) : (
+          <>
+            it started when you were <b className="text-ink">{at}</b>
+          </>
+        )
+      ) : (
+        <>
+          you were injured at <b className="text-ink">{at}</b>
+        </>
+      )}
+      . We use that to put you next to people {condition ? 'whose lives changed' : 'injured'} around
+      the same age, not just at the same level.
+    </div>
   );
 }
 
@@ -500,7 +502,8 @@ export function CityStep({ data, set }: StepProps) {
   return (
     <>
       <Question>Where do you live?</Question>
-      <Sub>We show peers and events near you first. City and state only — never your address.</Sub>
+      {/* The owner, 2026-10-15. */}
+      <Sub>We can use your current location to fill in the fields below.</Sub>
 
       <button
         type="button"

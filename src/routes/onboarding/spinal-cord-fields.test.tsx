@@ -33,72 +33,119 @@ const optionsOf = (label: string) =>
     .getAllByRole('option')
     .map((o) => o.textContent);
 
-describe('the spinal cord question', () => {
-  it('asks the kind first, and nothing else until it is chosen', () => {
+describe('the disability question', () => {
+  // The owner, 2026-10-15.
+  it('offers quad, high para, low para, another disability and relative, and nothing else yet', () => {
     render(<Harness seen={[]} />);
     expect(screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual([
-      expect.stringContaining('Paraplegia'),
-      expect.stringContaining('Quadriplegia'),
-      expect.stringContaining('Central cord syndrome'),
-      expect.stringContaining('Another spinal cord condition'),
+      'Quadriplegic (tetraplegic)',
+      'High para (T1–T8)',
+      'Low para (T9+)',
+      'Other disability',
+      'Relative/Spouse',
     ]);
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });
 
-  it('offers a para the levels from T1 down, and asks complete or incomplete', async () => {
+  it('offers a high para T1 to T8, and asks complete or incomplete', async () => {
     render(<Harness seen={[]} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Paraplegia/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /High para/ }));
     const levels = optionsOf('Level of injury');
     expect(levels[1]).toBe('T1');
-    expect(levels).not.toContain('C5');
+    expect(levels.at(-2)).toBe('T8');
+    expect(levels.at(-1)).toBe('Do not know');
     expect(screen.getByRole('group', { name: 'Complete or incomplete?' })).toBeInTheDocument();
+  });
+
+  it('offers a low para T9 down', async () => {
+    render(<Harness seen={[]} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
+    const levels = optionsOf('Level of injury');
+    expect(levels[1]).toBe('T9');
+    expect(levels).toContain('S5');
+    expect(levels).not.toContain('T8');
   });
 
   it('clears a level that the new kind does not have', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Paraplegia/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /High para/ }));
     await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'T6');
-    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegia/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegic/ }));
     expect(screen.getByLabelText('Level of injury')).toHaveValue('');
     expect(optionsOf('Level of injury')).toContain('C5/6');
     expect(seen.at(-1)?.exactLevel).toBeNull();
   });
 
-  it('keeps a level the new kind also has', async () => {
+  it('keeps "Do not know", which every injury has', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegia/ }));
-    await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'C5');
-    await userEvent.click(screen.getByRole('radio', { name: /Central cord/ }));
-    expect(screen.getByLabelText('Level of injury')).toHaveValue('C5');
-    // Incomplete by definition: set, and not asked.
-    expect(seen.at(-1)?.completeness).toBe('Incomplete');
+    await userEvent.click(screen.getByRole('radio', { name: /High para/ }));
+    await userEvent.selectOptions(screen.getByLabelText('Level of injury'), 'Do not know');
+    await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
+    expect(screen.getByLabelText('Level of injury')).toHaveValue('Do not know');
+  });
+
+  it('asks which other disability from a list, central cord syndrome among them, with no level', async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(<Harness seen={seen} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
+    const options = optionsOf('Which disability?');
+    expect(options[0]).toBe('Choose one');
+    expect(options).toContain('Central cord syndrome');
+    expect(options.at(-1)).toBe('Other');
+    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Cerebral palsy');
+    expect(seen.at(-1)?.conditionName).toBe('Cerebral palsy');
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });
 
-  it('asks which condition, with suggestions, and a level only if they know one', async () => {
+  it('opens a box to type one that is not listed, under Other', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Another spinal cord condition/ }));
-    const name = screen.getByLabelText('Which condition?');
-    const list = document.getElementById(name.getAttribute('list') ?? '');
-    expect(list?.querySelectorAll('option').length).toBeGreaterThan(10);
-    await userEvent.type(name, 'Transverse myelitis');
-    expect(seen.at(-1)?.conditionName).toBe('Transverse myelitis');
-    expect(screen.getByLabelText('Level, if you know it')).toHaveValue('');
-    expect(optionsOf('Level, if you know it')[0]).toBe('No level');
-    expect(screen.queryByText('Complete or incomplete?')).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
+    expect(screen.queryByLabelText('Which one?')).toBeNull();
+    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Other');
+    await userEvent.type(screen.getByLabelText('Which one?'), 'Friedreich ataxia');
+    expect(seen.at(-1)?.conditionName).toBe('Friedreich ataxia');
+    expect(screen.getByLabelText('Which disability?')).toHaveValue('__other');
   });
 
-  it("lets go of a condition's name when the kind changes", async () => {
+  it('shows a name typed before under Other, in its box', () => {
+    render(
+      <Harness
+        seen={[]}
+        start={{ ...EMPTY, injuryType: 'condition', conditionName: 'Friedreich ataxia' }}
+      />,
+    );
+    expect(screen.getByLabelText('Which disability?')).toHaveValue('__other');
+    expect(screen.getByLabelText('Which one?')).toHaveValue('Friedreich ataxia');
+  });
+
+  it('asks a relative nothing more', async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(<Harness seen={seen} start={{ ...EMPTY, injuryType: 'high_para', exactLevel: 'T4' }} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Relative/ }));
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
+    expect(screen.queryByText('Complete or incomplete?')).toBeNull();
+    expect(seen.at(-1)).toMatchObject({ injuryType: 'family', exactLevel: null });
+  });
+
+  it("lets go of another disability's name when the kind changes", async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Another spinal cord condition/ }));
-    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
-    await userEvent.click(screen.getByRole('radio', { name: /Paraplegia/ }));
-    expect(screen.queryByLabelText('Which condition?')).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
+    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Spina bifida');
+    await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
+    expect(screen.queryByLabelText('Which disability?')).toBeNull();
     expect(seen.at(-1)?.conditionName).toBe('');
+  });
+
+  // Members who answered before 2026-10-15 keep what they said.
+  it('keeps an answer no longer offered on the list for the member who gave it', () => {
+    render(<Harness seen={[]} start={{ ...EMPTY, injuryType: 'para', exactLevel: 'T10' }} />);
+    expect(screen.getByRole('radio', { name: /Paraplegia/ })).toBeChecked();
+    expect(screen.getByLabelText('Level of injury')).toHaveValue('T10');
   });
 });

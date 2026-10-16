@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   asksCompleteness,
+  asksLevel,
   EXACT_LEVELS,
   injuryLabel,
   levelsForType,
+  OFFERED_INJURY_TYPES,
+  OTHER_DISABILITIES,
   rangeForExact,
   regionForRange,
-  SPINAL_CORD_CONDITIONS,
   stateCodeForName,
   stateNameFor,
   typeForLevel,
@@ -90,10 +92,43 @@ describe('the spinal cord question', () => {
     expect(levelsForType('para').at(-1)).toBe('Do not know');
   });
 
-  it('includes central cord and the syndromes the owner asked about', () => {
-    expect(SPINAL_CORD_CONDITIONS).toContain('Transverse myelitis');
-    expect(SPINAL_CORD_CONDITIONS).toContain('Cauda equina syndrome');
-    expect(SPINAL_CORD_CONDITIONS).toContain('Brown-Séquard syndrome');
+  // The owner, 2026-10-15: high para is T1 to T8, low para T9 down.
+  it('splits para at T8: high T1 to T8, low T9 to S5', () => {
+    const high = levelsForType('high_para');
+    expect(high[0]).toBe('T1');
+    expect(high.at(-2)).toBe('T8');
+    expect(high.at(-1)).toBe('Do not know');
+    const low = levelsForType('low_para');
+    expect(low[0]).toBe('T9');
+    expect(low).toContain('T11/12');
+    expect(low).toContain('S5');
+    expect(low.some((l) => l.startsWith('C') || l === 'T8')).toBe(false);
+  });
+
+  it('offers quad, high para, low para, other disability and relative, in that order', () => {
+    expect(OFFERED_INJURY_TYPES).toEqual(['quad', 'high_para', 'low_para', 'condition', 'family']);
+  });
+
+  it('asks a level of an injury only, not of another disability or a relative', () => {
+    expect(asksLevel('quad')).toBe(true);
+    expect(asksLevel('high_para')).toBe(true);
+    expect(asksLevel('low_para')).toBe(true);
+    expect(asksLevel('condition')).toBe(false);
+    expect(asksLevel('family')).toBe(false);
+    expect(asksLevel(null)).toBe(false);
+  });
+
+  it("lists the owner's other disabilities, then central cord syndrome", () => {
+    expect(OTHER_DISABILITIES).toEqual([
+      'Spina bifida',
+      'Cerebral palsy',
+      'Amputee',
+      'TBI',
+      'Blind/visual',
+      'Multiple sclerosis',
+      'Muscular dystrophy',
+      'Central cord syndrome',
+    ]);
   });
 
   it('labels each kind the way it is said', () => {
@@ -116,7 +151,11 @@ describe('the spinal cord question', () => {
         exactLevel: 'L4',
       }),
     ).toBe('Spina bifida · L4');
-    expect(injuryLabel({ ...base, injuryType: 'condition' })).toBe('Spinal cord condition');
+    expect(injuryLabel({ ...base, injuryType: 'condition' })).toBe('Other disability');
+    expect(injuryLabel({ ...base, injuryType: 'high_para', exactLevel: 'T4' })).toBe('T4');
+    expect(injuryLabel({ ...base, injuryType: 'high_para' })).toBe('High para');
+    expect(injuryLabel({ ...base, injuryType: 'low_para' })).toBe('Low para');
+    expect(injuryLabel({ ...base, injuryType: 'family' })).toBe('Family member');
   });
 
   it('reads a member from before the question exactly as before', () => {
@@ -130,13 +169,17 @@ describe('the spinal cord question', () => {
 
   it('starts an older member from their level, and asks completeness of injuries only', () => {
     expect(typeForLevel('C6')).toBe('quad');
-    expect(typeForLevel('T10')).toBe('para');
-    expect(typeForLevel('S2')).toBe('para');
+    expect(typeForLevel('T4')).toBe('high_para');
+    expect(typeForLevel('T8')).toBe('high_para');
+    expect(typeForLevel('T9')).toBe('low_para');
+    expect(typeForLevel('S2')).toBe('low_para');
     expect(typeForLevel('Do not know')).toBeNull();
     expect(typeForLevel(null)).toBeNull();
     expect(asksCompleteness('para')).toBe(true);
     expect(asksCompleteness(null)).toBe(true);
     expect(asksCompleteness('central_cord')).toBe(false);
     expect(asksCompleteness('condition')).toBe(false);
+    expect(asksCompleteness('family')).toBe(false);
+    expect(asksCompleteness('low_para')).toBe(true);
   });
 });

@@ -357,7 +357,7 @@ export default function ProfileDetailsPage() {
               </DetailsSection>
               <DetailsSection title="Your injury or condition">
                 <Field
-                  label="Your spinal cord"
+                  label="Disability details"
                   labelId="d-spinal-cord-label"
                   declined={details.declined.includes('exactLevel')}
                   onToggleDecline={() => {
@@ -373,46 +373,48 @@ export default function ProfileDetailsPage() {
                   />
                 </Field>
 
-                <Field
-                  label={
-                    details.injuryType === 'condition'
-                      ? 'When did it start, or when were you diagnosed?'
-                      : 'When were you injured?'
-                  }
-                  labelId="d-injury-label"
-                  declined={details.declined.includes('injuryDate')}
-                  onToggleDecline={() => {
-                    toggleDecline('injuryDate');
-                  }}
-                >
-                  <DateFields
-                    id="d-injury"
-                    labelledBy="d-injury-label"
-                    hint="For example, 6 14 2013 — or just 2013."
-                    order={BIRTHDAY_ORDER}
-                    yearAlone
-                    parts={injuryParts}
-                    reading={injuryReading}
-                    onChange={(next) => {
-                      setInjuryParts(next);
-                      const read = readDate(next, { needs: 'year' });
-                      // Only a finished date or a cleared one is recorded; one
-                      // still being typed leaves the record alone and holds Save.
-                      if (read.kind === 'date') {
-                        set({ injuryDate: read.iso, injuryDatePrecision: read.precision });
-                      } else if (read.kind === 'empty') {
-                        set({ injuryDate: null, injuryDatePrecision: null });
-                      }
+                {details.injuryType === 'family' ? null : (
+                  <Field
+                    label={
+                      details.injuryType === 'condition'
+                        ? 'When did it start, or when were you diagnosed?'
+                        : 'When were you injured?'
+                    }
+                    labelId="d-injury-label"
+                    declined={details.declined.includes('injuryDate')}
+                    onToggleDecline={() => {
+                      toggleDecline('injuryDate');
                     }}
-                  />
-                  {injuryReading.kind === 'partial' ? (
-                    <p className="mt-1.5 text-[0.75rem] text-grey">{injuryReading.need}</p>
-                  ) : injuryReading.kind === 'date' ? (
-                    <p className="mt-1.5 text-[0.75rem] text-grey">
-                      {dateLabel(injuryReading.iso, injuryReading.precision)}
-                    </p>
-                  ) : null}
-                </Field>
+                  >
+                    <DateFields
+                      id="d-injury"
+                      labelledBy="d-injury-label"
+                      hint="For example, 6 14 2013 — or just 2013."
+                      order={BIRTHDAY_ORDER}
+                      yearAlone
+                      parts={injuryParts}
+                      reading={injuryReading}
+                      onChange={(next) => {
+                        setInjuryParts(next);
+                        const read = readDate(next, { needs: 'year' });
+                        // Only a finished date or a cleared one is recorded; one
+                        // still being typed leaves the record alone and holds Save.
+                        if (read.kind === 'date') {
+                          set({ injuryDate: read.iso, injuryDatePrecision: read.precision });
+                        } else if (read.kind === 'empty') {
+                          set({ injuryDate: null, injuryDatePrecision: null });
+                        }
+                      }}
+                    />
+                    {injuryReading.kind === 'partial' ? (
+                      <p className="mt-1.5 text-[0.75rem] text-grey">{injuryReading.need}</p>
+                    ) : injuryReading.kind === 'date' ? (
+                      <p className="mt-1.5 text-[0.75rem] text-grey">
+                        {dateLabel(injuryReading.iso, injuryReading.precision)}
+                      </p>
+                    ) : null}
+                  </Field>
+                )}
               </DetailsSection>
               <DetailsSection title="Where you live">
                 <Field

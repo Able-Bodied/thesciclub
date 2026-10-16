@@ -104,83 +104,112 @@ export function rangeForExact(level: ExactLevel): LevelRange {
 }
 
 /**
- * What kind of spinal cord injury or condition, asked first (the owner,
- * 2026-10-14: the club is for anybody with a spinal cord injury or disease).
- * Central cord syndrome has its own answer because it is neither a level nor
- * a disease, and people with it name it that way. Null for a member who joined
- * before it was asked, or who would rather not say.
+ * What kind of disability, asked with the level (the owner, 2026-10-15,
+ * "Disability details"; first asked 2026-10-14):
+ *
+ *   quad, high_para, low_para   an injury with a level, cut to fit
+ *   condition                   "Other disability": named from a list, or typed
+ *   family                      a relative or spouse: a member with no level
+ *
+ * 'para' and 'central_cord' are what the question offered before. Members who
+ * gave them keep them, and they read and filter as they did, but they are no
+ * longer offered. Null for a member who joined before the kind was asked, or
+ * who would rather not say.
  */
-export const INJURY_TYPES = ['para', 'quad', 'central_cord', 'condition'] as const;
+export const INJURY_TYPES = [
+  'quad',
+  'high_para',
+  'low_para',
+  'condition',
+  'family',
+  'para',
+  'central_cord',
+] as const;
 export type InjuryType = (typeof INJURY_TYPES)[number];
 
-export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string; hint: string }> = {
-  para: { title: 'Paraplegia', hint: 'Mainly the legs and lower body. A level from T1 down.' },
-  quad: {
-    title: 'Quadriplegia (tetraplegia)',
-    hint: 'Arms and legs. A level in the neck, C1 to C8.',
-  },
-  central_cord: {
-    title: 'Central cord syndrome',
-    hint: 'An incomplete neck injury, often affecting the arms more than the legs.',
-  },
-  condition: {
-    title: 'Another spinal cord condition',
-    hint: 'A disease or syndrome, like transverse myelitis, spina bifida or cauda equina syndrome.',
-  },
+/** The answers "Which describes you best?" offers, in order. */
+export const OFFERED_INJURY_TYPES = [
+  'quad',
+  'high_para',
+  'low_para',
+  'condition',
+  'family',
+] as const satisfies readonly InjuryType[];
+
+export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
+  quad: { title: 'Quadriplegic (tetraplegic)' },
+  high_para: { title: 'High para (T1–T8)' },
+  low_para: { title: 'Low para (T9+)' },
+  condition: { title: 'Other disability' },
+  family: { title: 'Relative/Spouse' },
+  para: { title: 'Paraplegia' },
+  central_cord: { title: 'Central cord syndrome' },
 };
 
 /**
- * Suggestions for "Which condition?", never a closed list: there are too many,
- * and whatever somebody types is kept as they wrote it. Each can paralyse or
- * weaken movement through the spinal cord or the nerve roots at its end.
+ * The list under "Other disability". Central cord syndrome is here now rather
+ * than an answer of its own. "Other" is not in it: the form adds it, with a
+ * box to type in, and whatever is typed is kept as written.
  */
-export const SPINAL_CORD_CONDITIONS = [
-  'Transverse myelitis',
+export const OTHER_DISABILITIES = [
+  // The owner's list, 2026-10-15, then central cord syndrome.
   'Spina bifida',
+  'Cerebral palsy',
+  'Amputee',
+  'TBI',
+  'Blind/visual',
   'Multiple sclerosis',
-  'Neuromyelitis optica (NMOSD)',
-  'Spinal cord tumor',
-  'Spinal cord stroke',
-  'Spinal arteriovenous malformation (AVM)',
-  'Syringomyelia',
-  'Tethered cord syndrome',
-  'Cervical myelopathy (spinal stenosis)',
-  'Cauda equina syndrome',
-  'Conus medullaris syndrome',
-  'Brown-Séquard syndrome',
-  'Anterior cord syndrome',
-  'Hereditary spastic paraplegia',
-  'Acute flaccid myelitis',
-  'Spinal cord infection or abscess',
-  'Spinal muscular atrophy (SMA)',
-  'ALS (motor neuron disease)',
-  'Post-polio syndrome',
+  'Muscular dystrophy',
+  'Central cord syndrome',
 ] as const;
 
 /** Longest a typed condition may be; the database holds it to the same. */
 export const CONDITION_NAME_MAX = 100;
 
+/** T1 is 1, T12 is 12, T11/12 is 11; null for a level that is not thoracic. */
+function thoracic(level: ExactLevel): number | null {
+  const match = /^T(\d+)/.exec(level);
+  return match ? Number(match[1]) : null;
+}
+
+/** High para is T1 to T8 (the owner, 2026-10-15); anything lower is low para. */
+const HIGH_PARA_LOWEST = 8;
+
+function highPara(level: ExactLevel): boolean {
+  const t = thoracic(level);
+  return t !== null && t <= HIGH_PARA_LOWEST;
+}
+
 /**
- * The levels worth offering for each answer: a para's from T1 down, a quad's
- * and a central cord's in the neck, and every level for a condition (which may
- * have one, or not). "Do not know" is always last.
+ * The levels worth offering for each answer: a quad's (and a central cord's)
+ * in the neck, a high para's T1 to T8, a low para's T9 down, an old para's T1
+ * down, and every level otherwise. "Do not know" is always last.
  */
 export function levelsForType(type: InjuryType | null): ExactLevel[] {
   const all = EXACT_LEVELS.filter((l) => l !== 'Do not know');
   const neck = (l: ExactLevel) => l.startsWith('C');
   const chosen =
-    type === 'para'
-      ? all.filter((l) => !neck(l))
-      : type === 'quad' || type === 'central_cord'
-        ? all.filter(neck)
-        : all;
+    type === 'quad' || type === 'central_cord'
+      ? all.filter(neck)
+      : type === 'high_para'
+        ? all.filter(highPara)
+        : type === 'low_para'
+          ? all.filter((l) => !neck(l) && !highPara(l))
+          : type === 'para'
+            ? all.filter((l) => !neck(l))
+            : all;
   return [...chosen, 'Do not know'];
 }
 
+/** Whether the level is asked: an injury, not another disability or a relative. */
+export function asksLevel(type: InjuryType | null): boolean {
+  return type !== null && type !== 'condition' && type !== 'family';
+}
+
 /**
- * How somebody's injury reads in a line: "T6", "C5 central cord",
- * "Transverse myelitis · T8", "Para". One function, so a card, a post and an
- * event's list say the same thing about the same person.
+ * How somebody's disability reads in a line: "T6", "C5 central cord",
+ * "Transverse myelitis", "High para", "Family member". One function, so a
+ * card, a post and an event's list say the same thing about the same person.
  */
 export function injuryLabel(member: {
   injuryType: InjuryType | null;
@@ -190,12 +219,18 @@ export function injuryLabel(member: {
 }): string {
   const level = member.exactLevel && member.exactLevel !== 'Do not know' ? member.exactLevel : null;
   switch (member.injuryType) {
+    case 'family':
+      return 'Family member';
     case 'condition': {
-      const name = member.conditionName ?? 'Spinal cord condition';
+      const name = member.conditionName ?? 'Other disability';
       return level ? `${name} · ${level}` : name;
     }
     case 'central_cord':
       return level ? `${level} central cord` : 'Central cord syndrome';
+    case 'high_para':
+      return level ?? 'High para';
+    case 'low_para':
+      return level ?? 'Low para';
     case 'para':
       return level ?? 'Para';
     case 'quad':
@@ -207,17 +242,22 @@ export function injuryLabel(member: {
 
 /**
  * A starting answer for somebody who gave a level before the kind was asked:
- * a neck level reads as quad, any other as para. Only ever a form's default,
- * never written without the member saving it.
+ * a neck level reads as quad, T1 to T8 as high para, any lower as low para.
+ * Only ever a form's default, never written without the member saving it.
  */
 export function typeForLevel(level: ExactLevel | null): InjuryType | null {
   if (!level || level === 'Do not know') return null;
-  return level.startsWith('C') ? 'quad' : 'para';
+  if (level.startsWith('C')) return 'quad';
+  return highPara(level) ? 'high_para' : 'low_para';
 }
 
-/** Whether "complete or incomplete" belongs to this answer: an injury with a level, not a condition or a syndrome. */
+/**
+ * Whether "complete or incomplete" belongs to this answer: an injury with a
+ * level. Not another disability, a central cord (incomplete by definition) or
+ * a relative.
+ */
 export function asksCompleteness(type: InjuryType | null): boolean {
-  return type !== 'condition' && type !== 'central_cord';
+  return type !== 'condition' && type !== 'central_cord' && type !== 'family';
 }
 
 export const COMPLETENESS = ['Complete', 'Incomplete', 'Do not know'] as const;

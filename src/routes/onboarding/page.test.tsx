@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as ProgressModule from '@/routes/onboarding/progress';
 
 /**
  * Joining and signing in by email.
@@ -139,12 +140,43 @@ vi.mock('@/lib/account', async () => {
           calls.listeners.delete(bump);
         };
       }, []);
-      return { status: calls.status, userId: null, isAdmin: false, displayName: null };
+      return {
+        status: calls.status,
+        userId: calls.status === 'signed-out' ? null : 'user-1',
+        isAdmin: false,
+        displayName: null,
+      };
     },
     signOut: () => {
       calls.order.push('signOut');
       calls.setStatus('signed-out');
       return Promise.resolve({ ok: true });
+    },
+  };
+});
+
+// Where an account left off (progress.ts has its own tests): what this file
+// cares about is that the wizard opens there, and keeps each step as it goes.
+const progress = vi.hoisted(() => ({
+  saved: null as null | { step: string; answers: Record<string, unknown>; savedAt: string },
+  device: [] as string[],
+  account: [] as { step: string; answers: Record<string, unknown> }[],
+  forgotten: [] as string[],
+}));
+vi.mock('@/routes/onboarding/progress', async (original) => {
+  const real = await original<typeof ProgressModule>();
+  return {
+    ...real,
+    savedProgress: () => Promise.resolve(progress.saved),
+    saveOnDevice: (_user: string, step: string) => {
+      progress.device.push(step);
+    },
+    saveToAccount: (step: string, data: Record<string, unknown>) => {
+      progress.account.push({ step, answers: real.keptAnswers(data) });
+      return Promise.resolve();
+    },
+    forgetOnDevice: (user: string) => {
+      progress.forgotten.push(user);
     },
   };
 });
@@ -279,16 +311,14 @@ function renderJoin(path = '/join') {
 async function reachName() {
   calls.status = 'signed-up';
   renderJoin();
-  await userEvent.click(await screen.findByRole('checkbox', { name: /I agree to the Terms/ }));
-  await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-  await screen.findByPlaceholderText('Alex');
+  await screen.findByPlaceholderText('ex. Ajay Shenoy');
 }
 
 /** Through the name and the username, to the birthday. */
 async function reachBirthday(name: string) {
   await reachName();
-  await userEvent.clear(screen.getByPlaceholderText('Alex'));
-  await userEvent.type(screen.getByPlaceholderText('Alex'), name);
+  await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
+  await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), name);
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
   await userEvent.click(await screen.findByRole('button', { name: '@dana' }));
   await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
@@ -321,6 +351,10 @@ async function fillDoor(email: string, password: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  progress.saved = null;
+  progress.device = [];
+  progress.account = [];
+  progress.forgotten = [];
   calls.order = [];
   calls.status = 'signed-out';
   calls.afterPassword = 'signed-up';
@@ -735,11 +769,68 @@ describe('joining by email', () => {
   });
 });
 
+describe('leaving halfway and coming back', () => {
+  it('opens at the step it was left on, with the answers given', async () => {
+    progress.saved = {
+      step: 'birthday',
+      answers: {
+        termsAgreed: true,
+        displayName: 'Dana',
+        username: 'dana',
+        usernameChecked: 'dana',
+      },
+      savedAt: '2026-10-15T20:00:00Z',
+    };
+    calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
+    calls.status = 'signed-up';
+    renderJoin();
+    expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
+    expect(screen.getByText(/You are where you left off/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Pick a username')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
+  });
+
+  it('opens on the name, with no welcome back, when that is where they stopped', async () => {
+    progress.saved = {
+      step: 'name',
+      answers: { displayName: 'Dana' },
+      savedAt: '2026-10-15T20:00:00Z',
+    };
+    calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
+    calls.status = 'signed-up';
+    renderJoin();
+    expect(await screen.findByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
+    expect(screen.queryByText(/You are where you left off/)).toBeNull();
+  });
+
+  it('keeps each step on the account as it moves on, never the password', async () => {
+    await reachBirthday('Dana');
+    const steps = progress.account.map((saved) => saved.step);
+    expect(steps).toEqual(['name', 'username', 'birthday']);
+    const last = progress.account.at(-1)?.answers ?? {};
+    expect(last).toMatchObject({ displayName: 'Dana', username: 'dana' });
+    expect(Object.keys(last)).not.toContain('password');
+    expect(Object.keys(last)).not.toContain('email');
+    expect(progress.device).toContain('birthday');
+  });
+
+  it('lets the device copy go once the member is made', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1985-04-12');
+    await userEvent.click(await screen.findByRole('button', { name: /Finish later/ }));
+    await waitFor(() => {
+      expect(progress.forgotten).toEqual(['user-1']);
+    });
+  });
+});
+
 describe('coming back from the confirmation link', () => {
   it('goes on to the invite check, signed in, and then the questions', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?confirmed=1');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['my_invite_status']);
   });
 
@@ -754,7 +845,7 @@ describe('the invite link', () => {
   it('claims the invite before asking whether the account is invited', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['claim_invite', 'my_invite_status']);
     expect(calls.claimedWith).toBe('tok-123');
   });
@@ -762,7 +853,7 @@ describe('the invite link', () => {
   it('lets go of the token once it has been answered', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBeNull();
   });
 
@@ -781,7 +872,7 @@ describe('the invite link', () => {
     act(() => {
       calls.setStatus('signed-up');
     });
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.claimedWith).toBe('tok-123');
   });
 
@@ -789,7 +880,7 @@ describe('the invite link', () => {
     calls.user = { email: 'someone.else@example.com', user_metadata: {} };
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.claimedWith).toBe('tok-123');
   });
 
@@ -797,7 +888,7 @@ describe('the invite link', () => {
     calls.claimResult = false;
     calls.status = 'signed-up';
     renderJoin('/join?invite=used');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.order).toEqual(['claim_invite', 'my_invite_status']);
   });
 
@@ -811,7 +902,7 @@ describe('the invite link', () => {
 
     calls.claimError = false;
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
   });
 
   it('opens at the join form, not the Welcome screen', () => {
@@ -897,7 +988,7 @@ describe('the invite link', () => {
     calls.status = 'signed-up';
     calls.inviteAddress = 'dana@example.com';
     renderJoin('/join?invite=tok-123');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.order).not.toContain('invite_address_for_token');
   });
 
@@ -921,7 +1012,7 @@ describe('the not-invited screen', () => {
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
     expect(screen.getByText(/You may have joined with another email/)).toBeInTheDocument();
-    expect(screen.queryByText('Before you join')).toBeNull();
+    expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
   it('names only the organizations that can invite, and the consultation link', async () => {
@@ -981,7 +1072,7 @@ describe('signing in with email', () => {
     await openSignIn();
     await fillDoor('dana@example.com', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['signInWithPassword:dana@example.com', 'my_invite_status']);
   });
 
@@ -991,7 +1082,7 @@ describe('signing in with email', () => {
     await fillDoor('dana@example.com', 'a long password');
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
-    expect(screen.queryByText('Before you join')).toBeNull();
+    expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
   it('says the same thing for a wrong password and an unknown address', async () => {
@@ -1073,7 +1164,7 @@ describe('Google, Apple and passkeys', () => {
       user_metadata: { full_name: 'Dana Smith' },
     };
     renderJoin('/join?google=signin');
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
     expect(calls.order).toEqual(['my_invite_status']);
   });
 
@@ -1087,7 +1178,7 @@ describe('Google, Apple and passkeys', () => {
     calls.status = 'signed-up';
     calls.invited = true;
     renderJoin('/join?google=signin');
-    await screen.findByText('Before you join');
+    await screen.findByText('What is your name?');
     expect(calls.order).not.toContain('signOut');
   });
 
@@ -1280,49 +1371,75 @@ describe('the name', () => {
   it('starts as the name Google gave', async () => {
     calls.user = { email: 'dana@gmail.example', user_metadata: { full_name: 'Dana Smith' } };
     await reachName();
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('Dana Smith');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana Smith');
   });
 
   it('falls back to `name`, which is what some providers send', async () => {
     calls.user = { email: 'dana@example.com', user_metadata: { name: 'Dana' } };
     await reachName();
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('Dana');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana');
   });
 
   it('starts empty when the provider gave none, as Apple often does', async () => {
     calls.user = { email: 'relay@privaterelay.example', user_metadata: {} };
     await reachName();
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
   });
 
   it('can be replaced, and the replacement is what is kept', async () => {
     calls.user = { email: 'dana@gmail.example', user_metadata: { full_name: 'Dana Smith' } };
     await reachName();
-    await userEvent.clear(screen.getByPlaceholderText('Alex'));
-    await userEvent.type(screen.getByPlaceholderText('Alex'), 'Dee');
-    expect(screen.getByPlaceholderText('Alex')).toHaveValue('Dee');
+    await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), 'Dee');
+    expect(screen.getByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dee');
   });
 });
 
 describe('the username', () => {
-  async function reachUsername(name = 'Dana') {
+  /** On the username step, the first suggestion chosen; cleared unless `keep`. */
+  async function reachUsername(name = 'Dana', keep = false) {
     await reachName();
-    await userEvent.clear(screen.getByPlaceholderText('Alex'));
-    await userEvent.type(screen.getByPlaceholderText('Alex'), name);
+    await userEvent.clear(screen.getByPlaceholderText('ex. Ajay Shenoy'));
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), name);
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Pick a username');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Username')).toHaveValue(calls.suggestions[0]);
+    });
+    if (!keep) await userEvent.clear(screen.getByLabelText('Username'));
   }
 
   it('suggests names built from the name just given', async () => {
-    await reachUsername('Dana');
+    await reachUsername('Dana', true);
     expect(await screen.findByRole('button', { name: '@dana' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '@dana.s' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '@dana_s' })).toBeInTheDocument();
     expect(calls.order).toContain('suggest_usernames');
   });
 
-  it('takes a suggestion in one tap, and goes on', async () => {
+  // The owner, 2026-10-15: the first suggestion, the whole name with dots,
+  // is chosen already, so Continue is all it takes.
+  it('chooses the first suggestion, so Continue is all it takes', async () => {
+    calls.suggestions = ['dana.smith', 'dana', 'danasmith'];
+    await reachUsername('Dana Smith', true);
+    expect(screen.getByRole('button', { name: '@dana.smith' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(await screen.findByText('@dana.smith is available.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    // Already found free by the club: not asked again.
+    expect(calls.checked).toEqual([]);
+  });
+
+  it('does not put the suggestion back once they clear the box', async () => {
+    await reachUsername();
+    expect(screen.getByLabelText('Username')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  it('takes another suggestion in one tap, and goes on', async () => {
     await reachUsername();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await userEvent.click(await screen.findByRole('button', { name: '@dana.s' }));
@@ -1403,7 +1520,7 @@ describe('the phone for events', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
-    await screen.findByText('A number for events?');
+    await screen.findByText('What is your phone number?');
   }
 
   it('is optional: Continue works with nothing typed', async () => {
@@ -1426,7 +1543,11 @@ describe('the phone for events', () => {
 
   it('says who gets the number', async () => {
     await reachPhone();
-    expect(screen.getByText(/Event hosts get your email, and this number/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Event hosts can see your number if you say you are going/),
+    ).toBeInTheDocument();
+    // The club sends no texts, so the screen must not promise any.
+    expect(screen.queryByText(/text you/i)).toBeNull();
   });
 
   it('will not go on with half a number', async () => {
@@ -1448,28 +1569,28 @@ describe('the phone for events', () => {
   });
 });
 
+// The owner, 2026-10-15: no screen of their own and no box to tick. The
+// name step says that going on is agreeing, with both documents linked.
 describe('agreeing to the terms', () => {
-  it('asks for one box, after the club has said yes, and no text-message consent', async () => {
+  it('says so under the name, with both documents a tap away, and no box to tick', async () => {
     calls.status = 'signed-up';
     renderJoin();
-    expect(await screen.findByText('Before you join')).toBeInTheDocument();
-    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
-    expect(screen.queryByText(/Text me/)).toBeNull();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
+    expect(screen.getByText(/By continuing, you agree to our/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+    expect(screen.getByRole('link', { name: /Privacy Policy/ })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
     expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
       'target',
       '_blank',
     );
-  });
-
-  it('goes no further without the tick', async () => {
-    calls.status = 'signed-up';
-    renderJoin();
-    await screen.findByText('Before you join');
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await userEvent.keyboard('{Enter}');
-    expect(screen.queryByPlaceholderText('Alex')).toBeNull();
-    expect(screen.queryByRole('button', { name: /Finish later/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.queryByText(/Text me/)).toBeNull();
   });
 
   it('is not asked of somebody turned away', async () => {
@@ -1477,7 +1598,20 @@ describe('agreeing to the terms', () => {
     calls.invited = false;
     renderJoin();
     await screen.findByText(/isn't on the list/i);
-    expect(screen.queryByText('Before you join')).toBeNull();
+    expect(screen.queryByText(/By continuing, you agree/)).toBeNull();
+  });
+});
+
+// Back from the first question: there is nothing before it but the account.
+describe('the wrong account', () => {
+  it('signs out from the first question, for another account', async () => {
+    calls.status = 'signed-up';
+    renderJoin();
+    await screen.findByText('What is your name?');
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+    expect(calls.order).toContain('signOut');
+    expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
   });
 });
 
@@ -1543,13 +1677,13 @@ describe('the passkey offer after joining', () => {
 describe('the keyboard', () => {
   it('advances a question on Enter, not only on the button', async () => {
     await reachName();
-    await userEvent.type(screen.getByPlaceholderText('Alex'), 'Dana{Enter}');
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), 'Dana{Enter}');
     expect(await screen.findByText('Pick a username')).toBeInTheDocument();
   });
 
   it('does nothing on Enter when the step is not finished', async () => {
     await reachName();
-    await userEvent.type(screen.getByPlaceholderText('Alex'), '{Enter}');
+    await userEvent.type(screen.getByPlaceholderText('ex. Ajay Shenoy'), '{Enter}');
     expect(screen.queryByText('Pick a username')).toBeNull();
   });
 });
@@ -1585,6 +1719,31 @@ describe('the club is adults only', () => {
 // of all for them. See lib/date-parts.ts.
 
 describe('the birthday boxes', () => {
+  // The owner, 2026-10-15: the year is the last box, so typing it is done.
+  it('goes on by itself once the year is typed', async () => {
+    await reachBirthday('Sam');
+    await typeBirthday('1985-04-12');
+    expect(await screen.findByText('Disability details')).toBeInTheDocument();
+  });
+
+  it('does not bounce forward again on coming Back to it', async () => {
+    await reachBirthday('Sam');
+    await typeBirthday('1985-04-12');
+    await screen.findByText('Disability details');
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(screen.getByText('When is your birthday?')).toBeInTheDocument();
+  });
+
+  it('stays put for somebody under 18', async () => {
+    await reachBirthday('Sam');
+    const year = String(new Date().getFullYear() - 10);
+    await typeBirthday(`${year}-04-12`);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+    expect(screen.getByText('When is your birthday?')).toBeInTheDocument();
+  });
+
   it('reads the date back in words, the month typed as its name', async () => {
     await reachBirthday('Sam');
     await userEvent.type(screen.getByLabelText('Month'), 'may');
@@ -1763,7 +1922,7 @@ describe('a photograph the club cannot hold', () => {
     await userEvent.selectOptions(await screen.findByLabelText('State'), 'CA');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     // The phone for events is optional, and left empty.
-    await screen.findByText('A number for events?');
+    await screen.findByText('What is your phone number?');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Add a photo?');
   }
@@ -1852,7 +2011,7 @@ describe('steps that move on by themselves', () => {
     await screen.findByText('Where do you live?');
     await userEvent.click(screen.getByRole('button', { name: 'Rather not say' }));
 
-    expect(await screen.findByText('A number for events?')).toBeInTheDocument();
+    expect(await screen.findByText('What is your phone number?')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('Add a photo?')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
@@ -1869,10 +2028,10 @@ describe('the injury date boxes', () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Your spinal cord');
-    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegia/ }));
+    await screen.findByText('Disability details');
+    await userEvent.click(screen.getByRole('radio', { name: /Quadriplegic/ }));
     fireEvent.change(screen.getByLabelText('Level of injury'), { target: { value: 'C5' } });
-    // The step opens on the kind, not the date: the date is reached by hand.
+    // The cursor is not put in the date: it is reached by hand.
     await userEvent.click(screen.getByLabelText('Month'));
   }
 
@@ -1895,15 +2054,36 @@ describe('the injury date boxes', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
-  it('takes a condition by name, and "Since birth" for its date', async () => {
+  // The owner, 2026-10-15: the date is optional, and a relative is not asked it.
+  it('goes on with no date at all', async () => {
+    await reachInjuryStep();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  it('asks a relative no date and no level, and goes on', async () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Your spinal cord');
-    await userEvent.click(screen.getByRole('radio', { name: /Another spinal cord condition/ }));
-    expect(screen.getByText('When did it start?')).toBeInTheDocument();
+    await screen.findByText('Disability details');
+    expect(screen.getByText('When were you injured? (optional)')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /Relative/ }));
+    expect(screen.queryByText('When were you injured? (optional)')).toBeNull();
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  it('takes another disability by name, and "Since birth" for its date', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Disability details');
+    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
+    expect(screen.getByText('When did it start? (optional)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
+    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Spina bifida');
     await userEvent.click(screen.getByRole('button', { name: 'Since birth' }));
     expect(screen.getByLabelText('Year')).toHaveValue('1990');
     expect(screen.getByText(/since birth\./)).toBeInTheDocument();

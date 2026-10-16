@@ -48,11 +48,6 @@ describe('injuryDateOf', () => {
 });
 
 describe('canAdvance', () => {
-  it('needs a terms tick before the agree step is done', () => {
-    expect(canAdvance('agree', data())).toBe(false);
-    expect(canAdvance('agree', data({ termsAgreed: true }))).toBe(true);
-  });
-
   it('needs a name', () => {
     expect(canAdvance('name', data({ displayName: '  ' }))).toBe(false);
     expect(canAdvance('name', data({ displayName: 'Dana' }))).toBe(true);
@@ -85,8 +80,9 @@ describe('canAdvance', () => {
     expect(canAdvance('phone', data({ phone: '408555' }))).toBe(false);
   });
 
-  it('needs the kind, a level and a year before the injury step is done', () => {
-    expect(canAdvance('injury', data({ injuryType: 'quad', exactLevel: 'C6' }))).toBe(false);
+  // The date is optional (the owner, 2026-10-15); the kind and its level are not.
+  it('needs the kind and a level, and takes the date or no date', () => {
+    expect(canAdvance('injury', data({ injuryType: 'quad', exactLevel: 'C6' }))).toBe(true);
     expect(canAdvance('injury', data({ injuryYear: '2013' }))).toBe(false);
     expect(canAdvance('injury', data({ exactLevel: 'C6', injuryYear: '2013' }))).toBe(false);
     expect(canAdvance('injury', data({ injuryType: 'quad', injuryYear: '2013' }))).toBe(false);
@@ -94,12 +90,19 @@ describe('canAdvance', () => {
       canAdvance('injury', data({ injuryType: 'quad', exactLevel: 'C6', injuryYear: '2013' })),
     ).toBe(true);
     // "Do not know" is a level answer.
+    expect(canAdvance('injury', data({ injuryType: 'low_para', exactLevel: 'Do not know' }))).toBe(
+      true,
+    );
+  });
+
+  it('holds the step for a date half typed', () => {
     expect(
-      canAdvance(
-        'injury',
-        data({ injuryType: 'para', exactLevel: 'Do not know', injuryYear: '2013' }),
-      ),
-    ).toBe(true);
+      canAdvance('injury', data({ injuryType: 'quad', exactLevel: 'C6', injuryMonth: '6' })),
+    ).toBe(false);
+  });
+
+  it('takes a relative with nothing more', () => {
+    expect(canAdvance('injury', data({ injuryType: 'family' }))).toBe(true);
   });
 
   it('takes a condition by its name, with or without a level', () => {
@@ -185,9 +188,10 @@ describe('declining the injury step', () => {
     expect(canAdvance('injury', data({ declined: ['exactLevel', 'injuryDate'] }))).toBe(true);
   });
 
-  it('is not satisfied by declining only half of it', () => {
-    expect(canAdvance('injury', data({ declined: ['exactLevel'] }))).toBe(false);
-    expect(canAdvance('injury', data({ declined: ['exactLevel'], injuryYear: '2013' }))).toBe(true);
+  it('is satisfied by declining the kind, not by declining the date alone', () => {
+    // The date can be left empty now, so declining the kind is enough on its own.
+    expect(canAdvance('injury', data({ declined: ['exactLevel'] }))).toBe(true);
+    expect(canAdvance('injury', data({ declined: ['injuryDate'] }))).toBe(false);
   });
 
   it('reports whether the whole step is declined', () => {

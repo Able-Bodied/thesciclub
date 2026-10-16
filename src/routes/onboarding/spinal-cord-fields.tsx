@@ -1,40 +1,40 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { Chip } from '@/routes/onboarding/chrome';
 import {
   asksCompleteness,
+  asksLevel,
   COMPLETENESS,
   CONDITION_NAME_MAX,
   type Completeness,
   type ExactLevel,
   INJURY_TYPE_TEXT,
-  INJURY_TYPES,
   type InjuryType,
   levelsForType,
+  OFFERED_INJURY_TYPES,
+  OTHER_DISABILITIES,
   rangeForExact,
-  SPINAL_CORD_CONDITIONS,
 } from '@/types/domain';
 
 /**
- * The spinal cord question, on one screen (the owner, 2026-10-14). The club is
- * for anybody with a spinal cord injury or condition, so it asks what kind
- * first, and only then the one thing that kind needs:
+ * "Which describes you best?" and the one thing each answer needs (the owner,
+ * 2026-10-15; first asked 2026-10-14):
  *
- *   Paraplegia / Quadriplegia   the level, from a list cut to fit
- *   Central cord syndrome       the level in the neck; it is incomplete by
- *                               definition, so that is not asked
- *   Another condition           which, typed with suggestions (there are too
- *                               many for a list), and a level if they know one
+ *   Quadriplegic, High para, Low para   the level, from a list cut to fit,
+ *                                       and complete or incomplete
+ *   Other disability                    which, from a list, or "Other" and
+ *                                       typed
+ *   Relative/Spouse                     nothing more: a member with no level
  *
  * Everything appears below the choice, never on another screen. Changing the
  * choice clears what no longer fits it: a T6 is not a quad's level, and a
- * condition's name is not a para's. Onboarding and Your details both use it.
+ * disability's name is not a para's. Onboarding and Your details both use it.
  */
 
 export interface SpinalCordAnswer {
   injuryType: InjuryType | null;
   exactLevel: ExactLevel | null;
-  /** Typed, so '' while blank. */
+  /** Chosen or typed, so '' while blank. */
   conditionName: string;
   completeness: Completeness;
 }
@@ -44,17 +44,25 @@ const HEADING =
 const FIELD =
   'w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-[1rem] text-ink outline-none focus:border-emphasis';
 
+/** The "Other" in the disability list, which opens a box to type in. */
+const TYPED = '__other';
+
+function listed(name: string): boolean {
+  return (OTHER_DISABILITIES as readonly string[]).includes(name);
+}
+
 /** What changing the kind does to the rest of the answer. */
 export function withInjuryType(
   answer: SpinalCordAnswer,
   next: InjuryType,
 ): Partial<SpinalCordAnswer> {
   const patch: Partial<SpinalCordAnswer> = { injuryType: next };
-  if (answer.exactLevel && !levelsForType(next).includes(answer.exactLevel)) {
+  if (answer.exactLevel && (!asksLevel(next) || !levelsForType(next).includes(answer.exactLevel))) {
     patch.exactLevel = null;
   }
   if (next !== 'condition') patch.conditionName = '';
-  if (next === 'central_cord') patch.completeness = 'Incomplete';
+  if (!asksCompleteness(next))
+    patch.completeness = next === 'central_cord' ? 'Incomplete' : 'Do not know';
   return patch;
 }
 
@@ -72,17 +80,28 @@ export function SpinalCordFields({
   const type = answer.injuryType;
   const levels = levelsForType(type);
   const level = answer.exactLevel;
+  // A member who answered before 2026-10-15 may hold an answer no longer
+  // offered (Paraplegia, Central cord syndrome): it stays on the list for them.
+  const options: InjuryType[] =
+    type && !(OFFERED_INJURY_TYPES as readonly InjuryType[]).includes(type)
+      ? [...OFFERED_INJURY_TYPES, type]
+      : [...OFFERED_INJURY_TYPES];
+  // "Other" chosen with nothing typed yet, or a name typed that is not listed.
+  const [typing, setTyping] = useState(
+    answer.conditionName !== '' && !listed(answer.conditionName),
+  );
+  const disability = listed(answer.conditionName) ? answer.conditionName : typing ? TYPED : '';
 
   return (
     <>
       <fieldset>
         <legend className={HEADING}>Which describes you best?</legend>
         <div className="flex flex-col gap-2">
-          {INJURY_TYPES.map((option) => (
+          {options.map((option) => (
             <label
               key={option}
               className={cn(
-                'flex min-h-[48px] cursor-pointer items-start gap-3 rounded-[13px] border-[1.6px] bg-paper px-3.5 py-3',
+                'flex min-h-[48px] cursor-pointer items-center gap-3 rounded-[13px] border-[1.6px] bg-paper px-3.5 py-3',
                 type === option ? 'border-action' : 'border-line',
               )}
             >
@@ -91,17 +110,13 @@ export function SpinalCordFields({
                 name={`${id}-type`}
                 checked={type === option}
                 onChange={() => {
+                  setTyping(false);
                   onChange(withInjuryType(answer, option));
                 }}
-                className="mt-0.5 h-5 w-5 flex-none accent-[var(--color-action)]"
+                className="h-5 w-5 flex-none accent-[var(--color-action)]"
               />
-              <span className="min-w-0">
-                <span className="block font-bold text-[0.9375rem] text-ink">
-                  {INJURY_TYPE_TEXT[option].title}
-                </span>
-                <span className="mt-0.5 block text-[0.8125rem] text-ink2 leading-[1.4]">
-                  {INJURY_TYPE_TEXT[option].hint}
-                </span>
+              <span className="font-bold text-[0.9375rem] text-ink">
+                {INJURY_TYPE_TEXT[option].title}
               </span>
             </label>
           ))}
@@ -111,35 +126,54 @@ export function SpinalCordFields({
       {type === 'condition' ? (
         <div className="mt-5">
           <label htmlFor={`${id}-condition`} className={HEADING}>
-            Which condition?
+            Which disability?
           </label>
-          <input
+          <select
             id={`${id}-condition`}
-            list={`${id}-conditions`}
-            value={answer.conditionName}
-            maxLength={CONDITION_NAME_MAX}
-            autoComplete="off"
-            placeholder="Start typing, or choose one"
+            value={disability}
             onChange={(e) => {
-              onChange({ conditionName: e.target.value });
+              const value = e.target.value;
+              setTyping(value === TYPED);
+              onChange({ conditionName: value === TYPED ? '' : value });
             }}
             className={FIELD}
-          />
-          <datalist id={`${id}-conditions`}>
-            {SPINAL_CORD_CONDITIONS.map((name) => (
-              <option key={name} value={name} />
+          >
+            <option value="">Choose one</option>
+            {OTHER_DISABILITIES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
             ))}
-          </datalist>
-          <p className="mt-1.5 text-[0.78125rem] text-grey leading-[1.5]">
-            In your own words if it is not in the list.
-          </p>
+            <option value={TYPED}>Other</option>
+          </select>
+          {disability === TYPED ? (
+            <>
+              <label
+                htmlFor={`${id}-condition-typed`}
+                className="mt-3 block font-bold text-[0.8125rem] text-ink"
+              >
+                Which one?
+              </label>
+              <input
+                id={`${id}-condition-typed`}
+                value={answer.conditionName}
+                maxLength={CONDITION_NAME_MAX}
+                autoComplete="off"
+                placeholder="In your own words"
+                onChange={(e) => {
+                  onChange({ conditionName: e.target.value });
+                }}
+                className={cn(FIELD, 'mt-1.5')}
+              />
+            </>
+          ) : null}
         </div>
       ) : null}
 
-      {type !== null ? (
+      {asksLevel(type) ? (
         <div className="mt-5">
           <label htmlFor={`${id}-level`} className={HEADING}>
-            {type === 'condition' ? 'Level, if you know it' : 'Level of injury'}
+            Level of injury
           </label>
           <select
             id={`${id}-level`}
@@ -149,7 +183,7 @@ export function SpinalCordFields({
             }}
             className={FIELD}
           >
-            <option value="">{type === 'condition' ? 'No level' : 'Select a level'}</option>
+            <option value="">Select a level</option>
             {levels.map((l) => (
               <option key={l} value={l}>
                 {l}
