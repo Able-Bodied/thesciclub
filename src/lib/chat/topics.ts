@@ -361,10 +361,12 @@ export function useTopicPosts(
       // first-time reader would be looking at a topic that says "0 views".
       // Marking read below inserts exactly one row when there was none, so
       // adding one here is the count after this visit rather than a guess.
-      const seenBefore = reads.data !== null;
+      // Not for the member who started it: their own visit is never a view
+      // (20261016020000).
+      const counted = reads.data === null && found?.author_id !== memberId;
       setTopic(
         found
-          ? { ...toTopic(found), viewCount: Number(found.view_count) + (seenBefore ? 0 : 1) }
+          ? { ...toTopic(found), viewCount: Number(found.view_count) + (counted ? 1 : 0) }
           : null,
       );
       setPosts((postRows.data ?? []).map(toPost));

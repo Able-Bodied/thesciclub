@@ -7,7 +7,10 @@ import { pagedDatabase } from '@/test/paged-database';
 // `rpc` is when a request is built; `sent` is when it is actually sent, which a
 // Supabase request only is once awaited or `.then`ed. The topic's read marker
 // was built and never sent for a month, and a test of `rpc` alone passed.
-const state = vi.hoisted(() => ({ tables: {}, rpc: vi.fn(), sent: vi.fn() }));
+const state = vi.hoisted(() => {
+  const topic: Record<string, unknown> = { id: 'topic', room_id: 'room' };
+  return { tables: {}, rpc: vi.fn(), sent: vi.fn(), topic };
+});
 vi.mock('@/lib/account', () => ({ useAccount: () => ({ status: 'member', userId: 'me' }) }));
 vi.mock('@/lib/chat/unread', () => ({ unreadChanged: vi.fn() }));
 vi.mock('@/lib/supabase', () => ({
@@ -19,7 +22,7 @@ vi.mock('@/lib/supabase', () => ({
         name === 'chat_my_threads'
           ? [{ id: 'thread', kind: 'direct' }]
           : name === 'chat_topics_for'
-            ? [{ id: 'topic', room_id: 'room' }]
+            ? [state.topic]
             : null;
       return {
         abortSignal: () => {
@@ -48,9 +51,32 @@ beforeEach(() => {
     attachments: [],
   }));
   state.tables = { chat_messages: rows, chat_posts: rows, chat_topic_reads: [] };
+  state.topic = { id: 'topic', room_id: 'room' };
 });
 
 afterEach(() => vi.restoreAllMocks());
+
+// The count was read just before this visit is recorded, so a first visit
+// adds itself, unless it is the author's: their own is never a view.
+describe('a topic’s views on a first visit', () => {
+  it('counts somebody else’s first visit', async () => {
+    state.topic = { id: 'topic', room_id: 'room', author_id: 'other', view_count: 2 };
+    const { result } = renderHook(() => useTopicPosts('room', 'topic'));
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.topic?.viewCount).toBe(3);
+  });
+
+  it('never counts the author’s own', async () => {
+    state.topic = { id: 'topic', room_id: 'room', author_id: 'me', view_count: 0 };
+    const { result } = renderHook(() => useTopicPosts('room', 'topic'));
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.topic?.viewCount).toBe(0);
+  });
+});
 
 describe('long conversations and topics', () => {
   it('delivers every message and marks only through the last delivered ID', async () => {

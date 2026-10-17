@@ -1,6 +1,8 @@
 -- Run locally with psql as in chat-post-likes.sql. Rolls back every fixture.
 -- Counts are tested as an ordinary signed-in member, with older/newer posts,
 -- repeated visits, removed posts, a closed room and private reader identities.
+-- The author's own visit is never a view (20261016020000); another member's is,
+-- and so is any visit to a deleted member's post.
 \set ON_ERROR_STOP on
 begin;
 insert into public.members (id, type, status, display_name, phone, birth_date, level_range, state, show_in_browse)
@@ -49,13 +51,42 @@ begin
   perform public.chat_mark_topic_read_through('80000000-0000-0000-0000-000000000001','80000000-0000-0000-0000-000000000012');
   select view_count into old_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000011'::uuid]);
   select view_count into new_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000012'::uuid]);
-  assert old_count=2 and new_count=1, 'repeat visit inflated distinct readers';
+  assert old_count=1 and new_count=0, 'the author''s own visit counted';
+  assert (select view_count from public.chat_topics_for('bowel')
+           where id = '80000000-0000-0000-0000-000000000001')=1, 'the author''s own visit counted on the topic';
   insert into public.chat_post_likes (post_id,member_id) values ('80000000-0000-0000-0000-000000000012','aaaaaaaa-8888-0000-0000-000000000001');
   assert (select count(*) from public.chat_post_likes where post_id='80000000-0000-0000-0000-000000000012')=1, 'self-like not saved';
   delete from public.chat_post_likes where post_id='80000000-0000-0000-0000-000000000012' and member_id=auth.uid();
   assert (select count(*) from public.chat_post_likes where post_id='80000000-0000-0000-0000-000000000012')=0, 'self-like not removed';
   assert not has_function_privilege('anon','public.chat_post_view_counts(uuid[])','execute'), 'anonymous counts granted';
-  raise notice 'PASS: visibility, delivered boundary, private readers, repeat visit, self-like, unlike, anonymous refusal';
+  raise notice 'PASS: visibility, delivered boundary, private readers, own visit, self-like, unlike, anonymous refusal';
+end;
+$$;
+
+-- The reader comes back for the newer post: that is a view, once.
+set local request.jwt.claims='{"sub":"aaaaaaaa-8888-0000-0000-000000000002","role":"authenticated"}';
+do $$
+declare old_count bigint; new_count bigint;
+begin
+  perform public.chat_mark_topic_read_through('80000000-0000-0000-0000-000000000001','80000000-0000-0000-0000-000000000012');
+  perform public.chat_mark_topic_read_through('80000000-0000-0000-0000-000000000001','80000000-0000-0000-0000-000000000012');
+  select view_count into old_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000011'::uuid]);
+  select view_count into new_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000012'::uuid]);
+  assert old_count=1 and new_count=1, 'another member''s visit did not count, or a repeat inflated it';
+  raise notice 'PASS: another member''s visit counts once';
+end;
+$$;
+
+-- A deleted member's post: nobody is its author, so every reader counts.
+reset role;
+update public.chat_posts set author_id = null where id = '80000000-0000-0000-0000-000000000012';
+set local role authenticated;
+set local request.jwt.claims='{"sub":"aaaaaaaa-8888-0000-0000-000000000001","role":"authenticated"}';
+do $$
+begin
+  assert (select view_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000012'::uuid]))=2,
+    'a deleted member''s post lost a reader';
+  raise notice 'PASS: a deleted member''s post counts every reader';
 end;
 $$;
 rollback;
