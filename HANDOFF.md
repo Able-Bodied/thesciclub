@@ -71,6 +71,11 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
+- **Signing in on Stats is not live yet** (2026-10-16): push `20261016000000`
+  (dry run first), then release the client. Sign-ins count from that release.
+  The `oauth` amr for Google and Apple was never seen (no Google locally): check
+  the first real Google and Apple sign-ins say google and apple, not "Google or
+  Apple". Probe: `supabase/tests/admin-sign-in-methods.sql`.
 - **The spinal cord question is not live yet** (2026-10-14): push
   `20261015000000` (dry run first), then release the client.
 - **Google in the iPhone Home Screen app is not live yet** (2026-10-14): push
@@ -145,7 +150,14 @@ All live. Migration headers and the files named say how and why.
   comes from `auth.sessions` and has no count for a previous period.
   Onboarding starts and new accounts on top; Onboarding details opens the
   funnel, each step (kept only since that release) and each part of a
-  profile. Instead of Google Analytics, which the owner turned down.
+  profile. Instead of Google Analytics, which the owner turned down (again
+  2026-10-16). Signing in (`20261016000000`, `admin_sign_in_methods(period)`)
+  is the one part that names members, the owner's choice (2026-10-16; the
+  privacy policy says so): each account's first identity, and `sign_ins`, one
+  row a session, reported once by `src/lib/sign-in-record.ts` and decided by
+  `record_sign_in` from the token's amr. Not Supabase's audit log: the hosted
+  project keeps it out of the database, and the owner chose not to turn it on
+  (it would keep emails and IPs).
 - **Me**: tabs (`PageTabs`, `?tab=` replaced, not pushed): Profile, Settings,
   Account. The account's email is read only; an administrator changes it with
   the script. An account with no email gets the add-an-email banner. Phone is
