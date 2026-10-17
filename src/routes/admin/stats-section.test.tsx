@@ -363,6 +363,21 @@ describe('Admin → Stats', () => {
     expect(cy).not.toHaveTextContent('Can also');
   });
 
+  // Phone signs nobody in now: an account with nothing else says so, and no
+  // phone is named anywhere.
+  it('says when an account has no way to sign in', async () => {
+    api.methods = {
+      ...METHODS,
+      accounts: [account({ id: 'fay', name: 'Fay Old', signedUpWith: null, methods: [] })],
+    };
+    render(<StatsSection />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Who signed in how' }));
+    const fay = screen.getByText('Fay Old').closest('li');
+    expect(fay).toHaveTextContent('Made on Sep 1, 2026, with no way to sign in now.');
+    expect(fay).not.toHaveTextContent(/phone/i);
+    expect(screen.getByRole('list', { name: 'Signed up with' })).not.toHaveTextContent(/phone/i);
+  });
+
   it('keeps the rest of Stats when how members sign in cannot be read', async () => {
     api.methods = null;
     api.methodsError = { message: 'Not an administrator' };

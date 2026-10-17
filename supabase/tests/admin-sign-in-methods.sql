@@ -1,5 +1,5 @@
 -- ============================================================================
--- How each member signs up and signs in (20261016000000)
+-- How each member signs up and signs in (20261016000000, 20261016010000)
 -- ============================================================================
 -- public.record_sign_in, called as each member with the claims their token
 -- would carry, and public.admin_sign_in_methods(period), read as an
@@ -14,7 +14,8 @@
 --   2. one row a session, at the time it began, however often reported
 --   3. refusals: another account's session, a member reading sign_ins,
 --      anon calling either function, a member reading Stats
---   4. Stats: the way in, sign-ins by method, the Home Screen app, the list
+--   4. Stats: the way in, sign-ins by method, the Home Screen app, the list;
+--      a phone identity is never a way in (20261016010000)
 --
 -- Run it against a local stack (never the hosted project):
 --
@@ -37,12 +38,15 @@ delete from public.sign_ins;
 
 -- Ana joined by email and linked Google; Ben joined with Google and linked
 -- Apple; Cy made an account with Apple and has not finished joining; Dee is
--- the administrator reading.
+-- the administrator reading. Eve joined by phone and added email when email
+-- became the account; Fay has nothing but a phone.
 insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at, created_at, raw_app_meta_data) values
   ('aaaaaaaa-1600-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ana@probe.test', now(), now() - interval '50 days', '{"provider":"email"}'),
   ('aaaaaaaa-1600-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'ben@probe.test', now(), now() - interval '45 days', '{"provider":"google"}'),
   ('aaaaaaaa-1600-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'cy@probe.test',  now(), now() - interval '40 days', '{"provider":"apple"}'),
-  ('aaaaaaaa-1600-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dee@probe.test', now(), now() - interval '90 days', '{"provider":"email"}');
+  ('aaaaaaaa-1600-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dee@probe.test', now(), now() - interval '90 days', '{"provider":"email"}'),
+  ('aaaaaaaa-1600-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'eve@probe.test', now(), now() - interval '55 days', '{"provider":"phone"}'),
+  ('aaaaaaaa-1600-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', null,             null,  now() - interval '52 days', '{"provider":"phone"}');
 
 insert into auth.identities (provider_id, user_id, identity_data, provider, created_at, updated_at) values
   ('aaaaaaaa-1600-0000-0000-000000000001', 'aaaaaaaa-1600-0000-0000-000000000001', '{"sub":"a"}',  'email',  now() - interval '50 days', now() - interval '50 days'),
@@ -50,12 +54,17 @@ insert into auth.identities (provider_id, user_id, identity_data, provider, crea
   ('google-ben',                           'aaaaaaaa-1600-0000-0000-000000000002', '{"sub":"g2"}', 'google', now() - interval '45 days', now() - interval '45 days'),
   ('apple-ben',                            'aaaaaaaa-1600-0000-0000-000000000002', '{"sub":"a2"}', 'apple',  now() - interval '44 days', now() - interval '1 day'),
   ('apple-cy',                             'aaaaaaaa-1600-0000-0000-000000000003', '{"sub":"a3"}', 'apple',  now() - interval '40 days', now() - interval '40 days'),
-  ('aaaaaaaa-1600-0000-0000-000000000004', 'aaaaaaaa-1600-0000-0000-000000000004', '{"sub":"d"}',  'email',  now() - interval '90 days', now() - interval '90 days');
+  ('aaaaaaaa-1600-0000-0000-000000000004', 'aaaaaaaa-1600-0000-0000-000000000004', '{"sub":"d"}',  'email',  now() - interval '90 days', now() - interval '90 days'),
+  ('14155550161',                          'aaaaaaaa-1600-0000-0000-000000000005', '{"sub":"e"}',  'phone',  now() - interval '55 days', now() - interval '55 days'),
+  ('aaaaaaaa-1600-0000-0000-000000000005', 'aaaaaaaa-1600-0000-0000-000000000005', '{"sub":"e"}',  'email',  now() - interval '36 days', now() - interval '36 days'),
+  ('14155550162',                          'aaaaaaaa-1600-0000-0000-000000000006', '{"sub":"f"}',  'phone',  now() - interval '52 days', now() - interval '52 days');
 
 insert into public.members (id, type, status, display_name, username, birth_date, level_range, state, is_admin) values
   ('aaaaaaaa-1600-0000-0000-000000000001', 'peer', 'active', 'Ana Probe', 'probe.ana16', '1980-01-01', 'T1–T6', 'CA', false),
   ('aaaaaaaa-1600-0000-0000-000000000002', 'peer', 'active', 'Ben Probe', 'probe.ben16', '1980-01-01', 'T1–T6', 'CA', false),
-  ('aaaaaaaa-1600-0000-0000-000000000004', 'peer', 'active', 'Dee Probe', 'probe.dee16', '1980-01-01', 'T1–T6', 'CA', true);
+  ('aaaaaaaa-1600-0000-0000-000000000004', 'peer', 'active', 'Dee Probe', 'probe.dee16', '1980-01-01', 'T1–T6', 'CA', true),
+  ('aaaaaaaa-1600-0000-0000-000000000005', 'peer', 'active', 'Eve Probe', 'probe.eve16', '1980-01-01', 'T1–T6', 'CA', false),
+  ('aaaaaaaa-1600-0000-0000-000000000006', 'peer', 'active', 'Fay Probe', 'probe.fay16', '1980-01-01', 'T1–T6', 'CA', false);
 
 -- Sessions, each begun at its own time: the second hex digit of the last
 -- group says whose, the last says which.
@@ -157,7 +166,8 @@ rollback to savepoint bad_period;
 \echo '== 4. Stats for 30 to 60 days ago, as Dee =='
 create temp table r on commit drop as select public.admin_sign_in_methods('prev30d') as j;
 
-\echo '   expect: {"apple": 1, "email": 1, "google": 1}   (Ana is email though she linked Google; Dee is older)'
+\echo '   expect: {"apple": 1, "email": 2, "google": 1}'
+\echo '   (Ana is email though she linked Google; Eve is email, not phone; Fay has no way in; Dee is older)'
 select j -> 'signUps' from r;
 
 \echo '   expect: apple  | 2 | 2'
@@ -175,7 +185,10 @@ select j -> 'homeScreen' from r;
 \echo '   expect: Ben Probe | (null)        | google | ["apple", "google"] | email  | f | 2'
 \echo '           Ana Probe | (null)        | email  | ["email", "google"] | google | t | 4'
 \echo '           (null)    | cy@probe.test | apple  | ["apple"]           | apple  | f | 1'
-\echo '   (Ben first: his latest, an hour ago, is newest; Dee is not listed)'
+\echo '           Fay Probe | (null)        | (null) | []                  | (null) | f | 0'
+\echo '           Eve Probe | (null)        | email  | ["email"]           | (null) | f | 0'
+\echo '   (Ben first: his latest, an hour ago, is newest; then those never signed in, newest first;'
+\echo '    no phone anywhere; Dee is not listed)'
 select a ->> 'name' as name, a ->> 'email' as email, a ->> 'signedUpWith' as signed_up_with,
        a -> 'methods' as methods, a ->> 'lastSignInMethod' as last_method,
        (a ->> 'lastSignInHomeScreen')::boolean as home_screen, (a ->> 'signIns')::int as sign_ins

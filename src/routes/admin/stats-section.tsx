@@ -376,6 +376,7 @@ const STATUS: Record<string, string> = { suspended: 'Suspended', removed: 'Remov
 
 function AccountRow({ account, period }: { account: SignInAccount; period: StatsPeriod }) {
   const others = account.methods.filter((m) => m !== account.signedUpWith);
+  const made = new Date(account.createdAt).toLocaleDateString('en-US', DATE);
   const status = account.status ? STATUS[account.status] : undefined;
   return (
     <li className="border-line border-b py-2.5 text-[0.8125rem] leading-[1.45] last:border-b-0">
@@ -396,8 +397,10 @@ function AccountRow({ account, period }: { account: SignInAccount; period: Stats
         {status ? <span className="ml-1.5 text-destructive">{status}</span> : null}
       </p>
       <p className="text-ink2">
-        Signed up with {methodPhrase(account.signedUpWith)} on{' '}
-        {new Date(account.createdAt).toLocaleDateString('en-US', DATE)}.
+        {account.signedUpWith
+          ? `Signed up with ${methodPhrase(account.signedUpWith)} on ${made}.`
+          : // An account from the phone days that never added another way in.
+            `Made on ${made}, with no way to sign in now.`}
         {others.length ? ` Can also sign in with ${methodList(others)}.` : ''}
       </p>
       <p className="text-ink2">

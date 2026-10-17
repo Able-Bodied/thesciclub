@@ -13,9 +13,10 @@ import type { StatsPeriod } from '@/routes/admin/club-stats';
  */
 
 /**
- * email, google and apple are the ways in today; phone is on accounts from
- * before 2026-10-10; link is a password reset or an emailed link; oauth is
- * Google or Apple when the database could not tell which (see the migration).
+ * email, google and apple are the ways in; link is a password reset or an
+ * emailed link; oauth is Google or Apple when the database could not tell
+ * which (see the migration). Never phone: it signs nobody in now, and the
+ * owner had it left off (20261016010000).
  */
 export type SignInMethod = string;
 
@@ -63,7 +64,6 @@ const LABELS: Record<string, string> = {
   email: 'Email and password',
   google: 'Google',
   apple: 'Apple',
-  phone: 'Phone (old accounts)',
   link: 'One-time link',
   oauth: 'Google or Apple',
 };
@@ -72,7 +72,7 @@ export function methodLabel(method: SignInMethod | null): string {
   return method ? (LABELS[method] ?? method) : 'Unknown';
 }
 
-const PHRASES: Record<string, string> = { phone: 'a phone number', link: 'a one-time link' };
+const PHRASES: Record<string, string> = { link: 'a one-time link' };
 
 /** In a sentence: "signed in with a one-time link". */
 export function methodPhrase(method: SignInMethod | null): string {
