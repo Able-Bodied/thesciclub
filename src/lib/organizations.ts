@@ -148,7 +148,13 @@ export function useOrganizations(): OrganizationsState {
   }, []);
 
   useEffect(() => {
-    if (revision === 0 && shared && Date.now() - shared.at < FRESH_FOR_MS) return;
+    if (revision === 0 && shared && Date.now() - shared.at < FRESH_FOR_MS) {
+      // Another screen's read can land between this screen's render, which
+      // found nothing and drew loading, and this effect: take what it found.
+      const { read } = shared;
+      setState((current) => (current.loading ? { ...read, loading: false } : current));
+      return;
+    }
     if (revision > 0) inFlight = null;
     let live = true;
     void readOrganizations().then((read) => {
