@@ -52,7 +52,7 @@ export default function EventDetailPage() {
   const { events, loading, error, reload } = useEvents({
     id: id ?? '00000000-0000-0000-0000-000000000000',
   });
-  const { byEvent } = useAttendeesByEvent();
+  const { byEvent } = useAttendeesByEvent(id ? [id] : []);
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const account = useAccount();

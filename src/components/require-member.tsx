@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
-import { useAccount } from '@/lib/account';
+import { AccountProvider, useOwnAccount } from '@/lib/account';
 import { restoreDeviceNotifications } from '@/lib/push/notifications';
 import { signInDoor } from '@/lib/sign-in-destination';
 
@@ -20,16 +20,27 @@ import { signInDoor } from '@/lib/sign-in-destination';
  * insecure.
  */
 export function RequireMember({ children }: { children: React.ReactNode }) {
-  const account = useAccount();
-  const { status } = account;
   const location = useLocation();
+  // The one read for everything inside (AccountProvider), again on each
+  // screen so a change to the member's own row is never more than a screen
+  // old.
+  const account = useOwnAccount({ refresh: location.pathname });
+  const { status } = account;
 
   useEffect(() => {
     if (status !== 'member' || !account.userId) return;
     // Restore on entering the club, even if the member never visits Me.
-    void restoreDeviceNotifications(account.userId).catch((error: unknown) => {
-      console.error(error);
-    });
+    // After the first screen's own reads, which it would otherwise queue
+    // behind on a slow connection.
+    const userId = account.userId;
+    const timer = window.setTimeout(() => {
+      void restoreDeviceNotifications(userId).catch((error: unknown) => {
+        console.error(error);
+      });
+    }, 3000);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [status, account.userId]);
 
   if (status === 'error') return <AccountProblem account={account} />;
@@ -49,5 +60,5 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
   if (status === 'suspended') {
     return <SuspendedScreen />;
   }
-  return <>{children}</>;
+  return <AccountProvider account={account}>{children}</AccountProvider>;
 }

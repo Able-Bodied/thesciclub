@@ -1,4 +1,5 @@
 import { Bell } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUnseenNotifications } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
@@ -65,4 +66,30 @@ export function NotificationBell({
       <span>Notifications</span>
     </Link>
   );
+}
+
+const WIDE = '(min-width: 768px)';
+
+/**
+ * Whether the desktop layout (`md`) is showing, so only the bell that can be
+ * seen is mounted. Both used to be mounted with one hidden by CSS, and each
+ * bell reads the count and keeps its own realtime channel (2026-10-14). Null
+ * where the browser cannot say: then both are mounted, as before.
+ */
+export function useWideLayout(): boolean | null {
+  const [wide, setWide] = useState<boolean | null>(() =>
+    typeof window.matchMedia === 'function' ? window.matchMedia(WIDE).matches : null,
+  );
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const query = window.matchMedia(WIDE);
+    const changed = () => {
+      setWide(query.matches);
+    };
+    query.addEventListener('change', changed);
+    return () => {
+      query.removeEventListener('change', changed);
+    };
+  }, []);
+  return wide;
 }

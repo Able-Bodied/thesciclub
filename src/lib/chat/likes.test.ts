@@ -60,19 +60,24 @@ vi.mock('@/lib/supabase', () => {
         select: (columns: string) => ({
           in: (column: string, ids: string[]) => {
             db.reads.push(ids);
-            return {
-              order: (by: string) => ({
-                abortSignal: () => {
-                  expect([table, columns, column, by]).toEqual([
-                    'chat_post_likes',
-                    'post_id, member_id',
-                    'post_id',
-                    'liked_at',
-                  ]);
-                  return Promise.resolve({ data: db.rows, error: db.readError });
-                },
-              }),
+            const orders: string[] = [];
+            const query = {
+              order: (by: string) => {
+                orders.push(by);
+                return query;
+              },
+              range: () => query,
+              abortSignal: () => {
+                expect([table, columns, column, orders[0]]).toEqual([
+                  'chat_post_likes',
+                  'post_id, member_id',
+                  'post_id',
+                  'liked_at',
+                ]);
+                return Promise.resolve({ data: db.rows, error: db.readError });
+              },
             };
+            return query;
           },
         }),
         upsert: (row: unknown, options: unknown) => {

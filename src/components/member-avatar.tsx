@@ -48,6 +48,9 @@ export function MemberAvatar({
           // twice. A decorative alt is the correct answer for an image whose
           // caption is beside it.
           alt={photoAlt ?? ''}
+          // A face per post in a long topic: fetched as the reader nears it.
+          loading="lazy"
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[50%_32%]"
         />
       ) : (
@@ -118,7 +121,13 @@ export function GroupAvatar({
     >
       {url ? (
         // Empty alt: the tile is decorative and the group's name is beside it.
-        <img src={url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
       ) : (
         '◎'
       )}

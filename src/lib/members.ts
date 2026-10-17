@@ -37,9 +37,10 @@ export interface BrowseMemberRow {
   injury_date_precision: string | null;
   region: string;
   age: number | null;
-  how_injured: string | null;
-  bio: string | null;
-  detail: string | null;
+  /** Not in the list's read (LIST_COLUMNS). */
+  how_injured?: string | null;
+  bio?: string | null;
+  detail?: string | null;
   gender: string | null;
   languages: string[] | null;
   independence: string | null;
@@ -72,6 +73,15 @@ export interface BrowseMemberRow {
 }
 
 /** The one row -> domain mapping. Exported so nothing writes a second one. */
+/**
+ * Every column but the long ones in the member's own words (how they were
+ * injured, bio, detail, equipment, grants), which only their own page draws,
+ * and it reads them by id. A list read them for every member: most of the
+ * bytes of Peers and Home (2026-10-14). Search, filters and cards use none.
+ */
+const LIST_COLUMNS =
+  'id, type, display_name, username, photo_path, photo_alt, avatar_color, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, region, age, gender, languages, independence, employment, field_of_work, education, education_when, marital_status, has_children, children_when, interests, topics, self_care, affiliations, wants_to_mentor, is_seed, is_admin, created_at, represented_organizations';
+
 export function toMember(row: BrowseMemberRow): BrowseMember {
   return {
     id: row.id,
@@ -92,9 +102,9 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     injuryDatePrecision: row.injury_date_precision as BrowseMember['injuryDatePrecision'],
     region: row.region as BrowseMember['region'],
     age: row.age,
-    howInjured: row.how_injured,
-    bio: row.bio,
-    detail: row.detail,
+    howInjured: row.how_injured ?? null,
+    bio: row.bio ?? null,
+    detail: row.detail ?? null,
     gender: row.gender,
     languages: row.languages ?? [],
     independence: row.independence as BrowseMember['independence'],
@@ -172,7 +182,7 @@ export function useBrowseMembers(): MembersState {
 
         const { data, error } = await supabase
           .from('browse_members')
-          .select('*')
+          .select(LIST_COLUMNS)
           .order('display_name')
           .abortSignal(signal);
         if (aborted()) return;

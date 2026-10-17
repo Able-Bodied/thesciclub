@@ -38,21 +38,3 @@ export function ClubMark({ size = 88, className }: { size?: number; className?: 
     />
   );
 }
-
-/**
- * The compact header lockup — the mark beside THE SCI CLUB. Reverse only,
- * because a navy header is the only place the app puts it; the plain one is
- * `sci-club-lockup-compact.svg` in the owner's folder if a light header ever
- * wants it. 32px is the README's minimum for the compact lockup.
- */
-export function ClubWordmark() {
-  return (
-    <img
-      src="/brand/sci-club-lockup-compact-reverse.svg"
-      alt="The SCI Club"
-      height={32}
-      width={Math.round((32 * 480) / 140)}
-      decoding="sync"
-    />
-  );
-}

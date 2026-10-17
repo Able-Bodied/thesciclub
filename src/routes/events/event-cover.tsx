@@ -34,15 +34,25 @@ export function EventCover({
         src={url}
         alt={alt ?? ''}
         loading="lazy"
+        decoding="async"
         className={cn('h-[4.5rem] w-[4.5rem] flex-none rounded-[12px] object-cover', className)}
       />
     );
   }
+  // The page's largest picture, so fetched first. Its box is fixed before it
+  // arrives (4:3, the cover still shown whole inside it): it had no height
+  // until it loaded and then pushed the title and everything under it down
+  // by as much as 60% of the screen (2026-10-14).
   return (
     <img
       src={url}
       alt={alt ?? ''}
-      className={cn('block max-h-[60vh] w-full rounded-[14px] bg-plate object-contain', className)}
+      fetchPriority="high"
+      decoding="async"
+      className={cn(
+        'block aspect-[4/3] max-h-[60vh] w-full rounded-[14px] bg-plate object-contain',
+        className,
+      )}
     />
   );
 }

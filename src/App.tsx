@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskOnOpening } from '@/components/ask-on-opening';
@@ -9,40 +9,101 @@ import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { FollowNotification } from '@/lib/push/follow-notification';
-import OrganizationManagementPage from '@/routes/admin/organization-management-page';
-import AdminPage from '@/routes/admin/page';
-import AppSignInPage from '@/routes/app-sign-in/page';
-import GroupMembersPage from '@/routes/chat/group-members';
-import NewGroupPage from '@/routes/chat/new-group';
-import NewMessagePage from '@/routes/chat/new-message';
-import NewRoomPage from '@/routes/chat/new-room';
-import NewTopicPage from '@/routes/chat/new-topic';
-import ChatPage from '@/routes/chat/page';
-import RoomPage from '@/routes/chat/room-page';
-import SharePage from '@/routes/chat/share-page';
-import ThreadPage from '@/routes/chat/thread-page';
-import TopicPage from '@/routes/chat/topic-page';
 import DevLoginPage from '@/routes/dev-login/page';
-import EventDetailPage from '@/routes/events/event-detail';
-import EventFormPage from '@/routes/events/event-form';
-import OrganizationDetailPage from '@/routes/events/organization-detail';
-import EventsPage from '@/routes/events/page';
-import HomeNewPage from '@/routes/home/new';
 import HomePage from '@/routes/home/page';
-import InvitesPage from '@/routes/invites/page';
 import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
-import MePage from '@/routes/me/page';
-import QrCodePage from '@/routes/me/qr-page';
 import NotFoundPage from '@/routes/not-found/page';
-import NotificationsPage from '@/routes/notifications/page';
 import OnboardingPage from '@/routes/onboarding/page';
-import MemberDetailPage from '@/routes/peers/member-detail';
-import PeersPage from '@/routes/peers/page';
-import ProfileAnswersPage from '@/routes/profile/answers';
-import ProfileDetailsPage from '@/routes/profile/details';
-import ProfileSurveyPage from '@/routes/profile/page';
-import ResetPasswordPage from '@/routes/reset-password/page';
+
+/*
+ * Every screen but the doors is fetched when it is first opened, not with the
+ * first page (2026-10-14: one 1.16MB script held all of them, Admin and the
+ * event editor included). Home, joining and the legal pages stay in the first
+ * script: Home is where the club opens, and the other three are already drawn
+ * in the HTML (scripts/prerender-legal.mjs), which a loading screen would
+ * blank. The service worker precaches every chunk, so the installed app still
+ * opens any screen offline. The four other tabs are fetched once the first
+ * screen is up (prefetchTabs).
+ */
+const OrganizationManagementPage = lazy(
+  () => import('@/routes/admin/organization-management-page'),
+);
+const AdminPage = lazy(() => import('@/routes/admin/page'));
+const AppSignInPage = lazy(() => import('@/routes/app-sign-in/page'));
+const GroupMembersPage = lazy(() => import('@/routes/chat/group-members'));
+const NewGroupPage = lazy(() => import('@/routes/chat/new-group'));
+const NewMessagePage = lazy(() => import('@/routes/chat/new-message'));
+const NewRoomPage = lazy(() => import('@/routes/chat/new-room'));
+const NewTopicPage = lazy(() => import('@/routes/chat/new-topic'));
+const RoomPage = lazy(() => import('@/routes/chat/room-page'));
+const SharePage = lazy(() => import('@/routes/chat/share-page'));
+const ThreadPage = lazy(() => import('@/routes/chat/thread-page'));
+const TopicPage = lazy(() => import('@/routes/chat/topic-page'));
+const EventDetailPage = lazy(() => import('@/routes/events/event-detail'));
+const EventFormPage = lazy(() => import('@/routes/events/event-form'));
+const OrganizationDetailPage = lazy(() => import('@/routes/events/organization-detail'));
+const HomeNewPage = lazy(() => import('@/routes/home/new'));
+const InvitesPage = lazy(() => import('@/routes/invites/page'));
+const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
+const NotificationsPage = lazy(() => import('@/routes/notifications/page'));
+const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
+const ProfileAnswersPage = lazy(() => import('@/routes/profile/answers'));
+const ProfileDetailsPage = lazy(() => import('@/routes/profile/details'));
+const ProfileSurveyPage = lazy(() => import('@/routes/profile/page'));
+const ResetPasswordPage = lazy(() => import('@/routes/reset-password/page'));
+
+// The other four tabs, fetched after the first screen so a first tap on one
+// does not wait for its script.
+const loadPeers = () => import('@/routes/peers/page');
+const loadChat = () => import('@/routes/chat/page');
+const loadEvents = () => import('@/routes/events/page');
+const loadMe = () => import('@/routes/me/page');
+const PeersPage = lazy(loadPeers);
+const ChatPage = lazy(loadChat);
+const EventsPage = lazy(loadEvents);
+const MePage = lazy(loadMe);
+
+/**
+ * The script for the screen being opened, asked for as the app starts rather
+ * than once the membership check lets the screen render: the two then come
+ * over the network together. Started from main.tsx.
+ */
+const SCREENS: [RegExp, () => Promise<unknown>][] = [
+  [/^\/peers\/?$/, loadPeers],
+  [/^\/peers\/[^/]+$/, () => import('@/routes/peers/member-detail')],
+  [/^\/chat\/?$/, loadChat],
+  [/^\/chat\/rooms\/[^/]+\/topics\//, () => import('@/routes/chat/topic-page')],
+  [/^\/chat\/rooms\/[^/]+\/?$/, () => import('@/routes/chat/room-page')],
+  [/^\/chat\/t\/[^/]+\/?$/, () => import('@/routes/chat/thread-page')],
+  [/^\/events\/?$/, loadEvents],
+  [/^\/events\/[0-9a-f-]{36}\/?$/, () => import('@/routes/events/event-detail')],
+  [/^\/me\/?$/, loadMe],
+  [/^\/notifications\/?$/, () => import('@/routes/notifications/page')],
+];
+
+export function preloadScreen(pathname: string): void {
+  const load = SCREENS.find(([pattern]) => pattern.test(pathname))?.[1];
+  if (load) void load().catch(() => undefined);
+}
+
+function prefetchTabs(): () => void {
+  const fetchAll = () => {
+    for (const load of [loadPeers, loadChat, loadEvents, loadMe])
+      void load().catch(() => undefined);
+  };
+  // Safari before 26 has no requestIdleCallback.
+  if (typeof (window.requestIdleCallback as unknown) === 'function') {
+    const id = window.requestIdleCallback(fetchAll, { timeout: 4000 });
+    return () => {
+      window.cancelIdleCallback(id);
+    };
+  }
+  const id = window.setTimeout(fetchAll, 2000);
+  return () => {
+    window.clearTimeout(id);
+  };
+}
 
 /**
  * The signed-in shell: one scrolling surface above a fixed five-tab bar.
@@ -52,6 +113,7 @@ import ResetPasswordPage from '@/routes/reset-password/page';
  * rather than children of it.
  */
 function AppShell() {
+  useEffect(prefetchTabs, []);
   // Phone-width by default, because that is the design and the PWA target.
   // Widened beyond that rather than left as a 480px ribbon on a big screen —
   // the deck grids into the extra width.
@@ -83,63 +145,68 @@ function AppShell() {
           the routes already filled, so nothing about the layout moves.
           Focusable so the skip link and a route change have somewhere to land. */}
       <main id="main" tabIndex={-1} className="flex min-h-0 flex-1 flex-col outline-none">
-        <Routes>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/home/new" element={<HomeNewPage />} />
-          <Route path="/peers" element={<PeersPage />} />
-          <Route path="/peers/:id" element={<MemberDetailPage />} />
-          <Route path="/chat" element={<ChatPage />} />
-          {/* A room's slug is in the URL — /chat/rooms/bowel — which is why
+        {/* While a screen's script arrives the tab bar stays and the slot is
+            empty; a route change keeps the old screen up meanwhile, since
+            React Router changes routes in a transition. */}
+        <Suspense fallback={<div className="flex-1" />}>
+          <Routes>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/home/new" element={<HomeNewPage />} />
+            <Route path="/peers" element={<PeersPage />} />
+            <Route path="/peers/:id" element={<MemberDetailPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            {/* A room's slug is in the URL — /chat/rooms/bowel — which is why
             chat_rooms.id is a slug and not a uuid. /new sits above :roomId for
             a reader's sake; React Router ranks a static segment above a dynamic
             one either way, and no room can be called "new" — the seeded twelve
             are fixed and a member room's id always carries a four-character
             suffix. */}
-          <Route path="/chat/rooms/new" element={<NewRoomPage />} />
-          <Route path="/chat/rooms/:roomId" element={<RoomPage />} />
-          <Route path="/chat/rooms/:roomId/new" element={<NewTopicPage />} />
-          <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
-          {/* /chat/t/:threadId and not /chat/threads/:id — a conversation's URL
+            <Route path="/chat/rooms/new" element={<NewRoomPage />} />
+            <Route path="/chat/rooms/:roomId" element={<RoomPage />} />
+            <Route path="/chat/rooms/:roomId/new" element={<NewTopicPage />} />
+            <Route path="/chat/rooms/:roomId/topics/:topicId" element={<TopicPage />} />
+            {/* /chat/t/:threadId and not /chat/threads/:id — a conversation's URL
             is pasted and typed far more than a room's, and the thread id is a
             uuid that is long enough on its own. */}
-          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
-          {/* Who is in a group, adding to it and leaving it. A screen rather
+            <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+            {/* Who is in a group, adding to it and leaving it. A screen rather
             than a panel on the conversation: all three are things somebody
             does once, and none of them belongs beside a composer. */}
-          <Route path="/chat/t/:threadId/members" element={<GroupMembersPage />} />
-          <Route path="/chat/new-group" element={<NewGroupPage />} />
-          {/* A conversation with one person, from Chat rather than only from
+            <Route path="/chat/t/:threadId/members" element={<GroupMembersPage />} />
+            <Route path="/chat/new-group" element={<NewGroupPage />} />
+            {/* A conversation with one person, from Chat rather than only from
             their profile (2026-10-10). */}
-          <Route path="/chat/new" element={<NewMessagePage />} />
-          {/* What another app shared to the club, kept by the service worker
+            <Route path="/chat/new" element={<NewMessagePage />} />
+            {/* What another app shared to the club, kept by the service worker
             (manifest share_target; Android). */}
-          <Route path="/share" element={<SharePage />} />
-          <Route path="/events" element={<EventsPage />} />
-          {/* Adding and changing an event by hand: administrators, and members
+            <Route path="/share" element={<SharePage />} />
+            <Route path="/events" element={<EventsPage />} />
+            {/* Adding and changing an event by hand: administrators, and members
             who speak for an organization. The page sends anybody else back to
             Events. No event id can be "new": they are uuids. */}
-          <Route path="/events/new" element={<EventFormPage />} />
-          <Route path="/events/:id" element={<EventDetailPage />} />
-          <Route path="/events/:id/edit" element={<EventFormPage />} />
-          <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
-          <Route path="/me" element={<MePage />} />
-          {/* Administrators only; the page sends anybody else to Me. */}
-          <Route path="/me/qr" element={<QrCodePage />} />
-          {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
+            <Route path="/events/new" element={<EventFormPage />} />
+            <Route path="/events/:id" element={<EventDetailPage />} />
+            <Route path="/events/:id/edit" element={<EventFormPage />} />
+            <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
+            <Route path="/me" element={<MePage />} />
+            {/* Administrators only; the page sends anybody else to Me. */}
+            <Route path="/me/qr" element={<QrCodePage />} />
+            {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
             of the top bar (desktop) lead here. */}
-          <Route path="/notifications" element={<NotificationsPage />} />
-          {/* Unlisted in the tab bar; the page redirects a non-mentor away.
+            <Route path="/notifications" element={<NotificationsPage />} />
+            {/* Unlisted in the tab bar; the page redirects a non-mentor away.
             Reached from the Invites card on Me, which is where a member goes
             to find out what their membership lets them do. */}
-          <Route path="/invites" element={<InvitesPage />} />
-          {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
-          <Route path="/organizations/manage" element={<OrganizationManagementPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          {/* Last, and inside the shell on purpose: an unknown path used to match
+            <Route path="/invites" element={<InvitesPage />} />
+            {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
+            <Route path="/organizations/manage" element={<OrganizationManagementPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            {/* Last, and inside the shell on purpose: an unknown path used to match
             the outer `/*`, reach this switch, match nothing, and leave the tab
             bar sitting over an empty page. */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </main>
       {/* After the screen and before the tab bar on a phone (the nav is
           ordered last there): it pushes the screen up rather than covering
@@ -221,70 +288,72 @@ function InLight({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      {/* Home, since 2026-09-30 (HANDOFF.md "What Home is" decision 6). Until then this
+    <Suspense fallback={<div className="min-h-dvh bg-canvas" />}>
+      <Routes>
+        {/* Home, since 2026-09-30 (HANDOFF.md "What Home is" decision 6). Until then this
           went to Peers, because Home was a placeholder and landing on it
           opened the app on a page whose own copy pointed elsewhere. Home is
           now the club's recent topics, photographs, events and people in one
           list, and it was released one step at a time and seen on the live
           club before it became the door. The manifest's start_url stays "/",
           so an installed app follows this line too. */}
-      <Route path="/" element={<Navigate to="/home" replace />} />
-      {/* Outside the shell: onboarding has its own footer and no tab bar. */}
-      {/* Always light: see useForceLight. */}
-      <Route
-        path="/join"
-        element={
-          <InLight>
-            <OnboardingPage />
-          </InLight>
-        }
-      />
-      {/* Forgot password and change password both land here, from an emailed
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        {/* Outside the shell: onboarding has its own footer and no tab bar. */}
+        {/* Always light: see useForceLight. */}
+        <Route
+          path="/join"
+          element={
+            <InLight>
+              <OnboardingPage />
+            </InLight>
+          }
+        />
+        {/* Forgot password and change password both land here, from an emailed
           link. Outside the shell, always light, like /join. */}
-      <Route
-        path="/reset-password"
-        element={
-          <InLight>
-            <ResetPasswordPage />
-          </InLight>
-        }
-      />
-      {/* Chrome or Safari, opened by the iPhone Home Screen app to sign in
+        <Route
+          path="/reset-password"
+          element={
+            <InLight>
+              <ResetPasswordPage />
+            </InLight>
+          }
+        />
+        {/* Chrome or Safari, opened by the iPhone Home Screen app to sign in
           with Google there (src/lib/google-in-browser.ts). Outside the shell,
           always light, like /join. */}
-      <Route
-        path="/app-sign-in"
-        element={
-          <InLight>
-            <AppSignInPage />
-          </InLight>
-        }
-      />
-      {/* Outside the shell: its own footer, no tab bar. */}
-      <Route path="/profile" element={<ProfileSurveyPage />} />
-      <Route path="/profile/answers" element={<ProfileAnswersPage />} />
-      <Route path="/profile/details" element={<ProfileDetailsPage />} />
-      {/* Development only: signs in the accounts the local seed makes. In a
+        <Route
+          path="/app-sign-in"
+          element={
+            <InLight>
+              <AppSignInPage />
+            </InLight>
+          }
+        />
+        {/* Outside the shell: its own footer, no tab bar. */}
+        <Route path="/profile" element={<ProfileSurveyPage />} />
+        <Route path="/profile/answers" element={<ProfileAnswersPage />} />
+        <Route path="/profile/details" element={<ProfileDetailsPage />} />
+        {/* Development only: signs in the accounts the local seed makes. In a
           build the condition is false, so the route and the page itself are
           dropped from the bundle. See the page's file header. */}
-      {import.meta.env.DEV && <Route path="/dev-login" element={<DevLoginPage />} />}
-      {/* Public, with no account: somebody on the phone step reads them before
+        {import.meta.env.DEV && <Route path="/dev-login" element={<DevLoginPage />} />}
+        {/* Public, with no account: somebody on the phone step reads them before
           they have one, and so do the carriers checking the text-message
           registration. See src/routes/legal/legal-page.tsx. */}
-      <Route path="/privacy" element={<PrivacyPage />} />
-      <Route path="/terms" element={<TermsPage />} />
-      <Route
-        path="/*"
-        element={
-          <RequireMember>
-            {/* Once, the first time the installed app opens: see AskOnOpening. */}
-            <AskOnOpening>
-              <AppShell />
-            </AskOnOpening>
-          </RequireMember>
-        }
-      />
-    </Routes>
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route
+          path="/*"
+          element={
+            <RequireMember>
+              {/* Once, the first time the installed app opens: see AskOnOpening. */}
+              <AskOnOpening>
+                <AppShell />
+              </AskOnOpening>
+            </RequireMember>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }

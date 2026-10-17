@@ -63,6 +63,9 @@
         // Storage blocked: the phone's own setting applies, through the CSS.
       }
     </script>
+    <!-- The club's data is on another origin (Supabase). Connecting while the
+         script downloads saves the first read its DNS, TCP and TLS. -->
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
     <!-- Both faces are served from this site, never Google Fonts: a private
          club should not tell a third party each time a member opens it.
          Preloaded so the first screen is drawn in them rather than swapped
@@ -74,7 +77,13 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="preload" href="/fonts/Outfit-Bold.ttf" as="font" type="font/ttf" crossorigin />
+    <link
+      rel="preload"
+      href="/fonts/Outfit-Bold-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
   </head>
   <body>
     <div id="root"></div>

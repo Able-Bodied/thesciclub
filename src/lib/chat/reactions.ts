@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { readInBatches } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 export const REACTIONS = [
@@ -39,6 +40,9 @@ export function useReactions(
   kind: ReactionKind,
   ids: readonly string[],
   memberId: string | null,
+  /** Off for Home, which reads once and does not follow the club live: the
+   * subscription is to every reaction anywhere, and each one re-read Home's. */
+  { live = true }: { live?: boolean } = {},
 ): ReactionsState {
   const key = [...new Set(ids)].sort().join(',');
   const scope = `${kind}:${memberId}:${key}`;
@@ -60,7 +64,7 @@ export function useReactions(
   const reload = useCallback(() => {
     setAttempt((n) => n + 1);
   }, []);
-  useRealtimeRows({ table, onChange: reload, enabled: Boolean(memberId && key) });
+  useRealtimeRows({ table, onChange: reload, enabled: live && Boolean(memberId && key) });
 
   useEffect(() => {
     if (attempt < 0) return;
@@ -75,31 +79,38 @@ export function useReactions(
     setLoading(true);
     async function load() {
       try {
-        const rows: ReactionRow[] = [];
         // Supabase caps a response at 1,000 rows. Stable key order and pages
-        // keep a busy conversation's counts from silently truncating.
-        for (let offset = 0; ; offset += 1000) {
-          const { data, error: failed } = (await getSupabase()
-            .from(table)
-            .select('target_id,member_id,emoji')
-            .in('target_id', key.split(','))
-            .order('target_id')
-            .order('member_id')
-            .range(offset, offset + 999)
-            .abortSignal(controller.signal)) as {
-            data: ReactionRow[] | null;
-            error: Failure | null;
-          };
-          if (controller.signal.aborted || readVersion !== version.current) return;
-          if (failed) {
-            setSnapshot({ scope, rows: [] });
-            setError(describeError(failed, 'Could not load reactions.'));
-            return;
-          }
-          rows.push(...(data ?? []));
-          if (!data || data.length < 1000) break;
+        // keep a busy conversation's counts from silently truncating; a
+        // hundred targets at a time keeps each URL short enough to send.
+        const { data: rows, error: failed } = await readInBatches<ReactionRow>(
+          key.split(','),
+          async (batch) => {
+            const found: ReactionRow[] = [];
+            for (let offset = 0; ; offset += 1000) {
+              const { data, error: pageFailed } = (await getSupabase()
+                .from(table)
+                .select('target_id,member_id,emoji')
+                .in('target_id', batch)
+                .order('target_id')
+                .order('member_id')
+                .range(offset, offset + 999)
+                .abortSignal(controller.signal)) as {
+                data: ReactionRow[] | null;
+                error: Failure | null;
+              };
+              if (pageFailed) return { data: null, error: pageFailed };
+              found.push(...(data ?? []));
+              if (!data || data.length < 1000) return { data: found, error: null };
+            }
+          },
+        );
+        if (controller.signal.aborted || readVersion !== version.current) return;
+        if (failed) {
+          setSnapshot({ scope, rows: [] });
+          setError(describeError(failed, 'Could not load reactions.'));
+          return;
         }
-        setSnapshot({ scope, rows });
+        setSnapshot({ scope, rows: rows ?? [] });
       } catch (e) {
         if (controller.signal.aborted || readVersion !== version.current) return;
         setSnapshot({ scope, rows: [] });

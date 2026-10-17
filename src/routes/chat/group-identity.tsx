@@ -120,7 +120,9 @@ export function GroupIdentity({
       return;
     }
     run('picture', async () => {
-      const up = await uploadAttachments(list, attachmentFolder('thread', thread.id));
+      // Drawn at most 56px across (GroupAvatar), so 400px is plenty; the
+      // 1,600px kept for a photograph in a message was 200-400KB a group.
+      const up = await uploadAttachments(list, attachmentFolder('thread', thread.id), 400);
       if (!up.ok) return up.error;
       const [path] = up.value;
       if (!path) return 'The picture was not changed.';

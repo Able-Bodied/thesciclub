@@ -89,6 +89,8 @@ function MentorStar() {
 export interface MemberCardProps {
   member: BrowseMember;
   onOpen: () => void;
+  /** The first cards on screen: the photo is fetched first, not lazily. */
+  priority?: boolean;
 }
 
 /**
@@ -98,11 +100,11 @@ export interface MemberCardProps {
  * club's mark: right while the only one was the club's account, wrong once
  * administrators were members running the club as themselves.
  */
-export function MemberCard({ member, onOpen }: MemberCardProps) {
-  return <PersonCard member={member} onOpen={onOpen} />;
+export function MemberCard({ member, onOpen, priority = false }: MemberCardProps) {
+  return <PersonCard member={member} onOpen={onOpen} priority={priority} />;
 }
 
-function PersonCard({ member, onOpen }: MemberCardProps) {
+function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
   const { organizations } = useOrganizations();
   const photo = usePhotoUrl(member.photoPath);
   const [from, to] = gradientFor(member.id);
@@ -136,7 +138,11 @@ function PersonCard({ member, onOpen }: MemberCardProps) {
         <img
           src={photo}
           alt=""
-          loading="lazy"
+          // The first cards are the screen's largest picture; the rest wait
+          // until they are scrolled near.
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-[50%_28%]"
           onError={(e) => {
             e.currentTarget.remove();

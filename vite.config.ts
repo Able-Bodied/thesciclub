@@ -11,20 +11,39 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered from src/main.tsx once the first screen has had its turn:
+      // the generated script registered on `load`, when Home's reads start,
+      // and the first install's precache (the whole app) took the phone's
+      // connection from them.
+      injectRegister: false,
       // Ours rather than generated, so it can receive a push. src/sw.ts keeps
       // everything the generated one did; its header lists what and why.
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
       // Browser shortcut icons, as well as the manifest's install icons, work offline.
-      includeAssets: ['favicon*.png', 'favicon.ico', 'apple-touch-icon*.png'],
+      // Named rather than globbed: favicon-180x180.png and
+      // apple-touch-icon-precomposed.png are byte-for-byte apple-touch-icon.png,
+      // and a phone only fetches them by convention, never offline, so they
+      // stay on the site and out of the first install (2026-10-14).
+      includeAssets: [
+        'favicon.ico',
+        'favicon-16x16.png',
+        'favicon-32x32.png',
+        'favicon-192x192.png',
+        'favicon-512x512.png',
+        'apple-touch-icon.png',
+      ],
       // A classic script, not a module: iOS came late to module workers.
       // The default precaches js, css and html only. The fonts and the logo
       // files are in public/, not imported, so they are named here — without
       // them an installed app opened offline draws in the fallback face.
       injectManifest: {
         rollupFormat: 'iife',
-        globPatterns: ['**/*.{js,css,html,woff2,ttf,svg}'],
+        globPatterns: ['**/*.{js,css,html,woff2,svg}'],
+        // A domain-ownership file for a checker, not a page: never opened in
+        // the app, so not downloaded by every first install.
+        globIgnores: ['**/node_modules/**', 'sw.js', '351f1d05184f1216b6844862231b8fbc.html'],
       },
       manifest: {
         // Launchers can choose either name; both must be the owner's install name.
@@ -119,6 +138,21 @@ export default defineConfig({
      *   TUNNEL=1 pnpm dev
      */
     ...(process.env.TUNNEL ? { hmr: { protocol: 'wss', clientPort: 443 } } : {}),
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          // Everything the first screen needs in one file. Left to itself the
+          // bundler split the code the lazy screens share with it into a dozen
+          // files of a few hundred bytes, each a request before first paint
+          // (2026-10-14: first paint 2.3 s to 2.5 s on a slow phone).
+          groups: [{ name: 'app', tags: ['$initial'] }],
+          // And no slivers among the screens' own shared code either.
+          minSize: 20_000,
+        },
+      },
+    },
   },
   resolve: {
     alias: {

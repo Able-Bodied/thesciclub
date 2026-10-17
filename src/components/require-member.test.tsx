@@ -12,6 +12,8 @@ vi.mock('@/lib/push/notifications', () => ({
 }));
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
+  useOwnAccount: () => account.current,
+  AccountProvider: ({ children }: { children: React.ReactNode }) => children,
   signOut: () => Promise.resolve({ ok: true }),
 }));
 vi.mock('@/lib/members', () => ({
@@ -45,9 +47,17 @@ beforeEach(() => {
 
 describe('RequireMember', () => {
   it('lets a member in', () => {
-    renderGuarded();
-    expect(screen.getByText('Inside the club')).toBeInTheDocument();
-    expect(account.restore).toHaveBeenCalledWith('u1');
+    vi.useFakeTimers();
+    try {
+      renderGuarded();
+      expect(screen.getByText('Inside the club')).toBeInTheDocument();
+      // After the first screen's reads, not with them.
+      expect(account.restore).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(3000);
+      expect(account.restore).toHaveBeenCalledWith('u1');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // Suspension did nothing a member could perceive: the row was read without

@@ -9,34 +9,32 @@ import { getSupabase } from '@/lib/supabase';
  * Recent topics across every open room, for Home.
  *
  * ---------------------------------------------------------------------------
- * Two reads, joined here, and RLS is the filter
+ * One read, and RLS is the filter
  * ---------------------------------------------------------------------------
- * The newest forty topics by activity, then every post in those forty. Both
- * tables are already granted to `authenticated` and their select policies are
- * `chat_room_is_readable`, so what comes back is exactly what this member may
- * read. Nothing here decides visibility except the one thing RLS cannot: see
- * "closed rooms" below.
+ * The newest forty topics by activity, each with the posts its card needs,
+ * embedded: `opening`, the topic's earliest post, and `replies`, its two
+ * earliest standing top-level posts. Both tables are already granted to
+ * `authenticated` and their select policies are `chat_room_is_readable`, and
+ * an embedded read is held to the same policies, so what comes back is
+ * exactly what this member may read. Nothing here decides visibility except
+ * the one thing RLS cannot: see "closed rooms" below.
  *
- * Removed posts are read on purpose. The opening post is the earliest row for
- * a topic, standing or not. Filter the removed ones out in the query and a
- * topic whose question was taken down would present its first reply as the
- * question.
+ * Until 2026-10-14 this was two reads, the topics and then every post in
+ * them (up to 1,000 rows, to use two from each): a second round trip before
+ * Home could draw, and most of its bytes.
+ *
+ * The opening post is the earliest row for a topic, standing or not, which
+ * is why it is embedded on its own and unfiltered. Filter the removed ones
+ * out and a topic whose question was taken down would present its first
+ * reply as the question.
  *
  * The first reply on a card is the earliest standing post after the opener
  * that answers the topic and not another post — `replyTo` null. Since
  * 20260930000000 a post can sit under another (a reply to an answer); those
  * belong to the answer they are under, and a card that quoted one would put
- * half a side-conversation under the title.
- *
- * ---------------------------------------------------------------------------
- * When this should become one SQL function
- * ---------------------------------------------------------------------------
- * The posts read is capped at 1,000 rows, and it reads every post in forty
- * topics to use two from each. That is fine for a club this size. When the cap
- * is reached, `console.warn` says so once, and that is the sign to move this
- * into one `security invoker` function (so RLS still applies) that returns
- * each topic with its opening post and first reply. Not built yet, because
- * nothing needs it yet.
+ * half a side-conversation under the title. Two such posts are enough: when
+ * the opener stands it is the first of them (an opener answers nobody), and
+ * the reply is the second.
  *
  * ---------------------------------------------------------------------------
  * Closed rooms
@@ -49,7 +47,6 @@ import { getSupabase } from '@/lib/supabase';
  */
 
 export const HOME_TOPIC_LIMIT = 40;
-export const HOME_POST_LIMIT = 1000;
 
 const TOPIC_COLUMNS =
   'id, room_id, title, author_id, created_at, last_post_at, reply_count, is_question';
@@ -64,6 +61,8 @@ interface TopicRow {
   reply_count: number;
   /** Absent from a database before 20261010010000. */
   is_question?: boolean;
+  opening?: PostRow[] | null;
+  replies?: PostRow[] | null;
 }
 
 function toSummary(row: TopicRow): HomeTopicSummary {
@@ -140,7 +139,7 @@ export function toHomeTopics(
 
 export interface HomeTopicsState {
   topics: HomeTopicSummary[];
-  /** Every post in those topics, removed ones included. See the header. */
+  /** The posts each card needs, a removed opener included. See the header. */
   posts: ChatPost[];
   loading: boolean;
   error: string | null;
@@ -172,45 +171,37 @@ export function useHomeTopics(): HomeTopicsState {
         const supabase = getSupabase();
         const topicRows = (await supabase
           .from('chat_topics')
-          .select(`${TOPIC_COLUMNS}, chat_rooms!inner(show_in_home, opened_at)`)
+          .select(
+            `${TOPIC_COLUMNS}, chat_rooms!inner(show_in_home, opened_at), opening:chat_posts(${POST_COLUMNS}), replies:chat_posts(${POST_COLUMNS})`,
+          )
           .eq('chat_rooms.show_in_home', true)
           .not('chat_rooms.opened_at', 'is', null)
           .order('last_post_at', { ascending: false })
           .limit(HOME_TOPIC_LIMIT)
+          .order('created_at', { referencedTable: 'opening' })
+          .order('id', { referencedTable: 'opening' })
+          .limit(1, { referencedTable: 'opening' })
+          .is('replies.removed_at', null)
+          .is('replies.reply_to', null)
+          .order('created_at', { referencedTable: 'replies' })
+          .order('id', { referencedTable: 'replies' })
+          .limit(2, { referencedTable: 'replies' })
           .abortSignal(controller.signal)) as Result<TopicRow[]>;
         if (aborted()) return;
         if (topicRows.error) {
           fail(describeError(topicRows.error, ATTEMPT));
           return;
         }
-        const topics = (topicRows.data ?? []).map(toSummary);
-        if (topics.length === 0) {
-          setState({ topics, posts: [], loading: false, error: null });
-          return;
+        const rows = topicRows.data ?? [];
+        const topics = rows.map(toSummary);
+        // The opener can be in both lists; once each.
+        const byId = new Map<string, ChatPost>();
+        for (const row of rows) {
+          for (const post of [...(row.opening ?? []), ...(row.replies ?? [])]) {
+            byId.set(post.id, toPost(post));
+          }
         }
-
-        const postRows = (await supabase
-          .from('chat_posts')
-          .select(POST_COLUMNS)
-          .in(
-            'topic_id',
-            topics.map((topic) => topic.id),
-          )
-          .order('created_at')
-          .order('id')
-          .limit(HOME_POST_LIMIT)
-          .abortSignal(controller.signal)) as Result<PostRow[]>;
-        if (aborted()) return;
-        if (postRows.error) {
-          fail(describeError(postRows.error, ATTEMPT));
-          return;
-        }
-        const posts = (postRows.data ?? []).map(toPost);
-        if (posts.length === HOME_POST_LIMIT) {
-          console.warn(
-            `Home read ${HOME_POST_LIMIT} posts, the cap. Some topics may be missing their first reply; see src/lib/home/topics.ts.`,
-          );
-        }
+        const posts = [...byId.values()];
         setState({ topics, posts, loading: false, error: null });
       } catch (e) {
         if (aborted()) return;

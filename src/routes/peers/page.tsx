@@ -1,6 +1,7 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useBrowseMembers } from '@/lib/members';
 import { useSession } from '@/lib/session';
@@ -186,7 +187,7 @@ export default function PeersPage() {
         className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6"
       >
         {loading ? (
-          <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading members…</p>
+          <LoadingCards label="Loading members…" count={2} height={360} />
         ) : signedOut ? (
           <div className="px-6 py-10 text-center">
             <p className="text-[0.875rem] text-ink2 leading-relaxed">
@@ -218,10 +219,11 @@ export default function PeersPage() {
                   with two cards nearly 500px wide each, which is a poster, not
                   a deck. */}
               <div className="grid grid-cols-1 gap-3.5 md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]">
-                {visible.map((member) => (
+                {visible.map((member, index) => (
                   <MemberCard
                     key={member.id}
                     member={member}
+                    priority={index < 2}
                     onOpen={() => {
                       void navigate(`/peers/${member.id}`);
                     }}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { AccountContext } from '@/lib/account-context';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -16,7 +17,13 @@ export type SessionState =
   | { status: 'signed-in'; userId: string };
 
 export function useSession(): SessionState {
-  const [state, setState] = useState<SessionState>({ status: 'loading' });
+  // Inside the club the guard has already read the session, so a screen
+  // starts signed in with the member's id rather than reading once without
+  // it and again with it (2026-10-14: a topic read its posts twice).
+  const known = useContext(AccountContext);
+  const [state, setState] = useState<SessionState>(() =>
+    known?.userId ? { status: 'signed-in', userId: known.userId } : { status: 'loading' },
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -24,18 +31,12 @@ export function useSession(): SessionState {
 
     void supabase.auth.getSession().then(({ data }) => {
       if (cancelled) return;
-      setState(
-        data.session
-          ? { status: 'signed-in', userId: data.session.user.id }
-          : { status: 'signed-out' },
-      );
+      setState((current) => next(current, data.session?.user.id ?? null));
     });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (cancelled) return;
-      setState(
-        session ? { status: 'signed-in', userId: session.user.id } : { status: 'signed-out' },
-      );
+      setState((current) => next(current, session?.user.id ?? null));
     });
 
     return () => {
@@ -45,4 +46,12 @@ export function useSession(): SessionState {
   }, []);
 
   return state;
+}
+
+/** The same answer twice keeps the same object, so nothing reads again. */
+function next(current: SessionState, userId: string | null): SessionState {
+  if (!userId) return current.status === 'signed-out' ? current : { status: 'signed-out' };
+  return current.status === 'signed-in' && current.userId === userId
+    ? current
+    : { status: 'signed-in', userId };
 }

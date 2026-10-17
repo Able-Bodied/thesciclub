@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import type { ChatWriteResult } from '@/lib/chat/topics';
-import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { describeError, describeThrown } from '@/lib/describe-error';
+import { readInBatches, readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -176,12 +177,21 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
 
     async function load() {
       try {
-        const { data, error: failed } = (await getSupabase()
-          .from('chat_post_likes')
-          .select('post_id, member_id')
-          .in('post_id', ids)
-          .order('liked_at')
-          .abortSignal(controller.signal)) as { data: LikeRow[] | null; error: Failure | null };
+        // A hundred posts at a time, and every page of each: one read was
+        // capped at 1,000 likes and carried every id in its URL.
+        const { data, error: failed } = await readInBatches<LikeRow>(ids, (batch) =>
+          readPages<LikeRow>((first, last) =>
+            getSupabase()
+              .from('chat_post_likes')
+              .select('post_id, member_id')
+              .in('post_id', batch)
+              .order('liked_at')
+              .order('post_id')
+              .order('member_id')
+              .range(first, last)
+              .abortSignal(controller.signal),
+          ),
+        );
         if (controller.signal.aborted) return;
         if (failed) {
           setByPost(EMPTY);

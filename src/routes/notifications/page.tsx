@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LoadingCards } from '@/components/loading-cards';
 import { MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import { markdownToPlain } from '@/lib/markdown';
@@ -148,9 +149,7 @@ export default function NotificationsPage() {
           </p>
         ) : null}
         {loading ? (
-          <p role="status" className="py-10 text-center text-[0.875rem] text-grey">
-            Loading…
-          </p>
+          <LoadingCards label="Loading…" count={5} height={64} rows />
         ) : items.length === 0 && !error ? (
           <div className="rounded-[14px] border border-line bg-paper px-4 py-6 text-center">
             <p className="font-bold font-head text-[0.9375rem] text-ink">Nothing yet</p>

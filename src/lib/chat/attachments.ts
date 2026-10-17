@@ -101,11 +101,13 @@ const UPLOAD_REFUSAL = {
 export async function uploadAttachments(
   files: File[],
   folder: string,
+  /** The longest side to keep. A group's picture is only ever a small tile. */
+  maxEdge: number = MAX_ATTACHMENT_EDGE,
 ): Promise<AttachmentResult<string[]>> {
   const storage = getSupabase().storage.from(CHAT_BUCKET);
   const uploaded: string[] = [];
   for (const file of files) {
-    const { blob, ext } = await preparePhoto(file, MAX_ATTACHMENT_EDGE);
+    const { blob, ext } = await preparePhoto(file, maxEdge);
     const path = `${folder}/${crypto.randomUUID()}.${ext}`;
     const { error } = await storage.upload(path, blob, { contentType: blob.type, upsert: false });
     if (error) {

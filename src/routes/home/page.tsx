@@ -2,7 +2,8 @@ import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
-import { NotificationBell } from '@/components/notification-bell';
+import { LoadingCards } from '@/components/loading-cards';
+import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -21,8 +22,15 @@ import { useSession } from '@/lib/session';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { EventCard } from '@/routes/events/event-card';
+import { dateWindowRange } from '@/routes/events/filters';
 import { ComposeCard } from '@/routes/home/compose-card';
-import { inSegment, pickEvents, SEGMENT_PEOPLE, suggestPeople } from '@/routes/home/feed';
+import {
+  EVENT_HORIZON_DAYS,
+  inSegment,
+  pickEvents,
+  SEGMENT_PEOPLE,
+  suggestPeople,
+} from '@/routes/home/feed';
 import { HomeFilterSheet } from '@/routes/home/filter-sheet';
 import {
   activeFilterCount,
@@ -104,6 +112,7 @@ const SOURCES: Record<HomeSegment, Source[]> = {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const wide = useWideLayout();
   const session = useSession();
   const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
@@ -129,8 +138,21 @@ export default function HomePage() {
 
   const topicRead = useHomeTopics();
   const rooms = useChatRooms();
-  const eventsRead = useEvents();
-  const { byEvent: attendeesByEvent } = useAttendeesByEvent();
+  // Only the days Home shows (pickEvents): it read every event ever stored,
+  // and the import keeps them all. Fixed for the visit, so a re-render does
+  // not start another read.
+  const [eventWindow] = useState(() => {
+    const to = new Date(Date.now() + (EVENT_HORIZON_DAYS + 1) * 86_400_000).toISOString();
+    const from = dateWindowRange('any')?.from;
+    return from ? { from, to } : { to };
+  });
+  const eventsRead = useEvents(eventWindow);
+  const events = useMemo(() => pickEvents(eventsRead.events), [eventsRead.events]);
+  // The same window, read beside the events rather than after them.
+  const { byEvent: attendeesByEvent, loading: attendeesLoading } = useAttendeesByEvent(
+    undefined,
+    eventWindow,
+  );
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const membersRead = useBrowseMembers();
@@ -143,7 +165,6 @@ export default function HomePage() {
     () => toHomeTopics(topicRead.topics, topicRead.posts, rooms.rooms),
     [topicRead.topics, topicRead.posts, rooms.rooms],
   );
-  const events = useMemo(() => pickEvents(eventsRead.events), [eventsRead.events]);
   // Anybody the viewer has actually spoken with directly. A direct thread
   // nobody has written in is not a conversation, as Chat's own list agrees.
   const talkedTo = useMemo(
@@ -169,13 +190,15 @@ export default function HomePage() {
     () => topics.flatMap((topic) => (topic.opening ? [topic.opening.id] : [])),
     [topics],
   );
-  const reactions = useReactions('post', openingPostIds, memberId);
+  const reactions = useReactions('post', openingPostIds, memberId, { live: false });
   const likes = usePostLikes(openingPostIds);
   const views = usePostViews(openingPostIds);
 
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
-    events: eventsRead.loading,
+    // With the faces: they used to arrive after the cards and make each one
+    // taller under the reader.
+    events: eventsRead.loading || attendeesLoading,
     // A failed conversations read is not waited on and not reported: the cost
     // is suggesting somebody the viewer already talks to, which is smaller
     // than losing the suggestions.
@@ -339,7 +362,7 @@ export default function HomePage() {
               draw none, and the dot and the name say a filter is on. */}
           <span className="flex items-center gap-2">
             {/* A phone's way to the list; a desktop has it in the top bar. */}
-            <NotificationBell variant="round" className="md:hidden" />
+            {wide !== true ? <NotificationBell variant="round" className="md:hidden" /> : null}
             <button
               type="button"
               onClick={() => {
@@ -380,9 +403,7 @@ export default function HomePage() {
           {writeError ? <Problem sentences={[writeError]} /> : null}
 
           {!settled ? (
-            <p role="status" className="px-6 py-10 text-center text-[0.875rem] text-grey">
-              Loading…
-            </p>
+            <LoadingCards label="Loading…" height={170} />
           ) : (
             <>
               {failures.length > 0 ? <Problem sentences={failures} /> : null}

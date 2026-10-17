@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
+import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { Organization } from '@/types/domain';
 
@@ -70,68 +71,91 @@ export interface OrganizationsState {
   reload: () => void;
 }
 
-export function useOrganizations(): OrganizationsState {
-  const [state, setState] = useState<Omit<OrganizationsState, 'reload'>>({
-    organizations: [],
-    byId: new Map(),
-    loading: true,
-    error: null,
+type OrganizationsRead = Omit<OrganizationsState, 'reload' | 'loading'>;
+
+/**
+ * One read of the directory, shared by every screen that asks.
+ *
+ * Peers draws a card per member and each card asks for the organizations (for
+ * an affiliation's logo), which was a request per card: 203 on a page of 200
+ * members (2026-10-14). The directory is the same for every viewer, so one
+ * read in flight serves them all, and a read under a minute old is reused
+ * outright. Older than that it is shown while a fresh read runs. A failed read
+ * is never kept. `reload` always reads again.
+ */
+const FRESH_FOR_MS = 60_000;
+let shared: { read: OrganizationsRead; at: number } | null = null;
+let inFlight: Promise<OrganizationsRead> | null = null;
+
+onForgetSharedReads(() => {
+  shared = null;
+  inFlight = null;
+});
+
+function readOrganizations(): Promise<OrganizationsRead> {
+  if (inFlight) return inFlight;
+  const read = (async (): Promise<OrganizationsRead> => {
+    try {
+      const { data, error } = await readPages<OrganizationRow>((from, to) =>
+        getSupabase()
+          .from('organizations')
+          .select('id, short_code, name, city, description, tags, can_invite, logo_path')
+          .is('removed_at', null)
+          .order('name')
+          .order('id')
+          .range(from, to),
+      );
+      if (error) {
+        return {
+          organizations: [],
+          byId: new Map(),
+          error: describeError(error, 'Could not load organizations.'),
+        };
+      }
+      const organizations = (data ?? []).map(toOrganization);
+      const result = {
+        organizations,
+        byId: new Map(organizations.map((o) => [o.id, o])),
+        error: null,
+      };
+      shared = { read: result, at: Date.now() };
+      return result;
+    } catch (e) {
+      return {
+        organizations: [],
+        byId: new Map(),
+        error: describeThrown(e, 'Could not load organizations.'),
+      };
+    }
+  })();
+  inFlight = read;
+  void read.finally(() => {
+    if (inFlight === read) inFlight = null;
   });
+  return read;
+}
+
+export function useOrganizations(): OrganizationsState {
+  const [state, setState] = useState<Omit<OrganizationsState, 'reload'>>(() =>
+    shared
+      ? { ...shared.read, loading: false }
+      : { organizations: [], byId: new Map(), loading: true, error: null },
+  );
 
   const [revision, setRevision] = useState(0);
   const reload = useCallback(() => {
     setRevision((value) => value + 1);
   }, []);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: The reload revision intentionally starts a new read.
   useEffect(() => {
-    const controller = new AbortController();
-    const { signal } = controller;
-    const aborted = () => signal.aborted;
-
-    async function load() {
-      try {
-        const { data, error } = await readPages<OrganizationRow>((from, to) =>
-          getSupabase()
-            .from('organizations')
-            .select('id, short_code, name, city, description, tags, can_invite, logo_path')
-            .is('removed_at', null)
-            .order('name')
-            .order('id')
-            .range(from, to)
-            .abortSignal(signal),
-        );
-        if (aborted()) return;
-        if (error) {
-          setState({
-            organizations: [],
-            byId: new Map(),
-            loading: false,
-            error: describeError(error, 'Could not load organizations.'),
-          });
-          return;
-        }
-        const organizations = (data ?? []).map(toOrganization);
-        setState({
-          organizations,
-          byId: new Map(organizations.map((o) => [o.id, o])),
-          loading: false,
-          error: null,
-        });
-      } catch (e) {
-        if (aborted()) return;
-        setState({
-          organizations: [],
-          byId: new Map(),
-          loading: false,
-          error: describeThrown(e, 'Could not load organizations.'),
-        });
-      }
-    }
-
-    void load();
+    if (revision === 0 && shared && Date.now() - shared.at < FRESH_FOR_MS) return;
+    if (revision > 0) inFlight = null;
+    let live = true;
+    void readOrganizations().then((read) => {
+      if (live) setState({ ...read, loading: false });
+    });
     return () => {
-      controller.abort();
+      live = false;
     };
   }, [revision]);
 

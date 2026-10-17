@@ -8,10 +8,15 @@ import type * as Reactions from '@/lib/chat/reactions';
  * behind them stubbed: what is under test is the redirect, not Home.
  */
 
-vi.mock('@/lib/account', () => ({
-  useAccount: () => ({ status: 'member', userId: 'u1', isAdmin: false, displayName: 'Test' }),
-  signOut: () => Promise.resolve({ ok: true }),
-}));
+vi.mock('@/lib/account', () => {
+  const member = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Test' };
+  return {
+    useAccount: () => member,
+    useOwnAccount: () => member,
+    AccountProvider: ({ children }: { children: React.ReactNode }) => children,
+    signOut: () => Promise.resolve({ ok: true }),
+  };
+});
 vi.mock('@/lib/members', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useOwnMember: () => ({ member: null, invitedBy: null, loading: false, error: null }),

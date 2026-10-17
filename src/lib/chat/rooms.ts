@@ -400,7 +400,8 @@ export async function addFirstPostPhotographs(
  * in the other direction: three zeros read as a room that failed, not as one
  * that has not started.
  */
-export function useRoomStats(): {
+/** `roomId` reads that one room's line rather than every room's (a room's own page). */
+export function useRoomStats(roomId?: string): {
   stats: Map<string, RoomStats>;
   loading: boolean;
   reload: () => void;
@@ -418,12 +419,13 @@ export function useRoomStats(): {
     const aborted = () => controller.signal.aborted;
 
     try {
-      const { data, error } = await getSupabase()
+      let query = getSupabase()
         .from('chat_room_stats')
         // member_count is still in the view and is not read: nobody joins a
         // room since 20260930000000. See RoomStats.
-        .select('room_id, topic_count, post_count')
-        .abortSignal(controller.signal);
+        .select('room_id, topic_count, post_count');
+      if (roomId) query = query.eq('room_id', roomId);
+      const { data, error } = await query.abortSignal(controller.signal);
       if (aborted()) return;
       if (error) {
         // Stats are decoration on a card that is readable without them, so a
@@ -458,7 +460,7 @@ export function useRoomStats(): {
       setStats(new Map());
       setLoading(false);
     }
-  }, []);
+  }, [roomId]);
 
   useEffect(() => {
     void load();

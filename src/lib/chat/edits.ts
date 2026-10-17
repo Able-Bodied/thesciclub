@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import type { ChatEdit } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { ID_BATCH, readInBatches } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -104,30 +105,66 @@ export function useEdits(postIds: readonly string[], messageIds: readonly string
     const messages = messageKey === '' ? [] : messageKey.split(',');
     setLoading(true);
 
+    function settle(data: EditRow[] | null, failure: Failure | null) {
+      if (controller.signal.aborted) return;
+      if (failure) {
+        setGrouped(EMPTY);
+        setError(describeError(failure, 'Could not load the earlier versions.'));
+        setLoading(false);
+        return;
+      }
+      setGrouped(groupEdits((data ?? []).map(toEdit)));
+      setError(null);
+      setLoading(false);
+    }
+
     async function load() {
       try {
-        let query = getSupabase().from('chat_edits').select(EDIT_COLUMNS);
-        // PostgREST's `in` takes a parenthesised list; `or` joins two of them.
-        if (posts.length > 0 && messages.length > 0) {
-          query = query.or(`post_id.in.(${posts.join(',')}),message_id.in.(${messages.join(',')})`);
-        } else if (posts.length > 0) {
-          query = query.in('post_id', posts);
-        } else {
-          query = query.in('message_id', messages);
-        }
-        const { data, error: failure } = (await query
-          .order('replaced_at')
-          .abortSignal(controller.signal)) as { data: EditRow[] | null; error: Failure | null };
-        if (controller.signal.aborted) return;
-        if (failure) {
-          setGrouped(EMPTY);
-          setError(describeError(failure, 'Could not load the earlier versions.'));
-          setLoading(false);
+        // A hundred ids a read, side by side, so no URL carries a whole long
+        // conversation; then one list in the order a single read gave.
+        const read = (column: 'post_id' | 'message_id') => (batch: string[]) =>
+          getSupabase()
+            .from('chat_edits')
+            .select(EDIT_COLUMNS)
+            .in(column, batch)
+            .order('replaced_at')
+            .abortSignal(controller.signal) as unknown as PromiseLike<{
+            data: EditRow[] | null;
+            error: Failure | null;
+          }>;
+        // The usual screen has far fewer: one read, as before.
+        if (posts.length + messages.length <= ID_BATCH) {
+          let query = getSupabase().from('chat_edits').select(EDIT_COLUMNS);
+          // PostgREST's `in` takes a parenthesised list; `or` joins two of them.
+          if (posts.length > 0 && messages.length > 0) {
+            query = query.or(
+              `post_id.in.(${posts.join(',')}),message_id.in.(${messages.join(',')})`,
+            );
+          } else if (posts.length > 0) {
+            query = query.in('post_id', posts);
+          } else {
+            query = query.in('message_id', messages);
+          }
+          const single = (await query.order('replaced_at').abortSignal(controller.signal)) as {
+            data: EditRow[] | null;
+            error: Failure | null;
+          };
+          settle(single.data, single.error);
           return;
         }
-        setGrouped(groupEdits((data ?? []).map(toEdit)));
-        setError(null);
-        setLoading(false);
+        const [ofPosts, ofMessages] = await Promise.all([
+          readInBatches<EditRow>(posts, read('post_id')),
+          readInBatches<EditRow>(messages, read('message_id')),
+        ]);
+        const failure = ofPosts.error ?? ofMessages.error;
+        settle(
+          failure
+            ? null
+            : [...(ofPosts.data ?? []), ...(ofMessages.data ?? [])].sort((a, b) =>
+                a.replaced_at.localeCompare(b.replaced_at),
+              ),
+          failure,
+        );
       } catch (e) {
         if (controller.signal.aborted) return;
         setGrouped(EMPTY);

@@ -18,3 +18,23 @@ export async function readPages<T>(
     if (batch.length < READ_PAGE_SIZE) return { data: rows, error: null };
   }
 }
+
+export const ID_BATCH = 100;
+
+/**
+ * Read for a long list of ids a hundred at a time, side by side, and join the
+ * results. A GET carries `in.(…)` in its URL: a thousand ids is about 37KB of
+ * query string, past what the API's gateway accepts (2026-10-14). The first
+ * failure, if any, is the answer, with no partial list.
+ */
+export async function readInBatches<T>(
+  ids: readonly string[],
+  read: (batch: string[]) => PromiseLike<{ data: T[] | null; error: Failure | null }>,
+): Promise<{ data: T[] | null; error: Failure | null }> {
+  const batches: string[][] = [];
+  for (let i = 0; i < ids.length; i += ID_BATCH) batches.push(ids.slice(i, i + ID_BATCH));
+  const results = await Promise.all(batches.map(read));
+  const failed = results.find((result) => result.error);
+  if (failed) return { data: null, error: failed.error };
+  return { data: results.flatMap((result) => result.data ?? []), error: null };
+}

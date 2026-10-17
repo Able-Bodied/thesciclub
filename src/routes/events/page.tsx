@@ -2,6 +2,7 @@ import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
+import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -20,6 +21,7 @@ import {
   filterEvents,
   formatsIn,
   isPastEvent,
+  isPastStartTime,
   isRsvpSegment,
   organizationIdsIn,
   tagsIn,
@@ -95,7 +97,6 @@ export default function EventsPage() {
   const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
-  const { byEvent: attendeesByEvent } = useAttendeesByEvent();
   const { organizations, byId: organizationsById } = useOrganizations();
   const follows = useOrganizationFollows();
   const viewer = useViewerEvents(memberId);
@@ -130,7 +131,30 @@ export default function EventsPage() {
   const dateRange = dateWindowRange(
     isRsvpSegment(segment) ? (segment === 'been-to' ? 'past' : 'any') : filters.when,
   );
-  const { events, loading, error } = useEvents(dateRange ?? {});
+  // Been to is the member's own past RSVPs: read those, not every past event.
+  const beenTo = useMemo(
+    () =>
+      segment !== 'been-to'
+        ? undefined
+        : viewer.loading
+          ? null
+          : [...viewer.rsvps.keys()].filter((eventId) => {
+              const start = viewer.startTimes.get(eventId);
+              return start === undefined || isPastStartTime(start);
+            }),
+    [segment, viewer.loading, viewer.rsvps, viewer.startTimes],
+  );
+  const { events, loading, error } = useEvents({
+    ...(dateRange ?? {}),
+    ...(beenTo === undefined ? {} : { ids: beenTo }),
+  });
+  // Who is going: for the window's events, read beside them; for Been to,
+  // once its few events are known. Never every RSVP ever made.
+  const eventIds = useMemo(() => events.map((event) => event.id), [events]);
+  const { byEvent: attendeesByEvent, loading: attendeesLoading } = useAttendeesByEvent(
+    beenTo === undefined ? undefined : loading ? null : eventIds,
+    beenTo === undefined ? (dateRange ?? {}) : undefined,
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
 
@@ -300,8 +324,8 @@ export default function EventsPage() {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
             />
-          ) : loading ? (
-            <p className="px-6 py-10 text-center text-[0.875rem] text-grey">Loading events…</p>
+          ) : loading || attendeesLoading ? (
+            <LoadingCards label="Loading events…" count={4} height={120} />
           ) : error ? (
             <div className="px-6 py-10 text-center">
               <p className="text-[0.875rem] text-ink2 leading-relaxed">Could not load events.</p>

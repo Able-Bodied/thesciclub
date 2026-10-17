@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
+import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -70,7 +71,7 @@ export default function RoomPage() {
   // Home's pill, when the room was opened from a card's room name there.
   const location = useLocation();
   const { topics, loading: topicsLoading, error, reload } = useRoomTopics(roomId);
-  const { stats, reload: reloadStats } = useRoomStats();
+  const { stats, reload: reloadStats } = useRoomStats(roomId);
   const { byTopic: openingPosts, reload: reloadOpeners } = useTopicOpeningPosts(
     topics.map((topic) => topic.id),
   );
@@ -216,7 +217,7 @@ export default function RoomPage() {
               with "Add details or a photo" for the full form. */}
           {canPost ? <QuickAsk rooms={rooms} fixedRoom={room} className="mb-2.5" /> : null}
           {topicsLoading ? (
-            <p className="py-10 text-center text-[0.875rem] text-grey">Loading the topics…</p>
+            <LoadingCards label="Loading the topics…" count={4} height={96} />
           ) : error ? (
             <div className="py-10 text-center">
               <p className="text-[0.875rem] text-ink2 leading-relaxed">

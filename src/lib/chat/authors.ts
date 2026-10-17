@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ChatAuthor } from '@/lib/chat/types';
+import { readInBatches } from '@/lib/read-pages';
+import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import { type InjuryType, injuryLabel } from '@/types/domain';
 
@@ -49,6 +51,8 @@ export function resetChatAuthors(): void {
   cache.clear();
   missing.clear();
 }
+// At sign-out too: the next member on the phone reads authors as themselves.
+onForgetSharedReads(resetChatAuthors);
 
 interface ChatAuthorRow {
   id: string;
@@ -96,17 +100,19 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
 export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatAuthor>> {
   const wanted = [...new Set(ids)].filter((id) => !cache.has(id) && !missing.has(id));
   if (wanted.length > 0) {
-    const { data, error } = await getSupabase()
-      .from('chat_authors')
-      .select(
-        'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, is_admin, has_profile',
-      )
-      .in('id', wanted);
+    const { data, error } = await readInBatches<ChatAuthorRow>(wanted, (batch) =>
+      getSupabase()
+        .from('chat_authors')
+        .select(
+          'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, is_admin, has_profile',
+        )
+        .in('id', batch),
+    );
     // A failure leaves the ids uncached, so the next render tries again. The
     // screens draw an unnamed tile meanwhile, which is what they draw for a
     // removed member — wrong for a moment rather than broken.
     if (!error) {
-      for (const row of data as ChatAuthorRow[]) cache.set(row.id, toAuthor(row));
+      for (const row of data ?? []) cache.set(row.id, toAuthor(row));
       for (const id of wanted) if (!cache.has(id)) missing.add(id);
     }
   }

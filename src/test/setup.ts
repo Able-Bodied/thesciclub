@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { forgetSharedReads } from '@/lib/shared-reads';
 
 /**
  * Unmount between tests.
@@ -12,6 +13,9 @@ import { afterEach } from 'vitest';
  * passes dishonest ones.
  */
 afterEach(cleanup);
+
+/** Reads shared between screens start from nothing in each test (lib/shared-reads.ts). */
+afterEach(forgetSharedReads);
 
 /**
  * No test may reach the network.

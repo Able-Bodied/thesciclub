@@ -1,6 +1,7 @@
 import { SquarePen } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAttachmentUrls } from '@/lib/chat/attachments';
@@ -168,7 +169,10 @@ export default function ChatPage() {
             />
           ) : null}
 
-          {showRooms ? (
+          {/* Not drawn under conversations that are still loading: they
+              arrive above the rooms and pushed the whole list down the
+              screen (Lighthouse, 2026-10-14: a 0.44 layout shift). */}
+          {showRooms && !(showConversations && threadsLoading) ? (
             <>
               <h2 className="mt-4 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
                 Discussion rooms
@@ -183,7 +187,7 @@ export default function ChatPage() {
               </p>
 
               {loading ? (
-                <p className="py-10 text-center text-[0.875rem] text-grey">Loading the rooms…</p>
+                <LoadingCards label="Loading the rooms…" count={4} height={76} className="mt-3" />
               ) : error ? (
                 <div className="py-10 text-center">
                   <p className="text-[0.875rem] text-ink2 leading-relaxed">
@@ -259,9 +263,7 @@ function Conversations({
   );
 
   if (loading) {
-    return (
-      <p className="py-8 text-center text-[0.875rem] text-grey">Loading your conversations…</p>
-    );
+    return <LoadingCards label="Loading your conversations…" count={4} height={64} rows />;
   }
 
   if (error) {

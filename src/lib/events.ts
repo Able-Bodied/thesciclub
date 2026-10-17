@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { PHOTOS_BUCKET } from '@/lib/photos';
-import { readPages } from '@/lib/read-pages';
+import { readInBatches, readPages } from '@/lib/read-pages';
+import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { ClubEvent, EventAttendee, EventFormat, EventTag, RsvpStatus } from '@/types/domain';
 import { memberType } from '@/types/domain';
@@ -42,11 +43,50 @@ export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 const EVENT_COLUMNS =
   'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, admin_override, feed_values';
 
+/**
+ * A list's columns: what a card, a filter and Home draw, without the
+ * description (twice, words and HTML) and the import's bookkeeping, which
+ * only the event's own page and its form use. Those read one event by id and
+ * still get every column. Most of a list's bytes were descriptions
+ * (2026-10-14).
+ */
+const LIST_COLUMNS =
+  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt';
+
+/**
+ * Reads that are the same for every viewer (the tag taxonomy, the calendar
+ * feeds' time zones), kept five minutes and shared by every screen that asks,
+ * so each Events or Home visit does not read them again. A failed read is not
+ * kept.
+ */
+const SHARED_FOR_MS = 5 * 60_000;
+type SharedRead<T> = Promise<{ data: T[] | null; error: Failure | null }>;
+const sharedReads = new Map<string, { at: number; read: SharedRead<unknown> }>();
+
+function shared<T>(key: string, read: () => SharedRead<T>): SharedRead<T> {
+  const held = sharedReads.get(key);
+  if (held && Date.now() - held.at < SHARED_FOR_MS) return held.read as SharedRead<T>;
+  const next = read().then((result) => {
+    if (result.error) sharedReads.delete(key);
+    return result;
+  });
+  sharedReads.set(key, { at: Date.now(), read: next });
+  next.catch(() => {
+    sharedReads.delete(key);
+  });
+  return next;
+}
+
+onForgetSharedReads(() => {
+  sharedReads.clear();
+});
+
 interface EventRow {
   id: string;
   title: string;
-  description: string;
-  description_html: string;
+  /** Not in a list's read (LIST_COLUMNS). */
+  description?: string;
+  description_html?: string;
   start_time: string;
   end_time: string | null;
   location: string;
@@ -61,9 +101,9 @@ interface EventRow {
   series_id: string | null;
   photo_path: string | null;
   photo_alt: string | null;
-  /** Imported events an administrator changed (20261012060000). */
-  admin_override: Record<string, unknown> | null;
-  feed_values: Record<string, unknown> | null;
+  /** Imported events an administrator changed (20261012060000). Not in a list's read. */
+  admin_override?: Record<string, unknown> | null;
+  feed_values?: Record<string, unknown> | null;
 }
 
 interface TagRow {
@@ -134,8 +174,8 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
     return {
       id: row.id,
       title: row.title,
-      description: row.description,
-      descriptionHtml: row.description_html,
+      description: row.description ?? '',
+      descriptionHtml: row.description_html ?? '',
       startTime: row.start_time,
       endTime: row.end_time,
       // A hand-added event has no feed, and is read in Pacific: the form says
@@ -187,9 +227,17 @@ export interface EventQuery {
   to?: string;
   id?: string;
   organizationId?: string;
+  /**
+   * Only these events (a member's own RSVPs), read a hundred at a time.
+   * Null waits: the ids are not known yet. "Been to" read every past event
+   * in the club to keep the few the member went to (2026-10-14).
+   */
+  ids?: readonly string[] | null;
 }
 
-export function useEvents({ from, to, id, organizationId }: EventQuery = {}): EventsState {
+export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}): EventsState {
+  // A stable key, so a new array of the same ids does not read again.
+  const idsKey = ids === undefined ? undefined : ids === null ? null : [...ids].sort().join(',');
   const [state, setState] = useState<EventsState>({ events: [], loading: true, error: null });
   // Bumped to read again; part of the effect's dependencies for that reason.
   const [round, setRound] = useState(0);
@@ -199,25 +247,57 @@ export function useEvents({ from, to, id, organizationId }: EventQuery = {}): Ev
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
+    if (idsKey === null) {
+      setState({ events: [], loading: true, error: null });
+      return;
+    }
     const controller = new AbortController();
     const { signal } = controller;
     // Read through a call, not a property: the type checker narrows
     // `signal.aborted` to false after the first check and then flags every
     // later one as dead code.
     const aborted = () => signal.aborted;
+    const only = idsKey === undefined ? null : idsKey === '' ? [] : idsKey.split(',');
 
     async function load() {
       setState({ events: [], loading: true, error: null });
       try {
         const supabase = getSupabase();
-        const events = await readPages<EventRow>((first, last) => {
-          let query = supabase.from('events').select(EVENT_COLUMNS).order('start_time').order('id');
-          if (from) query = query.gte('start_time', from);
-          if (to) query = query.lte('start_time', to);
-          if (id) query = query.eq('id', id);
-          if (organizationId) query = query.eq('organization_id', organizationId);
-          return query.range(first, last).abortSignal(signal);
-        });
+        // Not waiting on the events: neither depends on which were read.
+        const taxonomyRead = shared<TagRow>('tags', () =>
+          readPages<TagRow>((first, last) =>
+            supabase
+              .from('tags')
+              .select('id, slug, name, parent_id')
+              .order('id')
+              .range(first, last),
+          ),
+        );
+        const feedsRead = shared<{ id: string; timezone: string }>('data_feeds', () =>
+          readPages<{ id: string; timezone: string }>((first, last) =>
+            supabase.from('data_feeds').select('id, timezone').order('id').range(first, last),
+          ),
+        );
+        // Typed as the full list: the rows are EventRow either way.
+        const columns = (id ? EVENT_COLUMNS : LIST_COLUMNS) as typeof EVENT_COLUMNS;
+        const readRange = (batch: string[] | null) =>
+          readPages<EventRow>((first, last) => {
+            let query = supabase.from('events').select(columns).order('start_time').order('id');
+            if (from) query = query.gte('start_time', from);
+            if (to) query = query.lte('start_time', to);
+            if (id) query = query.eq('id', id);
+            if (organizationId) query = query.eq('organization_id', organizationId);
+            if (batch) query = query.in('id', batch);
+            return query.range(first, last).abortSignal(signal);
+          });
+        const events = only
+          ? await readInBatches<EventRow>(only, readRange).then((result) => ({
+              error: result.error,
+              data: (result.data ?? []).sort(
+                (a, b) => a.start_time.localeCompare(b.start_time) || a.id.localeCompare(b.id),
+              ),
+            }))
+          : await readRange(null);
         if (aborted()) return;
         if (events.error) {
           setState({
@@ -235,21 +315,26 @@ export function useEvents({ from, to, id, organizationId }: EventQuery = {}): Ev
           order: string[],
           map: (rows: unknown[]) => T[],
         ) {
-          const data: T[] = [];
+          const batches: string[][] = [];
           for (let offset = 0; offset < ids.length; offset += 100) {
-            const batch = ids.slice(offset, offset + 100);
-            const result = await readPages<T>((first, last) => {
-              let query = supabase.from(table).select(columns).in('event_id', batch);
-              for (const column of order) query = query.order(column);
-              return query
-                .range(first, last)
-                .abortSignal(signal)
-                .overrideTypes<T[], { merge: false }>();
-            });
-            if (result.error) return result;
-            data.push(...map(result.data ?? []));
+            batches.push(ids.slice(offset, offset + 100));
           }
-          return { data, error: null };
+          // Side by side rather than one after another.
+          const results = await Promise.all(
+            batches.map((batch) =>
+              readPages<T>((first, last) => {
+                let query = supabase.from(table).select(columns).in('event_id', batch);
+                for (const column of order) query = query.order(column);
+                return query
+                  .range(first, last)
+                  .abortSignal(signal)
+                  .overrideTypes<T[], { merge: false }>();
+              }),
+            ),
+          );
+          const failed = results.find((result) => result.error);
+          if (failed) return failed;
+          return { data: results.flatMap((result) => map(result.data ?? [])), error: null };
         }
         const [links, tags, counts, feeds] = await Promise.all([
           supporting<{ event_id: string; tag_id: string }>(
@@ -258,28 +343,14 @@ export function useEvents({ from, to, id, organizationId }: EventQuery = {}): Ev
             ['event_id', 'tag_id'],
             (rows) => rows as { event_id: string; tag_id: string }[],
           ),
-          readPages<TagRow>((first, last) =>
-            supabase
-              .from('tags')
-              .select('id, slug, name, parent_id')
-              .order('id')
-              .range(first, last)
-              .abortSignal(signal),
-          ),
+          taxonomyRead,
           supporting<CountRow>(
             'event_rsvp_counts',
             'event_id, going_count, interested_count',
             ['event_id'],
             (rows) => rows as CountRow[],
           ),
-          readPages<{ id: string; timezone: string }>((first, last) =>
-            supabase
-              .from('data_feeds')
-              .select('id, timezone')
-              .order('id')
-              .range(first, last)
-              .abortSignal(signal),
-          ),
+          feedsRead,
         ]);
         if (aborted()) return;
 
@@ -323,7 +394,7 @@ export function useEvents({ from, to, id, organizationId }: EventQuery = {}): Ev
     return () => {
       controller.abort();
     };
-  }, [from, to, id, organizationId, round]);
+  }, [from, to, id, organizationId, idsKey, round]);
 
   return { ...state, reload };
 }
@@ -879,28 +950,80 @@ export interface AttendeesByEventState {
  * viewer is an active member, so a signed-out or suspended caller gets an empty
  * map rather than an error to render.
  */
-export function useAttendeesByEvent(): AttendeesByEventState {
+const ATTENDEE_COLUMNS =
+  'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, injury_type, condition_name, type';
+
+/**
+ * `eventIds` narrows the read to the events on the screen. Without it this
+ * read every RSVP ever made (2026-10-14), which only grows: the import never
+ * removes a past event. Ids are sent a hundred at a time, as the tag and
+ * count reads are, to keep each URL bounded. `null` waits: the events are not
+ * known yet.
+ */
+export function useAttendeesByEvent(
+  eventIds?: readonly string[] | null,
+  /**
+   * Instead of ids: every event starting in this window, filtered through the
+   * view's link to `events`, so the read need not wait for the events to know
+   * their ids (Home reads both at once).
+   */
+  window?: { from?: string; to?: string },
+): AttendeesByEventState {
   const [state, setState] = useState<AttendeesByEventState>({
     byEvent: new Map(),
     loading: true,
     error: null,
   });
+  // A stable key, so a new array holding the same ids does not read again.
+  const key = window
+    ? `window|${window.from ?? ''}|${window.to ?? ''}`
+    : eventIds === undefined
+      ? '*'
+      : eventIds === null
+        ? null
+        : [...eventIds].sort().join(',');
 
   useEffect(() => {
+    if (key === null) return;
     const controller = new AbortController();
     const { signal } = controller;
     const aborted = () => signal.aborted;
+    const [kind, start, end] = key.split('|');
+    const inWindow = kind === 'window' ? { start, end } : null;
+    const ids = inWindow || key === '*' ? null : key === '' ? [] : key.split(',');
+    // Another set of events: say so, so a screen waiting on the faces waits.
+    setState((current) => (current.loading ? current : { ...current, loading: true }));
 
     async function load() {
       try {
         const supabase = getSupabase();
-        const { data, error } = await supabase
-          .from('event_attendees')
-          .select(
-            'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, injury_type, condition_name, type',
-          )
-          .order('display_name')
-          .abortSignal(signal);
+        const read = (batch: string[] | null) => {
+          if (inWindow) {
+            // Paged, with a full order: a busy month can pass 1,000 RSVPs.
+            return readPages<AttendeeRow & { event_id: string }>((first, last) => {
+              let query = supabase
+                .from('event_attendees')
+                .select(`${ATTENDEE_COLUMNS}, events!event_rsvps_event_id_fkey!inner(start_time)`);
+              if (inWindow.start) query = query.gte('events.start_time', inWindow.start);
+              if (inWindow.end) query = query.lte('events.start_time', inWindow.end);
+              return query
+                .order('display_name')
+                .order('member_id')
+                .order('event_id')
+                .range(first, last)
+                .abortSignal(signal);
+            });
+          }
+          let query = supabase.from('event_attendees').select(ATTENDEE_COLUMNS);
+          if (batch) query = query.in('event_id', batch);
+          return query.order('display_name').abortSignal(signal);
+        };
+        const batches: (string[] | null)[] = [];
+        if (ids === null) batches.push(null);
+        else for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
+        const results = await Promise.all(batches.map(read));
+        const error = results.find((result) => result.error)?.error ?? null;
+        const data = results.flatMap((result) => result.data ?? []);
         if (aborted()) return;
         if (error) {
           setState({
@@ -912,7 +1035,10 @@ export function useAttendeesByEvent(): AttendeesByEventState {
         }
 
         const byEvent = new Map<string, EventAttendee[]>();
-        for (const row of data as (AttendeeRow & { event_id: string })[]) {
+        // Each batch comes back in name order. An event's rows are all in one
+        // batch, so every event's list is already in order.
+        const rows = data as (AttendeeRow & { event_id: string })[];
+        for (const row of rows) {
           const attendee = toAttendee(row);
           const existing = byEvent.get(row.event_id);
           if (existing) existing.push(attendee);
@@ -933,7 +1059,7 @@ export function useAttendeesByEvent(): AttendeesByEventState {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [key]);
 
   return state;
 }

@@ -325,6 +325,8 @@ export default function MemberDetailPage() {
                 <img
                   src={photo}
                   alt=""
+                  fetchPriority="high"
+                  decoding="async"
                   className="absolute inset-0 h-full w-full object-cover object-[50%_26%]"
                   onError={(e) => {
                     e.currentTarget.remove();

@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AccountContext } from '@/lib/account-context';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { forgetThisDevice } from '@/lib/push/notifications';
+import { forgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -67,7 +69,55 @@ export function statusFor(row: { status?: unknown } | null | undefined): Account
   return String(row.status) === 'active' ? 'member' : 'suspended';
 }
 
+/**
+ * The account, read once for the whole club.
+ *
+ * `useAccount` was a read per caller: seven `members` reads on one Home load
+ * (the guard, the bells, the unread dot, likes, views, the opening prompt),
+ * and seven more at every token refresh (2026-10-14). Inside the club the
+ * guard (RequireMember) now holds the one read and every screen shares it;
+ * outside it (joining, the survey) each caller still reads its own, as before.
+ * The guard reads again on each route change, so a change to the member's own
+ * row (made an administrator, say) still shows on the next screen.
+ */
+export function AccountProvider({
+  account,
+  children,
+}: {
+  account: Account;
+  children: React.ReactNode;
+}) {
+  return <AccountContext.Provider value={account}>{children}</AccountContext.Provider>;
+}
+
 export function useAccount(): Account {
+  const shared = useContext(AccountContext);
+  const own = useOwnAccount({ enabled: shared === null });
+  return shared ?? own;
+}
+
+function same(a: Account, b: Account): boolean {
+  return (
+    a.status === b.status &&
+    a.userId === b.userId &&
+    a.isAdmin === b.isAdmin &&
+    a.displayName === b.displayName &&
+    a.error === b.error
+  );
+}
+
+/**
+ * The read itself. `refresh` reads again without going back to loading, and
+ * a refresh that fails keeps what was already known rather than turning a
+ * member's screen into the error page over a dropped connection.
+ */
+export function useOwnAccount({
+  enabled = true,
+  refresh,
+}: {
+  enabled?: boolean;
+  refresh?: unknown;
+} = {}): Account {
   const [account, setAccount] = useState<Account>({
     status: 'loading',
     userId: null,
@@ -75,23 +125,39 @@ export function useAccount(): Account {
     displayName: null,
   });
 
+  // A good answer is in hand, so a failed refresh need not replace it.
+  const known = useRef(false);
   const [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => {
+    known.current = false;
     setAccount((current) => ({ ...current, status: 'loading' }));
     setAttempt((current) => current + 1);
   }, []);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `refresh` is only a trigger to read again.
   useEffect(() => {
+    if (!enabled) return;
     const controller = new AbortController();
     const aborted = () => controller.signal.aborted;
     const supabase = getSupabase();
+    const settle = (next: Account) => {
+      known.current = next.status !== 'error';
+      setAccount((current) => (same(current, next) ? current : next));
+    };
+    const fail = (next: Account) => {
+      if (known.current && !aborted()) return;
+      settle(next);
+    };
 
     let revision = attempt;
+    // Whose membership this run has read or is reading.
+    let reading: string | null | undefined;
     async function resolve(userId: string | null) {
+      reading = userId;
       const request = ++revision;
       if (!userId) {
         if (!aborted()) {
-          setAccount({ status: 'signed-out', userId: null, isAdmin: false, displayName: null });
+          settle({ status: 'signed-out', userId: null, isAdmin: false, displayName: null });
         }
         return;
       }
@@ -105,7 +171,7 @@ export function useAccount(): Account {
         if (aborted() || request !== revision) return;
         if (result.error) throw result.error;
         const row = result.data;
-        setAccount({
+        settle({
           status: statusFor(row),
           userId,
           isAdmin: Boolean(row?.is_admin),
@@ -113,7 +179,7 @@ export function useAccount(): Account {
         });
       } catch (error) {
         if (aborted() || request !== revision) return;
-        setAccount({
+        fail({
           status: 'error',
           userId,
           isAdmin: false,
@@ -128,27 +194,35 @@ export function useAccount(): Account {
       .then(({ data, error }) => {
         if (error) {
           if (!aborted())
-            setAccount({ status: 'error', userId: null, isAdmin: false, displayName: null });
+            fail({ status: 'error', userId: null, isAdmin: false, displayName: null });
           return;
         }
         void resolve(data.session?.user.id ?? null);
       })
       .catch(() => {
-        if (!aborted())
-          setAccount({ status: 'error', userId: null, isAdmin: false, displayName: null });
+        if (!aborted()) fail({ status: 'error', userId: null, isAdmin: false, displayName: null });
       });
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      void resolve(session?.user.id ?? null);
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // Sent to every new subscriber with the session getSession() above is
+      // already resolving: reading for it too was the same read twice. And a
+      // session restored from storage also announces SIGNED_IN, a token
+      // refresh TOKEN_REFRESHED, for the same person: their row has not
+      // changed, so only another person, a sign-out, or their own account
+      // changing reads again.
+      if (event === 'INITIAL_SESSION') return;
+      const userId = session?.user.id ?? null;
+      if (event !== 'USER_UPDATED' && userId !== null && userId === reading) return;
+      void resolve(userId);
     });
 
     return () => {
       controller.abort();
       sub.subscription.unsubscribe();
     };
-  }, [attempt]);
+  }, [attempt, enabled, refresh]);
 
-  return { ...account, retry };
+  return useMemo(() => ({ ...account, retry }), [account, retry]);
 }
 
 /**
@@ -168,7 +242,11 @@ export async function signOut(): Promise<{ ok: boolean; error?: string }> {
   // Signed photograph URLs are kept across reloads (src/lib/chat/attachments.ts)
   // and were signed under this member's session. The next person on this
   // phone signs their own.
-  if (!error) resetAttachmentUrls();
+  if (!error) {
+    resetAttachmentUrls();
+    // And anything else held in memory for the screens (lib/shared-reads.ts).
+    forgetSharedReads();
+  }
   return error
     ? { ok: false, error: describeError(error, 'You are still signed in.') }
     : { ok: true };

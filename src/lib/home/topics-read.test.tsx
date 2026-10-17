@@ -32,6 +32,7 @@ vi.mock('@/lib/supabase', () => ({
           return query;
         },
         in: () => query,
+        is: () => query,
         abortSignal: () =>
           Promise.resolve({
             data:
