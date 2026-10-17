@@ -22,7 +22,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   nothing is unreleased. The agent's sandbox refuses `git push`: the owner
   runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261016000000` is live (its functions answer on the hosted API, 2026-10-16).
+  `20261016010000` is live (pushed by the owner, 2026-10-16).
   Edge functions live: `push-notify` (v5), `link-preview`, `send-invite`,
   `sign-in-reminder` and `home-screen-handoff` (the last with `verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
@@ -71,12 +71,10 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
-- **Signing in on Stats** (live 2026-10-16, sign-ins count from then). Phone
-  left off it (`20261016010000`, the owner): not live yet, push it before the
-  client that drops the label. The
-  `oauth` amr for Google and Apple was never seen (no Google locally). Check
-  the first real Google and Apple sign-ins say google and apple, not "Google or
-  Apple". Probe: `supabase/tests/admin-sign-in-methods.sql`.
+- **Signing in on Stats** (live 2026-10-16, sign-ins count from then; phone
+  left off it, `20261016010000`). The `oauth` amr for Google and Apple was
+  never seen (no Google locally). Check the first real Google and Apple
+  sign-ins say google and apple, not "Google or Apple". Probe: `supabase/tests/admin-sign-in-methods.sql`.
 - **The spinal cord question is not live yet** (2026-10-14): push
   `20261015000000` (dry run first), then release the client.
 - **Google in the iPhone Home Screen app is not live yet** (2026-10-14): push
