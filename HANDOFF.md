@@ -71,6 +71,9 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
+- **Your own view does not count** (2026-10-16, `20261016020000`): not live
+  yet. Push it before the client, which stops adding 1 for an author's own
+  first visit to their topic. Probe: `supabase/tests/post-view-counts.sql`.
 - **Signing in on Stats** (live 2026-10-16, sign-ins count from then; phone
   left off it, `20261016010000`). The `oauth` amr for Google and Apple was
   never seen (no Google locally). Check the first real Google and Apple
