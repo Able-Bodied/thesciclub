@@ -71,7 +71,9 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
-- **Signing in on Stats** (live 2026-10-16, sign-ins count from then): the
+- **Signing in on Stats** (live 2026-10-16, sign-ins count from then). Phone
+  left off it (`20261016010000`, the owner): not live yet, push it before the
+  client that drops the label. The
   `oauth` amr for Google and Apple was never seen (no Google locally). Check
   the first real Google and Apple sign-ins say google and apple, not "Google or
   Apple". Probe: `supabase/tests/admin-sign-in-methods.sql`.
