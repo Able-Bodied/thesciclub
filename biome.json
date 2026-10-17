@@ -24,7 +24,8 @@
       "!.logo-candidates",
       "!screenshots",
       "!logos-from-you",
-      "!sci-club-logo"
+      "!sci-club-logo",
+      "!CLAUDE-SECURITY-*"
     ]
   },
   "formatter": {
