@@ -1,6 +1,7 @@
 import type { UserIdentity } from '@supabase/supabase-js';
 import { describeError } from '@/lib/describe-error';
 import { signInDestination } from '@/lib/sign-in-destination';
+import { hintSignIn } from '@/lib/sign-in-record';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -61,6 +62,7 @@ export async function unlinkGoogle(
 export async function signInWithGoogle(): Promise<{ ok: false; error: string } | { ok: true }> {
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [GOOGLE_RETURN_PARAM]: 'signin', next });
+  hintSignIn({ provider: 'google' });
   const { error } = await getSupabase().auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: `${window.location.origin}/join?${query}` },
@@ -77,6 +79,7 @@ export async function signInWithGoogleToken(
   token: string,
   nonce: string,
 ): Promise<{ ok: false; error: string } | { ok: true }> {
+  hintSignIn({ provider: 'google' });
   const { error } = await getSupabase().auth.signInWithIdToken({
     provider: 'google',
     token,

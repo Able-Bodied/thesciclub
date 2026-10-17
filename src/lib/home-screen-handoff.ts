@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { currentInstallPlatform } from '@/lib/install';
 import { useSession } from '@/lib/session';
+import { hintSignIn } from '@/lib/sign-in-record';
 import { isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
@@ -134,6 +135,8 @@ export async function takeHandoff(): Promise<'none' | 'signed-in' | 'refused'> {
   });
   const tokenHash = answer.data?.token_hash;
   if (answer.error || typeof tokenHash !== 'string') return 'refused';
+  // A one-time code whatever the browser used: the database looks that up.
+  hintSignIn({ homeScreen: true });
   const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
   return verified.error ? 'refused' : 'signed-in';
 }

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { watchForRecoveryLink } from '@/lib/recovery-link';
+import { watchSignIns } from '@/lib/sign-in-record';
 
 /**
  * The one Supabase client.
@@ -32,5 +33,7 @@ export function getSupabase(): SupabaseClient {
     : createClient(url, key);
   // Before the client's first await, so a reset link it reads is seen.
   watchForRecoveryLink(client);
+  // Likewise, so the session it reads from the address is reported.
+  watchSignIns(client);
   return client;
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { currentInstallPlatform } from '@/lib/install';
+import { hintSignIn } from '@/lib/sign-in-record';
 import { isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
@@ -254,6 +255,7 @@ export async function collectPairing(secret: string): Promise<'signed-in' | 'not
   });
   const tokenHash = answer.data?.token_hash;
   if (answer.error || typeof tokenHash !== 'string') return 'not-yet';
+  hintSignIn({ provider: 'google', homeScreen: true });
   const verified = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'email' });
   return verified.error ? 'failed' : 'signed-in';
 }

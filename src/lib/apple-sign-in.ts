@@ -1,6 +1,7 @@
 import type { UserIdentity } from '@supabase/supabase-js';
 import { describeError } from '@/lib/describe-error';
 import { signInDestination } from '@/lib/sign-in-destination';
+import { hintSignIn } from '@/lib/sign-in-record';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -21,6 +22,7 @@ export function appleSignInEnabled(): boolean {
 export async function signInWithApple(): Promise<{ ok: false; error: string } | { ok: true }> {
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [APPLE_RETURN_PARAM]: 'signin', next });
+  hintSignIn({ provider: 'apple' });
   const { error } = await getSupabase().auth.signInWithOAuth({
     provider: 'apple',
     options: { redirectTo: `${window.location.origin}/join?${query}` },
