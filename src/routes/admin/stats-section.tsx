@@ -9,13 +9,23 @@ import {
   weekLabel,
 } from '@/routes/admin/club-stats';
 import { SmallButton } from '@/routes/admin/controls';
+import {
+  methodLabel,
+  methodOrder,
+  methodPhrase,
+  type SignInAccount,
+  type SignInMethods,
+  useSignInMethods,
+} from '@/routes/admin/sign-in-methods';
 
 /**
  * Admin → Stats: how many members use the club and what they do there.
  *
- * Counts, never names. The club is small enough that "which three opened the
- * app" would be a list of people, and the point of this tab is to see whether
- * the club is working, not to watch anyone in it. See club-stats.ts.
+ * Counts, never names, except for signing in. The club is small enough that
+ * "which three opened the app" would be a list of people, and the point of
+ * this tab is to see whether the club is working, not to watch anyone in it.
+ * How each member signs up and signs in is the one list of names (the owner,
+ * 2026-10-16), behind its own button. See club-stats.ts and sign-in-methods.ts.
  */
 
 const HEADING = 'font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
@@ -237,6 +247,171 @@ function Profiles({ stats }: { stats: ClubStats }) {
   );
 }
 
+const DATE: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
+const DATE_TIME: Intl.DateTimeFormatOptions = { ...DATE, hour: 'numeric', minute: '2-digit' };
+
+/** "Google, One-time link": the labels, in the order of the counts. */
+function methodList(methods: string[]): string {
+  return methodOrder(methods)
+    .filter((m) => methods.includes(m))
+    .map(methodLabel)
+    .join(', ');
+}
+
+/**
+ * Signing in: the way each account was made and the ways members sign in,
+ * then who, behind a button like the onboarding details.
+ */
+function SigningIn({
+  data,
+  error,
+  period,
+}: {
+  data: SignInMethods | null;
+  error: string | null;
+  period: StatsPeriod;
+}) {
+  const [open, setOpen] = useState(false);
+  if (error)
+    return (
+      <>
+        <h3 className={`${HEADING} mt-5`}>Signing in</h3>
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
+      </>
+    );
+  // The other function's answer can arrive first: wait for this period's.
+  if (data?.period !== period) return null;
+
+  const made = Object.values(data.signUps).reduce((sum, n) => sum + n, 0);
+  const since = data.recordedSince
+    ? new Date(data.recordedSince).toLocaleDateString('en-US', DATE)
+    : null;
+  const { homeScreen } = data;
+  return (
+    <>
+      <h3 className={`${HEADING} mt-5`}>Signing in</h3>
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+        The way each of the {plural(made, 'account')}
+        {period === 'all' ? '' : ` made ${periodPhrase(period)}`} was made.
+      </p>
+      <ul className={`${CARD} mt-2 px-3.5 py-1`} aria-label="Signed up with">
+        {methodOrder(Object.keys(data.signUps)).map((method) => (
+          <BarRow
+            key={method}
+            label={methodLabel(method)}
+            value={data.signUps[method] ?? 0}
+            of={made}
+          />
+        ))}
+      </ul>
+
+      <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
+        {since
+          ? `Sign-ins${period === 'all' ? '' : ` ${periodPhrase(period)}`}, by method. Recorded since ${since}.`
+          : 'No sign-ins recorded yet. Each is recorded as a member signs in, from the release that added this.'}
+      </p>
+      {since ? (
+        <ul className={`${CARD} mt-2 px-3.5 py-1`} aria-label="Signed in with">
+          {methodOrder(Object.keys(data.signIns)).map((method) => {
+            const count = data.signIns[method] ?? { signIns: 0, people: 0 };
+            return (
+              <li
+                key={method}
+                className="flex items-baseline justify-between gap-3 border-line border-b py-2.5 text-[0.8125rem] last:border-b-0"
+              >
+                <span className="text-ink">{methodLabel(method)}</span>
+                <span className="shrink-0 text-right tabular-nums">
+                  <b className="font-extrabold font-head text-ink">
+                    {plural(count.people, 'person', 'people')}
+                  </b>
+                  <span className="ml-1.5 text-grey">{plural(count.signIns, 'sign-in')}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {homeScreen.signIns ? (
+        <p className="mt-2 text-[0.75rem] text-ink2 leading-[1.45]">
+          {`Of these, ${plural(homeScreen.signIns, 'sign-in')} by ${plural(homeScreen.people, 'person', 'people')} ${homeScreen.signIns === 1 ? 'was' : 'were'} the iPhone Home Screen app taking over a sign-in from Safari or Chrome.`}
+        </p>
+      ) : null}
+
+      <div className="mt-2.5">
+        <SmallButton
+          aria-expanded={open}
+          aria-controls="sign-in-accounts"
+          onClick={() => {
+            setOpen((was) => !was);
+          }}
+        >
+          {open ? 'Hide who signed in how' : 'Who signed in how'}
+        </SmallButton>
+      </div>
+      {open ? (
+        <div id="sign-in-accounts">
+          <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
+            {period === 'all'
+              ? 'Every account, newest sign-in first.'
+              : `Every account made or signed in to ${periodPhrase(period)}, newest sign-in first.`}
+          </p>
+          {data.accounts.length ? (
+            <ul className={`${CARD} mt-2 px-3.5 py-1`}>
+              {data.accounts.map((account) => (
+                <AccountRow key={account.id} account={account} period={period} />
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[0.8125rem] text-ink2">Nobody.</p>
+          )}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+const STATUS: Record<string, string> = { suspended: 'Suspended', removed: 'Removed' };
+
+function AccountRow({ account, period }: { account: SignInAccount; period: StatsPeriod }) {
+  const others = account.methods.filter((m) => m !== account.signedUpWith);
+  const status = account.status ? STATUS[account.status] : undefined;
+  return (
+    <li className="border-line border-b py-2.5 text-[0.8125rem] leading-[1.45] last:border-b-0">
+      <p className="text-ink">
+        {account.member ? (
+          <>
+            <b className="font-bold">{account.name ?? 'No name'}</b>
+            {account.username ? (
+              <span className="ml-1.5 text-grey">@{account.username}</span>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <b className="font-bold">{account.email ?? 'No email address'}</b>
+            <span className="ml-1.5 text-grey">Not a member yet</span>
+          </>
+        )}
+        {status ? <span className="ml-1.5 text-destructive">{status}</span> : null}
+      </p>
+      <p className="text-ink2">
+        Signed up with {methodPhrase(account.signedUpWith)} on{' '}
+        {new Date(account.createdAt).toLocaleDateString('en-US', DATE)}.
+        {others.length ? ` Can also sign in with ${methodList(others)}.` : ''}
+      </p>
+      <p className="text-ink2">
+        {account.lastSignInAt
+          ? `Last signed in ${new Date(account.lastSignInAt).toLocaleString('en-US', DATE_TIME)} with ${methodPhrase(account.lastSignInMethod)}${account.lastSignInHomeScreen ? ', in the Home Screen app' : ''}.`
+          : 'No sign-in recorded.'}
+        {account.signIns
+          ? ` ${plural(account.signIns, 'sign-in')} ${periodPhrase(period)}: ${methodList(account.signInMethods)}.`
+          : ''}
+      </p>
+    </li>
+  );
+}
+
 const COLUMNS: { key: keyof Omit<ClubStats['weeks'][number], 'week'>; label: string }[] = [
   { key: 'people', label: 'Active' },
   { key: 'joined', label: 'Joined' },
@@ -300,6 +475,7 @@ function Weeks({ stats }: { stats: ClubStats }) {
 export function StatsSection() {
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const { stats, error, loading, reload } = useClubStats(period);
+  const signIns = useSignInMethods(period);
 
   return (
     <section aria-labelledby="stats-heading">
@@ -307,13 +483,19 @@ export function StatsSection() {
         <h2 id="stats-heading" className={HEADING}>
           How the club is used
         </h2>
-        <SmallButton onClick={() => void reload()} disabled={loading}>
+        <SmallButton
+          onClick={() => {
+            void reload();
+            void signIns.reload();
+          }}
+          disabled={loading}
+        >
           {loading ? 'Loading…' : 'Refresh'}
         </SmallButton>
       </div>
       <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
-        Counted from what the club already keeps. Counts only, never who, and nothing is sent
-        anywhere.
+        Counted from what the club already keeps, and nothing is sent anywhere. Counts only, never
+        who, except for who signed in how.
       </p>
       <div className="mt-3 mb-3 max-w-[260px]">
         <label htmlFor="stats-period" className="block font-bold text-[0.75rem] text-ink">
@@ -348,13 +530,16 @@ export function StatsSection() {
         <>
           <Summary stats={stats} />
           <Joining stats={stats} />
+          <SigningIn data={signIns.methods} error={signIns.error} period={period} />
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
             “Opened the app” means a member’s app was open and signed in since the period began. The
             club only knows when each member last used it, so it can’t be counted for a previous
             period. “Started onboarding” is an account that has signed in; Google and Apple sign in
             as they make it. People who opened the app and left without an account are not counted.
-            Weeks start on Monday.
+            A one-time link is a password-reset or emailed sign-in link. When the iPhone Home Screen
+            app takes over a sign-in from Safari or Chrome, it counts as the way the member signed
+            in there. Weeks start on Monday.
           </p>
         </>
       ) : loading ? (
