@@ -32,6 +32,11 @@ begin;
 insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at) values
   ('aaaaaaaa-1015-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'pairing@probe.test', now()),
   ('aaaaaaaa-1015-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'other@probe.test', now());
+-- A live session for each, named in its token: a hand-off is made only while
+-- the token's session exists (20261018040000).
+insert into auth.sessions (id, user_id, created_at, updated_at) values
+  ('5e550000-1015-0000-0000-000000000001', 'aaaaaaaa-1015-0000-0000-000000000001', now(), now()),
+  ('5e550000-1015-0000-0000-000000000002', 'aaaaaaaa-1015-0000-0000-000000000002', now(), now());
 
 -- The app's secrets, and the pairing each gives the browser.
 create temp table secrets (label text primary key, secret text, pairing text);
@@ -49,7 +54,7 @@ reset role;
 
 \echo '== 2. signed in: expect t, then t (the same account renews it), 1 row =='
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1015-0000-0000-000000000001","role":"authenticated"}', true) is not null as ok;
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1015-0000-0000-000000000001","role":"authenticated","session_id":"5e550000-1015-0000-0000-000000000001"}', true) is not null as ok;
 select public.pair_home_screen_app((select pairing from secrets where label = 'first')) as filled;
 select public.pair_home_screen_app((select pairing from secrets where label = 'first')) as again;
 reset role;
@@ -58,7 +63,7 @@ select count(*) as rows_for_account from public.home_screen_pairings
 
 \echo '== 3. another account on the same pairing: expect f, then 1 row, still pairing@ =='
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1015-0000-0000-000000000002","role":"authenticated"}', true) is not null as ok;
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1015-0000-0000-000000000002","role":"authenticated","session_id":"5e550000-1015-0000-0000-000000000002"}', true) is not null as ok;
 select public.pair_home_screen_app((select pairing from secrets where label = 'first')) as taken_over;
 reset role;
 select count(*) as rows_for_pairing from public.home_screen_pairings
@@ -74,7 +79,7 @@ reset role;
 
 \echo '== 5. expect t, t, 1 row, <null> (replaced), t, <null> (expired), f, <null>, <null>, <null> =='
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1015-0000-0000-000000000001","role":"authenticated"}', true) is not null as ok;
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1015-0000-0000-000000000001","role":"authenticated","session_id":"5e550000-1015-0000-0000-000000000001"}', true) is not null as ok;
 select public.pair_home_screen_app((select pairing from secrets where label = 'first')) as refilled;
 select public.pair_home_screen_app((select pairing from secrets where label = 'second')) as replaced_by;
 reset role;

@@ -28,13 +28,17 @@ begin;
 
 insert into auth.users (id, instance_id, aud, role, email, email_confirmed_at) values
   ('aaaaaaaa-1210-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'handoff@probe.test', now());
+-- A live session for each, named in its token: a hand-off is made only while
+-- the token's session exists (20261018040000).
+insert into auth.sessions (id, user_id, created_at, updated_at) values
+  ('5e550000-1210-0000-0000-000000000001', 'aaaaaaaa-1210-0000-0000-000000000001', now(), now());
 
 create temp table codes (label text primary key, code text);
 grant all on codes to authenticated, service_role, anon;
 
 \echo '== 1. signed in: expect t, then t (a second code), then 1 row left for the account =='
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1210-0000-0000-000000000001","role":"authenticated"}', true) is not null as ok;
+select set_config('request.jwt.claims', '{"sub":"aaaaaaaa-1210-0000-0000-000000000001","role":"authenticated","session_id":"5e550000-1210-0000-0000-000000000001"}', true) is not null as ok;
 insert into codes select 'first', public.issue_home_screen_handoff();
 insert into codes select 'second', public.issue_home_screen_handoff();
 reset role;
