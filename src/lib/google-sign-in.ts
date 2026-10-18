@@ -3,6 +3,7 @@ import { describeError } from '@/lib/describe-error';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { hintSignIn } from '@/lib/sign-in-record';
 import { getSupabase } from '@/lib/supabase';
+import { noteSignInStarted } from '@/lib/url-session';
 
 /**
  * Google, a way to join and a way to come back.
@@ -63,6 +64,8 @@ export async function signInWithGoogle(): Promise<{ ok: false; error: string } |
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [GOOGLE_RETURN_PARAM]: 'signin', next });
   hintSignIn({ provider: 'google' });
+  // The account that comes back may not be the one signed in now.
+  noteSignInStarted();
   const { error } = await getSupabase().auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: `${window.location.origin}/join?${query}` },

@@ -6,6 +6,7 @@ import { describeError } from '@/lib/describe-error';
 import { googleGoesToBrowser, PAIRING_PARAM } from '@/lib/google-in-browser';
 import { GOOGLE_NOT_SIGNED_IN, signInWithGoogleToken } from '@/lib/google-sign-in';
 import { getSupabase } from '@/lib/supabase';
+import { noteSignInStarted } from '@/lib/url-session';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 
 /**
@@ -70,6 +71,7 @@ export default function AppSignInPage() {
     setError(null);
     const back = new URL(window.location.pathname, window.location.origin);
     back.searchParams.set(PAIRING_PARAM, pairing);
+    noteSignInStarted();
     const { error: failure } = await getSupabase().auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: back.href },

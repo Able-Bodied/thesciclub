@@ -3,6 +3,7 @@ import { describeError } from '@/lib/describe-error';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { hintSignIn } from '@/lib/sign-in-record';
 import { getSupabase } from '@/lib/supabase';
+import { noteSignInStarted } from '@/lib/url-session';
 
 /**
  * Sign in with Apple, a way to join and to come back.
@@ -23,6 +24,8 @@ export async function signInWithApple(): Promise<{ ok: false; error: string } | 
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [APPLE_RETURN_PARAM]: 'signin', next });
   hintSignIn({ provider: 'apple' });
+  // The account that comes back may not be the one signed in now.
+  noteSignInStarted();
   const { error } = await getSupabase().auth.signInWithOAuth({
     provider: 'apple',
     options: { redirectTo: `${window.location.origin}/join?${query}` },

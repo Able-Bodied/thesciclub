@@ -1,6 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { watchForRecoveryLink } from '@/lib/recovery-link';
 import { watchSignIns } from '@/lib/sign-in-record';
+import { acceptSessionFromUrl, sessionStorageKey } from '@/lib/url-session';
 
 /**
  * The one Supabase client.
@@ -26,11 +27,13 @@ export function getSupabase(): SupabaseClient {
     );
   }
 
-  // Passkeys are a Supabase beta behind VITE_PASSKEYS (src/lib/passkeys.ts):
-  // switched off, the client is exactly the one it always was.
+  // A sign-in in the address is not taken over another account's session
+  // (src/lib/url-session.ts). Passkeys are a Supabase beta behind
+  // VITE_PASSKEYS (src/lib/passkeys.ts).
+  const detectSessionInUrl = acceptSessionFromUrl(sessionStorageKey(url));
   client = import.meta.env.VITE_PASSKEYS
-    ? createClient(url, key, { auth: { experimental: { passkey: true } } })
-    : createClient(url, key);
+    ? createClient(url, key, { auth: { detectSessionInUrl, experimental: { passkey: true } } })
+    : createClient(url, key, { auth: { detectSessionInUrl } });
   // Before the client's first await, so a reset link it reads is seen.
   watchForRecoveryLink(client);
   // Likewise, so the session it reads from the address is reported.
