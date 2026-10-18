@@ -221,8 +221,8 @@ select public.link_preview_backfill();
 rollback to savepoint switched_off;
 
 \echo ''
-\echo '== 11. the bucket is private and only an active member reads it (expect f, then the policy) =='
+\echo '== 11. the bucket is private and read where its links are (expect f, then the policy; 20261018050000) =='
 select public from storage.buckets where id = 'link-previews';
-select policyname from pg_policies where tablename = 'objects' and policyname = 'an active member reads link pictures';
+select policyname from pg_policies where tablename = 'objects' and policyname = 'a member reads a link picture they could read the words of';
 
 rollback;
