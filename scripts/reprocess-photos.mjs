@@ -49,8 +49,18 @@ if (error) {
   process.exit(1);
 }
 
+// Only a photograph in the member's own folder, in the shape the app uploads
+// (private.photo_path_is_own, 20261018000000). photo_path was written by the
+// member, and before that migration it could name anybody's file: this script
+// would have copied it into their profile and then deleted the original.
+const OWN_PATH = /^[0-9a-f-]{36}\/[A-Za-z0-9_-]{1,80}\.[a-z0-9]{1,5}$/;
+const own = (m) => OWN_PATH.test(m.photo_path) && m.photo_path.startsWith(`${m.id}/`);
+for (const m of members.filter((m) => !own(m))) {
+  console.log(`  ${m.display_name}: ${m.photo_path} is not in their own folder; left alone`);
+}
+
 // Seeded photographs were fitted when they were imported and are already webp.
-const todo = members.filter((m) => !m.photo_path.endsWith('.webp'));
+const todo = members.filter((m) => own(m) && !m.photo_path.endsWith('.webp'));
 console.log(`${members.length} photographs, ${todo.length} not yet fitted.`);
 if (todo.length === 0) process.exit(0);
 
