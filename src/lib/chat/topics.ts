@@ -530,11 +530,16 @@ export async function editPost(postId: string, body: string): Promise<ChatWriteR
 /**
  * Remove a post. The author's own, or anybody's if the caller is an
  * administrator — `chat_remove_post` decides and refuses in a sentence.
+ * Returns the photographs to delete through the storage API: only those the
+ * post's author uploaded, never simply what the row named, since a row could
+ * name anybody's file (20261018020000).
  */
-export async function removePost(postId: string): Promise<ChatWriteResult<null>> {
-  const { error } = await getSupabase().rpc('chat_remove_post', { post: postId });
+export async function removePost(postId: string): Promise<ChatWriteResult<string[]>> {
+  const { data, error } = (await getSupabase().rpc('chat_remove_post', {
+    post: postId,
+  })) as Result<string[]>;
   if (error) return { ok: false, error: describeError(error, 'The post was not removed.') };
-  return { ok: true, value: null };
+  return { ok: true, value: data ?? [] };
 }
 
 /**

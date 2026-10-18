@@ -19,6 +19,7 @@ const db = vi.hoisted(() => ({
   authors: new Map<string, ChatAuthor>(),
   isAdmin: false,
   removed: [] as string[],
+  removalFiles: [] as string[],
   edited: [] as [string, string][],
   editFails: null as string | null,
   sent: [] as [string, string | null][],
@@ -126,7 +127,7 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
   },
   removePost: (id: string) => {
     db.removed.push(id);
-    return Promise.resolve({ ok: true as const, value: null });
+    return Promise.resolve({ ok: true as const, value: db.removalFiles });
   },
   editPost: (id: string, body: string) => {
     if (db.editFails) return Promise.resolve({ ok: false as const, error: db.editFails });
@@ -258,6 +259,7 @@ beforeEach(() => {
   db.authors = new Map([['nicole', author({ id: 'nicole' })]]);
   db.isAdmin = false;
   db.removed = [];
+  db.removalFiles = [];
   db.edited = [];
   db.editFails = null;
   db.sent = [];
@@ -876,6 +878,24 @@ describe('a topic', () => {
     await userEvent.click(first);
     await waitFor(() => {
       expect(db.removed).toEqual(['1']);
+    });
+  });
+
+  // 20261018020000: a post's row could name anybody's photograph, and an
+  // administrator may delete any file in the bucket. So the files deleted are
+  // the ones the removal returns (its author's own), never the row's list.
+  it('deletes only the files the removal returns, not what the post named', async () => {
+    db.isAdmin = true;
+    db.posts = [
+      post({ id: '1', attachments: ['rooms/bowel/somebody-elses.webp', 'rooms/bowel/own.webp'] }),
+    ];
+    db.removalFiles = ['rooms/bowel/own.webp'];
+    renderTopic();
+    const [remove] = screen.getAllByRole('button', { name: /^Remove / });
+    if (!remove) throw new Error('no Remove button to press');
+    await userEvent.click(remove);
+    await waitFor(() => {
+      expect(db.filesDeleted).toEqual([['rooms/bowel/own.webp']]);
     });
   });
 

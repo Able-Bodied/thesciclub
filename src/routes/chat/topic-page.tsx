@@ -266,16 +266,16 @@ export default function TopicPage() {
   function remove(postId: string) {
     setRemovingId(postId);
     setRemovalFailure(null);
-    // Captured before the row is blanked: the function empties the list, and
-    // the files go through the storage API afterwards — see 20260918200000.
-    const files = posts.find((post) => post.id === postId)?.attachments ?? [];
     void removePost(postId)
       .then((result) => {
         if (!result.ok) {
           setRemovalFailure(result.error);
           return;
         }
-        if (files.length > 0) void deleteAttachments(files);
+        // The files go through the storage API afterwards (20260918200000).
+        // Only those the function returns, which are the author's own: the
+        // row's list could name anybody's photograph (20261018020000).
+        if (result.value.length > 0) void deleteAttachments(result.value);
         reload();
       })
       .catch((e: unknown) => {
