@@ -304,7 +304,12 @@ export function classifyTags({ title = '', description = '' } = {}, limit = 4) {
  * to, so a later tightening does not mean re-scanning every description to find
  * them again. See events.needs_pii_review.
  */
-const EMAIL = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
+// The lookbehind starts an address only where its run of characters starts.
+// Without it, a scraped description holding one long run with no '@' was
+// tried from each of its characters, which is quadratic: a few megabytes of
+// it hung the nightly import until GitHub killed it (security scan
+// 2026-10-17, F18). Whether there is an address is unchanged.
+const EMAIL = /(?<![a-z0-9._%+-])[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 const PHONE = /\(?\d{3}\)?[-. ]\d{3}[-. ]\d{4}/;
 
 export function containsContactDetails(...values) {

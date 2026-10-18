@@ -330,4 +330,19 @@ describe('containsContactDetails', () => {
   it('handles nulls', () => {
     expect(containsContactDetails(null, undefined, '')).toBe(false);
   });
+
+  // Security scan 2026-10-17, F18: a host's description is not ours. This
+  // took 23 seconds before, and a few megabytes of it ran past the job's
+  // 45-minute timeout.
+  it('reads a long run of address characters with no @ in linear time', () => {
+    const began = performance.now();
+    expect(containsContactDetails('a'.repeat(200_000))).toBe(false);
+    expect(performance.now() - began).toBeLessThan(500);
+  });
+
+  it('still finds an address inside a long run of words', () => {
+    expect(containsContactDetails(`${'word '.repeat(50_000)}write to kevin@example.org`)).toBe(
+      true,
+    );
+  });
 });
