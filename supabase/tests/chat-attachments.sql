@@ -65,7 +65,11 @@ insert into storage.objects (bucket_id, name, owner_id, metadata)
 values
   ('chat', 'threads/' || :'dm' || '/private.webp', 'bbbbbbbb-9999-0000-0000-000000000002', '{"size": 1}'),
   ('chat', 'rooms/bowel/open.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}'),
-  ('chat', 'rooms/skin/closed.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}');
+  ('chat', 'rooms/skin/closed.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}'),
+  -- Ada's, uploaded before step 11 names them: a post names only its author's
+  -- uploads (20261018020000).
+  ('chat', 'rooms/bowel/p1.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}'),
+  ('chat', 'rooms/bowel/p2.webp', 'aaaaaaaa-9999-0000-0000-000000000001', '{"size": 1}');
 
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"aaaaaaaa-9999-0000-0000-000000000001","role":"authenticated"}';

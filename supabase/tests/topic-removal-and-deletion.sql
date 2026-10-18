@@ -38,7 +38,11 @@ set local role authenticated;
 select public.chat_create_topic('probe-room-3', 'A question', 'The opening post') as topic_id \gset
 set local role postgres;
 
--- Three replies, the last carrying a photograph.
+-- Three replies, the last carrying a photograph its author uploaded: a post
+-- names only its author's uploads, and deleting the topic hands back only
+-- those (20261018020000).
+insert into storage.objects (bucket_id, name, owner_id, metadata)
+values ('chat', 'rooms/probe-room-3/three.webp', 'bbbbbbbb-7777-0000-0000-00000000000b', '{"size": 1}');
 insert into public.chat_posts (id, topic_id, author_id, body, attachments, created_at) values
   ('44444444-7777-0000-0000-000000000001', :'topic_id', 'bbbbbbbb-7777-0000-0000-00000000000b', 'Reply one', '{}', now() + interval '1 second'),
   ('44444444-7777-0000-0000-000000000002', :'topic_id', 'aaaaaaaa-7777-0000-0000-00000000000a', 'Reply two', '{}', now() + interval '2 seconds'),

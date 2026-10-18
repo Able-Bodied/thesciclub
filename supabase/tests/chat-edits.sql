@@ -58,6 +58,10 @@ set local role postgres;
 -- The opener is dated back a minute: one transaction is one now(), and "the
 -- opening post" is the earliest — HANDOFF.md's now() trap.
 update public.chat_posts set created_at = now() - interval '1 minute' where id = :'post_id';
+-- The photograph, uploaded by Author first: a post names only its author's
+-- uploads (20261018020000).
+insert into storage.objects (bucket_id, name, owner_id, metadata)
+values ('chat', 'rooms/bowel/pic.webp', 'aaaaaaaa-8888-0000-0000-000000000001', '{"size": 1}');
 insert into public.chat_posts (id, topic_id, author_id, body, attachments) values
   ('44444444-8888-0000-0000-000000000002', :'topic_id', 'aaaaaaaa-8888-0000-0000-000000000001', '', '{rooms/bowel/pic.webp}'),
   ('44444444-8888-0000-0000-000000000003', :'topic_id', 'aaaaaaaa-8888-0000-0000-000000000001', 'To be removed.', '{}');
