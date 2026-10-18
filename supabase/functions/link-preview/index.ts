@@ -20,7 +20,7 @@
  *
  * What it will fetch is decided by `mayFetch` (extract.ts), on the first
  * address and on every redirect, because the address is whatever a member
- * typed. Pages are read to 512 KB, pictures to 2 MB, each request to six
+ * typed; and by `resolvesPublicly`, on where the name actually resolves. Pages are read to 512 KB, pictures to 2 MB, each request to six
  * seconds. Nothing it fails at is an error a member sees: the link stays a
  * link, without a card.
  */
@@ -32,11 +32,13 @@ import {
   mayFetch,
   type PageMeta,
   readMeta,
+  resolvesPublicly,
   youtubeId,
 } from './extract.ts';
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
+  resolveDns(query: string, recordType: 'A' | 'AAAA'): Promise<string[]>;
   serve(handler: (request: Request) => Response | Promise<Response>): void;
 };
 
@@ -85,7 +87,11 @@ interface Fetched {
 async function fetchLimited(start: string, limit: number, accept: string): Promise<Fetched | null> {
   let href = start;
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    if (!mayFetch(href)) return null;
+    // How the address is written, then where its name really leads.
+    const resolve = (host: string, type: 'A' | 'AAAA') => Deno.resolveDns(host, type);
+    if (!mayFetch(href) || !(await resolvesPublicly(new URL(href).hostname, resolve))) {
+      return null;
+    }
     let response: Response;
     try {
       response = await fetch(href, {

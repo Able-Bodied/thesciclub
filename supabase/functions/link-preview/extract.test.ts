@@ -3,8 +3,10 @@ import { findLinks } from '../../../src/lib/links.ts';
 import {
   decodeEntities,
   firstLink,
+  isPublicAddress,
   mayFetch,
   readMeta,
+  resolvesPublicly,
   youtubeId,
 } from './extract.ts';
 
@@ -169,6 +171,93 @@ describe('readMeta', () => {
 describe('decodeEntities', () => {
   it('leaves what it does not know alone', () => {
     expect(decodeEntities('a &madeup; b &#0; c')).toBe('a &madeup; b &#0; c');
+  });
+});
+
+// Security scan 2026-10-17, F5: mayFetch reads only how an address is written,
+// and a public-looking name can resolve to the server's own network.
+describe('isPublicAddress', () => {
+  it.each([
+    '93.184.216.34',
+    '8.8.8.8',
+    '172.32.0.1',
+    '100.128.0.1',
+    '2606:4700::6810:84e5',
+    '2a00:1450:4009:81f::200e',
+  ])('lets %s through', (ip) => {
+    expect(isPublicAddress(ip)).toBe(true);
+  });
+
+  it.each([
+    '127.0.0.1',
+    '10.1.2.3',
+    '172.16.0.1',
+    '192.168.1.1',
+    '169.254.169.254',
+    '100.64.0.1',
+    '0.0.0.0',
+    '192.0.0.8',
+    '198.18.0.1',
+    '203.0.113.9',
+    '224.0.0.1',
+    '256.1.1.1',
+    '::1',
+    '::',
+    '::ffff:127.0.0.1',
+    'fe80::1',
+    'fc00::1',
+    'fd12:3456::1',
+    '64:ff9b::a00:1',
+    '2001:db8::1',
+    '2001:0:4136:e378::1',
+    '2001::1',
+    '2002:a00:1::1',
+    'ff02::1',
+    'not-an-address',
+  ])('refuses %s', (ip) => {
+    expect(isPublicAddress(ip)).toBe(false);
+  });
+});
+
+describe('resolvesPublicly', () => {
+  const dns =
+    (answers: Record<string, string[]>) =>
+    (host: string, type: 'A' | 'AAAA'): Promise<string[]> => {
+      const found = answers[`${host} ${type}`];
+      return found ? Promise.resolve(found) : Promise.reject(new Error('NotFound'));
+    };
+
+  it('lets a name through when every answer is public', async () => {
+    const resolve = dns({
+      'example.org A': ['93.184.216.34'],
+      'example.org AAAA': ['2606:2800::1'],
+    });
+    expect(await resolvesPublicly('example.org', resolve)).toBe(true);
+  });
+
+  it('refuses a public-looking name that resolves to the cloud metadata address', async () => {
+    // How it is written passes: this is the gap the lookup closes.
+    expect(mayFetch('http://169.254.169.254.nip.io/latest/meta-data/')).toBe(true);
+    const resolve = dns({ '169.254.169.254.nip.io A': ['169.254.169.254'] });
+    expect(await resolvesPublicly('169.254.169.254.nip.io', resolve)).toBe(false);
+  });
+
+  it('refuses a name with one private answer among public ones', async () => {
+    const resolve = dns({ 'mixed.example A': ['93.184.216.34', '10.0.0.5'] });
+    expect(await resolvesPublicly('mixed.example', resolve)).toBe(false);
+  });
+
+  it('refuses a name whose only private answer is IPv6', async () => {
+    const resolve = dns({ 'six.example A': ['93.184.216.34'], 'six.example AAAA': ['::1'] });
+    expect(await resolvesPublicly('six.example', resolve)).toBe(false);
+  });
+
+  it('refuses a name that resolves to nothing', async () => {
+    expect(await resolvesPublicly('gone.example', dns({}))).toBe(false);
+  });
+
+  it('judges a written-out IPv4 address without asking DNS', async () => {
+    expect(await resolvesPublicly('93.184.216.34', dns({}))).toBe(true);
   });
 });
 

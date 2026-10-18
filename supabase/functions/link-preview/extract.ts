@@ -126,6 +126,71 @@ export function mayFetch(href: string): boolean {
   return true;
 }
 
+/**
+ * Whether an address a host name resolved to is on the public internet.
+ *
+ * mayFetch reads only how the address is written, and a public-looking name
+ * can resolve to anything: 169.254.169.254.nip.io, or a domain whose owner
+ * points it at 10.0.0.1 (security scan 2026-10-17, F5). So index.ts looks the
+ * name up and asks this of every answer before each fetch. IPv4 outside the
+ * reserved blocks; IPv6 only in global unicast (2000::/3), less documentation,
+ * 6to4 and Teredo, which carry an IPv4 address of their own.
+ */
+export function isPublicAddress(ip: string): boolean {
+  const v4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(ip);
+  if (v4) {
+    const [a, b, c] = [Number(v4[1]), Number(v4[2]), Number(v4[3])];
+    if ([a, b, c, Number(v4[4])].some((n) => n > 255)) return false;
+    if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+    if (a === 100 && b >= 64 && b <= 127) return false; // shared (CGNAT)
+    if (a === 169 && b === 254) return false; // link-local, cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return false;
+    if (a === 192 && b === 168) return false;
+    if (a === 192 && b === 0 && (c === 0 || c === 2)) return false; // IETF, documentation
+    if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking
+    if (a === 198 && b === 51 && c === 100) return false; // documentation
+    if (a === 203 && b === 0 && c === 113) return false; // documentation
+    return true;
+  }
+  const v6 = ip.toLowerCase();
+  if (!/^[0-9a-f:]+$/.test(v6) || !v6.includes(':')) return false;
+  // An empty piece is where '::' stands for zeros.
+  const pieces = v6.split(':');
+  const hextet = (i: number) => {
+    const piece = pieces[i];
+    return piece === undefined || piece === '' ? 0 : Number.parseInt(piece, 16);
+  };
+  const head = hextet(0);
+  if (!(head >= 0x2000 && head <= 0x3fff)) return false;
+  const second = hextet(1);
+  if (head === 0x2001 && second === 0x0db8) return false; // documentation
+  if (head === 0x2001 && second === 0) return false; // Teredo
+  if (head === 0x2002) return false; // 6to4
+  return true;
+}
+
+/**
+ * Whether every address `host` resolves to is public. False when it resolves
+ * to nothing, or the lookup fails: nothing is fetched that was not vetted.
+ * `resolve` is Deno.resolveDns in index.ts and a stand-in in the tests.
+ *
+ * fetch looks the name up again for itself, so a name whose answer changes
+ * between the two lookups (DNS rebinding) is not covered by this.
+ */
+export async function resolvesPublicly(
+  host: string,
+  resolve: (host: string, type: 'A' | 'AAAA') => Promise<string[]>,
+): Promise<boolean> {
+  const name = host.toLowerCase().replace(/\.$/, '');
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(name)) return isPublicAddress(name);
+  const answers = (
+    await Promise.all(
+      (['A', 'AAAA'] as const).map((type) => resolve(name, type).catch(() => [] as string[])),
+    )
+  ).flat();
+  return answers.length > 0 && answers.every(isPublicAddress);
+}
+
 /* -------------------------------------------------- what a page says */
 
 export interface PageMeta {
