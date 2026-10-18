@@ -177,7 +177,48 @@ function clean(value: string | undefined, max: number): string | null {
   return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
 }
 
-const ATTRIBUTE = /([a-zA-Z_:][-\w:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
+// The lookbehind keeps a name from starting inside another word: without it,
+// a long run of letters with no '=' after it was tried from every one of its
+// letters, which is quadratic in the run (security scan 2026-10-17, F12).
+const ATTRIBUTE = /(?<![-\w:.])([a-zA-Z_:][-\w:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
+
+/**
+ * Each `<name …>` tag in the page, in order, found by one forward scan. A
+ * regex such as /<meta\b[^>]*>/ rescans to the end of the page from every
+ * opening that is never closed, which a hostile page can make quadratic.
+ * `lower` is the page lower-cased once by the caller.
+ */
+function* tagsNamed(
+  html: string,
+  lower: string,
+  name: string,
+): Generator<{ tag: string; end: number }> {
+  const open = `<${name}`;
+  let at = 0;
+  for (;;) {
+    const start = lower.indexOf(open, at);
+    if (start < 0) return;
+    // As \b: the name ends here, so <meta> and <meta …> but not <metadata>.
+    const next = lower[start + open.length];
+    if (next !== undefined && /\w/.test(next)) {
+      at = start + open.length;
+      continue;
+    }
+    const end = lower.indexOf('>', start);
+    // Nothing after this is closed either.
+    if (end < 0) return;
+    yield { tag: html.slice(start, end + 1), end: end + 1 };
+    at = end + 1;
+  }
+}
+
+/** The text of the first <title>, found as tagsNamed finds tags. */
+function titleText(html: string, lower: string): string | undefined {
+  const first = tagsNamed(html, lower, 'title').next();
+  if (first.done) return undefined;
+  const to = lower.indexOf('</title>', first.value.end);
+  return to < 0 ? undefined : html.slice(first.value.end, to);
+}
 
 /**
  * Amazon's product pages supply no picture in preview tags. Their main
@@ -185,11 +226,11 @@ const ATTRIBUTE = /([a-zA-Z_:][-\w:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+)
  * a logo or a recommended product into the picture under somebody's link.
  * Only on Amazon's own pages, after redirects have been checked by index.ts.
  */
-function amazonPicture(html: string, pageUrl: string): string | undefined {
+function amazonPicture(html: string, lower: string, pageUrl: string): string | undefined {
   if (!/(^|\.)amazon\.com$/i.test(new URL(pageUrl).hostname)) return undefined;
-  for (const tag of html.matchAll(/<img\b[^>]*>/gi)) {
+  for (const { tag } of tagsNamed(html, lower, 'img')) {
     const attributes = new Map(
-      [...tag[0].matchAll(ATTRIBUTE)].map((attribute) => [
+      [...tag.matchAll(ATTRIBUTE)].map((attribute) => [
         (attribute[1] ?? '').toLowerCase(),
         attribute[2] ?? attribute[3] ?? attribute[4] ?? '',
       ]),
@@ -209,11 +250,12 @@ function amazonPicture(html: string, pageUrl: string): string | undefined {
  * `property` first, plenty put `content` first).
  */
 export function readMeta(html: string, pageUrl: string): PageMeta {
+  const lower = html.toLowerCase();
   const tags = new Map<string, string>();
-  for (const tag of html.matchAll(/<meta\b[^>]*>/gi)) {
+  for (const { tag } of tagsNamed(html, lower, 'meta')) {
     let key: string | null = null;
     let content: string | null = null;
-    for (const attribute of tag[0].matchAll(ATTRIBUTE)) {
+    for (const attribute of tag.matchAll(ATTRIBUTE)) {
       const name = (attribute[1] ?? '').toLowerCase();
       const value = attribute[2] ?? attribute[3] ?? attribute[4] ?? '';
       if (name === 'property' || name === 'name' || name === 'itemprop')
@@ -223,12 +265,12 @@ export function readMeta(html: string, pageUrl: string): PageMeta {
     // The first of each wins: a page that repeats og:image lists its best first.
     if (key && content !== null && !tags.has(key)) tags.set(key, content);
   }
-  const titleTag = /<title\b[^>]*>([\s\S]*?)<\/title>/i.exec(html)?.[1];
+  const titleTag = titleText(html, lower);
   const pick = (...keys: string[]) => keys.map((k) => tags.get(k)).find((v) => v?.trim());
 
   const rawImage =
     pick('og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src') ??
-    amazonPicture(html, pageUrl);
+    amazonPicture(html, lower, pageUrl);
   let image: string | null = null;
   if (rawImage) {
     try {

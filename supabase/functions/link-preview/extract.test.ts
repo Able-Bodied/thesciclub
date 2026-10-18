@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { findLinks } from '../../../src/lib/links.ts';
-import { decodeEntities, firstLink, mayFetch, readMeta, youtubeId } from './extract.ts';
+import {
+  decodeEntities,
+  firstLink,
+  mayFetch,
+  readMeta,
+  youtubeId,
+} from './extract.ts';
 
 describe('firstLink', () => {
   it.each([
@@ -163,5 +169,41 @@ describe('readMeta', () => {
 describe('decodeEntities', () => {
   it('leaves what it does not know alone', () => {
     expect(decodeEntities('a &madeup; b &#0; c')).toBe('a &madeup; b &#0; c');
+  });
+});
+
+// Security scan 2026-10-17, F12: any member can link a page they host, and
+// readMeta used to be quadratic in it. Each of these took minutes before.
+describe('readMeta on a hostile page', () => {
+  const quick = (html: string) => {
+    const began = performance.now();
+    readMeta(html, 'https://example.org/');
+    return performance.now() - began;
+  };
+
+  it('reads a meta tag that is one enormous name without an = in linear time', () => {
+    expect(quick(`<meta ${'a'.repeat(400_000)}>`)).toBeLessThan(1000);
+  });
+
+  it('reads a page of meta tags that are never closed in linear time', () => {
+    expect(quick('<meta '.repeat(80_000))).toBeLessThan(1000);
+  });
+
+  it('reads a page of titles that are never closed in linear time', () => {
+    expect(quick('<title>'.repeat(60_000))).toBeLessThan(1000);
+  });
+
+  it('still reads an ordinary page the same way', () => {
+    const page =
+      '<html><head><title>Plain &amp; simple</title>' +
+      '<meta content="A summary" property="og:description">' +
+      "<meta property='og:image' content='/pic.jpg'>" +
+      '<metadata name="og:title" content="not a meta tag"></head></html>';
+    expect(readMeta(page, 'https://example.org/a')).toEqual({
+      title: 'Plain & simple',
+      description: 'A summary',
+      siteName: null,
+      image: 'https://example.org/pic.jpg',
+    });
   });
 });
