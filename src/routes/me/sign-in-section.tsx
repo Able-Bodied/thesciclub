@@ -15,6 +15,7 @@ import {
   unlinkApple,
 } from '@/lib/apple-sign-in';
 import { sendPasswordReset } from '@/lib/auth-email';
+import { useBackFromRedirect } from '@/lib/back-from-redirect';
 import { describeThrown } from '@/lib/describe-error';
 import { displayPhone, useOwnPhone } from '@/lib/event-phone';
 import {
@@ -204,6 +205,10 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const linked: UserIdentity | null = details?.providers.apple ?? null;
+  // Closing Apple's page on an iPhone's Home Screen leaves this one here.
+  const leaving = useBackFromRedirect(() => {
+    setBusy(false);
+  });
 
   useEffect(() => {
     if (!returned || !details) return;
@@ -223,6 +228,7 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
 
   async function link() {
     setBusy(true);
+    leaving();
     setError(null);
     try {
       const result = await linkApple();

@@ -1274,6 +1274,20 @@ describe('Google, Apple and passkeys', () => {
       expect(calls.order).toEqual(['signInWithOAuth:apple']);
     });
 
+    it('gives the button back when Apple’s page is closed with this one still open', async () => {
+      // An iPhone's Home Screen app: Apple opens over the app, and its X
+      // closes it without this page ever leaving.
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Sign in with Apple' }));
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeDisabled();
+      act(() => {
+        window.dispatchEvent(new Event('focus'));
+      });
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeEnabled();
+    });
+
     it('says what to do when Apple comes back without signing anybody in', async () => {
       renderJoin('/join?apple=signin');
       expect(await screen.findByRole('alert')).toHaveTextContent('Apple did not sign you in.');

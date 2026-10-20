@@ -15,6 +15,7 @@ import {
   signInWithEmail,
   signUpWithEmail,
 } from '@/lib/auth-email';
+import { useBackFromRedirect } from '@/lib/back-from-redirect';
 import { describeError } from '@/lib/describe-error';
 import { useGoogleInBrowser } from '@/lib/google-in-browser';
 import {
@@ -363,8 +364,14 @@ export default function OnboardingPage() {
     if (!result.ok) setError(result.error);
   }
 
+  // Closing Google's or Apple's page on an iPhone's Home Screen leaves this one here.
+  const leaving = useBackFromRedirect(() => {
+    setBusy(false);
+  });
+
   async function continueWithGoogle() {
     setBusy(true);
+    leaving();
     setError(null);
     const result = await signInWithGoogle();
     // On success the page is already on its way to Google.
@@ -376,6 +383,7 @@ export default function OnboardingPage() {
 
   async function continueWithApple() {
     setBusy(true);
+    leaving();
     setError(null);
     const result = await signInWithApple();
     if (!result.ok) {
