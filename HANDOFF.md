@@ -59,6 +59,11 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   the app collects the sign-in when back in front (`lib/google-in-browser.ts`,
   `20261015010000`, `home-screen-handoff` `{ pairing }`). Me's Link Google
   there still uses the widget.
+  Emailed links (confirm, reset, change address) open
+  `thesciclub.com/auth/confirm.html` (`lib/email-link.ts`, templates in
+  `supabase/templates/`), not supabase.co, which put mail in spam; the dot
+  keeps an old service worker off it. Hosted templates go by the Management
+  API (`mailer_templates_*_content`), only after the client that has the page.
   Email goes through Resend: the free plan sends 100 a day. Supabase's own
   cap (`rate_limit_email_sent`) is 100 an hour since 2026-10-14 (was 30). `thesciclub.com`
   has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
@@ -70,6 +75,13 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
+
+- **Emailed links on thesciclub.com are not live yet** (2026-10-19): release
+  the client, check `/auth/confirm.html` is in the live bundle, then set the
+  hosted confirmation, recovery and email-change templates (and their
+  subjects) from `supabase/templates/` and config.toml. Then a real sign-up
+  through Hide My Email, to see whether it still lands in spam. Also waiting:
+  `20261019000000` (likes and reactions count as views).
 
 - **The 2026-10-17 security scan's fixes are live** (2026-10-20: migrations
   through `20261018050000`, the client, `link-preview` with its DNS check; a
