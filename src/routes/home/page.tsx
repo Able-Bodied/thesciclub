@@ -409,7 +409,7 @@ export default function HomePage() {
               {failures.length > 0 ? <Problem sentences={failures} /> : null}
               {shown.length > 0 ? (
                 <>
-                  <ul>
+                  <ul className="arrive">
                     {shown.map((item) => (
                       // An event card carries its own bottom margin; the
                       // others are given the same one here.

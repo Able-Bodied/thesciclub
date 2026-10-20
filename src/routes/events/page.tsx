@@ -332,7 +332,7 @@ export default function EventsPage() {
               <p className="mt-2 text-[0.78125rem] text-grey leading-relaxed">{error}</p>
             </div>
           ) : (
-            <>
+            <div className="arrive">
               {grouped.map((group) => {
                 const isOpen = group.seriesId !== null && expanded.has(group.seriesId);
                 const hasMore = group.rest.length > 0;
@@ -388,7 +388,7 @@ export default function EventsPage() {
                 );
               })}
               {visible.length === 0 ? <EmptyList segment={segment} /> : null}
-            </>
+            </div>
           )}
         </div>
       </div>

@@ -484,6 +484,88 @@
 }
 
 /*
+ * Three one-shot motions after React Bits (reactbits.dev), redrawn here
+ * without its libraries. None loops, and the block above stops all three.
+ */
+
+/* The bell swings once when a notification arrives (Bell Toggle). */
+@keyframes bell-ring {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(17deg);
+  }
+  32% {
+    transform: rotate(-13deg);
+  }
+  49% {
+    transform: rotate(9deg);
+  }
+  66% {
+    transform: rotate(-5deg);
+  }
+  83% {
+    transform: rotate(2deg);
+  }
+}
+.bell-ring {
+  transform-origin: 50% 16%;
+  animation: bell-ring 0.82s linear 1;
+}
+
+/* The thumb dips and springs back as a post is liked (Pulse Heart). */
+@keyframes like-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.55);
+  }
+  72% {
+    transform: scale(1.18);
+  }
+}
+.like-pulse {
+  animation: like-pulse 0.48s ease-out 1;
+}
+
+/*
+ * The cards of a list rise in as it replaces its grey placeholders, the
+ * first few a beat apart (Animated List). `backwards`, not `both`: a
+ * transform left behind would trap the fixed sheets a card opens.
+ */
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.arrive > * {
+  animation: arrive 0.28s ease-out backwards;
+}
+.arrive > :nth-child(2) {
+  animation-delay: 40ms;
+}
+.arrive > :nth-child(3) {
+  animation-delay: 80ms;
+}
+.arrive > :nth-child(4) {
+  animation-delay: 120ms;
+}
+.arrive > :nth-child(n + 5) {
+  animation-delay: 160ms;
+}
+/* The kill switch shortens an animation but not its delay. */
+@media (prefers-reduced-motion: reduce) {
+  .arrive > * {
+    animation-name: none;
+  }
+}
+
+/*
  * A box that still scrolls but draws no scrollbar. Only for a box whose
  * content is not the point of the screen and whose controls sit outside it —
  * the welcome screen's introduction, where the buttons stay on screen below

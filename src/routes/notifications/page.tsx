@@ -158,7 +158,7 @@ export default function NotificationsPage() {
             </p>
           </div>
         ) : (
-          <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
+          <ul className="arrive overflow-hidden rounded-[14px] border border-line bg-paper">
             {items.map((item) => (
               <li key={item.id} className="border-line border-b last:border-b-0">
                 <NotificationRow

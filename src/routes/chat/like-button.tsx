@@ -63,11 +63,16 @@ export function LikeButton({
   className?: string | undefined;
   disabled?: boolean | undefined;
 }) {
+  // Goes up with each like, so the thumb remounts and pulses once.
+  const [pulse, setPulse] = useState(0);
   return (
     <button
       type="button"
       disabled={disabled}
-      onClick={onToggle}
+      onClick={() => {
+        if (!liked) setPulse((n) => n + 1);
+        onToggle();
+      }}
       aria-pressed={liked}
       // Named for the action, because the visible label is the state.
       aria-label={liked ? `Liked ${what}. Press to take it back.` : `Like ${what}`}
@@ -83,8 +88,13 @@ export function LikeButton({
           is next to invisible; the word carries the state for everybody, and
           a solid thumb carries it at a glance too. */}
       <ThumbsUp
+        key={pulse}
         aria-hidden="true"
-        className={cn('h-[1.15em] w-[1.15em] flex-none', liked ? 'fill-current' : 'fill-none')}
+        className={cn(
+          'h-[1.15em] w-[1.15em] flex-none',
+          liked ? 'fill-current' : 'fill-none',
+          pulse > 0 && 'like-pulse',
+        )}
       />
       {liked ? 'Liked' : 'Like'}
     </button>

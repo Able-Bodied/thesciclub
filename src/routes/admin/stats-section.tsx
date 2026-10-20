@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { CountUp } from '@/components/count-up';
 import {
   type ClubStats,
   type OnboardingStepKey,
@@ -45,7 +46,7 @@ function Tile({ label, value, detail }: { label: string; value: number | null; d
     <div className={`${CARD} px-3.5 py-3`}>
       <p className="text-[0.75rem] text-grey leading-[1.35]">{label}</p>
       <p className="mt-1 font-display font-extrabold text-[1.625rem] text-ink leading-none">
-        {value ?? '—'}
+        {value === null ? '—' : <CountUp value={value} />}
       </p>
       <p className="mt-1.5 text-[0.75rem] text-ink2 leading-[1.35]">{detail}</p>
     </div>

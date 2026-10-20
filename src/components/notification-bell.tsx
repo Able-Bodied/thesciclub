@@ -1,5 +1,5 @@
 import { Bell } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useUnseenNotifications } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,8 @@ export function NotificationBell({
   variant: 'round' | 'bar';
   className?: string;
 }) {
-  const { count } = useUnseenNotifications();
+  const { count, loaded } = useUnseenNotifications();
+  const ring = useRing(count, loaded);
   const label = count > 0 ? `Notifications, ${count} new` : 'Notifications';
   const badge =
     count > 0 ? (
@@ -44,7 +45,12 @@ export function NotificationBell({
           className,
         )}
       >
-        <Bell aria-hidden="true" className="h-[19px] w-[19px] text-emphasis" strokeWidth={2} />
+        <Bell
+          key={ring}
+          aria-hidden="true"
+          className={cn('h-[19px] w-[19px] text-emphasis', ring > 0 && 'bell-ring')}
+          strokeWidth={2}
+        />
         {badge}
       </Link>
     );
@@ -60,12 +66,31 @@ export function NotificationBell({
       )}
     >
       <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
-        <Bell aria-hidden="true" className="h-[20px] w-[20px]" />
+        <Bell
+          key={ring}
+          aria-hidden="true"
+          className={cn('h-[20px] w-[20px]', ring > 0 && 'bell-ring')}
+        />
         {badge}
       </span>
       <span>Notifications</span>
     </Link>
   );
+}
+
+/**
+ * Goes up by one each time the count rises after it first loads; keyed on
+ * the bell, so each rise swings it once. Zero: no swing yet.
+ */
+function useRing(count: number, loaded: boolean | undefined): number {
+  const [ring, setRing] = useState(0);
+  const last = useRef<number | null>(null);
+  useEffect(() => {
+    if (!loaded) return;
+    if (last.current !== null && count > last.current) setRing((n) => n + 1);
+    last.current = count;
+  }, [count, loaded]);
+  return ring;
 }
 
 const WIDE = '(min-width: 768px)';

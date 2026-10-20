@@ -120,10 +120,15 @@ export async function markNotificationsRead(id?: string): Promise<{ ok: boolean;
  * a reply landing while somebody is on Home shows without a reload, and read
  * again whenever the app comes back to the front.
  */
-export function useUnseenNotifications(): { count: number; refresh: () => void } {
+export function useUnseenNotifications(): {
+  count: number;
+  /** False until the first count is back, so a bell knows a rise is news. */
+  loaded: boolean;
+  refresh: () => void;
+} {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState<number | null>(null);
 
   const refresh = useCallback(() => {
     if (!memberId) return;
@@ -159,7 +164,7 @@ export function useUnseenNotifications(): { count: number; refresh: () => void }
     enabled: memberId !== null,
   });
 
-  return { count: memberId ? count : 0, refresh };
+  return { count: memberId ? (count ?? 0) : 0, loaded: count !== null, refresh };
 }
 
 /**
