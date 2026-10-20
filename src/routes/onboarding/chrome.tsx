@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -28,6 +28,7 @@ export function StepFrame({
   /** Runs when the step is submitted — by the footer button or by Enter. */
   onSubmit: () => void;
 }) {
+  const direction = useStepDirection(stepNumber);
   return (
     /*
      * A real form, so Enter finishes a step.
@@ -57,16 +58,27 @@ export function StepFrame({
                 Step {stepNumber} of {totalSteps}
               </span>
             </div>
-            <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
-              <div
-                className="h-full rounded-full bg-emphasis transition-[width] duration-300"
-                style={{ width: `${(stepNumber / totalSteps) * 100}%` }}
-              />
+            {/* A bar per step, after React Bits' Stepper; the words above say it. */}
+            <div aria-hidden="true" className="mt-2 flex gap-1">
+              {Array.from({ length: totalSteps }, (_, index) => (
+                <div
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a bar is its position.
+                  key={index}
+                  className="h-1 flex-1 overflow-hidden rounded-full bg-line"
+                >
+                  <div
+                    className={cn(
+                      'h-full origin-left bg-emphasis transition-transform duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]',
+                      index < stepNumber ? 'scale-x-100' : 'scale-x-0',
+                    )}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-[18px]">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto px-[18px]">
           {onBack ? (
             <button
               type="button"
@@ -79,12 +91,35 @@ export function StepFrame({
           ) : (
             <div className="h-4" />
           )}
-          {children}
+          {/* Keyed on the step, so each one slides in from the way it was reached. */}
+          <div
+            key={stepNumber ?? 'door'}
+            className={cn(direction && 'step-in')}
+            style={
+              direction
+                ? ({ '--step-from': `${direction * 24}px` } as React.CSSProperties)
+                : undefined
+            }
+          >
+            {children}
+          </div>
           <footer className="pt-6 pb-[max(22px,env(safe-area-inset-bottom))]">{footer}</footer>
         </div>
       </form>
     </main>
   );
+}
+
+/** 1 for forward, -1 for back, 0 when the step has not moved. */
+function useStepDirection(stepNumber: number | null): number {
+  const [seen, setSeen] = useState({ step: stepNumber, direction: 0 });
+  if (seen.step !== stepNumber) {
+    const direction =
+      stepNumber === null || seen.step === null ? 0 : stepNumber > seen.step ? 1 : -1;
+    setSeen({ step: stepNumber, direction });
+    return direction;
+  }
+  return seen.direction;
 }
 
 export function Question({ children }: { children: React.ReactNode }) {

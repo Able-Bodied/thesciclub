@@ -558,6 +558,20 @@
 .arrive > :nth-child(n + 5) {
   animation-delay: 160ms;
 }
+/*
+ * An onboarding step slides in from the side it was reached from (Stepper).
+ * `--step-from` is 24px forward, -24px back.
+ */
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--step-from));
+  }
+}
+.step-in {
+  animation: step-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
 /* The kill switch shortens an animation but not its delay. */
 @media (prefers-reduced-motion: reduce) {
   .arrive > * {
