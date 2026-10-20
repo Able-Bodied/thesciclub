@@ -76,14 +76,11 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
-- **Emailed links on thesciclub.com are not live yet** (2026-10-19): release
-  the client, check `/auth/confirm.html` is in the live bundle, then set the
-  hosted confirmation, recovery and email-change templates (and their
-  subjects) from `supabase/templates/` and config.toml. Then a real sign-up
-  through Hide My Email, to see whether it still lands in spam. Also waiting:
-  `20261019000000` and `20261019010000`: a view is one per member, from
-  opening a post, seeing it on Home (`lib/chat/home-views.ts`), liking or
-  reacting; push both before the client.
+- **Emailed links open on thesciclub.com** (live 2026-10-19, with the
+  club's subjects; set by the Management API). Not yet seen: a real sign-up
+  through Hide My Email, and whether it still lands in spam. Views are one
+  per member, from opening, seeing on Home (`lib/chat/home-views.ts`),
+  liking or reacting (`20261019000000`, `20261019010000`, live).
 
 - **The 2026-10-17 security scan's fixes are live** (2026-10-20: migrations
   through `20261018050000`, the client, `link-preview` with its DNS check; a
