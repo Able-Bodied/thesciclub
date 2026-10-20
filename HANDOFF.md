@@ -70,6 +70,10 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
 
 ## Open
 
+- **`20261020000000` is not live yet**: explicit grants, a no-op on the live
+  database (checked against it); push it before 2026-10-30 to keep history
+  in step.
+
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
   Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until the
   store app signs in to Google natively.
@@ -272,6 +276,12 @@ All live. Migration headers and the files named say how and why.
 - **Other sessions share the folder**: commit named paths only, never `-a`.
 - **Migration numbers**: fetch before numbering one. `db push` silently skips
   a version the live database already has, even from another file.
+- **Nothing is granted by itself** (Supabase, from 2026-10-30; locally now,
+  `auto_expose_new_tables = false`): a migration that makes a table, view or
+  function grants what anon, authenticated and service_role need, by name,
+  or the API answers 42501. `20261020000000` wrote down every older grant.
+  Never Supabase's suggested blanket grant. If a newer CLI rejects the
+  config key, delete it: the behaviour is then the default.
 - **A new view is writable by default** and runs as its owner, bypassing
   every policy. Revoke all from `public, anon, authenticated` by name, grant
   select. `create or replace view` drops `security_barrier`: restate it.
