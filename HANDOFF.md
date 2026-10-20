@@ -22,7 +22,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   nothing is unreleased. The agent's sandbox refuses `git push`: the owner
   runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261016010000` is live (pushed by the owner, 2026-10-16).
+  `20261018050000` is live (pushed by the owner, 2026-10-20).
   Edge functions live: `push-notify` (v5), `link-preview`, `send-invite`,
   `sign-in-reminder` and `home-screen-handoff` (the last with `verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
@@ -71,15 +71,11 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
 
 ## Open
 
-- **Security fixes, on branch `security-fixes`, not live** (2026-10-18, from
-  the scan of 2026-10-17): push `20261018000000` to `20261018050000` (dry run
-  first) before the client, then deploy `link-preview` and check a link still
-  gets its card (it now looks names up with `Deno.resolveDns`). Each commit
-  names its probe. The Home Screen pairing hand-off (F6 to F9) is left open on
-  purpose until the store app signs in to Google natively.
-- **Your own view does not count** (2026-10-16, `20261016020000`): not live
-  yet. Push it before the client, which stops adding 1 for an author's own
-  first visit to their topic. Probe: `supabase/tests/post-view-counts.sql`.
+- **The 2026-10-17 security scan's fixes are live** (2026-10-20: migrations
+  through `20261018050000`, the client, `link-preview` with its DNS check; a
+  christopherreeve.org link got its card). Each commit names its probe. Left
+  open on purpose: the Home Screen pairing hand-off (F6 to F9), until the store
+  app signs in to Google natively.
 - **Signing in on Stats** (live 2026-10-16, sign-ins count from then; phone
   left off it, `20261016010000`). The `oauth` amr for Google and Apple was
   never seen (no Google locally). Check the first real Google and Apple
