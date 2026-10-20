@@ -444,6 +444,7 @@ export default function OnboardingPage() {
   }
 
   async function resend() {
+    if (busy || resendLeft > 0) return;
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -854,6 +855,7 @@ export default function OnboardingPage() {
         <CheckEmailStep
           email={cleanEmail(data.email)}
           secondsLeft={resendLeft}
+          busy={busy}
           onResend={() => {
             void resend();
           }}

@@ -360,11 +360,14 @@ export function ForgotStep({ data, set, sent }: FieldsProps & { sent: boolean })
 export function CheckEmailStep({
   email,
   secondsLeft,
+  busy,
   onResend,
   onChangeAddress,
 }: {
   email: string;
   secondsLeft: number;
+  /** Off while sending: the wait starts only once the server answers. */
+  busy: boolean;
   onResend: () => void;
   onChangeAddress: () => void;
 }) {
@@ -377,11 +380,11 @@ export function CheckEmailStep({
       </Sub>
       <button
         type="button"
-        disabled={secondsLeft > 0}
+        disabled={busy || secondsLeft > 0}
         onClick={onResend}
         className="mt-5 flex min-h-[48px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-50"
       >
-        {secondsLeft > 0 ? `Send it again in ${secondsLeft}s` : 'Send it again'}
+        {busy ? 'Sending…' : secondsLeft > 0 ? `Send it again in ${secondsLeft}s` : 'Send it again'}
       </button>
       <button
         type="button"

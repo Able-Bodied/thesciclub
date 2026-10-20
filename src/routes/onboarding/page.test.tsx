@@ -27,6 +27,7 @@ const calls = vi.hoisted(() => {
     passwordError: null as { message: string; code?: string } | null,
     signUpError: null as { message: string; code?: string; status?: number } | null,
     resendError: null as { message: string; code?: string } | null,
+    resendHold: null as Promise<void> | null,
     resetError: null as { message: string; code?: string } | null,
     signUpOptions: null as { emailRedirectTo?: string } | null,
     resetRedirect: null as string | null,
@@ -235,7 +236,7 @@ vi.mock('@/lib/supabase', () => ({
       },
       resend: (options: { type: string; email: string }) => {
         calls.order.push(`resend:${options.type}:${options.email}`);
-        return Promise.resolve({ error: calls.resendError });
+        return (calls.resendHold ?? Promise.resolve()).then(() => ({ error: calls.resendError }));
       },
       resetPasswordForEmail: (email: string, options?: { redirectTo?: string }) => {
         calls.order.push(`resetPasswordForEmail:${email}`);
@@ -361,6 +362,7 @@ beforeEach(() => {
   calls.passwordError = null;
   calls.signUpError = null;
   calls.resendError = null;
+  calls.resendHold = null;
   calls.resetError = null;
   calls.signUpOptions = null;
   calls.resetRedirect = null;
@@ -766,6 +768,27 @@ describe('joining by email', () => {
     await waitFor(() => {
       expect(calls.order).toContain('resend:signup:dana@example.com');
     });
+  });
+
+  it('sends the link once however many times a slow resend is pressed', async () => {
+    calls.passwordError = { message: 'Email not confirmed', code: 'email_not_confirmed' };
+    let answer: (() => void) | undefined;
+    calls.resendHold = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    await fillDoor('dana@example.com', 'a long password');
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    const button = await screen.findByRole('button', { name: 'Send it again' });
+    await userEvent.click(button);
+    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Sending…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sending…' }));
+    answer?.();
+    expect(await screen.findByRole('button', { name: /Send it again in \d+s/ })).toBeDisabled();
+    expect(calls.order.filter((c) => c.startsWith('resend:'))).toHaveLength(1);
   });
 });
 
