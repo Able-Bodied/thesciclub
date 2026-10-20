@@ -24,7 +24,7 @@ const calls = vi.hoisted(() => {
     status: 'signed-out',
     /** What a successful password sign-in makes the account: a stranger to the club, or a member. */
     afterPassword: 'signed-up',
-    passwordError: null as { message: string; code?: string } | null,
+    passwordError: null as { message: string; code?: string; status?: number } | null,
     signUpError: null as { message: string; code?: string; status?: number } | null,
     resendError: null as { message: string; code?: string } | null,
     resendHold: null as Promise<void> | null,
@@ -352,6 +352,7 @@ async function fillDoor(email: string, password: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  window.sessionStorage.clear();
   progress.saved = null;
   progress.device = [];
   progress.account = [];
@@ -2171,3 +2172,77 @@ describe('notifications, not while signing up', () => {
 // iOS opens the number pad only for a focus inside a tap. The tap on Continue
 // focuses a hidden numeric field before the code is asked for, and the code
 // field takes focus over from it, which keeps the pad open (the owner,
+
+// Joined on a computer, the link opened on a phone (confirm-elsewhere.ts).
+describe('confirming on another device', () => {
+  const UNCONFIRMED = { message: 'Email not confirmed', code: 'email_not_confirmed', status: 400 };
+
+  async function join() {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    await fillDoor('dana@example.com', 'a long password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await screen.findByText('Check your email');
+  }
+  const tries = () => calls.order.filter((c) => c.startsWith('signInWithPassword')).length;
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('goes on by itself once the link is opened elsewhere', async () => {
+    calls.passwordError = UNCONFIRMED;
+    await join();
+    act(() => {
+      vi.advanceTimersByTime(15_000);
+    });
+    await waitFor(() => {
+      expect(tries()).toBe(1);
+    });
+    expect(screen.getByText('Check your email')).toBeInTheDocument();
+
+    calls.passwordError = null;
+    act(() => {
+      vi.advanceTimersByTime(15_000);
+    });
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('sciclub.awaitingConfirmation')).toBeNull();
+  });
+
+  it('stops trying on a password that does not match', async () => {
+    calls.passwordError = {
+      message: 'Invalid login credentials',
+      code: 'invalid_credentials',
+      status: 400,
+    };
+    await join();
+    for (let i = 0; i < 3; i++) {
+      act(() => {
+        vi.advanceTimersByTime(15_000);
+      });
+      await act(() => Promise.resolve());
+    }
+    expect(tries()).toBe(1);
+  });
+
+  it('keeps the address for a refresh, never the password', async () => {
+    calls.passwordError = UNCONFIRMED;
+    await join();
+    expect(window.sessionStorage.getItem('sciclub.awaitingConfirmation')).toBe('dana@example.com');
+    const kept = Object.keys(window.sessionStorage).map((key) =>
+      window.sessionStorage.getItem(key),
+    );
+    expect(kept.join(' ')).not.toContain('a long password');
+  });
+
+  it('after a refresh, offers the sign-in with the address filled in', async () => {
+    window.sessionStorage.setItem('sciclub.awaitingConfirmation', 'dana@example.com');
+    renderJoin();
+    expect(
+      await screen.findByText('If you opened the link in the email, sign in to go on.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    expect(screen.getByLabelText('Password')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+  });
+});

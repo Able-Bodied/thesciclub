@@ -155,14 +155,15 @@ export function Fine({ children }: { children: React.ReactNode }) {
  * `preventScroll` because the fields sit near the top of a short screen; the
  * browser's own scroll-into-view jumps the layout for no gain.
  */
-export function useAutoFocus<T extends HTMLInputElement>() {
+export function useAutoFocus<T extends HTMLInputElement>(enabled = true) {
   const ref = useRef<T>(null);
   useEffect(() => {
+    if (!enabled) return;
     const el = ref.current;
     if (!el) return;
     el.focus({ preventScroll: true });
     if (el.value) el.select();
-  }, []);
+  }, [enabled]);
   return ref;
 }
 

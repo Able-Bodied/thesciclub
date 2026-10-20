@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
-import { MIN_PASSWORD } from '@/lib/auth-email';
+import { looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import { passkeysAvailable } from '@/lib/passkeys';
@@ -174,7 +174,10 @@ export function SignInStep({
   notice,
   onForgot,
 }: FieldsProps & { ways: WaysIn; notice: string | null; onForgot: () => void }) {
-  const emailRef = useAutoFocus();
+  // Arriving with the address filled in, only the password is left to type.
+  const [emailGiven] = useState(() => looksLikeEmail(data.email));
+  const emailRef = useAutoFocus(!emailGiven);
+  const passwordRef = useAutoFocus(emailGiven);
   return (
     <>
       <Question>Welcome back</Question>
@@ -207,6 +210,7 @@ export function SignInStep({
         Password
       </label>
       <Field
+        ref={passwordRef}
         id="password"
         type="password"
         autoComplete="current-password"
@@ -378,6 +382,7 @@ export function CheckEmailStep({
         We sent a link to <b className="text-ink">{email}</b>. Open it to confirm the address and
         you will come straight back here. Look in spam if it does not arrive in a minute.
       </Sub>
+      <Sub>Opening it on your phone? This screen goes on by itself once you have.</Sub>
       <button
         type="button"
         disabled={busy || secondsLeft > 0}

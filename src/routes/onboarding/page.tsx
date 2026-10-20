@@ -45,6 +45,13 @@ import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
+import {
+  awaitingEmail,
+  type Credentials,
+  forgetAwaiting,
+  rememberAwaiting,
+  useSignInOnceConfirmed,
+} from '@/routes/onboarding/confirm-elsewhere';
 import { nameFromMetadata } from '@/routes/onboarding/prefill';
 import {
   forgetOnDevice,
@@ -153,6 +160,9 @@ export default function OnboardingPage() {
   // the Welcome screen's "Join the club" would only ask what the link already said.
   // So does a scanned code: it was held up so that somebody would join.
   const [step, setStep] = useState<Step>(invited || cameByCode ? 'join' : 'welcome');
+  // What was just typed, so the link opened on another device lets this one in.
+  const [awaiting, setAwaiting] = useState<Credentials | null>(null);
+  useSignInOnceConfirmed(step === 'check-email' ? awaiting : null);
   // The address the invitation was sent to, once the club has said, for the Email field.
   const [inviteAddress, setInviteAddress] = useState<string | null>(null);
   useEffect(() => {
@@ -204,7 +214,15 @@ export default function OnboardingPage() {
     const apple = params.get(APPLE_RETURN_PARAM) === 'signin';
     const confirmed = params.get(CONFIRMED_PARAM) === '1';
     const expired = window.location.hash.includes('error_code=');
-    if (!google && !apple && !confirmed && !expired) return;
+    if (!google && !apple && !confirmed && !expired) {
+      // A refresh while waiting for the link: the address, not the password.
+      const email = awaitingEmail();
+      if (email === null) return;
+      setData((d) => ({ ...d, email }));
+      setStep('signin');
+      setNotice('If you opened the link in the email, sign in to go on.');
+      return;
+    }
     setStep('signin');
     if (expired)
       setError('That link has expired or was already used. Sign in, or ask for a new one.');
@@ -228,6 +246,8 @@ export default function OnboardingPage() {
   const afterSignIn = useCallback(async () => {
     setError(null);
     setNotice(null);
+    setAwaiting(null);
+    forgetAwaiting();
     const supabase = getSupabase();
     const claim = await claimHeldInvite();
     if (claim === 'failed') {
@@ -403,6 +423,8 @@ export default function OnboardingPage() {
       return;
     }
     if (result.unconfirmed) {
+      setAwaiting({ email: data.email, password: data.password });
+      rememberAwaiting(data.email);
       setStep('check-email');
       setNotice(result.error);
       return;
@@ -426,6 +448,8 @@ export default function OnboardingPage() {
       setError(result.error);
       return;
     }
+    setAwaiting({ email: data.email, password: data.password });
+    rememberAwaiting(data.email);
     set({ password: '', passwordAgain: '' });
     setResendLeft(RESEND_WAIT);
     setStep('check-email');
@@ -862,6 +886,8 @@ export default function OnboardingPage() {
           onChangeAddress={() => {
             setError(null);
             setNotice(null);
+            setAwaiting(null);
+            forgetAwaiting();
             setStep('join');
           }}
         />

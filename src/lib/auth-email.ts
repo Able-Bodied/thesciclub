@@ -80,6 +80,28 @@ export async function signInWithEmail(email: string, password: string): Promise<
   return { ok: false, error: 'That email and password did not match.' };
 }
 
+/**
+ * One quiet try from "Check your email": 'in' once the link has been opened,
+ * on any device; 'waiting' until then, or while rate limited or offline;
+ * 'stop' for anything else, such as a password that does not match.
+ */
+export async function signInOnceConfirmed(
+  email: string,
+  password: string,
+): Promise<'in' | 'waiting' | 'stop'> {
+  try {
+    const { error } = await getSupabase().auth.signInWithPassword({
+      email: cleanEmail(email),
+      password,
+    });
+    if (!error) return 'in';
+    if (error.code === 'email_not_confirmed') return 'waiting';
+    return error.status === 429 || !error.status ? 'waiting' : 'stop';
+  } catch {
+    return 'waiting';
+  }
+}
+
 /** Says the same whether or not the address has an account. */
 export async function sendPasswordReset(email: string): Promise<Result> {
   const { error } = await getSupabase().auth.resetPasswordForEmail(cleanEmail(email), {
