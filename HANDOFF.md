@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-15. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-20. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. Older handoffs:
 `git show b04b003:HANDOFF.md` (every release to 2026-10-11 with its checks),
 `git show 4b1673b:HANDOFF.md` (what comments citing a HANDOFF section mean),
@@ -22,7 +22,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   nothing is unreleased. The agent's sandbox refuses `git push`: the owner
   runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261018050000` is live (pushed by the owner, 2026-10-20).
+  `20261019010000` is live (pushed by the owner, 2026-10-20).
   Edge functions live: `push-notify` (v5), `link-preview`, `send-invite`,
   `sign-in-reminder` and `home-screen-handoff` (the last with `verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
@@ -67,6 +67,11 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   Live 2026-10-19; through Hide My Email it reached the owner's inbox and the
   link signed in (2026-10-20). Views are one per member: opening, seeing on
   Home (`lib/chat/home-views.ts`), liking or reacting (`20261019010000`).
+  Joined on a computer, link opened on a phone: "Check your email" retries
+  the typed password every 15 s for 15 minutes, so the computer goes on by
+  itself (`onboarding/confirm-elsewhere.ts`; sign-ins are 30 per 5 minutes
+  per IP). The password stays in memory: after a refresh, sign-in opens with
+  the address (sessionStorage, that tab only). Live 2026-10-20.
   Email goes through Resend: the free plan sends 100 a day. Supabase's own
   cap (`rate_limit_email_sent`) is 100 an hour since 2026-10-14 (was 30). `thesciclub.com`
   has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
@@ -74,7 +79,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `send.thesciclub.com`, `invites@` and `hello@` are registered and pass
   (Apple Developer → Services → Sign in with Apple for Email Communication,
   2026-10-13).
-- **Checks**: 2,862 tests in 200 files on 2026-10-18; `pnpm check` (alone),
+- **Checks**: 2,890 tests in 205 files on 2026-10-20; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -130,7 +135,7 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   lock screen, cold and warm; signed photos on a phone; pinch zoom in the
   installed app (iOS and Android), and in the photograph viewer (Chromium
   touch only, 2026-10-15); joining with Apple's Hide My Email through
-  an invite link; the first nightly import after an administrator changed an
+  an invite link; joining on a computer and confirming on a phone, live; the first nightly import after an administrator changed an
   imported event; repeating events on a Supabase stack (checked in PGlite).
 - **Small, not asked for**: the "Rather not say" toggles on Your details are
   under 44px with no `data-target`; onboarding's photo step asks for no
@@ -156,6 +161,8 @@ All live. Migration headers and the files named say how and why.
   or photo. The account's copy goes when the member is made, or after 90 days
   (cron `onboarding-progress-expire`); `onboarding_steps` keeps only which
   steps were reached, for Stats. The privacy policy says both (October 15).
+  A bar per step, and each question slides in from the side it was reached
+  from (`chrome.tsx`, 2026-10-20).
 - **Admin → Stats** (2026-10-15, `20261015020000`, `admin_club_stats(period)`):
   counts only, never who, from what the club already keeps; all time by
   default, or the last or previous 24 hours, 7 or 30 days. "Opened the app"
@@ -299,7 +306,9 @@ All live. Migration headers and the files named say how and why.
   storage-api or realtime; **keep mailpit**, email sign-up needs it; drop
   `edge-runtime` from the list to run functions). New migration:
   `migration up --local`, then `notify pgrst, 'reload schema';`. After
-  `db reset`: `pnpm demo-member`.
+  `db reset`: `pnpm demo-member`. Email templates load at start (one started
+  before 2026-10-19 links to `/auth/confirm`, not `confirm.html`), and their
+  links name `site_url`, port 5173: change it to 5183 by hand.
 - **Fresh stack** for probes: copy `supabase/` to scratch, new `project_id`,
   ports and inspector port, `start --workdir <dir>`; `stop --workdir <dir>
   --no-backup` after.
@@ -378,6 +387,11 @@ All live. Migration headers and the files named say how and why.
   dev-login, not-found, admin. `AskOnOpening` sits in front of all of them
   once per phone.
 - **Realtime**: a table not in the publication delivers nothing.
+- **Motion** is one-shot CSS in `index.css` (`bell-ring`, `like-pulse`,
+  `arrive`, `step-in`; after React Bits, no animation libraries). Fill
+  `backwards`, never `both` or `forwards`: a transform left on a card traps
+  the fixed sheets it opens. Motion driven by script (`CountUp`) checks
+  reduced motion itself; the CSS kill switch cannot stop it.
 - **`pnpm fix`** reformats: re-read a file before a second scripted edit.
 
 ## Shared pieces, not to write twice
@@ -390,7 +404,7 @@ All live. Migration headers and the files named say how and why.
 `lib/date-parts.ts` (every date: typed boxes, never a calendar; the one
 exception is the event form, which opens the phone's calendar at the owner's
 word, 2026-10-06), `NotificationsStep` (sign-up and `AskOnOpening`),
-`useHoldScroll` (keeps a list where it was put while photographs load;
+`CountUp` (Admin's stats tiles), `useHoldScroll` (keeps a list where it was put while photographs load;
 conversation and topic), `LinkPreviewCard` (a link's card, in a message, a
 post and on Home), `DescriptionEditor` / `EventDescription` (the small Markdown
 and its safe drawing), `useSession` (is anybody signed in).
