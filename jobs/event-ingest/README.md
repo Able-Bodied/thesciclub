@@ -47,6 +47,7 @@ migrated database is ready.
 | --- | --- | --- | --- |
 | `norcalsci-events` | norcalsci.org | Squarespace collection JSON | One request |
 | `adaptiverechub-events` | adaptiverechub.org | HTML list + per-event pages | Slow, see below |
+| `naturetrack-trax` | naturetrack.org | One page's schedule block | One request |
 
 **NorCal SCI** publishes one organization's calendar, so every event in it is
 theirs. Roughly 100 events at any time, but only about 15 distinct ones — most
@@ -60,6 +61,10 @@ events, each naming its host in a "Program" field. Its `robots.txt` asks for a
 minutes. The site's sitemap carries a `<lastmod>` per event page, so subsequent
 runs re-fetch only pages the source actually changed — a steady-state refresh
 does zero detail fetches.
+
+**NatureTrack** is read for its Freedom Trax days only: the "Monthly Freedom
+Trax Schedule" block on its Freedom Trax page, which gives a place, a date with
+no year and hours with no am/pm. RSVPs go to its Borrow a Freedom Trax form.
 
 ## What it does to what it scrapes
 

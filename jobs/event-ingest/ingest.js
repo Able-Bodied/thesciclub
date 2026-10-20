@@ -37,12 +37,14 @@ import { createClient } from '@supabase/supabase-js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
 import { geocodeEvents } from './scrapers/geocode.js';
+import { NatureTrackTraxScraper } from './scrapers/naturetrack-trax.js';
 import { NorCalSCIEventsJsonScraper } from './scrapers/norcalsci-events-json.js';
 import { seriesAssignments, syncSeries } from './series.js';
 
 const SCRAPERS = {
   'norcalsci-events': () => new NorCalSCIEventsJsonScraper(),
   'adaptiverechub-events': () => new AdaptiveRecHubEventsScraper(),
+  'naturetrack-trax': () => new NatureTrackTraxScraper(),
 };
 
 /** Columns read back for the diff. Never `*`: the browser roles cannot select the coordinates,
