@@ -5,13 +5,16 @@
 -- and so is any visit to a deleted member's post.
 -- A like or a reaction is a view, once per member, never the author's
 -- (20261019000000).
+-- So is a post seen on Home, and opening it after is not a second view
+-- (20261019010000).
 \set ON_ERROR_STOP on
 begin;
 insert into public.members (id, type, status, display_name, phone, birth_date, level_range, state, show_in_browse)
 values
 ('aaaaaaaa-8888-0000-0000-000000000001','peer','active','Count writer','19990008001','1980-01-01','T1–T6','CA',true),
 ('aaaaaaaa-8888-0000-0000-000000000002','peer','active','Count reader','19990008002','1980-01-01','T1–T6','CA',true),
-('aaaaaaaa-8888-0000-0000-000000000003','peer','active','Count liker','19990008003','1980-01-01','T1–T6','CA',true);
+('aaaaaaaa-8888-0000-0000-000000000003','peer','active','Count liker','19990008003','1980-01-01','T1–T6','CA',true),
+('aaaaaaaa-8888-0000-0000-000000000004','peer','active','Home reader','19990008004','1980-01-01','T1–T6','CA',true);
 update public.chat_rooms set opened_at = now() where id in ('bowel','bladder');
 insert into public.chat_topics (id,room_id,title,author_id) values
 ('80000000-0000-0000-0000-000000000001','bowel','Count probe','aaaaaaaa-8888-0000-0000-000000000001'),
@@ -126,6 +129,61 @@ begin
   raise notice 'PASS: viewed-by-me is the caller''s own';
 end;
 $$;
+
+-- Seen on Home: one view; seen again, or opened after, still one.
+set local request.jwt.claims='{"sub":"aaaaaaaa-8888-0000-0000-000000000004","role":"authenticated"}';
+do $$
+begin
+  assert not public.chat_topic_viewed_by_me('80000000-0000-0000-0000-000000000001'), 'home reader seen before anything';
+  perform public.chat_mark_posts_seen(array['80000000-0000-0000-0000-000000000011'::uuid]);
+  assert public.chat_topic_viewed_by_me('80000000-0000-0000-0000-000000000001'), 'a Home view was not seen';
+  assert (select view_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000011'::uuid]))=3,
+    'a Home view did not count';
+  assert (select view_count from public.chat_topics_for('bowel')
+           where id = '80000000-0000-0000-0000-000000000001')=3, 'a Home view did not count on the topic';
+  perform public.chat_mark_posts_seen(array['80000000-0000-0000-0000-000000000011'::uuid]);
+  perform public.chat_mark_topic_read_through('80000000-0000-0000-0000-000000000001','80000000-0000-0000-0000-000000000011');
+  assert (select view_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000011'::uuid]))=3,
+    'Home and the room counted twice';
+  assert (select view_count from public.chat_topics_for('bowel')
+           where id = '80000000-0000-0000-0000-000000000001')=3, 'Home and the room counted twice on the topic';
+  -- A closed room's post and a removed one are not recorded.
+  perform public.chat_mark_posts_seen(array['80000000-0000-0000-0000-000000000013'::uuid,'80000000-0000-0000-0000-000000000014'::uuid]);
+  begin
+    perform 1 from public.chat_post_views;
+    raise exception 'who saw what is readable';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.chat_post_views (post_id, member_id) values ('80000000-0000-0000-0000-000000000012', auth.uid());
+    raise exception 'a view was written by hand';
+  exception when insufficient_privilege then null;
+  end;
+  assert not has_function_privilege('anon','public.chat_mark_posts_seen(uuid[])','execute'), 'anonymous marking granted';
+  raise notice 'PASS: a Home view is one view, with the room; private; closed and removed posts not recorded';
+end;
+$$;
+
+-- The author seeing their own post on Home records nothing.
+set local request.jwt.claims='{"sub":"aaaaaaaa-8888-0000-0000-000000000001","role":"authenticated"}';
+do $$
+begin
+  perform public.chat_mark_posts_seen(array['80000000-0000-0000-0000-000000000012'::uuid]);
+  assert (select view_count from public.chat_post_view_counts(array['80000000-0000-0000-0000-000000000012'::uuid]))=2,
+    'the author''s own Home view counted';
+  raise notice 'PASS: the author''s own Home view is not a view';
+end;
+$$;
+
+-- Only the posts above were recorded: not the closed room's, not the removed one.
+reset role;
+do $$
+begin
+  assert (select count(*) from public.chat_post_views)=1, 'a post that should not be was recorded';
+  raise notice 'PASS: exactly one Home view kept';
+end;
+$$;
+set local role authenticated;
 
 -- A deleted member's post: nobody is its author, so every reader counts.
 reset role;

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
@@ -75,9 +76,11 @@ export function TopicCard({
 }) {
   const reply = topic.firstReply;
   const opening = topic.opening;
+  // Read here is read: a view, as opening the topic is (home-views.ts).
+  const seenRef = useSeenOnHome(topic.opening?.id);
 
   return (
-    <article className="relative rounded-[17px] border border-line bg-paper p-3.5">
+    <article ref={seenRef} className="relative rounded-[17px] border border-line bg-paper p-3.5">
       <RoomTag room={topic.room} linkState={linkState} />
 
       {topic.isQuestion ? (

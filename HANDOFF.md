@@ -81,7 +81,9 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   hosted confirmation, recovery and email-change templates (and their
   subjects) from `supabase/templates/` and config.toml. Then a real sign-up
   through Hide My Email, to see whether it still lands in spam. Also waiting:
-  `20261019000000` (likes and reactions count as views).
+  `20261019000000` and `20261019010000`: a view is one per member, from
+  opening a post, seeing it on Home (`lib/chat/home-views.ts`), liking or
+  reacting; push both before the client.
 
 - **The 2026-10-17 security scan's fixes are live** (2026-10-20: migrations
   through `20261018050000`, the client, `link-preview` with its DNS check; a

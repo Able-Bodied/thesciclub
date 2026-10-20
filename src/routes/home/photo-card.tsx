@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor } from '@/lib/chat/types';
 import type { HomeTopic } from '@/lib/home/types';
@@ -79,9 +80,11 @@ export function PhotoCard({
   const opening = topic.opening;
   const to = `/chat/rooms/${topic.roomId}/topics/${topic.id}`;
   const name = byline(topic.authorId, author);
+  // Read here is read: a view, as opening the topic is (home-views.ts).
+  const seenRef = useSeenOnHome(topic.opening?.id);
 
   return (
-    <article className="relative rounded-[17px] border border-line bg-paper p-3.5">
+    <article ref={seenRef} className="relative rounded-[17px] border border-line bg-paper p-3.5">
       <div className="flex items-center gap-3">
         {/* Decorative: the link to the profile is on the name. */}
         <span aria-hidden="true" className="pointer-events-none flex-none">

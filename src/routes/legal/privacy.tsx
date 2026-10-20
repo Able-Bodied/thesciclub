@@ -18,7 +18,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 16, 2026">
+    <LegalPage title="Privacy Policy" updated="October 19, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -53,7 +53,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>What you do in the club:</b> your messages, posts and photographs, the events you
-            reply to, the organizations you follow, the posts you like, and anything you report.
+            reply to, the organizations you follow, the posts you like, the posts you have read, in
+            a room or on Home, and anything you report. A post shows how many people have read it,
+            never who.
           </li>
           <li>
             <b>Your answers while you join:</b> what you have answered so far and the step you are
