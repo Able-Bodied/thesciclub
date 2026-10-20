@@ -31,6 +31,7 @@ const OrganizationManagementPage = lazy(
 );
 const AdminPage = lazy(() => import('@/routes/admin/page'));
 const AppSignInPage = lazy(() => import('@/routes/app-sign-in/page'));
+const AuthConfirmPage = lazy(() => import('@/routes/auth-confirm/page'));
 const GroupMembersPage = lazy(() => import('@/routes/chat/group-members'));
 const NewGroupPage = lazy(() => import('@/routes/chat/new-group'));
 const NewMessagePage = lazy(() => import('@/routes/chat/new-message'));
@@ -315,6 +316,17 @@ function AppRoutes() {
           element={
             <InLight>
               <ResetPasswordPage />
+            </InLight>
+          }
+        />
+        {/* Every emailed link opens here first (src/lib/email-link.ts). The
+          dot keeps an old service worker from answering it with an app that
+          has no such page (src/sw.ts). */}
+        <Route
+          path="/auth/confirm.html"
+          element={
+            <InLight>
+              <AuthConfirmPage />
             </InLight>
           }
         />

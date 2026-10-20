@@ -51,8 +51,9 @@ cleanupOutdatedCaches();
 // navigation too, and served index.html it became the app, which sent it to
 // /join: the screenshots opened from the old text-message registration
 // (public/sms-opt-in/, since removed) did exactly that in any tab that had been
-// to the club first. No route of the app has a dot in its last segment, so a
-// path that ends in an extension goes to the network.
+// to the club first. A path that ends in an extension goes to the network.
+// One route has a dot on purpose: /auth/confirm.html, the emailed links' page,
+// so the network's newest app answers it, never an older cached one.
 registerRoute(
   new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/\.[a-z0-9]+$/i] }),
 );
