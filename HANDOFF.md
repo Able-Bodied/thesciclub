@@ -70,9 +70,13 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
 
 ## Open
 
-- **`20261020000000` is not live yet**: explicit grants, a no-op on the live
-  database (checked against it); push it before 2026-10-30 to keep history
-  in step.
+- **Not live yet**: `20261020000000` (explicit grants, a no-op on the live
+  database, checked against it; push before 2026-10-30) and `20261020010000`
+  (an administrator's Remove deletes the sign-in account too, so the address
+  can be invited and join again; probe `removed-member-can-rejoin.sql`).
+  Accounts removed before it are still there with no member: whoever is
+  invited again can sign in with their old password, or Forgot password, and
+  finish joining; or delete the account in Supabase → Users first.
 
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
   Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until the
