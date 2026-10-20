@@ -311,7 +311,7 @@ export function useTopicPosts(
     const supabase = getSupabase();
 
     try {
-      const [topics, postRows, reads] = (await Promise.all([
+      const [topics, postRows, reads, seen] = (await Promise.all([
         supabase.rpc('chat_topics_for', { room: roomId }).abortSignal(controller.signal),
         readPages<PostRow>((from, to) =>
           supabase
@@ -334,7 +334,17 @@ export function useTopicPosts(
               .abortSignal(controller.signal)
               .maybeSingle()
           : Promise.resolve({ data: null, error: null }),
-      ])) as [Result<TopicRow[]>, Result<PostRow[]>, Result<{ last_read_at: string }>];
+        memberId
+          ? supabase
+              .rpc('chat_topic_viewed_by_me', { topic: topicId })
+              .abortSignal(controller.signal)
+          : Promise.resolve({ data: null, error: null }),
+      ])) as [
+        Result<TopicRow[]>,
+        Result<PostRow[]>,
+        Result<{ last_read_at: string }>,
+        Result<boolean | null>,
+      ];
       if (aborted()) return;
 
       const failure = topics.error ?? postRows.error;
@@ -362,8 +372,11 @@ export function useTopicPosts(
       // Marking read below inserts exactly one row when there was none, so
       // adding one here is the count after this visit rather than a guess.
       // Not for the member who started it: their own visit is never a view
-      // (20261016020000).
-      const counted = reads.data === null && found?.author_id !== memberId;
+      // (20261016020000). Nor for one who liked or reacted from Home, already
+      // counted (20261019000000); without that answer, the read row decides.
+      const counted =
+        (seen.error || seen.data === null ? reads.data === null : !seen.data) &&
+        found?.author_id !== memberId;
       setTopic(
         found
           ? { ...toTopic(found), viewCount: Number(found.view_count) + (counted ? 1 : 0) }

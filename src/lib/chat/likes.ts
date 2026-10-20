@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import type { ChatWriteResult } from '@/lib/chat/topics';
+import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { readInBatches, readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
@@ -116,6 +117,8 @@ export async function likePost(postId: string, memberId: string): Promise<ChatWr
       { onConflict: 'post_id,member_id', ignoreDuplicates: true },
     );
   if (error) return { ok: false, error: describeError(error, LIKE_FAILED) };
+  // A like is a view (20261019000000).
+  announcePostViewsChanged();
   return { ok: true, value: null };
 }
 
@@ -127,6 +130,7 @@ export async function unlikePost(postId: string, memberId: string): Promise<Chat
     .eq('post_id', postId)
     .eq('member_id', memberId);
   if (error) return { ok: false, error: describeError(error, UNLIKE_FAILED) };
+  announcePostViewsChanged();
   return { ok: true, value: null };
 }
 

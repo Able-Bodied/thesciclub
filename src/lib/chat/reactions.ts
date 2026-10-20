@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { useRealtimeRows } from '@/lib/chat/realtime';
+import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { readInBatches } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
@@ -158,6 +159,8 @@ export function useReactions(
           ],
         }));
         announce(emoji ? 'Reaction saved.' : 'Reaction removed.');
+        // A reaction to a post is a view (20261019000000).
+        if (kind === 'post') announcePostViewsChanged();
         reload();
         return true;
       } catch (e) {
