@@ -697,3 +697,32 @@
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
+
+/*
+ * The circle on Apple's button after a tap (opening-icon.tsx). Its timing is
+ * all delay, which the kill switch above leaves alone: with reduced motion the
+ * circle stays for as long, but does not turn.
+ */
+@keyframes opening-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes opening-done {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes opening-wait {
+  from {
+    opacity: 0;
+  }
+}
+.opening-spinner {
+  animation:
+    opening-turn 0.9s linear infinite,
+    opening-done 0.01ms linear var(--opening-for) forwards;
+}
+.opening-icon {
+  animation: opening-wait 0.01ms linear var(--opening-for) backwards;
+}

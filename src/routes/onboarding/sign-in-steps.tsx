@@ -2,6 +2,7 @@ import { ChevronDown, KeyRound } from 'lucide-react';
 import { useState } from 'react';
 import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
+import { OpeningIcon } from '@/components/opening-icon';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
@@ -37,6 +38,8 @@ interface WaysIn {
   /** The iPhone Home Screen app's way to Google, through Chrome or Safari; null elsewhere. */
   googleInBrowser: GoogleInBrowser | null;
   onApple: () => void;
+  /** Taps that have left for Apple, for the button's circle. */
+  appleTaps: number;
   onPasskey: () => void;
 }
 
@@ -113,7 +116,9 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
       onClick={ways.onApple}
       className={`${SOCIAL_BUTTON} bg-black text-white`}
     >
-      <AppleLogo />
+      <OpeningIcon taps={ways.appleTaps}>
+        <AppleLogo />
+      </OpeningIcon>
       {mode === 'signin' ? 'Sign in with Apple' : 'Continue with Apple'}
     </button>
   );

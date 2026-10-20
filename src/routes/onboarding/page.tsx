@@ -375,8 +375,12 @@ export default function OnboardingPage() {
     if (!result.ok) setError(result.error);
   }
 
+  // Each tap that leaves for Apple, for the button's circle (OpeningIcon).
+  const [appleTaps, setAppleTaps] = useState(0);
+
   async function continueWithApple() {
     if (!goesOut()) return;
+    setAppleTaps((n) => n + 1);
     setError(null);
     const result = await signInWithApple();
     if (!result.ok) setError(result.error);
@@ -396,6 +400,7 @@ export default function OnboardingPage() {
 
   const ways = {
     busy,
+    appleTaps,
     googleInBrowser,
     onGoogleToken: (token: string, nonce: string) => {
       void signInWithToken(token, nonce);

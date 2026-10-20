@@ -1282,12 +1282,15 @@ describe('Google, Apple and passkeys', () => {
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
       const apple = screen.getByRole('button', { name: 'Sign in with Apple' });
+      expect(apple.querySelector('.opening-spinner')).toBeNull();
       await userEvent.click(apple);
+      // The circle says it is loading; CSS takes it away again by itself.
+      expect(apple.querySelector('.opening-spinner')).not.toBeNull();
       await userEvent.click(apple);
       expect(apple).toBeEnabled();
       expect(calls.order).toEqual(['signInWithOAuth:apple']);
 
-      vi.setSystemTime(Date.now() + 2000);
+      vi.setSystemTime(Date.now() + 3000);
       await userEvent.click(apple);
       expect(calls.order).toEqual(['signInWithOAuth:apple', 'signInWithOAuth:apple']);
       vi.useRealTimers();
