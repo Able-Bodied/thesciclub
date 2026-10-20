@@ -35,15 +35,22 @@ describe('the Privacy Policy', () => {
     expect(screen.getAllByText(/Able Bodied Inc\./).length).toBeGreaterThan(0);
   });
 
-  // The club sends no texts any more (2026-10-10), so nothing on the page may
-  // still promise or describe them: a policy that mentions a program that does
-  // not exist is a policy a reader cannot trust about the ones that do.
-  it('no longer mentions text messages, codes, STOP or carriers', () => {
+  // Twilio error 30908: the carriers' sentences, word for word.
+  it('carries the text-message wording carriers ask for', () => {
     open('/privacy');
-    const page = document.body.textContent;
-    for (const gone of [/text message/i, /\bSMS\b/, /sign-in code/i, /\bSTOP\b/, /carrier/i]) {
-      expect(page).not.toMatch(gone);
-    }
+    const section = screen.getByRole('heading', { name: 'Text messages (SMS)' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(
+      'We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.',
+    );
+    expect(section).toHaveTextContent(
+      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
+    );
+    expect(section).toHaveTextContent(
+      'Text messaging opt-in data and consent will not be shared with any third parties.',
+    );
+    expect(section).toHaveTextContent('Message and data rates may apply.');
+    expect(section).toHaveTextContent(/Text HELP for help and STOP/);
   });
 
   it('says email and phone number are not sold or shared for marketing', () => {
@@ -63,10 +70,10 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/do not send newsletters or promotions/);
   });
 
-  it('says a phone number is optional and only for event hosts', () => {
+  it('says a phone number is optional, for event hosts and sign-in codes', () => {
     open('/privacy');
     expect(screen.getByText(/A phone number, only if you add one/)).toBeInTheDocument();
-    expect(document.body.textContent).toContain('It is never used to sign you in.');
+    expect(document.body.textContent).not.toContain('It is never used to sign you in.');
   });
 
   // Kinds of provider, which is what the law asks for, and not which companies
@@ -74,7 +81,9 @@ describe('the Privacy Policy', () => {
   it('says what kinds of provider receive information, without naming companies', () => {
     open('/privacy');
     expect(
-      screen.getByText(/hosting, our database and sign-in, email delivery, location lookup/),
+      screen.getByText(
+        /hosting, our database and sign-in, email delivery, text-message delivery, location lookup/,
+      ),
     ).toBeInTheDocument();
     const page = document.body.textContent;
     for (const company of ['Supabase', 'Twilio', 'Netlify', 'OpenStreetMap']) {
@@ -92,6 +101,7 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/for that event only/);
     expect(section).toHaveTextContent(/Choosing Interested shares nothing/);
     expect(section).toHaveTextContent(/not to use your details for marketing/);
+    expect(section).toHaveTextContent(/opt-in data and consent are never shared with hosts/);
     expect(screen.queryByText(/It is never shared outside the club/)).toBeNull();
   });
 

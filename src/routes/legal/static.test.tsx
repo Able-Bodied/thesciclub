@@ -28,8 +28,11 @@ describe('the static Privacy Policy', () => {
     expect(html).toContain('Able Bodied Inc.');
   });
 
-  it('says nothing of text messages', () => {
-    expect(html).not.toMatch(/text message|SMS opt-in|Message and data rates/i);
+  it("carries the carriers' text-message wording in the HTML itself", () => {
+    expect(html).toContain(
+      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
+    );
+    expect(html).toContain('Message and data rates may apply.');
   });
 
   it('is not marked noindex, and still starts the app', () => {
