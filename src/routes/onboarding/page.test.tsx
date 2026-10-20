@@ -1290,7 +1290,7 @@ describe('Google, Apple and passkeys', () => {
       expect(apple).toBeEnabled();
       expect(calls.order).toEqual(['signInWithOAuth:apple']);
 
-      vi.setSystemTime(Date.now() + 3000);
+      vi.setSystemTime(Date.now() + 2000);
       await userEvent.click(apple);
       expect(calls.order).toEqual(['signInWithOAuth:apple', 'signInWithOAuth:apple']);
       vi.useRealTimers();

@@ -1,11 +1,11 @@
 import { useCallback, useRef } from 'react';
 
 /** A second tap this soon after the first is the same tap. */
-export const TAP_AGAIN_AFTER_MS = 3000;
+export const TAP_AGAIN_AFTER_MS = 2000;
 
 /**
  * For a button that sends the page to Google or Apple: true when this tap
- * should go, false for a second tap within three seconds of the first.
+ * should go, false for a second tap within two seconds of the first.
  *
  * Not a button turned off for the trip. On an iPhone's Home Screen the
  * provider opens over the app, and closing it leaves this page as it was with
