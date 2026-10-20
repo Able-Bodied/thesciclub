@@ -64,6 +64,9 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `supabase/templates/`), not supabase.co, which put mail in spam; the dot
   keeps an old service worker off it. Hosted templates go by the Management
   API (`mailer_templates_*_content`), only after the client that has the page.
+  Live 2026-10-19; through Hide My Email it reached the owner's inbox and the
+  link signed in (2026-10-20). Views are one per member: opening, seeing on
+  Home (`lib/chat/home-views.ts`), liking or reacting (`20261019010000`).
   Email goes through Resend: the free plan sends 100 a day. Supabase's own
   cap (`rate_limit_email_sent`) is 100 an hour since 2026-10-14 (was 30). `thesciclub.com`
   has an SPF record (`v=spf1 include:send.forge.rmta.net ~all`), so Apple's
@@ -75,12 +78,6 @@ the move to email sign-in; `LAUNCH-CHECK.md` the soft-launch check.
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
-
-- **Emailed links open on thesciclub.com** (live 2026-10-19, with the
-  club's subjects; set by the Management API). Not yet seen: a real sign-up
-  through Hide My Email, and whether it still lands in spam. Views are one
-  per member, from opening, seeing on Home (`lib/chat/home-views.ts`),
-  liking or reacting (`20261019000000`, `20261019010000`, live).
 
 - **The 2026-10-17 security scan's fixes are live** (2026-10-20: migrations
   through `20261018050000`, the client, `link-preview` with its DNS check; a
