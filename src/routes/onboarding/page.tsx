@@ -15,7 +15,6 @@ import {
   signInWithEmail,
   signUpWithEmail,
 } from '@/lib/auth-email';
-import { useBackFromRedirect } from '@/lib/back-from-redirect';
 import { describeError } from '@/lib/describe-error';
 import { useGoogleInBrowser } from '@/lib/google-in-browser';
 import {
@@ -42,6 +41,7 @@ import {
   QR_PARAM,
   type QrCodeDetails,
 } from '@/lib/qr-codes';
+import { useRedirectTap } from '@/lib/redirect-tap';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
@@ -364,32 +364,22 @@ export default function OnboardingPage() {
     if (!result.ok) setError(result.error);
   }
 
-  // Closing Google's or Apple's page on an iPhone's Home Screen leaves this one here.
-  const leaving = useBackFromRedirect(() => {
-    setBusy(false);
-  });
+  // Not `busy`: the buttons must still work if Google's or Apple's page is closed.
+  const goesOut = useRedirectTap();
 
   async function continueWithGoogle() {
-    setBusy(true);
-    leaving();
+    if (!goesOut()) return;
     setError(null);
     const result = await signInWithGoogle();
     // On success the page is already on its way to Google.
-    if (!result.ok) {
-      setBusy(false);
-      setError(result.error);
-    }
+    if (!result.ok) setError(result.error);
   }
 
   async function continueWithApple() {
-    setBusy(true);
-    leaving();
+    if (!goesOut()) return;
     setError(null);
     const result = await signInWithApple();
-    if (!result.ok) {
-      setBusy(false);
-      setError(result.error);
-    }
+    if (!result.ok) setError(result.error);
   }
 
   async function continueWithPasskey() {

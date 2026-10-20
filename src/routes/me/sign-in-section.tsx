@@ -15,7 +15,6 @@ import {
   unlinkApple,
 } from '@/lib/apple-sign-in';
 import { sendPasswordReset } from '@/lib/auth-email';
-import { useBackFromRedirect } from '@/lib/back-from-redirect';
 import { describeThrown } from '@/lib/describe-error';
 import { displayPhone, useOwnPhone } from '@/lib/event-phone';
 import {
@@ -26,6 +25,7 @@ import {
   registerPasskey,
 } from '@/lib/passkeys';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
+import { useRedirectTap } from '@/lib/redirect-tap';
 import {
   isValidUsername,
   normalizeUsername,
@@ -205,10 +205,8 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const linked: UserIdentity | null = details?.providers.apple ?? null;
-  // Closing Apple's page on an iPhone's Home Screen leaves this one here.
-  const leaving = useBackFromRedirect(() => {
-    setBusy(false);
-  });
+  // Not `busy`: the button must still work if Apple's page is closed.
+  const goesOut = useRedirectTap();
 
   useEffect(() => {
     if (!returned || !details) return;
@@ -227,18 +225,13 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
   if (!details) return null;
 
   async function link() {
-    setBusy(true);
-    leaving();
+    if (!goesOut()) return;
     setError(null);
     try {
       const result = await linkApple();
-      if (!result.ok) {
-        setError(result.error);
-        setBusy(false);
-      }
+      if (!result.ok) setError(result.error);
     } catch (e: unknown) {
       setError(describeThrown(e, 'Could not reach Apple.'));
-      setBusy(false);
     }
   }
 

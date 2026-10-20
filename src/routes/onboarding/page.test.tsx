@@ -1274,18 +1274,23 @@ describe('Google, Apple and passkeys', () => {
       expect(calls.order).toEqual(['signInWithOAuth:apple']);
     });
 
-    it('gives the button back when Apple’s page is closed with this one still open', async () => {
+    it('never turns the button off for the trip, and a double tap goes once', async () => {
       // An iPhone's Home Screen app: Apple opens over the app, and its X
-      // closes it without this page ever leaving.
+      // closes it without this page hearing anything; the button must still work.
+      vi.useFakeTimers({ toFake: ['Date'] });
       vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Sign in with Apple' }));
-      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeDisabled();
-      act(() => {
-        window.dispatchEvent(new Event('focus'));
-      });
-      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeEnabled();
+      const apple = screen.getByRole('button', { name: 'Sign in with Apple' });
+      await userEvent.click(apple);
+      await userEvent.click(apple);
+      expect(apple).toBeEnabled();
+      expect(calls.order).toEqual(['signInWithOAuth:apple']);
+
+      vi.setSystemTime(Date.now() + 2000);
+      await userEvent.click(apple);
+      expect(calls.order).toEqual(['signInWithOAuth:apple', 'signInWithOAuth:apple']);
+      vi.useRealTimers();
     });
 
     it('says what to do when Apple comes back without signing anybody in', async () => {
