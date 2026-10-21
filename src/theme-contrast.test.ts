@@ -211,3 +211,97 @@ describe('dark palette contrast', () => {
     expect(declarations(DARK_BY_DEVICE)).toEqual(declarations(DARK));
   });
 });
+
+/*
+ * Me → Display → Higher contrast. Words are held to AAA (7:1) and edges to the
+ * 3:1 WCAG asks of graphics. A token the block leaves alone keeps its theme's
+ * value, so the pairs are measured as they are drawn.
+ */
+const HIGH = block(':root[data-high-contrast="on"]');
+const HIGH_DARK = block(
+  ':root[data-high-contrast="on"][data-appearance="dark"]:not([data-force-light])',
+);
+const HIGH_DARK_BY_DEVICE = block(
+  ':root[data-high-contrast="on"]:not([data-appearance="light"]):not([data-force-light])',
+);
+
+function inBlock(body: string, name: string): string | undefined {
+  return new RegExp(`--${name}:\\s*(#[0-9a-f]{3,6})`, 'i').exec(body)?.[1];
+}
+
+const highToken = (name: string) => inBlock(HIGH, name) ?? token(name);
+const highDarkToken = (name: string) => inBlock(HIGH_DARK, name) ?? darkToken(name);
+
+const AAA = 7;
+
+describe('high contrast', () => {
+  it.each([
+    ['--ink on --paper', 'ink', 'paper'],
+    ['--ink2 on --paper', 'ink2', 'paper'],
+    ['--ink2 on --canvas', 'ink2', 'canvas'],
+    ['--ink2 on --tint', 'ink2', 'tint'],
+    ['--ink2 on --gold-lt', 'ink2', 'gold-lt'],
+    ['--grey on --paper', 'grey', 'paper'],
+    ['--grey on --canvas', 'grey', 'canvas'],
+    ['--grey on --tint', 'grey', 'tint'],
+    ['--emphasis on --paper', 'emphasis', 'paper'],
+    ['--emphasis on --tint', 'emphasis', 'tint'],
+    ['--gold-dp on --paper', 'gold-dp', 'paper'],
+    ['--gold-dp on --canvas', 'gold-dp', 'canvas'],
+    ['--gold-ink on --gold-lt', 'gold-ink', 'gold-lt'],
+    ['--room-body on --canvas', 'room-body', 'canvas'],
+    ['--room-mind on --canvas', 'room-mind', 'canvas'],
+    ['--room-life on --canvas', 'room-life', 'canvas'],
+    ['--room-family on --canvas', 'room-family', 'canvas'],
+    ['--room-kit on --canvas', 'room-kit', 'canvas'],
+    ['--room-places on --canvas', 'room-places', 'canvas'],
+  ])('light: %s clears AAA', (_label, fg, bg) => {
+    expect(contrast(highToken(fg), highToken(bg))).toBeGreaterThanOrEqual(AAA);
+  });
+
+  it.each([
+    ['--ink on --paper', 'ink', 'paper'],
+    ['--ink2 on --paper', 'ink2', 'paper'],
+    ['--ink2 on --canvas', 'ink2', 'canvas'],
+    ['--ink2 on --tint', 'ink2', 'tint'],
+    ['--ink2 on --line (an unselected pill under the pointer)', 'ink2', 'line'],
+    ['--grey on --paper', 'grey', 'paper'],
+    ['--grey on --canvas', 'grey', 'canvas'],
+    ['--grey on --tint', 'grey', 'tint'],
+    ['--emphasis on --paper', 'emphasis', 'paper'],
+    ['--emphasis on --canvas', 'emphasis', 'canvas'],
+    ['--emphasis on --tint', 'emphasis', 'tint'],
+    ['--emphasis on --line', 'emphasis', 'line'],
+    ['--ink on --action (a filled button)', 'ink', 'action'],
+    ['--gold-dp on --gold-lt', 'gold-dp', 'gold-lt'],
+    ['--gold-ink on --gold-lt', 'gold-ink', 'gold-lt'],
+    ['--room-body on --canvas', 'room-body', 'canvas'],
+    ['--room-mind on --canvas', 'room-mind', 'canvas'],
+    ['--room-life on --canvas', 'room-life', 'canvas'],
+    ['--room-family on --canvas', 'room-family', 'canvas'],
+    ['--room-kit on --canvas', 'room-kit', 'canvas'],
+    ['--room-places on --canvas', 'room-places', 'canvas'],
+  ])('dark: %s clears AAA', (_label, fg, bg) => {
+    expect(contrast(highDarkToken(fg), highDarkToken(bg))).toBeGreaterThanOrEqual(AAA);
+  });
+
+  it.each([
+    ['light: --edge on --paper', highToken, 'paper'],
+    ['light: --edge on --canvas', highToken, 'canvas'],
+    ['dark: --edge on --paper', highDarkToken, 'paper'],
+    ['dark: --edge on --canvas', highDarkToken, 'canvas'],
+    ['dark: --edge on --tint', highDarkToken, 'tint'],
+  ])('%s clears 3:1', (_label, read, bg) => {
+    expect(contrast(read('edge'), read(bg))).toBeGreaterThanOrEqual(3);
+  });
+
+  it('is the same on Dark and on a dark phone', () => {
+    const declarations = (body: string) =>
+      body
+        .split(';')
+        .map((d) => d.trim())
+        .filter(Boolean)
+        .sort();
+    expect(declarations(HIGH_DARK_BY_DEVICE)).toEqual(declarations(HIGH_DARK));
+  });
+});

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motionReduced } from '@/lib/accessibility';
 import { useAnnounce } from '@/lib/announce';
 import {
   type OrganizationDraft,
@@ -53,10 +54,10 @@ export function OrganizationEditor({
   // a screen reader starts there too. The heading and not the first box: on a
   // phone that would open the keyboard over the form being arrived at.
   useEffect(() => {
-    const reduced =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    form.current?.scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' });
+    form.current?.scrollIntoView({
+      block: 'start',
+      behavior: motionReduced() ? 'auto' : 'smooth',
+    });
     heading.current?.focus({ preventScroll: true });
   }, []);
 

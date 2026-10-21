@@ -1,6 +1,7 @@
 import { ChevronRight, LogOut } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { DisplayButton } from '@/components/display-sheet';
 import { InstallSettings } from '@/components/install-nudge';
 import { type PageTab, PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { signOut, useAccount } from '@/lib/account';
@@ -245,11 +246,12 @@ export default function MePage() {
       {member ? (
         <MeHero member={changedUsername ? { ...member, username: changedUsername } : member} />
       ) : (
-        <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
+        <header className="relative flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Me
           </h1>
           <p className="mt-0.5 text-[0.78125rem] text-grey">Signed in as {displayName ?? '—'}</p>
+          <DisplayButton variant="round" className="absolute top-[18px] right-[18px]" />
         </header>
       )}
 

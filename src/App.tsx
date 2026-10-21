@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskOnOpening } from '@/components/ask-on-opening';
+import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
 import { RequireMember } from '@/components/require-member';
@@ -128,6 +129,17 @@ function AppShell() {
   // it was this number, and both engines measured identically.
   return (
     <div className="app-shell relative mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
+      <DisplaySheetProvider>
+        <ShellContent />
+      </DisplaySheetProvider>
+    </div>
+  );
+}
+
+function ShellContent() {
+  const openDisplay = useOpenDisplaySheet();
+  return (
+    <>
       {/* First in the DOM, painted last on a phone and first on a desktop —
           see the ordering note in app-nav.tsx. */}
       {/* The first thing a keyboard reaches: a way past the five tabs to the
@@ -141,6 +153,15 @@ function AppShell() {
       >
         Skip to content
       </a>
+      {/* The second thing: Display, from every screen, not only the five with
+          the round button in their header. */}
+      <button
+        type="button"
+        onClick={openDisplay}
+        className="-translate-y-[150%] absolute top-2 left-2 z-50 rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
+      >
+        Display settings
+      </button>
       <AppNav />
       {/* The one main landmark, so a screen reader can jump past the nav to
           the screen ("main" in the rotor). A flex column the size of the slot
@@ -215,7 +236,7 @@ function AppShell() {
           ordered last there): it pushes the screen up rather than covering
           it. Phones' browsers only; see install-nudge.tsx. */}
       <InstallNudge />
-    </div>
+    </>
   );
 }
 

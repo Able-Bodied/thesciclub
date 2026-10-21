@@ -5,6 +5,7 @@
  *   pnpm shoot /events --desktop           one 1280-wide shot
  *   pnpm shoot /events /me --both          every route at both widths
  *   pnpm shoot /events --text=larger       with a display preference applied
+ *   pnpm shoot /me --prefs='{"highContrast":true}'   any display preferences
  *   pnpm shoot /events --full              full page rather than the viewport
  *   pnpm shoot /home --scroll=900          scrolled 900px down first
  *
@@ -56,6 +57,8 @@ if (routes.length === 0) routes.push('/events');
 
 const textFlag = [...flags].find((f) => f.startsWith('--text='));
 const textSize = textFlag ? textFlag.slice('--text='.length) : null;
+const prefsFlag = [...flags].find((f) => f.startsWith('--prefs='));
+const prefs = prefsFlag ? JSON.parse(prefsFlag.slice('--prefs='.length)) : null;
 const fullPage = flags.has('--full');
 const scrollFlag = [...flags].find((f) => f.startsWith('--scroll='));
 const scrollBy = scrollFlag ? Number(scrollFlag.slice('--scroll='.length)) : 0;
@@ -99,15 +102,15 @@ for (const width of widths) {
   });
   const page = await context.newPage();
 
-  if (textSize) {
+  if (textSize || prefs) {
     // Seeded before any app code runs, so the first paint is already at the
     // chosen size — the same path a returning member takes.
-    await page.addInitScript((size) => {
-      localStorage.setItem(
-        'thesciclub.accessibility',
-        JSON.stringify({ textSize: size, largeTargets: false }),
-      );
-    }, textSize);
+    await page.addInitScript(
+      (stored) => {
+        localStorage.setItem('thesciclub.accessibility', stored);
+      },
+      JSON.stringify({ largeTargets: false, ...(textSize ? { textSize } : {}), ...prefs }),
+    );
   }
 
   await signIn(page);
@@ -133,7 +136,7 @@ for (const width of widths) {
       await page.waitForTimeout(600);
     }
     const name = route.replace(/[/?=&]/g, '_').replace(/^_/, '') || 'root';
-    const suffix = `${textSize ? `-${textSize}` : ''}${scrollBy > 0 ? `-s${scrollBy}` : ''}`;
+    const suffix = `${textSize ? `-${textSize}` : ''}${prefs ? '-prefs' : ''}${scrollBy > 0 ? `-s${scrollBy}` : ''}`;
     const file = `${OUT}/${name}-${width}${suffix}.png`;
     await page.screenshot({ path: file, fullPage });
     console.log(`  ${file}`);

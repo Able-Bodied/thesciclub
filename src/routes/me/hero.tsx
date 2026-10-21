@@ -1,3 +1,4 @@
+import { DisplayButton } from '@/components/display-sheet';
 import type { OwnMember } from '@/lib/members';
 import { usePhotoUrl } from '@/lib/photos';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
@@ -84,6 +85,7 @@ export function MeHero({ member }: { member: OwnMember }) {
             {member.isAdmin ? <Chip>Administrator</Chip> : null}
           </div>
         </div>
+        <DisplayButton variant="plate" className="ml-auto self-start" />
       </div>
     </div>
   );

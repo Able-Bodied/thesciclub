@@ -1,6 +1,7 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DisplayButton } from '@/components/display-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useBrowseMembers } from '@/lib/members';
@@ -98,22 +99,25 @@ export default function PeersPage() {
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Peers
           </h1>
-          <button
-            type="button"
-            onClick={() => {
-              setSheetOpen(true);
-            }}
-            aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-            // 34px, four smaller than the Events one that already had this and
-            // the one control the setting was written for. It was missed.
-            data-target="small"
-            className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-          >
-            <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
-            {filterCount ? (
-              <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-            ) : null}
-          </button>
+          <span className="flex items-center gap-2">
+            <DisplayButton variant="round" />
+            <button
+              type="button"
+              onClick={() => {
+                setSheetOpen(true);
+              }}
+              aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
+              // 34px, four smaller than the Events one that already had this and
+              // the one control the setting was written for. It was missed.
+              data-target="small"
+              className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
+            >
+              <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
+              {filterCount ? (
+                <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
+              ) : null}
+            </button>
+          </span>
         </div>
 
         {/* Under the filter control, above the segments, because that is the

@@ -5,6 +5,7 @@ import {
   AccessibilityProvider,
   BROWSER_BAR,
   DEFAULT_PREFERENCES,
+  motionReduced,
   parsePreferences,
   systemDefaults,
   TEXT_SIZE_SCALE,
@@ -20,6 +21,7 @@ beforeEach(() => {
   document.documentElement.removeAttribute('data-large-targets');
   document.documentElement.removeAttribute('data-appearance');
   document.documentElement.removeAttribute('data-force-light');
+  document.documentElement.removeAttribute('data-reduce-motion');
 });
 
 afterEach(() => {
@@ -33,9 +35,36 @@ describe('parsePreferences', () => {
   });
 
   it('drops a setting we no longer have', () => {
-    // A device that stored reduceMotion before it was removed must not carry
-    // it back into state as an unknown key.
+    expect(parsePreferences(JSON.stringify({ zoom: 2 }))).toEqual({});
+  });
+
+  it('drops the old true/false Reduce motion rather than guessing', () => {
     expect(parsePreferences(JSON.stringify({ reduceMotion: true }))).toEqual({});
+  });
+
+  it('reads back the settings added 2026-10-20', () => {
+    const stored = JSON.stringify({
+      highContrast: true,
+      reduceMotion: 'on',
+      underlineLinks: true,
+      readableText: false,
+    });
+    expect(parsePreferences(stored)).toEqual({
+      highContrast: true,
+      reduceMotion: 'on',
+      underlineLinks: true,
+      readableText: false,
+    });
+  });
+
+  it('ignores junk in the settings added 2026-10-20', () => {
+    const stored = JSON.stringify({
+      highContrast: 'yes',
+      reduceMotion: 'sometimes',
+      underlineLinks: 1,
+      readableText: null,
+    });
+    expect(parsePreferences(stored)).toEqual({});
   });
 
   it('ignores a text size that is not one of ours', () => {
@@ -75,10 +104,39 @@ describe('parsePreferences', () => {
 });
 
 describe('systemDefaults', () => {
-  it('is just the defaults — the OS is asked nothing', () => {
-    // Reduced motion used to be seeded from the OS here. It was removed with
-    // the toggle it fed; the media query in index.css covers it with no UI.
+  it('is just the defaults, with motion left to the phone', () => {
     expect(systemDefaults()).toEqual(DEFAULT_PREFERENCES);
+    expect(DEFAULT_PREFERENCES.reduceMotion).toBe('system');
+  });
+});
+
+function phoneReducesMotion(reduce: boolean) {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: reduce && query === '(prefers-reduced-motion: reduce)',
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+}
+
+describe('motionReduced', () => {
+  it('follows the phone on Match my device', () => {
+    document.documentElement.dataset.reduceMotion = 'system';
+    phoneReducesMotion(true);
+    expect(motionReduced()).toBe(true);
+    phoneReducesMotion(false);
+    expect(motionReduced()).toBe(false);
+  });
+
+  it('On stops motion on a phone that allows it', () => {
+    document.documentElement.dataset.reduceMotion = 'on';
+    phoneReducesMotion(false);
+    expect(motionReduced()).toBe(true);
+  });
+
+  it('Off allows motion on a phone that reduces it', () => {
+    document.documentElement.dataset.reduceMotion = 'off';
+    phoneReducesMotion(true);
+    expect(motionReduced()).toBe(false);
   });
 });
 
@@ -113,6 +171,23 @@ describe('AccessibilityProvider', () => {
     );
     expect(document.documentElement.dataset.textSize).toBe('large');
     expect(document.documentElement.dataset.largeTargets).toBe('on');
+  });
+
+  it('puts the settings added 2026-10-20 on the document', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ highContrast: true, reduceMotion: 'on', underlineLinks: true }),
+    );
+    render(
+      <AccessibilityProvider>
+        <Probe />
+      </AccessibilityProvider>,
+    );
+    const root = document.documentElement.dataset;
+    expect(root.highContrast).toBe('on');
+    expect(root.reduceMotion).toBe('on');
+    expect(root.underlineLinks).toBe('on');
+    expect(root.readableText).toBe('off');
   });
 
   // Match my device is the default: somebody whose phone is dark gets a dark

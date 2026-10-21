@@ -87,6 +87,19 @@ export const APPEARANCE_LABELS: Record<Appearance, string> = {
  * their browser setting away from them would be a strange thing for this
  * screen in particular to do.
  */
+/**
+ * Reduce motion. "system" follows the phone's own setting, as the CSS always
+ * has; On and Off overrule it either way.
+ */
+export const MOTIONS = ['system', 'on', 'off'] as const;
+export type Motion = (typeof MOTIONS)[number];
+
+export const MOTION_LABELS: Record<Motion, string> = {
+  system: 'Match my device',
+  on: 'On',
+  off: 'Off',
+};
+
 export const TEXT_SIZE_SCALE: Record<TextSize, number> = {
   normal: 1,
   large: 1.15,
@@ -111,28 +124,32 @@ export interface AccessibilityPreferences {
   largeTargets: boolean;
   /** Light, dark, or whatever the device is set to. */
   appearance: Appearance;
+  /** Darker words and visible edges in light, brighter in dark. */
+  highContrast: boolean;
+  /** Stops the app's animations and smooth scrolling. */
+  reduceMotion: Motion;
+  /** Underlines every link drawn as words rather than as a button. */
+  underlineLinks: boolean;
+  /** Atkinson Hyperlegible for headings too, with wider spacing. */
+  readableText: boolean;
 }
 
 export const DEFAULT_PREFERENCES: AccessibilityPreferences = {
   textSize: 'normal',
   largeTargets: false,
   appearance: 'system',
+  highContrast: false,
+  reduceMotion: 'system',
+  underlineLinks: false,
+  readableText: false,
 };
 
 const STORAGE_KEY = 'thesciclub.accessibility';
 
 /**
- * What the operating system already says, for a device with nothing stored.
- *
- * Nothing yet. Reduced motion used to be seeded here and offered as a toggle,
- * and it was removed: measured across the whole app it governed six loading
- * spinners and two progress bars, none of them on a surface anybody spends time
- * on — and stopping a spinner makes it read as a hang rather than as a load.
- * A settings row that changes almost nothing is the failure CONTEXT.md
- * describes for screens, in miniature.
- *
- * The `prefers-reduced-motion` media query is still honoured in src/index.css,
- * with no UI attached, so anything animated later respects it for free.
+ * The defaults. Nothing is copied from the device: the settings that follow it
+ * (appearance, motion) say "system" and ask it live, so a later change to the
+ * phone's setting still reaches the app.
  */
 export function systemDefaults(): AccessibilityPreferences {
   return DEFAULT_PREFERENCES;
@@ -161,6 +178,14 @@ export function parsePreferences(raw: string | null): Partial<AccessibilityPrefe
     if (APPEARANCES.includes(candidate.appearance as Appearance)) {
       out.appearance = candidate.appearance as Appearance;
     }
+    if (typeof candidate.highContrast === 'boolean') out.highContrast = candidate.highContrast;
+    // An old boolean from before 2026-10-20 is dropped, not guessed at.
+    if (MOTIONS.includes(candidate.reduceMotion as Motion)) {
+      out.reduceMotion = candidate.reduceMotion as Motion;
+    }
+    if (typeof candidate.underlineLinks === 'boolean')
+      out.underlineLinks = candidate.underlineLinks;
+    if (typeof candidate.readableText === 'boolean') out.readableText = candidate.readableText;
     return out;
   } catch {
     return {};
@@ -189,11 +214,29 @@ function applyToDocument(preferences: AccessibilityPreferences): void {
   const root = document.documentElement;
   root.dataset.textSize = preferences.textSize;
   root.dataset.largeTargets = preferences.largeTargets ? 'on' : 'off';
+  root.dataset.highContrast = preferences.highContrast ? 'on' : 'off';
+  root.dataset.reduceMotion = preferences.reduceMotion;
+  root.dataset.underlineLinks = preferences.underlineLinks ? 'on' : 'off';
+  root.dataset.readableText = preferences.readableText ? 'on' : 'off';
   root.style.setProperty('--text-scale', String(TEXT_SIZE_SCALE[preferences.textSize]));
   // index.html sets this before the first paint, from the same stored value,
   // so the page is never drawn light and then switched.
   root.dataset.appearance = preferences.appearance;
   paintBrowserBar(preferences.appearance);
+}
+
+/**
+ * Whether to skip motion that script drives (smooth scrolling, the count-up),
+ * which the CSS kill switch cannot reach. Reads <html>, so it needs no hook.
+ */
+export function motionReduced(): boolean {
+  const choice = document.documentElement.dataset.reduceMotion;
+  if (choice === 'on') return true;
+  if (choice === 'off') return false;
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
 }
 
 /**

@@ -1,6 +1,7 @@
 import { SquarePen } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { DisplayButton } from '@/components/display-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
@@ -135,15 +136,18 @@ export default function ChatPage() {
           <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
             Chat
           </h1>
-          {/* Writing to one person, from here (2026-10-10). Before, only a
+          <span className="flex items-center gap-2">
+            <DisplayButton variant="round" />
+            {/* Writing to one person, from here (2026-10-10). Before, only a
               profile's Message button started a conversation. */}
-          <Link
-            to="/chat/new"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-action px-4 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
-          >
-            <SquarePen aria-hidden="true" className="h-4 w-4" />
-            New message
-          </Link>
+            <Link
+              to="/chat/new"
+              className="flex min-h-[44px] items-center gap-1.5 rounded-full bg-action px-4 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
+            >
+              <SquarePen aria-hidden="true" className="h-4 w-4" />
+              New message
+            </Link>
+          </span>
         </div>
         <SegmentPills
           segments={SEGMENTS}

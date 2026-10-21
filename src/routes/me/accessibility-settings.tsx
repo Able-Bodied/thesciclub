@@ -1,7 +1,11 @@
+import { useId } from 'react';
 import {
   APPEARANCE_LABELS,
   APPEARANCES,
   type Appearance,
+  MOTION_LABELS,
+  MOTIONS,
+  type Motion,
   TEXT_SIZE_LABELS,
   TEXT_SIZES,
   type TextSize,
@@ -12,11 +16,11 @@ import { cn } from '@/lib/utils';
 /**
  * Display settings, on the Me tab.
  *
- * Three controls: Appearance (light or dark, 2026-10-02), Text size and Bigger
- * tap targets. A fourth — reduce motion — was here and was removed: it
- * governed six spinners and nothing else. A longer list of toggles that each half-work is the
- * overlay-widget failure mode in miniature, and the point of not using one of
- * those was to avoid exactly that.
+ * Appearance, Higher contrast, Text size, Easier-to-read text, Underline
+ * links, Bigger tap targets and Reduce motion (the last four added
+ * 2026-10-20, in place of an overlay widget). Reduce motion came back once the
+ * app had real motion to stop. Each one has to change something you can see;
+ * a toggle that half-works is the overlay failure this screen exists to avoid.
  *
  * Every control here is a real button with a real pressed state, sized well
  * past the 44px target guideline, and changes apply immediately rather than
@@ -32,9 +36,22 @@ import { cn } from '@/lib/utils';
  * button inside it — so "Reduce motion, On, pressed" rather than a bare "On"
  * that could belong to any of the three settings on this screen.
  */
-function Row({ title, children }: { title: string; children: React.ReactNode }) {
+function Row({
+  title,
+  hint,
+  children,
+}: {
+  title: string;
+  /** One line under the name, read out with it. */
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  const hintId = useId();
   return (
-    <fieldset className="border-line border-b py-4 last:border-b-0">
+    <fieldset
+      aria-describedby={hint ? hintId : undefined}
+      className="border-line border-b py-4 last:border-b-0"
+    >
       {/* Floated, so the legend sits inside the padding like any heading. A
           plain legend is drawn on the fieldset's top edge, which put each
           setting's name hard against the line above it and left the padding
@@ -42,6 +59,11 @@ function Row({ title, children }: { title: string; children: React.ReactNode }) 
       <legend className="float-left w-full font-extrabold font-head text-[0.9375rem] text-ink">
         {title}
       </legend>
+      {hint ? (
+        <p id={hintId} className="clear-both pt-1 text-[0.8125rem] text-ink2">
+          {hint}
+        </p>
+      ) : null}
       <div className="clear-both pt-2.5">{children}</div>
     </fieldset>
   );
@@ -84,8 +106,6 @@ function OnOff({ value, onChange }: { value: boolean; onChange: (next: boolean) 
 }
 
 export function AccessibilitySettings() {
-  const { preferences, setPreference, reset } = useAccessibility();
-
   return (
     <section aria-labelledby="display-settings-heading" className="mt-6">
       <h2
@@ -96,7 +116,17 @@ export function AccessibilitySettings() {
       >
         Display
       </h2>
+      <DisplayControls />
+    </section>
+  );
+}
 
+/** The rows and Reset, without a heading: Me's section and the Display sheet. */
+export function DisplayControls() {
+  const { preferences, setPreference, reset } = useAccessibility();
+
+  return (
+    <>
       <div className="rounded-[17px] border border-line bg-paper px-3.5">
         {/* Match my device first, and the default: most people never open this
             screen, and their phone or computer already says which they
@@ -123,6 +153,15 @@ export function AccessibilitySettings() {
               </button>
             ))}
           </div>
+        </Row>
+
+        <Row title="Higher contrast" hint="Darker words and clearer edges.">
+          <OnOff
+            value={preferences.highContrast}
+            onChange={(next) => {
+              setPreference('highContrast', next);
+            }}
+          />
         </Row>
 
         <Row title="Text size">
@@ -153,6 +192,27 @@ export function AccessibilitySettings() {
           </div>
         </Row>
 
+        <Row
+          title="Easier-to-read text"
+          hint="Plainer headings, and more space between letters, words and lines."
+        >
+          <OnOff
+            value={preferences.readableText}
+            onChange={(next) => {
+              setPreference('readableText', next);
+            }}
+          />
+        </Row>
+
+        <Row title="Underline links">
+          <OnOff
+            value={preferences.underlineLinks}
+            onChange={(next) => {
+              setPreference('underlineLinks', next);
+            }}
+          />
+        </Row>
+
         <Row title="Bigger tap targets">
           <OnOff
             value={preferences.largeTargets}
@@ -160,6 +220,29 @@ export function AccessibilitySettings() {
               setPreference('largeTargets', next);
             }}
           />
+        </Row>
+
+        <Row title="Reduce motion" hint="Stops animations and smooth scrolling.">
+          <div className="flex flex-wrap gap-2">
+            {MOTIONS.map((motion: Motion) => (
+              <button
+                key={motion}
+                type="button"
+                aria-pressed={preferences.reduceMotion === motion}
+                onClick={() => {
+                  setPreference('reduceMotion', motion);
+                }}
+                className={cn(
+                  'min-h-[48px] min-w-[88px] rounded-xl px-4 font-bold font-head text-[0.9375rem]',
+                  preferences.reduceMotion === motion
+                    ? 'bg-action text-white'
+                    : 'border-[1.6px] border-line bg-paper text-ink2',
+                )}
+              >
+                {MOTION_LABELS[motion]}
+              </button>
+            ))}
+          </div>
         </Row>
       </div>
 
@@ -170,6 +253,6 @@ export function AccessibilitySettings() {
       >
         Reset to my device settings
       </button>
-    </section>
+    </>
   );
 }

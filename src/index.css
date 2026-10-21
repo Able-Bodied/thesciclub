@@ -447,17 +447,13 @@
 
 /* --------------------------------------------------------- reduced motion */
 /*
- * The OS signal only. There is no in-app toggle and deliberately so: across the
- * whole app the thing this governs is six loading spinners and two progress
- * bars, and a settings row that changes almost nothing is worse than no row.
- *
- * This stays because it costs nothing and means any motion added later is
- * respected without anybody remembering to think about it.
+ * Me → Display → Reduce motion. Match my device (the default) follows the
+ * phone; On and Off overrule it. Script-driven motion asks motionReduced().
  */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-reduce-motion="off"]) *,
+  :root:not([data-reduce-motion="off"]) *::before,
+  :root:not([data-reduce-motion="off"]) *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -574,9 +570,50 @@
 
 /* The kill switch shortens an animation but not its delay. */
 @media (prefers-reduced-motion: reduce) {
-  .arrive > * {
+  :root:not([data-reduce-motion="off"]) .arrive > * {
     animation-name: none;
   }
+}
+/* Reduce motion On, after the motions it stops (Biome wants that order). */
+:root[data-reduce-motion="on"] *,
+:root[data-reduce-motion="on"] *::before,
+:root[data-reduce-motion="on"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+:root[data-reduce-motion="on"] .arrive > * {
+  animation-name: none;
+}
+
+/* ------------------------------------------------------------ link underline */
+/*
+ * Me → Display → Underline links. Links drawn as words only: a rounded link is
+ * a button or a pill and already looks pressable, and one holding a block is a
+ * whole card.
+ */
+:root[data-underline-links="on"]
+a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h2, h3)) {
+  text-decoration-line: underline;
+  text-underline-offset: 0.18em;
+}
+
+/* ------------------------------------------------------------ readable text */
+/*
+ * Me → Display → Easier-to-read text. Headings drop Outfit for Atkinson
+ * Hyperlegible, and letters, words and lines get more room (after WCAG 1.4.12).
+ */
+:root[data-readable-text="on"] {
+  --display: var(--body);
+}
+:root[data-readable-text="on"] body {
+  letter-spacing: 0.03em;
+  word-spacing: 0.08em;
+  line-height: 1.6;
+}
+:root[data-readable-text="on"] :is(p, li) {
+  line-height: 1.7;
 }
 
 /*
@@ -673,6 +710,54 @@
     --room-family: #f2a7c3;
     --room-kit: #86d1b2;
     --room-places: #83cde3;
+  }
+}
+
+/* =========================================================== high contrast */
+/*
+ * Me → Display → Higher contrast. Words reach 7:1 (WCAG AAA) and every edge
+ * 3:1, measured in theme-contrast.test.ts. Edges get their own token, --edge,
+ * because --line is also a hover fill that dark words sit on.
+ */
+:root[data-high-contrast="on"] {
+  --ink2: #22344f;
+  --grey: #3d4a5c;
+  --edge: #6b7a8f;
+  --border: var(--edge);
+  --gold-dp: #664a0b;
+  --room-life: #664a0b;
+  --room-family: #7d3150;
+  --room-kit: #24584a;
+  --room-places: #175668;
+}
+:root[data-high-contrast="on"] .border-line {
+  border-color: var(--edge);
+}
+
+/* Higher contrast on the dark theme, written twice like the dark theme itself. */
+:root[data-high-contrast="on"][data-appearance="dark"]:not([data-force-light]) {
+  --ink: #fff;
+  --ink2: #e6e9ee;
+  --grey: #d2d7de;
+  --edge: #8a929e;
+  --border: var(--edge);
+  --emphasis: #f2d27a;
+  --focus: #f2d27a;
+  --gold-dp: #f2d27a;
+  --gold-ink: #ffe39a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-high-contrast="on"]:not([data-appearance="light"]):not([data-force-light]) {
+    --ink: #fff;
+    --ink2: #e6e9ee;
+    --grey: #d2d7de;
+    --edge: #8a929e;
+    --border: var(--edge);
+    --emphasis: #f2d27a;
+    --focus: #f2d27a;
+    --gold-dp: #f2d27a;
+    --gold-ink: #ffe39a;
   }
 }
 

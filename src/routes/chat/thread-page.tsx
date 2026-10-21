@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
+import { motionReduced } from '@/lib/accessibility';
 import { useAccount } from '@/lib/account';
 import {
   attachmentFolder,
@@ -257,10 +258,7 @@ export default function ThreadPage() {
   function showQuoted(messageId: string) {
     const element = document.getElementById(`message-${messageId}`);
     if (!element) return;
-    const reduced =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    element.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+    element.scrollIntoView({ block: 'center', behavior: motionReduced() ? 'auto' : 'smooth' });
     // Off and on again, so a second tap on the same quote lights it again.
     setFlashId(null);
     requestAnimationFrame(() => {

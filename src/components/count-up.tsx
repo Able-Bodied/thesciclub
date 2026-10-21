@@ -1,19 +1,18 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { motionReduced } from '@/lib/accessibility';
 
 const DURATION = 800;
 
+/** No matchMedia means a test or an old browser: skip the count. */
 function stillPlease(): boolean {
-  return (
-    typeof window.matchMedia !== 'function' ||
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  return typeof window.matchMedia !== 'function' || motionReduced();
 }
 
 /**
  * A number that counts up to itself, after React Bits' Count Up, redrawn
  * without its motion library. From zero the first time, from the last number
  * after that. Script-driven, so the CSS kill switch cannot stop it: it checks
- * reduced motion itself. A screen reader hears only the final number.
+ * Reduce motion itself. A screen reader hears only the final number.
  */
 export function CountUp({ value }: { value: number }) {
   const [shown, setShown] = useState(value);
