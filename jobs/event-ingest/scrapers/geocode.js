@@ -92,6 +92,9 @@ function fallbackQueries(trimmed) {
   return candidates;
 }
 
+/** Nominatim said "too many requests": asking again only makes it longer. */
+export class RateLimited extends Error {}
+
 async function searchNominatim(query) {
   const url = new URL(NOMINATIM_URL);
   url.searchParams.set('q', query);
@@ -104,6 +107,8 @@ async function searchNominatim(query) {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     signal: AbortSignal.timeout(10000),
   });
+  if (res.status === 429 || res.status === 403)
+    throw new RateLimited(`Nominatim answered ${res.status}`);
   if (!res.ok) return null;
 
   const results = await res.json();
@@ -139,7 +144,8 @@ export async function geocodeLocation(query) {
     try {
       const result = await searchNominatim(attempts[i]);
       if (result) return result;
-    } catch {
+    } catch (error) {
+      if (error instanceof RateLimited) throw error;
       // Try the next rewrite rather than giving up on the first network hiccup.
     }
   }
@@ -161,8 +167,11 @@ export async function geocodeLocation(query) {
  * `longitude`/`location_precision`, matching the events table's column names
  * so callers can spread the result straight into an upsert payload.
  */
-export async function geocodeEvents(events, existingByExternalId) {
+export async function geocodeEvents(events, existingByExternalId, lookup = geocodeLocation) {
   let lastRequestAt = 0;
+  // One lookup per place a run: a weekly program is many events at one venue.
+  const found = new Map();
+  let limited = false;
 
   for (const event of events) {
     const existing = existingByExternalId?.get(event.external_id);
@@ -189,11 +198,22 @@ export async function geocodeEvents(events, existingByExternalId) {
       continue;
     }
 
-    const wait = MIN_REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt);
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    lastRequestAt = Date.now();
-
-    const result = await geocodeLocation(event.location);
+    const place = event.location.trim();
+    let result = found.get(place);
+    if (result === undefined && !limited) {
+      const wait = MIN_REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt);
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      lastRequestAt = Date.now();
+      try {
+        result = await lookup(place);
+        found.set(place, result);
+      } catch (error) {
+        if (!(error instanceof RateLimited)) throw error;
+        // The rest wait for the next run, which tries anything unplaced again.
+        limited = true;
+        console.log(`  ! map lookups paused for this run: ${error.message}`);
+      }
+    }
     event.city = result?.city ?? null;
     event.postal_code = result?.postalCode ?? null;
     event.latitude = result?.latitude ?? null;
