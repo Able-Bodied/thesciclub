@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Grants from '@/lib/grants';
 import { OrganizationsSection } from '@/routes/admin/organizations-section';
 import type { Organization } from '@/types/domain';
 
@@ -20,6 +21,11 @@ vi.mock('@/lib/organizations', () => ({
     error: null,
     reload: db.reload,
   }),
+}));
+// Grants have their own editor and tests (organization-grants-editor.test.tsx).
+vi.mock('@/lib/grants', async (importOriginal) => ({
+  ...(await importOriginal<typeof Grants>()),
+  loadOrganizationGrants: () => Promise.resolve({ grants: [], error: null }),
 }));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { describeError, describeThrown } from '@/lib/describe-error';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -150,4 +150,65 @@ export function useOrganizationGrants(organizationId: string | undefined): Grant
   }, [organizationId]);
 
   return state;
+}
+
+export interface GrantDraft {
+  name: string;
+  url: string;
+  summary: string;
+  applyAnyTime: boolean;
+  windows: GrantWindow[];
+}
+
+const SAVE_REFUSAL = 'The grant was not saved.';
+
+/** Saves a grant and replaces its rounds (20261021030000); a new one gets its id here. */
+export async function saveGrant(
+  organizationId: string,
+  grantId: string | null,
+  draft: GrantDraft,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  try {
+    const { data, error } = (await getSupabase().rpc('save_organization_grant', {
+      grant_id: grantId,
+      organization: organizationId,
+      name: draft.name,
+      url: draft.url,
+      summary: draft.summary,
+      apply_any_time: draft.applyAnyTime,
+      windows: draft.windows.map((w) => ({
+        opens_on: w.opensOn,
+        closes_on: w.closesOn,
+        yearly: w.yearly,
+      })),
+    })) as { data: string | null; error: Failure | null };
+    return error
+      ? {
+          ok: false,
+          error: describeError(error, {
+            attempt: SAVE_REFUSAL,
+            duplicate: 'This organization already has a grant with that name.',
+          }),
+        }
+      : { ok: true, id: data ?? grantId ?? '' };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, SAVE_REFUSAL) };
+  }
+}
+
+export async function removeGrant(
+  grantId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { error } = (await getSupabase().rpc('remove_organization_grant', {
+      grant_id: grantId,
+    })) as {
+      error: Failure | null;
+    };
+    return error
+      ? { ok: false, error: describeError(error, 'The grant was not removed.') }
+      : { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'The grant was not removed.') };
+  }
 }

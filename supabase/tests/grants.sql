@@ -1,9 +1,12 @@
 -- ============================================================================
--- Grants, their windows, and telling followers when one opens (20261021010000).
+-- Grants, their windows, telling followers when one opens, and editing them
+-- (20261021010000, 20261021030000).
 -- ============================================================================
 -- What matters most: the cycle is worked out right (1–4), a follower is told
 -- once per cycle and nobody else is (5–8), the list and the phone say the
--- same thing (9–10), and members read grants but cannot write them (11–12).
+-- same thing (9–10), members read grants but cannot write them (11–12), and
+-- only whoever edits the organization edits its grants, without an open
+-- round being told twice (14–18).
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -75,7 +78,7 @@ select (select count(*) from public.grant_open_notices) as notices,
 
 \echo ''
 \echo '== 8. the later one is not told yet (expect 0) =='
-select count(*) from public.grant_open_notices where window_id = 'dddddddd-1021-0000-0000-000000000002';
+select count(*) from public.grant_open_notices where grant_id = 'cccccccc-1021-0000-0000-000000000002';
 
 \echo ''
 \echo '== 9. the follower''s list: org, grant, closing day, its page (expect grant_open | Probe Grants | Open Fund | <today+30> | /events/organizations/bbbbbbbb-…) =='
@@ -119,5 +122,55 @@ reset role;
 \echo ''
 \echo '== 13. the job is scheduled (expect grant-open-notify | 5 16 * * *) =='
 select jobname, schedule from cron.job where jobname = 'grant-open-notify';
+
+insert into public.members (id, type, status, display_name, username, birth_date, level_range, state, is_admin) values
+  ('aaaaaaaa-1021-0000-0000-000000000003', 'peer', 'active', 'Admin', 'probe.admin1021', '1980-01-01', 'T1–T6', 'CA', true);
+
+\echo ''
+\echo '== 14. a member who cannot edit the organization cannot save a grant (expect ERROR: You cannot change this organization.) =='
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1021-0000-0000-000000000002","role":"authenticated"}', true) is not null as ok;
+set local role authenticated;
+savepoint s14;
+select public.save_organization_grant(null, 'bbbbbbbb-1021-0000-0000-000000000001', 'Mine', 'https://example.org', 'x', false, '[]');
+rollback to savepoint s14;
+
+\echo ''
+\echo '== 15. an administrator corrects the open round''s closing day (expect 1 window, closing today+45) =='
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1021-0000-0000-000000000003","role":"authenticated"}', true) is not null as ok;
+select public.save_organization_grant(
+  'cccccccc-1021-0000-0000-000000000001', 'bbbbbbbb-1021-0000-0000-000000000001',
+  'Open Fund', 'https://example.org/open', 'Open now.', false,
+  jsonb_build_array(jsonb_build_object(
+    'opens_on', (now() at time zone 'America/Los_Angeles')::date - 1,
+    'closes_on', (now() at time zone 'America/Los_Angeles')::date + 45,
+    'yearly', false))) is not null as saved;
+reset role;
+select count(*) as windows, max(closes_on) - (now() at time zone 'America/Los_Angeles')::date as closes_in
+  from public.organization_grant_windows where grant_id = 'cccccccc-1021-0000-0000-000000000001';
+
+\echo ''
+\echo '== 16. the daily job does not tell the follower again (expect 1 notice, count 1) =='
+select public.grant_windows_notify();
+select (select count(*) from public.grant_open_notices) as notices, max(count) as count
+  from public.notifications where kind = 'grant_open';
+
+\echo ''
+\echo '== 17. a bad round is refused (expect ERROR: A round cannot close before it opens.) =='
+select set_config('request.jwt.claims',
+  '{"sub":"aaaaaaaa-1021-0000-0000-000000000003","role":"authenticated"}', true) is not null as ok;
+set local role authenticated;
+savepoint s17;
+select public.save_organization_grant(null, 'bbbbbbbb-1021-0000-0000-000000000001', 'Bad', 'https://example.org', 'x', false,
+  '[{"opens_on":"2026-12-01","closes_on":"2026-11-01","yearly":false}]');
+rollback to savepoint s17;
+
+\echo ''
+\echo '== 18. removing a grant takes its windows with it (expect 0 | 0) =='
+select public.remove_organization_grant('cccccccc-1021-0000-0000-000000000002');
+reset role;
+select (select count(*) from public.organization_grants where id = 'cccccccc-1021-0000-0000-000000000002') as grants,
+       (select count(*) from public.organization_grant_windows where grant_id = 'cccccccc-1021-0000-0000-000000000002') as windows;
 
 rollback;
