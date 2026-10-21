@@ -44,7 +44,8 @@ export type NotificationKind =
   | 'invite_joined'
   | 'event_reminder'
   | 'org_events'
-  | 'grant_open';
+  | 'grant_open'
+  | 'profile_reminder';
 
 interface Row {
   id: string;
@@ -245,6 +246,11 @@ export function notificationSentence(n: AppNotification): string {
         ? `${grant}${who} is open for applications until ${grantDay(n.detail, californiaToday())}`
         : `${grant}${who} is open for applications`;
     }
+    // detail is the step (20261022040000).
+    case 'profile_reminder':
+      return n.detail === 'details'
+        ? 'Finish Your details, so other members can find you'
+        : 'Finish your profile, so members can find what you have in common';
     default:
       return 'Something new in the club';
   }

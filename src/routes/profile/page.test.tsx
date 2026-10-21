@@ -4,7 +4,12 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
-import { type Answers, SCREENS, screensThatApply } from '@/routes/profile/questions';
+import {
+  type Answers,
+  firstOpenScreen,
+  SCREENS,
+  screensThatApply,
+} from '@/routes/profile/questions';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 const api = vi.hoisted(() => ({
@@ -81,6 +86,26 @@ beforeEach(() => {
   api.declined = new Set();
   api.declineSaves = [];
   api.failWith = null;
+});
+
+// A reminder to finish the profile opens /profile?resume (20261022040000).
+describe('opened from a reminder', () => {
+  it('starts on the first screen with something left to answer', async () => {
+    const first = SCREENS[0];
+    if (!first) throw new Error('no screens');
+    api.declined = new Set(first.keys);
+    const open = firstOpenScreen({}, api.declined);
+    const title = open === null ? undefined : SCREENS[open]?.title;
+    if (!title || open === 0) throw new Error('declining the first screen left it open');
+    render(
+      <MemoryRouter initialEntries={['/profile?resume']}>
+        <Routes>
+          <Route path="/profile" element={<ProfileSurveyPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
+  });
 });
 
 describe('opened from Your answers', () => {

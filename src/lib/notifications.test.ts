@@ -97,4 +97,13 @@ describe('what a notification says', () => {
       'Dana joined from your QR code',
     );
   });
+
+  it('reminds of the step that is left', () => {
+    expect(notificationSentence(n({ kind: 'profile_reminder', detail: 'details' }))).toBe(
+      'Finish Your details, so other members can find you',
+    );
+    expect(notificationSentence(n({ kind: 'profile_reminder', detail: 'profile' }))).toBe(
+      'Finish your profile, so members can find what you have in common',
+    );
+  });
 });

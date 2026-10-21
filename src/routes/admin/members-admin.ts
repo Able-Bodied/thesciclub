@@ -94,6 +94,29 @@ export async function fetchAdminMembers(): Promise<
   return { ok: true, members: (result.data as AdminMemberRow[]).map(toAdminMember) };
 }
 
+/** Whether the club can reach a member (20261022040000). */
+export interface MemberReach {
+  /** Devices with notifications on. */
+  pushDevices: number;
+  /** When a session last began in the Home Screen app; null if never seen. */
+  homeScreenAt: string | null;
+}
+
+/** By member id. Null when it cannot be read, and then nothing is shown. */
+export async function fetchMemberReach(): Promise<Map<string, MemberReach> | null> {
+  const { data, error } = (await getSupabase().rpc('admin_member_reach')) as {
+    data: { member_id: string; push_devices: number; home_screen_at: string | null }[] | null;
+    error: unknown;
+  };
+  if (error || !data) return null;
+  return new Map(
+    data.map((row) => [
+      row.member_id,
+      { pushDevices: row.push_devices, homeScreenAt: row.home_screen_at },
+    ]),
+  );
+}
+
 /** The database's own refusal is passed through verbatim — it says why. */
 export async function setMemberStatus(
   target: string,

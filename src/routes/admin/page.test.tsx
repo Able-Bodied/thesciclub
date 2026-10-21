@@ -9,6 +9,7 @@ import {
   type AdminMember,
   canRevoke,
   inviteState,
+  type MemberReach,
   type Strike,
   vouchedBy,
   withdrawnInvites,
@@ -18,6 +19,7 @@ const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
 const api = vi.hoisted(() => ({
   members: [] as AdminMember[],
+  reach: null as Map<string, MemberReach> | null,
   invites: [] as AdminInvite[],
   deleted: [] as string[],
   revoked: [] as string[],
@@ -72,6 +74,7 @@ vi.mock('@/lib/chat/reports', () => ({
 vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   ...(await importOriginal<typeof MembersAdmin>()),
   fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
+  fetchMemberReach: () => Promise.resolve(api.reach),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
   fetchBlockedEmails: () => Promise.resolve(api.blocked),
   blockEmail: (email: string, reason: string | null) => {
@@ -216,6 +219,7 @@ async function manage(name: string | RegExp = /^Manage /) {
 beforeEach(() => {
   account.current = { status: 'member', userId: 'me', isAdmin: true, displayName: 'Test' };
   api.members = [member()];
+  api.reach = null;
   api.invites = [];
   api.deleted = [];
   api.revoked = [];
@@ -256,6 +260,29 @@ describe('AdminPage', () => {
     account.current = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Test' };
     renderAdmin();
     expect(await screen.findByText('Home')).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-21: who can be reached by a notification, and who has
+  // the app.
+  it('says whether each member has notifications on and the Home Screen app', async () => {
+    api.members = [member({ id: 'on' }), member({ id: 'off', displayName: 'Bea B' })];
+    api.reach = new Map([
+      ['on', { pushDevices: 2, homeScreenAt: '2026-10-20T18:00:00Z' }],
+      ['off', { pushDevices: 0, homeScreenAt: null }],
+    ]);
+    renderAdmin();
+    expect(
+      await screen.findByText(
+        'Notifications on, 2 devices · Home Screen app, last signed in Oct 20',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Notifications off · No Home Screen app seen')).toBeInTheDocument();
+  });
+
+  it('shows neither when it cannot tell', async () => {
+    renderAdmin();
+    expect(await screen.findByText('Alfred S')).toBeInTheDocument();
+    expect(screen.queryByText(/Notifications (on|off)/)).toBeNull();
   });
 
   it('sends a signed-out visitor to the welcome screen', async () => {

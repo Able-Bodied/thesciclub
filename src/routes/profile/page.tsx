@@ -14,6 +14,7 @@ import {
   type Answers,
   advancesItself,
   canDecline,
+  firstOpenScreen,
   isAnswered,
   progressOf,
   type Question,
@@ -48,6 +49,8 @@ export default function ProfileSurveyPage() {
   const announce = useAnnounce();
   const [params] = useSearchParams();
   const fromAnswers = params.has('screen');
+  // From a reminder (20261022040000): open where it was left.
+  const resume = params.has('resume');
   const exitTo = fromAnswers ? '/profile/answers' : '/me';
   const [index, setIndex] = useState(() => screenFrom(params.get('screen')));
   const [answers, setAnswers] = useState<Answers>({});
@@ -65,10 +68,11 @@ export default function ProfileSurveyPage() {
       if (result.ok) {
         setAnswers(result.answers);
         setDeclined(result.declined);
+        if (resume) setIndex(firstOpenScreen(result.answers, result.declined) ?? 0);
       } else setError(result.error);
       setLoading(false);
     });
-  }, [account.status]);
+  }, [account.status, resume]);
 
   const screen = SCREENS[index];
 

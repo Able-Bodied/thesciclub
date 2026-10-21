@@ -482,6 +482,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'event_reminder', label: 'Events I am going to, the day before', who: 'all' },
   { kind: 'org_events', label: 'New events from organizations I follow', who: 'all' },
   { kind: 'grant_open', label: 'Grants opening from organizations I follow', who: 'all' },
+  { kind: 'profile_reminder', label: 'Reminders to finish my profile', who: 'all' },
   { kind: 'reply_participant', label: 'Replies in topics I have posted in', who: 'all' },
   { kind: 'like', label: 'Likes on my posts', who: 'all' },
   { kind: 'group_add', label: 'Being added to a group', who: 'all' },

@@ -204,6 +204,15 @@ describe('compose', () => {
     expect(compose(owed({ kind: 'org_events', subject: 'NorCal SCI', detail: 'many' }))).toBeNull();
   });
 
+  it('reminds a member of the step left, and opens it', () => {
+    expect(
+      compose(owed({ kind: 'profile_reminder', detail: 'details', url: '/profile/details' })),
+    ).toMatchObject({ title: 'Finish Your details', url: '/profile/details' });
+    expect(
+      compose(owed({ kind: 'profile_reminder', detail: 'profile', url: '/profile?resume' })),
+    ).toMatchObject({ title: 'Finish your profile', url: '/profile?resume' });
+  });
+
   it('sends nothing for a kind it does not know', () => {
     expect(compose(owed({ kind: 'room' }))).toBeNull();
   });

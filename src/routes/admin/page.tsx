@@ -28,12 +28,14 @@ import {
   fetchBlockedEmails,
   fetchInvites,
   fetchInvitingOrganizations,
+  fetchMemberReach,
   fetchStrikes,
   type InvitingOrganization,
   inviteLabel,
   inviteState,
   isOldPhoneInvite,
   joinTally,
+  type MemberReach,
   reinviteByEmail,
   removeAndBlock,
   resendInvite,
@@ -119,15 +121,18 @@ export default function AdminPage() {
   // "Not now" included — it is a question asked at the moment it is owed, not
   // a state the row is stuck in.
   const [deciding, setDeciding] = useState<string | null>(null);
+  const [reach, setReach] = useState<Map<string, MemberReach> | null>(null);
 
   const load = useCallback(async () => {
-    const [memberResult, inviteResult, blockedRows, strikeResult] = await Promise.all([
+    const [memberResult, inviteResult, blockedRows, strikeResult, reachResult] = await Promise.all([
       fetchAdminMembers(),
       fetchInvites(),
       fetchBlockedEmails(),
       fetchStrikes(),
+      fetchMemberReach(),
     ]);
     if (memberResult.ok) setMembers(memberResult.members);
+    setReach(reachResult);
     if (inviteResult.ok) setInvites(inviteResult.invites);
     if (strikeResult.ok) setStrikes(strikeResult.strikes);
     setBlocked(blockedRows);
@@ -583,6 +588,7 @@ export default function AdminPage() {
                     );
                   }}
                   strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
+                  reach={reach?.get(m.id)}
                   onWithdrawStrike={(id, reason) => {
                     act(m.id, () => withdrawStrike(id, reason));
                   }}
@@ -649,6 +655,7 @@ export default function AdminPage() {
                     );
                   }}
                   strikes={strikes.filter((strike) => strike.memberId === m.id && strike.counts)}
+                  reach={reach?.get(m.id)}
                   onWithdrawStrike={(id, reason) => {
                     act(m.id, () => withdrawStrike(id, reason));
                   }}
@@ -710,6 +717,7 @@ function Row({
   onMakeOrganization,
   onStrike,
   strikes,
+  reach,
   onWithdrawStrike,
   deciding,
   onCloseDecision,
@@ -728,6 +736,8 @@ function Row({
   onStrike: (reason: string) => void;
   /** This member's strikes that still count. Withdrawn and expired ones are not here. */
   strikes: Strike[];
+  /** Notifications and the Home Screen app; absent when not known. */
+  reach?: MemberReach | undefined;
   onWithdrawStrike: (id: string, reason: string) => void;
   /** Whether the strike just issued was the last one, and the membership is owed an answer. */
   deciding: boolean;
@@ -830,6 +840,10 @@ function Row({
             </>
           ) : null}
         </span>
+        {/* Whether the club can reach them (the owner, 2026-10-21). */}
+        {reach && !member.isSeed ? (
+          <span className="mt-0.5 block text-[0.75rem] text-grey">{reachInWords(reach)}</span>
+        ) : null}
       </span>
 
       {/* None on an administrator's row: every control it could carry is one
@@ -1435,4 +1449,21 @@ function InviteRow({
       ) : null}
     </div>
   );
+}
+
+/** "Notifications on, 2 devices · Home Screen app, Oct 20" */
+export function reachInWords(reach: MemberReach): string {
+  const notifications =
+    reach.pushDevices === 0
+      ? 'Notifications off'
+      : reach.pushDevices === 1
+        ? 'Notifications on'
+        : `Notifications on, ${reach.pushDevices} devices`;
+  const app = reach.homeScreenAt
+    ? `Home Screen app, last signed in ${new Date(reach.homeScreenAt).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })}`
+    : 'No Home Screen app seen';
+  return `${notifications} · ${app}`;
 }

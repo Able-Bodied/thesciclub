@@ -6,6 +6,7 @@ import {
   Heart,
   type LucideIcon,
   MessageCircle,
+  UserPen,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -51,6 +52,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   event_reminder: CalendarDays,
   org_events: CalendarDays,
   grant_open: HandCoins,
+  profile_reminder: UserPen,
 };
 
 export default function NotificationsPage() {

@@ -212,6 +212,20 @@ export function compose(owed: Owed): PushMessage | null {
         ...where,
       };
     }
+    // A reminder to finish a step of the profile (20261022040000); detail is
+    // the step. The app's list words it the same (src/lib/notifications.ts).
+    case 'profile_reminder':
+      return owed.detail === 'details'
+        ? {
+            title: 'Finish Your details',
+            body: 'A few details are still missing. Adding them helps other members find you.',
+            ...where,
+          }
+        : {
+            title: 'Finish your profile',
+            body: 'A few more answers help members find what you have in common.',
+            ...where,
+          };
     default:
       return null;
   }

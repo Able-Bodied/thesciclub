@@ -17,7 +17,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 20, 2026">
+    <LegalPage title="Privacy Policy" updated="October 21, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -70,6 +70,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Your notification settings</b>, if you turn notifications on for a device.
+            Administrators can see, for each member, whether notifications are on and on how many
+            devices.
           </li>
           <li>
             <b>If you sign in with Google or Apple:</b> the name, email address and account number
@@ -78,8 +80,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>How you sign in:</b> whether you joined with email, Google or Apple, and when and
-            which way you sign in. Administrators can see this for each member, to keep every way in
-            working.
+            which way you sign in, and whether it was in the app added to your Home Screen.
+            Administrators can see this for each member, to keep every way in working.
           </li>
           <li>
             <b>If you add a passkey:</b> a public key and the name of the device it is on. Your
@@ -90,8 +92,8 @@ export default function PrivacyPage() {
           If you look up your city by ZIP code or by your device’s location, that is used once to
           find a city and state and is not kept. There is no advertising in the app, and nothing
           about how you use it goes to anyone outside the club: administrators see counts, such as
-          how many members opened the app this week, never who, except how each member signs in and
-          who has read each post.
+          how many members opened the app this week, never who, except how each member signs in,
+          whether each member has notifications on, and who has read each post.
         </P>
         <P>
           The sign-in screen and Me show Google’s sign-in button, which is loaded from Google, so
