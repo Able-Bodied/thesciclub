@@ -1,5 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { LinkedText } from '@/components/linked-text';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useEvents } from '@/lib/events';
 import { useBrowseMembers } from '@/lib/members';
@@ -124,8 +125,8 @@ export default function OrganizationDetailPage() {
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
         {organization.description ? (
-          <p className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52]">
-            {organization.description}
+          <p className="mt-2.5 whitespace-pre-line text-[0.8875rem] text-ink leading-[1.52]">
+            <LinkedText text={organization.description} />
           </p>
         ) : null}
 
