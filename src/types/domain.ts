@@ -104,11 +104,11 @@ export function rangeForExact(level: ExactLevel): LevelRange {
 }
 
 /**
- * What kind of disability, asked with the level (the owner, 2026-10-15,
- * "Disability details"; first asked 2026-10-14):
+ * What kind of injury or condition, asked with the level (the owner,
+ * 2026-10-15; first asked 2026-10-14):
  *
  *   quad, high_para, low_para   an injury with a level, cut to fit
- *   condition                   "Other disability": named from a list, or typed
+ *   condition                   "Other spinal cord condition": typed, with suggestions
  *   family                      a relative or spouse: a member with no level
  *
  * 'para' and 'central_cord' are what the question offered before. Members who
@@ -140,26 +140,37 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
   quad: { title: 'Quadriplegic (tetraplegic)' },
   high_para: { title: 'High para (T1–T8)' },
   low_para: { title: 'Low para (T9+)' },
-  condition: { title: 'Other disability' },
+  condition: { title: 'Other spinal cord condition' },
   family: { title: 'Relative/Spouse' },
   para: { title: 'Paraplegia' },
   central_cord: { title: 'Central cord syndrome' },
 };
 
 /**
- * The list under "Other disability". Central cord syndrome is here now rather
- * than an answer of its own. "Other" is not in it: the form adds it, with a
- * box to type in, and whatever is typed is kept as written.
+ * Suggested under "Which condition?" while typing (the owner's list,
+ * 2026-10-14, then central cord syndrome). Anything typed is kept as written.
  */
-export const OTHER_DISABILITIES = [
-  // The owner's list, 2026-10-15, then central cord syndrome.
+export const SPINAL_CORD_CONDITIONS = [
+  'Transverse myelitis',
   'Spina bifida',
-  'Cerebral palsy',
-  'Amputee',
-  'TBI',
-  'Blind/visual',
   'Multiple sclerosis',
-  'Muscular dystrophy',
+  'Neuromyelitis optica (NMOSD)',
+  'Spinal cord tumor',
+  'Spinal cord stroke',
+  'Spinal arteriovenous malformation (AVM)',
+  'Syringomyelia',
+  'Tethered cord syndrome',
+  'Cervical myelopathy (spinal stenosis)',
+  'Cauda equina syndrome',
+  'Conus medullaris syndrome',
+  'Brown-Séquard syndrome',
+  'Anterior cord syndrome',
+  'Hereditary spastic paraplegia',
+  'Acute flaccid myelitis',
+  'Spinal cord infection or abscess',
+  'Spinal muscular atrophy (SMA)',
+  'ALS (motor neuron disease)',
+  'Post-polio syndrome',
   'Central cord syndrome',
 ] as const;
 

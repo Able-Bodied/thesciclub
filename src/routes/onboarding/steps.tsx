@@ -334,15 +334,14 @@ export function InjuryStep({ data, set }: StepProps) {
   // The birthday as they typed it, for "Since birth".
   const birth = data.birthDate ? birthPartsOf(data) : null;
 
-  // The owner, 2026-10-15: "Disability details", the date first and
-  // optional, then the kind. A relative has no date of their own to give.
+  // The date first and optional, then the kind. A relative has no date of
+  // their own to give.
   return (
     <>
-      <Question>Disability details</Question>
+      <Question>Your spinal cord</Question>
+      <Sub>An injury or a condition: members find each other by this.</Sub>
 
-      {data.injuryType === 'family' ? null : (
-        <InjuryDate data={data} set={set} condition={condition} birth={birth} />
-      )}
+      {data.injuryType === 'family' ? null : <InjuryDate data={data} set={set} birth={birth} />}
       {data.injuryType !== 'family' &&
       injury &&
       injuredAt !== null &&
@@ -376,25 +375,20 @@ export function InjuryStep({ data, set }: StepProps) {
 function InjuryDate({
   data,
   set,
-  condition,
   birth,
-}: StepProps & { condition: boolean; birth: ReturnType<typeof birthPartsOf> | null }) {
+}: StepProps & { birth: ReturnType<typeof birthPartsOf> | null }) {
   return (
     <>
       <h2
         id="injury-date-heading"
         className="mt-4 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
-        {condition ? 'When did it start? (optional)' : 'When were you injured? (optional)'}
+        When did your injury or condition begin? (optional)
       </h2>
       <DateFields
         id="injury"
         labelledBy="injury-date-heading"
-        hint={
-          condition
-            ? 'Or when you were diagnosed. Just the year is fine.'
-            : 'For example, 6 14 2013 — or just 2013, if the year is all you want to say.'
-        }
+        hint="For a condition, when it started or was diagnosed. Just the year is fine."
         order={BIRTHDAY_ORDER}
         yearAlone
         parts={injuryPartsOf(data)}
@@ -403,7 +397,7 @@ function InjuryDate({
           set({ injuryYear: next.year, injuryMonth: next.month, injuryDay: next.day });
         }}
       />
-      {condition && birth ? (
+      {birth ? (
         <button
           type="button"
           onClick={() => {
@@ -431,14 +425,12 @@ function InjuredAt({
   return (
     <div className="mt-3.5 rounded-[17px] border border-line bg-paper p-3.5 text-[0.8375rem] text-ink2 leading-[1.45]">
       <b className="text-ink">{label}</b>:{' '}
-      {condition ? (
-        at === 0 ? (
-          'since birth'
-        ) : (
-          <>
-            it started when you were <b className="text-ink">{at}</b>
-          </>
-        )
+      {at === 0 ? (
+        'since birth'
+      ) : condition ? (
+        <>
+          it started when you were <b className="text-ink">{at}</b>
+        </>
       ) : (
         <>
           you were injured at <b className="text-ink">{at}</b>

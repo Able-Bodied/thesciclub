@@ -33,15 +33,15 @@ const optionsOf = (label: string) =>
     .getAllByRole('option')
     .map((o) => o.textContent);
 
-describe('the disability question', () => {
+describe('the spinal cord question', () => {
   // The owner, 2026-10-15.
-  it('offers quad, high para, low para, another disability and relative, and nothing else yet', () => {
+  it('offers quad, high para, low para, another spinal cord condition and relative, and nothing else yet', () => {
     render(<Harness seen={[]} />);
     expect(screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual([
       'Quadriplegic (tetraplegic)',
       'High para (T1–T8)',
       'Low para (T9+)',
-      'Other disability',
+      'Other spinal cord condition',
       'Relative/Spouse',
     ]);
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
@@ -87,40 +87,42 @@ describe('the disability question', () => {
     expect(screen.getByLabelText('Level of injury')).toHaveValue('Do not know');
   });
 
-  it('asks which other disability from a list, central cord syndrome among them, with no level', async () => {
+  // The owner, 2026-10-20: their own way, typed with suggestions.
+  it('asks which condition in a box, suggesting the spinal cord conditions, with no level', async () => {
     const seen: SpinalCordAnswer[] = [];
-    render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
-    const options = optionsOf('Which disability?');
-    expect(options[0]).toBe('Choose one');
-    expect(options).toContain('Central cord syndrome');
-    expect(options.at(-1)).toBe('Other');
-    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Cerebral palsy');
-    expect(seen.at(-1)?.conditionName).toBe('Cerebral palsy');
+    const { container } = render(<Harness seen={seen} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    const box = screen.getByLabelText('Which condition?');
+    expect(box).toHaveAttribute('placeholder', 'Start typing, or choose one');
+    const suggested = [...container.querySelectorAll('datalist option')].map((o) =>
+      o.getAttribute('value'),
+    );
+    expect(suggested).toHaveLength(21);
+    expect(suggested).toContain('Transverse myelitis');
+    expect(suggested).toContain('Central cord syndrome');
+    expect(suggested).not.toContain('Cerebral palsy');
+    await userEvent.type(box, 'Transverse myelitis');
+    expect(seen.at(-1)?.conditionName).toBe('Transverse myelitis');
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });
 
-  it('opens a box to type one that is not listed, under Other', async () => {
+  it('keeps a condition that is not suggested as it was typed', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
-    expect(screen.queryByLabelText('Which one?')).toBeNull();
-    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Other');
-    await userEvent.type(screen.getByLabelText('Which one?'), 'Friedreich ataxia');
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Friedreich ataxia');
     expect(seen.at(-1)?.conditionName).toBe('Friedreich ataxia');
-    expect(screen.getByLabelText('Which disability?')).toHaveValue('__other');
   });
 
-  it('shows a name typed before under Other, in its box', () => {
+  it('shows a name given before in the box', () => {
     render(
       <Harness
         seen={[]}
-        start={{ ...EMPTY, injuryType: 'condition', conditionName: 'Friedreich ataxia' }}
+        start={{ ...EMPTY, injuryType: 'condition', conditionName: 'Cerebral palsy' }}
       />,
     );
-    expect(screen.getByLabelText('Which disability?')).toHaveValue('__other');
-    expect(screen.getByLabelText('Which one?')).toHaveValue('Friedreich ataxia');
+    expect(screen.getByLabelText('Which condition?')).toHaveValue('Cerebral palsy');
   });
 
   it('asks a relative nothing more', async () => {
@@ -132,13 +134,13 @@ describe('the disability question', () => {
     expect(seen.at(-1)).toMatchObject({ injuryType: 'family', exactLevel: null });
   });
 
-  it("lets go of another disability's name when the kind changes", async () => {
+  it("lets go of a condition's name when the kind changes", async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
-    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Spina bifida');
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
     await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
-    expect(screen.queryByLabelText('Which disability?')).toBeNull();
+    expect(screen.queryByLabelText('Which condition?')).toBeNull();
     expect(seen.at(-1)?.conditionName).toBe('');
   });
 

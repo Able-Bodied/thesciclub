@@ -1769,13 +1769,13 @@ describe('the birthday boxes', () => {
   it('goes on by itself once the year is typed', async () => {
     await reachBirthday('Sam');
     await typeBirthday('1985-04-12');
-    expect(await screen.findByText('Disability details')).toBeInTheDocument();
+    expect(await screen.findByText('Your spinal cord')).toBeInTheDocument();
   });
 
   it('does not bounce forward again on coming Back to it', async () => {
     await reachBirthday('Sam');
     await typeBirthday('1985-04-12');
-    await screen.findByText('Disability details');
+    await screen.findByText('Your spinal cord');
     await userEvent.click(screen.getByRole('button', { name: 'Back' }));
     expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 900));
@@ -2070,11 +2070,13 @@ describe('steps that move on by themselves', () => {
 
 // Month, day, year like the birthday, but the year alone is a whole answer.
 describe('the injury date boxes', () => {
+  const DATE_LINE = 'When did your injury or condition begin? (optional)';
+
   async function reachInjuryStep() {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Disability details');
+    await screen.findByText('Your spinal cord');
     await userEvent.click(screen.getByRole('radio', { name: /Quadriplegic/ }));
     fireEvent.change(screen.getByLabelText('Level of injury'), { target: { value: 'C5' } });
     // The cursor is not put in the date: it is reached by hand.
@@ -2112,29 +2114,45 @@ describe('the injury date boxes', () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Disability details');
-    expect(screen.getByText('When were you injured? (optional)')).toBeInTheDocument();
+    await screen.findByText('Your spinal cord');
+    expect(
+      screen.getByText('An injury or a condition: members find each other by this.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText(DATE_LINE)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('radio', { name: /Relative/ }));
-    expect(screen.queryByText('When were you injured? (optional)')).toBeNull();
+    expect(screen.queryByText(DATE_LINE)).toBeNull();
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
   });
 
-  it('takes another disability by name, and "Since birth" for its date', async () => {
+  it('takes a spinal cord condition typed, and "Since birth" for its date', async () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
-    await screen.findByText('Disability details');
-    await userEvent.click(screen.getByRole('radio', { name: /Other disability/ }));
-    expect(screen.getByText('When did it start? (optional)')).toBeInTheDocument();
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    expect(screen.getByText(DATE_LINE)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
-    await userEvent.selectOptions(screen.getByLabelText('Which disability?'), 'Spina bifida');
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
     await userEvent.click(screen.getByRole('button', { name: 'Since birth' }));
     expect(screen.getByLabelText('Year')).toHaveValue('1990');
     expect(screen.getByText(/since birth\./)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-20: "Since birth" whatever the kind, before one is chosen too.
+  it('offers "Since birth" to an injury as well, and before the kind is chosen', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Your spinal cord');
+    expect(screen.getByRole('button', { name: 'Since birth' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Since birth' }));
+    expect(screen.getByLabelText('Year')).toHaveValue('1990');
+    expect(screen.getByText(/since birth\./)).toBeInTheDocument();
   });
 
   it('goes on with the year alone', async () => {

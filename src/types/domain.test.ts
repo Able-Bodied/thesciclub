@@ -6,9 +6,9 @@ import {
   injuryLabel,
   levelsForType,
   OFFERED_INJURY_TYPES,
-  OTHER_DISABILITIES,
   rangeForExact,
   regionForRange,
+  SPINAL_CORD_CONDITIONS,
   stateCodeForName,
   stateNameFor,
   typeForLevel,
@@ -118,17 +118,18 @@ describe('the spinal cord question', () => {
     expect(asksLevel(null)).toBe(false);
   });
 
-  it("lists the owner's other disabilities, then central cord syndrome", () => {
-    expect(OTHER_DISABILITIES).toEqual([
-      'Spina bifida',
+  it("suggests the owner's spinal cord conditions, then central cord syndrome", () => {
+    expect(SPINAL_CORD_CONDITIONS).toHaveLength(21);
+    expect(SPINAL_CORD_CONDITIONS[0]).toBe('Transverse myelitis');
+    expect(SPINAL_CORD_CONDITIONS.at(-1)).toBe('Central cord syndrome');
+    for (const outside of [
       'Cerebral palsy',
       'Amputee',
       'TBI',
       'Blind/visual',
-      'Multiple sclerosis',
       'Muscular dystrophy',
-      'Central cord syndrome',
-    ]);
+    ])
+      expect(SPINAL_CORD_CONDITIONS).not.toContain(outside);
   });
 
   it('labels each kind the way it is said', () => {
