@@ -21,7 +21,7 @@ and wins over this file. Comments citing `EMAIL-SIGN-IN-PLAN.md` (done, removed
   empty `git log --oneline origin/main..HEAD` means nothing is unreleased. The
   agent's sandbox refuses `git push`: the owner runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261022020000` is live (2026-10-20). Edge functions: `push-notify`,
+  `20261022030000` is live (2026-10-21). Edge functions: `push-notify`,
   `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`
   (`verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
@@ -139,7 +139,7 @@ All live. Migration headers and the files named say how and why.
   the club already keeps; "Opened the app" is from `auth.sessions` and has no
   previous-period count. In place of Google Analytics, which the owner turned
   down. Signing in (`admin_sign_in_methods`) is the one part that names
-  members (the owner's choice; Privacy says so): `sign_ins`, one row a session,
+  members (besides who viewed a post, under Chat) (the owner's choice; Privacy says so): `sign_ins`, one row a session,
   from `lib/sign-in-record.ts` and `record_sign_in`. Not Supabase's audit log
   (it would keep emails and IPs).
 - **Me**: tabs Profile, Settings, Account (`?tab=` replaced, not pushed). The
@@ -161,7 +161,9 @@ All live. Migration headers and the files named say how and why.
   null so Realtime sends an UPDATE); holding a reaction shows who. Likes and
   views on every post, self-likes allowed; a view is one per member, from
   opening, seeing on Home (`lib/chat/home-views.ts`), liking or reacting;
-  views count only from 2026-10-10. Save (`chat_saves`, private; probe
+  views count only from 2026-10-10. For an administrator the count opens
+  who viewed (`admin_post_viewers`, earlier views too; Mobile or Desktop
+  from 2026-10-21, `chat_post_view_devices`; Privacy says so). Save (`chat_saves`, private; probe
   `chat-saves.sql`): a topic's header saves the topic (`post_id` null), a
   post's actions save that post; Me → Saved (`/me/saved`) lists them.
   Posts take `DescriptionEditor`'s small Markdown, drawn through
