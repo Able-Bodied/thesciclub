@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { allDayInstants, parseDayRange } from './day-ranges.js';
 import { parseGroups } from './reeve-support-groups.js';
 import { ianaZone, toEvent as tribeEvent } from './tribe-events.js';
+import { parseWhen, parseEvents as triumphEvents } from './triumph-events.js';
 import { zoneOfPlace } from './us-zones.js';
 import { parseTable } from './usahockey-sled.js';
 import { parseCards, parseDetail, toEvent as uspsaEvent } from './uspsa-events.js';
@@ -217,5 +218,69 @@ describe('Reeve support groups', () => {
 
   it('throws when the groups are gone from the page', () => {
     expect(() => parseGroups('<h2>News</h2>')).toThrow(/no support group/);
+  });
+});
+
+describe('Triumph Foundation', () => {
+  const item = (
+    tag,
+    when,
+    title,
+    venue,
+  ) => `<div class="event-item-wrapper"><div class="event-item-info">
+    <div class="date-details">${tag} ${when}</div>
+    <div class="event-title"><a href="https://triumph-foundation.org/tf-event/${title.length}/">${title}</a></div>
+    <div class="venue">${venue}</div><div class="summary">About it.</div></div></div>`;
+  const page = (...items) => `<div class="event-list-wrapper">${items.join('')}</div>`;
+
+  it('reads its own events as Triumph’s, and a partner’s as nobody’s', () => {
+    const events = triumphEvents(
+      page(
+        item(
+          '<span class="tf-event-tag"><a>Triumph Featured Event</a></span>',
+          'November 7, 2026 @ 8:30 am - 2:00 pm',
+          'Pasadena Adaptive Sports Festival',
+          'Brookside Park<br>360 N. Arroyo Blvd, Pasadena, CA 91103',
+        ),
+        item(
+          'Community Event',
+          'September 26, 2026 @ 11:00 am - 5:00 pm',
+          'Waves of Ability',
+          'Marine Stadium<br>Long Beach, CA',
+        ),
+      ),
+    );
+    expect(events.map((e) => [e.host_name, e.start_time, e.end_time, e.location])).toEqual([
+      [
+        'Triumph Foundation',
+        '2026-11-07T16:30:00.000Z',
+        '2026-11-07T22:00:00.000Z',
+        'Brookside Park, 360 N. Arroyo Blvd, Pasadena, CA 91103',
+      ],
+      [
+        null,
+        '2026-09-26T18:00:00.000Z',
+        '2026-09-27T00:00:00.000Z',
+        'Marine Stadium, Long Beach, CA',
+      ],
+    ]);
+  });
+
+  it('treats a Zoom venue as online', () => {
+    const [webinar] = triumphEvents(
+      page(item('', 'October 13, 2026 @ 5:30 pm - 7:00 pm', 'SCI Health Webinar', 'Zoom<br>')),
+    );
+    expect(webinar?.location).toBe('');
+  });
+
+  it('reads an end on another day', () => {
+    expect(parseWhen('December 3, 2026 @ 5:00 pm - December 4, 2026 @ 2:00 pm')).toEqual({
+      start: '2026-12-04T01:00:00.000Z',
+      end: '2026-12-04T22:00:00.000Z',
+    });
+  });
+
+  it('throws when the list is gone', () => {
+    expect(() => triumphEvents('<main>Events</main>')).toThrow(/changed/);
   });
 });

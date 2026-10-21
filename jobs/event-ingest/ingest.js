@@ -41,7 +41,9 @@ import { IcsEventsScraper } from './scrapers/ics-events.js';
 import { NatureTrackTraxScraper } from './scrapers/naturetrack-trax.js';
 import { NorCalSCIEventsJsonScraper } from './scrapers/norcalsci-events-json.js';
 import { ReeveSupportGroupsScraper } from './scrapers/reeve-support-groups.js';
+import { SquarespaceEventsScraper } from './scrapers/squarespace-events.js';
 import { TribeEventsScraper } from './scrapers/tribe-events.js';
+import { TriumphEventsScraper } from './scrapers/triumph-events.js';
 import { UsaHockeySledScraper } from './scrapers/usahockey-sled.js';
 import { UspsaEventsScraper } from './scrapers/uspsa-events.js';
 import { UstaWheelchairScraper } from './scrapers/usta-wheelchair.js';
@@ -57,6 +59,8 @@ const SCRAPERS = {
   'usahockey-sled': (feed) => new UsaHockeySledScraper(feed),
   'uspsa-events': (feed) => new UspsaEventsScraper(feed),
   'reeve-support-groups': (feed) => new ReeveSupportGroupsScraper(feed),
+  'triumph-events': (feed) => new TriumphEventsScraper(feed),
+  'squarespace-events': (feed) => new SquarespaceEventsScraper(feed),
 };
 
 /** Columns read back for the diff. Never `*`: the browser roles cannot select the coordinates,
