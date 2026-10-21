@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useEvents } from '@/lib/events';
+import { useOrganizationGrants } from '@/lib/grants';
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
@@ -10,6 +11,7 @@ import { backLabel, backToEvents } from '@/routes/events/back';
 import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { OrganizationGrants } from '@/routes/events/organization-grants';
 import { injuryLabel } from '@/types/domain';
 
 /**
@@ -30,6 +32,7 @@ export default function OrganizationDetailPage() {
   const follows = useOrganizationFollows();
   const { events } = useEvents({ organizationId: id ?? '00000000-0000-0000-0000-000000000000' });
   const { members } = useBrowseMembers();
+  const { grants } = useOrganizationGrants(id);
 
   const organization = id ? (byId.get(id) ?? null) : null;
 
@@ -129,6 +132,12 @@ export default function OrganizationDetailPage() {
             <LinkedText text={organization.description} />
           </p>
         ) : null}
+
+        <OrganizationGrants
+          grants={grants}
+          organizationName={organization.name}
+          following={follows.following.has(organization.id)}
+        />
 
         {upcoming.length > 0 ? (
           <>

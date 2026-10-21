@@ -73,6 +73,20 @@ describe('what a notification says', () => {
     );
   });
 
+  it('names the grant, its organization and when applications close', () => {
+    const year = new Date().getFullYear();
+    expect(
+      notificationSentence(
+        n({
+          kind: 'grant_open',
+          place: 'Kelly Brush Foundation',
+          excerpt: 'Active Fund',
+          detail: `${year}-11-15`,
+        }),
+      ),
+    ).toBe('Active Fund from Kelly Brush Foundation is open for applications until Nov 15');
+  });
+
   it("says a join came from the administrator's QR code, and where", () => {
     expect(
       notificationSentence(

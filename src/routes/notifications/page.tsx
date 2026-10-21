@@ -2,6 +2,7 @@ import {
   AtSign,
   CalendarDays,
   Flag,
+  HandCoins,
   Heart,
   type LucideIcon,
   MessageCircle,
@@ -49,6 +50,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   invite_joined: AtSign,
   event_reminder: CalendarDays,
   org_events: CalendarDays,
+  grant_open: HandCoins,
 };
 
 export default function NotificationsPage() {

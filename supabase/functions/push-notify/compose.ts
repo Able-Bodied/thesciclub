@@ -17,6 +17,10 @@
  *   Event reminder   "Tomorrow: <event title>"   + "You're going. It starts at 10:00am."
  *   Org digest       "New from <organization>"   + "3 new events."
  *
+ * And grants, 2026-10-20 (20261021010000):
+ *
+ *   Grant opened     "<organization>: applications open" + "<grant> is open until Nov 15."
+ *
  * And one more, 2026-10-01 (20261003010000):
  *
  *   Like             "Bo liked your post"         + the start of that post, quoted
@@ -194,6 +198,17 @@ export function compose(owed: Owed): PushMessage | null {
       return {
         title: `New from ${subject}`,
         body: count === 1 ? '1 new event.' : `${count} new events.`,
+        ...where,
+      };
+    }
+    // A grant from a followed organization opened (20261021010000): body is
+    // the grant's name, detail the day it closes ("Nov 15").
+    case 'grant_open': {
+      const grant = shorten(owed.body ?? '', 80);
+      if (subject === '' || grant === '') return null;
+      return {
+        title: `${subject}: applications open`,
+        body: owed.detail ? `${grant} is open until ${owed.detail}.` : `${grant} is open.`,
         ...where,
       };
     }

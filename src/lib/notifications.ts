@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { californiaToday, grantDay } from '@/lib/grants';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -42,7 +43,8 @@ export type NotificationKind =
   | 'report'
   | 'invite_joined'
   | 'event_reminder'
-  | 'org_events';
+  | 'org_events'
+  | 'grant_open';
 
 interface Row {
   id: string;
@@ -234,6 +236,14 @@ export function notificationSentence(n: AppNotification): string {
       const added = Number(n.detail);
       const what = Number.isInteger(added) && added > 1 ? `${added} new events` : 'a new event';
       return `${n.place ?? 'An organization you follow'} added ${what}`;
+    }
+    // detail is the day applications close, as YYYY-MM-DD.
+    case 'grant_open': {
+      const grant = n.excerpt ?? 'A grant';
+      const who = n.place ? ` from ${n.place}` : '';
+      return n.detail
+        ? `${grant}${who} is open for applications until ${grantDay(n.detail, californiaToday())}`
+        : `${grant}${who} is open for applications`;
     }
     default:
       return 'Something new in the club';

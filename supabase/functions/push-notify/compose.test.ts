@@ -180,6 +180,25 @@ describe('compose', () => {
     );
   });
 
+  it('names the grant and when it closes', () => {
+    expect(
+      compose(
+        owed({
+          kind: 'grant_open',
+          subject: 'Kelly Brush Foundation',
+          body: 'Active Fund',
+          detail: 'Nov 15',
+        }),
+      ),
+    ).toMatchObject({
+      title: 'Kelly Brush Foundation: applications open',
+      body: 'Active Fund is open until Nov 15.',
+    });
+    expect(
+      compose(owed({ kind: 'grant_open', subject: 'Kelly Brush Foundation', body: null })),
+    ).toBeNull();
+  });
+
   it('sends nothing for a daily kind that arrived without what it needs', () => {
     expect(compose(owed({ kind: 'event_reminder', subject: null }))).toBeNull();
     expect(compose(owed({ kind: 'org_events', subject: 'NorCal SCI', detail: 'many' }))).toBeNull();
