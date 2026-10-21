@@ -378,6 +378,9 @@ export default function EventsPage() {
                     onOpen={() => {
                       void navigate(`/events/${event.id}`, { state: { segment } });
                     }}
+                    onOpenOrganization={(id) => {
+                      void navigate(`/events/organizations/${id}`, { state: { segment } });
+                    }}
                     onRsvp={(next) => {
                       onRsvp(event.id, next);
                     }}

@@ -1,7 +1,7 @@
 import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTimeLong, messageTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
@@ -311,10 +311,7 @@ export function MessageBubble({
 
   return (
     <div id={anchor} className="mb-3.5 flex items-start gap-2.5">
-      {/* Decorative: the name is printed on the next line and the link to the
-          profile is on the name. An avatar that is its own link has no words in
-          it to be the link's name. */}
-      <span aria-hidden="true" className="flex-none">
+      <AvatarLink memberId={author?.id} hasProfile={author?.hasProfile}>
         {author ? (
           <MemberAvatar
             id={author.id}
@@ -325,7 +322,7 @@ export function MessageBubble({
         ) : (
           <FormerMemberAvatar />
         )}
-      </span>
+      </AvatarLink>
       <div className="min-w-0">
         <p className="mb-[3px] font-semibold text-[0.71875rem] text-grey">
           {author ? (

@@ -1,6 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { useAccount } from '@/lib/account';
@@ -507,19 +507,35 @@ export default function MemberDetailPage() {
 
             {verifier ? (
               <Section title="Member of">
-                {member.affiliations.map((org) => (
-                  <div
-                    key={org}
-                    className="mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3"
-                  >
-                    <OrganizationBadge
-                      organization={organizationByName(organizations, org)}
-                      hostName={org}
-                      className="h-[34px] w-[34px] rounded-[11px] text-[0.6875rem]"
-                    />
-                    <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
-                  </div>
-                ))}
+                {member.affiliations.map((org) => {
+                  const known = organizationByName(organizations, org);
+                  const row = (
+                    <>
+                      <OrganizationBadge
+                        organization={known}
+                        hostName={org}
+                        className="h-[34px] w-[34px] rounded-[11px] text-[0.6875rem]"
+                      />
+                      <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
+                    </>
+                  );
+                  const box =
+                    'mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3';
+                  // A link where the club has the organization's page.
+                  return known ? (
+                    <Link
+                      key={org}
+                      to={`/events/organizations/${known.id}`}
+                      className={`${box} transition-colors hover:bg-tint`}
+                    >
+                      {row}
+                    </Link>
+                  ) : (
+                    <div key={org} className={box}>
+                      {row}
+                    </div>
+                  );
+                })}
               </Section>
             ) : null}
 

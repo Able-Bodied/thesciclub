@@ -1,6 +1,6 @@
 import { cloneElement, type ReactElement, type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
@@ -268,11 +268,7 @@ export function Post({
         <h2 className="sr-only">The question</h2>
       ) : (
         <div className="flex items-center gap-2.5">
-          {/* Decorative: the name is the next thing in the row, and the link to
-            the profile is on the name. An avatar that is its own link has no
-            words in it to be the link's name — a screen reader reaches it and
-            says "link, N". */}
-          <span aria-hidden="true" className="flex-none">
+          <AvatarLink memberId={author?.id} hasProfile={author?.hasProfile}>
             {author ? (
               <MemberAvatar
                 id={author.id}
@@ -283,7 +279,7 @@ export function Post({
             ) : (
               <FormerMemberAvatar />
             )}
-          </span>
+          </AvatarLink>
 
           <span className="min-w-0 flex-1">
             <span className="block font-extrabold font-head text-[0.875rem] text-ink">

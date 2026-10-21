@@ -341,6 +341,9 @@ export default function HomePage() {
             onOpen={() => {
               void navigate(`/events/${item.event.id}`, { state: linkState });
             }}
+            onOpenOrganization={(id) => {
+              void navigate(`/events/organizations/${id}`, { state: linkState });
+            }}
             onRsvp={(next) => {
               onRsvp(item.event.id, next);
             }}

@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
@@ -69,6 +70,45 @@ export function MemberAvatar({
  * every time, which reads as "nobody" rather than as a member whose tile
  * happens to be grey.
  */
+/**
+ * A member's picture that opens their profile, for a pointer (2026-10-20).
+ * Hidden from a keyboard and a screen reader: the name beside it is the link
+ * they use, and a picture link has no words to be its name. Plain when the
+ * member has no profile Peers will show.
+ */
+export function AvatarLink({
+  memberId,
+  hasProfile,
+  state,
+  className,
+  children,
+}: {
+  memberId: string | undefined;
+  hasProfile: boolean | undefined;
+  state?: unknown;
+  className?: string | undefined;
+  children: React.ReactNode;
+}) {
+  if (!memberId || !hasProfile) {
+    return (
+      <span aria-hidden="true" className={cn('flex-none', className)}>
+        {children}
+      </span>
+    );
+  }
+  return (
+    <Link
+      to={`/peers/${memberId}`}
+      state={state}
+      aria-hidden="true"
+      tabIndex={-1}
+      className={cn('flex-none', className)}
+    >
+      {children}
+    </Link>
+  );
+}
+
 export function FormerMemberAvatar({ className }: { className?: string | undefined }) {
   return (
     <span

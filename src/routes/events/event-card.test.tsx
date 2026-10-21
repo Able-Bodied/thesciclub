@@ -240,3 +240,20 @@ describe('one more date of a series', () => {
     expect(screen.queryByText(/WED ·/)).not.toBeInTheDocument();
   });
 });
+
+// The owner, 2026-10-20: a click on a host's logo opens the host.
+describe('the host logo', () => {
+  it('opens the organization, not the event', async () => {
+    const onOpenOrganization = vi.fn();
+    const props = renderCard({ organization: makeOrganization(), onOpenOrganization });
+    await userEvent.click(screen.getByText('NCS'));
+    expect(onOpenOrganization).toHaveBeenCalledWith('org-1');
+    expect(props.onOpen).not.toHaveBeenCalled();
+  });
+
+  it('opens the event when there is no organization page to go to', async () => {
+    const props = renderCard({ event: makeEvent({ hostName: 'Bay Rollers' }) });
+    await userEvent.click(screen.getByText('BR'));
+    expect(props.onOpen).toHaveBeenCalled();
+  });
+});

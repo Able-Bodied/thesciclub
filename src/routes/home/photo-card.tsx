@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor } from '@/lib/chat/types';
@@ -86,8 +86,12 @@ export function PhotoCard({
   return (
     <article ref={seenRef} className="relative rounded-[17px] border border-line bg-paper p-3.5">
       <div className="flex items-center gap-3">
-        {/* Decorative: the link to the profile is on the name. */}
-        <span aria-hidden="true" className="pointer-events-none flex-none">
+        <AvatarLink
+          memberId={author?.id}
+          hasProfile={author?.hasProfile}
+          state={linkState}
+          className="relative z-[1]"
+        >
           {author ? (
             <MemberAvatar
               id={author.id}
@@ -98,7 +102,7 @@ export function PhotoCard({
           ) : (
             <FormerMemberAvatar />
           )}
-        </span>
+        </AvatarLink>
         <span className="min-w-0 flex-1">
           <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
             {author?.hasProfile ? (

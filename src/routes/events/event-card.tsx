@@ -49,6 +49,8 @@ export interface EventCardProps {
   /** The hosting club organization, when the event links to one. */
   organization: Organization | null;
   onOpen: () => void;
+  /** A click on the host's logo, when there is an organization to open. */
+  onOpenOrganization?: (id: string) => void;
   onRsvp: (next: RsvpStatus | null) => void;
   /**
    * Drop the bottom margin, because something belongs directly under this card.
@@ -101,6 +103,7 @@ export function EventCard({
   attendees,
   organization,
   onOpen,
+  onOpenOrganization,
   onRsvp,
   past = false,
   attached = false,
@@ -108,6 +111,26 @@ export function EventCard({
   occurrence = false,
 }: EventCardProps) {
   const goingNote = useId();
+
+  // Inside the card's button, so it cannot be a link of its own. A pointer
+  // that lands on the logo goes to the host (2026-10-20); a keyboard has the
+  // host's link on the event's page.
+  const hostBadge = (badge: React.ReactNode) =>
+    organization && onOpenOrganization ? (
+      // biome-ignore lint/a11y/noStaticElementInteractions: a pointer shortcut; the event page links the host
+      // biome-ignore lint/a11y/useKeyWithClickEvents: the card's button keeps Enter and Space for the event
+      <span
+        className="cursor-pointer"
+        onClick={(click) => {
+          click.stopPropagation();
+          onOpenOrganization(organization.id);
+        }}
+      >
+        {badge}
+      </span>
+    ) : (
+      badge
+    );
   const tile = dateTileParts(event.startTime, event.timezone);
   const going = status === 'going';
   const interested = status === 'interested';
@@ -194,11 +217,13 @@ export function EventCard({
             </span>
           </span>
 
-          <OrganizationBadge
-            organization={organization}
-            hostName={event.hostName}
-            className="h-[2.89em] w-[2.89em] rounded-[1em] text-[0.5625rem]"
-          />
+          {hostBadge(
+            <OrganizationBadge
+              organization={organization}
+              hostName={event.hostName}
+              className="h-[2.89em] w-[2.89em] rounded-[1em] text-[0.5625rem]"
+            />,
+          )}
         </button>
       </div>
     );
@@ -232,7 +257,7 @@ export function EventCard({
               {tile.mon}
             </span>
           </span>
-          <OrganizationBadge organization={organization} hostName={event.hostName} />
+          {hostBadge(<OrganizationBadge organization={organization} hostName={event.hostName} />)}
         </span>
 
         <span className="min-w-0 flex-1 pr-5">

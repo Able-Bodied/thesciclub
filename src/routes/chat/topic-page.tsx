@@ -8,7 +8,7 @@ import {
   useSearchParams,
 } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
@@ -440,8 +440,7 @@ export default function TopicPage() {
               linked name, so this line was the only trace of the asker. The
               name links as a post's does: only to a profile Peers will show. */}
           <p className="mt-1.5 flex items-center gap-2 text-[0.78125rem] text-grey leading-[1.45]">
-            {/* Decorative: the name is beside it. */}
-            <span aria-hidden="true" className="flex-none">
+            <AvatarLink memberId={starter?.id} hasProfile={starter?.hasProfile}>
               {starter ? (
                 <MemberAvatar
                   id={starter.id}
@@ -453,7 +452,7 @@ export default function TopicPage() {
               ) : (
                 <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
               )}
-            </span>
+            </AvatarLink>
             <span className="min-w-0">
               {counts ? `${counts} · started by ` : 'Started by '}
               {starter ? (

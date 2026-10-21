@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatRoom } from '@/lib/chat/types';
@@ -115,9 +115,13 @@ export function TopicCard({
       {/* Who asked, with their picture (owner, 2026-10-10), the same size
           and shape as the first reply's below so the two read as a pair. */}
       <p className="mt-2 flex items-center gap-[9px] text-[0.8125rem] text-ink2 leading-[1.42]">
-        {/* Decorative: the name is beside it. Out of the pointer's way, so a
-            tap on it opens the topic like the rest of the card. */}
-        <span aria-hidden="true" className="pointer-events-none flex-none">
+        {/* Above the title's stretched link, so a tap on it opens their profile. */}
+        <AvatarLink
+          memberId={starter?.id}
+          hasProfile={starter?.hasProfile}
+          state={linkState}
+          className="relative z-[1]"
+        >
           {starter ? (
             <MemberAvatar
               id={starter.id}
@@ -129,7 +133,7 @@ export function TopicCard({
           ) : (
             <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
           )}
-        </span>
+        </AvatarLink>
         <span className="min-w-0">
           {byline(topic.authorId, starter)}
           {starter?.level ? ` · ${starter.level}` : ''} · {chatTime(topic.createdAt)}
@@ -145,8 +149,12 @@ export function TopicCard({
       {reply ? (
         <div className="mt-[11px] border-tint border-l-[2.5px] py-0.5 pl-3">
           <p className="flex items-center gap-[9px]">
-            {/* Decorative: the name is beside it. */}
-            <span aria-hidden="true" className="pointer-events-none flex-none">
+            <AvatarLink
+              memberId={replier?.id}
+              hasProfile={replier?.hasProfile}
+              state={linkState}
+              className="relative z-[1]"
+            >
               {replier ? (
                 <MemberAvatar
                   id={replier.id}
@@ -158,7 +166,7 @@ export function TopicCard({
               ) : (
                 <FormerMemberAvatar className="h-[1.75rem] w-[1.75rem] rounded-[9px] text-[0.6875rem]" />
               )}
-            </span>
+            </AvatarLink>
             <span className="font-semibold text-[0.78125rem] text-ink2">
               {byline(reply.authorId, replier)}
               {replier?.level ? ` · ${replier.level}` : ''}
