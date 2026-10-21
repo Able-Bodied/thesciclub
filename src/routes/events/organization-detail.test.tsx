@@ -11,9 +11,22 @@ const organization = makeOrganization({
     'Lends Freedom Trax for free.\nBorrow a Freedom Trax: https://naturetrack.org/borrow-a-freedom-trax/',
 });
 
+const formatted = makeOrganization({
+  id: 'md',
+  name: 'Sailing Club',
+  description:
+    'Sailing for everybody.\n\n- **Lessons**: on the bay\n- Races\n\n[sail.org](https://sail.org/)',
+});
+
 // Every read stubbed: `.env.local` points at the hosted project.
 vi.mock('@/lib/organizations', () => ({
-  useOrganizations: () => ({ byId: new Map([['nt', organization]]), loading: false }),
+  useOrganizations: () => ({
+    byId: new Map([
+      ['nt', organization],
+      ['md', formatted],
+    ]),
+    loading: false,
+  }),
 }));
 vi.mock('@/lib/organization-follows', () => ({
   useOrganizationFollows: () => ({ following: new Set(), toggle: () => undefined }),
@@ -42,6 +55,27 @@ describe('an organization’s description', () => {
     expect(link).toHaveAttribute('href', 'https://naturetrack.org/borrow-a-freedom-trax/');
     expect(link).toHaveAttribute('target', '_blank');
     expect(screen.getByText(/Lends Freedom Trax for free\./)).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-20: richer text, in the small Markdown events use.
+  it('draws its bold, its list and its link', () => {
+    render(
+      <MemoryRouter initialEntries={['/events/organizations/md']}>
+        <Routes>
+          <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Lessons: on the bay',
+      'Races',
+    ]);
+    expect(screen.getByText('Lessons').tagName).toBe('STRONG');
+    expect(screen.getByRole('link', { name: 'sail.org' })).toHaveAttribute(
+      'href',
+      'https://sail.org/',
+    );
+    expect(screen.queryByText(/\*\*/)).toBeNull();
   });
 });
 

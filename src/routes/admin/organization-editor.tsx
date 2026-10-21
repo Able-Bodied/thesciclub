@@ -232,7 +232,8 @@ export function OrganizationEditor({
             Description
             <textarea
               className={field}
-              rows={4}
+              aria-describedby="organization-description-hint"
+              rows={8}
               maxLength={4000}
               value={draft.description}
               onChange={(event) => {
@@ -240,6 +241,9 @@ export function OrganizationEditor({
               }}
             />
           </label>
+          <p id="organization-description-hint" className="-mt-2 text-[0.75rem] text-grey">
+            **bold**, a line starting "- " for a list, and [words](https://…) for a link.
+          </p>
           <label className="text-ink">
             Tags
             <input

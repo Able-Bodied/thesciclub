@@ -1,6 +1,5 @@
 import { ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { LinkedText } from '@/components/linked-text';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useEvents } from '@/lib/events';
 import { useOrganizationGrants } from '@/lib/grants';
@@ -12,6 +11,7 @@ import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OrganizationGrants } from '@/routes/events/organization-grants';
+import { EventDescription } from '@/routes/events/rich-text';
 import { injuryLabel } from '@/types/domain';
 
 /**
@@ -127,11 +127,12 @@ export default function OrganizationDetailPage() {
       </div>
 
       <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
-        {organization.description ? (
-          <p className="mt-2.5 whitespace-pre-line text-[0.8875rem] text-ink leading-[1.52]">
-            <LinkedText text={organization.description} />
-          </p>
-        ) : null}
+        {/* The small Markdown events use: paragraphs, bold, lists, links. */}
+        <EventDescription
+          html=""
+          text={organization.description}
+          className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:font-semibold [&_a]:text-emphasis [&_a]:underline [&_a]:[overflow-wrap:anywhere] [&_li]:ml-5 [&_li]:mt-1 [&_ol]:mt-2 [&_ol]:list-decimal [&_p:first-child]:mt-0 [&_p]:mt-2.5 [&_strong]:font-bold [&_ul]:mt-2 [&_ul]:list-disc"
+        />
 
         <OrganizationGrants
           grants={grants}
