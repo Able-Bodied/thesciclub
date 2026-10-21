@@ -1,12 +1,11 @@
 # Handoff
 
-Last updated 2026-10-20. What is true now, the rules, the traps; nothing else.
-Why: `git log`, migration headers, code comments. Older handoffs:
-`git show b04b003:HANDOFF.md` (releases to 2026-10-11), `git show
-4b1673b:HANDOFF.md` (what comments citing a HANDOFF section mean), `git show
-932a809:HANDOFF.md` (product decisions). `CONTEXT.md` is the product definition
-and wins over this file. Comments citing `EMAIL-SIGN-IN-PLAN.md` (done, removed
-2026-10-20): `git show 0c84cf3:EMAIL-SIGN-IN-PLAN.md`; likewise `LAUNCH-CHECK.md`.
+Last updated 2026-10-21. What is true now, the rules, the traps; nothing else.
+Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
+definition and wins over this file. Older handoffs, by `git show
+<sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
+citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
+`EMAIL-SIGN-IN-PLAN.md` or `LAUNCH-CHECK.md`: `git show 0c84cf3:<file>`.
 
 ## State
 
@@ -26,47 +25,31 @@ and wins over this file. Comments citing `EMAIL-SIGN-IN-PLAN.md` (done, removed
   (`verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
   (`VITE_PASSKEYS`). No phone sign-in; the Phone provider is off.
-  - **Invites**: the Before User Created hook `signup_needs_an_invite` refuses
-    an uninvited sign-up before any email (the owner's choice, knowing it
-    reveals whether an address is invited). Admin → Invites → "Anybody can
-    join" opens joining for events (`club_joining`, `20261014000000`); a
-    blocked address stays out; a walk-in becomes a used invite marked
-    `joined_while_open`. Each administrator has a QR code (Me → Your QR code,
-    `20261014020000`): credit only, never entry (a walk-in from it counts as
-    that administrator's invite); codes can be turned off; Invites tallies by
-    event.
-  - **Email**: links in mail (confirm, reset, change address) open
-    `thesciclub.com/auth/confirm.html` (`lib/email-link.ts`, templates in
-    `supabase/templates/`), not supabase.co, which put mail in spam; the dot
-    keeps an old service worker off it. Hosted templates are set through the
-    Management API (`mailer_templates_*_content`), only after the client that
-    has the page. Resend sends (free plan: 100 a day, each email sign-up's
-    confirmation, so a busy event can reach it); Supabase's cap
-    (`rate_limit_email_sent`) is 100 an hour. SPF (`v=spf1 include:send.forge.rmta.net ~all`)
-    and Apple's registration of `thesciclub.com`, `send.`, `invites@` and
-    `hello@` let Hide My Email deliver (confirmed 2026-10-20).
-  - **Joined on a computer, link opened on a phone**: "Check your email"
-    retries the typed password every 15 s for 15 minutes, so the computer
-    goes on by itself (`onboarding/confirm-elsewhere.ts`; sign-ins are 30 per
-    5 minutes per IP). The password stays in memory: after a refresh,
-    sign-in opens with the address (sessionStorage, that tab only).
-  - **Passwords**: a reset link works once, for an hour (`mailer_otp_exp`);
-    `/reset-password` shows the form only on that visit's PASSWORD_RECOVERY
-    (`lib/recovery-link.ts`). Saving one signs out other devices and emails
-    "Your SCI Club password was changed". No way in at all:
+  - **Invites**: the hook `signup_needs_an_invite` refuses an uninvited
+    sign-up before any email (the owner's choice, knowing it reveals whether
+    an address is invited). Admin → Invites → "Anybody can join" opens joining
+    for events (`club_joining`); a blocked address stays out. Each
+    administrator's QR code (Me → Your QR code) is credit only, never entry.
+  - **Email**: links in mail open `thesciclub.com/auth/confirm.html`
+    (`lib/email-link.ts`, `supabase/templates/`), not supabase.co, which put
+    mail in spam. Hosted templates go through the Management API, only after
+    the client that has the page. Resend's free plan sends 100 a day;
+    Supabase caps 100 an hour. SPF and Apple's registration of the domain and
+    senders let Hide My Email deliver.
+  - **Joined on a computer, link opened on a phone**: the computer retries the
+    typed password every 15 s for 15 minutes (`onboarding/confirm-elsewhere.ts`).
+  - **Passwords**: a reset link works once, for an hour; saving one signs out
+    other devices and emails the member. No way in at all:
     `scripts/set-member-email.mjs`, then Forgot password.
-  - **Apple**: Client ID is the Services ID `com.thesciclub.web`; the secret
-    expires **2027-04-09** (`scripts/apple-secret.mjs` makes the next).
-  - **Google**: its own widget (`lib/google-identity.ts`, the redirect page
-    as fallback; CSP allows `/gsi/` only); the OAuth client allows only
-    `https://thesciclub.com`, so not locally. In the iPhone Home Screen app the
-    button opens Chrome (else Safari) on `/app-sign-in` and the app collects
-    the sign-in on return (`lib/google-in-browser.ts`, `home-screen-handoff`
-    `{ pairing }`); Me's Link Google still uses the widget.
-  - **Home Screen app**: a signed-in iPhone browser tab leaves a single-use
-    code in a cookie that iOS copies into the app, which trades it for its own
-    session (`lib/home-screen-handoff.ts`); confirmed in Safari and Chrome.
-- **Checks**: 2,928 tests in 210 files on 2026-10-20; `pnpm check` (alone),
+  - **Apple**: Services ID `com.thesciclub.web`; the secret expires
+    **2027-04-09** (`scripts/apple-secret.mjs` makes the next).
+  - **Google**: its own widget (`lib/google-identity.ts`); the OAuth client
+    allows only `https://thesciclub.com`, so not locally. The iPhone Home
+    Screen app signs in through Chrome or Safari on `/app-sign-in`
+    (`lib/google-in-browser.ts`, `home-screen-handoff`).
+  - **Home Screen app**: a signed-in iPhone tab hands the app a single-use
+    code by cookie (`lib/home-screen-handoff.ts`).
+- **Checks**: 3,092 tests in 222 files on 2026-10-21; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -84,22 +67,18 @@ and wins over this file. Comments citing `EMAIL-SIGN-IN-PLAN.md` (done, removed
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
 - **Text-message sign-in, once Twilio is ready** (the owner, 2026-10-13; not
-  before): "Text me a code" as the main button on Sign in and Join, email,
-  Google and Apple staying; joining by phone through the invite link (its
-  token in `signInWithOtp`'s data, for `signup_needs_an_invite`). Through
-  **Twilio Verify** with its pooled US sender, said to be exempt from A2P
-  10DLC (the campaign was refused 2026-10-12; its opt-in proof is
-  `public/sms-opt-in/` at `c550eff^`). **Waiting on Twilio** (Varun,
-  Onboarding and Compliance Support): Verify, then withdraw the campaign, or
-  the campaign with a public opt-in page and SMS terms back in Privacy and
-  Terms. Build to whichever Twilio confirms.
+  before): "Text me a code" first on Sign in and Join, the rest staying;
+  joining by phone carries the invite token in `signInWithOtp`'s data.
+  **Waiting on Twilio** (Varun, Onboarding and Compliance Support) to confirm
+  Verify's pooled sender (then withdraw the refused A2P campaign; its opt-in
+  proof is `c550eff^:public/sms-opt-in/`) or the campaign with a public
+  opt-in page and SMS terms back in Privacy and Terms. Build to their answer.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
-- **Passkeys**: built, off (`VITE_PASSKEYS`). Before turning on: a Netlify
-  preview with the switch on, then add one on Me, sign out, "Sign in with a
-  passkey" on an iPhone (Safari and the installed app) and Android Chrome.
-  Supabase → Authentication → Passkeys: relying party `thesciclub.com`, name
-  `The SCI Club`. Then `VITE_PASSKEYS=1` on Netlify and rebuild.
+- **Passkeys**: built, off. To turn on: a Netlify preview with
+  `VITE_PASSKEYS=1`, add one on Me and sign in with it on an iPhone (Safari
+  and installed) and Android Chrome; Supabase → Passkeys relying party
+  `thesciclub.com`, name `The SCI Club`; then set it on Netlify and rebuild.
 - **Owner's calls, pending**: Google's branding review ("The SCI Club" on
   Google's page); whether Privacy says the club fetches linked pages and that
   play reaches YouTube; deleting leftover test accounts and the `Test`
@@ -127,83 +106,67 @@ All live. Migration headers and the files named say how and why.
   closed door, with the inviting organizations' logos and the consultation
   link (`lib/consultation.ts`).
 - **Onboarding** picks up where it was left (`progress.ts`,
-  `save_onboarding_progress`): answers on the device as typed and on the
-  account at each step, never the password, email, ZIP or photo; the account's
-  copy goes when the member is made, or after 90 days. `onboarding_steps`
-  keeps which steps were reached, for Stats. A bar per step; each question
-  slides in from the side it was reached from (`chrome.tsx`). The injury step
-  asks the kind first (`spinal-cord-fields.tsx`; labels from `injuryLabel`).
-  It does not ask about notifications; the installed app does, once
-  (`AskOnOpening`).
+  `save_onboarding_progress`), never keeping the password, email, ZIP or
+  photo; the account's copy goes when the member is made, or after 90 days.
+  `onboarding_steps` feeds Stats. Notifications are asked once, by the
+  installed app (`AskOnOpening`).
 - **Admin → Stats** (`admin_club_stats(period)`): counts, never who, from what
-  the club already keeps; "Opened the app" is from `auth.sessions` and has no
-  previous-period count. In place of Google Analytics, which the owner turned
-  down. Signing in (`admin_sign_in_methods`) is the one part that names
-  members (besides who viewed a post, under Chat) (the owner's choice; Privacy says so): `sign_ins`, one row a session,
-  from `lib/sign-in-record.ts` and `record_sign_in`. Not Supabase's audit log
-  (it would keep emails and IPs).
+  the club already keeps, in place of Google Analytics (turned down). Two
+  things name members, by the owner's choice and said in Privacy: signing in
+  (`admin_sign_in_methods`, `sign_ins` from `record_sign_in`, not Supabase's
+  audit log, which keeps emails and IPs) and who viewed a post (Chat).
 - **Me**: tabs Profile, Settings, Account (`?tab=` replaced, not pushed). The
   email is read only (an administrator uses the script). Phone is optional,
   for event hosts; Going shares email, and phone if given, with the host
   (Admin → Going, `event_host_contacts`).
-- **Install**: a nudge on phone browsers after 3 s, under the sign-in doors
-  and above the tab bar; Not now hides it 3 days. Steps per browser in
-  `lib/install.ts`; Android uses Chrome's prompt. `lib/standalone.ts` trusts
-  only `navigator.standalone` on iPhones. The app is named **The Sci Club**.
-  Page zoom is stopped only in the installed app; text boxes have a 16px
-  floor. Share target: Android only (`/share-target`, `sw.ts`, `/share`).
+- **Install**: a nudge on phone browsers (`lib/install.ts`; Not now hides it 3
+  days). `lib/standalone.ts` trusts only `navigator.standalone` on iPhones.
+  The installed app is **The Sci Club**; page zoom is stopped only there.
+  Share target: Android only (`/share-target`, `sw.ts`, `/share`).
+- **Display** (Me → Settings, and the "Aa" button on the five main screens):
+  appearance, higher contrast, text size, easier-to-read text, underline
+  links, bigger tap targets, reduce motion; per device (`lib/accessibility.tsx`).
+  Built in place of an overlay widget like accessiBe, on purpose.
 - **Privacy at the API**: events, series, tag links and RSVP counts are
   members-only; `chat_authors` keeps its security barrier; organizations stay
   readable for the closed door.
-- **Chat**: read receipts from the current roster (hidden tabs do not
-  advance reads). Topic replies nest (indent stops at four on phones). Eight
-  reaction emoji, one per member per item (`chat_set_reaction`; clearing sets
-  null so Realtime sends an UPDATE); holding a reaction shows who. Likes and
-  views on every post, self-likes allowed; a view is one per member, from
-  opening, seeing on Home (`lib/chat/home-views.ts`), liking or reacting;
-  views count only from 2026-10-10. For an administrator the count opens
-  who viewed (`admin_post_viewers`, earlier views too; Mobile or Desktop
-  from 2026-10-21, `chat_post_view_devices`; Privacy says so). Save (`chat_saves`, private; probe
-  `chat-saves.sql`): a topic's header saves the topic (`post_id` null), a
-  post's actions save that post; Me → Saved (`/me/saved`) lists them.
-  Posts take `DescriptionEditor`'s small Markdown, drawn through
-  `EventDescription` and `sanitizeHtml`; previews and push use
-  `markdownToPlain` (restated in `push-notify`); messages are not formatted.
+- **Chat**: read receipts from the current roster. Eight reaction emoji, one
+  per member per item (`chat_set_reaction`). A view is one per member, from
+  opening, seeing on Home (`lib/chat/home-views.ts`), liking or reacting,
+  counted from 2026-10-10. For an administrator the count opens who viewed
+  (`admin_post_viewers`; Mobile or Desktop from 2026-10-21). Save
+  (`chat_saves`, private) lists on Me → Saved. Posts take
+  `DescriptionEditor`'s small Markdown; messages are not formatted. A
+  member's photo opens their profile (`AvatarLink`, for a pointer only).
 - **Link previews**: `link-preview` fetches a card; a refusing page stays a
   plain link. Backfill: `select public.link_preview_backfill();` (it queues);
   one: `link_preview_request('chat_posts', <id>)`.
 - **Notifications**: a `notifications` row per member before any push (kept
-  30 days, cron `notifications-forget`). The worker asks a running app to
-  navigate (`NAVIGATE`), and keeps a press for a starting app until
-  acknowledged (20 s); `FollowNotification` in App.
-- **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`). A
-  card opens its topic; a room label opens the room.
-- **Events**: administrators, and members designated for an organization,
-  add, change and delete events (times in Pacific). Repeating events: an
-  `event_series` holds the rule, dates are rows made 92 days ahead, then
-  nightly (`event-series-extend`, 11:40 UTC). Cover pictures shown whole.
-  Administrators change imported events (`admin_override`, `feed_values`; the
-  ingest keeps the change; Revert restores; no Delete). Your RSVP filters keep
-  `?segment=` for Me's counters.
-- **Organizations**: Admin → Organizations adds, edits, removes and links
-  accounts; organization accounts edit their own at `/organizations/manage`.
-  Administrators, organization accounts and linked representatives invite
-  without limit (`my_invite_permissions()`); mentors have ten. "Represents"
-  tags come from administrator links only. Logos at
-  `photos/organizations/<id>/`. An affiliation badge means the organization
-  vouches: never self-picked.
-- **Members**: the profile survey skips empty screens (`stepFrom`); adaptive
-  sports equipment and grants show on Peers; `@username` on profiles, cards
-  and chat lists. The seeded directory is gone; the owner holds a copy.
+  30 days). A tap reaches a running or starting app through the worker
+  (`NAVIGATE`, `FollowNotification`).
+- **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
+  Events on Home are within Events' default 20 miles of home, online ones
+  anywhere (`events_within_miles`).
+- **Events**: administrators and an organization's designated members add,
+  change and delete them (Pacific time). A series' dates are rows made 92
+  days ahead, extended nightly (`event-series-extend`). Administrators change
+  imported events (`admin_override`; the ingest keeps it; Revert restores).
+- **Organizations**: Admin → Organizations; organization accounts edit their
+  own at `/organizations/manage`. They, administrators and linked
+  representatives invite without limit (`my_invite_permissions()`); mentors
+  have ten. "Represents" tags and affiliation badges are never self-picked.
+- **Members**: `@username` on profiles, cards and chat lists. The seeded
+  directory is gone; the owner holds a copy.
 
 ## Rules the owner set
 
 - **Push only at the owner's word**, gated on `pnpm check`'s exit status run
   alone (never piped). `sci-club-logo/` and `logos-from-you/` are the owner's
   untracked folders.
-- **Live database and functions only at the owner's word**: show
-  `pnpm exec supabase db push --linked --dry-run` first; migrations go live
-  before the client that needs them. Deploy with `pnpm exec supabase functions
+- **Live database and functions only at the owner's word**: `pnpm exec
+  supabase db push` lists what it will apply and asks first. Migrations go
+  live before the client that needs them, or the client falls back (as the
+  view functions do). Deploy with `pnpm exec supabase functions
   deploy <name>` (no `--linked`; add `--no-verify-jwt` where config.toml has
   it). **Never `supabase config push`** (placeholder Twilio credentials in
   config.toml).
@@ -243,14 +206,11 @@ All live. Migration headers and the files named say how and why.
   ```
   Stop by port (`ss -ltnp | grep :5183`), never `pkill -f`.
 - **Local stack**: `pnpm exec supabase start -x
-  imgproxy,studio,edge-runtime,logflare,vector,supavisor` (never exclude
-  storage-api or realtime; **keep mailpit**, email sign-up needs it; drop
-  `edge-runtime` to run functions). New migration: `migration up --local`,
-  then `notify pgrst, 'reload schema';`. After `db reset`: `pnpm
-  demo-member`. Auth reads config.toml and the templates at start: restart
-  the stack after either changes (one started before 2026-10-19 links to
-  `/auth/confirm`, not `confirm.html`). Mail links name `site_url`, port
-  5173: change it to 5183 by hand.
+  imgproxy,studio,edge-runtime,logflare,vector,supavisor` (keep storage-api,
+  realtime and mailpit; include `edge-runtime` to run functions). New
+  migration: `migration up --local`, then `notify pgrst, 'reload schema';`.
+  After `db reset`: `pnpm demo-member`. Restart the stack after config.toml
+  or a template changes. Mail links say port 5173: change it to 5183.
 - **Fresh stack** for probes: copy `supabase/` to scratch, new `project_id`,
   ports and inspector port, `start --workdir <dir>`; `stop --workdir <dir>
   --no-backup` after.
@@ -261,9 +221,8 @@ All live. Migration headers and the files named say how and why.
 - **psql**: `docker run --rm -i --network host -e PGPASSWORD=postgres
   postgres:17-alpine psql -h 127.0.0.1 -p 54322 -U postgres -d postgres`.
 - **Playwright**: chromium with `LD_LIBRARY_PATH` as in `pnpm shoot`; no
-  WebKit. Headless reports notification permission `denied` and no Push API:
-  override `Notification.permission` (and `navigator.standalone`) in an init
-  script.
+  WebKit. Headless has no Push API and denies notifications: override
+  `Notification.permission` in an init script.
 - **CSP** (`netlify.toml`): `index.html`'s two inline scripts by hash and the
   Supabase host. `src/csp.test.ts` gives the new hash; a new outside host goes
   there too.
@@ -311,11 +270,10 @@ All live. Migration headers and the files named say how and why.
   `MemberAvatar`). `photo_alt` belongs to one picture; a new one clears it.
   Delete files through the Storage API, before the rows that make them
   readable.
-- **Colours by role, light and dark**: `text-emphasis`/`border-emphasis` for
-  links, outlines, eyebrows, dots and progress; `bg-action` for filled buttons
-  and selected options; `bg-plate` (`-chip`, `-edge`, `-hover`) for header
-  bands; `navy` only for navy words on a white chip over a photo. Dark is
-  charcoal with gold. `/join` and the notifications question are always light
+- **Colours by role, light and dark**: `emphasis` for links, outlines and
+  progress; `bg-action` for filled buttons; `bg-plate` for header bands;
+  `navy` only on a white chip over a photo. High contrast overrides tokens
+  (`theme-contrast.test.ts` measures every pair). `/join` is always light
   (`useForceLight`), matching the screenshots registered with Twilio.
 - **Sizing**: text boxes in `em`; controls under 44px get
   `data-target="small"`.
@@ -325,8 +283,9 @@ All live. Migration headers and the files named say how and why.
 - **Motion** is one-shot CSS in `index.css` (`bell-ring`, `like-pulse`,
   `arrive`, `step-in`; after React Bits, no animation libraries). Fill
   `backwards`, never `both` or `forwards`: a transform left on a card traps
-  the fixed sheets it opens. Motion driven by script (`CountUp`) checks
-  reduced motion itself; the CSS kill switch cannot stop it.
+  the fixed sheets it opens. Motion driven by script (`CountUp`, smooth
+  scrolling) asks `motionReduced()`, which follows Display → Reduce motion;
+  the CSS kill switch cannot stop it.
 - **Home's `{ from: 'home', segment }` state** drives the back link and the
   lit tab (`litTab` in `app-nav.tsx`).
 - **Where the app lands** is written in five places: `App.tsx`, onboarding,
