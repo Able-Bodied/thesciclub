@@ -366,7 +366,7 @@ export function Post({
               unavailable={likes.unavailable}
             />
           ) : null}
-          <ViewCount count={viewCount} />
+          <ViewCount count={viewCount} postId={post.id} />
           {reactions ? (
             cloneElement(reactions, { compact: true, actions: controls, reply })
           ) : (

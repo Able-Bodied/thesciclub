@@ -108,6 +108,7 @@ describe('long conversations and topics', () => {
       expect(state.sent).toHaveBeenCalledWith('chat_mark_topic_read_through', {
         topic: 'topic',
         post: 'row-1004',
+        device: 'desktop',
       });
     });
   });

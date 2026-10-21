@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { announcePostViewsChanged } from '@/lib/chat/views';
+import { missingFunction, viewDevice } from '@/lib/device';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -24,8 +25,12 @@ function send() {
   waiting.clear();
   if (ids.length === 0) return;
   // `.then`: a Supabase request is only sent when awaited or `.then`ed.
-  void getSupabase()
-    .rpc('chat_mark_posts_seen', { post_ids: ids })
+  const supabase = getSupabase();
+  void supabase
+    .rpc('chat_mark_posts_seen', { post_ids: ids, device: viewDevice() })
+    .then(({ error }) =>
+      missingFunction(error) ? supabase.rpc('chat_mark_posts_seen', { post_ids: ids }) : { error },
+    )
     .then(({ error }) => {
       if (error) for (const id of ids) sent.delete(id);
       else announcePostViewsChanged();

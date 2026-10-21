@@ -195,7 +195,7 @@ export function TopicCard({
             unavailable={likes.unavailable}
           />
         ) : null}
-        {opening ? <ViewCount count={viewCount} /> : null}
+        {opening ? <ViewCount count={viewCount} postId={opening.id} /> : null}
         <p className="font-semibold text-[0.78125rem] text-emphasis">
           {topic.replyCount > 0
             ? `${topic.replyCount} ${topic.replyCount === 1 ? 'reply' : 'replies'}`

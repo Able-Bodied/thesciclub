@@ -72,7 +72,10 @@ describe('useSeenOnHome', () => {
       await vi.advanceTimersByTimeAsync(SEEN_AFTER_MS);
     });
     await flush();
-    expect(rpc).toHaveBeenCalledWith('chat_mark_posts_seen', { post_ids: ['p1'] });
+    expect(rpc).toHaveBeenCalledWith('chat_mark_posts_seen', {
+      post_ids: ['p1'],
+      device: 'desktop',
+    });
     expect(changed).toHaveBeenCalledTimes(1);
   });
 
@@ -98,7 +101,10 @@ describe('useSeenOnHome', () => {
     const { getByTestId } = render(<Card id="tall" />);
     show(getByTestId('tall'), 0.25, 2400);
     await flush();
-    expect(rpc).toHaveBeenCalledWith('chat_mark_posts_seen', { post_ids: ['tall'] });
+    expect(rpc).toHaveBeenCalledWith('chat_mark_posts_seen', {
+      post_ids: ['tall'],
+      device: 'desktop',
+    });
   });
 
   it('sends cards seen together at once, and each post only once', async () => {
@@ -112,12 +118,26 @@ describe('useSeenOnHome', () => {
     show(getByTestId('p2'), 1);
     await flush();
     expect(rpc).toHaveBeenCalledTimes(1);
-    expect(rpc).toHaveBeenCalledWith('chat_mark_posts_seen', { post_ids: ['p1', 'p2'] });
+    expect(rpc).toHaveBeenCalledWith('chat_mark_posts_seen', {
+      post_ids: ['p1', 'p2'],
+      device: 'desktop',
+    });
     unmount();
 
     // Back on Home later: already sent, so not watched again.
     const again = render(<Card id="p1" />);
     expect(watching.has(again.getByTestId('p1'))).toBe(false);
+  });
+
+  it('still records the view when the database is older than the app', async () => {
+    rpc
+      .mockReturnValueOnce(Promise.resolve({ error: { code: 'PGRST202' } }))
+      .mockReturnValueOnce(Promise.resolve({ error: null }));
+    const { getByTestId } = render(<Card id="p1" />);
+    show(getByTestId('p1'), 1);
+    await flush();
+    expect(rpc).toHaveBeenLastCalledWith('chat_mark_posts_seen', { post_ids: ['p1'] });
+    expect(changed).toHaveBeenCalled();
   });
 
   it('tries again next time when the write failed', async () => {

@@ -5,6 +5,7 @@ import { toLinkPreview } from '@/lib/chat/link-preview';
 import type { ChatPost, ChatTopic, RoomSort } from '@/lib/chat/types';
 import { announcePostViewsChanged } from '@/lib/chat/views';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { missingFunction, viewDevice } from '@/lib/device';
 import { announceNotificationsChanged } from '@/lib/notifications';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
@@ -400,7 +401,16 @@ export function useTopicPosts(
       const through = postRows.data?.at(-1)?.id;
       if (found && through) {
         void supabase
-          .rpc('chat_mark_topic_read_through', { topic: topicId, post: through })
+          .rpc('chat_mark_topic_read_through', {
+            topic: topicId,
+            post: through,
+            device: viewDevice(),
+          })
+          .then(({ error }) =>
+            missingFunction(error)
+              ? supabase.rpc('chat_mark_topic_read_through', { topic: topicId, post: through })
+              : { error },
+          )
           .then(({ error }) => {
             if (!error) announcePostViewsChanged();
             announceNotificationsChanged();

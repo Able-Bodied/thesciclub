@@ -53,14 +53,20 @@ export default function PrivacyPage() {
           <li>
             <b>What you do in the club:</b> your messages, posts and photographs, the events you
             reply to, the organizations you follow, the posts you like, the posts you have read, in
-            a room or on Home, and anything you report. A post shows how many people have read it,
-            never who.
+            a room or on Home, and anything you report. A post shows members how many people have
+            read it, never who. Administrators can see who has read each post and when, including
+            reads from before October 20, 2026.
           </li>
           <li>
             <b>Your answers while you join:</b> what you have answered so far and the step you are
             on, so you can pick up where you left off, on this device or another. They are deleted
             once you finish joining, or after 90 days if you do not. We also note which steps you
             reached; administrators see only how many people reached each step, never who.
+          </li>
+          <li>
+            <b>Whether you read a post on a phone or tablet, or on a computer</b>, from October 20,
+            2026, worked out from what your browser says about itself. Only administrators see it,
+            beside who read each post.
           </li>
           <li>
             <b>Your notification settings</b>, if you turn notifications on for a device.
@@ -84,7 +90,8 @@ export default function PrivacyPage() {
           If you look up your city by ZIP code or by your device’s location, that is used once to
           find a city and state and is not kept. There is no advertising in the app, and nothing
           about how you use it goes to anyone outside the club: administrators see counts, such as
-          how many members opened the app this week, never who, except how each member signs in.
+          how many members opened the app this week, never who, except how each member signs in and
+          who has read each post.
         </P>
         <P>
           The sign-in screen and Me show Google’s sign-in button, which is loaded from Google, so

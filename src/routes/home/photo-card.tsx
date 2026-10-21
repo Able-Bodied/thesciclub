@@ -172,7 +172,7 @@ export function PhotoCard({
             unavailable={likes.unavailable}
           />
         ) : null}
-        {opening ? <ViewCount count={viewCount} /> : null}
+        {opening ? <ViewCount count={viewCount} postId={opening.id} /> : null}
         {topic.replyCount > 0 ? (
           <Link
             to={to}
