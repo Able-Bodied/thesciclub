@@ -13,6 +13,7 @@
 
 import { addDays, dayIn, fetchText, patternOption } from './http.js';
 import { expandIcs, parseIcs } from './ics.js';
+import { convertRichText } from './rich-text.js';
 import { ianaZone } from './tribe-events.js';
 
 const ONLINE = /zoom|virtual|online|webinar|teams|^https?:\/\//i;
@@ -20,14 +21,27 @@ const ONLINE = /zoom|virtual|online|webinar|teams|^https?:\/\//i;
 const escapeHtml = (text) =>
   text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** Plain .ics text as paragraphs, its addresses left as words for the card. */
-function asHtml(text) {
-  return text
+/** A web address and nothing after it: not a closing bracket or full stop. */
+const ADDRESS = /https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]]/g;
+
+/**
+ * Plain .ics text as paragraphs, its web addresses as links, through the same
+ * cleaning as every other description (rich-text.js), so a Zoom link can be
+ * pressed.
+ */
+export function asHtml(text, baseUrl) {
+  const html = text
     .split(/\n{2,}/)
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => `<p>${escapeHtml(p).replace(/\n/g, '<br>')}</p>`)
+    .map(
+      (p) =>
+        `<p>${escapeHtml(p)
+          .replace(ADDRESS, (url) => `<a href="${url}">${url}</a>`)
+          .replace(/\n/g, '<br>')}</p>`,
+    )
     .join('');
+  return convertRichText(html, baseUrl).html;
 }
 
 export function icsEvents(text, { fromDay, untilDay, options = {}, onUnsupported } = {}) {
@@ -45,7 +59,7 @@ export function icsEvents(text, { fromDay, untilDay, options = {}, onUnsupported
       external_id: `ics:${event.uid ?? title}:${day}`,
       title,
       description,
-      description_html: asHtml(description),
+      description_html: asHtml(description, event.url ?? 'https://www.thesciclub.com/'),
       location: inPerson ? location : '',
       start_time: start.toISOString(),
       end_time: end ? end.toISOString() : null,

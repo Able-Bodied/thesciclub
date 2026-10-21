@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { expandIcs, parseIcs } from './ics.js';
-import { icsEvents } from './ics-events.js';
+import { asHtml, icsEvents } from './ics-events.js';
 
 const calendar = (...events) =>
   ['BEGIN:VCALENDAR', 'X-WR-TIMEZONE:America/New_York', ...events, 'END:VCALENDAR'].join('\r\n');
@@ -161,5 +161,17 @@ describe('icsEvents', () => {
         options: { exclude: '^rolling through parenthood$' },
       }),
     ).toEqual([]);
+  });
+});
+
+describe('a calendar description', () => {
+  it('makes its web addresses links, leaving a closing full stop out', () => {
+    const html = asHtml(
+      'Zoom link:https://us02web.zoom.us/j/823?pwd=ab&x=1\nSee https://unitedspinal.org/events.',
+      'https://unitedspinal.org/',
+    );
+    expect(html).toContain('<a href="https://us02web.zoom.us/j/823?pwd=ab&amp;x=1"');
+    expect(html).toContain('<a href="https://unitedspinal.org/events"');
+    expect(html).toContain('</a>.</p>');
   });
 });
