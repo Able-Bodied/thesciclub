@@ -17,7 +17,7 @@ interface Db {
 }
 const db = vi.hoisted(
   (): Db => ({
-    facts: { enabled: true, standalone: true, permission: 'default', askedHere: false },
+    facts: { enabled: true, standalone: true, permission: 'default', askedRecently: false },
     state: 'off',
     turnedOn: 0,
   }),
@@ -53,7 +53,7 @@ function renderOpening() {
 
 beforeEach(() => {
   localStorage.clear();
-  db.facts = { enabled: true, standalone: true, permission: 'default', askedHere: false };
+  db.facts = { enabled: true, standalone: true, permission: 'default', askedRecently: false };
   db.state = 'off';
   db.turnedOn = 0;
 });
@@ -90,7 +90,7 @@ describe('the first time the installed app opens', () => {
 describe('every other opening', () => {
   it.each<[string, Partial<Notifications.OpeningFacts>]>([
     ['in a browser tab', { standalone: false }],
-    ['after Not now on this phone', { askedHere: true }],
+    ['within five days of Not now on this phone', { askedRecently: true }],
     ['when the phone already said yes', { permission: 'granted' }],
     ['when the phone said no', { permission: 'denied' }],
     ['while the club cannot send', { enabled: false }],

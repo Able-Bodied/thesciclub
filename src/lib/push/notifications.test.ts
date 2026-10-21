@@ -6,7 +6,7 @@ import {
   forgetThisDevice,
   markNotificationsAsked,
   notificationState,
-  notificationsAskedHere,
+  notificationsAskedRecently,
   type OpeningFacts,
   readDeviceState,
   restoreDeviceNotifications,
@@ -124,7 +124,7 @@ const opening = (over: Partial<OpeningFacts>): OpeningFacts => ({
   enabled: true,
   standalone: true,
   permission: 'default',
-  askedHere: false,
+  askedRecently: false,
   ...over,
 });
 
@@ -142,7 +142,7 @@ describe('askOnOpening', () => {
       { permission: null },
       false,
     ],
-    ['a phone that answered Not now', { askedHere: true }, false],
+    ['a phone that answered Not now in the last five days', { askedRecently: true }, false],
   ])('%s: %s', (_, over, expected) => {
     expect(askOnOpening(opening(over))).toBe(expected);
   });
@@ -157,16 +157,26 @@ describe('remembering that this phone was asked', () => {
   });
 
   it('has not been asked, until it is', () => {
-    expect(notificationsAskedHere()).toBe(false);
+    expect(notificationsAskedRecently()).toBe(false);
     markNotificationsAsked();
-    expect(notificationsAskedHere()).toBe(true);
+    expect(notificationsAskedRecently()).toBe(true);
+  });
+
+  // The owner, 2026-10-21: Not now holds five days, then the next opening asks.
+  it('asks again five days after Not now', () => {
+    const day = 86_400_000;
+    localStorage.setItem('thesciclub.notificationsAsked', '2026-10-01T09:00:00.000Z');
+    const asked = Date.parse('2026-10-01T09:00:00.000Z');
+    expect(notificationsAskedRecently(asked + 4 * day)).toBe(true);
+    expect(notificationsAskedRecently(asked + 5 * day - 1)).toBe(true);
+    expect(notificationsAskedRecently(asked + 5 * day)).toBe(false);
   });
 
   it('counts as asked when it cannot remember, rather than asking every time', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked');
     });
-    expect(notificationsAskedHere()).toBe(true);
+    expect(notificationsAskedRecently()).toBe(true);
   });
 
   it('does not throw when it cannot write', () => {

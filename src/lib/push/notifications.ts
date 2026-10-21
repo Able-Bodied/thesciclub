@@ -97,28 +97,34 @@ function canPush(): boolean {
  * prompt without a tap, so the club asks when it can: the first time it is
  * running as the installed app and this phone has never been asked.
  *
- * "Never been asked" is two things. The system's own permission is still
+ * "Not asked" is two things. The system's own permission is still
  * `default`: a yes or a no is the system's to remember, and asking after a no
- * does nothing. And this phone has not already been shown the question and
- * answered "Not now", which only the club can remember, here, per device.
- * When it cannot remember (storage blocked), it does not ask: asking on every
- * launch would be worse than not asking.
+ * does nothing. And this phone has not answered "Not now" in the last five
+ * days, which only the club can remember, here, per device: after five days
+ * the next opening asks again (the owner, 2026-10-21). When it cannot
+ * remember (storage blocked), it does not ask: asking on every launch would
+ * be worse than not asking.
  */
 const ASKED_KEY = 'thesciclub.notificationsAsked';
+export const ASK_AGAIN_AFTER_DAYS = 5;
 
-export function notificationsAskedHere(): boolean {
+export function notificationsAskedRecently(now: number = Date.now()): boolean {
+  let stored: string | null;
   try {
-    return localStorage.getItem(ASKED_KEY) !== null;
+    stored = localStorage.getItem(ASKED_KEY);
   } catch {
     return true;
   }
+  if (stored === null) return false;
+  const at = Date.parse(stored);
+  return Number.isFinite(at) && now - at < ASK_AGAIN_AFTER_DAYS * 86_400_000;
 }
 
 export function markNotificationsAsked(): void {
   try {
     localStorage.setItem(ASKED_KEY, new Date().toISOString());
   } catch {
-    // Nothing to do: notificationsAskedHere says yes when it cannot read.
+    // Nothing to do: notificationsAskedRecently says yes when it cannot read.
   }
 }
 
@@ -128,12 +134,15 @@ export interface OpeningFacts {
   standalone: boolean;
   /** The system's permission, or null where there are no notifications at all. */
   permission: NotificationPermission | null;
-  askedHere: boolean;
+  /** This phone answered "Not now" in the last five days. */
+  askedRecently: boolean;
 }
 
 /** Pure: whether opening the club should ask first. Tested as a table. */
 export function askOnOpening(facts: OpeningFacts): boolean {
-  return facts.enabled && facts.standalone && facts.permission === 'default' && !facts.askedHere;
+  return (
+    facts.enabled && facts.standalone && facts.permission === 'default' && !facts.askedRecently
+  );
 }
 
 export function openingFacts(): OpeningFacts {
@@ -141,7 +150,7 @@ export function openingFacts(): OpeningFacts {
     enabled: vapidPublicKey() !== null,
     standalone: isStandalone(),
     permission: canPush() ? Notification.permission : null,
-    askedHere: notificationsAskedHere(),
+    askedRecently: notificationsAskedRecently(),
   };
 }
 
