@@ -20,7 +20,7 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
   empty `git log --oneline origin/main..HEAD` means nothing is unreleased. The
   agent's sandbox refuses `git push`: the owner runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261019010000` is live (2026-10-20). Edge functions: `push-notify`,
+  `20261020030000` is live (2026-10-20). Edge functions: `push-notify`,
   `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`
   (`verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
@@ -70,17 +70,11 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
 
 ## Open
 
-- **Not live yet**: `20261020000000` (explicit grants, a no-op on the live
-  database, checked against it; push before 2026-10-30) and `20261020010000`
-  (an administrator's Remove deletes the sign-in account too, so the address
-  can be invited and join again; probe `removed-member-can-rejoin.sql`).
-  Accounts removed before it are still there with no member: whoever is
-  invited again can sign in with their old password, or Forgot password, and
-  finish joining; or delete the account in Supabase → Users first.
-- **Save, not live yet** (2026-10-20): `20261020030000` (`chat_saves`,
-  private; probe `chat-saves.sql`) goes live before the client. A topic's
-  header saves the topic (`post_id` null), a post's actions save that post,
-  Me → Saved (`/me/saved`) lists them.
+- **Removed before `20261020010000`** (Remove now deletes the sign-in
+  account too; probe `removed-member-can-rejoin.sql`): those accounts are
+  still there with no member. Whoever is invited again can sign in with their
+  old password, or Forgot password, and finish joining; or delete the account
+  in Supabase → Users first.
 
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
   Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until the
@@ -163,7 +157,9 @@ All live. Migration headers and the files named say how and why.
   null so Realtime sends an UPDATE); holding a reaction shows who. Likes and
   views on every post, self-likes allowed; a view is one per member, from
   opening, seeing on Home (`lib/chat/home-views.ts`), liking or reacting;
-  views count only from 2026-10-10.
+  views count only from 2026-10-10. Save (`chat_saves`, private; probe
+  `chat-saves.sql`): a topic's header saves the topic (`post_id` null), a
+  post's actions save that post; Me → Saved (`/me/saved`) lists them.
   Posts take `DescriptionEditor`'s small Markdown, drawn through
   `EventDescription` and `sanitizeHtml`; previews and push use
   `markdownToPlain` (restated in `push-notify`); messages are not formatted.
