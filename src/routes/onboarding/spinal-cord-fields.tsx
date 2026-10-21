@@ -10,6 +10,8 @@ import {
   type ExactLevel,
   INJURY_TYPE_TEXT,
   type InjuryType,
+  isCentralCord,
+  levelsForCondition,
   levelsForType,
   OFFERED_INJURY_TYPES,
   rangeForExact,
@@ -22,7 +24,9 @@ import {
  *
  *   Quadriplegic, High para, Low para   the level, from a list cut to fit,
  *                                       and complete or incomplete
- *   Other spinal cord condition         which, typed, with suggestions
+ *   Other spinal cord condition         which, typed, with suggestions, and
+ *                                       a level if it has one: "Not
+ *                                       applicable" unless they choose
  *   Relative/Spouse                     nothing more: a member with no level
  *
  * Everything appears below the choice, never on another screen. Changing the
@@ -49,7 +53,9 @@ export function withInjuryType(
   next: InjuryType,
 ): Partial<SpinalCordAnswer> {
   const patch: Partial<SpinalCordAnswer> = { injuryType: next };
-  if (answer.exactLevel && (!asksLevel(next) || !levelsForType(next).includes(answer.exactLevel))) {
+  const fits =
+    next === 'condition' ? levelsForCondition(answer.conditionName) : levelsForType(next);
+  if (answer.exactLevel && (!asksLevel(next) || !fits.includes(answer.exactLevel))) {
     patch.exactLevel = null;
   }
   if (next !== 'condition') patch.conditionName = '';
@@ -70,7 +76,8 @@ export function SpinalCordFields({
 }) {
   const id = useId();
   const type = answer.injuryType;
-  const levels = levelsForType(type);
+  const condition = type === 'condition';
+  const levels = condition ? levelsForCondition(answer.conditionName) : levelsForType(type);
   const level = answer.exactLevel;
   // A member who answered before 2026-10-15 may hold an answer no longer
   // offered (Paraplegia, Central cord syndrome): it stays on the list for them.
@@ -122,7 +129,14 @@ export function SpinalCordFields({
             autoComplete="off"
             placeholder="Start typing, or choose one"
             onChange={(e) => {
-              onChange({ conditionName: e.target.value });
+              const name = e.target.value;
+              const patch: Partial<SpinalCordAnswer> = {
+                conditionName: name,
+                completeness: isCentralCord(name) ? 'Incomplete' : 'Do not know',
+              };
+              // A T6 is not a central cord's level.
+              if (level && !levelsForCondition(name).includes(level)) patch.exactLevel = null;
+              onChange(patch);
             }}
             className={FIELD}
           />
@@ -140,7 +154,7 @@ export function SpinalCordFields({
       {asksLevel(type) ? (
         <div className="mt-5">
           <label htmlFor={`${id}-level`} className={HEADING}>
-            Level of injury
+            {condition ? 'Level, if it has one' : 'Level of injury'}
           </label>
           <select
             id={`${id}-level`}
@@ -150,7 +164,7 @@ export function SpinalCordFields({
             }}
             className={FIELD}
           >
-            <option value="">Select a level</option>
+            <option value="">{condition ? 'Not applicable' : 'Select a level'}</option>
             {levels.map((l) => (
               <option key={l} value={l}>
                 {l}

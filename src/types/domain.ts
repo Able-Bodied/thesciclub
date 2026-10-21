@@ -108,7 +108,8 @@ export function rangeForExact(level: ExactLevel): LevelRange {
  * 2026-10-15; first asked 2026-10-14):
  *
  *   quad, high_para, low_para   an injury with a level, cut to fit
- *   condition                   "Other spinal cord condition": typed, with suggestions
+ *   condition                   "Other spinal cord condition": typed, with
+ *                               suggestions, and a level if it has one
  *   family                      a relative or spouse: a member with no level
  *
  * 'para' and 'central_cord' are what the question offered before. Members who
@@ -212,9 +213,25 @@ export function levelsForType(type: InjuryType | null): ExactLevel[] {
   return [...chosen, 'Do not know'];
 }
 
-/** Whether the level is asked: an injury, not another disability or a relative. */
+/** Whether the level is asked: of anybody but a relative. A condition's is optional. */
 export function asksLevel(type: InjuryType | null): boolean {
-  return type !== null && type !== 'condition' && type !== 'family';
+  return type !== null && type !== 'family';
+}
+
+/** Central cord syndrome, typed or chosen, is in the neck and always incomplete. */
+export function isCentralCord(conditionName: string): boolean {
+  return /central\s*cord/i.test(conditionName);
+}
+
+/**
+ * A condition's levels (the owner, 2026-10-20): the neck for central cord
+ * syndrome, every level otherwise. No "Do not know": the form's own first
+ * choice, "Not applicable", covers it and is where it starts.
+ */
+export function levelsForCondition(conditionName: string): ExactLevel[] {
+  return levelsForType(isCentralCord(conditionName) ? 'central_cord' : 'condition').filter(
+    (l) => l !== 'Do not know',
+  );
 }
 
 /**

@@ -113,7 +113,7 @@ describe('the spinal cord question', () => {
     expect(asksLevel('quad')).toBe(true);
     expect(asksLevel('high_para')).toBe(true);
     expect(asksLevel('low_para')).toBe(true);
-    expect(asksLevel('condition')).toBe(false);
+    expect(asksLevel('condition')).toBe(true);
     expect(asksLevel('family')).toBe(false);
     expect(asksLevel(null)).toBe(false);
   });

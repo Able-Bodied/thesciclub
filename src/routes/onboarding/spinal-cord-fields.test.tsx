@@ -88,7 +88,7 @@ describe('the spinal cord question', () => {
   });
 
   // The owner, 2026-10-20: their own way, typed with suggestions.
-  it('asks which condition in a box, suggesting the spinal cord conditions, with no level', async () => {
+  it('asks which condition in a box, suggesting the spinal cord conditions', async () => {
     const seen: SpinalCordAnswer[] = [];
     const { container } = render(<Harness seen={seen} />);
     await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
@@ -103,8 +103,64 @@ describe('the spinal cord question', () => {
     expect(suggested).not.toContain('Cerebral palsy');
     await userEvent.type(box, 'Transverse myelitis');
     expect(seen.at(-1)?.conditionName).toBe('Transverse myelitis');
-    expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
+  });
+
+  // The owner, 2026-10-20: a level if it has one, "Not applicable" unless chosen.
+  it('offers a condition every level, starting on Not applicable', async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(<Harness seen={seen} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Transverse myelitis');
+    const levels = optionsOf('Level, if it has one');
+    expect(levels[0]).toBe('Not applicable');
+    expect(levels).toContain('C4');
+    expect(levels).toContain('T6');
+    expect(levels).not.toContain('Do not know');
+    expect(screen.getByLabelText('Level, if it has one')).toHaveValue('');
+    await userEvent.selectOptions(screen.getByLabelText('Level, if it has one'), 'T6');
+    expect(seen.at(-1)).toMatchObject({ conditionName: 'Transverse myelitis', exactLevel: 'T6' });
+  });
+
+  it('offers central cord syndrome the neck only, and records it incomplete', async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(<Harness seen={seen} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    await userEvent.type(screen.getByLabelText('Which condition?'), 'Central cord syndrome');
+    const levels = optionsOf('Level, if it has one');
+    expect(levels[0]).toBe('Not applicable');
+    expect(levels.slice(1).every((l) => l.startsWith('C'))).toBe(true);
+    expect(seen.at(-1)?.completeness).toBe('Incomplete');
+    expect(screen.queryByText('Complete or incomplete?')).toBeNull();
+  });
+
+  it("lets go of a level central cord syndrome doesn't have", async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(
+      <Harness
+        seen={seen}
+        start={{
+          ...EMPTY,
+          injuryType: 'condition',
+          conditionName: 'Syringomyelia',
+          exactLevel: 'T6',
+        }}
+      />,
+    );
+    const box = screen.getByLabelText('Which condition?');
+    await userEvent.clear(box);
+    await userEvent.type(box, 'Central cord syndrome');
+    expect(seen.at(-1)?.exactLevel).toBeNull();
+  });
+
+  it('drops "Do not know" on the way to a condition, so it starts on Not applicable', async () => {
+    const seen: SpinalCordAnswer[] = [];
+    render(
+      <Harness seen={seen} start={{ ...EMPTY, injuryType: 'quad', exactLevel: 'Do not know' }} />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    expect(screen.getByLabelText('Level, if it has one')).toHaveValue('');
+    expect(seen.at(-1)?.exactLevel).toBeNull();
   });
 
   it('keeps a condition that is not suggested as it was typed', async () => {
