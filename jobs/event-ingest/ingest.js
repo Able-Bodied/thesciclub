@@ -35,6 +35,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
+import { ActiveNetEventsScraper } from './scrapers/activenet-events.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
 import { geocodeEvents } from './scrapers/geocode.js';
 import { IcsEventsScraper } from './scrapers/ics-events.js';
@@ -44,6 +45,7 @@ import { ReeveSupportGroupsScraper } from './scrapers/reeve-support-groups.js';
 import { SquarespaceEventsScraper } from './scrapers/squarespace-events.js';
 import { TribeEventsScraper } from './scrapers/tribe-events.js';
 import { TriumphEventsScraper } from './scrapers/triumph-events.js';
+import { UnrecablesTripsScraper } from './scrapers/unrecables-trips.js';
 import { stateOfPlace } from './scrapers/us-zones.js';
 import { UsaHockeySledScraper } from './scrapers/usahockey-sled.js';
 import { UspsaEventsScraper } from './scrapers/uspsa-events.js';
@@ -62,6 +64,8 @@ const SCRAPERS = {
   'reeve-support-groups': (feed) => new ReeveSupportGroupsScraper(feed),
   'triumph-events': (feed) => new TriumphEventsScraper(feed),
   'squarespace-events': (feed) => new SquarespaceEventsScraper(feed),
+  'activenet-events': (feed) => new ActiveNetEventsScraper(feed),
+  'unrecables-trips': (feed) => new UnrecablesTripsScraper(feed),
 };
 
 /** Columns read back for the diff. Never `*`: the browser roles cannot select the coordinates,

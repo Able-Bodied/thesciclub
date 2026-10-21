@@ -94,6 +94,15 @@ export function stateCode(text) {
  * "Las Vegas, Nev.", "Birmingham, Alabama". Null when the place does not end
  * in a state.
  */
+/** A part ending in a state's full name: "Rincon Beach California" → "CA". */
+function stateByEndingName(part) {
+  const lower = part.toLowerCase();
+  for (const [code, names] of Object.entries(NAMES)) {
+    if (names[0].length > 4 && lower.endsWith(` ${names[0]}`)) return code;
+  }
+  return null;
+}
+
 export function stateOfPlace(place) {
   const parts = (place ?? '')
     .split(',')
@@ -105,10 +114,21 @@ export function stateOfPlace(place) {
     )
     .filter(Boolean);
   // The last part, or the one before a trailing ZIP or country; a two-letter
-  // code may end a part ("Lawrenceville GA").
+  // code may end a part ("Lawrenceville GA"), or a state's name
+  // ("Rincon Beach California").
   for (const part of parts.slice(-2).reverse()) {
-    const code = stateCode(part) ?? (/\s[A-Z]{2}$/.test(part) ? stateCode(part.slice(-2)) : null);
+    const code =
+      stateCode(part) ??
+      (/\s[A-Z]{2}$/.test(part) ? stateCode(part.slice(-2)) : null) ??
+      stateByEndingName(part);
     if (code) return code;
+  }
+  // A part that is only a state, anywhere ("Birmingham, AL, 4000 Ridgeway Dr").
+  for (const part of parts) {
+    if (/^[A-Z]{2}$/.test(part) || /^[A-Z][a-z]+( [A-Z][a-z]+)?$/.test(part)) {
+      const code = stateCode(part);
+      if (code) return code;
+    }
   }
   return null;
 }

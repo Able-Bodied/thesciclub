@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { toEvent as activeNetEvent, parseHours as activeNetHours } from './activenet-events.js';
 import { allDayInstants, parseDayRange } from './day-ranges.js';
 import { parseGroups } from './reeve-support-groups.js';
 import { ianaZone, toEvent as tribeEvent } from './tribe-events.js';
 import { parseWhen, parseEvents as triumphEvents } from './triumph-events.js';
+import { parseTrips } from './unrecables-trips.js';
 import { stateOfPlace, zoneOfPlace } from './us-zones.js';
 import { parseTable } from './usahockey-sled.js';
 import { parseCards, parseDetail, toEvent as uspsaEvent } from './uspsa-events.js';
@@ -40,6 +42,9 @@ describe('day ranges and states', () => {
     ).toBe('CA');
     expect(stateOfPlace('City National Arena, Las Vegas, Nev.')).toBe('NV');
     expect(stateOfPlace('Bascom Community Center, 1000 S Bascom Ave, San Jose')).toBeNull();
+    expect(stateOfPlace('Rincon Beach California')).toBe('CA');
+    expect(stateOfPlace('Birmingham, AL, 4000 Ridgeway Drive, Birmingham')).toBe('AL');
+    expect(stateOfPlace('Andy Morin Sports Complex, 66 Clarksville Rd, Folsom')).toBeNull();
     expect(stateOfPlace('Zoom')).toBeNull();
   });
 
@@ -292,5 +297,64 @@ describe('Triumph Foundation', () => {
 
   it('throws when the list is gone', () => {
     expect(() => triumphEvents('<main>Events</main>')).toThrow(/changed/);
+  });
+});
+
+describe('Sacramento Access Leisure (ActiveNet)', () => {
+  const item = (over) => ({
+    id: 1,
+    name: 'ACL- Get Fit - October 22nd, 2026',
+    date_range_start: '2026-10-22',
+    age_max_year: 0,
+    desc: '<div>Activity Date: Thursday, October 22nd, 6:00-7:30pm</div><div>Location: Hart Senior Center</div><div>Address: 915 27th Street Sacramento CA 95816</div>',
+    detail_url: 'https://apm.activecommunities.com/x/1',
+    enroll_now: { href: 'https://anc.apm.activecommunities.com/enroll/1' },
+    ...over,
+  });
+  const options = { category: 25, title_prefix: '^ACL\\s*-\\s*' };
+
+  it('reads the day, the hours and the place from the description', () => {
+    expect(activeNetEvent(item({}), options)).toMatchObject({
+      title: 'Get Fit',
+      start_time: '2026-10-23T01:00:00.000Z',
+      end_time: '2026-10-23T02:30:00.000Z',
+      location: 'Hart Senior Center, 915 27th Street Sacramento CA 95816',
+      registration_url: 'https://anc.apm.activecommunities.com/enroll/1',
+    });
+  });
+
+  it('gives a start without am or pm the end’s', () => {
+    expect(activeNetHours('6:00-8:30pm')).toEqual({ start: 1080, end: 1230 });
+    expect(activeNetHours('11:30-1:00pm')).toEqual({ start: 690, end: 780 });
+  });
+
+  it('leaves out a program with an upper age limit', () => {
+    expect(activeNetEvent(item({ age_max_year: 22 }), options)).toBeNull();
+  });
+
+  it('makes an item without hours all day', () => {
+    expect(activeNetEvent(item({ desc: '<p>Location: Pool</p>' }), options)).toMatchObject({
+      all_day: true,
+    });
+  });
+});
+
+describe('The Unrecables', () => {
+  it('reads each trip as an all-day weekend at Mammoth, with its deadline', () => {
+    const [trip] = parseTrips(
+      '<table id="tablepress-1"><tbody><tr><td>11/20/2026 - 11/22/2026</td><td>10/20/2026</td></tr></tbody></table>',
+      'https://unrecables.org/trips/',
+    );
+    expect(trip).toMatchObject({
+      start_time: '2026-11-20T08:00:00.000Z',
+      end_time: '2026-11-23T07:59:00.000Z',
+      location: 'Mammoth Mountain, Mammoth Lakes, CA',
+      all_day: true,
+    });
+    expect(trip?.description).toMatch(/Register by October 20\./);
+  });
+
+  it('throws when the table is gone', () => {
+    expect(() => parseTrips('<main></main>', 'x')).toThrow(/gone/);
   });
 });
