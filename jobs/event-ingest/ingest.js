@@ -39,6 +39,7 @@ import { ActiveNetEventsScraper } from './scrapers/activenet-events.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
 import { geocodeEvents } from './scrapers/geocode.js';
 import { IcsEventsScraper } from './scrapers/ics-events.js';
+import { MyCalendarEventsScraper } from './scrapers/mycalendar-events.js';
 import { NatureTrackTraxScraper } from './scrapers/naturetrack-trax.js';
 import { NorCalSCIEventsJsonScraper } from './scrapers/norcalsci-events-json.js';
 import { ReeveSupportGroupsScraper } from './scrapers/reeve-support-groups.js';
@@ -66,6 +67,7 @@ const SCRAPERS = {
   'squarespace-events': (feed) => new SquarespaceEventsScraper(feed),
   'activenet-events': (feed) => new ActiveNetEventsScraper(feed),
   'unrecables-trips': (feed) => new UnrecablesTripsScraper(feed),
+  'mycalendar-events': (feed) => new MyCalendarEventsScraper(feed),
 };
 
 /** Columns read back for the diff. Never `*`: the browser roles cannot select the coordinates,

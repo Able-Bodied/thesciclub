@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { toEvent as activeNetEvent, parseHours as activeNetHours } from './activenet-events.js';
 import { allDayInstants, parseDayRange } from './day-ranges.js';
+import { toEvent as myCalendarEvent } from './mycalendar-events.js';
 import { parseGroups } from './reeve-support-groups.js';
 import { ianaZone, toEvent as tribeEvent } from './tribe-events.js';
 import { parseWhen, parseEvents as triumphEvents } from './triumph-events.js';
@@ -356,5 +357,50 @@ describe('The Unrecables', () => {
 
   it('throws when the table is gone', () => {
     expect(() => parseTrips('<main></main>', 'x')).toThrow(/gone/);
+  });
+});
+
+describe('My Calendar', () => {
+  const item = (over) => ({
+    occur_id: '5067',
+    event_title: 'Peer Support “Coffee Klatch”',
+    event_desc: '<p>Weekly.</p>',
+    category_name: 'Workshop',
+    ts_occur_begin: '1792686600',
+    ts_occur_end: '1792690200',
+    event_tickets: 'https://us02web.zoom.us/meeting/register/x',
+    location:
+      "{'location_label': 'Community Room', 'location_street': '899 2nd St', 'location_city': 'San Francisco', 'location_state': 'CA'}",
+    ...over,
+  });
+
+  it('keeps only the category a feed asks for', () => {
+    expect(
+      myCalendarEvent(item({ category_name: 'General', event_title: 'Board Meeting' }), {
+        category: 'Sailing',
+      }),
+    ).toBeNull();
+    expect(
+      myCalendarEvent(item({ category_name: 'Sailing', event_title: 'Small Boat Sailing' }), {
+        category: 'Sailing',
+      }),
+    ).not.toBeNull();
+  });
+
+  it('times an occurrence from its own timestamps, with its Zoom sign-up', () => {
+    expect(myCalendarEvent(item({}), {})).toMatchObject({
+      start_time: '2026-10-22T16:30:00.000Z',
+      end_time: '2026-10-22T17:30:00.000Z',
+      registration_url: 'https://us02web.zoom.us/meeting/register/x',
+    });
+  });
+
+  it('reads an online session in the club’s time, with no place', () => {
+    expect(
+      myCalendarEvent(item({ event_title: 'Housing Search (ONLINE ONLY)' }), {}),
+    ).toMatchObject({
+      location: '',
+      timezone: null,
+    });
   });
 });
