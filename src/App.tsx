@@ -47,6 +47,7 @@ const OrganizationDetailPage = lazy(() => import('@/routes/events/organization-d
 const HomeNewPage = lazy(() => import('@/routes/home/new'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
+const SavedPage = lazy(() => import('@/routes/me/saved-page'));
 const NotificationsPage = lazy(() => import('@/routes/notifications/page'));
 const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
 const ProfileAnswersPage = lazy(() => import('@/routes/profile/answers'));
@@ -192,6 +193,7 @@ function AppShell() {
             <Route path="/me" element={<MePage />} />
             {/* Administrators only; the page sends anybody else to Me. */}
             <Route path="/me/qr" element={<QrCodePage />} />
+            <Route path="/me/saved" element={<SavedPage />} />
             {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
             of the top bar (desktop) lead here. */}
             <Route path="/notifications" element={<NotificationsPage />} />

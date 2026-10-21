@@ -282,6 +282,11 @@ export default function MePage() {
                     }
                     percent={detailsDone}
                   />
+                  <ProfileLink
+                    to="/me/saved"
+                    title="Saved"
+                    description="Topics and posts you saved. Only you can see them."
+                  />
                   {userId ? (
                     <ProfileLink
                       to={`/peers/${userId}`}

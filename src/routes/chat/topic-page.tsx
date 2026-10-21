@@ -18,6 +18,7 @@ import { useReactions } from '@/lib/chat/reactions';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportPost, useMyReports } from '@/lib/chat/reports';
 import { useChatRooms } from '@/lib/chat/rooms';
+import { saveKey, useTopicSaves } from '@/lib/chat/saves';
 import { chatTimeLong } from '@/lib/chat/time';
 import {
   deleteTopic,
@@ -42,6 +43,7 @@ import { MuteButton } from '@/routes/chat/mute-button';
 import { Post } from '@/routes/chat/post';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
+import { SaveTopicButton } from '@/routes/chat/save-button';
 
 /**
  * One topic: the question, every reply, and the box to add to it.
@@ -153,6 +155,7 @@ export default function TopicPage() {
   const reactions = useReactions('post', standingIds, account.userId);
   const likes = usePostLikes(standingIds);
   const views = usePostViews(standingIds);
+  const saves = useTopicSaves(topicId);
 
   useRealtimeRows({
     table: 'chat_posts',
@@ -372,6 +375,18 @@ export default function TopicPage() {
         readerId={account.userId}
       />
     ),
+    // The first post is the topic, which the header's Save covers.
+    save:
+      post.id === threads[0]?.post.id || saves.error
+        ? undefined
+        : {
+            saved: saves.saved.has(saveKey(topic.id, post.id)),
+            onToggle: () => {
+              saves.toggle(topic.id, post.id);
+            },
+            failure:
+              saves.failure?.key === saveKey(topic.id, post.id) ? saves.failure.message : null,
+          },
     likes: {
       likedBy: likes.byPost.get(post.id) ?? [],
       readerId: account.userId,
@@ -470,10 +485,23 @@ export default function TopicPage() {
               This room is closed. No member can see this topic yet.
             </p>
           ) : null}
-          {/* One row, evenly spaced and the same height: Mute, Move, Delete.
+          {/* One row, evenly spaced and the same height: Save, Mute, Move, Delete.
               Each used to carry its own margin, so they sat at different
               heights and two of them touched. */}
           <div className="flex flex-wrap items-start gap-2 empty:hidden [&:not(:empty)]:mt-2.5">
+            {/* Private to the reader (20261020030000). */}
+            {account.userId && !saves.error ? (
+              <SaveTopicButton
+                saved={saves.saved.has(saveKey(topic.id, null))}
+                disabled={saves.loading}
+                onToggle={() => {
+                  saves.toggle(topic.id, null);
+                }}
+                failure={
+                  saves.failure?.key === saveKey(topic.id, null) ? saves.failure.message : null
+                }
+              />
+            ) : null}
             {/* Only the member who started a topic is notified of its
                 replies, so only they are offered a way to stop that. */}
             {topic.authorId !== null && topic.authorId === account.userId ? (

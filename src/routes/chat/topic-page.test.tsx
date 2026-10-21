@@ -8,6 +8,7 @@ import type * as Likes from '@/lib/chat/likes';
 import type * as Reactions from '@/lib/chat/reactions';
 import type * as Reports from '@/lib/chat/reports';
 import type * as ChatRooms from '@/lib/chat/rooms';
+import type * as Saves from '@/lib/chat/saves';
 import type * as Topics from '@/lib/chat/topics';
 import type { ChatAuthor, ChatEdit, ChatPost, ChatRoom, ChatTopic } from '@/lib/chat/types';
 import TopicPage from '@/routes/chat/topic-page';
@@ -37,6 +38,23 @@ const db = vi.hoisted(() => ({
   liked: [] as string[],
   likeFailure: null as { postId: string; message: string } | null,
   movedTo: null as string | null,
+  saved: new Set<string>(),
+  saveToggles: [] as [string, string | null][],
+  saveFailure: null as { key: string; message: string } | null,
+}));
+
+// Saves are private reads and writes; the hook is tested in saves.test.ts.
+vi.mock('@/lib/chat/saves', async (importOriginal) => ({
+  ...(await importOriginal<typeof Saves>()),
+  useTopicSaves: () => ({
+    saved: db.saved,
+    loading: false,
+    error: null,
+    failure: db.saveFailure,
+    toggle: (topicId: string, postId: string | null) => {
+      db.saveToggles.push([topicId, postId]);
+    },
+  }),
 }));
 
 // Likes are a read and a write of the club; the hook has its own test. The
@@ -277,6 +295,9 @@ beforeEach(() => {
   db.liked = [];
   db.likeFailure = null;
   db.movedTo = null;
+  db.saved = new Set();
+  db.saveToggles = [];
+  db.saveFailure = null;
 });
 
 // A reply or a like notification links to ?post=<id> (20261006000000).
@@ -378,6 +399,44 @@ describe('likes', () => {
     expect(alert).toHaveTextContent('Your like was not saved. You cannot like this.');
     expect(alert.closest('article')).toBe(
       screen.getByRole('button', { name: "Like Jan's post" }).closest('article'),
+    );
+  });
+});
+
+describe('saving', () => {
+  it('saves the topic from its header', async () => {
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: 'Save this topic' }));
+    expect(db.saveToggles).toEqual([['t', null]]);
+  });
+
+  it('shows a saved topic as Saved', () => {
+    db.saved = new Set(['t']);
+    renderTopic();
+    expect(
+      screen.getByRole('button', { name: 'Saved topic. Press to remove it from Saved.' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('saves a reply, but offers no second Save on the opening post', async () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan', replyTo: '1' })];
+    db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
+    renderTopic();
+    expect(screen.queryByRole('button', { name: "Save Nicole's post" })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: "Save Jan's post" }));
+    expect(db.saveToggles).toEqual([['t', '2']]);
+  });
+
+  it('says under the post when a save did not land', () => {
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'jan' })];
+    db.authors.set('jan', author({ id: 'jan', displayName: 'Jan' }));
+    db.saved = new Set(['t:2']);
+    db.saveFailure = { key: 't:2', message: 'This is still saved.' };
+    renderTopic();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('This is still saved.');
+    expect(alert.closest('article')).toBe(
+      screen.getByRole('button', { name: "Remove Jan's post from Saved" }).closest('article'),
     );
   });
 });

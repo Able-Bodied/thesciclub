@@ -65,7 +65,7 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
   - **Home Screen app**: a signed-in iPhone browser tab leaves a single-use
     code in a cookie that iOS copies into the app, which trades it for its own
     session (`lib/home-screen-handoff.ts`); confirmed in Safari and Chrome.
-- **Checks**: 2,890 tests in 205 files on 2026-10-20; `pnpm check` (alone),
+- **Checks**: 2,928 tests in 210 files on 2026-10-20; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -77,6 +77,10 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
   Accounts removed before it are still there with no member: whoever is
   invited again can sign in with their old password, or Forgot password, and
   finish joining; or delete the account in Supabase → Users first.
+- **Save, not live yet** (2026-10-20): `20261020030000` (`chat_saves`,
+  private; probe `chat-saves.sql`) goes live before the client. A topic's
+  header saves the topic (`post_id` null), a post's actions save that post,
+  Me → Saved (`/me/saved`) lists them.
 
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
   Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until the

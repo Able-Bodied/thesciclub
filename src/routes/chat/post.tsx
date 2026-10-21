@@ -35,8 +35,8 @@ import { EventDescription } from '@/routes/events/rich-text';
  * ---------------------------------------------------------------------------
  * The controls in one row, each named for its post
  * ---------------------------------------------------------------------------
- * Like, its count and views first, then Edit and Reply since 2026-09-29
- * (decisions 9 and 11), then Remove, or Report, or nothing. Report sits exactly where Remove sits, and
+ * Like, its count and views first, then Save (private, 2026-10-20), Edit
+ * and Reply since 2026-09-29 (decisions 9 and 11), then Remove, or Report, or nothing. Report sits exactly where Remove sits, and
  * never beside it: the reader can take back what they wrote; on somebody
  * else's post they can hand it to the administrators. An administrator gets
  * Remove on everything, which is the stronger of the two — offering them
@@ -104,6 +104,7 @@ export function Post({
   likes,
   viewCount,
   reactions,
+  save,
   replies = 0,
   flash = false,
   hideBody = false,
@@ -159,6 +160,8 @@ export function Post({
   /** Distinct members delivered this post, including zero. */
   viewCount?: number | null | undefined;
   reactions?: ReactElement<ReactionBarProps>;
+  /** The reader's private save of this post. Absent draws no Save. */
+  save?: { saved: boolean; onToggle: () => void; failure: string | null } | undefined;
   /** How many replies `children` holds, for the hide control. */
   replies?: number;
   /** Lit up once: the post a notification or a link was about. */
@@ -196,6 +199,18 @@ export function Post({
 
   const controls = (
     <>
+      {save ? (
+        <button
+          type="button"
+          onClick={save.onToggle}
+          aria-pressed={save.saved}
+          aria-label={save.saved ? `Remove ${whose} post from Saved` : `Save ${whose} post`}
+          data-target="small"
+          className={`${control} hover:text-emphasis`}
+        >
+          {save.saved ? 'Remove from Saved' : 'Save post'}
+        </button>
+      ) : null}
       {canEdit && !hideBody ? (
         <button
           type="button"
@@ -369,6 +384,11 @@ export function Post({
       {likes?.failure && !editing ? (
         <p role="alert" className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
           {likes.failure}
+        </p>
+      ) : null}
+      {save?.failure && !editing ? (
+        <p role="alert" className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
+          {save.failure}
         </p>
       ) : null}
 
