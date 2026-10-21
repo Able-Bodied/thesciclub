@@ -11,6 +11,7 @@ import type { ChatAuthor, ChatPost, ChatRoom, ChatThread } from '@/lib/chat/type
 import type * as Events from '@/lib/events';
 import type * as HomeTopics from '@/lib/home/topics';
 import type { HomeTopicSummary } from '@/lib/home/types';
+import type { NearHome } from '@/lib/near-home';
 import type * as NotificationsModule from '@/lib/notifications';
 import { makeEvent, makeMember, makePost, makeRoom, makeTag } from '@/test/factory';
 import type { BrowseMember, ClubEvent, RsvpStatus } from '@/types/domain';
@@ -42,6 +43,16 @@ const db = vi.hoisted(() => ({
   likes: new Map<string, string[]>(),
   likesAskedFor: [] as string[][],
   liked: [] as string[],
+  near: { status: 'unplaced', ids: null as ReadonlySet<string> | null },
+  nearAskedFor: [] as (number | null)[],
+}));
+
+// Which events are near home is a database answer; Events' default distance.
+vi.mock('@/lib/near-home', () => ({
+  useNearHome: (miles: number | null): NearHome => {
+    db.nearAskedFor.push(miles);
+    return db.near as NearHome;
+  },
 }));
 
 // Likes are a read and a write of the club; the hook has its own test.
@@ -220,6 +231,39 @@ beforeEach(() => {
   db.likes = new Map();
   db.likesAskedFor = [];
   db.liked = [];
+  db.near = { status: 'unplaced', ids: null };
+  db.nearAskedFor = [];
+});
+
+// 2026-10-21: Home suggested events Events leaves out for distance.
+describe('events near home', () => {
+  beforeEach(() => {
+    db.events = [
+      makeEvent({ id: 'near', title: 'Swim across town', startTime: soon(2) }),
+      makeEvent({ id: 'far', title: 'Swim three hours away', startTime: soon(3) }),
+      makeEvent({ id: 'online', title: 'Video meetup', format: 'online', startTime: soon(4) }),
+    ];
+  });
+
+  it('shows only events within 20 miles, and online ones', () => {
+    db.near = { status: 'ready', ids: new Set(['near']) };
+    renderPage('/home?segment=events');
+    expect(db.nearAskedFor).toContain(20);
+    expect(screen.getByText('Swim across town')).toBeInTheDocument();
+    expect(screen.getByText('Video meetup')).toBeInTheDocument();
+    expect(screen.queryByText('Swim three hours away')).not.toBeInTheDocument();
+  });
+
+  it('waits for the answer rather than showing far events first', () => {
+    db.near = { status: 'loading', ids: null };
+    renderPage('/home?segment=events');
+    expect(screen.queryByText('Swim three hours away')).not.toBeInTheDocument();
+  });
+
+  it('shows every event when home is not on the map', () => {
+    renderPage('/home?segment=events');
+    expect(screen.getByText('Swim three hours away')).toBeInTheDocument();
+  });
 });
 
 describe('likes on Home', () => {
@@ -443,7 +487,7 @@ describe('Home', () => {
       ],
       [
         'events',
-        'Nothing on the calendar in the next 30 days.',
+        'Nothing on the calendar near you in the next 30 days.',
         ['See the whole calendar', '/events'],
       ],
       ['people', 'Nobody new to suggest today.', ['See everyone in Peers', '/peers']],

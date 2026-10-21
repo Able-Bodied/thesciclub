@@ -18,6 +18,7 @@ import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } f
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
 import { useBrowseMembers } from '@/lib/members';
+import { useNearHome } from '@/lib/near-home';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { QuickAsk } from '@/routes/chat/quick-ask';
@@ -45,7 +46,7 @@ import {
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
-import type { RsvpStatus } from '@/types/domain';
+import { DEFAULT_WITHIN_MILES, type RsvpStatus } from '@/types/domain';
 
 /**
  * Home: what the club is doing, in one list.
@@ -148,7 +149,13 @@ export default function HomePage() {
     return from ? { from, to } : { to };
   });
   const eventsRead = useEvents(eventWindow);
-  const events = useMemo(() => pickEvents(eventsRead.events), [eventsRead.events]);
+  // Within the same distance Events starts on, so Home does not suggest what
+  // Events would leave out.
+  const near = useNearHome(DEFAULT_WITHIN_MILES);
+  const events = useMemo(
+    () => pickEvents(eventsRead.events, undefined, near.ids),
+    [eventsRead.events, near.ids],
+  );
   // The same window, read beside the events rather than after them.
   const { byEvent: attendeesByEvent, loading: attendeesLoading } = useAttendeesByEvent(
     undefined,
@@ -199,7 +206,7 @@ export default function HomePage() {
     topics: topicRead.loading || rooms.loading,
     // With the faces: they used to arrive after the cards and make each one
     // taller under the reader.
-    events: eventsRead.loading || attendeesLoading,
+    events: eventsRead.loading || attendeesLoading || near.status === 'loading',
     // A failed conversations read is not waited on and not reported: the cost
     // is suggesting somebody the viewer already talks to, which is smaller
     // than losing the suggestions.
@@ -514,7 +521,10 @@ function EmptyList({ segment }: { segment: HomeSegment }) {
       'No photographs yet. A topic with a photograph shows up here.',
       ['/chat?segment=rooms', 'See the rooms'],
     ],
-    events: ['Nothing on the calendar in the next 30 days.', ['/events', 'See the whole calendar']],
+    events: [
+      'Nothing on the calendar near you in the next 30 days.',
+      ['/events', 'See the whole calendar'],
+    ],
     people: ['Nobody new to suggest today.', ['/peers', 'See everyone in Peers']],
   };
   const [sentence, link] = empty[segment];

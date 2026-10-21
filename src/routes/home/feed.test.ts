@@ -41,6 +41,20 @@ describe('pickEvents', () => {
     );
     expect(picked.map((event) => event.id)).toEqual(['swim-1', 'talk']);
   });
+
+  it('keeps only nearby events, and online ones anywhere', () => {
+    const picked = pickEvents(
+      [
+        makeEvent({ id: 'near', startTime: '2026-10-02T17:00:00Z' }),
+        makeEvent({ id: 'far', startTime: '2026-10-03T17:00:00Z' }),
+        makeEvent({ id: 'online', format: 'online', startTime: '2026-10-04T17:00:00Z' }),
+        makeEvent({ id: 'hybrid', format: 'hybrid', startTime: '2026-10-05T17:00:00Z' }),
+      ],
+      NOW,
+      new Set(['near']),
+    );
+    expect(picked.map((event) => event.id)).toEqual(['near', 'online', 'hybrid']);
+  });
 });
 
 describe('suggestPeople', () => {

@@ -1,5 +1,5 @@
 import type { FeedItem, HomeSegment, HomeTopic } from '@/lib/home/types';
-import { isPastEvent } from '@/routes/events/filters';
+import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { groupBySeries } from '@/routes/events/series-groups';
 import { othersOnly } from '@/routes/peers/filters';
 import { rankMembers } from '@/routes/peers/ranking';
@@ -34,11 +34,20 @@ export const SEGMENT_PEOPLE = 6;
  * One per series because NorCal SCI's calendar is mostly the same fifteen
  * things weekly. Four Friday swims in a row would push everything else off
  * the list. The lead is the next date, which is the one worth deciding about.
+ *
+ * `nearby` is the events within Events' default distance of home
+ * (2026-10-21); null when that is not known, which narrows nothing. Online
+ * and hybrid events are near anywhere, as on Events.
  */
-export function pickEvents(events: readonly ClubEvent[], now: Date = new Date()): ClubEvent[] {
+export function pickEvents(
+  events: readonly ClubEvent[],
+  now: Date = new Date(),
+  nearby: ReadonlySet<string> | null = null,
+): ClubEvent[] {
   const horizon = now.getTime() + EVENT_HORIZON_DAYS * 86_400_000;
   const upcoming = events
     .filter((event) => !isPastEvent(event, now) && Date.parse(event.startTime) <= horizon)
+    .filter((event) => !nearby || isOnline(event) || nearby.has(event.id))
     .sort((a, b) => a.startTime.localeCompare(b.startTime) || a.id.localeCompare(b.id));
   return groupBySeries(upcoming).map((group) => group.lead);
 }
