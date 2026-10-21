@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Events from '@/lib/events';
+import type * as Grants from '@/lib/grants';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -31,6 +32,11 @@ vi.mock('@/lib/events', async (importOriginal) => ({
     state.setRsvp(...args) as Promise<{ ok: boolean; error?: string }>,
 }));
 
+// The directory's grant chips read every grant; none here.
+vi.mock('@/lib/grants', async (importOriginal) => ({
+  ...(await importOriginal<typeof Grants>()),
+  useGrantsByOrganization: () => new Map(),
+}));
 vi.mock('@/lib/organizations', () => ({
   useOrganizations: () => ({
     organizations: state.organizations,

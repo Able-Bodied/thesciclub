@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -211,4 +212,65 @@ export async function removeGrant(
   } catch (e) {
     return { ok: false, error: describeThrown(e, 'The grant was not removed.') };
   }
+}
+
+/**
+ * Every organization's grants, for the directory's "Has grants" and "Open
+ * now" filters: a few dozen rows, read once and shared like the directory.
+ */
+let everyGrant: Promise<Map<string, Grant[]>> | null = null;
+
+onForgetSharedReads(() => {
+  everyGrant = null;
+});
+
+function readEveryGrant(): Promise<Map<string, Grant[]>> {
+  everyGrant ??= (async () => {
+    const { data, error } = await getSupabase()
+      .from('organization_grants')
+      .select(
+        'id, organization_id, name, url, summary, apply_any_time, organization_grant_windows(opens_on, closes_on, yearly)',
+      );
+    if (error) throw new Error(describeError(error, 'Could not load grants.'));
+    const byOrganization = new Map<string, Grant[]>();
+    for (const row of data as (GrantRow & { organization_id: string })[]) {
+      const list = byOrganization.get(row.organization_id) ?? [];
+      list.push({
+        id: row.id,
+        name: row.name,
+        url: row.url,
+        summary: row.summary,
+        applyAnyTime: row.apply_any_time,
+        windows: (row.organization_grant_windows ?? []).map((w) => ({
+          opensOn: w.opens_on,
+          closesOn: w.closes_on,
+          yearly: w.yearly,
+        })),
+      });
+      byOrganization.set(row.organization_id, list);
+    }
+    return byOrganization;
+  })().catch((e: unknown) => {
+    everyGrant = null;
+    throw e;
+  });
+  return everyGrant;
+}
+
+/** Organization id → its grants; empty until read, and if it cannot be. */
+export function useGrantsByOrganization(): Map<string, Grant[]> {
+  const [grants, setGrants] = useState<Map<string, Grant[]>>(new Map());
+  useEffect(() => {
+    let cancelled = false;
+    readEveryGrant().then(
+      (read) => {
+        if (!cancelled) setGrants(read);
+      },
+      () => undefined,
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return grants;
 }

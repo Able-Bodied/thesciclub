@@ -1,8 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { OrganizationList } from '@/routes/events/organization-list';
+import type * as Grants from '@/lib/grants';
 import type { ClubEvent, Organization } from '@/types/domain';
+
+const grantsByOrg = vi.hoisted(() => ({ map: new Map<string, Grants.Grant[]>() }));
+vi.mock('@/lib/grants', async (importOriginal) => ({
+  ...(await importOriginal<typeof Grants>()),
+  useGrantsByOrganization: () => grantsByOrg.map,
+}));
+
+const { OrganizationList } = await import('@/routes/events/organization-list');
 
 function org(id: string, name: string): Organization {
   return {
@@ -64,5 +72,57 @@ describe('the organizations directory', () => {
     await userEvent.click(screen.getByText('NorCal SCI'));
     expect(onOpen).toHaveBeenCalledWith('ncs');
     expect(onToggleFollow).not.toHaveBeenCalled();
+  });
+});
+
+describe('searching and filtering the directory', () => {
+  const year = new Date().getFullYear();
+  const fund = (open: boolean): Grants.Grant => ({
+    id: 'g',
+    name: 'Fund',
+    url: 'https://example.org',
+    summary: '',
+    applyAnyTime: false,
+    windows: open
+      ? [{ opensOn: `${year - 1}-01-01`, closesOn: `${year + 1}-12-31`, yearly: false }]
+      : [],
+  });
+
+  it('finds an organization by any word of its name or place', async () => {
+    grantsByOrg.map = new Map();
+    const user = userEvent.setup();
+    renderList(new Set());
+    await user.type(screen.getByRole('searchbox', { name: 'Search organizations' }), 'norcal');
+    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.queryByText('Adaptive Rec Hub')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('1 organization matches.');
+  });
+
+  it('keeps only those with grants, or with one open now, and says so on the row', async () => {
+    grantsByOrg.map = new Map([
+      ['ncs', [fund(true)]],
+      ['arh', [fund(false)]],
+    ]);
+    const user = userEvent.setup();
+    renderList(new Set());
+    expect(screen.getByText('Grant applications open')).toBeInTheDocument();
+    expect(screen.getByText('Gives a grant')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Grants open now' }));
+    expect(screen.getByRole('button', { name: 'Grants open now' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.queryByText('Adaptive Rec Hub')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Show all' }));
+    expect(screen.getByText('Adaptive Rec Hub')).toBeInTheDocument();
+  });
+
+  it('says so when nothing matches', async () => {
+    grantsByOrg.map = new Map();
+    const user = userEvent.setup();
+    renderList(new Set());
+    await user.click(screen.getByRole('button', { name: 'Has grants' }));
+    expect(screen.getByRole('status')).toHaveTextContent('No organizations match.');
   });
 });
