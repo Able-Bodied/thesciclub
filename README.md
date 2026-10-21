@@ -248,8 +248,6 @@ renders as an empty square.
 | --- | --- |
 | [`CONTEXT.md`](CONTEXT.md) | What the club is, who it is for, and what it deliberately is not. Read it first. |
 | [`HANDOFF.md`](HANDOFF.md) | Current state, rules, environment notes and known traps |
-| [`LAUNCH-CHECK.md`](LAUNCH-CHECK.md) | Launch checklist |
-| [`EMAIL-SIGN-IN-PLAN.md`](EMAIL-SIGN-IN-PLAN.md) | Email and passkey sign-in plan |
 | Migration headers | Why each database change was made |
 
 ## Contributing

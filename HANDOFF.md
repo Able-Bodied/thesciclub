@@ -5,7 +5,8 @@ Why: `git log`, migration headers, code comments. Older handoffs:
 `git show b04b003:HANDOFF.md` (releases to 2026-10-11), `git show
 4b1673b:HANDOFF.md` (what comments citing a HANDOFF section mean), `git show
 932a809:HANDOFF.md` (product decisions). `CONTEXT.md` is the product definition
-and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
+and wins over this file. Comments citing `EMAIL-SIGN-IN-PLAN.md` (done, removed
+2026-10-20): `git show 0c84cf3:EMAIL-SIGN-IN-PLAN.md`; likewise `LAUNCH-CHECK.md`.
 
 ## State
 
@@ -94,8 +95,11 @@ and wins over this file. `EMAIL-SIGN-IN-PLAN.md`, `LAUNCH-CHECK.md`.
   Terms. Build to whichever Twilio confirms.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
-- **Passkeys**: on only after a real-phone check (EMAIL-SIGN-IN-PLAN.md,
-  Session 6).
+- **Passkeys**: built, off (`VITE_PASSKEYS`). Before turning on: a Netlify
+  preview with the switch on, then add one on Me, sign out, "Sign in with a
+  passkey" on an iPhone (Safari and the installed app) and Android Chrome.
+  Supabase → Authentication → Passkeys: relying party `thesciclub.com`, name
+  `The SCI Club`. Then `VITE_PASSKEYS=1` on Netlify and rebuild.
 - **Owner's calls, pending**: Google's branding review ("The SCI Club" on
   Google's page); whether Privacy says the club fetches linked pages and that
   play reaches YouTube; deleting leftover test accounts and the `Test`
