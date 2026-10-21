@@ -21,7 +21,8 @@ and wins over this file. Comments citing `EMAIL-SIGN-IN-PLAN.md` (done, removed
   empty `git log --oneline origin/main..HEAD` means nothing is unreleased. The
   agent's sandbox refuses `git push`: the owner runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261020030000` is live (2026-10-20). Edge functions: `push-notify`,
+  `20261021050000` is live (2026-10-20); `20261022000000` (distance
+  from home) is not yet. Edge functions: `push-notify`,
   `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`
   (`verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off

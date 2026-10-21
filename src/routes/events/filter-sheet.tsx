@@ -1,4 +1,6 @@
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
+import type { NearHomeStatus } from '@/lib/near-home';
+import { DistanceFilter } from '@/routes/events/distance-filter';
 import { followedHostIds, selectsExactly, toggleFilter } from '@/routes/events/filters';
 import {
   DATE_WINDOW_LABELS,
@@ -45,6 +47,8 @@ export interface EventFilterSheetProps {
   organizations: Organization[];
   /** Organization ids the viewer follows. Used for the "Ones you follow" chip. */
   following: ReadonlySet<string>;
+  /** The member's home city, and whether its distances are known. */
+  home: { city: string | null; status: NearHomeStatus };
   filters: EventFilters;
   /** The member's own RSVP list, or null for every event. */
   rsvp: 'going' | 'interested' | 'been-to' | null;
@@ -62,6 +66,7 @@ export function EventFilterSheet({
   cities,
   organizations,
   following,
+  home,
   filters,
   rsvp,
   onRsvpChange,
@@ -125,6 +130,19 @@ export function EventFilterSheet({
             />
           ))}
         </FilterGroup>
+      )}
+
+      {/* Not for an RSVP list either: what a member said yes to is theirs
+          wherever it is. */}
+      {rsvp ? null : (
+        <DistanceFilter
+          miles={filters.withinMiles}
+          city={home.city}
+          status={home.status}
+          onChange={(withinMiles) => {
+            onChange({ ...filters, withinMiles });
+          }}
+        />
       )}
 
       {/* Columns rather than a stack: most groups hold one to three chips, and

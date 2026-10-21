@@ -314,6 +314,53 @@ describe('filterEvents', () => {
   });
 });
 
+// The owner, 2026-10-20: within 20 miles of home unless widened.
+describe('distance from home', () => {
+  const near = makeEvent({ id: 'near', startTime: daysFromNow(1), format: 'in_person' });
+  const far = makeEvent({ id: 'far', startTime: daysFromNow(2), format: 'in_person' });
+  const online = makeEvent({ id: 'online', startTime: daysFromNow(3), format: 'online' });
+  const nearby = new Set(['near']);
+  const ids = (events: { id: string }[]) => events.map((e) => e.id);
+
+  it('keeps what is in range, and an online event wherever it is', () => {
+    expect(
+      ids(filterEvents([near, far, online], withFilters(), 'upcoming', viewer({ nearby }), NOW)),
+    ).toEqual(['near', 'online']);
+  });
+
+  it('keeps every distance when none is asked, or when home is not known', () => {
+    const all = ['near', 'far', 'online'];
+    const events = [near, far, online];
+    expect(
+      ids(
+        filterEvents(
+          events,
+          withFilters({ withinMiles: null }),
+          'upcoming',
+          viewer({ nearby }),
+          NOW,
+        ),
+      ),
+    ).toEqual(all);
+    expect(
+      ids(filterEvents(events, withFilters(), 'upcoming', viewer({ nearby: null }), NOW)),
+    ).toEqual(all);
+  });
+
+  it("leaves a member's own RSVPs alone", () => {
+    const rsvps = new Map([['far', 'going' as const]]);
+    expect(
+      ids(filterEvents([near, far], withFilters(), 'going', viewer({ rsvps, nearby }), NOW)),
+    ).toEqual(['far']);
+  });
+
+  it('counts as a filter only when moved from 20 miles', () => {
+    expect(activeFilterCount(withFilters({ withinMiles: 20 }))).toBe(0);
+    expect(activeFilterCount(withFilters({ withinMiles: 50 }))).toBe(1);
+    expect(activeFilterCount(withFilters({ withinMiles: null }))).toBe(1);
+  });
+});
+
 describe('isOnline / isSport', () => {
   it('treat hybrid as online', () => {
     expect(isOnline(makeEvent({ format: 'hybrid' }))).toBe(true);

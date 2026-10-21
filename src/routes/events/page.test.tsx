@@ -1,9 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Events from '@/lib/events';
 import type * as Grants from '@/lib/grants';
+import type { NearHome } from '@/lib/near-home';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -16,6 +17,16 @@ const state = vi.hoisted(() => ({
   error: null as string | null,
   setRsvp: vi.fn(),
   reload: vi.fn(),
+  near: { status: 'any', ids: null as ReadonlySet<string> | null },
+}));
+
+vi.mock('@/lib/near-home', () => ({
+  useNearHome: (miles: number | null): NearHome =>
+    miles === null ? { status: 'any', ids: null } : (state.near as NearHome),
+}));
+vi.mock('@/lib/home-state', () => ({
+  useHome: () => ({ city: 'San Jose', state: 'CA' }),
+  useHomeState: () => 'CA',
 }));
 
 vi.mock('@/lib/events', async (importOriginal) => ({
@@ -100,6 +111,7 @@ beforeEach(() => {
   state.error = null;
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
+  state.near = { status: 'any', ids: null };
 });
 
 describe('EventsPage', () => {
@@ -107,6 +119,32 @@ describe('EventsPage', () => {
     renderPage();
     expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
     expect(screen.getByText('Driving Q&A')).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-20: within 20 miles unless widened in Filters.
+  describe('distance from home', () => {
+    it('lists what is within 20 miles, and online events, until widened to any distance', async () => {
+      state.near = { status: 'ready', ids: new Set(['rugby']) };
+      const user = userEvent.setup();
+      renderPage();
+      expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
+      expect(screen.getByText('Driving Q&A')).toBeInTheDocument();
+      expect(screen.queryByText('Newly injured coffee')).toBeNull();
+
+      await user.click(screen.getByRole('button', { name: 'Filters' }));
+      const slider = screen.getByLabelText('Within 20 miles of San Jose');
+      fireEvent.change(slider, { target: { value: '105' } });
+      expect(screen.getByLabelText('Any distance')).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /^Show 3/ }));
+      expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+    });
+
+    it('shows every distance while home is not on the map', () => {
+      state.near = { status: 'unplaced', ids: null };
+      renderPage();
+      expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
+    });
   });
 
   describe('segments', () => {

@@ -34,6 +34,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { placeMemberCities } from './city-places.js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 import { ActiveNetEventsScraper } from './scrapers/activenet-events.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
@@ -487,6 +488,16 @@ async function main() {
       // One broken feed must not stop the other. A site that changed its markup
       // is a normal Tuesday, and the club should still get the calendar that
       // still works.
+      console.error(`  FAILED: ${error.message}`);
+    }
+  }
+
+  // Members' cities, for "within so many miles" on Events. Not on a one-feed run.
+  if (!only) {
+    try {
+      await placeMemberCities(supabase, { dryRun });
+    } catch (error) {
+      failed++;
       console.error(`  FAILED: ${error.message}`);
     }
   }

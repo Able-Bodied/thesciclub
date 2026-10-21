@@ -9,20 +9,23 @@
  * chips stays instant. RSVP segments fetch their own past or upcoming range.
  */
 
-import type {
-  ClubEvent,
-  DateWindow,
-  EventFilters,
-  EventFormat,
-  EventsSegment,
-  EventTag,
-  Organization,
+import {
+  type ClubEvent,
+  type DateWindow,
+  DEFAULT_WITHIN_MILES,
+  type EventFilters,
+  type EventFormat,
+  type EventsSegment,
+  type EventTag,
+  type Organization,
 } from '@/types/domain';
 
 /** What the viewer has already said about these events. */
 export interface ViewerEventState {
   /** Event id -> the viewer's own RSVP. Absent means they have not said. */
   rsvps: Map<string, 'interested' | 'going'>;
+  /** Events within `withinMiles` of home, or null when that is not known. */
+  nearby?: ReadonlySet<string> | null;
 }
 
 export const NO_VIEWER_STATE: ViewerEventState = { rsvps: new Map() };
@@ -196,6 +199,17 @@ export function filterEvents(
     // did not ask.
     if (!isRsvpSegment(segment) && !inDateWindow(event, filters.when, now)) return false;
     if (!matchesSegment(event, segment, viewer, now)) return false;
+    // Distance is for getting there: an online or hybrid event is in range
+    // anywhere, and a member's own RSVPs are theirs wherever they are.
+    if (
+      filters.withinMiles !== null &&
+      viewer.nearby &&
+      !isRsvpSegment(segment) &&
+      !isOnline(event) &&
+      !viewer.nearby.has(event.id)
+    ) {
+      return false;
+    }
 
     if (filters.formats.length > 0) {
       if (!event.format || !filters.formats.includes(event.format)) return false;
@@ -244,8 +258,9 @@ export function activeFilterCount(filters: EventFilters): number {
     filters.tags.length +
     filters.cities.length +
     filters.organizations.length +
-    // The window is a filter too, but only when it is not the default.
-    (filters.when === 'next30' ? 0 : 1)
+    // The window and the distance are filters too, but only when not the default.
+    (filters.when === 'next30' ? 0 : 1) +
+    (filters.withinMiles === DEFAULT_WITHIN_MILES ? 0 : 1)
   );
 }
 

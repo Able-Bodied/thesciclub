@@ -7,6 +7,8 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { useHome } from '@/lib/home-state';
+import { useNearHome } from '@/lib/near-home';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
@@ -158,7 +160,12 @@ export default function EventsPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
 
-  const viewerState = useMemo(() => ({ rsvps: viewer.rsvps }), [viewer.rsvps]);
+  const home = useHome();
+  const near = useNearHome(filters.withinMiles);
+  const viewerState = useMemo(
+    () => ({ rsvps: viewer.rsvps, nearby: near.ids }),
+    [viewer.rsvps, near.ids],
+  );
 
   const visible = useMemo(
     () => filterEvents(events, filters, segment, viewerState),
@@ -204,8 +211,13 @@ export default function EventsPage() {
   // make every other city vanish from the list you picked it from.
   const inSegment = useMemo(
     () =>
-      filterEvents(events, { ...EMPTY_EVENT_FILTERS, when: filters.when }, segment, viewerState),
-    [events, segment, viewerState, filters.when],
+      filterEvents(
+        events,
+        { ...EMPTY_EVENT_FILTERS, when: filters.when, withinMiles: filters.withinMiles },
+        segment,
+        viewerState,
+      ),
+    [events, segment, viewerState, filters.when, filters.withinMiles],
   );
 
   const hostingOrganizations = useMemo(() => {
@@ -324,7 +336,7 @@ export default function EventsPage() {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
             />
-          ) : loading || attendeesLoading ? (
+          ) : loading || attendeesLoading || (near.status === 'loading' && !rsvp) ? (
             <LoadingCards label="Loading events…" count={4} height={120} />
           ) : error ? (
             <div className="px-6 py-10 text-center">
@@ -400,6 +412,7 @@ export default function EventsPage() {
           cities={citiesIn(inSegment)}
           organizations={hostingOrganizations}
           following={follows.following}
+          home={{ city: home?.city ?? null, status: near.status }}
           filters={filters}
           rsvp={rsvp}
           onRsvpChange={(next) => {
@@ -465,7 +478,7 @@ function EmptyList({ segment }: { segment: EventsSegment }) {
     <p className="px-6 py-10 text-center text-[0.875rem] text-grey leading-relaxed">
       Nothing on the calendar for that.
       <br />
-      Try a wider date range or fewer filters.
+      Try a wider distance or date range, or fewer filters.
     </p>
   );
 }

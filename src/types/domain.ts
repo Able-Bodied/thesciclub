@@ -749,7 +749,12 @@ export interface EventFilters {
   cities: string[];
   /** Organization ids. */
   organizations: string[];
+  /** Miles from home an in-person event may be; null for any distance. */
+  withinMiles: number | null;
 }
+
+/** The owner, 2026-10-20: what is within 20 miles, unless widened. */
+export const DEFAULT_WITHIN_MILES = 20;
 
 export const EMPTY_EVENT_FILTERS: EventFilters = {
   when: 'next30',
@@ -757,4 +762,5 @@ export const EMPTY_EVENT_FILTERS: EventFilters = {
   tags: [],
   cities: [],
   organizations: [],
+  withinMiles: DEFAULT_WITHIN_MILES,
 };
