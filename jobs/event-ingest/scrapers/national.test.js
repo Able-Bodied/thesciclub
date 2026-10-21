@@ -1,0 +1,221 @@
+import { describe, expect, it } from 'vitest';
+import { allDayInstants, parseDayRange } from './day-ranges.js';
+import { parseGroups } from './reeve-support-groups.js';
+import { ianaZone, toEvent as tribeEvent } from './tribe-events.js';
+import { zoneOfPlace } from './us-zones.js';
+import { parseTable } from './usahockey-sled.js';
+import { parseCards, parseDetail, toEvent as uspsaEvent } from './uspsa-events.js';
+import { toEvent as ustaEvent } from './usta-wheelchair.js';
+
+// The sources added 2026-10-20, each from a trimmed copy of its real markup.
+
+describe('day ranges and states', () => {
+  it('reads the ways people write dates', () => {
+    expect(parseDayRange('Nov. 5-8, 2026')).toEqual({ first: '2026-11-05', last: '2026-11-08' });
+    expect(parseDayRange('April 29-May 2, 2027*')).toEqual({
+      first: '2027-04-29',
+      last: '2027-05-02',
+    });
+    expect(parseDayRange('December 5, 2026 - December 6, 2026')).toEqual({
+      first: '2026-12-05',
+      last: '2026-12-06',
+    });
+    expect(parseDayRange('TBD')).toBeNull();
+  });
+
+  it('runs an all-day event from midnight to 23:59 where it is', () => {
+    expect(
+      allDayInstants({ first: '2026-11-05', last: '2026-11-08' }, 'America/Los_Angeles'),
+    ).toEqual({
+      start_time: '2026-11-05T08:00:00.000Z',
+      end_time: '2026-11-09T07:59:00.000Z',
+    });
+  });
+
+  it('finds the zone from newspaper and postal state names', () => {
+    expect(zoneOfPlace('Las Vegas, Nev.')).toBe('America/Los_Angeles');
+    expect(zoneOfPlace('Martinsburg, W.Va.')).toBe('America/New_York');
+    expect(zoneOfPlace('Wayne, NJ')).toBe('America/New_York');
+    expect(zoneOfPlace('Somewhere')).toBeNull();
+  });
+});
+
+describe('The Events Calendar', () => {
+  const base = {
+    id: 7,
+    title: 'Pool &#8211; try a dive',
+    url: 'https://diveheart.org/event/x/',
+    description: '<p>Come and try.</p>',
+    start_date: '2026-10-25 09:00:00',
+    end_date: '2026-10-25 13:00:00',
+    utc_start_date: '2026-10-25 14:00:00',
+    utc_end_date: '2026-10-25 18:00:00',
+    timezone: 'America/Chicago',
+    all_day: false,
+    website: '',
+  };
+
+  it('keeps a venue’s zone, and decodes its words', () => {
+    const event = tribeEvent({
+      ...base,
+      venue: {
+        venue: 'Oak Lawn &#038; Pool',
+        address: '9400 SW Hwy',
+        city: 'Oak Lawn',
+        stateprovince: 'IL',
+        zip: '60453',
+      },
+    });
+    expect(event).toMatchObject({
+      title: 'Pool – try a dive',
+      location: 'Oak Lawn & Pool, 9400 SW Hwy, Oak Lawn, IL 60453',
+      timezone: 'America/Chicago',
+      start_time: '2026-10-25T14:00:00Z',
+    });
+  });
+
+  it('reads an online class in the club’s time', () => {
+    expect(tribeEvent({ ...base, venue: [] })).toMatchObject({ location: '', timezone: null });
+  });
+
+  it('re-reads a site whose clock is wrong in the zone the feed names', () => {
+    const event = tribeEvent(
+      {
+        ...base,
+        venue: { venue: 'Gym', city: 'Decatur' },
+        timezone: 'UTC+0',
+        start_date: '2026-10-21 10:00:00',
+        end_date: '2026-10-21 11:00:00',
+      },
+      { timezone: 'America/New_York' },
+    );
+    expect(event).toMatchObject({
+      start_time: '2026-10-21T14:00:00.000Z',
+      timezone: 'America/New_York',
+    });
+    expect(ianaZone('UTC+0')).toBeNull();
+  });
+
+  it('keeps only the titles a feed asks for', () => {
+    expect(
+      tribeEvent({ ...base, title: 'DEMA Scuba Show', venue: [] }, { exclude: 'dema' }),
+    ).toBeNull();
+    expect(
+      tribeEvent({ ...base, title: 'Gala', venue: [] }, { include: 'wheelchair fitness' }),
+    ).toBeNull();
+  });
+});
+
+describe('USTA wheelchair tennis', () => {
+  const item = {
+    id: 't1',
+    name: 'SacTown Classic  Wheelchair Championships',
+    startDateTime: '2027-09-17T07:00:00+00:00',
+    endDateTime: '2027-09-20T06:59:00+00:00',
+    timeZone: 'America/Los_Angeles',
+    isCancelled: false,
+    primaryLocation: {
+      address1: '1 Court Ln',
+      town: 'GOLD RIVER',
+      county: 'CA',
+      postcode: '95670',
+    },
+    organization: { name: 'Sac Club', urlSegment: 'sacclub' },
+  };
+
+  it('is all day when it runs midnight to 23:59, and links to its page', () => {
+    expect(ustaEvent(item)).toMatchObject({
+      title: 'SacTown Classic Wheelchair Championships',
+      location: '1 Court Ln, Gold River, CA 95670',
+      all_day: true,
+      timezone: 'America/Los_Angeles',
+      url: 'https://playtennis.usta.com/Competitions/sacclub/Tournaments/Overview/t1',
+    });
+  });
+
+  it('leaves out a cancelled tournament', () => {
+    expect(ustaEvent({ ...item, isCancelled: true })).toBeNull();
+  });
+});
+
+describe('USA Hockey', () => {
+  const table = `<table><tr><td>Event</td><td>Date</td><td>Location</td><td>Rink</td></tr>
+    <tr><td>Blind Hockey Classic</td><td>Nov. 20-22, 2026</td><td>Voorhees, N.J.</td><td>Flyers</td></tr>
+    <tr><td>USA Hockey Sled Classic</td><td>Nov. 5-8, 2026</td><td>Las Vegas, Nev.</td><td>City National Arena</td></tr>
+    <tr><td>Sled Hockey National Championships</td><td>April 29-May 2, 2027*</td><td>Wayne, NJ</td><td>Ice Vault</td></tr></table>`;
+
+  it('keeps the sled rows, all day in their state’s zone', () => {
+    const events = parseTable(table, 'https://www.usahockey.com/disabledhockeyevents');
+    expect(events.map((e) => [e.title, e.timezone, e.location])).toEqual([
+      ['USA Hockey Sled Classic', 'America/Los_Angeles', 'City National Arena, Las Vegas, Nev.'],
+      ['Sled Hockey National Championships', 'America/New_York', 'Ice Vault, Wayne, NJ'],
+    ]);
+    expect(events[1]?.description).toMatch(/tentative/);
+  });
+
+  it('throws when the table is not the one it knows', () => {
+    expect(() => parseTable('<table><tr><td>Name</td></tr></table>', 'x')).toThrow(/changed/);
+  });
+});
+
+describe('US Power Soccer', () => {
+  const card = `<a href="/events/summit-classic-55dfb" class="event_block w-inline-block"><div><div class="event_month">Dec</div></div>
+    <div><div class="event_name">Summit Classic</div><div class="spacer"></div><div>Fort Wayne</div></div>
+    <div fs-cmssort-field="date" class="hide">December 5, 2026</div></a>`;
+  const page = (
+    dates,
+  ) => `<div class="event-item-header11_metatag-item"><div class="icon"></div>${dates}</div>
+    <div class="event-item-header11_metatag-item"><div class="icon"></div><div><div>Turnstone Center</div><div>3320 N Clinton St</div></div></div>`;
+
+  it('takes the last day and venue from the event’s page', () => {
+    const [c] = parseCards(card, 'https://www.powersoccerusa.org/event/calendar');
+    const event = uspsaEvent(
+      c,
+      parseDetail(page('<div>December 5, 2026</div><div>-</div><div>December 6, 2026</div>')),
+    );
+    expect(event).toMatchObject({
+      title: 'Summit Classic',
+      location: 'Turnstone Center, 3320 N Clinton St, Fort Wayne',
+      start_time: '2026-12-05T08:00:00.000Z',
+      end_time: '2026-12-07T07:59:00.000Z',
+      all_day: true,
+    });
+  });
+
+  it('ignores a page still showing last year, and keeps the card’s day', () => {
+    const [c] = parseCards(card, 'https://www.powersoccerusa.org/event/calendar');
+    const event = uspsaEvent(
+      c,
+      parseDetail(page('<div>December 6, 2025</div><div>-</div><div>December 7, 2025</div>')),
+    );
+    expect(event).toMatchObject({ location: 'Fort Wayne', start_time: '2026-12-05T08:00:00.000Z' });
+  });
+});
+
+describe('Reeve support groups', () => {
+  const html = `<h2><strong>Living with Paraplegia&nbsp;Support Group</strong></h2>
+    <p>Meetings are held every second and fourth Monday of the month, at 7:00 PM ET.</p>
+    <p>October 26<br><a href="https://us02web.zoom.us/meeting/register/a">https://us02web.zoom.us/meeting/register/a</a></p>
+    <p>November 9<br><a href="https://us02web.zoom.us/meeting/register/b">https://us02web.zoom.us/meeting/register/b</a></p>`;
+
+  it('dates each meeting in its year and hour, with its Zoom sign-up', () => {
+    const events = parseGroups(html, new Date('2026-10-20T19:00:00Z'));
+    expect(events.map((e) => [e.title, e.start_time, e.registration_url])).toEqual([
+      [
+        'Living with Paraplegia Support Group (Zoom)',
+        '2026-10-26T23:00:00.000Z',
+        'https://us02web.zoom.us/meeting/register/a',
+      ],
+      [
+        'Living with Paraplegia Support Group (Zoom)',
+        '2026-11-10T00:00:00.000Z',
+        'https://us02web.zoom.us/meeting/register/b',
+      ],
+    ]);
+    expect(events[0]?.timezone).toBeNull();
+  });
+
+  it('throws when the groups are gone from the page', () => {
+    expect(() => parseGroups('<h2>News</h2>')).toThrow(/no support group/);
+  });
+});

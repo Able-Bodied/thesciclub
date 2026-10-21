@@ -117,7 +117,7 @@ export function EventCard({
   // printed its city twice, a line apart. "Where" is one line now, and the
   // host has this one to itself.
   const metaLine = organization?.name ?? event.hostName;
-  const whenLine = timeRange(event.startTime, event.endTime, event.timezone);
+  const whenLine = timeRange(event.startTime, event.endTime, event.timezone, event.allDay);
   const whereLine = placeLine(event);
 
   const goingOnly = attendees.filter((a) => a.status === 'going');

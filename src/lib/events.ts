@@ -41,7 +41,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, admin_override, feed_values';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, admin_override, feed_values';
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
@@ -51,7 +51,7 @@ const EVENT_COLUMNS =
  * (2026-10-14).
  */
 const LIST_COLUMNS =
-  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt';
+  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day';
 
 /**
  * Reads that are the same for every viewer (the tag taxonomy, the calendar
@@ -101,6 +101,9 @@ interface EventRow {
   series_id: string | null;
   photo_path: string | null;
   photo_alt: string | null;
+  /** The event's own zone, when its source gave one (20261021000000). */
+  timezone: string | null;
+  all_day: boolean;
   /** Imported events an administrator changed (20261012060000). Not in a list's read. */
   admin_override?: Record<string, unknown> | null;
   feed_values?: Record<string, unknown> | null;
@@ -182,7 +185,10 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       // so, and it is the right answer for every organization the club has,
       // which is also why it stands in for a feed with no row here.
       timezone:
-        (row.feed_id ? inputs.timezones.get(row.feed_id) : undefined) ?? HAND_ADDED_TIMEZONE,
+        row.timezone ??
+        (row.feed_id ? inputs.timezones.get(row.feed_id) : undefined) ??
+        HAND_ADDED_TIMEZONE,
+      allDay: row.all_day,
       location: row.location,
       city: row.city,
       url: row.url,

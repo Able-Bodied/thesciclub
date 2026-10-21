@@ -37,14 +37,26 @@ import { createClient } from '@supabase/supabase-js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
 import { geocodeEvents } from './scrapers/geocode.js';
+import { IcsEventsScraper } from './scrapers/ics-events.js';
 import { NatureTrackTraxScraper } from './scrapers/naturetrack-trax.js';
 import { NorCalSCIEventsJsonScraper } from './scrapers/norcalsci-events-json.js';
+import { ReeveSupportGroupsScraper } from './scrapers/reeve-support-groups.js';
+import { TribeEventsScraper } from './scrapers/tribe-events.js';
+import { UsaHockeySledScraper } from './scrapers/usahockey-sled.js';
+import { UspsaEventsScraper } from './scrapers/uspsa-events.js';
+import { UstaWheelchairScraper } from './scrapers/usta-wheelchair.js';
 import { seriesAssignments, syncSeries } from './series.js';
 
 const SCRAPERS = {
   'norcalsci-events': () => new NorCalSCIEventsJsonScraper(),
   'adaptiverechub-events': () => new AdaptiveRecHubEventsScraper(),
   'naturetrack-trax': () => new NatureTrackTraxScraper(),
+  'tribe-events': (feed) => new TribeEventsScraper(feed),
+  'ics-events': (feed) => new IcsEventsScraper(feed),
+  'usta-wheelchair': (feed) => new UstaWheelchairScraper(feed),
+  'usahockey-sled': (feed) => new UsaHockeySledScraper(feed),
+  'uspsa-events': (feed) => new UspsaEventsScraper(feed),
+  'reeve-support-groups': (feed) => new ReeveSupportGroupsScraper(feed),
 };
 
 /** Columns read back for the diff. Never `*`: the browser roles cannot select the coordinates,
@@ -52,7 +64,7 @@ const SCRAPERS = {
 const PRIOR_COLUMNS =
   'id, external_id, title, description, description_html, start_time, end_time, location, url, ' +
   'registration_url, city, postal_code, latitude, longitude, location_precision, ' +
-  'source_last_modified, detail_fetched_at, admin_override';
+  'source_last_modified, detail_fetched_at, admin_override, timezone, all_day';
 
 function log(message) {
   console.log(message);
@@ -121,6 +133,8 @@ const DIFF_FIELDS = [
   'location',
   'url',
   'registration_url',
+  'timezone',
+  'all_day',
 ];
 
 /**
@@ -211,7 +225,7 @@ export function eventChanged(prior, scraped) {
 async function loadFeeds(supabase, only) {
   const query = supabase
     .from('data_feeds')
-    .select('id, name, feed_url, feed_type, organization_id, timezone, is_active')
+    .select('id, name, feed_url, feed_type, organization_id, timezone, is_active, options')
     .eq('is_active', true);
   const { data, error } = await query;
   if (error) throw new Error(`Could not read data_feeds: ${error.message}`);
@@ -291,7 +305,7 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
   if (priorError) throw new Error(`Could not read existing events: ${priorError.message}`);
   const priorByExternalId = new Map(priorRows.map((row) => [row.external_id, row]));
 
-  const scraper = makeScraper();
+  const scraper = makeScraper(feed);
   const scraped = await scraper.scrape(feed.id, { priorByExternalId });
   log(`  scraped ${scraped.length} events`);
 
@@ -330,6 +344,10 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
         location: event.location || '',
         url: event.url || null,
         registration_url: event.registration_url || null,
+        // Its own zone when the source states one, and whether it has hours
+        // at all (20261021000000).
+        timezone: event.timezone ?? null,
+        all_day: event.all_day === true,
         // The feed's own name for the host, then a club organization if that name
         // matches one. Both are kept: the name is what the source said, and the id
         // is our interpretation of it.

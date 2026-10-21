@@ -89,4 +89,24 @@ describe('longWhen', () => {
   it('matches the mock’s shape', () => {
     expect(longWhen('2026-09-05T17:00:00Z', PACIFIC)).toBe('Sat 5 Sep · 10:00am');
   });
+
+  it('gives only the day for an all-day event', () => {
+    expect(longWhen('2026-11-07T05:00:00Z', 'America/New_York', true)).toBe('Sat 7 Nov');
+  });
+});
+
+// A tournament published as dates: first day's midnight to last day's 23:59,
+// in its own zone (20261021000000).
+describe('an all-day event', () => {
+  const NY = 'America/New_York';
+
+  it('says all day, not midnight', () => {
+    expect(timeRange('2026-11-07T05:00:00Z', '2026-11-08T04:59:00Z', NY, true)).toBe('All day');
+  });
+
+  it('names the last day when it runs over several', () => {
+    expect(timeRange('2026-11-07T05:00:00Z', '2026-11-09T04:59:00Z', NY, true)).toBe(
+      'All day, to 8 Nov',
+    );
+  });
 });

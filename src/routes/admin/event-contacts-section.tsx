@@ -80,7 +80,7 @@ export function EventContactsSection() {
         <option value="">{loading ? 'Loading events…' : 'Choose an event'}</option>
         {going.map((e) => (
           <option key={e.id} value={e.id}>
-            {e.title} — {longWhen(e.startTime, e.timezone)} ({e.goingCount})
+            {e.title} — {longWhen(e.startTime, e.timezone, e.allDay)} ({e.goingCount})
           </option>
         ))}
       </select>

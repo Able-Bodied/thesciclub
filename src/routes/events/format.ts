@@ -63,7 +63,13 @@ export function timeOfDay(iso: string, timezone: string): string {
  * 1:00pm"), because "10:00am – 1:00pm" for an overnight trip is wrong by a day
  * and looks right, which is the worst combination.
  */
-export function timeRange(startIso: string, endIso: string | null, timezone: string): string {
+export function timeRange(
+  startIso: string,
+  endIso: string | null,
+  timezone: string,
+  allDay = false,
+): string {
+  if (allDay) return allDayRange(startIso, endIso, timezone);
   const start = timeOfDay(startIso, timezone);
   if (!endIso) return start;
 
@@ -79,10 +85,20 @@ export function timeRange(startIso: string, endIso: string | null, timezone: str
   return `${start} – ${end.day} ${end.month}, ${timeOfDay(endIso, timezone)}`;
 }
 
-/** "Sat 5 Sep · 10:00am" — the mock's `e.when`, used in the detail hero. */
-export function longWhen(iso: string, timezone: string): string {
+/**
+ * An all-day event (20261021000000): "All day", or "All day, to 8 Nov" when it
+ * runs over several days. Its end is the last day's 23:59.
+ */
+function allDayRange(startIso: string, endIso: string | null, timezone: string): string {
+  if (!endIso || shortDate(endIso, timezone) === shortDate(startIso, timezone)) return 'All day';
+  return `All day, to ${shortDate(endIso, timezone)}`;
+}
+
+/** "Sat 5 Sep · 10:00am" — the mock's `e.when`, used in the detail hero. Just the day when all day. */
+export function longWhen(iso: string, timezone: string, allDay = false): string {
   const parts = partsIn(iso, timezone, { weekday: 'short', day: 'numeric', month: 'short' });
-  return `${parts.weekday} ${parts.day} ${parts.month} · ${timeOfDay(iso, timezone)}`;
+  const day = `${parts.weekday} ${parts.day} ${parts.month}`;
+  return allDay ? day : `${day} · ${timeOfDay(iso, timezone)}`;
 }
 
 /**

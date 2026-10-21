@@ -67,6 +67,7 @@ export function makeEvent(overrides: Partial<ClubEvent> = {}): ClubEvent {
     calendarValues: null,
     endTime: null,
     timezone: 'America/Los_Angeles',
+    allDay: false,
     location: 'Somewhere',
     city: 'San Jose',
     url: null,

@@ -612,12 +612,12 @@ export interface ClubEvent {
    * restate it as 5pm for the traveller, so every date on this flow is
    * formatted in this zone instead.
    *
-   * It comes from the feed rather than the venue, which is the best available
-   * answer and not always the right one — a feed listing an event in another
-   * state would be read in the publisher's zone. Every organization the club
-   * has is in California, so that case does not exist yet.
+   * The event's own zone when its source states one, else its feed's
+   * (20261021000000): a national feed's in-person events carry their own.
    */
   timezone: string;
+  /** Dates without hours: the first day's midnight to the last day's 23:59. */
+  allDay: boolean;
   /** Free text venue, exactly as the feed wrote it. */
   location: string;
   city: string | null;

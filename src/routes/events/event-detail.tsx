@@ -154,7 +154,7 @@ export default function EventDetailPage() {
               says "place" in front of text that says "Friday 11 September". */}
             <div className="flex items-center gap-1.5 font-bold text-gold-hi text-[0.71875rem] uppercase tracking-[0.07em]">
               <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
-              <span>{longWhen(event.startTime, event.timezone)}</span>
+              <span>{longWhen(event.startTime, event.timezone, event.allDay)}</span>
             </div>
 
             <h1 className="mt-2 font-extrabold font-display text-[1.4375rem] leading-[1.28] tracking-[-0.01em]">
@@ -162,7 +162,10 @@ export default function EventDetailPage() {
             </h1>
 
             <p className="mt-1.5 text-[#B9CADF] text-[0.8125rem] leading-[1.42]">
-              {[timeRange(event.startTime, event.endTime, event.timezone), placeLine(event)]
+              {[
+                timeRange(event.startTime, event.endTime, event.timezone, event.allDay),
+                placeLine(event),
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>

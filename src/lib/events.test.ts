@@ -28,6 +28,8 @@ function eventRow(overrides: Record<string, unknown> = {}) {
     photo_alt: null,
     admin_override: null,
     feed_values: null,
+    timezone: null,
+    all_day: false,
     ...overrides,
   };
 }
@@ -42,6 +44,16 @@ function join(overrides: Partial<Parameters<typeof toEvents>[0]> = {}) {
     ...overrides,
   });
 }
+
+describe('an event’s zone', () => {
+  it('is its own when its source gave one, and its feed’s otherwise', () => {
+    const [own] = join({ events: [eventRow({ timezone: 'America/Chicago', all_day: true })] });
+    expect(own?.timezone).toBe('America/Chicago');
+    expect(own?.allDay).toBe(true);
+    const [feeds] = join();
+    expect(feeds?.timezone).toBe('America/Los_Angeles');
+  });
+});
 
 describe('buildTaxonomy', () => {
   it('flattens a tag onto its category', () => {
