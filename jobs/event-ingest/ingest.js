@@ -44,6 +44,7 @@ import { ReeveSupportGroupsScraper } from './scrapers/reeve-support-groups.js';
 import { SquarespaceEventsScraper } from './scrapers/squarespace-events.js';
 import { TribeEventsScraper } from './scrapers/tribe-events.js';
 import { TriumphEventsScraper } from './scrapers/triumph-events.js';
+import { stateOfPlace } from './scrapers/us-zones.js';
 import { UsaHockeySledScraper } from './scrapers/usahockey-sled.js';
 import { UspsaEventsScraper } from './scrapers/uspsa-events.js';
 import { UstaWheelchairScraper } from './scrapers/usta-wheelchair.js';
@@ -68,7 +69,7 @@ const SCRAPERS = {
 const PRIOR_COLUMNS =
   'id, external_id, title, description, description_html, start_time, end_time, location, url, ' +
   'registration_url, city, postal_code, latitude, longitude, location_precision, ' +
-  'source_last_modified, detail_fetched_at, admin_override, timezone, all_day';
+  'source_last_modified, detail_fetched_at, admin_override, timezone, all_day, state';
 
 function log(message) {
   console.log(message);
@@ -352,6 +353,11 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
         // at all (20261021000000).
         timezone: event.timezone ?? null,
         all_day: event.all_day === true,
+        // In person only: from the place's own words, else the map lookup's
+        // answer (20261021040000).
+        state: event.location
+          ? (stateOfPlace(event.location) ?? event.geocoded_state ?? null)
+          : null,
         // The feed's own name for the host, then a club organization if that name
         // matches one. Both are kept: the name is what the source said, and the id
         // is our interpretation of it.

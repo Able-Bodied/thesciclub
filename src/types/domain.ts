@@ -618,6 +618,8 @@ export interface ClubEvent {
   timezone: string;
   /** Dates without hours: the first day's midnight to the last day's 23:59. */
   allDay: boolean;
+  /** Two-letter state of an in-person event; null online or unknown. */
+  state: string | null;
   /** Free text venue, exactly as the feed wrote it. */
   location: string;
   city: string | null;

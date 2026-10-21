@@ -3,7 +3,7 @@ import { allDayInstants, parseDayRange } from './day-ranges.js';
 import { parseGroups } from './reeve-support-groups.js';
 import { ianaZone, toEvent as tribeEvent } from './tribe-events.js';
 import { parseWhen, parseEvents as triumphEvents } from './triumph-events.js';
-import { zoneOfPlace } from './us-zones.js';
+import { stateOfPlace, zoneOfPlace } from './us-zones.js';
 import { parseTable } from './usahockey-sled.js';
 import { parseCards, parseDetail, toEvent as uspsaEvent } from './uspsa-events.js';
 import { toEvent as ustaEvent } from './usta-wheelchair.js';
@@ -31,6 +31,16 @@ describe('day ranges and states', () => {
       start_time: '2026-11-05T08:00:00.000Z',
       end_time: '2026-11-09T07:59:00.000Z',
     });
+  });
+
+  it('finds an event’s state in its place, however it is written', () => {
+    expect(stateOfPlace('Bowlero, 3835 Lawrenceville Hwy, Lawrenceville, GA 30044')).toBe('GA');
+    expect(
+      stateOfPlace('Archer Bicycle 431 13th Street Oakland, California, 94607 United States'),
+    ).toBe('CA');
+    expect(stateOfPlace('City National Arena, Las Vegas, Nev.')).toBe('NV');
+    expect(stateOfPlace('Bascom Community Center, 1000 S Bascom Ave, San Jose')).toBeNull();
+    expect(stateOfPlace('Zoom')).toBeNull();
   });
 
   it('finds the zone from newspaper and postal state names', () => {

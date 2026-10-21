@@ -118,6 +118,8 @@ async function searchNominatim(query) {
   const address = top.address || {};
   return {
     city: cityOf(address),
+    // "US-CA" → "CA".
+    state: /^US-([A-Z]{2})$/.exec(address['ISO3166-2-lvl4'] ?? '')?.[1] ?? null,
     postalCode: address.postcode || null,
     latitude: Number(top.lat),
     longitude: Number(top.lon),
@@ -186,6 +188,7 @@ export async function geocodeEvents(events, existingByExternalId, lookup = geoco
       event.latitude = existing.latitude ?? null;
       event.longitude = existing.longitude ?? null;
       event.location_precision = existing.location_precision ?? null;
+      event.geocoded_state = existing.state ?? null;
       continue;
     }
 
@@ -219,6 +222,7 @@ export async function geocodeEvents(events, existingByExternalId, lookup = geoco
     event.latitude = result?.latitude ?? null;
     event.longitude = result?.longitude ?? null;
     event.location_precision = result?.precision ?? null;
+    event.geocoded_state = result?.state ?? null;
   }
 
   return events;

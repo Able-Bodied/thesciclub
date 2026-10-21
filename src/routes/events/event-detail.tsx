@@ -27,6 +27,7 @@ import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { type EventAttendee, injuryLabel, type RsvpStatus } from '@/types/domain';
@@ -169,6 +170,7 @@ export default function EventDetailPage() {
                 .filter(Boolean)
                 .join(' · ')}
             </p>
+            <OutOfStateMark state={event.state} onNavy className="mt-2" />
 
             {isOnline(event) || event.tags.length ? (
               <div className="mt-2.5 flex flex-wrap gap-1.5">

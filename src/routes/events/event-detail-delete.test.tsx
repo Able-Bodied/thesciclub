@@ -35,6 +35,8 @@ vi.mock('@/lib/events', async (importOriginal) => ({
   revertImportedEvent: (id: string) => state.revertImportedEvent(id) as unknown,
 }));
 
+vi.mock('@/lib/home-state', () => ({ useHomeState: () => 'CA' }));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'member', userId: 'me', isAdmin: true, displayName: 'Admin' }),
 }));

@@ -30,6 +30,7 @@ function eventRow(overrides: Record<string, unknown> = {}) {
     feed_values: null,
     timezone: null,
     all_day: false,
+    state: null,
     ...overrides,
   };
 }

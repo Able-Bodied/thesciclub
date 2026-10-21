@@ -41,7 +41,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, admin_override, feed_values';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, admin_override, feed_values';
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
@@ -51,7 +51,7 @@ const EVENT_COLUMNS =
  * (2026-10-14).
  */
 const LIST_COLUMNS =
-  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day';
+  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state';
 
 /**
  * Reads that are the same for every viewer (the tag taxonomy, the calendar
@@ -104,6 +104,8 @@ interface EventRow {
   /** The event's own zone, when its source gave one (20261021000000). */
   timezone: string | null;
   all_day: boolean;
+  /** Two letters, in person only (20261021040000). */
+  state: string | null;
   /** Imported events an administrator changed (20261012060000). Not in a list's read. */
   admin_override?: Record<string, unknown> | null;
   feed_values?: Record<string, unknown> | null;
@@ -189,6 +191,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
         (row.feed_id ? inputs.timezones.get(row.feed_id) : undefined) ??
         HAND_ADDED_TIMEZONE,
       allDay: row.all_day,
+      state: row.state,
       location: row.location,
       city: row.city,
       url: row.url,

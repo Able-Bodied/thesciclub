@@ -5,6 +5,7 @@ import { EventCover } from '@/routes/events/event-cover';
 import { isOnline } from '@/routes/events/filters';
 import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -273,6 +274,7 @@ export function EventCard({
               {whereLine}
             </span>
           ) : null}
+          <OutOfStateMark state={event.state} className="mt-1" />
 
           {rsvpLine ? (
             <span className="mt-2 block font-bold text-[0.8125rem] text-emphasis">{rsvpLine}</span>

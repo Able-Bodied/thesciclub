@@ -89,6 +89,30 @@ export function stateCode(text) {
   return null;
 }
 
+/**
+ * The state a place names in its last part: "Lawrenceville, GA 30044",
+ * "Las Vegas, Nev.", "Birmingham, Alabama". Null when the place does not end
+ * in a state.
+ */
+export function stateOfPlace(place) {
+  const parts = (place ?? '')
+    .split(',')
+    .map((part) =>
+      part
+        .replace(/\b(United States|USA?)\s*$/i, '')
+        .replace(/\s*\d{5}(-\d{4})?\s*$/, '')
+        .trim(),
+    )
+    .filter(Boolean);
+  // The last part, or the one before a trailing ZIP or country; a two-letter
+  // code may end a part ("Lawrenceville GA").
+  for (const part of parts.slice(-2).reverse()) {
+    const code = stateCode(part) ?? (/\s[A-Z]{2}$/.test(part) ? stateCode(part.slice(-2)) : null);
+    if (code) return code;
+  }
+  return null;
+}
+
 /** The zone for a "City, ST" place, read from its last comma part; null if unknown. */
 export function zoneOfPlace(place) {
   const last = (place ?? '').split(',').pop();
