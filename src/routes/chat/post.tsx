@@ -42,7 +42,8 @@ import { EventDescription } from '@/routes/events/rich-text';
  * Remove on everything, which is the stronger of the two — offering them
  * Report as well would be offering them a complaint addressed to themselves.
  * Edit is the author's alone, an administrator included: an administrator
- * removes, and does not rewrite somebody's words in their name.
+ * removes, and does not rewrite somebody's words in their name. Block comes
+ * last, on somebody else's (the owner, 2026-10-22).
  *
  * Each control carries the post in its name — "Reply to Jan's post", "Remove
  * your post" — because a topic of twenty posts is otherwise a column of
@@ -100,6 +101,7 @@ export function Post({
   canReport,
   reported,
   onReport,
+  onBlock,
   edits,
   likes,
   viewCount,
@@ -139,6 +141,8 @@ export function Post({
   /** Already handed over. The control stays, and says so, and does nothing. */
   reported: boolean;
   onReport: () => void;
+  /** Somebody else's post, by a member not yet blocked. Absent draws no Block. */
+  onBlock?: (() => void) | undefined;
   /** Earlier versions, for an administrator. Absent or empty for everybody else. */
   edits?: ChatEdit[];
   /**
@@ -241,6 +245,16 @@ export function Post({
           buttonClassName={`${control} hover:text-destructive`}
           noteClassName="font-semibold text-[0.75rem] text-grey"
         />
+      ) : null}
+      {onBlock ? (
+        <button
+          type="button"
+          onClick={onBlock}
+          data-target="small"
+          className={`${control} hover:text-destructive`}
+        >
+          Block {name}
+        </button>
       ) : null}
     </>
   );

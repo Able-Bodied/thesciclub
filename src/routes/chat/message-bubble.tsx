@@ -68,6 +68,7 @@ import { ReportControl } from '@/routes/chat/report-control';
  *
  * Each control is named for its message — "Reply to Jan's message" — so a
  * conversation is not a column of identical buttons to a screen reader.
+ * Block, after Report, names the member (the owner, 2026-10-22).
  * Visible controls, not a long-press and not a swipe. Members here drive with
  * limited hand function, a mouth stick or a head pointer.
  */
@@ -102,6 +103,7 @@ export function MessageBubble({
   canReport,
   reported,
   onReport,
+  onBlock,
 }: {
   message: ChatMessage;
   /** Null for a removed member, and also while the name is still loading. */
@@ -134,6 +136,8 @@ export function MessageBubble({
   /** Already handed over. The control stays, and says so, and does nothing. */
   reported: boolean;
   onReport: () => void;
+  /** Somebody else's message, by a member not yet blocked. Absent draws no Block. */
+  onBlock?: (() => void) | undefined;
 }) {
   const removed = message.removedAt !== null;
   // Two sentences and not one: somebody thinking better of what they said and
@@ -241,6 +245,16 @@ export function MessageBubble({
             buttonClassName={`${control} hover:text-destructive`}
             noteClassName="font-semibold text-[0.71875rem] text-grey"
           />
+        ) : null}
+        {onBlock ? (
+          <button
+            type="button"
+            onClick={onBlock}
+            data-target="small"
+            className={`${control} hover:text-destructive`}
+          >
+            Block {name}
+          </button>
         ) : null}
       </div>
     );
