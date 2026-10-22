@@ -59,6 +59,23 @@ Not the thread, not what was said before or after it, and no way back into the c
 the administrators' screen. The copy of the words is taken at the moment it is reported, so
 deleting what you sent is not a way out of it. The person reported is not told.
 
+## Blocking
+
+A member can block another from the ••• on that member's profile, after a
+dialog that says what it does (the owner, 2026-10-21, for App Store and Google
+Play review). It is immediate and asks no reason. Everything the blocked member
+writes — topics, posts, replies, messages, likes, reactions — is hidden from the
+blocker everywhere, shared rooms and groups included, and nothing they do
+notifies the blocker. Neither can start a direct conversation with the other, and
+one they already have takes no new message from either side; the database refuses
+it, saying only "You can't message this member". Neither can add the other to a
+group. They drop out of each other's Peers and profiles. The blocked member is not
+told and cannot read who blocked them. Each block is recorded for administrators,
+naming both and nothing else, on the Reports tab under Blocks, apart from the
+reports waiting for a decision. Blocking never limits an administrator's tools.
+Me → Settings → Blocked members lists everybody blocked, with Unblock; the
+profile's ••• has it too.
+
 ## Leaving
 
 A member can delete their own account from Me (2026-10-01, for members'
@@ -123,12 +140,12 @@ Five surfaces are real, and everything else is deliberately not yet.
 | **Peers** | Real | The members deck — peers and mentors, ranked, filterable. |
 | **Events** | Real | Ingested from partner organization calendars, with RSVPs. Administrators add, edit and remove organizations in Admin, and link accounts that speak for them (2026-10-09). Administrators and designated organization representatives can also add, change and delete events entered in the club (2026-10-06); a representative acts only for their organizations. Administrators can name a community host. Scraped events are changed on their source calendar. |
 | **Onboarding + profile** | Real | Sign in or join by email and password, Google or Apple (Apple and passkeys sit behind switches), the invite check, then the profile survey with a username and an optional phone number for events (2026-10-10; replaced phone sign-in, which Twilio never approved). |
-| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. Any member writes in any open room, no joining (2026-09-29). A member edits their own post or message, readers see "Edited", and administrators can read every earlier version; a reply to a post sits under it, and a reply to a message quotes it (all 2026-09-29). Replies can answer specific replies at any depth, with each conversation branch independently collapsible; like counts say "5 likes" without a thumbs-up icon (2026-10-09). Sent messages show "Read" in direct conversations and "Read by X of Y" in groups, updating live when other participants open the conversation (2026-10-08). Anybody in a group can rename it or give it a picture, and the conversation says who; an event's group keeps the event's name (2026-09-30). A conversation starts from a profile's Message button or from New message on Chat (2026-10-10). No search, no member-to-member blocking, no anonymous posting. Photographs from 2026-09-21. A link shows its page's picture and title, read once by the club so a reader's phone contacts nobody (earlier links are caught up when previews are switched on), and a YouTube video plays in place on a press; Instagram and everything else open their page (2026-10-06). Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
+| **Chat** | Real | Conversations, groups, and rooms — built 2026-09-18 to 2026-09-20. Any member writes in any open room, no joining (2026-09-29). A member edits their own post or message, readers see "Edited", and administrators can read every earlier version; a reply to a post sits under it, and a reply to a message quotes it (all 2026-09-29). Replies can answer specific replies at any depth, with each conversation branch independently collapsible; like counts say "5 likes" without a thumbs-up icon (2026-10-09). Sent messages show "Read" in direct conversations and "Read by X of Y" in groups, updating live when other participants open the conversation (2026-10-08). Anybody in a group can rename it or give it a picture, and the conversation says who; an event's group keeps the event's name (2026-09-30). A conversation starts from a profile's Message button or from New message on Chat (2026-10-10). No search, no anonymous posting. A member can block another (2026-10-21, for App Store and Google Play review): see Blocking, above. Photographs from 2026-09-21. A link shows its page's picture and title, read once by the club so a reader's phone contacts nobody (earlier links are caught up when previews are switched on), and a YouTube video plays in place on a press; Instagram and everything else open their page (2026-10-06). Notifications from 2026-09-27: messages, replies, being added to a group, event reminders, new events from followed organizations, a joined invite, and reports for administrators — see HANDOFF.md for exactly what a lock screen may say. |
 
 A placeholder says plainly that it is not built. It does not show invented content. A screen that
 looks finished and does nothing gets demoed, believed, and then explained. **That rule governed Home
 until it was built, and Chat the whole way through**, and it still decides what both draw: no control
-for a thing they do not do. Chat has no search box (the mock has one) and no block; Home has no
+for a thing they do not do. Chat has no search box (the mock has one); Home has no
 search and no "Ask anonymously". A member who looks for one of those finds nothing at all,
 which reads as unfinished; a control that does nothing reads as broken.
 
