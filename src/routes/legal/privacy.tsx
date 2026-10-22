@@ -30,8 +30,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Added:</b> link previews, YouTube videos, looking up where you live, photographs,
-            notifications, blocking, what administrators can see, how long we keep things, and
-            deleting your account by email.
+            notifications, blocking, reporting a profile, what administrators can see, how long we
+            keep things, and deleting your account by email.
           </li>
           <li>
             <b>Removed:</b> signing in by text message, which the club does not offer.
@@ -246,7 +246,8 @@ export default function PrivacyPage() {
           <li>every member’s email address and phone number;</li>
           <li>
             reports: the one reported message or post, a copy of its words, who wrote it, when, and
-            who reported it;
+            who reported it; or a copy of a reported profile as it was then (name, @username,
+            photograph and what the member wrote), and who reported it;
           </li>
           <li>blocks: who blocked whom, with no words, and a weekly count;</li>
           <li>
@@ -354,7 +355,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Reports:</b> kept, with their copy of the reported words, even after the message is
-            deleted.
+            deleted or the profile is changed. Once the reported member’s account is deleted, a
+            report of their profile keeps only what they wrote: their name, @username and photograph
+            go.
           </li>
           <li>
             <b>Blocks:</b> until you unblock. The administrators’ record that it happened stays.
@@ -392,7 +395,9 @@ export default function PrivacyPage() {
           conversations still make sense, but they say “Deleted member” instead of your name. The
           other person in a one-to-one conversation can then delete it, with everything both of you
           wrote and every photograph in it. A report keeps its copy of the reported words, with
-          nobody named. Details already passed to an event’s host stay with that host.
+          nobody named. A report of your profile keeps what you wrote on it, but your name,
+          @username and photograph go from it. Details already passed to an event’s host stay with
+          that host.
         </P>
         <P>
           If you cannot sign in, or are an administrator, email <ContactEmail /> to ask us to delete

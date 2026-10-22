@@ -122,6 +122,24 @@ describe('the Privacy Policy', () => {
     expect(kept).toHaveTextContent(/Your notifications list: 30 days/);
   });
 
+  // The owner, 2026-10-22: a deleted member's profile report keeps only the words.
+  it('says a profile report keeps the words, and not the name or photograph, after deletion', () => {
+    open('/privacy');
+    const admins = screen.getByRole('heading', {
+      name: 'What administrators can see',
+    }).parentElement;
+    const kept = screen.getByRole('heading', { name: 'How long we keep it' }).parentElement;
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!admins || !kept || !deleting) throw new Error('no section');
+    expect(admins).toHaveTextContent(/a copy of a reported profile as it was then/);
+    expect(kept).toHaveTextContent(
+      /a report of their profile keeps only what they wrote: their name, @username and photograph go/,
+    );
+    expect(deleting).toHaveTextContent(
+      /A report of your profile keeps what you wrote on it, but your name, @username and photograph go from it/,
+    );
+  });
+
   it('says email and phone number are not sold or shared for marketing', () => {
     open('/privacy');
     expect(
@@ -259,6 +277,8 @@ describe('the Terms of Service', () => {
     const section = screen.getByRole('heading', { name: 'Reporting and blocking' }).parentElement;
     if (!section) throw new Error('no section');
     expect(section).toHaveTextContent(/To report a message, a post or a reply, press the •••/);
+    expect(section).toHaveTextContent(/To report a member’s profile, press the ••• on it/);
+    expect(section).not.toHaveTextContent(/such as a member’s profile, email/);
     expect(section).toHaveTextContent(/To block a member, press the •••/);
     expect(section).toHaveTextContent(/Me → Settings → Blocked members/);
     expect(screen.getByText(/We may remove anything that breaks these terms/)).toHaveTextContent(
@@ -339,6 +359,9 @@ describe('Deleting your account', () => {
     expect(erased).toHaveTextContent(/email address, phone number, photograph and birthday/);
     expect(erased).toHaveTextContent(/Your sign-in records, with the email and IP addresses/);
     expect(stays).toHaveTextContent(/“Deleted member” instead of your name/);
+    expect(stays).toHaveTextContent(
+      /A report of your profile keeps what you wrote on it; your name, @username and photograph go from it/,
+    );
   });
 
   it('is linked from the Privacy Policy and the Terms', () => {

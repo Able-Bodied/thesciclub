@@ -94,8 +94,9 @@ export default function TermsPage() {
           <li>
             <b>To report</b> a message, a post or a reply, press the <b>•••</b> beside it and choose{' '}
             <b>Report</b>. Administrators see only that one message, with who wrote it and when. The
-            person reported is not told. To report anything else, such as a member’s profile, email{' '}
-            <ContactEmail />.
+            person reported is not told. To report a member’s profile, press the <b>•••</b> on it
+            and choose <b>Report</b>: administrators see a copy of it as it was then, photograph
+            included, and the member is not told. To report anything else, email <ContactEmail />.
           </li>
           <li>
             <b>To block</b> a member, press the <b>•••</b> on their profile, or beside anything they

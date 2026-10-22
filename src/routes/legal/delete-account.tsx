@@ -56,7 +56,10 @@ export default function DeleteAccountPage() {
             conversations still make sense. It says “Deleted member” instead of your name. The other
             person in a one-to-one conversation can then delete it all.
           </li>
-          <li>A report’s copy of the words that were reported, with nobody named.</li>
+          <li>
+            A report’s copy of the words that were reported, with nobody named. A report of your
+            profile keeps what you wrote on it; your name, @username and photograph go from it.
+          </li>
           <li>Details already passed to the host of an event you were going to.</li>
         </List>
         <P>
