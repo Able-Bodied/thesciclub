@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
+import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { DescriptionEditor } from '@/routes/events/description-editor';
@@ -75,6 +76,8 @@ export default function NewTopicPage() {
   // box said otherwise: much of what starts there is not a question.
   const [isQuestion, setIsQuestion] = useState(carried.question);
   const [files, setFiles] = useState<File[]>([]);
+  // Pictures pasted into the post join the photographs (lib/paste-photos.ts).
+  const photoTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -163,7 +166,7 @@ export default function NewTopicPage() {
           setFiles((current) => current.filter((_, i) => i !== index));
         }}
       />
-      <PhotoPicker files={files} onChange={setFiles} disabled={saving} />
+      <PhotoPicker ref={photoTarget} files={files} onChange={setFiles} disabled={saving} />
     </div>
   );
 
@@ -239,6 +242,9 @@ export default function NewTopicPage() {
           onChange={setBody}
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
           hintClassName="mt-1 text-[0.71875rem] text-grey leading-[1.45]"
+          onPaste={(event) => {
+            pastePhotos(event, photoTarget.current);
+          }}
         />
 
         {sharing ? null : <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />}

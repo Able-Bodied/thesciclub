@@ -32,6 +32,7 @@ export function DescriptionEditor({
   placeholder,
   hintClassName,
   onChange,
+  onPaste,
 }: {
   id: string;
   value: string;
@@ -39,6 +40,8 @@ export function DescriptionEditor({
   placeholder: string;
   hintClassName: string;
   onChange: (value: string) => void;
+  /** For pictures pasted in (lib/paste-photos.ts); words paste as ever. */
+  onPaste?: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
 }) {
   const box = useRef<HTMLTextAreaElement | null>(null);
   const linkField = useRef<HTMLInputElement | null>(null);
@@ -228,6 +231,7 @@ export function DescriptionEditor({
         onChange={(e) => {
           onChange(e.target.value);
         }}
+        onPaste={onPaste}
         aria-describedby={`${id}-hint`}
         placeholder={placeholder}
         className="w-full rounded-b-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
@@ -16,6 +16,7 @@ import {
 } from '@/lib/events';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
+import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { CoverField } from '@/routes/events/cover-field';
 import { DescriptionEditor } from '@/routes/events/description-editor';
 import {
@@ -164,6 +165,8 @@ function EventForm({
   const announce = useAnnounce();
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [cover, setCover] = useState<CoverChange>({ kind: 'keep', ...initialCover });
+  // A picture pasted into the description becomes the cover (lib/paste-photos.ts).
+  const coverTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(initialFailure);
   const isNew = eventId === null;
@@ -441,12 +444,16 @@ function EventForm({
           }}
           placeholder="What happens, who it is for, what to bring, and whether the venue is step-free."
           hintClassName={HINT}
+          onPaste={(event) => {
+            pastePhotos(event, coverTarget.current);
+          }}
         />
 
         {/* ----------------------------------------------------- cover */}
         {/* On an imported event too, for an administrator (20261012070000);
             the import never writes the cover, so it stays. */}
         <CoverField
+          ref={coverTarget}
           value={cover}
           onChange={(next) => {
             setCover(next);
