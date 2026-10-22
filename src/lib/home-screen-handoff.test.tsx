@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -70,6 +71,12 @@ describe('where it applies', () => {
     vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(ANDROID);
     expect(handoffApplies()).toBe(false);
   });
+
+  it('is never the store app', () => {
+    on(IPHONE, false);
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    expect(handoffApplies()).toBe(false);
+  });
 });
 
 describe('leaving a code in Safari', () => {
@@ -100,6 +107,14 @@ describe('leaving a code in Safari', () => {
     render(<LeaveHomeScreenHandoff />);
     expect(heldHandoff()).toBeNull();
     expect(auth.rpc).not.toHaveBeenCalled();
+  });
+
+  it('the store app leaves none', () => {
+    on(IPHONE, false);
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    render(<LeaveHomeScreenHandoff />);
+    expect(auth.rpc).not.toHaveBeenCalled();
+    expect(heldHandoff()).toBeNull();
   });
 
   it('Android leaves none: its installed app shares the sign-in', () => {
@@ -135,6 +150,14 @@ describe('taking it in the Home Screen app', () => {
     expect(await takeHandoff()).toBe('none');
     expect(auth.invoke).not.toHaveBeenCalled();
     expect(heldHandoff()).toBe(CODE);
+  });
+
+  it('does nothing in the store app, even with a code', async () => {
+    on(IPHONE, true);
+    holdCookie(CODE);
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    expect(await takeHandoff()).toBe('none');
+    expect(auth.invoke).not.toHaveBeenCalled();
   });
 
   it('does nothing when the app is already signed in', async () => {
