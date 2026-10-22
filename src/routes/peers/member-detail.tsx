@@ -5,7 +5,7 @@ import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { blockMember, unblockMember, useMyBlocks } from '@/lib/blocks';
+import { unblockMember, useMyBlocks } from '@/lib/blocks';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
@@ -16,7 +16,7 @@ import { usePhotoUrl } from '@/lib/photos';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { ItemActions } from '@/routes/chat/item-actions';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import { BlockSheet } from '@/routes/peers/block-sheet';
+import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { RepresentationTags } from '@/routes/peers/representation-tags';
 import type { BeforeAfter, BrowseMember } from '@/types/domain';
@@ -322,7 +322,6 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
   const [photoOpen, setPhotoOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
-  const announce = useAnnounce();
   // Focus goes back here on close: Safari does not focus a button it clicks.
   const photoButton = useRef<HTMLButtonElement | null>(null);
 
@@ -410,18 +409,13 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
           </span>
         </div>
         {blocking ? (
-          <BlockSheet
+          <BlockMemberSheet
+            memberId={member.id}
             name={member.displayName}
             onCancel={() => {
               setBlocking(false);
             }}
-            onBlock={async () => {
-              const result = await blockMember(member.id);
-              if (!result.ok) return result.error;
-              announce(`You blocked ${member.displayName}.`);
-              onBlocked();
-              return null;
-            }}
+            onBlocked={onBlocked}
           />
         ) : null}
         {/*

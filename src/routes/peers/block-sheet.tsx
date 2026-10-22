@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { blockExplainer } from '@/lib/blocks';
+import { useAnnounce } from '@/lib/announce';
+import { blockExplainer, blockMember } from '@/lib/blocks';
 import { describeThrown } from '@/lib/describe-error';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
@@ -106,5 +107,36 @@ export function BlockSheet({
       </div>
     </>,
     document.body,
+  );
+}
+
+/**
+ * BlockSheet that does the block and says so: one for a profile's ••• and a
+ * message's or post's, so the two cannot drift.
+ */
+export function BlockMemberSheet({
+  memberId,
+  name,
+  onCancel,
+  onBlocked,
+}: {
+  memberId: string;
+  name: string;
+  onCancel: () => void;
+  onBlocked: () => void;
+}) {
+  const announce = useAnnounce();
+  return (
+    <BlockSheet
+      name={name}
+      onCancel={onCancel}
+      onBlock={async () => {
+        const result = await blockMember(memberId);
+        if (!result.ok) return result.error;
+        announce(`You blocked ${name}.`);
+        onBlocked();
+        return null;
+      }}
+    />
   );
 }
