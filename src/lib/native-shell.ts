@@ -87,7 +87,10 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
 
   listeners.push(
     App.addListener('backButton', ({ canGoBack }) => {
-      const sheet = document.querySelector('[role="dialog"][aria-modal="true"]') !== null;
+      // Not one left open in a kept tab, hidden (App.tsx): its Escape is not listening.
+      const sheet = [...document.querySelectorAll('[role="dialog"][aria-modal="true"]')].some(
+        (dialog) => !dialog.closest('[style*="display: none"]'),
+      );
       const step = backStep(sheet, canGoBack);
       // Every sheet closes on Escape (useDialogFocus).
       if (step === 'close') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

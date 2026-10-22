@@ -210,6 +210,13 @@ describe('starting the shell', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('goes back past a sheet left open in a hidden tab', () => {
+    document.body.innerHTML =
+      '<div style="display: none !important;"><div role="dialog" aria-modal="true"></div></div>';
+    native.back?.({ canGoBack: true });
+    expect(navigate).toHaveBeenCalledWith(-1);
+  });
+
   it('goes back, and at the first screen puts the app away', () => {
     native.back?.({ canGoBack: true });
     expect(navigate).toHaveBeenCalledWith(-1);
