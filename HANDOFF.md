@@ -299,7 +299,8 @@ All live. Migration headers and the files named say how and why.
   there too, and reaches the store app's policy by itself (`native-csp.ts`).
 - **Release to TestFlight** (`.github/workflows/ios-release.yml`, fastlane in
   `ios/App/fastlane`; Alfredx48/TheSciClub only, secrets in its `app-store`
-  environment): the commit must be on main. Once, `gh variable set
+  environment): a tag may sit on the working branch (TestFlight is private;
+  owner, 2026-10-22); a manual run is from main only. Once, `gh variable set
   VITE_SUPABASE_URL -R Alfredx48/TheSciClub` and the same for
   `VITE_SUPABASE_ANON_KEY` (public values, as on Netlify). Then `git tag -a
   ios-v1.0.0 -m "What to test"` and `git push origin ios-v1.0.0` (or Actions →
