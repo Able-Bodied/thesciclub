@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { Activity, lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppNav } from '@/components/app-nav';
 import { AskOnOpening } from '@/components/ask-on-opening';
@@ -108,6 +108,36 @@ function prefetchTabs(): () => void {
   };
 }
 
+const TABS = [
+  ['/home', HomePage],
+  ['/peers', PeersPage],
+  ['/chat', ChatPage],
+  ['/events', EventsPage],
+  ['/me', MePage],
+] as const;
+
+/**
+ * The five tabs stay mounted once opened, hidden while another screen shows
+ * (2026-10-22: each switch read everything again behind placeholders). A
+ * hidden tab keeps its data, scroll and choices; its effects stop, and run
+ * again when it shows, so its reads refresh behind what is already drawn.
+ */
+export function KeptTabs() {
+  const { pathname } = useLocation();
+  const current = TABS.find(([path]) => pathname === path || pathname === `${path}/`)?.[0];
+  const [opened, setOpened] = useState<readonly string[]>(current ? [current] : []);
+  if (current && !opened.includes(current)) setOpened([...opened, current]);
+  return TABS.filter(([path]) => opened.includes(path) || path === current).map(
+    ([path, Screen]) => (
+      // No Suspense of its own: a tab's first script then arrives inside the
+      // route change's transition, with the last screen still up.
+      <Activity key={path} mode={path === current ? 'visible' : 'hidden'}>
+        <Screen />
+      </Activity>
+    ),
+  );
+}
+
 /**
  * The signed-in shell: one scrolling surface above a fixed five-tab bar.
  *
@@ -172,12 +202,14 @@ function ShellContent() {
             empty; a route change keeps the old screen up meanwhile, since
             React Router changes routes in a transition. */}
         <Suspense fallback={<div className="flex-1" />}>
+          <KeptTabs />
           <Routes>
-            <Route path="/home" element={<HomePage />} />
+            {/* The five tabs are drawn by KeptTabs, above. */}
+            <Route path="/home" element={null} />
             <Route path="/home/new" element={<HomeNewPage />} />
-            <Route path="/peers" element={<PeersPage />} />
+            <Route path="/peers" element={null} />
             <Route path="/peers/:id" element={<MemberDetailPage />} />
-            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat" element={null} />
             {/* A room's slug is in the URL — /chat/rooms/bowel — which is why
             chat_rooms.id is a slug and not a uuid. /new sits above :roomId for
             a reader's sake; React Router ranks a static segment above a dynamic
@@ -203,7 +235,7 @@ function ShellContent() {
             {/* What another app shared to the club, kept by the service worker
             (manifest share_target; Android). */}
             <Route path="/share" element={<SharePage />} />
-            <Route path="/events" element={<EventsPage />} />
+            <Route path="/events" element={null} />
             {/* Adding and changing an event by hand: administrators, and members
             who speak for an organization. The page sends anybody else back to
             Events. No event id can be "new": they are uuids. */}
@@ -211,7 +243,7 @@ function ShellContent() {
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/events/:id/edit" element={<EventFormPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
-            <Route path="/me" element={<MePage />} />
+            <Route path="/me" element={null} />
             {/* Administrators only; the page sends anybody else to Me. */}
             <Route path="/me/qr" element={<QrCodePage />} />
             <Route path="/me/saved" element={<SavedPage />} />
@@ -284,7 +316,10 @@ export function RouteChange() {
     // set from whatever the document holds now and again as it changes,
     // until the next screen.
     const name = () => {
-      const heading = document.querySelector('main h1, h1')?.textContent.trim();
+      // A kept tab hides with display: none, and its h1 is still there.
+      const heading = [...document.querySelectorAll('main h1, h1')]
+        .find((h1) => !hidden(h1))
+        ?.textContent.trim();
       document.title = heading ? `${heading} · The Sci Club` : 'The Sci Club';
     };
     name();
@@ -302,6 +337,13 @@ export function RouteChange() {
     };
   }, [pathname]);
   return null;
+}
+
+function hidden(element: Element): boolean {
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    if (getComputedStyle(node).display === 'none') return true;
+  }
+  return false;
 }
 
 /** Its children are drawn in light whatever the member chose (useForceLight). */

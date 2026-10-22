@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
 import { AccountProvider, useOwnAccount } from '@/lib/account';
+import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import { restoreDeviceNotifications } from '@/lib/push/notifications';
+import { forgetSharedReads } from '@/lib/shared-reads';
 import { signInDoor } from '@/lib/sign-in-destination';
 
 /**
@@ -43,6 +45,19 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
     };
   }, [status, account.userId]);
 
+  // Kept tabs and cached reads belong to one member. Signed out by any route
+  // (another tab, an expired session) or another account: forget them.
+  const lastMember = useRef<string | null>(null);
+  useEffect(() => {
+    if (status === 'loading' || status === 'error') return;
+    const now = status === 'signed-out' ? null : account.userId;
+    if (lastMember.current && lastMember.current !== now) {
+      resetAttachmentUrls();
+      forgetSharedReads();
+    }
+    lastMember.current = now;
+  }, [status, account.userId]);
+
   if (status === 'error') return <AccountProblem account={account} />;
 
   if (status === 'loading') {
@@ -60,5 +75,10 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
   if (status === 'suspended') {
     return <SuspendedScreen />;
   }
-  return <AccountProvider account={account}>{children}</AccountProvider>;
+  return (
+    <AccountProvider account={account}>
+      {/* A new member starts with nothing the last one left mounted. */}
+      <Fragment key={account.userId}>{children}</Fragment>
+    </AccountProvider>
+  );
 }

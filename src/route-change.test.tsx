@@ -56,4 +56,21 @@ describe('a route change', () => {
       expect(document.activeElement).toBe(screen.getByRole('main'));
     });
   });
+
+  it('names the screen from the heading that shows, not a kept tab hidden before it', async () => {
+    render(
+      <MemoryRouter initialEntries={['/chat']}>
+        <RouteChange />
+        <main id="main" tabIndex={-1}>
+          <div style={{ display: 'none' }}>
+            <h1>Home</h1>
+          </div>
+          <h1>Chat</h1>
+        </main>
+      </MemoryRouter>,
+    );
+    await waitFor(() => {
+      expect(document.title).toBe('Chat · The Sci Club');
+    });
+  });
 });

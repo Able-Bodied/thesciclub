@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
@@ -16,6 +17,9 @@ vi.mock('@/lib/account', () => ({
   AccountProvider: ({ children }: { children: React.ReactNode }) => children,
   signOut: () => Promise.resolve({ ok: true }),
 }));
+const forgotten = vi.hoisted(() => ({ urls: vi.fn(), reads: vi.fn() }));
+vi.mock('@/lib/chat/attachments', () => ({ resetAttachmentUrls: forgotten.urls }));
+vi.mock('@/lib/shared-reads', () => ({ forgetSharedReads: forgotten.reads }));
 vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({ member: null, invitedBy: 'NorCal SCI', loading: false, error: null }),
 }));
@@ -42,6 +46,8 @@ function renderGuarded() {
 
 beforeEach(() => {
   account.restore.mockClear();
+  forgotten.urls.mockClear();
+  forgotten.reads.mockClear();
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Test' };
 });
 
@@ -104,5 +110,62 @@ describe('RequireMember', () => {
     renderGuarded();
     expect(screen.queryByText('Inside the club')).not.toBeInTheDocument();
     expect(screen.queryByText('Welcome screen')).not.toBeInTheDocument();
+  });
+
+  it('starts another member with nothing the last one left', () => {
+    let mounts = 0;
+    function Kept() {
+      useState(() => {
+        mounts += 1;
+      });
+      return <p>Inside the club</p>;
+    }
+    const tree = () => (
+      <MemoryRouter initialEntries={['/peers']}>
+        <Routes>
+          <Route
+            path="/peers"
+            element={
+              <RequireMember>
+                <Kept />
+              </RequireMember>
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    );
+    const { rerender } = render(tree());
+    account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Test' };
+    rerender(tree());
+    expect(mounts).toBe(1);
+    expect(forgotten.urls).not.toHaveBeenCalled();
+
+    account.current = { status: 'member', userId: 'u2', isAdmin: false, displayName: 'Other' };
+    rerender(tree());
+    expect(mounts).toBe(2);
+    expect(forgotten.urls).toHaveBeenCalledTimes(1);
+    expect(forgotten.reads).toHaveBeenCalledTimes(1);
+  });
+
+  it('forgets what was signed and read when the member signs out', () => {
+    const { rerender } = renderGuarded();
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    rerender(
+      <MemoryRouter initialEntries={['/peers']}>
+        <Routes>
+          <Route path="/join" element={<p>Welcome screen</p>} />
+          <Route
+            path="/peers"
+            element={
+              <RequireMember>
+                <p>Inside the club</p>
+              </RequireMember>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(forgotten.urls).toHaveBeenCalledTimes(1);
+    expect(forgotten.reads).toHaveBeenCalledTimes(1);
   });
 });
