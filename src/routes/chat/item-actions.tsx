@@ -5,7 +5,19 @@ import { useDialogFocus } from '@/lib/dialog-focus';
 
 /** One visible target keeps message actions discoverable without a row of
  * controls under every bubble. The sheet also works with a keyboard or pointer. */
-export function ItemActions({ what, children }: { what: string; children: ReactNode }) {
+export function ItemActions({
+  what,
+  children,
+  title = 'Message actions',
+  buttonClassName = 'text-grey hover:bg-tint',
+}: {
+  what: string;
+  children: ReactNode;
+  /** The sheet's heading. */
+  title?: string;
+  /** Colour of the ••• button, for one drawn over a photograph. */
+  buttonClassName?: string;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -16,7 +28,7 @@ export function ItemActions({ what, children }: { what: string; children: ReactN
         onClick={() => {
           setOpen(true);
         }}
-        className="relative grid h-11 w-11 flex-none place-items-center rounded-full text-grey hover:bg-tint"
+        className={`relative grid h-11 w-11 flex-none place-items-center rounded-full ${buttonClassName}`}
       >
         <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
       </button>
@@ -24,6 +36,7 @@ export function ItemActions({ what, children }: { what: string; children: ReactN
         ? createPortal(
             <ActionsSheet
               what={what}
+              title={title}
               onClose={() => {
                 setOpen(false);
               }}
@@ -39,10 +52,12 @@ export function ItemActions({ what, children }: { what: string; children: ReactN
 
 function ActionsSheet({
   what,
+  title,
   children,
   onClose,
 }: {
   what: string;
+  title: string;
   children: ReactNode;
   onClose: () => void;
 }) {
@@ -54,7 +69,7 @@ function ActionsSheet({
       <button
         type="button"
         tabIndex={-1}
-        aria-label="Close message actions"
+        aria-label={`Close ${title.toLowerCase()}`}
         onClick={onClose}
         className="fixed inset-0 z-[80] bg-black/40"
       />
@@ -66,7 +81,7 @@ function ActionsSheet({
         className="fixed inset-x-0 bottom-0 z-[81] max-h-[88dvh] overflow-y-auto rounded-t-3xl bg-paper p-5 text-ink shadow-xl md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:w-[360px] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-3xl"
       >
         <h2 ref={heading} tabIndex={-1} className="font-bold font-head text-lg outline-none">
-          Message actions
+          {title}
         </h2>
         {/* biome-ignore lint/a11y/noStaticElementInteractions: Delegates activation from actual child buttons. */}
         {/* biome-ignore lint/a11y/useKeyWithClickEvents: Keyboard button activation dispatches the same click. */}
