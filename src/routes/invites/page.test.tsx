@@ -326,6 +326,27 @@ describe('the list', () => {
   });
 });
 
+// The owner, 2026-10-22: invites do not expire, so every kind of inviter
+// withdraws their own (supabase/tests/invite-withdrawal.sql for the database).
+describe('withdrawing, for every kind of inviter', () => {
+  it.each(['mentor', 'admin', 'organization', 'representative'])(
+    'lets %s withdraw an invite nobody has used',
+    async (role) => {
+      const user = userEvent.setup();
+      if (account.current) account.current.isAdmin = role === 'admin';
+      own.type = role === 'mentor' || role === 'organization' ? role : 'peer';
+      privileges.representative = role === 'representative';
+      api.invites = [invite({ id: 'mine', email: 'mine@example.com' })];
+      renderInvites();
+      const row = (await screen.findByText('mine@example.com')).closest('li');
+      await user.click(within(row as HTMLElement).getByRole('button', { name: 'Withdraw' }));
+      await waitFor(() => {
+        expect(api.withdrawn).toEqual(['mine']);
+      });
+    },
+  );
+});
+
 describe('unlimited invites', () => {
   it.each(['admin', 'organization', 'representative'])(
     'allows an eleventh invite for %s without showing a cap',
