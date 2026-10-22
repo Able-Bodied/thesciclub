@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const native = vi.hoisted(() => ({
   back: null as ((event: { canGoBack: boolean }) => void) | null,
   resume: null as (() => void) | null,
+  opened: null as ((event: { url: string }) => void) | null,
   calls: [] as string[],
   /** What the phone's Text Size reads as. */
   textSize: 1,
@@ -14,6 +15,7 @@ vi.mock('@capacitor/app', () => ({
     addListener: (name: string, listener: (event: { canGoBack: boolean }) => void) => {
       if (name === 'backButton') native.back = listener;
       if (name === 'resume') native.resume = listener as () => void;
+      if (name === 'appUrlOpen') native.opened = listener as unknown as typeof native.opened;
       return Promise.resolve({ remove: () => Promise.resolve() });
     },
     minimizeApp: () => {
@@ -59,9 +61,8 @@ vi.mock('@capacitor/core', async (importOriginal) => {
   };
 });
 
-const { backStep, barStyle, linkTarget, startNativeShell, systemTextScale } = await import(
-  '@/lib/native-shell'
-);
+const { backStep, barStyle, linkTarget, openedLinkPath, startNativeShell, systemTextScale } =
+  await import('@/lib/native-shell');
 const { Capacitor } = await import('@capacitor/core');
 
 describe('where a link goes in the store app', () => {
@@ -86,6 +87,27 @@ describe('where a link goes in the store app', () => {
     expect(linkTarget('https://norcalsci.org/events', app)).toEqual({
       outside: 'https://norcalsci.org/events',
     });
+  });
+});
+
+describe('a link that opened the app', () => {
+  const app = 'capacitor://localhost';
+
+  it('is routed inside it, query and all', () => {
+    expect(openedLinkPath('https://thesciclub.com/join?invite=tok-1', app)).toBe(
+      '/join?invite=tok-1',
+    );
+    expect(
+      openedLinkPath('https://thesciclub.com/auth/confirm.html?type=email&token_hash=h', app),
+    ).toBe('/auth/confirm.html?type=email&token_hash=h');
+    expect(openedLinkPath('https://www.thesciclub.com/events/7', app)).toBe('/events/7');
+  });
+
+  it('is left alone when it is not the club’s: Google’s return to its own scheme, another site', () => {
+    expect(
+      openedLinkPath('com.googleusercontent.apps.123-abc:/oauth2redirect?code=x', app),
+    ).toBeNull();
+    expect(openedLinkPath('https://norcalsci.org/join', app)).toBeNull();
   });
 });
 
@@ -116,6 +138,7 @@ describe('starting the shell', () => {
     native.calls = [];
     native.back = null;
     native.resume = null;
+    native.opened = null;
     native.textSize = 1;
     navigate.mockClear();
     vi.stubGlobal('matchMedia', () => ({
@@ -160,6 +183,13 @@ describe('starting the shell', () => {
     document.body.innerHTML = '<a href="https://thesciclub.com/events/7">An event</a>';
     document.querySelector('a')?.click();
     expect(navigate).toHaveBeenCalledWith('/events/7');
+  });
+
+  it('routes a link that opened the app, an invite say, inside it', () => {
+    native.opened?.({ url: 'https://thesciclub.com/join?invite=tok-1' });
+    expect(navigate).toHaveBeenCalledWith('/join?invite=tok-1');
+    native.opened?.({ url: 'com.googleusercontent.apps.123-abc:/oauth2redirect' });
+    expect(navigate).toHaveBeenCalledTimes(1);
   });
 
   it('leaves the app’s own links alone', () => {

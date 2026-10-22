@@ -7,7 +7,7 @@ import { SITE_ORIGIN } from '@/lib/site-origin';
 
 /**
  * The store app's native pieces: the splash, the status bar, Android's back
- * button and links to other sites. Loaded only in the app (NativeShell), so
+ * button, links to other sites and links that open the app. Loaded only in the app (NativeShell), so
  * the website never downloads the plugins.
  */
 
@@ -31,6 +31,17 @@ export function linkTarget(href: string, appOrigin: string): LinkTarget {
   if (url.origin === appOrigin) return null;
   if (CLUB_ORIGINS.has(url.origin)) return { inside: `${url.pathname}${url.search}${url.hash}` };
   return { outside: url.href };
+}
+
+/**
+ * Where a link that opened the app goes (Universal Links: the paths in
+ * public/.well-known/apple-app-site-association). The club's own address,
+ * routed inside the app; anything else, such as Google sign-in's return to
+ * its custom scheme, is not the app's to route.
+ */
+export function openedLinkPath(href: string, appOrigin: string): string | null {
+  const target = linkTarget(href, appOrigin);
+  return target && 'inside' in target ? target.inside : null;
 }
 
 /** Android's back: closes an open sheet first, then goes back, then leaves. */
@@ -82,6 +93,15 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
       if (step === 'close') window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       else if (step === 'back') navigate(-1);
       else quietly(App.minimizeApp());
+    }),
+  );
+
+  // A link that opened the app, cold or warm: an invite, an emailed link, a
+  // shared page. Kept by the plugin until this listener takes it.
+  listeners.push(
+    App.addListener('appUrlOpen', ({ url }) => {
+      const path = openedLinkPath(url, window.location.origin);
+      if (path) navigate(path);
     }),
   );
 
