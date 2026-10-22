@@ -84,7 +84,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   apple-app-site-association` (`src/universal-links.test.ts` says which
   paths and why). Fake it in a browser with
   `window.CapacitorCustomPlatform = { name: 'ios' }`.
-- **Checks**: 3,320 tests in 238 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,322 tests in 238 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
