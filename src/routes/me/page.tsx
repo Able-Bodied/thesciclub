@@ -52,6 +52,12 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
   );
 }
 
+const LEGAL_LINKS = [
+  ['/privacy', 'Privacy Policy'],
+  ['/terms', 'Terms of Service'],
+  ['/delete-account', 'Deleting your account'],
+] as const;
+
 const ME_TAB_VALUES = ['profile', 'settings', 'account'] as const;
 type MeTab = (typeof ME_TAB_VALUES)[number];
 const ME_TABS = [
@@ -437,6 +443,27 @@ export default function MePage() {
                 Deleting your account
               </h2>
               {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
+            </section>
+            {/* Reachable after joining, as Apple 5.1.1(i) and Google Play ask. */}
+            <section aria-labelledby="me-legal-heading" className="mt-8">
+              <h2
+                id="me-legal-heading"
+                className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+              >
+                Privacy and terms
+              </h2>
+              <ul className="mt-1.5">
+                {LEGAL_LINKS.map(([to, label]) => (
+                  <li key={to}>
+                    <Link
+                      to={to}
+                      className="inline-flex min-h-[44px] items-center font-semibold text-[0.9375rem] text-emphasis underline"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </section>
           </TabPanel>
         ) : null}
