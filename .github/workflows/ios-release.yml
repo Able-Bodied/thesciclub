@@ -1,0 +1,210 @@
+# Signs the store app and uploads it to TestFlight.
+#
+#   git tag -a ios-v1.2.3 -m "What to test" && git push mine ios-v1.2.3
+#
+# or Actions -> "iOS release" -> Run workflow on main. The job waits for the
+# owner's approval in the `app-store` environment, which holds the signing
+# secrets and is limited to main and ios-v* tags. HANDOFF.md has the rest.
+#
+# Only in the owner's repository (Alfredx48/TheSciClub). There is deliberately
+# no pull_request trigger: a fork's code must never reach the environment.
+# Secrets are given to the steps that need them and to no others, so
+# `pnpm install` and the web build never see them.
+
+name: iOS release
+
+on:
+  push:
+    tags:
+      - 'ios-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Marketing version, X.Y.Z (a tag run takes it from the tag)'
+        default: '1.0.0'
+      notes:
+        description: 'What to Test (empty: the commit subject)'
+        required: false
+
+concurrency:
+  group: ios-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  XCODE_VERSION: '26.6'
+
+jobs:
+  testflight:
+    if: >-
+      github.repository == 'Alfredx48/TheSciClub' &&
+      (github.ref_type == 'tag' || github.ref == 'refs/heads/main')
+    runs-on: macos-26
+    timeout-minutes: 60
+    environment: app-store
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The version, "What to Test" and paths, before any secret is used. A tag must
+      # be ios-vX.Y.Z on a commit that is on main. Tag text and inputs reach
+      # the shell as variables, never pasted into the script.
+      - name: Version and What to Test
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_NOTES: ${{ inputs.notes }}
+        run: |
+          set -euo pipefail
+          notes=""
+          if [ "$REF_TYPE" = tag ]; then
+            re='^ios-v([0-9]+\.[0-9]+\.[0-9]+)$'
+            [[ "$REF_NAME" =~ $re ]] || { echo "::error::The tag must look like ios-v1.2.3"; exit 1; }
+            version="${BASH_REMATCH[1]}"
+            git merge-base --is-ancestor "$GITHUB_SHA" origin/main \
+              || { echo "::error::$REF_NAME is not on main; merge first, then tag"; exit 1; }
+            git fetch --force origin "refs/tags/$REF_NAME:refs/tags/$REF_NAME" || true
+            if [ "$(git cat-file -t "refs/tags/$REF_NAME")" = tag ]; then
+              notes="$(git for-each-ref --format='%(contents)' "refs/tags/$REF_NAME")"
+            fi
+          else
+            version="$INPUT_VERSION"
+            notes="$INPUT_NOTES"
+            re='^[0-9]+\.[0-9]+\.[0-9]+$'
+            [[ "$version" =~ $re ]] || { echo "::error::The version must look like 1.2.3"; exit 1; }
+          fi
+          if [ -z "${notes//[[:space:]]/}" ]; then
+            notes="$(git log -1 --format=%s "$GITHUB_SHA")"
+          fi
+          mkdir -p "$RUNNER_TEMP"
+          printf '%s\n' "$notes" > "$RUNNER_TEMP/whats-new.txt"
+          {
+            echo "APP_VERSION=$version"
+            echo "SIGNING_DIR=$RUNNER_TEMP/signing"
+            echo "KEYCHAIN_PATH=$RUNNER_TEMP/signing/ci.keychain-db"
+            echo "FASTLANE_TMP=$RUNNER_TEMP/fastlane-tmp"
+          } >> "$GITHUB_ENV"
+          echo "WHATS_NEW_FILE=$RUNNER_TEMP/whats-new.txt" >> "$GITHUB_ENV"
+          echo "Releasing $version"
+
+      # Same Xcode as the build check; see the note there.
+      - name: Pick Xcode
+        run: |
+          app="/Applications/Xcode_${XCODE_VERSION}.app"
+          if [ ! -d "$app" ]; then
+            echo "Xcode $XCODE_VERSION is not on this runner. These are:"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$app/Contents/Developer"
+          xcodebuild -version
+          xcodebuild -showsdks
+          xcrun simctl list runtimes
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Both values are public (the browser bundle has them too). A build
+      # without them would reach the store and not the club, so stop; and stop
+      # on a secret key, which must never be inside an app.
+      - name: Build the web app for the shell
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+            [ -n "${!name}" ] || { echo "::error::Set the Actions variable $name"; exit 1; }
+          done
+          node - <<'JS'
+          const key = process.env.VITE_SUPABASE_ANON_KEY;
+          let role = 'anon';
+          if (key.startsWith('sb_secret_')) role = 'service_role';
+          else if (key.split('.').length === 3) {
+            try {
+              role = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString()).role;
+            } catch {}
+          }
+          if (role !== 'anon') {
+            console.error(`::error::VITE_SUPABASE_ANON_KEY is a ${role} key, not the anon key`);
+            process.exit(1);
+          }
+          JS
+          pnpm build:native
+
+      - name: Sync
+        run: pnpm exec cap sync ios
+
+      - uses: ruby/setup-ruby@b1da4809b005e0178fe08a1d57317bffc00b7b4c # v1.332.0
+        with:
+          ruby-version: '3.4'
+          bundler-cache: true
+          working-directory: ios/App
+
+      # A keychain made for this run, holding only the Distribution
+      # certificate. The .p12 is deleted as soon as it is imported.
+      - name: Import the Distribution certificate
+        env:
+          DIST_CERT_P12_BASE64: ${{ secrets.DIST_CERT_P12_BASE64 }}
+          DIST_CERT_PASSWORD: ${{ secrets.DIST_CERT_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$SIGNING_DIR"
+          p12="$SIGNING_DIR/dist.p12"
+          printf '%s' "$DIST_CERT_P12_BASE64" | base64 --decode > "$p12"
+          pw="$(openssl rand -hex 16)"
+          echo "::add-mask::$pw"
+          security create-keychain -p "$pw" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$pw" "$KEYCHAIN_PATH"
+          security import "$p12" -k "$KEYCHAIN_PATH" -P "$DIST_CERT_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$KEYCHAIN_PATH" > /dev/null
+          existing="$(security list-keychains -d user | tr -d '"')"
+          # shellcheck disable=SC2086
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $existing
+          security find-identity -p codesigning "$KEYCHAIN_PATH" | tee "$SIGNING_DIR/identities.txt"
+          grep -q 'Apple Distribution' "$SIGNING_DIR/identities.txt" \
+            || { echo "::error::No Apple Distribution identity in the .p12"; exit 1; }
+
+      # Profile, build number, archive, export, upload: ios/App/fastlane.
+      # TMPDIR keeps fastlane's temporary copy of the API key in the runner's
+      # temp folder, which the last step empties.
+      - name: Sign, build and upload
+        working-directory: ios/App
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          TMPDIR: ${{ runner.temp }}/fastlane-tmp
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+          FASTLANE_OPT_OUT_USAGE: '1'
+          FASTLANE_SKIP_DOCS: '1'
+          FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: '120'
+        run: |
+          mkdir -p "$TMPDIR"
+          bundle exec fastlane release
+
+      # Runs when an earlier step failed or the run was cancelled.
+      - name: Remove the keychain and key files
+        if: always()
+        run: |
+          security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
+          rm -rf "$SIGNING_DIR" "$FASTLANE_TMP"
+          rm -f "$HOME"/.appstoreconnect/private_keys/AuthKey_*.p8
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/"*.mobileprovision
