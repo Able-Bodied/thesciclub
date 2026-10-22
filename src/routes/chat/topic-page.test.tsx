@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Blocks from '@/lib/blocks';
 import type * as Attachments from '@/lib/chat/attachments';
 import type * as Likes from '@/lib/chat/likes';
 import type * as Reactions from '@/lib/chat/reactions';
@@ -169,6 +170,24 @@ vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () => db.authors,
 }));
 
+// The viewer's blocks, and the write: network calls. blockExplainer stays real.
+const blocks = vi.hoisted(() => ({
+  ids: new Set<string>(),
+  reload: vi.fn(),
+  block: vi.fn(),
+}));
+vi.mock('@/lib/blocks', async (importOriginal) => ({
+  ...(await importOriginal<typeof Blocks>()),
+  useMyBlocks: () => ({
+    blocked: [],
+    ids: blocks.ids,
+    loading: false,
+    error: null,
+    reload: blocks.reload,
+  }),
+  blockMember: blocks.block,
+}));
+
 // Stubbed for the same reason as realtime, and the reason is not the socket:
 // `.env.local` points at the hosted project, so an unmocked *read* in a test
 // talks to production too. Phase 6 found two screens doing exactly that.
@@ -248,6 +267,9 @@ function renderTopic(path = '/chat/rooms/bowel/topics/t', repeatNotification = f
 }
 
 beforeEach(() => {
+  blocks.ids = new Set();
+  blocks.reload.mockReset();
+  blocks.block.mockReset().mockResolvedValue({ ok: true, value: null });
   db.rooms = [
     {
       id: 'bowel',
@@ -298,6 +320,72 @@ beforeEach(() => {
   db.saved = new Set();
   db.saveToggles = [];
   db.saveFailure = null;
+});
+
+describe('blocking from a post', () => {
+  beforeEach(() => {
+    if (db.topic) db.topic = { ...db.topic, authorId: 'me' };
+    db.posts = [
+      post({ id: '1', authorId: 'me', body: 'My question, at length.' }),
+      post({ id: '2', replyTo: '1', body: 'Nicole answers.' }),
+      post({ id: '3', replyTo: '1', authorId: null, body: 'Somebody gone answers.' }),
+      post({ id: '4', replyTo: '1', authorId: 'sam', body: 'Sam answers.' }),
+    ];
+    db.authors = new Map([
+      ['nicole', author({ id: 'nicole' })],
+      ['sam', author({ id: 'sam', displayName: 'Sam' })],
+    ]);
+  });
+
+  it('is offered on somebody else’s post, not yours, not a deleted member’s', () => {
+    renderTopic();
+    expect(screen.getAllByRole('button', { name: /^Block / }).map((b) => b.textContent)).toEqual([
+      'Block Nicole',
+      'Block Sam',
+    ]);
+  });
+
+  it('is offered to an administrator too, beside Remove', () => {
+    db.isAdmin = true;
+    renderTopic();
+    expect(screen.getByRole('button', { name: 'Block Nicole' })).toBeInTheDocument();
+  });
+
+  it('is not offered, and the post not drawn, once they are blocked', () => {
+    blocks.ids = new Set(['nicole']);
+    renderTopic();
+    expect(screen.queryByText('Nicole answers.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Block Nicole' })).toBeNull();
+  });
+
+  it('asks with the profile’s dialog, blocks, hides their posts and focuses the heading', async () => {
+    const user = userEvent.setup();
+    renderTopic();
+    await user.click(screen.getByRole('button', { name: 'Block Nicole' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Nicole?' });
+    expect(dialog).toHaveTextContent('Nicole is not told.');
+    await user.click(within(dialog).getByRole('button', { name: 'Block Nicole' }));
+    expect(blocks.block).toHaveBeenCalledWith('nicole');
+    await waitFor(() => {
+      expect(screen.queryByText('Nicole answers.')).toBeNull();
+    });
+    expect(screen.getByText('Sam answers.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Travelling with a bowel programme' }),
+    ).toHaveFocus();
+    expect(blocks.reload).toHaveBeenCalled();
+  });
+
+  it('leaves for the room when it is their topic, which is hidden whole', async () => {
+    const user = userEvent.setup();
+    if (db.topic) db.topic = { ...db.topic, authorId: 'nicole' };
+    db.posts = [post({ id: '1', body: 'Nicole asks, at length.' })];
+    renderTopic();
+    await user.click(screen.getByRole('button', { name: 'Block Nicole' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Nicole?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Block Nicole' }));
+    expect(await screen.findByText('The room')).toBeInTheDocument();
+  });
 });
 
 // A reply or a like notification links to ?post=<id> (20261006000000).

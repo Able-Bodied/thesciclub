@@ -10,6 +10,7 @@ import {
 import { BackLink } from '@/components/back-link';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
+import { useMyBlocks } from '@/lib/blocks';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
@@ -44,6 +45,7 @@ import { Post } from '@/routes/chat/post';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 import { SaveTopicButton } from '@/routes/chat/save-button';
+import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 
 /**
  * One topic: the question, every reply, and the box to add to it.
@@ -117,12 +119,29 @@ export default function TopicPage() {
     roomId,
     topicId,
   );
+  // Block from a post's •••: hidden here at once, and by the database on the
+  // next read. Focus then goes to the heading, as the post is gone.
+  const blocks = useMyBlocks();
+  const [blockedHere, setBlockedHere] = useState<ReadonlySet<string>>(new Set());
+  const [blocking, setBlocking] = useState<{ id: string; name: string } | null>(null);
+  const [blockedCount, setBlockedCount] = useState(0);
+  const heading = useRef<HTMLHeadingElement | null>(null);
   // What the reader sees and counts: removed posts are left out, and the
   // rest are filed under the post they answer. See the header.
   const threads = useMemo(
-    () => threadPosts(posts.filter((post) => post.removedAt === null)),
-    [posts],
+    () =>
+      threadPosts(
+        posts.filter(
+          (post) =>
+            post.removedAt === null &&
+            !(post.authorId && (blocks.ids.has(post.authorId) || blockedHere.has(post.authorId))),
+        ),
+      ),
+    [posts, blocks.ids, blockedHere],
   );
+  useEffect(() => {
+    if (blockedCount > 0) heading.current?.focus();
+  }, [blockedCount]);
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [deleteFailure, setDeleteFailure] = useState<string | null>(null);
@@ -331,6 +350,15 @@ export default function TopicPage() {
   const nameOf = (post: ChatPost) =>
     (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a deleted member';
 
+  /** Block, on somebody else's post while they are still a member. */
+  const blockOffer = (post: ChatPost) => {
+    const author = post.authorId ? authors.get(post.authorId) : undefined;
+    if (!author || author.id === account.userId) return undefined;
+    return () => {
+      setBlocking({ id: author.id, name: author.displayName });
+    };
+  };
+
   /** Controls act on this specific post, including replies to replies. */
   const postProps = (post: ChatPost) => ({
     post,
@@ -364,6 +392,7 @@ export default function TopicPage() {
     onReport: () => {
       setReportingId(post.id);
     },
+    onBlock: blockOffer(post),
     edits: edits.byPost.get(post.id) ?? [],
     viewCount: views.loading ? undefined : (views.byPost.get(post.id) ?? null),
     // Keep Like visible while counts load, without inventing a zero count.
@@ -431,7 +460,11 @@ export default function TopicPage() {
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-3 pb-3">
         <div className="mx-auto w-full max-w-[720px]">
           <ChatBreadcrumb state={location.state as unknown} room={room} />
-          <h1 className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3]">
+          <h1
+            ref={heading}
+            tabIndex={-1}
+            className="mt-1 font-extrabold font-head text-[1.125rem] text-ink leading-[1.3] outline-none"
+          >
             {topic.title}
           </h1>
           {/* Who started it, with their picture and a link to their profile
@@ -616,6 +649,29 @@ export default function TopicPage() {
           </p>
         </div>
       )}
+
+      {blocking ? (
+        <BlockMemberSheet
+          memberId={blocking.id}
+          name={blocking.name}
+          onCancel={() => {
+            setBlocking(null);
+          }}
+          onBlocked={() => {
+            // Their topic is hidden whole (20261022060000): leave it.
+            if (topic.authorId === blocking.id) {
+              void navigate(back.to, { replace: true });
+              return;
+            }
+            setBlockedHere((ids) => new Set(ids).add(blocking.id));
+            if (replyingTo?.authorId === blocking.id) setReplyingTo(null);
+            setBlocking(null);
+            setBlockedCount((n) => n + 1);
+            blocks.reload();
+            reload();
+          }}
+        />
+      ) : null}
 
       {reportingId ? (
         <ReportSheet
