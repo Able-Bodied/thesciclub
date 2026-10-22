@@ -1,0 +1,82 @@
+# Proves the store app's iOS shell still compiles: an unsigned Simulator
+# build on a Mac. No signing, no upload and no secrets; that is a later step.
+#
+# Runs only in the owner's repository (Alfredx48/TheSciClub), where the Apple
+# work lives. Pushes reach Able-Bodied/thesciclub too, and macOS minutes are
+# not free in either.
+#
+# If the Xcode below is no longer on the runner, the "Pick Xcode" step lists
+# the ones that are: change XCODE_VERSION to one of them (26.x, as App Store
+# uploads need).
+
+name: iOS build check
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'ios/**'
+      - 'capacitor.config.ts'
+      - '.github/workflows/ios-build-check.yml'
+
+concurrency:
+  group: ios-build-check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  XCODE_VERSION: '26.0'
+
+jobs:
+  simulator-build:
+    if: github.repository == 'Alfredx48/TheSciClub'
+    runs-on: macos-26
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Pick Xcode
+        run: |
+          app="/Applications/Xcode_${XCODE_VERSION}.app"
+          if [ ! -d "$app" ]; then
+            echo "Xcode $XCODE_VERSION is not on this runner. These are:"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$app/Contents/Developer"
+          xcodebuild -version
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The web build the app bundles. Without the Supabase settings it still
+      # compiles; it would only fail to reach the club when run.
+      - name: Build the web app for the shell
+        run: pnpm build:native
+
+      # Copies it into ios/App/App/public and writes the plugin list and
+      # Package.swift the Xcode project expects.
+      - name: Sync
+        run: pnpm exec cap sync ios
+
+      - name: Build for the Simulator, unsigned
+        working-directory: ios/App
+        run: |
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
