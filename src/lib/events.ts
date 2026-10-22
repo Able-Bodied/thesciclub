@@ -54,6 +54,13 @@ const LIST_COLUMNS =
   'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state';
 
 /**
+ * Each event's tags and tallies, embedded in the same read. They were two
+ * more reads, by id, once the events had come: a second round trip before
+ * Home or Events could draw (2026-10-22).
+ */
+const EMBEDDED = 'event_tags(tag_id), event_rsvp_counts(going_count, interested_count)';
+
+/**
  * Reads that are the same for every viewer (the tag taxonomy, the calendar
  * feeds' time zones), kept five minutes and shared by every screen that asks,
  * so each Events or Home visit does not read them again. A failed read is not
@@ -109,6 +116,9 @@ interface EventRow {
   /** Imported events an administrator changed (20261012060000). Not in a list's read. */
   admin_override?: Record<string, unknown> | null;
   feed_values?: Record<string, unknown> | null;
+  /** Embedded (EMBEDDED). No row in the counts view is nobody yet. */
+  event_tags?: { tag_id: string }[] | null;
+  event_rsvp_counts?: Omit<CountRow, 'event_id'>[] | null;
 }
 
 interface TagRow {
@@ -302,7 +312,11 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
         const columns = (id ? EVENT_COLUMNS : LIST_COLUMNS) as typeof EVENT_COLUMNS;
         const readRange = (batch: string[] | null) =>
           readPages<EventRow>((first, last) => {
-            let query = supabase.from('events').select(columns).order('start_time').order('id');
+            let query = supabase
+              .from('events')
+              .select(`${columns}, ${EMBEDDED}`)
+              .order('start_time')
+              .order('id');
             if (from) query = query.gte('start_time', from);
             if (to) query = query.lte('start_time', to);
             if (id) query = query.eq('id', id);
@@ -323,54 +337,11 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
           fail(describeError(events.error, 'Could not load events.'));
           return;
         }
-        const ids = (events.data ?? []).map((event) => event.id);
-        // Keep URLs bounded, and fetch tags/counts only for the events just read.
-        async function supporting<T>(
-          table: string,
-          columns: string,
-          order: string[],
-          map: (rows: unknown[]) => T[],
-        ) {
-          const batches: string[][] = [];
-          for (let offset = 0; offset < ids.length; offset += 100) {
-            batches.push(ids.slice(offset, offset + 100));
-          }
-          // Side by side rather than one after another.
-          const results = await Promise.all(
-            batches.map((batch) =>
-              readPages<T>((first, last) => {
-                let query = supabase.from(table).select(columns).in('event_id', batch);
-                for (const column of order) query = query.order(column);
-                return query
-                  .range(first, last)
-                  .abortSignal(signal)
-                  .overrideTypes<T[], { merge: false }>();
-              }),
-            ),
-          );
-          const failed = results.find((result) => result.error);
-          if (failed) return failed;
-          return { data: results.flatMap((result) => map(result.data ?? [])), error: null };
-        }
-        const [links, tags, counts, feeds] = await Promise.all([
-          supporting<{ event_id: string; tag_id: string }>(
-            'event_tags',
-            'event_id, tag_id',
-            ['event_id', 'tag_id'],
-            (rows) => rows as { event_id: string; tag_id: string }[],
-          ),
-          taxonomyRead,
-          supporting<CountRow>(
-            'event_rsvp_counts',
-            'event_id, going_count, interested_count',
-            ['event_id'],
-            (rows) => rows as CountRow[],
-          ),
-          feedsRead,
-        ]);
+        const rows = events.data ?? [];
+        const [tags, feeds] = await Promise.all([taxonomyRead, feedsRead]);
         if (aborted()) return;
 
-        const failure = [events, links, tags, counts, feeds].find((result) => result.error);
+        const failure = [tags, feeds].find((result) => result.error);
         if (failure?.error) {
           fail(describeError(failure.error, 'Could not load events.'));
           return;
@@ -379,10 +350,14 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
         shown.current = query;
         setState({
           events: toEvents({
-            events: events.data ?? [],
-            eventTags: links.data ?? [],
+            events: rows,
+            eventTags: rows.flatMap((row) =>
+              (row.event_tags ?? []).map(({ tag_id }) => ({ event_id: row.id, tag_id })),
+            ),
             taxonomy: buildTaxonomy(tags.data ?? []),
-            counts: counts.data ?? [],
+            counts: rows.flatMap((row) =>
+              (row.event_rsvp_counts ?? []).map((count) => ({ event_id: row.id, ...count })),
+            ),
             timezones: new Map(
               ((feeds.data ?? []) as { id: string; timezone: string }[]).map((f) => [
                 f.id,
