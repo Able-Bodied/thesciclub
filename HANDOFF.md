@@ -60,7 +60,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   into `ios/` and `android/`; `pnpm native:assets` remakes icons and splash
   from `assets/`. iOS uses Swift Package Manager; no Mac here, so
   `.github/workflows/ios-build-check.yml` builds it unsigned for the
-  Simulator, in Alfredx48/TheSciClub only. `isNative()`
+  Simulator, in Alfredx48/TheSciClub only (`ios-release.yml` signs and uploads:
+  see Release to TestFlight). `isNative()`
   (`lib/standalone.ts`) keeps out of the app everything browser-only:
   worker and reload, web push, install nudge and steps, the Home Screen
   hand-off, Google, Apple and passkeys (until native sign-in). Links made
@@ -100,7 +101,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 - **Store app, still to build**: native Google and Apple sign-in (then
   retire the Home Screen pairing), native push, Universal Links and App
-  Links, signing and upload; the demo reviewers run live
+  Links, a first real TestFlight run (written, never run); the demo reviewers run live
   (`scripts/demo-reviewers.mjs --live`). Never run on a device: Text
   Size, the CSP under WebKit, Nominatim with the app's User-Agent.
 
@@ -296,6 +297,19 @@ All live. Migration headers and the files named say how and why.
 - **CSP** (`netlify.toml`): `index.html`'s two inline scripts by hash and the
   Supabase host. `src/csp.test.ts` gives the new hash; a new outside host goes
   there too, and reaches the store app's policy by itself (`native-csp.ts`).
+- **Release to TestFlight** (`.github/workflows/ios-release.yml`, fastlane in
+  `ios/App/fastlane`; Alfredx48/TheSciClub only, secrets in its `app-store`
+  environment): the commit must be on main. Once, `gh variable set
+  VITE_SUPABASE_URL -R Alfredx48/TheSciClub` and the same for
+  `VITE_SUPABASE_ANON_KEY` (public values, as on Netlify). Then `git tag -a
+  ios-v1.0.0 -m "What to test"` and `git push origin ios-v1.0.0` (or Actions →
+  iOS release → Run workflow on main), approve it in Actions, and the build
+  shows in TestFlight 10–20 minutes after the upload. The tag gives the
+  version; the build number is TestFlight's latest + 1; the tag message (else
+  the commit subject) is What to Test. A failed run: read the step that
+  failed. No Apple Distribution identity: re-export the .p12 with 3DES/SHA1.
+  Profile error: the App ID `com.thesciclub.app` or the key's role.
+  Xcode missing: `XCODE_VERSION` in both iOS workflows.
 - **Netlify**: `pnpm exec netlify … --filter thesciclub`. Verify a deploy by
   grepping the live bundle for a string only the new code has.
 - **Ingest**: `.github/workflows/event-ingest.yml`, daily 04:10 UTC from
