@@ -11,9 +11,10 @@ export const IOS_APP_ORIGIN = 'capacitor://localhost';
 // A <meta> policy ignores frame-ancestors; the app has no manifest or worker.
 const DROPPED = new Set(['frame-ancestors', 'manifest-src', 'worker-src']);
 
-// Not in the app: Google's widget (until native sign-in) and YouTube's
-// player (the in-app browser plays videos instead).
-const NOT_IN_THE_APP = ['accounts.google.com', 'youtube-nocookie.com'];
+// Not in the app: Google's widget, until native sign-in. YouTube's player
+// stays, as on the website; if it refuses capacitor://localhost, the card's
+// "Open in YouTube" link is the way.
+const NOT_IN_THE_APP = ['accounts.google.com'];
 
 export function nativeCsp(webPolicy: string): string {
   return webPolicy

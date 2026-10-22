@@ -117,7 +117,7 @@ describe("the store app's Content-Security-Policy", () => {
     }
   });
 
-  it('reaches Supabase and the geocoder, and nothing from Google or YouTube', () => {
+  it('reaches Supabase and the geocoder, and nothing from Google', () => {
     expect(appDirective('connect-src')).toEqual([
       "'self'",
       'capacitor://localhost',
@@ -126,9 +126,18 @@ describe("the store app's Content-Security-Policy", () => {
       'https://nominatim.openstreetmap.org',
     ]);
     expect(app).not.toContain('google.com');
-    expect(app).not.toContain('youtube');
-    expect(appDirective('frame-src')).toEqual(["'none'"]);
     expect(appDirective('object-src')).toEqual(["'none'"]);
+  });
+
+  // The website's YouTube host and nothing more: not Google's sign-in, and
+  // YouTube appears in no other directive.
+  it("frames only YouTube's privacy-enhanced player, as the website does", () => {
+    expect(appDirective('frame-src')).toEqual(['https://www.youtube-nocookie.com']);
+    expect(appDirective('frame-src')).toEqual(
+      directive('frame-src').filter((source) => source.includes('youtube')),
+    );
+    const others = app.split(';').filter((part) => !part.trim().startsWith('frame-src'));
+    expect(others.join(';')).not.toContain('youtube');
   });
 
   it('leaves out what a <meta> ignores or the app has not', () => {
