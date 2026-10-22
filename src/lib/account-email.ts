@@ -1,6 +1,7 @@
 import type { User, UserIdentity } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { siteOrigin } from '@/lib/site-origin';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -73,7 +74,7 @@ export function waysIn(details: SignInDetails, without?: 'google' | 'apple'): nu
 }
 
 function redirect(): string {
-  return `${window.location.origin}/me?${EMAIL_RETURN_PARAM}=changed`;
+  return `${siteOrigin()}/me?${EMAIL_RETURN_PARAM}=changed`;
 }
 
 /** Sets or changes the address; a link goes to the new one (and the old, if there was one). */

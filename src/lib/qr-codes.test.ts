@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   captureQrCode,
@@ -69,6 +70,16 @@ describe('holding the code through sign-up', () => {
     expect(captureQrCode('')).toBe('abc123');
     forgetQrCode();
     expect(heldQrCode()).toBeNull();
+  });
+
+  it("makes the store app's code open thesciclub.com, not the app's own address", () => {
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    try {
+      expect(qrJoinUrl('abc123')).toBe('https://thesciclub.com/join?from=abc123');
+    } finally {
+      native.mockRestore();
+    }
+    expect(qrJoinUrl('abc123')).toBe(`${window.location.origin}/join?from=abc123`);
   });
 
   it('builds the address the code opens', () => {

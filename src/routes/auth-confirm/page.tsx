@@ -2,6 +2,7 @@ import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { readEmailLink, redeemEmailLink } from '@/lib/email-link';
+import { siteOrigin } from '@/lib/site-origin';
 
 /**
  * Where every emailed link opens (src/lib/email-link.ts): confirming an
@@ -9,7 +10,7 @@ import { readEmailLink, redeemEmailLink } from '@/lib/email-link';
  * link and reloads the page the link was for, carrying the outcome.
  */
 export default function AuthConfirmPage() {
-  const [link] = useState(() => readEmailLink(window.location.search, window.location.origin));
+  const [link] = useState(() => readEmailLink(window.location.search, siteOrigin()));
   const [failed, setFailed] = useState(false);
 
   const redeem = useCallback(() => {
