@@ -1,5 +1,6 @@
 import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
+import { thumbPath, uploadPhoto } from '@/lib/photos';
 import { getSupabase } from '@/lib/supabase';
 import {
   type Completeness,
@@ -288,9 +289,7 @@ export async function savePhoto(
   // the member must not meet a refusal for it (20261022130000).
   const path = `${userId}/profile-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 
-  const upload = await supabase.storage
-    .from('photos')
-    .upload(path, blob, { upsert: true, contentType: blob.type });
+  const upload = await uploadPhoto(path, blob);
   if (upload.error) return { ok: false, error: describeError(upload.error, PHOTO_REFUSAL) };
 
   await removeOtherPhotos(userId, path);
@@ -305,7 +304,8 @@ export async function savePhoto(
 }
 
 /**
- * Delete every other object in this member's photo folder.
+ * Delete every other object in this member's photo folder (the new one's small
+ * copy stays too).
  *
  * Each upload is a new object, so the old ones are left behind: the row moves,
  * the file does not. Found on the live bucket, a member with both
@@ -319,7 +319,8 @@ async function removeOtherPhotos(userId: string, keep: string): Promise<void> {
   const supabase = getSupabase();
   const listed = await supabase.storage.from('photos').list(userId);
   if (listed.error) return;
-  const stale = listed.data.map((o) => `${userId}/${o.name}`).filter((full) => full !== keep);
+  const kept = new Set([keep, thumbPath(keep)]);
+  const stale = listed.data.map((o) => `${userId}/${o.name}`).filter((full) => !kept.has(full));
   if (stale.length > 0) await supabase.storage.from('photos').remove(stale);
 }
 

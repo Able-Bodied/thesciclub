@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fittedSize, MAX_PHOTO_EDGE, preparePhoto } from '@/lib/image';
+import { fittedSize, MAX_PHOTO_EDGE, preparePhoto, prepareThumb, THUMB_EDGE } from '@/lib/image';
 
 describe('fittedSize', () => {
   it('fits a landscape photo by its long edge', () => {
@@ -151,5 +151,54 @@ describe('preparePhoto', () => {
     expect(result.ext).toBe('webp');
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+});
+
+describe('prepareThumb', () => {
+  function canvasOf(width: number, height: number) {
+    vi.stubGlobal(
+      'createImageBitmap',
+      vi.fn(() => Promise.resolve({ width, height, close: () => undefined })),
+    );
+    const drawn: { width: number; height: number; type?: string } = { width: 0, height: 0 };
+    const canvas = {
+      set width(value: number) {
+        drawn.width = value;
+      },
+      set height(value: number) {
+        drawn.height = value;
+      },
+      getContext: () => ({ drawImage: () => undefined }),
+      toBlob: (resolve: (blob: Blob | null) => void, type: string) => {
+        drawn.type = type;
+        resolve(new Blob([new Uint8Array(20_000)], { type }));
+      },
+    };
+    vi.spyOn(document, 'createElement').mockImplementation(
+      () => canvas as unknown as HTMLCanvasElement,
+    );
+    return drawn;
+  }
+
+  it('fits a fitted photograph to the small edge, in its own encoding', async () => {
+    const drawn = canvasOf(600, 800);
+    const thumb = await prepareThumb(new Blob(['x'], { type: 'image/jpeg' }));
+    expect(drawn).toEqual({ width: 300, height: THUMB_EDGE, type: 'image/jpeg' });
+    expect(thumb?.type).toBe('image/jpeg');
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('makes none for a photograph already that small, or one it cannot write', async () => {
+    canvasOf(300, 400);
+    expect(await prepareThumb(new Blob(['x'], { type: 'image/webp' }))).toBeNull();
+    canvasOf(600, 800);
+    expect(await prepareThumb(new Blob(['x'], { type: 'image/png' }))).toBeNull();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('makes none where the browser cannot decode images', async () => {
+    expect(await prepareThumb(new Blob(['x'], { type: 'image/webp' }))).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resetAttachmentUrls, useAttachmentUrls } from '@/lib/chat/attachments';
-import { usePhotoUrl } from '@/lib/photos';
+import { thumbPath, usePhotoUrl } from '@/lib/photos';
 
 /**
  * Photographs and logos are drawn through signed URLs (HANDOFF.md "What Home is" step 6,
@@ -124,6 +124,47 @@ describe('usePhotoUrl', () => {
       );
     });
     expect(storage.calls).toEqual([{ bucket: 'chat', paths: ['rooms/bowel/x.webp'] }]);
+  });
+});
+
+describe('small copies', () => {
+  function Small({ path }: { path: string }) {
+    const url = usePhotoUrl(path, 'thumb');
+    return <span data-testid={path}>{url ?? 'initials'}</span>;
+  }
+
+  it('names the copy beside the photograph', () => {
+    expect(thumbPath('u1/profile-1a2b.webp')).toBe('u1/profile-1a2b.thumb.webp');
+    expect(thumbPath('u1/profile.jpg')).toBe('u1/profile.thumb.jpg');
+  });
+
+  it('draws the copy, signed in the same request as the photograph', async () => {
+    render(<Small path="u1/profile.webp" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('u1/profile.webp')).toHaveTextContent(
+        'https://signed.test/photos/u1/profile.thumb.webp?token=t',
+      );
+    });
+    expect(storage.calls).toEqual([
+      { bucket: 'photos', paths: ['u1/profile.thumb.webp', 'u1/profile.webp'] },
+    ]);
+  });
+
+  it('draws the photograph where there is no copy, and does not ask for the copy again', async () => {
+    storage.refuse.add('u1/old.thumb.webp');
+    const first = render(<Small path="u1/old.webp" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('u1/old.webp')).toHaveTextContent(
+        'https://signed.test/photos/u1/old.webp?token=t',
+      );
+    });
+    first.unmount();
+    render(<Small path="u1/old.webp" />);
+    expect(screen.getByTestId('u1/old.webp')).toHaveTextContent(
+      'https://signed.test/photos/u1/old.webp?token=t',
+    );
+    await act(() => new Promise((r) => setTimeout(r, 10)));
+    expect(storage.calls).toHaveLength(1);
   });
 });
 

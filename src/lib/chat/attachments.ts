@@ -196,9 +196,23 @@ function saveKept(): void {
 
 restoreKept();
 
+/**
+ * Small copies storage refused: not made yet (photos.ts names them
+ * `*.thumb.*`). Not asked for again while the page lives, so a screen of older
+ * photographs does not sign each missing copy on every visit.
+ */
+const missingCopies = new Set<string>();
+const isCopy = (path: string) => path.includes('.thumb.');
+
+/** Whether storage has said this small copy is not there. */
+export function copyMissing(bucket: SignedBucket, path: string): boolean {
+  return missingCopies.has(cacheKey(bucket, path));
+}
+
 /** For tests, and for a sign-out: nothing signed for one member serves the next. */
 export function resetAttachmentUrls(): void {
   signed.clear();
+  missingCopies.clear();
   queued.clear();
   inFlight.clear();
   try {
@@ -263,6 +277,8 @@ async function sign(bucket: SignedBucket, paths: string[]): Promise<void> {
       // simply not drawn — the same as a photograph that has been deleted.
       if (row.signedUrl && row.path) {
         signed.set(cacheKey(bucket, row.path), { url: row.signedUrl, until: now + CACHE_FOR_MS });
+      } else if (row.path && isCopy(row.path)) {
+        missingCopies.add(cacheKey(bucket, row.path));
       }
     }
   } catch {
@@ -281,7 +297,7 @@ async function signUrls(bucket: SignedBucket, paths: string[]): Promise<Map<stri
   const missing: string[] = [];
   for (const path of paths) {
     const hit = signed.get(cacheKey(bucket, path));
-    if (hit && hit.until > now) continue;
+    if ((hit && hit.until > now) || missingCopies.has(cacheKey(bucket, path))) continue;
     const pending = inFlight.get(cacheKey(bucket, path));
     if (pending) waits.add(pending);
     else missing.push(path);

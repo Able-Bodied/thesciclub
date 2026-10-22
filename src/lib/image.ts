@@ -211,3 +211,37 @@ export async function preparePhoto(
     bitmap?.close();
   }
 }
+
+/**
+ * The long edge of a photograph's small copy, drawn wherever a face is small
+ * (avatars, lists, under a Peers card while its photograph arrives). A 3x
+ * screen fills an 88px square from its 300px short edge.
+ */
+export const THUMB_EDGE = 400;
+
+/**
+ * A small copy of a fitted photograph, in the same encoding, or null: no
+ * canvas, a type other than webp or JPEG, or a photograph already that small.
+ * Made from the fitted copy, which is already upright.
+ */
+export async function prepareThumb(photo: Blob, max: number = THUMB_EDGE): Promise<Blob | null> {
+  const type = photo.type === 'image/webp' || photo.type === 'image/jpeg' ? photo.type : null;
+  if (!type || typeof createImageBitmap !== 'function') return null;
+  let bitmap: ImageBitmap | null = null;
+  try {
+    bitmap = await createImageBitmap(photo);
+    const { width, height } = fittedSize(bitmap.width, bitmap.height, max);
+    if (width === bitmap.width && height === bitmap.height) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) return null;
+    context.drawImage(bitmap, 0, 0, width, height);
+    return await encode(canvas, type);
+  } catch {
+    return null;
+  } finally {
+    bitmap?.close();
+  }
+}
