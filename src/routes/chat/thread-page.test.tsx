@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import type { PropsWithChildren } from 'react';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AnnounceProvider } from '@/lib/announce';
+import type * as Blocks from '@/lib/blocks';
 import type * as Attachments from '@/lib/chat/attachments';
 import type * as Reactions from '@/lib/chat/reactions';
 import type * as ReadReceipts from '@/lib/chat/read-receipts';
@@ -41,6 +43,24 @@ const db = vi.hoisted(() => ({
   urls: new Map<string, string>(),
   deletedConversations: [] as string[],
   deleteFailure: null as string | null,
+}));
+
+// The viewer's blocks, and the write: network calls. blockExplainer stays real.
+const blocks = vi.hoisted(() => ({
+  ids: new Set<string>(),
+  reload: vi.fn(),
+  block: vi.fn(),
+}));
+vi.mock('@/lib/blocks', async (importOriginal) => ({
+  ...(await importOriginal<typeof Blocks>()),
+  useMyBlocks: () => ({
+    blocked: [],
+    ids: blocks.ids,
+    loading: false,
+    error: null,
+    reload: blocks.reload,
+  }),
+  blockMember: blocks.block,
 }));
 
 vi.mock('@/routes/chat/delete-conversation-api', () => ({
@@ -205,6 +225,9 @@ function renderThread(path = '/chat/t/th1', repeatNotification = false) {
 }
 
 beforeEach(() => {
+  blocks.ids = new Set();
+  blocks.reload.mockReset();
+  blocks.block.mockReset().mockResolvedValue({ ok: true, value: null });
   db.reads = new Map();
   db.thread = thread();
   db.messages = [];
@@ -478,6 +501,77 @@ describe('reporting a message', () => {
     renderThread();
     expect(screen.getByText('Reported')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Report / })).toBeNull();
+  });
+});
+
+describe('blocking from a message', () => {
+  const group = () =>
+    thread({ kind: 'group', name: 'Swimmers', otherMemberId: null, memberCount: 3 });
+
+  it('is offered on somebody else’s message, not yours, not a deleted member’s', () => {
+    db.thread = group();
+    db.messages = [
+      message({ id: 'm1', body: 'From Jan.' }),
+      message({ id: 'm2', authorId: 'me', body: 'From me.' }),
+      message({ id: 'm3', authorId: null, body: 'From somebody gone.' }),
+    ];
+    renderThread();
+    expect(screen.getAllByRole('button', { name: 'Block Jan' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /^Block a deleted member/i })).toBeNull();
+  });
+
+  it('is not offered, and the message not drawn, once they are blocked', () => {
+    db.thread = group();
+    blocks.ids = new Set(['jan']);
+    db.messages = [message({ id: 'm1', body: 'From Jan.' })];
+    renderThread();
+    expect(screen.queryByText('From Jan.')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Block Jan' })).toBeNull();
+  });
+
+  it('asks with the profile’s dialog, blocks, hides them, says so and focuses the heading', async () => {
+    const user = userEvent.setup();
+    db.thread = group();
+    db.messages = [
+      message({ id: 'm1', body: 'From Jan.' }),
+      message({ id: 'm2', authorId: 'me', body: 'From me.' }),
+    ];
+    render(
+      <AnnounceProvider>
+        <MemoryRouter initialEntries={['/chat/t/th1']}>
+          <Routes>
+            <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AnnounceProvider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Block Jan' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Jan?' });
+    expect(dialog).toHaveTextContent('Jan is not told.');
+    expect(blocks.block).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole('button', { name: 'Block Jan' }));
+    expect(blocks.block).toHaveBeenCalledWith('jan');
+    await waitFor(() => {
+      expect(screen.queryByText('From Jan.')).toBeNull();
+    });
+    expect(screen.getByText('From me.')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus();
+    expect(blocks.reload).toHaveBeenCalled();
+    expect(await screen.findByText('You blocked Jan.')).toBeInTheDocument();
+  });
+
+  it('keeps the message and the dialog, with the reason, when the block fails', async () => {
+    const user = userEvent.setup();
+    blocks.block.mockResolvedValue({ ok: false, error: 'They were not blocked.' });
+    db.thread = group();
+    db.messages = [message({ id: 'm1', body: 'From Jan.' })];
+    renderThread();
+    await user.click(screen.getByRole('button', { name: 'Block Jan' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Jan?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Block Jan' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('They were not blocked.');
+    expect(screen.getByText('From Jan.')).toBeInTheDocument();
   });
 });
 

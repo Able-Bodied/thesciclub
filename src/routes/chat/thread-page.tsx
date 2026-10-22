@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { motionReduced } from '@/lib/accessibility';
 import { useAccount } from '@/lib/account';
+import { useMyBlocks } from '@/lib/blocks';
 import {
   attachmentFolder,
   deleteAttachments,
@@ -26,6 +27,7 @@ import { MuteButton } from '@/routes/chat/mute-button';
 import { NoticeLine } from '@/routes/chat/notice-line';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
+import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 
 /**
  * One conversation: the bubbles, and the box to add to it.
@@ -129,6 +131,23 @@ export default function ThreadPage() {
   const reports = useMyReports();
   /** Which message the sheet is open over, or null. One at a time. */
   const [reportingId, setReportingId] = useState<string | null>(null);
+  // Block from a message's •••: hidden here at once, and by the database on
+  // the next read. Focus then goes to the heading, as the bubble is gone.
+  const blocks = useMyBlocks();
+  const [blockedHere, setBlockedHere] = useState<ReadonlySet<string>>(new Set());
+  const [blocking, setBlocking] = useState<{ id: string; name: string } | null>(null);
+  const [blockedCount, setBlockedCount] = useState(0);
+  const heading = useRef<HTMLHeadingElement | null>(null);
+  const shown = useMemo(
+    () =>
+      messages.filter(
+        (m) => !m.authorId || !(blocks.ids.has(m.authorId) || blockedHere.has(m.authorId)),
+      ),
+    [messages, blocks.ids, blockedHere],
+  );
+  useEffect(() => {
+    if (blockedCount > 0) heading.current?.focus();
+  }, [blockedCount]);
 
   const authors = useChatAuthors([
     thread?.otherMemberId ?? null,
@@ -254,6 +273,15 @@ export default function ThreadPage() {
     };
   };
 
+  /** Block, on somebody else's message while they are still a member. */
+  const blockOffer = (message: ChatMessage) => {
+    const author = message.authorId ? authors.get(message.authorId) : undefined;
+    if (!author || author.id === account.userId || message.pending) return undefined;
+    return () => {
+      setBlocking({ id: author.id, name: author.displayName });
+    };
+  };
+
   /** Scroll the quoted message into view and light it up once. */
   function showQuoted(messageId: string) {
     const element = document.getElementById(`message-${messageId}`);
@@ -334,7 +362,13 @@ export default function ThreadPage() {
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate font-extrabold font-head text-[1rem] text-ink">{title}</h1>
+              <h1
+                ref={heading}
+                tabIndex={-1}
+                className="truncate font-extrabold font-head text-[1rem] text-ink outline-none"
+              >
+                {title}
+              </h1>
               {thread.kind === 'group' ? (
                 <Link
                   to={`/chat/t/${thread.id}/members`}
@@ -395,14 +429,14 @@ export default function ThreadPage() {
             </p>
           ) : null}
 
-          {messages.length === 0 ? (
+          {shown.length === 0 ? (
             <p className="py-10 text-center text-[0.875rem] text-grey leading-relaxed">
               Nothing has been said yet.
               <br />
               Whatever you write here is between the two of you.
             </p>
           ) : (
-            messages.map((message) =>
+            shown.map((message) =>
               message.notice ? (
                 <NoticeLine
                   key={message.id}
@@ -478,6 +512,7 @@ export default function ThreadPage() {
                   onReport={() => {
                     setReportingId(message.id);
                   }}
+                  onBlock={blockOffer(message)}
                 />
               ),
             )
@@ -544,6 +579,24 @@ export default function ThreadPage() {
           }}
         />
       )}
+
+      {blocking ? (
+        <BlockMemberSheet
+          memberId={blocking.id}
+          name={blocking.name}
+          onCancel={() => {
+            setBlocking(null);
+          }}
+          onBlocked={() => {
+            setBlockedHere((ids) => new Set(ids).add(blocking.id));
+            if (replyingTo?.authorId === blocking.id) setReplyingTo(null);
+            setBlocking(null);
+            setBlockedCount((n) => n + 1);
+            blocks.reload();
+            reload();
+          }}
+        />
+      ) : null}
 
       {reportingId ? (
         <ReportSheet
