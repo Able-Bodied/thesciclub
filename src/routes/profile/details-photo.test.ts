@@ -12,6 +12,7 @@ const db = vi.hoisted(() => ({
 vi.mock('@/lib/image', () => ({
   preparePhoto: () =>
     Promise.resolve({ blob: new Blob(['x'], { type: 'image/webp' }), ext: 'webp' }),
+  prepareThumb: () => Promise.resolve(new Blob(['t'], { type: 'image/webp' })),
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -55,18 +56,22 @@ describe('savePhoto', () => {
     const file = new File(['x'], 'me.png', { type: 'image/png' });
     const first = await savePhoto('u1', file);
     const second = await savePhoto('u1', file);
-    expect(db.uploads).toHaveLength(2);
-    for (const path of db.uploads) expect(path).toMatch(/^u1\/profile-[0-9a-f]{8}\.webp$/);
-    expect(db.uploads[0]).not.toBe(db.uploads[1]);
-    expect(first).toEqual({ ok: true, path: db.uploads[0] });
-    expect(second).toEqual({ ok: true, path: db.uploads[1] });
-    expect(db.updates[0]).toEqual({ photo_path: db.uploads[0], photo_alt: null });
+    // Each photograph with its small copy beside it.
+    const photos = db.uploads.filter((path) => !path.includes('.thumb.'));
+    expect(photos).toHaveLength(2);
+    for (const path of photos) expect(path).toMatch(/^u1\/profile-[0-9a-f]{8}\.webp$/);
+    expect(db.uploads.filter((path) => path.includes('.thumb.'))).toEqual(
+      photos.map((path) => path.replace('.webp', '.thumb.webp')),
+    );
+    expect(photos[0]).not.toBe(photos[1]);
+    expect(first).toEqual({ ok: true, path: photos[0] });
+    expect(second).toEqual({ ok: true, path: photos[1] });
+    expect(db.updates[0]).toEqual({ photo_path: photos[0], photo_alt: null });
   });
 
   it('clears the other files in the folder, and keeps the new one', async () => {
     await savePhoto('u1', new File(['x'], 'me.png', { type: 'image/png' }));
-    const kept = db.uploads[0]?.split('/')[1];
     expect(db.removed).toEqual([['u1/profile.webp', 'u1/profile.jpg']]);
-    expect(db.removed.flat()).not.toContain(`u1/${kept}`);
+    for (const kept of db.uploads) expect(db.removed.flat()).not.toContain(kept);
   });
 });

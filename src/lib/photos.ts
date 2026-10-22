@@ -1,4 +1,6 @@
-import { type SignedBucket, useAttachmentUrls } from '@/lib/chat/attachments';
+import { copyMissing, type SignedBucket, useAttachmentUrls } from '@/lib/chat/attachments';
+import { prepareThumb } from '@/lib/image';
+import { getSupabase } from '@/lib/supabase';
 
 /**
  * Member photos live in the `photos` bucket, and `members.photo_path` stores
@@ -36,12 +38,61 @@ import { type SignedBucket, useAttachmentUrls } from '@/lib/chat/attachments';
  */
 export const PHOTOS_BUCKET: SignedBucket = 'photos';
 
+/**
+ * Where a photograph's small copy is kept: beside it, in the same folder, so
+ * every storage rule that covers the photograph covers the copy
+ * (`u1/profile-1a2b.webp` → `u1/profile-1a2b.thumb.webp`).
+ */
+export function thumbPath(path: string): string {
+  const dot = path.lastIndexOf('.');
+  return dot > path.lastIndexOf('/')
+    ? `${path.slice(0, dot)}.thumb${path.slice(dot)}`
+    : `${path}.thumb`;
+}
+
+/**
+ * Upload a fitted photograph and, beside it, its small copy (2026-10-22).
+ * The copy is best effort: without one, a list draws the photograph itself.
+ */
+export async function uploadPhoto(path: string, photo: Blob) {
+  const storage = getSupabase().storage.from(PHOTOS_BUCKET);
+  const thumb = await prepareThumb(photo);
+  const [upload] = await Promise.all([
+    storage.upload(path, photo, { upsert: true, contentType: photo.type }),
+    thumb
+      ? storage
+          .upload(thumbPath(path), thumb, { upsert: true, contentType: thumb.type })
+          .catch(() => null)
+      : null,
+  ]);
+  return upload;
+}
+
+/**
+ * `thumb` where a face is drawn small: the small copy, or the photograph
+ * itself once storage says there is no copy (one uploaded before copies were
+ * made). Both are signed in the one request.
+ */
+export type PhotoSize = 'full' | 'thumb';
+
 /** Signed URLs for the photographs and logos given, keyed by path. */
-export function usePhotoUrls(paths: readonly (string | null | undefined)[]): Map<string, string> {
-  return useAttachmentUrls(
-    paths.filter((path): path is string => Boolean(path)),
+export function usePhotoUrls(
+  paths: readonly (string | null | undefined)[],
+  size: PhotoSize = 'full',
+): Map<string, string> {
+  const given = paths.filter((path): path is string => Boolean(path));
+  const urls = useAttachmentUrls(
+    size === 'thumb' ? given.flatMap((path) => [thumbPath(path), path]) : given,
     PHOTOS_BUCKET,
   );
+  if (size === 'full') return urls;
+  const out = new Map<string, string>();
+  for (const path of given) {
+    const small = thumbPath(path);
+    const url = urls.get(small) ?? (copyMissing(PHOTOS_BUCKET, small) ? urls.get(path) : undefined);
+    if (url) out.set(path, url);
+  }
+  return out;
 }
 
 /**
@@ -49,7 +100,10 @@ export function usePhotoUrls(paths: readonly (string | null | undefined)[]): Map
  * refused — in which case the caller shows the initials tile rather than a
  * broken image.
  */
-export function usePhotoUrl(path: string | null | undefined): string | null {
-  const urls = usePhotoUrls([path]);
+export function usePhotoUrl(
+  path: string | null | undefined,
+  size: PhotoSize = 'full',
+): string | null {
+  const urls = usePhotoUrls([path], size);
   return path ? (urls.get(path) ?? null) : null;
 }

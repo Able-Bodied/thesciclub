@@ -20,6 +20,8 @@ const db = vi.hoisted(() => ({
 
 vi.mock('@/lib/image', () => ({
   preparePhoto: (file: File) => Promise.resolve({ blob: file, ext: 'heic' }),
+  // A HEIC that could not be fitted gets no small copy.
+  prepareThumb: () => Promise.resolve(null),
 }));
 
 vi.mock('@/lib/supabase', () => ({

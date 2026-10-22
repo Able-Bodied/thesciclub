@@ -1,6 +1,7 @@
 import { describeError } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { toE164 } from '@/lib/phone';
+import { uploadPhoto } from '@/lib/photos';
 import { getSupabase } from '@/lib/supabase';
 import { injuryDateOf, type OnboardingData, spinalCordAnswered } from '@/routes/onboarding/types';
 import { rangeForExact } from '@/types/domain';
@@ -71,9 +72,7 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     // and one added later are the same thing in storage. See src/lib/image.ts.
     const { blob, ext } = await preparePhoto(data.photoFile);
     const path = `${user.id}/profile.${ext}`;
-    const upload = await supabase.storage
-      .from('photos')
-      .upload(path, blob, { upsert: true, contentType: blob.type });
+    const upload = await uploadPhoto(path, blob);
     // Refused, so stop before the row is written and say why. Until
     // 20260930040000 this carried on without the photograph and without a
     // word, which was harmless while the bucket took anything; with 2MB and
