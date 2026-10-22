@@ -9,12 +9,20 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
  * not.
  */
 const urls = vi.hoisted(() => new Map<string, string>());
+/** Small copies, where a test gives one; otherwise the tile is the photograph. */
+const copies = vi.hoisted(() => new Map<string, string>());
 vi.mock('@/lib/chat/attachments', () => ({
   useAttachmentUrls: (paths: readonly string[]) =>
     new Map([...urls].filter(([path]) => paths.includes(path))),
+  useSmallCopies: (paths: readonly string[]) => {
+    const full = new Map([...urls].filter(([path]) => paths.includes(path)));
+    const small = new Map([...full].map(([path, url]) => [path, copies.get(path) ?? url]));
+    return { small, full };
+  },
 }));
 
 beforeEach(() => {
+  copies.clear();
   urls.clear();
   urls.set('threads/t/a.webp', 'https://signed/a');
   urls.set('threads/t/b.webp', 'https://signed/b');
@@ -45,6 +53,18 @@ describe('the photographs on a message', () => {
     urls.clear();
     const { container } = render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('draws the small copy on the tile and opens the photograph itself', async () => {
+    copies.set('threads/t/a.webp', 'https://signed/a-small');
+    const user = userEvent.setup();
+    const { container } = render(<AttachmentGrid paths={['threads/t/a.webp']} from="Bo" />);
+    expect(container.querySelector('button img')).toHaveAttribute('src', 'https://signed/a-small');
+    await user.click(screen.getByRole('button', { name: /Open it/ }));
+    expect(screen.getByRole('img', { name: 'Photograph 1 of 1 from Bo' })).toHaveAttribute(
+      'src',
+      'https://signed/a',
+    );
   });
 
   it('opens the photograph over the page, and closes it three ways', async () => {

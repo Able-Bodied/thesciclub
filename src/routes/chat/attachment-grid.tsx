@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { PhotoViewer } from '@/components/photo-viewer';
-import { useAttachmentUrls } from '@/lib/chat/attachments';
+import { useSmallCopies } from '@/lib/chat/attachments';
 
 /**
  * The photographs on a message or a post. Opened, one at a time, in
@@ -63,13 +63,14 @@ export function AttachmentGrid({
   onOpen?: (() => void) | undefined;
   openLabel?: string | undefined;
 }) {
-  const urls = useAttachmentUrls(paths);
+  // Tiles draw the small copy; the viewer opens the photograph.
+  const { small, full } = useSmallCopies(paths);
   const [open, setOpen] = useState<number | null>(null);
   // The tile that opened the viewer, so that closing it puts focus back
   // there. Held from the click rather than read from `document.activeElement`,
   // because Safari does not focus a button when it is clicked.
   const opener = useRef<HTMLButtonElement | null>(null);
-  const shown = paths.filter((path) => urls.has(path));
+  const shown = paths.filter((path) => small.has(path));
 
   if (shown.length === 0) return null;
   const single = shown.length === 1;
@@ -96,7 +97,7 @@ export function AttachmentGrid({
             }`}
           >
             <img
-              src={urls.get(path)}
+              src={small.get(path)}
               alt=""
               loading="lazy"
               className={
@@ -110,7 +111,7 @@ export function AttachmentGrid({
       </div>
       {open !== null && shown[open] ? (
         <PhotoViewer
-          url={urls.get(shown[open]) ?? ''}
+          url={full.get(shown[open]) ?? small.get(shown[open]) ?? ''}
           label={`Photograph ${open + 1} of ${shown.length} from ${from}`}
           title={`Photographs from ${from}`}
           index={open}
