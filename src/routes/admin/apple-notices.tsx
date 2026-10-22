@@ -6,24 +6,37 @@ import { getSupabase } from '@/lib/supabase';
  * What Apple has told the club about members' Apple accounts (Sign in with
  * Apple's server-to-server notices, 20261022170000), for an administrator on
  * the Sign-in tab. Nothing in the club changes by itself: these say who may
- * need another way in, or no longer gets the club's emails.
+ * need another way in, or no longer gets the club's emails. First, when
+ * revoking deleted accounts' Apple sign-ins was given up (20261022160000).
  */
 
 export type AppleNoticeKind =
   | 'consent-revoked'
   | 'account-delete'
   | 'email-disabled'
-  | 'email-enabled';
+  | 'email-enabled'
+  | 'revoke-abandoned';
 
 export interface AppleNotice {
   kind: AppleNoticeKind;
   receivedAt: string;
-  memberId: string;
-  displayName: string;
+  /** Null for 'revoke-abandoned', whose accounts are gone. */
+  memberId: string | null;
+  displayName: string | null;
+  /** 'revoke-abandoned' only: how many, and Apple's last answer. */
+  howMany: number | null;
+  detail: string | null;
 }
 
-export function noticeSentence({ kind, displayName }: AppleNotice): string {
+export function noticeSentence({ kind, displayName: name, howMany, detail }: AppleNotice): string {
+  const displayName = name ?? 'A member';
   switch (kind) {
+    case 'revoke-abandoned': {
+      const count = howMany === 1 ? 'one deleted account' : `${howMany ?? 0} deleted accounts`;
+      return `Apple was not told to end Sign in with Apple for ${count}, after seven tries${
+        detail ? ` (${detail})` : ''
+      }. Whoever runs the club’s Supabase project should check the apple-revoke function.`;
+    }
     case 'consent-revoked':
       return `${displayName} stopped using Sign in with Apple for the club. If Apple was their only way in, they need another.`;
     case 'account-delete':
@@ -46,8 +59,10 @@ export async function loadAppleNotices(): Promise<
   const rows = ((result.data as unknown) ?? []) as {
     kind: AppleNoticeKind;
     received_at: string;
-    member_id: string;
-    display_name: string;
+    member_id: string | null;
+    display_name: string | null;
+    how_many?: number | null;
+    detail?: string | null;
   }[];
   return {
     ok: true,
@@ -56,6 +71,8 @@ export async function loadAppleNotices(): Promise<
       receivedAt: row.received_at,
       memberId: row.member_id,
       displayName: row.display_name,
+      howMany: row.how_many ?? null,
+      detail: row.detail ?? null,
     })),
   };
 }
@@ -114,7 +131,7 @@ export function AppleNotices() {
         <ul className="mt-2 space-y-2">
           {state.notices.map((notice) => (
             <li
-              key={`${notice.memberId}-${notice.kind}-${notice.receivedAt}`}
+              key={`${notice.memberId ?? ''}-${notice.kind}-${notice.receivedAt}`}
               className="text-[0.8125rem] text-ink leading-[1.5]"
             >
               <span className="block text-grey">

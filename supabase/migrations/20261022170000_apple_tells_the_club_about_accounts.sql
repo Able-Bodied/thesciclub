@@ -17,6 +17,8 @@
 -- that relay address: then the club's emails stop reaching the member.
 --
 -- A notice names the member and nothing else, and goes with the member.
+-- Admin → Sign-in also says when revoking a deleted account's Apple sign-in
+-- was given up (20261022160000), which nothing else would show.
 -- ============================================================================
 
 create table if not exists public.apple_account_notices (
@@ -83,8 +85,18 @@ revoke all on function public.apple_notification_record(text, text, text) from p
 grant execute on function public.apple_notification_record(text, text, text) to service_role;
 
 -- --------------------------------------------------------- reading them
+-- First, one line for Apple revocations given up after seven tries
+-- (20261022160000): nobody else would hear of them. Then the notices.
+drop function if exists public.admin_apple_notices();
 create or replace function public.admin_apple_notices()
-returns table (kind text, received_at timestamptz, member_id uuid, display_name text)
+returns table (
+  kind text,
+  received_at timestamptz,
+  member_id uuid,
+  display_name text,
+  how_many integer,
+  detail text
+)
 language plpgsql
 stable
 security definer
@@ -95,7 +107,13 @@ begin
     raise exception 'Only an administrator can do that.' using errcode = '42501';
   end if;
   return query
-  select n.kind, n.received_at, n.member_id, m.display_name
+  select 'revoke-abandoned'::text, max(r.last_tried_at), null::uuid, null::text,
+         count(*)::integer, (array_agg(r.last_error order by r.last_tried_at desc nulls last))[1]
+    from private.apple_revocations r
+   where r.attempts >= 7
+  having count(*) > 0;
+  return query
+  select n.kind, n.received_at, n.member_id, m.display_name, null::integer, null::text
     from public.apple_account_notices n
     join public.members m on m.id = n.member_id
    order by n.received_at desc

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const answer = vi.hoisted(() => ({
-  data: [] as Record<string, string>[] | null,
+  data: [] as Record<string, string | number | null>[] | null,
   error: null as { message: string } | null,
   asked: [] as string[],
 }));
@@ -49,6 +49,34 @@ describe('Apple’s notices on the Sign-in tab', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('October 21, 2026')).toBeInTheDocument();
     expect(answer.asked).toEqual(['admin_apple_notices']);
+  });
+
+  it('says first when revoking deleted accounts’ Apple sign-ins was given up', async () => {
+    answer.data = [
+      {
+        kind: 'revoke-abandoned',
+        received_at: '2026-10-22T16:40:00Z',
+        member_id: null,
+        display_name: null,
+        how_many: 2,
+        detail: 'HTTP 400 invalid_client',
+      },
+      {
+        kind: 'consent-revoked',
+        received_at: '2026-10-20T18:00:00Z',
+        member_id: 'm1',
+        display_name: 'Dana',
+        how_many: null,
+        detail: null,
+      },
+    ];
+    render(<AppleNotices />);
+    const items = await screen.findAllByRole('listitem');
+    expect(items[0]).toHaveTextContent(
+      'Apple was not told to end Sign in with Apple for 2 deleted accounts, after seven tries (HTTP 400 invalid_client).',
+    );
+    expect(items[0]).toHaveTextContent('check the apple-revoke function');
+    expect(items[1]).toHaveTextContent(/Dana stopped using Sign in with Apple/);
   });
 
   it('says what will appear when there is nothing', async () => {

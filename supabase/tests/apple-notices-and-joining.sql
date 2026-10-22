@@ -5,7 +5,8 @@
 -- function (service role). Consent revoked or Apple Account deleted drops the
 -- stored tokens and tells administrators; the account and member stay. Hide
 -- My Email turning off or on is told only when the account's own address is
--- that relay. Administrators read the notices; members cannot.
+-- that relay. Administrators read the notices; members cannot. 9b: a
+-- revocation given up after seven tries leads the administrators' list.
 --
 -- 10–14: the native app signs in with an ID token, as the website's Google
 -- widget already does, so joining is unchanged: the sign-up hook lets Google
@@ -124,6 +125,18 @@ savepoint member_reads;
 select * from public.admin_apple_notices();
 rollback to savepoint member_reads;
 select count(*) from public.apple_account_notices;
+reset role;
+
+\echo ''
+\echo '== 9b. revocations given up after seven tries lead the list, counted once; one still trying does not (expect revoke-abandoned | 2 | HTTP 400 invalid_client | empty name first, then Relay''s two notices) =='
+insert into private.apple_revocations (client_id, refresh_token, attempts, last_tried_at, last_error) values
+  ('com.thesciclub.app', 'rt-gave-up-1', 7, now() - interval '2 days', 'HTTP 0 unreachable'),
+  ('com.thesciclub.web', 'rt-gave-up-2', 7, now() - interval '1 day', 'HTTP 400 invalid_client'),
+  ('com.thesciclub.app', 'rt-trying',    3, now() - interval '1 day', 'HTTP 0 unreachable');
+select set_config('request.jwt.claims',
+  '{"sub":"eeeeeeee-1700-0000-0000-000000000005","role":"authenticated"}', true) is not null as ok;
+set local role authenticated;
+select kind, how_many, detail, display_name from public.admin_apple_notices();
 reset role;
 
 \echo ''
