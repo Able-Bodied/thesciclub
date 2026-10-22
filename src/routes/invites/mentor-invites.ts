@@ -9,8 +9,8 @@ import { getSupabase } from '@/lib/supabase';
  * Reading and withdrawing go straight to the `invites` table, because two
  * policies already say exactly that much and nothing more:
  *
- *   mentors can see invites they sent          (select, own rows only)
- *   mentors can revoke their own pending       (update, pending rows only)
+ *   mentors can see invites they sent             (select, own rows only)
+ *   an inviter withdraws their own unused invite  (update, pending to revoked only)
  *
  * So there is no select filter on `invited_by_member_id` below and no
  * ownership check before withdrawing; the database is the permission check.
