@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
@@ -18,6 +18,7 @@ import {
 } from '@/lib/chat/rooms';
 import { type ChatRoom, ROOM_CATEGORIES, type RoomCategory } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
@@ -75,6 +76,8 @@ export default function NewRoomPage() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  // Pictures pasted into the first post join its photographs (lib/paste-photos.ts).
+  const photoTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   /**
@@ -305,6 +308,9 @@ export default function NewRoomPage() {
           onChange={(event) => {
             setBody(event.target.value);
           }}
+          onPaste={(event) => {
+            pastePhotos(event, photoTarget.current);
+          }}
           placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
           className="mt-1.5 w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
         />
@@ -318,7 +324,7 @@ export default function NewRoomPage() {
               setFiles((current) => current.filter((_, i) => i !== index));
             }}
           />
-          <PhotoPicker files={files} onChange={setFiles} disabled={saving} />
+          <PhotoPicker ref={photoTarget} files={files} onChange={setFiles} disabled={saving} />
         </div>
 
         <button

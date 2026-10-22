@@ -1,7 +1,8 @@
 import { ImagePlus } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { attachmentProblem } from '@/lib/chat/attachments';
 import type { CoverChange } from '@/lib/events';
+import type { PhotoTarget } from '@/lib/paste-photos';
 import { usePhotoUrl } from '@/lib/photos';
 
 /**
@@ -13,6 +14,10 @@ import { usePhotoUrl } from '@/lib/photos';
  * "Describe the picture" is optional, and says why: it is what a screen
  * reader says, and for a flyer whose words are the event's own, nothing is
  * the right answer.
+ *
+ * A picture pasted into the description becomes the cover (the owner,
+ * 2026-10-22, lib/paste-photos.ts): an event has one picture, so that is
+ * where a pasted one goes, through the same check as one chosen here.
  */
 export function CoverField({
   value,
@@ -20,12 +25,15 @@ export function CoverField({
   labelClassName,
   hintClassName,
   fieldClassName,
+  ref,
 }: {
   value: CoverChange;
   onChange: (next: CoverChange) => void;
   labelClassName: string;
   hintClassName: string;
   fieldClassName: string;
+  /** For a picture pasted into the description. */
+  ref?: Ref<PhotoTarget>;
 }) {
   const input = useRef<HTMLInputElement | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -49,13 +57,19 @@ export function CoverField({
   const hasPicture = value.kind === 'new' || (value.kind === 'keep' && value.path !== null);
   const alt = value.kind === 'remove' ? '' : value.alt;
 
-  function choose(files: FileList | null) {
-    const file = files?.[0];
+  function add(files: File[]) {
+    const file = files[0];
     if (!file) return;
     const said = attachmentProblem([file], 0);
     setProblem(said);
     if (said) return;
     onChange({ kind: 'new', file, alt });
+  }
+
+  useImperativeHandle(ref, () => ({ add }));
+
+  function choose(files: FileList | null) {
+    add(files ? [...files] : []);
   }
 
   return (

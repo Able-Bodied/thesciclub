@@ -1,5 +1,6 @@
 import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
@@ -155,6 +156,9 @@ export function Composer({
 }) {
   const [draft, setDraft] = useState(edit?.initial ?? '');
   const [files, setFiles] = useState<File[]>([]);
+  // Pictures pasted into the box join the photographs (lib/paste-photos.ts).
+  // Null while editing, which keeps the photographs it had.
+  const photos = useRef<PhotoTarget | null>(null);
   const [sending, setSending] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
@@ -223,6 +227,9 @@ export function Composer({
       placeholder={placeholder}
       aria-label={placeholder}
       readOnly={Boolean(edit) && sending}
+      onPaste={(event) => {
+        pastePhotos(event, photos.current);
+      }}
       onChange={(event) => {
         draftVersion.current += 1;
         setDraft(event.target.value);
@@ -312,7 +319,7 @@ export function Composer({
         />
       </div>
       <div className="mx-auto flex w-full max-w-[720px] items-end gap-[9px]">
-        <PhotoPicker files={files} onChange={setFiles} disabled={sending} compact />
+        <PhotoPicker ref={photos} files={files} onChange={setFiles} disabled={sending} compact />
         {textarea}
         <button
           type="button"
