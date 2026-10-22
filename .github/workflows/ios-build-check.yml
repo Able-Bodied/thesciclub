@@ -5,9 +5,10 @@
 # work lives. Pushes reach Able-Bodied/thesciclub too, and macOS minutes are
 # not free in either.
 #
-# If the Xcode below is no longer on the runner, the "Pick Xcode" step lists
-# the ones that are: change XCODE_VERSION to one of them (26.x, as App Store
-# uploads need).
+# Pick an Xcode whose iOS platform and Simulator runtime the image has
+# installed (the README for macos-26 lists them). 26.0.1 has the SDK but not
+# the platform, and xcodebuild then finds no destination. If XCODE_VERSION
+# goes missing, the "Pick Xcode" step lists the ones that are.
 
 name: iOS build check
 
@@ -27,7 +28,7 @@ permissions:
   contents: read
 
 env:
-  XCODE_VERSION: '26.0'
+  XCODE_VERSION: '26.6'
 
 jobs:
   simulator-build:
@@ -48,6 +49,8 @@ jobs:
           fi
           sudo xcode-select -s "$app/Contents/Developer"
           xcodebuild -version
+          xcodebuild -showsdks
+          xcrun simctl list runtimes
 
       - uses: pnpm/action-setup@v4
 
