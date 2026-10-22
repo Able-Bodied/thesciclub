@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
@@ -114,6 +115,19 @@ describe('the installed app', () => {
     vi.stubGlobal('navigator', { standalone: true });
     open();
     expect(document.documentElement.dataset.installedApp).toBe('');
+  });
+
+  it('treats the store app as installed: room for the notch, no page zoom', () => {
+    installed = false;
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    open();
+    expect(document.documentElement.dataset.installedApp).toBe('');
+    expect(
+      touch('touchmove', document.body, [
+        [10, 10],
+        [30, 30],
+      ]).defaultPrevented,
+    ).toBe(true);
   });
 
   it('blocks pinch gestures and removes its handlers when unmounted', () => {

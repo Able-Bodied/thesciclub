@@ -5,6 +5,7 @@ import { AskOnOpening } from '@/components/ask-on-opening';
 import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { InstallNudge } from '@/components/install-nudge';
 import { InstalledApp } from '@/components/installed-app';
+import { NativeShell } from '@/components/native-shell';
 import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
@@ -247,6 +248,7 @@ export default function App() {
           it — see src/lib/announce.tsx. */}
       <AnnounceProvider>
         <InstalledApp />
+        <NativeShell />
         <LeaveHomeScreenHandoff />
         <RouteChange />
         <FollowNotification />

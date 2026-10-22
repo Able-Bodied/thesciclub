@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { isStandalone } from '@/lib/standalone';
+import { isNative, isStandalone } from '@/lib/standalone';
 
 /**
- * The Home Screen app stays at its layout scale. A browser tab keeps its
- * zoom; Me's text sizes still work in either place.
+ * The Home Screen app and the store app stay at their layout scale, with
+ * room for the notch. A browser tab keeps its zoom; Me's text sizes still
+ * work in every place.
  */
 export function InstalledApp() {
   useEffect(() => {
@@ -15,7 +16,7 @@ export function InstalledApp() {
 
     function update() {
       remove();
-      if (!isStandalone()) return;
+      if (!isStandalone() && !isNative()) return;
       document.documentElement.dataset.installedApp = '';
       function move(event: TouchEvent) {
         // CSS handles pinch zoom on Android. Safari also needs its gesture
