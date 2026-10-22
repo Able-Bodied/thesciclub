@@ -26,7 +26,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   `20261022090000` is live (2026-10-21), blocking included. Edge functions:
   `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
   too), `link-preview`, `send-invite`, `sign-in-reminder`,
-  `home-screen-handoff` (`verify_jwt` off).
+  `home-screen-handoff` (`verify_jwt` off). Written, not deployed:
+  `apple-token`, `apple-revoke` and `apple-notifications` (Open).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
   (`VITE_PASSKEYS`). No phone sign-in; the Phone provider is off.
   - **Invites**: the hook `signup_needs_an_invite` refuses an uninvited
@@ -46,11 +47,21 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     other devices and emails the member. No way in at all:
     `scripts/set-member-email.mjs`, then Forgot password.
   - **Apple**: Services ID `com.thesciclub.web`; the secret expires
-    **2027-04-09** (`scripts/apple-secret.mjs` makes the next).
+    **2027-04-09** (`scripts/apple-secret.mjs` makes the next). The store
+    app signs in natively as `com.thesciclub.app`. Each Apple sign-in hands
+    a refresh token to `apple-token` (native: the authorization code; web:
+    the `provider_refresh_token` after the redirect), kept in
+    `private.apple_tokens`; deleting the identity, with the account or by
+    Unlink, queues it for `apple-revoke` (5.1.1(v); `20261022160000`).
+    Apple's notices go to `apple-notifications`, shown on Admin → Sign-in
+    (`20261022170000`). Before this, web Apple sign-ins kept no token: those
+    members are revoked only if they sign in with Apple again first.
   - **Google**: its own widget (`lib/google-identity.ts`); the OAuth client
     allows only `https://thesciclub.com`, so not locally. The iPhone Home
     Screen app signs in through Chrome or Safari on `/app-sign-in`
-    (`lib/google-in-browser.ts`, `home-screen-handoff`).
+    (`lib/google-in-browser.ts`, `home-screen-handoff`). The store app uses
+    Google Sign-In with its iOS client (`VITE_GOOGLE_IOS_CLIENT_ID`), with a
+    nonce, so Supabase's "Skip nonce checks" stays off.
   - **Home Screen app**: a signed-in iPhone tab hands the app a single-use
     code by cookie (`lib/home-screen-handoff.ts`).
 - **Store app** (Capacitor 8, `com.thesciclub.app`, iPhone only; Android
@@ -64,11 +75,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   see Release to TestFlight). `isNative()`
   (`lib/standalone.ts`) keeps out of the app everything browser-only:
   worker and reload, web push, install nudge and steps, the Home Screen
-  hand-off, Google, Apple and passkeys (until native sign-in). Links made
+  hand-off, passkeys. Apple and Google sign in natively
+  (`lib/native-sign-in.ts`, `@capgo/capacitor-social-login` with Facebook's
+  SDK left out: `scripts/check-native-build.mjs`), iPhone only. Links made
   for others use `siteOrigin()`; the rest of the shell (splash, status bar,
-  back, outside links, iPhone Text Size) is `lib/native-shell.ts`. Fake it in
-  a browser with `window.CapacitorCustomPlatform = { name: 'ios' }`.
-- **Checks**: 3,255 tests in 230 files on 2026-10-22; `pnpm check` (alone),
+  back, outside links, links that open the app, iPhone Text Size) is
+  `lib/native-shell.ts`. Universal Links: `public/.well-known/
+  apple-app-site-association` (`src/universal-links.test.ts` says which
+  paths and why). Fake it in a browser with
+  `window.CapacitorCustomPlatform = { name: 'ios' }`.
+- **Checks**: 3,320 tests in 238 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -80,9 +96,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   client. No function deploy. Terms, Privacy and `/delete-account` say so,
   and wait for the owner's read like the other legal pages.
 
-- **One dry run for four**: `db push --linked --dry-run` should list
-  `20261022100000`, `20261022130000`, `20261022140000` and
-  `20261022150000`, and nothing else; then the push.
+- **One dry run for six**: `db push --linked --dry-run` should list
+  `20261022100000`, `20261022130000`, `20261022140000`,
+  `20261022150000`, `20261022160000` and `20261022170000`, and nothing
+  else; then the push. The last two need nothing else first: with no
+  functions deployed, tokens wait and Apple's notices do not arrive.
 
 - **`20261022140000`, not live**: an inviter may only withdraw their own
   unused invite (probe `invite-withdrawal.sql`). The client needs no change:
@@ -99,11 +117,29 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Play's Data safety form. A lawyer should read them: injury details are
   health information.
 
-- **Store app, still to build**: native Google and Apple sign-in (then
-  retire the Home Screen pairing), native push, Universal Links and App
-  Links, a first real TestFlight run (written, never run); the demo reviewers run live
-  (`scripts/demo-reviewers.mjs --live`). Never run on a device: Text
-  Size, the CSP under WebKit, Nominatim with the app's User-Agent.
+- **Native sign-in and Universal Links, not live** (2026-10-22), in order:
+  (1) a Google iOS OAuth client (bundle `com.thesciclub.app`, Team
+  `3RZ3A2CJ9N`) in the web client's project, its ID as the Actions variable
+  `VITE_GOOGLE_IOS_CLIENT_ID` and second in Supabase's Google Client IDs;
+  (2) Apple: com.thesciclub.app grouped with the Services ID's primary App
+  ID, whose notification endpoint is `…/functions/v1/apple-notifications`;
+  (3) secrets `APPLE_TEAM_ID`, `APPLE_SIWA_KEY_ID`, `APPLE_SIWA_KEY_P8` (the
+  Sign in with Apple .p8); (4) the dry run above; (5) deploy `apple-token`,
+  then `apple-revoke` and `apple-notifications` with `--no-verify-jwt`, and
+  the vault secret `apple_revoke_url` (it can wait; revocations queue); (6)
+  push, check the association file is 200 JSON with no redirect; (7) tag
+  `ios-v1.0.1`. Probes: `apple-revocation.sql`,
+  `apple-notices-and-joining.sql`.
+- **Store app, still to build**: native push; Android (Google needs a client
+  made with the Play signing SHA-1, Apple there is a web flow, and App
+  Links need `public/.well-known/assetlinks.json` with the Play signing
+  SHA-256); the demo reviewers run live (`scripts/demo-reviewers.mjs
+  --live`). Never run on a device: Text Size, the CSP under WebKit,
+  Nominatim with the app's User-Agent, native sign-in, Universal Links.
+- **Home Screen pairing, to retire** once members have the store app (owner's
+  call, not before): `/app-sign-in`, `lib/google-in-browser.ts`,
+  `lib/home-screen-handoff.ts`, the `home-screen-handoff` function and
+  `pair_home_screen_app`; that closes F6 to F9.
 
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
@@ -112,8 +148,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   in Supabase → Users first.
 
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
-  Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until the
-  store app signs in to Google natively.
+  Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until
+  members have the store app (Open, Home Screen pairing).
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
@@ -302,7 +338,9 @@ All live. Migration headers and the files named say how and why.
   environment): a tag may sit on the working branch (TestFlight is private;
   owner, 2026-10-22); a manual run is from main only. Once, `gh variable set
   VITE_SUPABASE_URL -R Alfredx48/TheSciClub` and the same for
-  `VITE_SUPABASE_ANON_KEY` (public values, as on Netlify). Then `git tag -a
+  `VITE_SUPABASE_ANON_KEY` and `VITE_GOOGLE_IOS_CLIENT_ID` (public values).
+  The lane makes a new App Store profile if the old one lacks Sign in with
+  Apple or Associated Domains (`App.entitlements`). Then `git tag -a
   ios-v1.0.0 -m "What to test"` and `git push origin ios-v1.0.0` (or Actions →
   iOS release → Run workflow on main), approve it in Actions, and the build
   shows in TestFlight 10–20 minutes after the upload. The tag gives the
