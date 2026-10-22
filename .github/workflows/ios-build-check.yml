@@ -18,6 +18,9 @@ on:
     paths:
       - 'ios/**'
       - 'capacitor.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'scripts/check-native-build.mjs'
       - '.github/workflows/ios-build-check.yml'
 
 concurrency:
@@ -70,7 +73,9 @@ jobs:
       # Copies it into ios/App/App/public and writes the plugin list and
       # Package.swift the Xcode project expects.
       - name: Sync
-        run: pnpm exec cap sync ios
+        run: |
+          pnpm exec cap sync ios
+          node scripts/check-native-build.mjs
 
       - name: Build for the Simulator, unsigned
         working-directory: ios/App

@@ -6,7 +6,9 @@
   account and used to run the club (and, for what members do, the
   administrators' counts on Admin → Stats). Change both together, and the
   App Privacy answers in App Store Connect with them.
-  UserDefaults: Capacitor keeps its own settings there (CA92.1).
+  UserDefaults: Capacitor keeps its own settings there, and the sign-in
+  plugin the name Apple gave and its ID token (CA92.1). Google Sign-In's
+  packages bring their own manifests.
 -->
 <plist version="1.0">
 <dict>

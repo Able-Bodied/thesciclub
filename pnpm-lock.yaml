@@ -190,6 +190,9 @@ importers:
       '@capacitor/text-zoom':
         specifier: 8.0.1
         version: 8.0.1(@capacitor/core@8.5.3)
+      '@capgo/capacitor-social-login':
+        specifier: 8.5.13
+        version: 8.5.13(@capacitor/core@8.5.3)
       '@supabase/supabase-js':
         specifier: ^2.112.3
         version: 2.116.0(@opentelemetry/api@1.9.1)
@@ -958,6 +961,11 @@ packages:
 
   '@capacitor/text-zoom@8.0.1':
     resolution: {integrity: sha512-hib9Srjme4DRmbzGYfwAWB5OIl0C3ihjXQNTpMMSVqBUxlHfm3O35H/In6FtNrbJ78ro13Zb0NDDK8o3kLPEnQ==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
+  '@capgo/capacitor-social-login@8.5.13':
+    resolution: {integrity: sha512-0DJBKVbu+1WhHWsiVqhVI2sSgYg4Rc1ED0QKQ0/Q6XWO7PR8F7KXqMkvDHgrp37ikm1N51SOaYl0zizHFpTDgg==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
@@ -7767,6 +7775,11 @@ snapshots:
   '@capacitor/text-zoom@8.0.1(@capacitor/core@8.5.3)':
     dependencies:
       '@capacitor/core': 8.5.3
+
+  '@capgo/capacitor-social-login@8.5.13(@capacitor/core@8.5.3)':
+    dependencies:
+      '@capacitor/core': 8.5.3
+      tslib: 2.8.1
 
   '@colors/colors@1.6.0': {}
 

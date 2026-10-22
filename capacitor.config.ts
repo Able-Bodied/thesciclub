@@ -28,6 +28,13 @@ const config: CapacitorConfig = {
       resize: 'native',
       resizeOnFullScreen: true,
     },
+    // Native Sign in with Apple and Google (src/lib/native-sign-in.ts). The
+    // plugin's sync hook leaves out the SDKs of the providers set false, so
+    // Facebook's, which tracks, never ships (scripts/check-native-build.mjs).
+    SocialLogin: {
+      providers: { apple: true, google: true, facebook: false, twitter: false },
+      logLevel: 1,
+    },
   },
 };
 
