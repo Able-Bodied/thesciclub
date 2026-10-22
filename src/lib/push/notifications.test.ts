@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   askOnOpening,
@@ -8,10 +10,12 @@ import {
   notificationState,
   notificationsAskedRecently,
   type OpeningFacts,
+  openingFacts,
   readDeviceState,
   restoreDeviceNotifications,
   turnOffNotifications,
   turnOnNotifications,
+  useDeviceNotifications,
 } from '@/lib/push/notifications';
 
 /**
@@ -269,6 +273,39 @@ describe('turning on and off', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  describe('in the store app, which has no web push', () => {
+    beforeEach(() => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    });
+
+    it('never asks on opening, whatever the permission says', () => {
+      permission = 'default';
+      expect(openingFacts().permission).toBeNull();
+      expect(askOnOpening(openingFacts())).toBe(false);
+    });
+
+    it('draws no row on Me: the state is never read', async () => {
+      const { result } = renderHook(() => useDeviceNotifications('me'));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(result.current.state).toBeNull();
+      expect(calls.log).toEqual([]);
+    });
+
+    it('neither asks for permission nor subscribes', async () => {
+      expect((await turnOnNotifications('me')).ok).toBe(false);
+      expect(await restoreDeviceNotifications('me')).toBe('off');
+      await forgetThisDevice();
+      expect(calls.log).toEqual([]);
+    });
+  });
+
+  it('on the website, the same phone would be asked', () => {
+    permission = 'default';
+    vi.stubGlobal('navigator', { userAgent: 'test', standalone: true, serviceWorker: {} });
+    expect(askOnOpening(openingFacts())).toBe(true);
   });
 
   // iOS ignores a permission request that is not the direct result of a tap.

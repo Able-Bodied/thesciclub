@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
-import { isStandalone } from '@/lib/standalone';
+import { isNative, isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -37,6 +37,9 @@ import { getSupabase } from '@/lib/supabase';
  * awaiting anything first — the service worker, a network read — can be enough
  * to lose the gesture. So `turnOn` calls `Notification.requestPermission()`
  * before it awaits anything else. Do not move it.
+ *
+ * None of this is the store app's: web push needs a service worker, which it
+ * has not. Until native push, the app neither asks nor shows the row.
  */
 
 export type NotificationState = 'install' | 'unsupported' | 'off' | 'on' | 'refused';
@@ -82,6 +85,7 @@ function sameBytes(a: ArrayBuffer | null, b: Uint8Array): boolean {
 }
 
 function canPush(): boolean {
+  if (isNative()) return false;
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 }
 
@@ -240,7 +244,7 @@ const NOT_TURNED_ON = 'Notifications were not turned on.';
 
 export async function turnOnNotifications(userId: string): Promise<Outcome> {
   const key = vapidPublicKey();
-  if (!key) return { ok: false, error: NOT_TURNED_ON };
+  if (!key || isNative()) return { ok: false, error: NOT_TURNED_ON };
 
   const requestedRevision = revision;
   // First, and before any await — see the header.
@@ -425,7 +429,7 @@ export function useDeviceNotifications(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || !vapidPublicKey()) return;
+    if (!userId || !vapidPublicKey() || isNative()) return;
     let live = true;
     restoreDeviceNotifications(userId)
       .then((next) => {
