@@ -14,7 +14,10 @@
 --      are notified like any report, and settle it; a member cannot settle
 --   6. the grants, and the storage policies that keep the photograph
 --   7. a blocked pair cannot report each other's profile
---   8. Bo deletes his account, and the copy stays; nobody can then report him
+--   8. Bo deletes his account: each copy reads "Deleted member", without his
+--      @username or photograph, and keeps the words; nobody can report him
+--   9. Ivy removes Hal: the same (20261022150000)
+--  10. Jo, still a member, and every other report are untouched
 --
 -- Run it against a local stack (never the hosted project):
 --
@@ -369,30 +372,95 @@ end;
 $$;
 
 \echo ''
-\echo '== 8. Bo deletes his account; the copy stays, and nobody can report him now =='
-\echo '   expect: PASS 8a (Ada''s copy from before the edit and Cy''s from after, both'
-\echo '   kept, nobody linked), PASS 8b (reporting him now is P0002)'
+\echo '== 8. Bo deletes his account: each copy forgets who he was and keeps the words =='
+\echo '   expect: PASS 8a (both copies read Deleted member, with no @username, photograph'
+\echo '   description or photograph path, and nobody linked), PASS 8b (bio, interests,'
+\echo '   note, dates and status as before), PASS 8c (his photograph is no longer kept),'
+\echo '   PASS 8d (reporting him now is P0002)'
+-- Hal and Jo, reported by Ada, are for steps 9 and 10.
+reset role;
+insert into public.members
+  (id, type, status, display_name, phone, birth_date, level_range, state, show_in_browse, is_admin,
+   username, bio, how_injured, detail, photo_path, photo_alt, interests, topics)
+values
+('7e0f0000-0000-0000-0000-000000000010','peer','active','Hal Report','19990220007','1980-01-01','T1–T6','CA',true,false,
+ 'hal_report','Hal''s bio','Diving, 2015',null,'7e0f0000-0000-0000-0000-000000000010/p1.webp',
+ 'Hal on a pier','{Sailing}','{}'),
+('7e0f0000-0000-0000-0000-000000000011','peer','active','Jo Report','19990220008','1980-01-01','T1–T6','CA',true,false,
+ 'jo_report','Jo''s bio',null,null,'7e0f0000-0000-0000-0000-000000000011/p1.webp',
+ 'Jo smiling','{Chess}','{}');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"7e0f0000-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ada;
+select public.report_member('7e0f0000-0000-0000-0000-000000000010', 'Hal''s photo');
+select public.report_member('7e0f0000-0000-0000-0000-000000000011', 'Jo''s bio');
+-- What must not change, read before: Bo's reports without the three things
+-- that go, and every report that is not about Bo or Hal.
+select set_config('request.jwt.claims','{"sub":"7e0f0000-0000-0000-0000-00000000000f","role":"authenticated"}', true) is not null as ivy;
+select set_config('probe.bo_kept', (
+  select string_agg(concat_ws('|', r.id, r.note, r.created_at, r.written_at, r.resolved_at,
+                              r.resolution, r.resolved_by, r.reporter_id, r.place,
+                              r.profile_snapshot - 'display_name' - 'username' - 'photo_alt'), ';' order by r.id)
+    from public.admin_chat_reports() r
+   where r.reported_author_id = '7e0f0000-0000-0000-0000-00000000000b'), true) is not null as bo_kept;
+select set_config('probe.others', (
+  select md5(string_agg(row_to_json(r)::text, ';' order by r.id))
+    from public.admin_chat_reports() r
+   where r.reported_author_id is distinct from '7e0f0000-0000-0000-0000-00000000000b'
+     and r.reported_author_id is distinct from '7e0f0000-0000-0000-0000-000000000010'), true) is not null as others;
 select set_config('request.jwt.claims','{"sub":"7e0f0000-0000-0000-0000-00000000000b","role":"authenticated"}', true) is not null as bo;
 select public.delete_my_account();
 select set_config('request.jwt.claims','{"sub":"7e0f0000-0000-0000-0000-00000000000f","role":"authenticated"}', true) is not null as ivy;
 do $$
+declare
+  r record;
+  n integer := 0;
 begin
-  assert (select count(*) from public.admin_chat_reports() where kind = 'profile') = 2, 'a report went with the member';
-  -- Ada's copy is from before his edit, Cy's from after; each is its moment.
-  assert (select count(*) from public.admin_chat_reports()
-           where kind = 'profile' and profile_snapshot ->> 'display_name' = 'Bo Report'
-             and profile_snapshot ->> 'bio' = 'Bo''s bio, as it was'
-             and profile_photo_path = '7e0f0000-0000-0000-0000-00000000000b/profile.webp'
-             and reported_author_id is null and reported_author_name is null) = 1,
-    'Ada''s copy did not survive the account';
-  assert (select count(*) from public.admin_chat_reports()
-           where kind = 'profile' and profile_snapshot ->> 'display_name' = 'Clean Bo'
-             and reported_author_id is null and reported_author_name is null) = 1,
-    'Cy''s copy did not survive the account';
-  raise notice 'PASS 8a: both copies kept, each as it was when reported, nobody linked';
+  for r in select * from public.admin_chat_reports() where kind = 'profile' and reported_author_id is null loop
+    n := n + 1;
+    assert r.profile_snapshot ->> 'display_name' = 'Deleted member', format('the copy says %s', r.profile_snapshot ->> 'display_name');
+    assert not (r.profile_snapshot ? 'username'), 'the @username stayed';
+    assert not (r.profile_snapshot ? 'photo_alt'), 'the photograph description stayed';
+    assert r.profile_photo_path is null, 'the photograph path stayed';
+    assert r.reported_author_name is null, 'somebody is named';
+    assert r.profile_snapshot::text not like '%Bo Report%' and r.profile_snapshot::text not like '%Clean Bo%'
+       and r.profile_snapshot::text not like '%bo_report%' and r.profile_snapshot::text not like '%clean_bo%'
+       and r.profile_snapshot::text not like '%lake%', 'a name, @username or description is still in the copy';
+  end loop;
+  assert n = 2, format('%s copies about a deleted member, not Ada''s and Cy''s', n);
+  raise notice 'PASS 8a: both copies read Deleted member, with no @username or photograph';
 end;
 $$;
-select set_config('request.jwt.claims','{"sub":"7e0f0000-0000-0000-0000-00000000000f","role":"authenticated"}', true) is not null as ivy;
+do $$
+begin
+  assert (select string_agg(concat_ws('|', r.id, r.note, r.created_at, r.written_at, r.resolved_at,
+                                      r.resolution, r.resolved_by, r.reporter_id, r.place,
+                                      r.profile_snapshot - 'display_name' - 'username' - 'photo_alt'), ';' order by r.id)
+            from public.admin_chat_reports() r
+           where r.kind = 'profile' and r.reported_author_id is null) = current_setting('probe.bo_kept'),
+    'the words, note, dates or status changed';
+  assert (select count(*) from public.admin_chat_reports()
+           where kind = 'profile' and reported_author_id is null
+             and profile_snapshot ->> 'bio' = 'Bo''s bio, as it was'
+             and profile_snapshot ->> 'how_injured' = 'Fell, 2009'
+             and profile_snapshot -> 'interests' = '["Cycling", "Chess"]'::jsonb
+             and note = 'Rude in the bio' and resolution = 'Spoke to them; changed it'
+             and resolved_by_name = 'Ivy Report' and reporter_name = 'Ada Report') = 1,
+    'Ada''s report lost its words, note or status';
+  assert (select count(*) from public.admin_chat_reports()
+           where kind = 'profile' and reported_author_id is null
+             and profile_snapshot ->> 'bio' = 'Nothing to see' and resolved_at is null
+             and reporter_name = 'Cy Report') = 1,
+    'Cy''s report lost its words or status';
+  raise notice 'PASS 8b: words, note, dates and status kept (% chars compared)', length(current_setting('probe.bo_kept'));
+end;
+$$;
+do $$
+begin
+  assert not public.photo_is_on_a_report('7e0f0000-0000-0000-0000-00000000000b/profile.webp'),
+    'the deleted member''s photograph is still kept';
+  raise notice 'PASS 8c: his photograph is no longer named, so it can be deleted';
+end;
+$$;
 do $$
 begin
   begin
@@ -400,7 +468,63 @@ begin
     raise exception 'reported a deleted member';
   exception when no_data_found then null;
   end;
-  raise notice 'PASS 8b: a deleted member cannot be reported';
+  raise notice 'PASS 8d: a deleted member cannot be reported';
+end;
+$$;
+
+\echo ''
+\echo '== 9. Ivy removes Hal: his copy forgets him the same way =='
+\echo '   expect: PASS 9a (Deleted member, no @username, description or path; his bio,'
+\echo '   interests and Ada''s note kept), PASS 9b (his photograph is no longer kept)'
+do $$
+begin
+  assert public.photo_is_on_a_report('7e0f0000-0000-0000-0000-000000000010/p1.webp'), 'Hal''s photograph was never kept';
+end;
+$$;
+select public.admin_delete_member('7e0f0000-0000-0000-0000-000000000010');
+do $$
+declare
+  r record;
+begin
+  select * into strict r from public.admin_chat_reports() where note = 'Hal''s photo';
+  assert r.profile_snapshot ->> 'display_name' = 'Deleted member', 'Hal''s copy keeps his name';
+  assert not (r.profile_snapshot ? 'username') and not (r.profile_snapshot ? 'photo_alt'), 'Hal''s copy keeps his @username or description';
+  assert r.profile_photo_path is null and r.reported_author_id is null, 'Hal''s copy keeps his photograph or a link';
+  assert r.profile_snapshot ->> 'bio' = 'Hal''s bio' and r.profile_snapshot ->> 'how_injured' = 'Diving, 2015'
+     and r.profile_snapshot -> 'interests' = '["Sailing"]'::jsonb, 'Hal''s words went';
+  assert r.reporter_name = 'Ada Report' and r.resolved_at is null, 'the report itself changed';
+  raise notice 'PASS 9a: % | bio "%"', r.profile_snapshot ->> 'display_name', r.profile_snapshot ->> 'bio';
+  assert not public.photo_is_on_a_report('7e0f0000-0000-0000-0000-000000000010/p1.webp'), 'Hal''s photograph is still kept';
+  raise notice 'PASS 9b: his photograph is no longer named';
+end;
+$$;
+
+\echo ''
+\echo '== 10. everybody else''s reports are untouched =='
+\echo '   expect: PASS 10a (Jo''s copy names her, with her photograph, still kept),'
+\echo '   PASS 10b (every report not about Bo or Hal is byte for byte as before),'
+\echo '   PASS 10c (the trigger is there and nobody can call its function)'
+do $$
+declare
+  r record;
+begin
+  select * into strict r from public.admin_chat_reports() where note = 'Jo''s bio';
+  assert r.profile_snapshot ->> 'display_name' = 'Jo Report' and r.profile_snapshot ->> 'username' = 'jo_report'
+     and r.profile_snapshot ->> 'photo_alt' = 'Jo smiling', 'Jo''s copy changed';
+  assert r.profile_photo_path = '7e0f0000-0000-0000-0000-000000000011/p1.webp', 'Jo''s photograph path went';
+  assert public.photo_is_on_a_report('7e0f0000-0000-0000-0000-000000000011/p1.webp'), 'Jo''s photograph is no longer kept';
+  raise notice 'PASS 10a: % @% | %', r.profile_snapshot ->> 'display_name', r.profile_snapshot ->> 'username', r.profile_photo_path;
+  assert (select md5(string_agg(row_to_json(o)::text, ';' order by o.id))
+            from public.admin_chat_reports() o
+           where o.reported_author_id is not null) = current_setting('probe.others'),
+    'a report about somebody else changed';
+  raise notice 'PASS 10b: % other report(s) as before',
+    (select count(*) from public.admin_chat_reports() where reported_author_id is not null);
+  assert exists (select 1 from pg_trigger where tgname = 'members_forget_in_reports'
+                   and tgrelid = 'public.members'::regclass and not tgisinternal), 'no trigger';
+  assert not has_function_privilege('authenticated', 'private.forget_a_deleted_member_in_reports()', 'execute'), 'members may call it';
+  assert not has_function_privilege('anon', 'private.forget_a_deleted_member_in_reports()', 'execute'), 'anon may call it';
+  raise notice 'PASS 10c: before delete on members; not callable';
 end;
 $$;
 
