@@ -389,7 +389,11 @@ export default function PrivacyPage() {
         <P>
           If you cannot sign in, or are an administrator, email <ContactEmail /> to ask us to delete
           your account, or for a copy of what we hold about you. Write from the address on your
-          account if you can. You can also correct anything about you on Me.
+          account if you can. You can also correct anything about you on Me.{' '}
+          <Link to="/delete-account" className="font-semibold text-emphasis underline">
+            Deleting your account
+          </Link>{' '}
+          has the steps.
         </P>
       </Section>
 

@@ -12,6 +12,7 @@ import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import DevLoginPage from '@/routes/dev-login/page';
 import HomePage from '@/routes/home/page';
+import DeleteAccountPage from '@/routes/legal/delete-account';
 import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
 import NotFoundPage from '@/routes/not-found/page';
@@ -372,11 +373,10 @@ function AppRoutes() {
           build the condition is false, so the route and the page itself are
           dropped from the bundle. See the page's file header. */}
         {import.meta.env.DEV && <Route path="/dev-login" element={<DevLoginPage />} />}
-        {/* Public, with no account: somebody on the phone step reads them before
-          they have one, and so do the carriers checking the text-message
-          registration. See src/routes/legal/legal-page.tsx. */}
+        {/* Public, with no account: see src/routes/legal/legal-page.tsx. */}
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/delete-account" element={<DeleteAccountPage />} />
         <Route
           path="/*"
           element={

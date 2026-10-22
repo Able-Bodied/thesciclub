@@ -145,8 +145,11 @@ export default function TermsPage() {
 
       <Section title="Leaving">
         <P>
-          You can delete your account at any time from <b>Me → Account → Delete my account</b>. The
-          Privacy Policy says what that erases and what stays.
+          You can delete your account at any time from <b>Me → Account → Delete my account</b>.{' '}
+          <Link to="/delete-account" className="font-semibold text-emphasis underline">
+            Deleting your account
+          </Link>{' '}
+          says what that erases and what stays.
         </P>
       </Section>
 

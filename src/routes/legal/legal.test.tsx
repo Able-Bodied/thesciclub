@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -266,5 +266,56 @@ describe('the Terms of Service', () => {
       'mailto:hello@thesciclub.com',
     );
     expect(s.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+  });
+});
+
+// Google Play: a public page, naming the app, that asks for deletion without it.
+describe('Deleting your account', () => {
+  it('opens with no account and names the app', () => {
+    open('/delete-account');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Deleting your account' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Join' })).toBeNull();
+    expect(screen.getByText(/in The SCI Club, and what that erases/)).toBeInTheDocument();
+  });
+
+  it('gives the steps in the app', () => {
+    open('/delete-account');
+    const section = screen.getByRole('heading', { name: 'In the app' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Go to Me, then the Account tab/);
+    expect(section).toHaveTextContent(/Press Delete my account/);
+  });
+
+  it('gives an email route for somebody who cannot sign in', () => {
+    open('/delete-account');
+    const section = screen.getByRole('heading', { name: 'By email' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/If you cannot sign in, or no longer have the app/);
+    expect(within(section).getByRole('link', { name: 'hello@thesciclub.com' })).toHaveAttribute(
+      'href',
+      'mailto:hello@thesciclub.com?subject=Delete%20my%20account',
+    );
+  });
+
+  it('says what is erased and what stays', () => {
+    open('/delete-account');
+    const erased = screen.getByRole('heading', { name: 'What is erased' }).parentElement;
+    const stays = screen.getByRole('heading', { name: 'What stays' }).parentElement;
+    if (!erased || !stays) throw new Error('no section');
+    expect(erased).toHaveTextContent(/email address, phone number, photograph and birthday/);
+    expect(stays).toHaveTextContent(/“Deleted member” instead of your name/);
+  });
+
+  it('is linked from the Privacy Policy and the Terms', () => {
+    for (const path of ['/privacy', '/terms']) {
+      open(path);
+      expect(screen.getByRole('link', { name: 'Deleting your account' })).toHaveAttribute(
+        'href',
+        '/delete-account',
+      );
+      cleanup();
+    }
   });
 });

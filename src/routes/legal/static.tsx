@@ -1,26 +1,27 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
+import DeleteAccountPage from '@/routes/legal/delete-account';
 import PrivacyPage from '@/routes/legal/privacy';
 import TermsPage from '@/routes/legal/terms';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
 
 /**
- * The Privacy Policy and the Terms of Service as finished HTML, written into
- * the build by `scripts/prerender-legal.mjs`.
+ * The legal pages as finished HTML, written into the build by
+ * `scripts/prerender-legal.mjs`.
  *
  * Every other path is the same empty shell until the app's JavaScript draws
- * it, and that was true of these two: a program that fetched /privacy without
+ * it, and that was true of these: a program that fetched /privacy without
  * running scripts got a page titled "The Sci Club" with nothing in it. Link
  * previews and crawlers are such programs (Twilio's pre-check of the old
  * text-message registration was the first to be caught by it, 2026-10-01). So
- * these two paths are served as HTML with their words already in them; the app
+ * these paths are served as HTML with their words already in them; the app
  * then starts as usual and draws the same page over it.
  *
  * And /join, kept as a static page because the old registration named it. See
  * `JoinPage`.
  *
  * Not the member pages. Those stay an empty shell on purpose, and keep the
- * noindex this removes from the two policies.
+ * noindex this removes from the legal pages.
  */
 
 /** Nothing to do: a press before the app has started is a press on nothing. */
@@ -41,6 +42,13 @@ function JoinPage() {
 export const STATIC_PAGES = [
   { file: 'privacy.html', title: 'Privacy Policy', Page: PrivacyPage, indexed: true },
   { file: 'terms.html', title: 'Terms of Service', Page: TermsPage, indexed: true },
+  // Google Play links it from the Data safety form.
+  {
+    file: 'delete-account.html',
+    title: 'Deleting your account',
+    Page: DeleteAccountPage,
+    indexed: true,
+  },
   // Keeps its noindex: it is a door, not a document.
   { file: 'join.html', title: 'Join', Page: JoinPage, indexed: false },
 ] as const;

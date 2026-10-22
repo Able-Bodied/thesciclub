@@ -61,6 +61,10 @@ export function List({ children }: { children: React.ReactNode }) {
   return <ul className="mt-2.5 list-disc space-y-1.5 pl-5">{children}</ul>;
 }
 
+export function Steps({ children }: { children: React.ReactNode }) {
+  return <ol className="mt-2.5 list-decimal space-y-1.5 pl-5">{children}</ol>;
+}
+
 /** A boxed section ahead of the rest, such as what changed. */
 export function Note({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -83,9 +87,10 @@ export function OutsideLink({ href, children }: { href: string; children: React.
 /** The address every question about the legal pages goes to. */
 export const CONTACT_EMAIL = 'hello@thesciclub.com';
 
-export function ContactEmail() {
+export function ContactEmail({ subject }: { subject?: string }) {
+  const query = subject ? `?subject=${encodeURIComponent(subject)}` : '';
   return (
-    <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-emphasis underline">
+    <a href={`mailto:${CONTACT_EMAIL}${query}`} className="font-semibold text-emphasis underline">
       {CONTACT_EMAIL}
     </a>
   );
