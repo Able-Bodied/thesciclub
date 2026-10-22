@@ -240,3 +240,62 @@ describe('sending while writing', () => {
     },
   );
 });
+
+// The owner, 2026-10-22: a picture pasted into the box is attached, through
+// the same limits as one chosen with the button (lib/paste-photos.ts).
+describe('pasting a picture', () => {
+  /** What a paste carries: pictures as files, and any words as text. */
+  const clipboard = (files: File[], text = '') => ({
+    files,
+    items: [],
+    getData: (type: string) => (type === 'text/plain' ? text : ''),
+  });
+
+  it('attaches it, and sends it', async () => {
+    const onSend = renderComposer();
+    const notPasted = fireEvent.paste(screen.getByRole('textbox'), {
+      clipboardData: clipboard([photo('image.png', 100, 'image/png')]),
+    });
+    // A picture alone pastes nothing into the words.
+    expect(notPasted).toBe(false);
+    expect(screen.getByRole('button', { name: 'Take back image.png' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Send this message' }));
+    await waitFor(() => {
+      expect(onSend).toHaveBeenCalledWith('', [expect.objectContaining({ name: 'image.png' })]);
+    });
+  });
+
+  it('lets the words in the same paste through', () => {
+    renderComposer();
+    const pasted = fireEvent.paste(screen.getByRole('textbox'), {
+      clipboardData: clipboard([photo('chart.png', 100, 'image/png')], 'From the article'),
+    });
+    expect(pasted).toBe(true);
+    expect(screen.getByRole('button', { name: 'Take back chart.png' })).toBeInTheDocument();
+  });
+
+  it('refuses a fifth in a sentence, as the button does', async () => {
+    renderComposer();
+    const user = userEvent.setup();
+    await user.upload(fileInput(), [
+      photo('1.jpg'),
+      photo('2.jpg'),
+      photo('3.jpg'),
+      photo('4.jpg'),
+    ]);
+    fireEvent.paste(screen.getByRole('textbox'), {
+      clipboardData: clipboard([photo('5.png', 100, 'image/png')]),
+    });
+    expect(screen.getAllByRole('button', { name: /Take back/ })).toHaveLength(4);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('leaves a paste with no picture to the box', () => {
+    renderComposer();
+    const pasted = fireEvent.paste(screen.getByRole('textbox'), {
+      clipboardData: clipboard([], 'Just words'),
+    });
+    expect(pasted).toBe(true);
+    expect(screen.queryByRole('button', { name: /Take back/ })).toBeNull();
+  });
+});

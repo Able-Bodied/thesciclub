@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { act, useRef, useState } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CoverChange } from '@/lib/events';
+import type { PhotoTarget } from '@/lib/paste-photos';
 
 /**
  * Choosing an event's cover picture. Nothing is uploaded here — the form does
@@ -23,10 +24,18 @@ beforeAll(() => {
 
 let last: CoverChange | null = null;
 
+let target: PhotoTarget | null = null;
+
 function Harness({ initial }: { initial: CoverChange }) {
   const [value, setValue] = useState(initial);
+  const ref = useRef<PhotoTarget | null>(null);
+  target = null;
   return (
     <CoverField
+      ref={(handle) => {
+        ref.current = handle;
+        target = handle;
+      }}
       value={value}
       onChange={(next) => {
         last = next;
@@ -72,5 +81,20 @@ describe('CoverField', () => {
     await user.click(screen.getByRole('button', { name: 'Remove picture' }));
     expect(last).toEqual({ kind: 'remove' });
     expect(screen.getByRole('button', { name: 'Add a picture' })).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-22: a picture pasted into the description becomes the cover.
+  it('takes a pasted picture as the cover, through the same check', () => {
+    render(<Harness initial={{ kind: 'keep', path: null, alt: '' }} />);
+    const pasted = new File([new Uint8Array(10)], 'image.png', { type: 'image/png' });
+    act(() => {
+      target?.add([pasted]);
+    });
+    expect(last).toMatchObject({ kind: 'new', file: pasted });
+    act(() => {
+      target?.add([new File(['x'], 'notes.pdf', { type: 'application/pdf' })]);
+    });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(last).toMatchObject({ kind: 'new', file: pasted });
   });
 });

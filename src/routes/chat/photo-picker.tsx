@@ -1,6 +1,7 @@
 import { ImagePlus, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { attachmentProblem, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
+import type { PhotoTarget } from '@/lib/paste-photos';
 
 /**
  * Choosing photographs to go with a message, a reply or a new topic.
@@ -28,28 +29,41 @@ import { attachmentProblem, MAX_ATTACHMENTS } from '@/lib/chat/attachments';
  * Drag and drop is a gesture some members here do not have. The button is
  * 44px, keyboard-reachable, and says what it does; the input behind it is the
  * platform's own picker, which on a phone is the camera roll and the camera.
+ *
+ * Pasted pictures come in through `ref` (lib/paste-photos.ts, the owner,
+ * 2026-10-22) and take the same way in, so the same limits apply and the
+ * same sentence says why one could not be added.
  */
 export function PhotoPicker({
   files,
   onChange,
   disabled = false,
   compact = false,
+  ref,
 }: {
   files: File[];
   onChange: (files: File[]) => void;
   disabled?: boolean;
   /** The composer's row: the button only, with the strip drawn above by the caller. */
   compact?: boolean;
+  /** For pictures pasted into the text beside it. */
+  ref?: Ref<PhotoTarget>;
 }) {
   const input = useRef<HTMLInputElement | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
-  function choose(chosen: FileList | null) {
-    const list = chosen ? [...chosen] : [];
+  function add(list: File[]) {
+    if (disabled) return;
     const said = attachmentProblem(list, files.length);
     setProblem(said);
     if (said) return;
     onChange([...files, ...list]);
+  }
+
+  useImperativeHandle(ref, () => ({ add }));
+
+  function choose(chosen: FileList | null) {
+    add(chosen ? [...chosen] : []);
   }
 
   const full = files.length >= MAX_ATTACHMENTS;
