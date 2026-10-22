@@ -53,17 +53,21 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     (`lib/google-in-browser.ts`, `home-screen-handoff`).
   - **Home Screen app**: a signed-in iPhone tab hands the app a single-use
     code by cookie (`lib/home-screen-handoff.ts`).
-- **Checks**: 3,155 tests in 225 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,204 tests in 226 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
-- **Profile reports, not live** (2026-10-22): `20261022130000` goes live
-  before the client (`db push --linked --dry-run` first). Until the Terms
-  stop saying a profile can only be reported by email, and Privacy and
-  `/delete-account` say a profile report keeps its copy of the profile
-  (name, photograph and words) after deletion, they are wrong; the legal
-  pages are the owner's to change.
+- **Profile reports, not live** (2026-10-22): `20261022130000` and
+  `20261022150000` (a deleted member's copy reads "Deleted member", keeps
+  the words, and frees the photograph to be deleted; probe
+  `profile-reports.sql`, `pnpm check-photo-policy`) go live before the
+  client. No function deploy. Terms, Privacy and `/delete-account` say so,
+  and wait for the owner's read like the other legal pages.
+
+- **One dry run for four**: `db push --linked --dry-run` should list
+  `20261022100000`, `20261022130000`, `20261022140000` and
+  `20261022150000`, and nothing else; then the push.
 
 - **`20261022140000`, not live**: an inviter may only withdraw their own
   unused invite (probe `invite-withdrawal.sql`). The client needs no change:
@@ -137,7 +141,9 @@ All live. Migration headers and the files named say how and why.
   `ReportSheet kind="profile"`), a copy in `chat_reports.profile_snapshot`,
   listed under Admin → Reports as a profile report. The photograph path is
   kept like a chat photograph: no delete or overwrite while named, so each
-  upload is a new file name (`savePhoto`). Probe: `profile-reports.sql`;
+  upload is a new file name (`savePhoto`). Deleting the account unnames it
+  (trigger on `members`) and the folder clearing takes it; `deleteMyAccount`
+  clears the folder again after the delete. Probe: `profile-reports.sql`;
   storage steps in `pnpm check-photo-policy`.
 
 - **Joining**: invites are emailed links (`send-invite`) that fill in their
