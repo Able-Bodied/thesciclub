@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -76,6 +77,20 @@ describe('a YouTube video', () => {
     );
     expect(player).toHaveAttribute('title', 'YouTube video: A song');
     expect(screen.queryByRole('button', { name: /Play video/ })).toBeNull();
+  });
+
+  it('in the store app, play is a link to YouTube, never a player in a frame', async () => {
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    try {
+      const { container } = render(<LinkPreviewCard preview={video} />);
+      const play = screen.getByRole('link', { name: 'Play video: A song' });
+      expect(play).toHaveAttribute('href', video.url);
+      expect(play).toHaveAttribute('target', '_blank');
+      await userEvent.click(play);
+      expect(container.querySelector('iframe')).toBeNull();
+    } finally {
+      native.mockRestore();
+    }
   });
 
   it('still links to the video on YouTube by its title', () => {

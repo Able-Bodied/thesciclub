@@ -1,8 +1,9 @@
 import { Play } from 'lucide-react';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useAttachmentUrls } from '@/lib/chat/attachments';
 import { siteOf, youtubeEmbedUrl } from '@/lib/chat/link-preview';
 import type { LinkPreview } from '@/lib/chat/types';
+import { isNative } from '@/lib/standalone';
 import { cn } from '@/lib/utils';
 
 /**
@@ -15,7 +16,9 @@ import { cn } from '@/lib/utils';
  *
  * A YouTube video plays where it is, on a press and not before: the button
  * swaps the picture for YouTube's privacy-enhanced player, which is the
- * first moment anything reaches YouTube. Everything else, Instagram included
+ * first moment anything reaches YouTube. In the store app, play opens the
+ * video in the in-app browser: YouTube's player wants a web page's address
+ * to play in a frame, and the app has none. Everything else, Instagram included
  * at the owner's choice, opens its page in a new tab the way the link in the
  * words does.
  *
@@ -103,6 +106,16 @@ export function LinkPreviewCard({
             allowFullScreen
             referrerPolicy="strict-origin-when-cross-origin"
           />
+        ) : isNative() ? (
+          <a
+            href={preview.url}
+            target="_blank"
+            rel="noopener noreferrer nofollow ugc"
+            aria-label={`Play video: ${title}`}
+            className="relative block w-full"
+          >
+            <PlayFace image={image} />
+          </a>
         ) : (
           <button
             type="button"
@@ -112,12 +125,7 @@ export function LinkPreviewCard({
             aria-label={`Play video: ${title}`}
             className="relative block w-full"
           >
-            {image ?? <span className="block aspect-video w-full bg-tint" />}
-            <span className="absolute inset-0 grid place-items-center">
-              <span className="grid h-14 w-14 place-items-center rounded-full bg-black/70 text-white">
-                <Play className="ml-0.5 h-7 w-7" fill="currentColor" aria-hidden="true" />
-              </span>
-            </span>
+            <PlayFace image={image} />
           </button>
         )
       ) : null}
@@ -132,5 +140,19 @@ export function LinkPreviewCard({
         {words}
       </a>
     </div>
+  );
+}
+
+/** The video's picture with a play mark over it. */
+function PlayFace({ image }: { image: ReactNode }) {
+  return (
+    <>
+      {image ?? <span className="block aspect-video w-full bg-tint" />}
+      <span className="absolute inset-0 grid place-items-center">
+        <span className="grid h-14 w-14 place-items-center rounded-full bg-black/70 text-white">
+          <Play className="ml-0.5 h-7 w-7" fill="currentColor" aria-hidden="true" />
+        </span>
+      </span>
+    </>
   );
 }
