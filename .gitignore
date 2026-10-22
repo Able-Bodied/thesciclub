@@ -16,6 +16,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Apple keys and signing files (push key, App Store Connect key, certificates).
+# They live in the owner's password manager and in secrets, never in the repo.
+*.p8
+*.p12
+*.mobileprovision
+
 # Test / coverage
 coverage
 *.tsbuildinfo
