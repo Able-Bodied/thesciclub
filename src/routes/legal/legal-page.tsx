@@ -63,8 +63,8 @@ export function List({ children }: { children: React.ReactNode }) {
   return <ul className="mt-2.5 list-disc space-y-1.5 pl-5">{children}</ul>;
 }
 
-/** The address every question about either page goes to. */
-export const CONTACT_EMAIL = 'info@ablebodied.org';
+/** The address every question about the legal pages goes to. */
+export const CONTACT_EMAIL = 'hello@thesciclub.com';
 
 export function ContactEmail() {
   return (

@@ -18,9 +18,8 @@ export default function TermsPage() {
     <LegalPage title="Terms of Service" updated="October 10, 2026">
       <Section title="The club">
         <P>
-          The SCI Club is a private community for adults living with spinal cord injury, run by Able
-          Bodied Inc., a nonprofit organization. By joining or using it you agree to these terms and
-          to the{' '}
+          The SCI Club is a private community for adults living with spinal cord injury, operated by
+          Alfred Shaheen (“we”, “us”). By joining or using it you agree to these terms and to the{' '}
           <Link to="/privacy" className="font-semibold text-emphasis underline">
             Privacy Policy
           </Link>
@@ -66,9 +65,9 @@ export default function TermsPage() {
 
       <Section title="Email">
         <P>
-          <b>What the club emails you.</b> Able Bodied Inc. emails you to run your account: the link
-          that confirms your address, a link to reset or change your password, and an invitation
-          link when somebody invites you. It does not send newsletters or promotions. Questions or
+          <b>What the club emails you.</b> The club emails you to run your account: the link that
+          confirms your address, a link to reset or change your password, and an invitation link
+          when somebody invites you. It does not send newsletters or promotions. Questions or
           trouble getting an email: <ContactEmail />.
         </P>
         <P>
@@ -91,7 +90,7 @@ export default function TermsPage() {
 
       <Section title="Contact">
         <P>
-          <ContactEmail />, or Able Bodied Inc., 1968 S. Coast Hwy #3742, Laguna Beach, CA 92651.
+          The SCI Club, operated by Alfred Shaheen: <ContactEmail />.
         </P>
       </Section>
     </LegalPage>

@@ -21,8 +21,8 @@ export default function PrivacyPage() {
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
-          injury. It is run by Able Bodied Inc., a nonprofit organization (“we”, “us”). This policy
-          covers The SCI Club app and the emails and text messages it sends.
+          injury. It is operated by Alfred Shaheen (“we”, “us”). This policy covers The SCI Club app
+          and the emails and text messages it sends.
         </P>
       </Section>
 
@@ -181,10 +181,10 @@ export default function PrivacyPage() {
 
       <Section title="Grant applications">
         <P>
-          If you ask Able Bodied Inc. to help you apply for a grant, such as for equipment or
-          adaptive sport, we may share what is on your profile with the grant-maker, only for that
-          application and only because you asked. This never includes your email address, your phone
-          number, or your text messaging opt-in data and consent.
+          If you ask us to help you apply for a grant, such as for equipment or adaptive sport, we
+          may share what is on your profile with the grant-maker, only for that application and only
+          because you asked. This never includes your email address, your phone number, or your text
+          messaging opt-in data and consent.
         </P>
       </Section>
 
@@ -291,8 +291,8 @@ export default function PrivacyPage() {
 
       <Section title="Contact">
         <P>
-          Questions about this policy or your information: <ContactEmail />, or Able Bodied Inc.,
-          1968 S. Coast Hwy #3742, Laguna Beach, CA 92651.
+          Questions about this policy or your information: <ContactEmail />. The SCI Club, operated
+          by Alfred Shaheen.
         </P>
       </Section>
     </LegalPage>

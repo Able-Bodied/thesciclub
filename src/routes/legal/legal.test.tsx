@@ -30,9 +30,11 @@ describe('the Privacy Policy', () => {
     expect(screen.queryByRole('heading', { name: 'Join' })).toBeNull();
   });
 
-  it('names who runs the club', () => {
+  // The owner, 2026-10-22: the club is no longer run by Able Bodied Inc.
+  it('names who runs the club, and no nonprofit', () => {
     open('/privacy');
-    expect(screen.getAllByText(/Able Bodied Inc\./).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/operated by Alfred Shaheen/).length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/run by Able Bodied|nonprofit/);
   });
 
   // Twilio error 30908: the carriers' sentences, word for word.
@@ -120,6 +122,12 @@ describe('the Terms of Service', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
   });
 
+  it('names who runs the club, and no nonprofit', () => {
+    open('/terms');
+    expect(screen.getAllByText(/operated by\s+Alfred Shaheen/).length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/Able Bodied|nonprofit/);
+  });
+
   it('lists the four things that end a membership', () => {
     open('/terms');
     const section = screen.getByRole('heading', { name: 'Losing your membership' }).parentElement;
@@ -151,9 +159,9 @@ describe('the Terms of Service', () => {
     if (!section) throw new Error('no section');
     const s = within(section);
     expect(s.getByText('What the club emails you.').tagName).toBe('B');
-    expect(s.getByRole('link', { name: 'info@ablebodied.org' })).toHaveAttribute(
+    expect(s.getByRole('link', { name: 'hello@thesciclub.com' })).toHaveAttribute(
       'href',
-      'mailto:info@ablebodied.org',
+      'mailto:hello@thesciclub.com',
     );
     expect(s.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
   });

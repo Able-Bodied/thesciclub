@@ -25,7 +25,8 @@ describe('the static Privacy Policy', () => {
     expect(html).toContain(
       'We do not sell or share your email address or phone number with third parties for marketing or promotional purposes.',
     );
-    expect(html).toContain('Able Bodied Inc.');
+    expect(html).toContain('operated by Alfred Shaheen');
+    expect(html).not.toContain('Able Bodied Inc.');
   });
 
   it("carries the carriers' text-message wording in the HTML itself", () => {
