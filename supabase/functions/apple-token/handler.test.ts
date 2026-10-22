@@ -72,6 +72,28 @@ describe('apple-token', () => {
     expect(log.kept).toEqual([`${MEMBER}|001.mine|com.thesciclub.web|rt-web`]);
   });
 
+  it('keeps a web refresh token Apple accepts without an ID token, for the one Apple identity', async () => {
+    const { deps, log } = setup({ answer: { status: 200, body: { access_token: 'a' } } });
+    expect((await keepAppleToken('Bearer good', { refresh_token: 'rt-web' }, deps)).status).toBe(
+      200,
+    );
+    expect(log.kept).toEqual([`${MEMBER}|001.mine|com.thesciclub.web|rt-web`]);
+    const two = setup({
+      caller: { id: MEMBER, appleSubs: ['001.mine', '001.other'] },
+      answer: { status: 200, body: { access_token: 'a' } },
+    });
+    expect(
+      (await keepAppleToken('Bearer good', { refresh_token: 'rt-web' }, two.deps)).status,
+    ).toBe(502);
+    expect(two.log.kept).toEqual([]);
+  });
+
+  it('never keeps a native code’s token without Apple’s ID token', async () => {
+    const { deps, log } = setup({ answer: { status: 200, body: { refresh_token: 'rt-x' } } });
+    expect((await keepAppleToken('Bearer good', { code: 'c-1' }, deps)).status).toBe(502);
+    expect(log.kept).toEqual([]);
+  });
+
   it('keeps nothing for an Apple ID that is not one of the account’s', async () => {
     const { deps, log } = setup({
       answer: {

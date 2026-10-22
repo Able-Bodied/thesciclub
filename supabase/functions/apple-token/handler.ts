@@ -7,8 +7,10 @@
  * `{ refresh_token }`: the one Supabase handed the website after Apple's
  * redirect, checked with Apple as com.thesciclub.web.
  *
- * Either way Apple answers with an ID token, and its `sub` must be one of the
- * caller's own Apple identities before anything is kept.
+ * Apple's answer carries an ID token whose `sub` must be one of the caller's
+ * own Apple identities before anything is kept. Should a refresh check come
+ * back without one, the token is kept only for an account with a single
+ * Apple identity.
  */
 
 import {
@@ -79,8 +81,11 @@ export async function keepAppleToken(
 
   const kept = code ? text(answer.body.refresh_token) : refresh;
   const claims = jwtClaims(answer.body.id_token);
-  const sub = claims?.sub;
-  if (!kept || typeof sub !== 'string' || claims?.aud !== client) {
+  // A refresh token checked without an ID token back: it came from this
+  // session's own redirect, so it is the account's one Apple identity's.
+  const onlySub = !code && !claims && caller.appleSubs.length === 1 ? caller.appleSubs[0] : null;
+  const sub = claims ? claims.sub : onlySub;
+  if (!kept || typeof sub !== 'string' || (claims && claims.aud !== client)) {
     deps.log(`apple-token: Apple's answer for ${client} had no refresh token or ID token`);
     return { status: 502, body: { error: 'Apple did not accept it.' } };
   }
