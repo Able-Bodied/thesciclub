@@ -5,11 +5,14 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { configDefaults, defineConfig } from 'vitest/config';
 
 // https://vite.dev/config/
-export default defineConfig({
+// `--mode native` builds the store app's copy (capacitor.config.ts): no
+// service worker, and its own folder.
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
+      disable: mode === 'native',
       registerType: 'autoUpdate',
       // Registered from src/main.tsx once the first screen has had its turn:
       // the generated script registered on `load`, when Home's reads start,
@@ -140,6 +143,7 @@ export default defineConfig({
     ...(process.env.TUNNEL ? { hmr: { protocol: 'wss', clientPort: 443 } } : {}),
   },
   build: {
+    ...(mode === 'native' ? { outDir: 'dist-native' } : {}),
     rolldownOptions: {
       output: {
         codeSplitting: {
@@ -163,6 +167,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    exclude: [...configDefaults.exclude, '.claude/**'],
+    exclude: [...configDefaults.exclude, '.claude/**', 'dist-native/**', 'ios/**', 'android/**'],
   },
-});
+}));

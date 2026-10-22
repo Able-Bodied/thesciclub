@@ -10,6 +10,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/prerender-legal.mjs",
+    "build:native": "tsc -b && vite build --mode native",
+    "native:sync": "pnpm build:native && cap sync",
+    "native:assets": "pnpm dlx @capacitor/assets@3.0.5 generate --ios --android",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -25,6 +28,14 @@
     "check-chat-photo-policy": "node scripts/check-chat-photo-policy.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/keyboard": "8.0.6",
+    "@capacitor/splash-screen": "8.0.2",
+    "@capacitor/text-zoom": "8.0.1",
     "@supabase/supabase-js": "^2.112.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.31.0",
@@ -36,6 +47,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.8",
+    "@capacitor/cli": "8.5.3",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
