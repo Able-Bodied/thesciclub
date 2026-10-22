@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { getSupabase } from '@/lib/supabase';
 
@@ -19,6 +19,8 @@ export function usePostViews(postIds: readonly string[]) {
     byPost: new Map<string, number>(),
     loading: true,
   });
+  // Read again for the same posts, the counts stay up until the new ones land.
+  const shown = useRef<string | null>(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -34,10 +36,12 @@ export function usePostViews(postIds: readonly string[]) {
     if (attempt < 0) return;
     const controller = new AbortController();
     if (!memberId || !key) {
+      shown.current = null;
       setState({ byPost: new Map(), loading: false });
       return;
     }
-    setState({ byPost: new Map(), loading: true });
+    const again = shown.current === key;
+    if (!again) setState({ byPost: new Map(), loading: true });
     async function load() {
       try {
         // Supabase caps returned rows at 1,000; long topics still need a
@@ -57,12 +61,13 @@ export function usePostViews(postIds: readonly string[]) {
         }[];
         if (controller.signal.aborted) return;
         const rows = results.flatMap(({ data, error }) => (error ? [] : (data ?? [])));
+        shown.current = key;
         setState({
           byPost: new Map(rows.map((row) => [row.post_id, Number(row.view_count)])),
           loading: false,
         });
       } catch {
-        if (!controller.signal.aborted) setState({ byPost: new Map(), loading: false });
+        if (!controller.signal.aborted && !again) setState({ byPost: new Map(), loading: false });
       }
     }
     void load();

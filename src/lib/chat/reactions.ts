@@ -61,6 +61,8 @@ export function useReactions(
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const busy = useRef(new Set<string>());
   const version = useRef(0);
+  // Read again for the same posts (a kept tab showing), the counts stay up.
+  const shown = useRef<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const reload = useCallback(() => {
     setAttempt((n) => n + 1);
@@ -77,7 +79,7 @@ export function useReactions(
     }
     const controller = new AbortController();
     const readVersion = version.current;
-    setLoading(true);
+    if (shown.current !== scope) setLoading(true);
     async function load() {
       try {
         // Supabase caps a response at 1,000 rows. Stable key order and pages
@@ -111,6 +113,7 @@ export function useReactions(
           setError(describeError(failed, 'Could not load reactions.'));
           return;
         }
+        shown.current = scope;
         setSnapshot({ scope, rows: rows ?? [] });
       } catch (e) {
         if (controller.signal.aborted || readVersion !== version.current) return;

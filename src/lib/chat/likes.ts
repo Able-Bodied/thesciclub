@@ -164,12 +164,15 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
   const [attempt, setAttempt] = useState(0);
   // Posts with a write in flight. A ref, not state: nothing is drawn from it.
   const pending = useRef(new Set<string>());
+  // The posts whose likes are drawn; read again, they stay up meanwhile.
+  const shown = useRef<string | null>(null);
 
   useEffect(() => {
     // Read, not only depended on: biome counts an unread dependency as a
     // spare one, and a re-run for the same ids is the whole point of it.
     if (attempt < 0) return;
     if (!memberId || key === '') {
+      shown.current = null;
       setByPost(EMPTY);
       setLoading(false);
       setError(null);
@@ -177,7 +180,8 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
     }
     const controller = new AbortController();
     const ids = key.split(',');
-    setLoading(true);
+    const again = shown.current === key;
+    if (!again) setLoading(true);
 
     async function load() {
       try {
@@ -198,16 +202,18 @@ export function usePostLikes(postIds: readonly string[]): PostLikesState {
         );
         if (controller.signal.aborted) return;
         if (failed) {
+          if (again) return;
           setByPost(EMPTY);
           setError(describeError(failed, 'Could not load the likes.'));
           setLoading(false);
           return;
         }
+        shown.current = key;
         setByPost(groupLikes(data ?? []));
         setError(null);
         setLoading(false);
       } catch (e) {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || again) return;
         setByPost(EMPTY);
         setError(describeThrown(e, 'Could not load the likes.'));
         setLoading(false);
