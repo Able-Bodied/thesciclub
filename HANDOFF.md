@@ -58,6 +58,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
+  name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
+  (2026-10-21). Push only once the owner has read them **and** that address
+  receives mail (MX at Spaceship, held by someone else). Then paste
+  `https://thesciclub.com/delete-account` into Play's Data safety form. A
+  lawyer should read them: injury details are health information.
+
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
   still there with no member. Whoever is invited again can sign in with their
@@ -76,7 +83,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   **Waiting on Twilio** (Varun, Onboarding and Compliance Support) to confirm
   Verify's pooled sender (then withdraw the refused A2P campaign; its opt-in
   proof is `c550eff^:public/sms-opt-in/`) or the campaign with a public
-  opt-in page and SMS terms back in Privacy and Terms. Build to their answer.
+  opt-in page and SMS terms back in Privacy and Terms (the old section:
+  `d4f26ef:src/routes/legal/privacy.tsx`). Build to their answer.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
 - **Passkeys**: built, off. To turn on: a Netlify preview with
@@ -84,9 +92,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   and installed) and Android Chrome; Supabase → Passkeys relying party
   `thesciclub.com`, name `The SCI Club`; then set it on Netlify and rebuild.
 - **Owner's calls, pending**: Google's branding review ("The SCI Club" on
-  Google's page); whether Privacy says the club fetches linked pages and that
-  play reaches YouTube; deleting leftover test accounts and the `Test`
-  member; thesciclub.org (Netlify alias, `@` and `www` A records to
+  Google's page); deleting leftover test accounts and the `Test` member; thesciclub.org (Netlify alias, `@` and `www` A records to
   `75.2.60.5` at Spaceship).
 - **Never tried for real**: an hour of VoiceOver; the date boxes with Voice
   Control and autofill; a notification end to end and its tap from the lock
