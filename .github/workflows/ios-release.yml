@@ -116,18 +116,23 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # Both values are public (the browser bundle has them too). A build
-      # without them would reach the store and not the club, so stop; and stop
-      # on a secret key, which must never be inside an app.
+      # All three values are public (the browser bundle has the first two). A
+      # build without them would reach the store and not the club, or show no
+      # Google button, so stop; and stop on a secret key, which must never be
+      # inside an app.
       - name: Build the web app for the shell
         env:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_GOOGLE_IOS_CLIENT_ID: ${{ vars.VITE_GOOGLE_IOS_CLIENT_ID }}
         run: |
           set -euo pipefail
-          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY; do
+          for name in VITE_SUPABASE_URL VITE_SUPABASE_ANON_KEY VITE_GOOGLE_IOS_CLIENT_ID; do
             [ -n "${!name}" ] || { echo "::error::Set the Actions variable $name"; exit 1; }
           done
+          re='^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$'
+          [[ "$VITE_GOOGLE_IOS_CLIENT_ID" =~ $re ]] \
+            || { echo "::error::VITE_GOOGLE_IOS_CLIENT_ID is not a Google iOS client ID"; exit 1; }
           node - <<'JS'
           const key = process.env.VITE_SUPABASE_ANON_KEY;
           let role = 'anon';
@@ -145,7 +150,9 @@ jobs:
           pnpm build:native
 
       - name: Sync
-        run: pnpm exec cap sync ios
+        run: |
+          pnpm exec cap sync ios
+          node scripts/check-native-build.mjs
 
       - uses: ruby/setup-ruby@b1da4809b005e0178fe08a1d57317bffc00b7b4c # v1.332.0
         with:
@@ -190,6 +197,7 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          GOOGLE_IOS_CLIENT_ID: ${{ vars.VITE_GOOGLE_IOS_CLIENT_ID }}
           TMPDIR: ${{ runner.temp }}/fastlane-tmp
           FASTLANE_SKIP_UPDATE_CHECK: '1'
           FASTLANE_OPT_OUT_USAGE: '1'

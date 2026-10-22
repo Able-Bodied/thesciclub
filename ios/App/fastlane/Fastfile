@@ -4,15 +4,36 @@
 #
 #   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64  the App Store Connect API key
 #   APP_VERSION                                    marketing version, 1.2.3
+#   GOOGLE_IOS_CLIENT_ID                           Google sign-in's iOS client (public)
 #   WHATS_NEW_FILE                                 optional "What to Test" text
 #
 # The Apple Distribution certificate is already in a keychain on the search
 # list (the workflow's job); this finds the App Store profile that matches it.
 
+require "plist"
 require "shellwords"
 
 APP_ID = "com.thesciclub.app"
 ROOT = File.expand_path("..", FastlaneCore::FastlaneFolder.path)
+ENTITLEMENTS = File.join(ROOT, "App", "App.entitlements")
+
+# Google's sign-in returns to the app on its iOS client ID, reversed.
+def google_reversed_client_id
+  id = ENV.fetch("GOOGLE_IOS_CLIENT_ID", "").strip
+  match = /\A([0-9]+-[a-z0-9]+)\.apps\.googleusercontent\.com\z/.match(id)
+  UI.user_error!("GOOGLE_IOS_CLIENT_ID is not an iOS client ID: #{id.inspect}") unless match
+  "com.googleusercontent.apps.#{match[1]}"
+end
+
+# The capabilities App.entitlements asks for that the profile lacks. A profile
+# made before the App ID gained one is left without it, and the signed app
+# would be refused.
+def missing_entitlements(profile_path)
+  wanted = Plist.parse_xml(File.read(ENTITLEMENTS)).keys
+  decoded = sh("security cms -D -i #{profile_path.shellescape}", log: false)
+  granted = Plist.parse_xml(decoded).fetch("Entitlements", {}).keys
+  wanted - granted
+end
 
 default_platform(:ios)
 
@@ -35,8 +56,21 @@ platform :ios do
     version = ENV.fetch("APP_VERSION")
     UI.important("Building #{version} (#{build_number})")
 
-    # Finds the App Store profile for the installed certificate, or makes one.
+    reversed_client_id = google_reversed_client_id
+
+    # Finds the App Store profile for the installed certificate, or makes one,
+    # and makes a new one if it lacks Sign in with Apple or Associated Domains.
     get_provisioning_profile(api_key: api_key, app_identifier: APP_ID)
+    missing = missing_entitlements(lane_context[SharedValues::SIGH_PROFILE_PATH])
+    unless missing.empty?
+      UI.important("The profile lacks #{missing.join(", ")}: making a new one")
+      get_provisioning_profile(api_key: api_key, app_identifier: APP_ID, force: true)
+      missing = missing_entitlements(lane_context[SharedValues::SIGH_PROFILE_PATH])
+      UI.user_error!(
+        "The App ID #{APP_ID} does not have #{missing.join(", ")}. Turn them on in " \
+        "Certificates, Identifiers & Profiles, then run this again."
+      ) unless missing.empty?
+    end
     profile_name = lane_context[SharedValues::SIGH_NAME]
     team_id = sh(
       "security cms -D -i #{lane_context[SharedValues::SIGH_PROFILE_PATH].shellescape} " \
@@ -66,7 +100,8 @@ platform :ios do
         signingCertificate: "Apple Distribution",
         provisioningProfiles: { APP_ID => profile_name }
       },
-      xcargs: "MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
+      xcargs: "MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number} " \
+              "GOOGLE_REVERSED_CLIENT_ID=#{reversed_client_id}",
       skip_profile_detection: true,
       output_directory: File.join(ROOT, "build"),
       output_name: "TheSciClub"
