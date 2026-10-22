@@ -62,6 +62,11 @@ vi.mock('@/lib/chat/threads', () => ({
   },
 }));
 
+// Signing is a storage call: any path gets a URL here.
+vi.mock('@/lib/photos', () => ({
+  usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed/${path}` : null),
+}));
+
 const report = (o: Partial<ChatReport> & { id: string }): ChatReport => ({
   kind: 'message',
   contextKind: 'direct',
@@ -69,6 +74,8 @@ const report = (o: Partial<ChatReport> & { id: string }): ChatReport => ({
   messageId: 'm1',
   bodySnapshot: 'Buy my miracle supplement, cash only.',
   attachments: [],
+  profile: null,
+  profilePhotoPath: null,
   writtenAt: '2026-09-18T10:00:00Z',
   place: 'A direct conversation',
   topicId: null,
@@ -391,5 +398,78 @@ describe('blocks on the reports panel', () => {
     renderSection([block('b1'), report({ id: 'r1' })]);
     expect(screen.getByText('1 waiting')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settle it' })).toBeInTheDocument();
+  });
+});
+
+describe('a profile report', () => {
+  const profileReport = (o: Partial<ChatReport> = {}) =>
+    report({
+      id: 'p1',
+      kind: 'profile',
+      contextKind: 'profile',
+      messageId: null,
+      bodySnapshot: '',
+      place: 'A member’s profile',
+      profile: {
+        displayName: 'Bo Before',
+        username: 'bo_before',
+        photoAlt: 'Bo at a lake',
+        bio: 'The bio as reported.',
+        howInjured: null,
+        detail: null,
+        sportsEquipment: null,
+        grants: null,
+        fieldOfWork: null,
+        interests: ['Cycling', 'Chess'],
+        topics: [],
+        selfCare: [],
+      },
+      profilePhotoPath: 'bo/profile.webp',
+      reportedAuthorName: 'Bo After',
+      ...o,
+    });
+
+  it('is labelled, and shows the copy rather than the member as they are now', () => {
+    renderSection([profileReport()]);
+    expect(screen.getByText('Profile report')).toBeInTheDocument();
+    expect(screen.getByText('Bo Before')).toBeInTheDocument();
+    expect(screen.getByText('@bo_before')).toBeInTheDocument();
+    expect(screen.getByText('The bio as reported.')).toBeInTheDocument();
+    expect(screen.getByText('Cycling · Chess')).toBeInTheDocument();
+    // Answers the member left empty draw no heading.
+    expect(screen.queryByText('Grants')).toBeNull();
+    // The live name is the link; the copy keeps the old one.
+    expect(screen.getByText('Bo After')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Bo at a lake' })).toHaveAttribute(
+      'src',
+      'https://signed/bo/profile.webp',
+    );
+  });
+
+  it('can be settled, goes to the member, and offers no removal', async () => {
+    renderSection([profileReport()]);
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+    expect(screen.queryByText('Already removed')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Open the topic' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Go to Bo After' }));
+    expect(went).toEqual(['bo']);
+    await userEvent.click(screen.getByRole('button', { name: 'Settle it' }));
+    await userEvent.type(screen.getByLabelText(/What was decided/), 'Spoke to them');
+    await userEvent.click(screen.getByRole('button', { name: 'Settle it' }));
+    await waitFor(() => {
+      expect(api.resolved).toEqual([['p1', 'Spoke to them']]);
+    });
+  });
+
+  it('says there is no photograph when there is none', () => {
+    renderSection([profileReport({ profilePhotoPath: null })]);
+    expect(screen.getByText('No profile photograph.')).toBeInTheDocument();
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('counts with the waiting reports and is not listed as a block', () => {
+    renderSection([profileReport()]);
+    expect(screen.getByText('1 waiting')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Blocks' })).toBeNull();
   });
 });

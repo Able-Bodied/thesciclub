@@ -315,16 +315,32 @@ export interface ChatEdit {
  * an administrator; a message carries no way back at all, which is what makes
  * "private even from administrators" still true after somebody reports one.
  */
+/** What a profile said when it was reported (20261022130000). Absent answers are absent. */
+export interface ReportedProfile {
+  displayName: string;
+  username: string | null;
+  photoAlt: string | null;
+  bio: string | null;
+  howInjured: string | null;
+  detail: string | null;
+  sportsEquipment: string | null;
+  grants: string | null;
+  fieldOfWork: string | null;
+  interests: string[];
+  topics: string[];
+  selfCare: string[];
+}
+
 export interface ChatReport {
   id: string;
   /** A block (20261022050000) has no post, message or words, and waits for no decision. */
-  kind: 'post' | 'message' | 'block';
+  kind: 'post' | 'message' | 'block' | 'profile';
   /**
    * Where it was said. Recorded when the report was filed, so it is still
    * known once the original is gone. The panel offers Remove for a room or a
    * group and not for a direct conversation — see reports-section.tsx.
    */
-  contextKind: 'room' | 'group' | 'direct' | 'member';
+  contextKind: 'room' | 'group' | 'direct' | 'member' | 'profile';
   /** Null once the reported row itself is gone. The snapshot outlives it. */
   postId: string | null;
   messageId: string | null;
@@ -337,6 +353,10 @@ export interface ChatReport {
    * left, and the panel says so.
    */
   attachments: string[];
+  /** A profile report's copy of the profile, taken when it was reported. */
+  profile: ReportedProfile | null;
+  /** Its photograph in the photos bucket; kept, since a named file cannot be deleted. */
+  profilePhotoPath: string | null;
   /** When it was written, which is rarely when it was reported. */
   writtenAt: string;
   /** "Bowel management › …", a group's name, or "A direct conversation". */
