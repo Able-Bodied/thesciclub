@@ -29,8 +29,9 @@ export default function DeleteAccountPage() {
         <P>
           If you cannot sign in, or no longer have the app, email{' '}
           <ContactEmail subject="Delete my account" /> and ask us to delete your account. Write from
-          the address you use for the club if you can, and tell us your name or @username. An
-          administrator’s account cannot be deleted in the app, so administrators ask this way too.
+          the address you use for the club if you can, and tell us your name or @username. We delete
+          it by hand and reply when it is done. An administrator’s account cannot be deleted in the
+          app, so administrators ask this way too.
         </P>
       </Section>
 
@@ -39,6 +40,7 @@ export default function DeleteAccountPage() {
           <li>Your name, username, email address, phone number, photograph and birthday.</li>
           <li>Your injury or condition, and everything you answered about yourself.</li>
           <li>Any Google or Apple account you linked.</li>
+          <li>Your sign-in records, with the email and IP addresses they hold.</li>
           <li>
             Your likes, reactions, saved posts, followed organizations, replies to events, blocks
             and notifications.

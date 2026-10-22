@@ -172,6 +172,38 @@ describe('the Privacy Policy', () => {
     expect(screen.queryByText(/It is never shared outside the club/)).toBeNull();
   });
 
+  // The owner, 2026-10-22: joining offers Relative/Spouse.
+  it('says the club is for family members too, on both pages', () => {
+    for (const path of ['/privacy', '/terms']) {
+      open(path);
+      expect(document.body.textContent).toMatch(
+        /adults living with spinal cord\s+injury and their family members/,
+      );
+      cleanup();
+    }
+  });
+
+  // The owner, 2026-10-22: the club lists grants and helps with none.
+  it('says the club lists grants, shares nothing with grant-makers, and helps with no application', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Grants' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/We do not help with applications/);
+    expect(section).toHaveTextContent(/we share nothing about you with grant-makers/);
+    expect(document.body.textContent).not.toMatch(/If you ask us to help/);
+  });
+
+  // 20261022100000 and supabase/tests/sign-in-log-forgotten.sql.
+  it('says deleting erases sign-in records, and invites last until used or withdrawn', () => {
+    open('/privacy');
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    const kept = screen.getByRole('heading', { name: 'How long we keep it' }).parentElement;
+    if (!deleting || !kept) throw new Error('no section');
+    expect(deleting).toHaveTextContent(/your\s+sign-in records with their email and IP addresses/);
+    expect(kept).toHaveTextContent(/invites do not expire/);
+    expect(kept).toHaveTextContent(/withdrawn by whoever sent it or an administrator/);
+  });
+
   it('links to the Terms of Service', () => {
     open('/privacy');
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute(
@@ -305,6 +337,7 @@ describe('Deleting your account', () => {
     const stays = screen.getByRole('heading', { name: 'What stays' }).parentElement;
     if (!erased || !stays) throw new Error('no section');
     expect(erased).toHaveTextContent(/email address, phone number, photograph and birthday/);
+    expect(erased).toHaveTextContent(/Your sign-in records, with the email and IP addresses/);
     expect(stays).toHaveTextContent(/“Deleted member” instead of your name/);
   });
 

@@ -13,8 +13,9 @@ export default function TermsPage() {
     <LegalPage title="Terms of Service" updated="October 21, 2026">
       <Section title="The club">
         <P>
-          The SCI Club is a private community for adults living with spinal cord injury, operated by
-          Alfred Shaheen (“we”, “us”). By joining or using it you agree to these terms and to the{' '}
+          The SCI Club is a private community for adults living with spinal cord injury and their
+          family members, operated by Alfred Shaheen (“we”, “us”). By joining or using it you agree
+          to these terms and to the{' '}
           <Link to="/privacy" className="font-semibold text-emphasis underline">
             Privacy Policy
           </Link>

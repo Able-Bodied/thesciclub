@@ -41,9 +41,9 @@ export default function PrivacyPage() {
 
       <Section title="Who we are">
         <P>
-          The SCI Club is a private, invite-only community for adults living with spinal cord
-          injury. It is operated by Alfred Shaheen (“we”, “us”). This policy covers The SCI Club app
-          and website, and the emails they send.
+          The SCI Club is a private, invite-only community for adults living with spinal cord injury
+          and their family members. It is operated by Alfred Shaheen (“we”, “us”). This policy
+          covers The SCI Club app and website, and the emails they send.
         </P>
         <P>
           <b>
@@ -69,9 +69,9 @@ export default function PrivacyPage() {
             for. It is never used to sign you in.
           </li>
           <li>
-            <b>About your injury or condition:</b> which describes you best, its level, whether it
-            is complete, when it began and how, as far as you choose to say. This is health
-            information.
+            <b>About your injury or condition:</b> which describes you best (or that you are a
+            relative or spouse), its level, whether it is complete, when it began and how, as far as
+            you choose to say. This is health information.
           </li>
           <li>
             <b>What you choose to answer</b> in the profile questions, such as your languages,
@@ -112,15 +112,15 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>If you invite somebody:</b> the email address you give us, which goes on the club’s
-            list, and we email them a link.
+            list, and we email them a link. You can withdraw the invite until it is used.
           </li>
         </List>
         <P>
           Like any website, the services that run the club see your device’s internet (IP) address
           when it connects, and our sign-in service keeps it, with the kind of browser, for each
-          signed-in session, to keep accounts secure. On your device, the app keeps you signed in
-          and remembers settings such as text size. It uses no cookies or tools for advertising or
-          analytics.
+          signed-in session and in a log of sign-ins, to keep accounts secure. On your device, the
+          app keeps you signed in and remembers settings such as text size. It uses no cookies or
+          tools for advertising or analytics.
         </P>
       </Section>
 
@@ -275,11 +275,12 @@ export default function PrivacyPage() {
         </P>
       </Section>
 
-      <Section title="Grant applications">
+      <Section title="Grants">
         <P>
-          If you ask us to help you apply for a grant, such as for equipment or adaptive sport, we
-          may share what is on your profile with the grant-maker, only for that application and only
-          because you asked. This never includes your email address or your phone number.
+          The club lists grants that organizations offer, such as for equipment or adaptive sport,
+          and when to apply, with a link to each one. We do not help with applications or apply for
+          you, and we share nothing about you with grant-makers. You apply on the organization’s own
+          site, under its own policy.
         </P>
       </Section>
 
@@ -359,7 +360,13 @@ export default function PrivacyPage() {
             <b>Blocks:</b> until you unblock. The administrators’ record that it happened stays.
           </li>
           <li>
-            <b>An invited email address:</b> on the list until the invite is used or withdrawn.
+            <b>Sign-in records</b>, with their email and IP addresses: until your account is
+            deleted.
+          </li>
+          <li>
+            <b>An invited email address:</b> invites do not expire, so it stays on the list until
+            the invite is used, or withdrawn by whoever sent it or an administrator. A withdrawn
+            invite keeps its record of who invited the address.
           </li>
         </List>
       </Section>
@@ -376,8 +383,9 @@ export default function PrivacyPage() {
           You can delete your account yourself, from <b>Me → Account → Delete my account</b>. That
           erases your name, username, email address, phone number, photograph, birthday, injury, any
           Google or Apple account you linked, everything you answered about yourself, and your
-          likes, reactions, saves, follows, replies to events, blocks and notifications, and takes
-          your address off the invite list.
+          likes, reactions, saves, follows, replies to events, blocks and notifications, and your
+          sign-in records with their email and IP addresses, and takes your address off the invite
+          list.
         </P>
         <P>
           What you wrote in Chat, and the photographs you shared there, stay, so other people’s
@@ -389,7 +397,8 @@ export default function PrivacyPage() {
         <P>
           If you cannot sign in, or are an administrator, email <ContactEmail /> to ask us to delete
           your account, or for a copy of what we hold about you. Write from the address on your
-          account if you can. You can also correct anything about you on Me.{' '}
+          account if you can. We delete it by hand and reply when it is done. You can also correct
+          anything about you on Me.{' '}
           <Link to="/delete-account" className="font-semibold text-emphasis underline">
             Deleting your account
           </Link>{' '}
