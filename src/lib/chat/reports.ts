@@ -366,7 +366,7 @@ function toReport(row: ReportRow): ChatReport {
 }
 
 /** The copy's own keys are snake_case jsonb; anything missing is simply absent. */
-function toProfile(copy: Record<string, unknown> | null): ReportedProfile {
+export function toProfile(copy: Record<string, unknown> | null): ReportedProfile {
   const text = (key: string): string | null => {
     const value = copy?.[key];
     return typeof value === 'string' && value !== '' ? value : null;
