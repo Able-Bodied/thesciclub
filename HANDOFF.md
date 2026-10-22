@@ -65,6 +65,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (name, photograph and words) after deletion, they are wrong; the legal
   pages are the owner's to change.
 
+- **`20261022140000`, not live**: an inviter may only withdraw their own
+  unused invite (probe `invite-withdrawal.sql`). The client needs no change:
+  `db push --linked --dry-run`, then the push.
+
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
   (2026-10-21). They say deleting erases sign-in records, so
