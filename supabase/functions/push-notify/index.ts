@@ -47,6 +47,9 @@ const EVENTS = new Set([
   'report',
   'member_joined',
   'daily',
+  // Sent since 20261021010000 and 20261022040000, and refused here until now.
+  'grant_open',
+  'profile_reminder',
 ]);
 
 function reply(status: number, body: Record<string, unknown>): Response {
