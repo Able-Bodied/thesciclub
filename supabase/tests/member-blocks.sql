@@ -13,6 +13,7 @@
 --   5. nothing Bo does notifies Ada, in the list or on a lock screen
 --   6. one report per block, naming both, with no words, notifying nobody
 --   7. administrators are unaffected: reports, earlier versions, removals
+--   8. Block from a message's ••• is the profile's: the same id, row and report
 --
 -- Run it against a local stack (never the hosted project):
 --
@@ -444,6 +445,45 @@ begin
   assert (select already_removed from public.admin_chat_reports()
            where post_id = 'b10c0000-0000-0000-0000-0000000000b2') , 'the removal did not take';
   raise notice 'PASS 7: reports, earlier versions and removal work for an administrator in a block either way';
+end;
+$$;
+
+\echo ''
+\echo '== 8. Block from a message is the profile''s Block =='
+\echo '   expect: PASS 8 (the author id a message gives is the profile''s id; the'
+\echo '   same row and the same wordless report, nothing of the message in it)'
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000c","role":"authenticated"}', true) is not null as cy;
+insert into public.chat_messages (thread_id, author_id, body) values (:'grp', auth.uid(), 'Cy in the group');
+select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ada;
+do $$
+declare
+  author uuid;
+begin
+  -- What the message's ••• passes, read as Ada reads it.
+  select m.author_id into strict author from public.chat_messages m where m.body = 'Cy in the group';
+  assert author = (select b.id from public.browse_members b where b.display_name = 'Cy Block'),
+    'a message names its author differently from the profile';
+  perform public.block_member(author);
+  assert exists (select 1 from public.member_blocks
+                  where blocker_id = auth.uid() and blocked_id = 'b10c0000-0000-0000-0000-00000000000c'),
+    'no block row';
+  assert not exists (select 1 from public.chat_messages where body = 'Cy in the group'), 'Cy''s message still shows';
+  assert not exists (select 1 from public.browse_members where id = author), 'Cy still in Ada''s Peers';
+end;
+$$;
+reset role;
+do $$
+declare
+  r record;
+begin
+  select * into strict r from public.chat_reports
+   where kind = 'block' and reporter_id = 'b10c0000-0000-0000-0000-00000000000a'
+     and reported_author_id = 'b10c0000-0000-0000-0000-00000000000c';
+  assert r.context_kind = 'member' and r.post_id is null and r.message_id is null
+     and r.body_snapshot = '' and r.place = 'Blocked',
+    'a block from a message carried the message, unlike a profile''s';
+  raise notice 'PASS 8: a message''s Block is block_member on the profile''s id, with the same wordless report';
 end;
 $$;
 
