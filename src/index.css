@@ -787,6 +787,22 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
   padding-right: env(safe-area-inset-right);
 }
 
+/* The store app draws under the status bar on every screen, the doors and
+ * the profile survey too, so the whole page moves down instead (set by
+ * src/lib/native-shell.ts; never on the website). */
+:root[data-native-app] body {
+  padding-top: env(safe-area-inset-top);
+}
+:root[data-native-app] .app-shell {
+  padding-top: 0;
+}
+:root[data-native-app] .h-dvh {
+  height: calc(100dvh - env(safe-area-inset-top));
+}
+:root[data-native-app] .min-h-dvh {
+  min-height: calc(100dvh - env(safe-area-inset-top));
+}
+
 /*
  * The circle on Apple's button after a tap (opening-icon.tsx). Its timing is
  * all delay, which the kill switch above leaves alone: with reduced motion the

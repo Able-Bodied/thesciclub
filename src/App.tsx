@@ -147,10 +147,11 @@ function ShellContent() {
           screen. Off-screen until focused, then a navy pill at the top. */}
       <a
         href="#main"
-        // Off the top of the shell until focused, then slid in. Not sr-only:
+        // Off the top of the shell until focused, then slid in (past the
+        // status bar in the store app, index.css). Not sr-only:
         // `not-sr-only` on focus makes it static and it became a strip that
         // pushed the screen down.
-        className="-translate-y-[150%] absolute top-2 left-2 z-50 rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
+        className="-translate-y-[calc(150%_+_env(safe-area-inset-top))] absolute top-2 left-2 z-50 rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
       >
         Skip to content
       </a>
@@ -159,7 +160,7 @@ function ShellContent() {
       <button
         type="button"
         onClick={openDisplay}
-        className="-translate-y-[150%] absolute top-2 left-2 z-50 rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
+        className="-translate-y-[calc(150%_+_env(safe-area-inset-top))] absolute top-2 left-2 z-50 rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white focus:translate-y-0"
       >
         Display settings
       </button>

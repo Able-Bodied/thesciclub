@@ -380,7 +380,7 @@ export function PhotoViewer({
         type="button"
         aria-label="Close the photograph"
         onClick={onClose}
-        className="absolute top-3 right-3 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-[4px] transition-colors hover:bg-white/30"
+        className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 z-20 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white backdrop-blur-[4px] transition-colors hover:bg-white/30"
       >
         <X className="h-5 w-5" aria-hidden="true" />
       </button>

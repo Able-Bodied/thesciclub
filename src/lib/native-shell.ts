@@ -71,6 +71,8 @@ function quietly(work: Promise<unknown>): void {
 
 export function startNativeShell(navigate: (to: string | number) => void): () => void {
   const listeners: Promise<PluginListenerHandle>[] = [];
+  // index.css moves every screen below the status bar.
+  document.documentElement.dataset.nativeApp = '';
 
   listeners.push(
     App.addListener('backButton', ({ canGoBack }) => {
@@ -125,6 +127,7 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
   );
 
   return () => {
+    delete document.documentElement.dataset.nativeApp;
     document.removeEventListener('click', onClick, true);
     watch.disconnect();
     scheme.removeEventListener('change', paintBar);

@@ -141,6 +141,12 @@ describe('starting the shell', () => {
     });
   });
 
+  it('moves every screen below the status bar, and stops when it stops', () => {
+    expect(document.documentElement.dataset.nativeApp).toBe('');
+    stop();
+    expect(document.documentElement.dataset.nativeApp).toBeUndefined();
+  });
+
   it('opens another site in the in-app browser instead of in place of the club', () => {
     document.body.innerHTML = '<a href="https://norcalsci.org/" target="_blank">NorCal SCI</a>';
     const link = document.querySelector('a');
