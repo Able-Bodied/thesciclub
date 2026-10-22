@@ -213,6 +213,28 @@ describe('compose', () => {
     ).toMatchObject({ title: 'Finish your profile', url: '/profile?resume' });
   });
 
+  it('counts the week’s blocks for an administrator, naming nobody', () => {
+    const weekly = owed({
+      kind: 'blocks_weekly',
+      actor_name: null,
+      body: null,
+      detail: '3',
+      url: '/admin?tab=reports#blocks',
+      tag: 'blocks:2026-10-26',
+    });
+    expect(compose(weekly)).toEqual({
+      title: 'Blocks this week',
+      body: '3 members were blocked this week. Open Admin to see the list.',
+      url: '/admin?tab=reports#blocks',
+      tag: 'blocks:2026-10-26',
+    });
+    expect(compose({ ...weekly, detail: '1' })?.body).toBe(
+      '1 member was blocked this week. Open Admin to see the list.',
+    );
+    expect(compose({ ...weekly, detail: '0' })).toBeNull();
+    expect(compose({ ...weekly, detail: null })).toBeNull();
+  });
+
   it('sends nothing for a kind it does not know', () => {
     expect(compose(owed({ kind: 'room' }))).toBeNull();
   });

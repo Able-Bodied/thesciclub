@@ -17,6 +17,10 @@
  *   Event reminder   "Tomorrow: <event title>"   + "You're going. It starts at 10:00am."
  *   Org digest       "New from <organization>"   + "3 new events."
  *
+ * And for administrators, weekly, 2026-10-22 (20261022090000):
+ *
+ *   Blocks           "Blocks this week"          + "3 members were blocked this week. …"
+ *
  * And grants, 2026-10-20 (20261021010000):
  *
  *   Grant opened     "<organization>: applications open" + "<grant> is open until Nov 15."
@@ -226,6 +230,20 @@ export function compose(owed: Owed): PushMessage | null {
             body: 'A few more answers help members find what you have in common.',
             ...where,
           };
+    // Administrators' weekly count (20261022090000); detail is the count.
+    // Nobody is named: who blocked whom is on Admin, behind sign-in.
+    case 'blocks_weekly': {
+      const count = Number(owed.detail);
+      if (!Number.isInteger(count) || count < 1) return null;
+      return {
+        title: 'Blocks this week',
+        body:
+          count === 1
+            ? '1 member was blocked this week. Open Admin to see the list.'
+            : `${count} members were blocked this week. Open Admin to see the list.`,
+        ...where,
+      };
+    }
     default:
       return null;
   }
