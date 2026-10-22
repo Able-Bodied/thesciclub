@@ -79,15 +79,37 @@ describe('a YouTube video', () => {
     expect(screen.queryByRole('button', { name: /Play video/ })).toBeNull();
   });
 
-  it('in the store app, play is a link to YouTube, never a player in a frame', async () => {
+  it('on the website, no "Open in YouTube" link is added under the player', async () => {
+    render(<LinkPreviewCard preview={video} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Play video: A song' }));
+    expect(screen.queryByRole('link', { name: /Open in YouTube/ })).toBeNull();
+  });
+
+  it('in the store app, play is the same button and the same player in place', async () => {
     const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     try {
       const { container } = render(<LinkPreviewCard preview={video} />);
-      const play = screen.getByRole('link', { name: 'Play video: A song' });
-      expect(play).toHaveAttribute('href', video.url);
-      expect(play).toHaveAttribute('target', '_blank');
-      await userEvent.click(play);
-      expect(container.querySelector('iframe')).toBeNull();
+      expect(screen.queryByRole('link', { name: /Open in YouTube/ })).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Play video: A song' }));
+      expect(container.querySelector('iframe')).toHaveAttribute(
+        'src',
+        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1',
+      );
+    } finally {
+      native.mockRestore();
+    }
+  });
+
+  it('in the store app, an Open in YouTube link under the player is at least 44px tall', async () => {
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    try {
+      const { container } = render(<LinkPreviewCard preview={video} />);
+      await userEvent.click(screen.getByRole('button', { name: 'Play video: A song' }));
+      const open = screen.getByRole('link', { name: /Open in YouTube/ });
+      expect(open).toHaveAttribute('href', video.url);
+      expect(open).toHaveAttribute('target', '_blank');
+      expect(open).toHaveClass('min-h-[44px]');
+      expect(open.previousElementSibling).toBe(container.querySelector('iframe'));
     } finally {
       native.mockRestore();
     }

@@ -16,9 +16,9 @@ import { cn } from '@/lib/utils';
  *
  * A YouTube video plays where it is, on a press and not before: the button
  * swaps the picture for YouTube's privacy-enhanced player, which is the
- * first moment anything reaches YouTube. In the store app, play opens the
- * video in the in-app browser: YouTube's player wants a web page's address
- * to play in a frame, and the app has none. Everything else, Instagram included
+ * first moment anything reaches YouTube. The store app plays it in place
+ * too, with an "Open in YouTube" link under it in case YouTube refuses a
+ * frame whose address is capacitor://localhost. Everything else, Instagram included
  * at the owner's choice, opens its page in a new tab the way the link in the
  * words does.
  *
@@ -98,24 +98,27 @@ export function LinkPreviewCard({
     >
       {video ? (
         playing ? (
-          <iframe
-            src={youtubeEmbedUrl(video)}
-            title={`YouTube video: ${title}`}
-            className="block aspect-video w-full"
-            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-          />
-        ) : isNative() ? (
-          <a
-            href={preview.url}
-            target="_blank"
-            rel="noopener noreferrer nofollow ugc"
-            aria-label={`Play video: ${title}`}
-            className="relative block w-full"
-          >
-            <PlayFace image={image} />
-          </a>
+          <>
+            <iframe
+              src={youtubeEmbedUrl(video)}
+              title={`YouTube video: ${title}`}
+              className="block aspect-video w-full"
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+            />
+            {isNative() ? (
+              <a
+                href={preview.url}
+                target="_blank"
+                rel="noopener noreferrer nofollow ugc"
+                className="flex min-h-[44px] items-center px-3 font-semibold text-[0.875rem] text-emphasis underline underline-offset-2"
+              >
+                Open in YouTube
+                <span className="sr-only"> (opens in the in-app browser)</span>
+              </a>
+            ) : null}
+          </>
         ) : (
           <button
             type="button"
