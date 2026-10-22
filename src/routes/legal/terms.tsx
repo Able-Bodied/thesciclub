@@ -39,8 +39,8 @@ export default function TermsPage() {
         <P>
           Members share their own experience, and that is what makes the club worth having. But
           nothing here is medical advice, from members, mentors or organizations. Every body is
-          different. Before you change your care, your medicines or your equipment, check with your
-          own doctor or care team.
+          different. Before you change your care, your medications or your equipment, check with
+          your own doctor or care team.
         </P>
         <P>
           <b>In an emergency, call 911.</b>
