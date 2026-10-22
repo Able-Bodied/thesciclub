@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
+import { useChatAuthors } from '@/lib/chat/authors';
 import { HOME_TOPIC_LIMIT, useHomeTopics } from '@/lib/home/topics';
 
 const db = vi.hoisted(() => ({
@@ -45,7 +46,18 @@ vi.mock('@/lib/supabase', () => ({
                           : 'eligible-topic',
                       room_id: 'bowel',
                       title: 'Eligible topic',
-                      author_id: null,
+                      author_id: 'a1',
+                      author: {
+                        id: 'a1',
+                        display_name: 'Ana',
+                        photo_path: null,
+                        photo_alt: null,
+                        avatar_color: null,
+                        level_range: 'C5–C8',
+                        exact_level: null,
+                        is_admin: false,
+                        has_profile: true,
+                      },
                       created_at: '2026-10-10T10:00:00Z',
                       last_post_at: '2026-10-10T10:00:00Z',
                       reply_count: 0,
@@ -79,4 +91,27 @@ it('requests only eligible rooms before limiting Home topics, including for an a
     ['not', 'chat_rooms.opened_at', 'is', null],
     ['limit', HOME_TOPIC_LIMIT],
   ]);
+});
+
+it('brings the cards’ names and faces in the same read, ready on the first render', async () => {
+  // As Home asks: the authors of whatever topics have arrived.
+  const unnamed: string[] = [];
+  const { result } = renderHook(() => {
+    const read = useHomeTopics();
+    const authors = useChatAuthors(read.topics.map((topic) => topic.authorId));
+    for (const topic of read.topics) {
+      if (topic.authorId && !authors.has(topic.authorId)) unnamed.push(topic.id);
+    }
+    return { read, authors };
+  });
+  await waitFor(() => {
+    expect(result.current.read.loading).toBe(false);
+  });
+  expect(db.calls[0]?.[1]).toContain('author:chat_authors!chat_topics_author_id_fkey(');
+  expect(db.calls[0]?.[1]).toContain('author:chat_authors!chat_posts_author_id_fkey(');
+  expect(result.current.authors.get('a1')?.displayName).toBe('Ana');
+  // Never a render with the topic and not its author.
+  expect(unnamed).toEqual([]);
+  // And nothing read for an author already known.
+  expect(db.calls.filter(([kind]) => kind === 'select')).toHaveLength(1);
 });
