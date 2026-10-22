@@ -1,0 +1,88 @@
+# Signs the store app and uploads it to TestFlight. Run by
+# .github/workflows/ios-release.yml, which supplies everything below as
+# environment variables; nothing here is written to disk but the profile.
+#
+#   ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8_BASE64  the App Store Connect API key
+#   APP_VERSION                                    marketing version, 1.2.3
+#   WHATS_NEW_FILE                                 optional "What to Test" text
+#
+# The Apple Distribution certificate is already in a keychain on the search
+# list (the workflow's job); this finds the App Store profile that matches it.
+
+require "shellwords"
+
+APP_ID = "com.thesciclub.app"
+ROOT = File.expand_path("..", FastlaneCore::FastlaneFolder.path)
+
+default_platform(:ios)
+
+platform :ios do
+  desc "Sign, archive and upload a TestFlight build"
+  lane :release do
+    api_key = app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_content: ENV.fetch("ASC_KEY_P8_BASE64"),
+      is_key_content_base64: true
+    )
+
+    # One past the newest upload of any version, so numbers only go up.
+    build_number = latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: APP_ID,
+      initial_build_number: 0
+    ) + 1
+    version = ENV.fetch("APP_VERSION")
+    UI.important("Building #{version} (#{build_number})")
+
+    # Finds the App Store profile for the installed certificate, or makes one.
+    get_provisioning_profile(api_key: api_key, app_identifier: APP_ID)
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    team_id = sh(
+      "security cms -D -i #{lane_context[SharedValues::SIGH_PROFILE_PATH].shellescape} " \
+      "| plutil -extract TeamIdentifier.0 raw -o - -",
+      log: false
+    ).strip
+
+    # Manual signing on the app target only; Xcode's own signing is not used.
+    update_code_signing_settings(
+      path: File.join(ROOT, "App.xcodeproj"),
+      targets: ["App"],
+      build_configurations: ["Release"],
+      use_automatic_signing: false,
+      team_id: team_id,
+      code_sign_identity: "Apple Distribution",
+      profile_name: profile_name
+    )
+
+    build_app(
+      project: File.join(ROOT, "App.xcodeproj"),
+      scheme: "App",
+      configuration: "Release",
+      export_method: "app-store",
+      export_options: {
+        signingStyle: "manual",
+        teamID: team_id,
+        signingCertificate: "Apple Distribution",
+        provisioningProfiles: { APP_ID => profile_name }
+      },
+      xcargs: "MARKETING_VERSION=#{version} CURRENT_PROJECT_VERSION=#{build_number}",
+      skip_profile_detection: true,
+      output_directory: File.join(ROOT, "build"),
+      output_name: "TheSciClub"
+    )
+
+    # With a changelog, the upload waits only until the build appears in App
+    # Store Connect to set "What to Test"; it never waits for processing.
+    notes_file = ENV["WHATS_NEW_FILE"].to_s
+    notes = File.exist?(notes_file) ? File.read(notes_file).strip : ""
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: APP_ID,
+      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH],
+      changelog: notes.empty? ? nil : notes,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true
+    )
+  end
+end
