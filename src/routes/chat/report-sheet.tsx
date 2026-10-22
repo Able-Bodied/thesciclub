@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { REPORT_NOTE_MAX, reportNoteProblem, reportPreamble } from '@/lib/chat/reports';
 import { describeThrown } from '@/lib/describe-error';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -51,10 +52,16 @@ import { cn } from '@/lib/utils';
  */
 export function ReportSheet({
   kind,
+  overPage = false,
   onCancel,
   onSend,
 }: {
-  kind: 'post' | 'message';
+  kind: 'post' | 'message' | 'profile';
+  /**
+   * Fixed to the window, in a portal, for a page that is not a chat screen: a
+   * profile scrolls, and the chat screens' relative frame is not there.
+   */
+  overPage?: boolean;
   onCancel: () => void;
   /** Resolves to null on success, or to a sentence to show. */
   onSend: (note: string) => Promise<string | null>;
@@ -68,8 +75,10 @@ export function ReportSheet({
   const heading = useRef<HTMLHeadingElement | null>(null);
   useDialogFocus(dialog, heading, onCancel);
 
-  const noun = kind === 'post' ? 'post' : 'message';
-  const title = `Report this ${noun}`;
+  const noun = kind;
+  const title = kind === 'profile' ? 'Report this member' : `Report this ${noun}`;
+  const place = overPage ? 'fixed' : 'absolute';
+  const layer = overPage ? ['z-[80]', 'z-[81]'] : ['z-[70]', 'z-[71]'];
   const problem = reportNoteProblem(note);
 
   function send() {
@@ -88,7 +97,7 @@ export function ReportSheet({
       });
   }
 
-  return (
+  const sheet = (
     <>
       {/* Named for what it does, and not "Cancel", which is the footer
           button's name. Two controls with the same accessible name read as one
@@ -100,7 +109,7 @@ export function ReportSheet({
         // Escape and Cancel.
         tabIndex={-1}
         onClick={onCancel}
-        className="absolute inset-0 z-[70] bg-[rgba(10,20,35,.5)]"
+        className={cn('inset-0 bg-[rgba(10,20,35,.5)]', place, layer[0])}
       />
       <div
         ref={dialog}
@@ -108,7 +117,9 @@ export function ReportSheet({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          'absolute z-[71] flex flex-col bg-paper',
+          'flex flex-col bg-paper',
+          place,
+          layer[1],
           'inset-x-0 bottom-0 max-h-[88%] rounded-t-3xl shadow-[0_-14px_40px_rgba(10,20,35,.3)]',
           'lg:inset-x-auto lg:bottom-auto lg:top-1/2 lg:left-1/2 lg:max-h-[82%] lg:w-[520px]',
           'lg:-translate-x-1/2 lg:-translate-y-1/2 lg:rounded-3xl',
@@ -188,4 +199,5 @@ export function ReportSheet({
       </div>
     </>
   );
+  return overPage ? createPortal(sheet, document.body) : sheet;
 }

@@ -105,3 +105,21 @@ describe('ReportSheet focus', () => {
     expect(document.activeElement?.closest('[role="dialog"]')).not.toBeNull();
   });
 });
+
+describe('ReportSheet for a profile', () => {
+  it('is titled for the member and sits over the page, in the document body', () => {
+    const { container } = render(
+      <ReportSheet kind="profile" overPage onCancel={() => undefined} onSend={vi.fn()} />,
+    );
+    const dialog = screen.getByRole('dialog', { name: 'Report this member' });
+    expect(dialog).toHaveClass('fixed');
+    // A portal: nothing of it is inside the screen that opened it.
+    expect(container).not.toContainElement(dialog);
+    expect(dialog).toHaveTextContent('Optional. The profile itself goes either way.');
+  });
+
+  it('stays absolute, inside its screen, for the chat pages', async () => {
+    await openSheet();
+    expect(screen.getByRole('dialog')).toHaveClass('absolute');
+  });
+});

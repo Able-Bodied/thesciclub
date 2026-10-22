@@ -7,6 +7,7 @@ import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { unblockMember, useMyBlocks } from '@/lib/blocks';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { reportMember, useMyReports } from '@/lib/chat/reports';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
@@ -15,6 +16,7 @@ import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
 import { ItemActions } from '@/routes/chat/item-actions';
+import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
@@ -31,7 +33,7 @@ import type { BeforeAfter, BrowseMember } from '@/types/domain';
  *
  * The one action is Message. The mock also has "Ask <name>", which was never
  * built and which the owner does not want; a control that opens nothing is
- * worse than no control.
+ * worse than no control. Report and Block are in the •••.
  */
 
 /**
@@ -322,8 +324,19 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
   const [photoOpen, setPhotoOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const reports = useMyReports();
+  const announce = useAnnounce();
   // Focus goes back here on close: Safari does not focus a button it clicks.
   const photoButton = useRef<HTMLButtonElement | null>(null);
+  // The ••• that opened the report sheet. The menu closes under it, so the
+  // sheet has no opener to give focus back to.
+  const menuButton = useRef<HTMLButtonElement | null>(null);
+  const wasReporting = useRef(false);
+  useEffect(() => {
+    if (wasReporting.current && !reporting) menuButton.current?.focus();
+    wasReporting.current = reporting;
+  }, [reporting]);
 
   if (loading) {
     return <Centered role="status">Loading…</Centered>;
@@ -395,7 +408,22 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 what={member.displayName}
                 title="Member actions"
                 buttonClassName={ACTIONS_BUTTON}
+                buttonRef={menuButton}
               >
+                {reports.memberIds.has(member.id) ? (
+                  <p className="flex min-h-11 items-center px-3 text-grey text-sm">
+                    You reported {member.displayName}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setReporting(true);
+                    }}
+                  >
+                    Report {member.displayName}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -408,6 +436,24 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
             ) : null}
           </span>
         </div>
+        {reporting ? (
+          <ReportSheet
+            kind="profile"
+            overPage
+            onCancel={() => {
+              setReporting(false);
+            }}
+            onSend={async (note) => {
+              const result = await reportMember(member.id, note);
+              if (!result.ok) return result.error;
+              // Read back what the database holds rather than assuming it took.
+              reports.reload();
+              announce(`You reported ${member.displayName}. They have not been told.`);
+              setReporting(false);
+              return null;
+            }}
+          />
+        ) : null}
         {blocking ? (
           <BlockMemberSheet
             memberId={member.id}

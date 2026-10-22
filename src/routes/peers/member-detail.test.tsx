@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
+import type * as Reports from '@/lib/chat/reports';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
 
@@ -50,6 +51,26 @@ vi.mock('@/lib/blocks', async (importOriginal) => ({
   blockMember: blocks.block,
   unblockMember: blocks.unblock,
 }));
+// Reports: what the viewer has reported, and the write, which is a network call.
+const reports = vi.hoisted(() => ({
+  memberIds: new Set<string>(),
+  reload: vi.fn(),
+  send: vi.fn(),
+  announce: vi.fn(),
+}));
+vi.mock('@/lib/chat/reports', async (importOriginal) => ({
+  ...(await importOriginal<typeof Reports>()),
+  useMyReports: () => ({
+    postIds: new Set<string>(),
+    messageIds: new Set<string>(),
+    memberIds: reports.memberIds,
+    loading: false,
+    error: null,
+    reload: reports.reload,
+  }),
+  reportMember: reports.send,
+}));
+vi.mock('@/lib/announce', () => ({ useAnnounce: () => reports.announce }));
 vi.mock('@/lib/chat/authors', () => ({
   useChatAuthors: () => new Map([['abc', { id: 'abc', displayName: 'Nicole' }]]),
 }));
@@ -102,6 +123,95 @@ beforeEach(() => {
   blocks.reload.mockReset();
   blocks.block.mockReset().mockResolvedValue({ ok: true, value: null });
   blocks.unblock.mockReset().mockResolvedValue({ ok: true, value: null });
+  reports.memberIds = new Set();
+  reports.reload.mockReset();
+  reports.send.mockReset().mockResolvedValue({ ok: true, value: null });
+  reports.announce.mockReset();
+});
+
+describe('reporting from a profile', () => {
+  async function openMenu(user: ReturnType<typeof userEvent.setup>) {
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+  }
+
+  it('puts Report in the menu before Block', async () => {
+    const user = userEvent.setup();
+    await openMenu(user);
+    const names = within(screen.getByRole('dialog', { name: 'Actions for Nicole' }))
+      .getAllByRole('button')
+      .map((b) => b.textContent);
+    expect(names.indexOf('Report Nicole')).toBeGreaterThanOrEqual(0);
+    expect(names.indexOf('Report Nicole')).toBeLessThan(names.indexOf('Block Nicole'));
+  });
+
+  it('says what goes, asks for an optional note, and sends it', async () => {
+    const user = userEvent.setup();
+    await openMenu(user);
+    await user.click(screen.getByRole('button', { name: 'Report Nicole' }));
+    const dialog = screen.getByRole('dialog', { name: 'Report this member' });
+    expect(dialog).toHaveTextContent('The member is not told.');
+    expect(dialog).toHaveTextContent('Changing the profile later does not remove them.');
+    expect(reports.send).not.toHaveBeenCalled();
+    await user.type(screen.getByRole('textbox'), '  Rude bio ');
+    await user.click(screen.getByRole('button', { name: 'Send report' }));
+    expect(reports.send).toHaveBeenCalledWith('abc', 'Rude bio');
+    expect(reports.reload).toHaveBeenCalled();
+    expect(reports.announce).toHaveBeenCalledWith('You reported Nicole. They have not been told.');
+    expect(screen.queryByRole('dialog', { name: 'Report this member' })).not.toBeInTheDocument();
+  });
+
+  it('puts focus back on the ••• when the sheet closes', async () => {
+    const user = userEvent.setup();
+    await openMenu(user);
+    await user.click(screen.getByRole('button', { name: 'Report Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Actions for Nicole' })).toHaveFocus();
+    expect(reports.send).not.toHaveBeenCalled();
+    expect(reports.announce).not.toHaveBeenCalled();
+  });
+
+  it('stays open with the reason and the words when it fails', async () => {
+    const user = userEvent.setup();
+    reports.send.mockResolvedValue({ ok: false, error: 'Your report was not sent.' });
+    await openMenu(user);
+    await user.click(screen.getByRole('button', { name: 'Report Nicole' }));
+    await user.type(screen.getByRole('textbox'), 'Rude bio');
+    await user.click(screen.getByRole('button', { name: 'Send report' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your report was not sent.');
+    expect(screen.getByRole('textbox')).toHaveValue('Rude bio');
+    expect(reports.announce).not.toHaveBeenCalled();
+  });
+
+  it('says "You reported" instead of offering it again', async () => {
+    const user = userEvent.setup();
+    reports.memberIds = new Set(['abc']);
+    await openMenu(user);
+    expect(screen.queryByRole('button', { name: 'Report Nicole' })).not.toBeInTheDocument();
+    expect(screen.getByText('You reported Nicole')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Block Nicole' })).toBeInTheDocument();
+  });
+
+  it('is not offered on your own profile', () => {
+    state.current = ok(makeMember({ id: 'me', displayName: 'Alex' }));
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /Report/ })).not.toBeInTheDocument();
+  });
+
+  it('is not offered for a member who is not there', () => {
+    state.current = { ...ok(makeMember()), member: null, notFound: true };
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /Actions for|Report/ })).not.toBeInTheDocument();
+  });
+
+  it('is not on a blocked member’s page, which has only Unblock', async () => {
+    const user = userEvent.setup();
+    blocks.ids = new Set(['abc']);
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    expect(screen.queryByRole('button', { name: /Report/ })).not.toBeInTheDocument();
+  });
 });
 
 describe('blocking from a profile', () => {
