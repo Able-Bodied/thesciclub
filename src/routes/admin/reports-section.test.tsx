@@ -92,9 +92,12 @@ let confirmSpy: MockInstance<typeof window.confirm>;
 const went: string[] = [];
 let reloads = 0;
 
-function renderSection(reports: ChatReport[], o: { loading?: boolean; error?: string } = {}) {
+function renderSection(
+  reports: ChatReport[],
+  o: { loading?: boolean; error?: string; at?: string } = {},
+) {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[o.at ?? '/admin?tab=reports']}>
       <ReportsSection
         reports={reports}
         loading={o.loading ?? false}
@@ -356,6 +359,32 @@ describe('blocks on the reports panel', () => {
     // Not among the reports waiting for a decision.
     expect(screen.getByText(/Nothing has been reported/)).toBeInTheDocument();
     expect(screen.getByText('nothing waiting')).toBeInTheDocument();
+  });
+
+  it('opens on the Blocks list from the weekly count, once it has loaded', () => {
+    // jsdom draws nothing, so it has no scrollIntoView; this one records.
+    const scrolled = vi.fn();
+    Element.prototype.scrollIntoView = scrolled;
+    const { rerender } = renderSection([], { loading: true, at: '/admin?tab=reports#blocks' });
+    rerender(
+      <MemoryRouter initialEntries={['/admin?tab=reports#blocks']}>
+        <ReportsSection
+          reports={[block('b1'), report({ id: 'r1' })]}
+          loading={false}
+          error={null}
+          reload={() => undefined}
+          onGoToMember={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('heading', { name: 'Blocks' })).toHaveFocus();
+    expect(scrolled).toHaveBeenCalledTimes(1);
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+  });
+
+  it('leaves focus alone without #blocks', () => {
+    renderSection([block('b1')]);
+    expect(screen.getByRole('heading', { name: 'Blocks' })).not.toHaveFocus();
   });
 
   it('keeps a waiting report waiting beside a block', () => {

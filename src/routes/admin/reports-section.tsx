@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { useEdits } from '@/lib/chat/edits';
 import { resolveReport } from '@/lib/chat/reports';
@@ -118,6 +118,20 @@ export function ReportsSection({
   const open = reports.filter((r) => r.resolvedAt === null && r.kind !== 'block');
   const closed = reports.filter((r) => r.resolvedAt !== null && r.kind !== 'block');
 
+  // The weekly count of blocks opens here (#blocks, 20261022090000): once,
+  // when the list has loaded.
+  const { hash } = useLocation();
+  const blocksHeading = useRef<HTMLHeadingElement | null>(null);
+  const landed = useRef(false);
+  const hasBlocks = blocks.length > 0;
+  useEffect(() => {
+    const heading = blocksHeading.current;
+    if (hash !== '#blocks' || loading || !hasBlocks || landed.current || !heading) return;
+    landed.current = true;
+    heading.scrollIntoView({ block: 'start' });
+    heading.focus({ preventScroll: true });
+  }, [hash, loading, hasBlocks]);
+
   function removeReported(report: ChatReport) {
     const what = report.kind === 'post' ? 'post' : 'message';
     // A post in a topic disappears (20260927030000); a group message keeps its
@@ -213,7 +227,12 @@ export function ReportsSection({
 
       {blocks.length > 0 ? (
         <>
-          <h2 className="mt-5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+          <h2
+            id="blocks"
+            ref={blocksHeading}
+            tabIndex={-1}
+            className="mt-5 scroll-mt-4 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em] outline-none"
+          >
             Blocks
           </h2>
           <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
