@@ -17,6 +17,7 @@ import {
 import { sendPasswordReset } from '@/lib/auth-email';
 import { describeThrown } from '@/lib/describe-error';
 import { displayPhone, useOwnPhone } from '@/lib/event-phone';
+import { linkAppleNatively, nativeWaysIn } from '@/lib/native-sign-in';
 import {
   deletePasskey,
   listPasskeys,
@@ -85,7 +86,7 @@ export function SignInSection({
           canUnlink={details ? waysIn(details, 'google') > 0 : false}
           onChanged={reload}
         />
-        {appleSignInEnabled() || details?.providers.apple ? (
+        {appleSignInEnabled() || nativeWaysIn().apple || details?.providers.apple ? (
           <AppleCard details={details} reload={reload} />
         ) : null}
         {passkeysAvailable() ? <PasskeysCard /> : null}
@@ -226,6 +227,7 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
   if (!details) return null;
 
   async function link() {
+    if (isNative()) return linkNatively();
     if (!goesOut()) return;
     setError(null);
     try {
@@ -233,6 +235,23 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
       if (!result.ok) setError(result.error);
     } catch (e: unknown) {
       setError(describeThrown(e, 'Could not reach Apple.'));
+    }
+  }
+
+  /** The store app: Apple's sheet, without leaving Me. */
+  async function linkNatively() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await linkAppleNatively();
+      if (result.ok) {
+        announce('Apple is linked.');
+        reload();
+      } else if (result.error) setError(result.error);
+    } catch (e: unknown) {
+      setError(describeThrown(e, 'Apple was not linked.'));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -252,8 +271,8 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
     }
   }
 
-  // As with Google: linking cannot come back into the store app yet.
-  if (!linked && isNative()) return null;
+  // Only where the app can link it natively (lib/native-sign-in.ts).
+  if (!linked && isNative() && !nativeWaysIn().apple) return null;
   const canUnlink = waysIn(details, 'apple') > 0;
   return (
     <SignInCard title="Apple">

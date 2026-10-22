@@ -8,6 +8,7 @@ import type { SignInDetails, SignInState } from '@/lib/account-email';
 import { AnnounceProvider } from '@/lib/announce';
 import type * as AppleSignIn from '@/lib/apple-sign-in';
 import type * as AuthEmail from '@/lib/auth-email';
+import type * as NativeSignIn from '@/lib/native-sign-in';
 import type * as Usernames from '@/lib/usernames';
 
 interface TestState {
@@ -20,6 +21,7 @@ interface TestState {
   passkeys: boolean;
   passkeyList: { id: string; name: string; createdAt: string }[];
   passkeyCancelled: boolean;
+  nativeAnswer: NativeSignIn.NativeResult;
 }
 const state = vi.hoisted(
   (): TestState => ({
@@ -32,6 +34,7 @@ const state = vi.hoisted(
     passkeys: false,
     passkeyList: [],
     passkeyCancelled: false,
+    nativeAnswer: { ok: true, name: null },
   }),
 );
 
@@ -72,6 +75,15 @@ vi.mock('@/lib/apple-sign-in', async (importOriginal) => ({
   unlinkApple: () => {
     state.calls.push('apple:unlink');
     return Promise.resolve({ ok: true });
+  },
+}));
+
+// Apple's sheet: what the card does with its answer is tested here.
+vi.mock('@/lib/native-sign-in', async (importOriginal) => ({
+  ...(await importOriginal<typeof NativeSignIn>()),
+  linkAppleNatively: () => {
+    state.calls.push('apple:native-link');
+    return Promise.resolve(state.nativeAnswer);
   },
 }));
 
@@ -169,6 +181,7 @@ beforeEach(() => {
   state.passkeys = false;
   state.passkeyList = [];
   state.passkeyCancelled = false;
+  state.nativeAnswer = { ok: true, name: null };
   reload.mockClear();
   usernameChanged.mockClear();
 });
@@ -278,7 +291,52 @@ describe('Apple and passkeys sit behind their switches', () => {
   });
 });
 
-describe('in the store app, until it signs in to Apple natively', () => {
+describe('in the store app on an iPhone', () => {
+  function onAnIphone() {
+    return [
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true),
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios'),
+    ];
+  }
+
+  it('links Apple with Apple’s own sheet, without leaving Me, and reads the account again', async () => {
+    const spies = onAnIphone();
+    try {
+      renderSection();
+      await userEvent.click(screen.getByRole('button', { name: 'Link Apple' }));
+      expect(state.calls).toEqual(['apple:native-link']);
+      await waitFor(() => {
+        expect(reload).toHaveBeenCalled();
+      });
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+
+  it('says nothing when the sheet is closed, and why when Apple ID belongs to someone else', async () => {
+    const spies = onAnIphone();
+    try {
+      state.nativeAnswer = { ok: false, error: null };
+      renderSection();
+      await userEvent.click(screen.getByRole('button', { name: 'Link Apple' }));
+      await waitFor(() => {
+        expect(state.calls).toEqual(['apple:native-link']);
+      });
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      state.nativeAnswer = {
+        ok: false,
+        error: 'That Apple ID already signs in to another member.',
+      };
+      await userEvent.click(screen.getByRole('button', { name: 'Link Apple' }));
+      expect(await screen.findByText(/already signs in to another member/)).toBeInTheDocument();
+      expect(reload).not.toHaveBeenCalled();
+    } finally {
+      for (const spy of spies) spy.mockRestore();
+    }
+  });
+});
+
+describe('in the store app where it cannot link Apple (Android, for now)', () => {
   it('offers no Link Apple, but a linked Apple can still be unlinked', async () => {
     const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     try {

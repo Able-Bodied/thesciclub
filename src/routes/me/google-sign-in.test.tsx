@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnnounceProvider } from '@/lib/announce';
 import type * as GoogleSignInModule from '@/lib/google-sign-in';
+import type * as NativeSignIn from '@/lib/native-sign-in';
 
 const google = vi.hoisted(() => ({
   identity: null as Record<string, unknown> | null,
@@ -45,6 +46,18 @@ vi.mock('@/lib/google-sign-in', async (importOriginal) => ({
     return Promise.resolve(
       google.unlinkError ? { ok: false, error: google.unlinkError } : { ok: true },
     );
+  },
+}));
+
+// Google's sheet in the store app: what the card does with its answer.
+const nativeSheet = vi.hoisted(() => ({ calls: 0, cancelled: false }));
+vi.mock('@/lib/native-sign-in', async (importOriginal) => ({
+  ...(await importOriginal<typeof NativeSignIn>()),
+  linkGoogleNatively: () => {
+    nativeSheet.calls += 1;
+    if (nativeSheet.cancelled) return Promise.resolve({ ok: false, error: null });
+    google.identity = LINKED;
+    return Promise.resolve({ ok: true, name: null });
   },
 }));
 
@@ -90,16 +103,52 @@ beforeEach(() => {
   google.linkTokenError = null;
   google.widget = 'unavailable';
   google.onToken = null;
+  nativeSheet.calls = 0;
+  nativeSheet.cancelled = false;
   changed.mockClear();
 });
 
-describe('in the store app, until it signs in to Google natively', () => {
+describe('in the store app', () => {
   let native: { mockRestore: () => void } | null = null;
+  let platform: { mockRestore: () => void } | null = null;
   afterEach(() => {
     native?.mockRestore();
+    platform?.mockRestore();
+    vi.unstubAllEnvs();
   });
 
-  it('offers no Link Google', async () => {
+  function onAnIphone() {
+    native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    platform = vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+    vi.stubEnv('VITE_GOOGLE_IOS_CLIENT_ID', '123456789012-abc.apps.googleusercontent.com');
+  }
+
+  it('on an iPhone, links Google with Google’s own sheet, not the website’s widget', async () => {
+    onAnIphone();
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: 'Link Google' }));
+    expect(nativeSheet.calls).toBe(1);
+    expect(google.onToken).toBeNull();
+    expect(google.calls).toEqual([]);
+    expect(
+      await screen.findByText('You can sign in with Google as nicole@gmail.com.'),
+    ).toBeInTheDocument();
+    expect(changed).toHaveBeenCalled();
+  });
+
+  it('says nothing when Google’s sheet is closed', async () => {
+    onAnIphone();
+    nativeSheet.cancelled = true;
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: 'Link Google' }));
+    await waitFor(() => {
+      expect(nativeSheet.calls).toBe(1);
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(changed).not.toHaveBeenCalled();
+  });
+
+  it('offers no Link Google where it cannot link it natively', async () => {
     native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     renderIt();
     await new Promise((resolve) => setTimeout(resolve, 0));

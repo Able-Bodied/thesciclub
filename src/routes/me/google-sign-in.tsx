@@ -12,6 +12,7 @@ import {
   loadGoogleIdentity,
   unlinkGoogle,
 } from '@/lib/google-sign-in';
+import { linkGoogleNatively, nativeWaysIn } from '@/lib/native-sign-in';
 import { isNative } from '@/lib/standalone';
 import { CARD_BUTTON, SignInCard } from '@/routes/me/sign-in-card';
 
@@ -23,7 +24,7 @@ import { CARD_BUTTON, SignInCard } from '@/routes/me/sign-in-card';
  * `waysIn` in src/lib/account-email.ts, which does not count a phone number.
  * See src/lib/google-sign-in.ts.
  *
- * Linking leaves the app for Google and comes back here with `?google=linked`.
+ * On the website, linking leaves for Google and comes back with `?google=linked`.
  * That return says nothing about whether it worked — pressing Cancel at Google
  * comes back the same way — so the identity is read again and the sentence is
  * chosen from what is actually there.
@@ -100,14 +101,19 @@ export function GoogleSignIn({
     }
   }
 
-  /** Google's widget picked an account: link it here, without leaving Me. */
-  async function linkWithToken(token: string, nonce: string) {
+  /**
+   * Google's widget, or the store app's own sheet, picked an account: link it
+   * here, without leaving Me. A closed sheet (error null) says nothing.
+   */
+  async function linkHere(
+    linking: () => Promise<{ ok: true } | { ok: false; error: string | null }>,
+  ) {
     setBusy(true);
     setError(null);
     try {
-      const result = await linkGoogleToken(token, nonce);
+      const result = await linking();
       if (!result.ok) {
-        setError(result.error);
+        if (result.error) setError(result.error);
         return;
       }
       const reread = await loadGoogleIdentity();
@@ -141,8 +147,9 @@ export function GoogleSignIn({
   }
 
   if (identity === undefined) return null;
-  // Linking leaves for Google, which cannot come back into the store app.
-  if (!identity && isNative()) return null;
+  // In the store app, only where it can link Google natively.
+  const native = isNative();
+  if (!identity && native && !nativeWaysIn().google) return null;
   const email = identity ? googleEmail(identity) : null;
 
   return (
@@ -170,6 +177,17 @@ export function GoogleSignIn({
             {busy ? 'One moment…' : 'Unlink Google'}
           </button>
         ) : null
+      ) : native ? (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            void linkHere(linkGoogleNatively);
+          }}
+          className={CARD_BUTTON}
+        >
+          {busy ? 'One moment…' : 'Link Google'}
+        </button>
       ) : (
         <div className="mt-3">
           <GoogleButton
@@ -177,7 +195,7 @@ export function GoogleSignIn({
             disabled={busy}
             fallbackLabel="Link Google"
             onToken={(token, nonce) => {
-              void linkWithToken(token, nonce);
+              void linkHere(() => linkGoogleToken(token, nonce));
             }}
             onFallback={() => {
               void link();
