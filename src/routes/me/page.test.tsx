@@ -117,6 +117,18 @@ vi.mock('@/lib/push/notifications', () => ({
   }),
 }));
 
+// Blocked members, on Settings: a read of member_blocks.
+vi.mock('@/lib/blocks', () => ({
+  useMyBlocks: () => ({
+    blocked: [],
+    ids: new Set(),
+    loading: false,
+    error: null,
+    reload: () => undefined,
+  }),
+  unblockMember: vi.fn(),
+}));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
   signOut: () => {
@@ -536,6 +548,17 @@ describe('the three tabs', () => {
     renderMe('/me?tab=settings');
     expect(screen.getByRole('tab', { name: 'Settings' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { name: 'Display' })).toBeInTheDocument();
+  });
+
+  it('keeps Blocked members out from under the device-only note', () => {
+    renderMe('/me?tab=settings');
+    expect(
+      screen.getByText(
+        'Display, notifications and installing apply to this phone or computer only.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Blocked members' })).toBeInTheDocument();
+    expect(screen.getByText(/These follow your account, wherever you sign in/)).toBeInTheDocument();
   });
 
   it('moves between tabs with the arrow keys, as tabs do', async () => {

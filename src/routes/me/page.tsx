@@ -16,6 +16,7 @@ import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
+import { BlockedMembers } from '@/routes/me/blocked-members';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { MeHero } from '@/routes/me/hero';
@@ -389,7 +390,7 @@ export default function MePage() {
         {tab === 'settings' ? (
           <TabPanel id="me" value="settings">
             <p className="text-[0.875rem] text-ink2 leading-[1.5]">
-              These apply to this phone or computer only.
+              Display, notifications and installing apply to this phone or computer only.
             </p>
             {/* Display first and always open: it is what somebody who finds
                 the club hard to read comes here for. */}
@@ -401,6 +402,10 @@ export default function MePage() {
                 isAdmin={isAdmin}
               />
               <InstallSettings />
+            </div>
+            {/* Follows the account, not the device: apart from the grid above. */}
+            <div className="max-w-[560px]">
+              <BlockedMembers />
             </div>
           </TabPanel>
         ) : null}
