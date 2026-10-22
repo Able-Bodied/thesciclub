@@ -3,6 +3,12 @@
  *
  *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… pnpm reprocess-photos [--dry-run]
  *
+ * With --thumbs, instead: make the small copy (`prepareThumb`) beside every
+ * member photograph that has none, as an upload now does (2026-10-22). It
+ * only adds files; no row changes. Safe to run again.
+ *
+ *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… pnpm reprocess-photos --thumbs [--dry-run]
+ *
  * ---------------------------------------------------------------------------
  * Why it drives a browser
  * ---------------------------------------------------------------------------
@@ -32,6 +38,7 @@ const URL_ = process.env.SUPABASE_URL;
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const BASE = process.env.SHOOT_BASE ?? 'http://localhost:5173';
 const DRY = process.argv.includes('--dry-run');
+const THUMBS = process.argv.includes('--thumbs');
 
 if (!URL_ || !KEY) {
   console.error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
@@ -57,6 +64,58 @@ const OWN_PATH = /^[0-9a-f-]{36}\/[A-Za-z0-9_-]{1,80}\.[a-z0-9]{1,5}$/;
 const own = (m) => OWN_PATH.test(m.photo_path) && m.photo_path.startsWith(`${m.id}/`);
 for (const m of members.filter((m) => !own(m))) {
   console.log(`  ${m.display_name}: ${m.photo_path} is not in their own folder; left alone`);
+}
+
+if (THUMBS) {
+  await makeThumbs(members.filter(own));
+  process.exit(0);
+}
+
+/** The small copies, made by the app's own code in a page (see above). */
+async function makeThumbs(list) {
+  const browser = await chromium.launch();
+  const page = await (await browser.newContext()).newPage();
+  await page.goto(`${BASE}/join`, { waitUntil: 'domcontentloaded' });
+  let made = 0;
+  for (const m of list) {
+    const thumb = await page.evaluate(async (path) => {
+      const { thumbPath } = await import('/src/lib/photos.ts');
+      return thumbPath(path);
+    }, m.photo_path);
+    const listed = await db.storage.from('photos').list(m.id);
+    if (listed.data?.some((o) => `${m.id}/${o.name}` === thumb)) continue;
+    const full = await db.storage.from('photos').download(m.photo_path);
+    if (full.error) {
+      console.log(`  ${m.display_name}: could not fetch ${m.photo_path} (${full.error.message})`);
+      continue;
+    }
+    const bytes = Buffer.from(await full.data.arrayBuffer());
+    const small = await page.evaluate(
+      async ([data, type]) => {
+        const { prepareThumb } = await import('/src/lib/image.ts');
+        const blob = await prepareThumb(new Blob([new Uint8Array(data)], { type }));
+        return blob
+          ? { bytes: [...new Uint8Array(await blob.arrayBuffer())], type: blob.type }
+          : null;
+      },
+      [[...bytes], full.data.type],
+    );
+    if (!small) {
+      console.log(`  ${m.display_name}: no copy (already small, or not webp or JPEG)`);
+      continue;
+    }
+    console.log(
+      `  ${m.display_name}: ${thumb} ${Math.round(small.bytes.length / 1024)}KB (photograph ${Math.round(bytes.length / 1024)}KB)`,
+    );
+    if (DRY) continue;
+    const up = await db.storage
+      .from('photos')
+      .upload(thumb, Buffer.from(small.bytes), { upsert: false, contentType: small.type });
+    if (up.error) console.log(`    upload failed: ${up.error.message}`);
+    else made += 1;
+  }
+  await browser.close();
+  console.log(DRY ? 'Dry run — nothing written.' : `Done. ${made} small copies made.`);
 }
 
 // Seeded photographs were fitted when they were imported and are already webp.
