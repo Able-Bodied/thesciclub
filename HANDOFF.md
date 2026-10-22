@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-21. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-22. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
 definition and wins over this file. Older handoffs, by `git show
 <sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
@@ -52,7 +52,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     a refresh token to `apple-token` (native: the authorization code; web:
     the `provider_refresh_token` after the redirect), kept in
     `private.apple_tokens`; deleting the identity, with the account or by
-    Unlink, queues it for `apple-revoke` (5.1.1(v); `20261022160000`).
+    Unlink, queues it for `apple-revoke` (5.1.1(v); `20261022160000`), which
+    only the database may call (vault `apple_revoke_secret`, as
+    `push_notify_secret`). Revocations given up after seven tries show on
+    Admin → Sign-in; once the cause is fixed, `update
+    private.apple_revocations set attempts = 0 where attempts >= 7;`.
     Apple's notices go to `apple-notifications`, shown on Admin → Sign-in
     (`20261022170000`). Before this, web Apple sign-ins kept no token: those
     members are revoked only if they sign in with Apple again first.
@@ -84,7 +88,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   apple-app-site-association` (`src/universal-links.test.ts` says which
   paths and why). Fake it in a browser with
   `window.CapacitorCustomPlatform = { name: 'ios' }`.
-- **Checks**: 3,322 tests in 238 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,330 tests in 238 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -95,12 +99,6 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   `profile-reports.sql`, `pnpm check-photo-policy`) go live before the
   client. No function deploy. Terms, Privacy and `/delete-account` say so,
   and wait for the owner's read like the other legal pages.
-
-- **One dry run for six**: `db push --linked --dry-run` should list
-  `20261022100000`, `20261022130000`, `20261022140000`,
-  `20261022150000`, `20261022160000` and `20261022170000`, and nothing
-  else; then the push. The last two need nothing else first: with no
-  functions deployed, tokens wait and Apple's notices do not arrive.
 
 - **`20261022140000`, not live**: an inviter may only withdraw their own
   unused invite (probe `invite-withdrawal.sql`). The client needs no change:
@@ -118,18 +116,62 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   health information.
 
 - **Native sign-in and Universal Links, not live** (2026-10-22), in order:
-  (1) a Google iOS OAuth client (bundle `com.thesciclub.app`, Team
-  `3RZ3A2CJ9N`) in the web client's project, its ID as the Actions variable
-  `VITE_GOOGLE_IOS_CLIENT_ID` and second in Supabase's Google Client IDs;
-  (2) Apple: com.thesciclub.app grouped with the Services ID's primary App
-  ID, whose notification endpoint is `…/functions/v1/apple-notifications`;
-  (3) secrets `APPLE_TEAM_ID`, `APPLE_SIWA_KEY_ID`, `APPLE_SIWA_KEY_P8` (the
-  Sign in with Apple .p8); (4) the dry run above; (5) deploy `apple-token`,
-  then `apple-revoke` and `apple-notifications` with `--no-verify-jwt`, and
-  the vault secret `apple_revoke_url` (it can wait; revocations queue); (6)
-  push, check the association file is 200 JSON with no redirect; (7) tag
-  `ios-v1.0.1`. Probes: `apple-revocation.sql`,
-  `apple-notices-and-joining.sql`.
+  1. Google: an iOS OAuth client (bundle `com.thesciclub.app`, Team
+     `3RZ3A2CJ9N`) in the web client's project; `gh variable set
+     VITE_GOOGLE_IOS_CLIENT_ID -R Alfredx48/TheSciClub --body '<its ID>'`.
+  2. Supabase → Authentication → Providers → Google → Client IDs: the web
+     client's ID, then a comma and the iOS one.
+  3. Precondition: Supabase's Apple provider Client IDs must include
+     `com.thesciclub.app` (it lists `com.thesciclub.web,com.thesciclub.app`,
+     seen 2026-10-22). Without it every native Apple tap fails.
+  4. Apple Developer: `com.thesciclub.app` grouped with the Services ID's
+     primary App ID (Sign In with Apple on both).
+  5. Supabase secrets, from the Sign in with Apple .p8: `pnpm exec supabase
+     secrets set APPLE_TEAM_ID=3RZ3A2CJ9N APPLE_SIWA_KEY_ID=<key ID>
+     APPLE_SIWA_KEY_P8="$(cat AuthKey_<key ID>.p8)"`.
+  6. Vault, in the SQL editor (`20261022160000` makes the secret too if
+     this has not; `apple-revoke` never holds it, the database checks it):
+     ```sql
+     do $$
+     begin
+       if not exists (select 1 from vault.secrets where name = 'apple_revoke_secret') then
+         perform vault.create_secret(encode(extensions.gen_random_bytes(32), 'hex'),
+           'apple_revoke_secret', 'Sent by apple_revoke_send, checked by apple_revocations_due.');
+       end if;
+       if not exists (select 1 from vault.secrets where name = 'apple_revoke_url') then
+         perform vault.create_secret(
+           'https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/apple-revoke', 'apple_revoke_url');
+       end if;
+     end $$;
+     select name from vault.secrets where name like 'apple_revoke_%' order by name;
+     ```
+     Expect `apple_revoke_secret`, `apple_revoke_url`.
+  7. `pnpm exec supabase db push --linked --dry-run` lists exactly
+     `20261022100000`, `20261022130000`, `20261022140000`,
+     `20261022150000`, `20261022160000`, `20261022170000`; then the push.
+  8. `pnpm exec supabase functions deploy apple-token`, then
+     `apple-revoke --no-verify-jwt` and `apple-notifications
+     --no-verify-jwt`. A bare `curl -X POST …/functions/v1/apple-revoke`
+     must answer 401 `not the database`.
+  9. Apple Developer → the primary App ID → Sign In with Apple →
+     Server-to-Server Notification Endpoint:
+     `https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/apple-notifications`.
+  10. `git push origin scaffold-and-peers-deck`; `git tag -a ios-v1.0.1 -m
+      "What to test"` and `git push origin ios-v1.0.1`. `main` only once
+      `hello@thesciclub.com` receives mail (Legal pages, above); then
+      `curl -sI https://thesciclub.com/.well-known/apple-app-site-association`
+      is 200 JSON with no redirect, and links open the app.
+
+  Probes: `apple-revocation.sql`, `apple-notices-and-joining.sql`. On the
+  first device and live runs, look for: **Google in the app**: an
+  "Invalid access_token" or `at_hash` error means stop passing
+  `accessToken` in `signInWithGoogleNatively` and `linkGoogleNatively`.
+  **Web Apple**: after `?apple=signin` the URL fragment has
+  `provider_refresh_token` and `apple-token` answers 200; if not, web Apple
+  sign-ins keep no token. **apple-token's log**: `WARNING the
+  no-ID-token fallback` means Apple's refresh answer had no ID token (the
+  line names its fields); a web keep without it means Apple sends one, so
+  delete the fallback (`onlySub` in `apple-token/handler.ts`) and its test.
 - **Store app, still to build**: native push; Android (Google needs a client
   made with the Play signing SHA-1, Apple there is a web flow, and App
   Links need `public/.well-known/assetlinks.json` with the Play signing
@@ -339,8 +381,9 @@ All live. Migration headers and the files named say how and why.
   owner, 2026-10-22); a manual run is from main only. Once, `gh variable set
   VITE_SUPABASE_URL -R Alfredx48/TheSciClub` and the same for
   `VITE_SUPABASE_ANON_KEY` and `VITE_GOOGLE_IOS_CLIENT_ID` (public values).
-  The lane makes a new App Store profile if the old one lacks Sign in with
-  Apple or Associated Domains (`App.entitlements`). Then `git tag -a
+  `release_build` makes a new App Store profile if the old one lacks Sign in
+  with Apple or Associated Domains (`App.entitlements`); before
+  `release_upload`, a step fails the run if the .app holds Facebook's SDK. Then `git tag -a
   ios-v1.0.0 -m "What to test"` and `git push origin ios-v1.0.0` (or Actions →
   iOS release → Run workflow on main), approve it in Actions, and the build
   shows in TestFlight 10–20 minutes after the upload. The tag gives the
