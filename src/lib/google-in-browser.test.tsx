@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -67,6 +68,14 @@ describe('where Google goes by way of a browser', () => {
     Reflect.deleteProperty(navigator, 'standalone');
     on(ANDROID, true);
     Reflect.deleteProperty(navigator, 'standalone');
+    expect(googleGoesToBrowser()).toBe(false);
+  });
+});
+
+describe('in the store app', () => {
+  it('never goes by way of a browser, which could not come back', () => {
+    on(IPHONE, true);
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     expect(googleGoesToBrowser()).toBe(false);
   });
 });

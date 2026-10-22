@@ -1,7 +1,8 @@
+import { Capacitor } from '@capacitor/core';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnnounceProvider } from '@/lib/announce';
 import type * as GoogleSignInModule from '@/lib/google-sign-in';
 
@@ -90,6 +91,29 @@ beforeEach(() => {
   google.widget = 'unavailable';
   google.onToken = null;
   changed.mockClear();
+});
+
+describe('in the store app, until it signs in to Google natively', () => {
+  let native: { mockRestore: () => void } | null = null;
+  afterEach(() => {
+    native?.mockRestore();
+  });
+
+  it('offers no Link Google', async () => {
+    native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    renderIt();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('heading', { name: 'Google' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Link Google' })).toBeNull();
+  });
+
+  it('still names a linked Google and lets it go', async () => {
+    native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    google.identity = LINKED;
+    renderIt();
+    await userEvent.click(await screen.findByRole('button', { name: 'Unlink Google' }));
+    expect(google.calls).toEqual(['unlink']);
+  });
 });
 
 describe('Signing in, on Me', () => {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { currentInstallPlatform } from '@/lib/install';
 import { hintSignIn } from '@/lib/sign-in-record';
-import { isStandalone } from '@/lib/standalone';
+import { isNative, isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -68,6 +68,7 @@ export const COLLECT_TRIES = 5;
 
 /** The iPhone or iPad Home Screen app, where Google has no accounts to show. */
 export function googleGoesToBrowser(): boolean {
+  if (isNative()) return false;
   return currentInstallPlatform().startsWith('ios') && isStandalone();
 }
 

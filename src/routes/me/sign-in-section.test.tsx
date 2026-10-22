@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -274,6 +275,24 @@ describe('Apple and passkeys sit behind their switches', () => {
     renderSection();
     await userEvent.click(await screen.findByRole('button', { name: 'Add a passkey' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('in the store app, until it signs in to Apple natively', () => {
+  it('offers no Link Apple, but a linked Apple can still be unlinked', async () => {
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    try {
+      state.apple = true;
+      const view = renderSection();
+      expect(screen.queryByRole('heading', { name: 'Apple' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Link Apple' })).not.toBeInTheDocument();
+      view.unmount();
+      renderSection(ready({ providers: { google: null, apple: identity, email: true } }));
+      await userEvent.click(screen.getByRole('button', { name: 'Unlink Apple' }));
+      expect(state.calls).toEqual(['apple:unlink']);
+    } finally {
+      native.mockRestore();
+    }
   });
 });
 

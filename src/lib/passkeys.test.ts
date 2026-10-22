@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const auth = vi.hoisted(() => ({
@@ -68,6 +69,15 @@ describe('the switches', () => {
   it('keep passkeys away from a browser without WebAuthn, switch or no', () => {
     vi.stubEnv('VITE_PASSKEYS', '1');
     expect(passkeysAvailable()).toBe(false);
+  });
+
+  it('keep passkeys out of the store app, whose page is not thesciclub.com', () => {
+    withWebAuthn();
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    expect(passkeysAvailable()).toBe(false);
+    native.mockRestore();
+    expect(passkeysAvailable()).toBe(true);
   });
 
   it('keep Apple off unless VITE_APPLE_SIGN_IN is set', () => {

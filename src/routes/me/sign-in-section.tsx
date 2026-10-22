@@ -26,6 +26,7 @@ import {
 } from '@/lib/passkeys';
 import { formatPhoneInput, isCompletePhone } from '@/lib/phone';
 import { useRedirectTap } from '@/lib/redirect-tap';
+import { isNative } from '@/lib/standalone';
 import {
   isValidUsername,
   normalizeUsername,
@@ -251,6 +252,8 @@ function AppleCard({ details, reload }: { details: SignInDetails | null; reload:
     }
   }
 
+  // As with Google: linking cannot come back into the store app yet.
+  if (!linked && isNative()) return null;
   const canUnlink = waysIn(details, 'apple') > 0;
   return (
     <SignInCard title="Apple">
