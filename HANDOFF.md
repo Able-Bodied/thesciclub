@@ -18,7 +18,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   and to `main` too: fetch and merge before pushing, never force. Release:
   `git push origin scaffold-and-peers-deck && git push origin HEAD:main`;
   empty `git log --oneline origin/main..HEAD` means nothing is unreleased. The
-  agent's sandbox refuses `git push`: the owner runs it.
+  agent's sandbox refuses `git push`: the owner runs it. Since 2026-10-22
+  `origin` pushes to Able-Bodied/thesciclub and the owner's private
+  Alfredx48/TheSciClub (remote `mine`) at once, fetching from Able-Bodied
+  only: pull before pushing, or the two diverge.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
   `20261022090000` is live (2026-10-21), blocking included. Edge functions:
   `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
