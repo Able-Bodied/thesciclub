@@ -45,6 +45,9 @@ function jwt(sub) {
 const ADMIN = 'aaaaaaaa-6666-0000-0000-00000000000a';
 const MEMBER = 'bbbbbbbb-6666-0000-0000-00000000000b';
 const OTHER = 'cccccccc-6666-0000-0000-00000000000c';
+// Reported, then deleted: by themselves, and by an administrator.
+const LEAVER = 'eeeeeeee-6666-0000-0000-00000000000e';
+const REMOVED = 'ffffffff-6666-0000-0000-00000000000f';
 
 const ANON = process.env.SUPABASE_ANON_KEY;
 if (!ANON) {
@@ -114,7 +117,8 @@ const check = (label, actual, expected) => {
 await requireStorage();
 
 await root.from('chat_reports').delete().eq('reporter_id', OTHER);
-await root.from('members').delete().in('id', [ADMIN, MEMBER, OTHER]);
+await root.from('members').delete().in('id', [ADMIN, MEMBER, OTHER, LEAVER, REMOVED]);
+await root.auth.admin.deleteUser(LEAVER);
 await root
   .from('members')
   .insert([
@@ -326,8 +330,127 @@ check(
   true,
 );
 
+/**
+ * Once a reported member's account is deleted (20261022150000), the report
+ * forgets the photograph and the file goes like their others: after
+ * delete_my_account with the session it still holds (delete-account-api.ts),
+ * or after admin_delete_member (members-admin.ts). Meanwhile Policy Member,
+ * still reported and still a member, keeps the protection.
+ */
+console.log("\nA deleted member's reported photograph goes with the account:\n");
+
+const folderHas = async (folder, name) =>
+  ((await root.storage.from('photos').list(folder)).data ?? []).some((o) => o.name === name);
+// A real sign-in account, so delete_my_account deletes one and the token outlives it.
+{
+  const { error } = await root.auth.admin.createUser({
+    id: LEAVER,
+    email: 'photo-policy-leaver@local.test',
+    email_confirm: true,
+  });
+  if (error) {
+    console.error(`\n  Could not create the leaver's account: ${error.message}\n`);
+    process.exit(2);
+  }
+}
+await root
+  .from('members')
+  .insert([member(LEAVER, 'Policy Leaver', false), member(REMOVED, 'Policy Removed', false)]);
+for (const owner of [LEAVER, REMOVED]) {
+  for (const name of ['reported.png', 'other.png']) {
+    const { error } = await root.storage
+      .from('photos')
+      .upload(`${owner}/${name}`, PNG, { upsert: true, contentType: 'image/png' });
+    if (error) {
+      console.error(`\n  Could not put ${owner}/${name} in place: ${error.message}\n`);
+      process.exit(2);
+    }
+  }
+  await root
+    .from('members')
+    .update({ photo_path: `${owner}/reported.png` })
+    .eq('id', owner);
+  const filed = await as(OTHER).rpc('report_member', { member: owner, report_note: owner });
+  if (filed.error) {
+    console.error(`\n  Could not report ${owner}: ${filed.error.message}\n`);
+    process.exit(2);
+  }
+}
+const clearFolder = async (client, folder) => {
+  const { data } = await client.storage.from('photos').list(folder);
+  const paths = (data ?? []).map((o) => `${folder}/${o.name}`);
+  if (paths.length > 0) await client.storage.from('photos').remove(paths);
+};
+const copyOf = async (owner) =>
+  (await root.from('chat_reports').select('profile_snapshot, profile_photo_path').eq('note', owner))
+    .data?.[0];
+
+// The member's own deletion: the folder, the account, the folder again.
+check(
+  'the leaver has a sign-in account',
+  (await root.auth.admin.getUserById(LEAVER)).data?.user?.id,
+  LEAVER,
+);
+const leaver = as(LEAVER);
+await clearFolder(leaver, LEAVER);
+check(
+  'before deleting, the reported photograph stays',
+  await folderHas(LEAVER, 'reported.png'),
+  true,
+);
+check('…and their other photograph goes', await folderHas(LEAVER, 'other.png'), false);
+const deleted = await leaver.rpc('delete_my_account');
+check('delete_my_account', deleted.error?.message ?? 'deleted', 'deleted');
+check(
+  'their sign-in account is gone',
+  (await root.auth.admin.getUserById(LEAVER)).data?.user ?? null,
+  null,
+);
+await clearFolder(leaver, LEAVER);
+check(
+  'then the same session deletes the reported photograph',
+  await folderHas(LEAVER, 'reported.png'),
+  false,
+);
+const leaverCopy = await copyOf(LEAVER);
+check(
+  'the copy reads Deleted member, no @username, no photograph',
+  `${leaverCopy?.profile_snapshot?.display_name} ${leaverCopy?.profile_snapshot?.username} ${leaverCopy?.profile_photo_path}`,
+  'Deleted member undefined null',
+);
+
+// An administrator's Remove: the account, then the folder.
+await as(ADMIN)
+  .storage.from('photos')
+  .remove([`${REMOVED}/reported.png`]);
+check(
+  'before removing them, an administrator cannot delete it',
+  await folderHas(REMOVED, 'reported.png'),
+  true,
+);
+const removed = await as(ADMIN).rpc('admin_delete_member', { target: REMOVED });
+check('admin_delete_member', removed.error?.message ?? 'removed', 'removed');
+await clearFolder(as(ADMIN), REMOVED);
+check(
+  'then the administrator deletes the reported photograph',
+  await folderHas(REMOVED, 'reported.png'),
+  false,
+);
+check('…and the other', await folderHas(REMOVED, 'other.png'), false);
+const removedCopy = await copyOf(REMOVED);
+check(
+  'the copy reads Deleted member, no @username, no photograph',
+  `${removedCopy?.profile_snapshot?.display_name} ${removedCopy?.profile_snapshot?.username} ${removedCopy?.profile_photo_path}`,
+  'Deleted member undefined null',
+);
+
+// Policy Member is still here and still reported.
+await as(MEMBER).storage.from('photos').remove([REPORTED]);
+await as(ADMIN).storage.from('photos').remove([REPORTED]);
+check("a still-member's reported photograph is still kept", await has('reported.png'), true);
+
 // Reports keep their rows when a member goes: clear them first.
-await root.from('chat_reports').delete().eq('profile_id', MEMBER);
+await root.from('chat_reports').delete().eq('reporter_id', OTHER);
 await root.storage.from('photos').remove([REPORTED]);
 
 await root.storage
@@ -339,7 +462,9 @@ await root.storage
     `${MEMBER}/too-large.png`,
     `${MEMBER}/not-a-photo.heic`,
     `${MEMBER}/fits.png`,
+    ...[LEAVER, REMOVED].flatMap((o) => [`${o}/reported.png`, `${o}/other.png`]),
   ]);
-await root.from('members').delete().in('id', [ADMIN, MEMBER, OTHER]);
+await root.from('members').delete().in('id', [ADMIN, MEMBER, OTHER, LEAVER, REMOVED]);
+await root.auth.admin.deleteUser(LEAVER);
 console.log(failed ? `\n${failed} failed.\n` : '\nAll passed.\n');
 process.exit(failed ? 1 : 0);
