@@ -1,8 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as NativeSignInModule from '@/lib/native-sign-in';
 import type * as ProgressModule from '@/routes/onboarding/progress';
 
 /**
@@ -292,6 +293,25 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
+// The plugin's sheets: what the page does with their answer is tested here,
+// the sheets themselves in lib/native-sign-in.test.ts. Which ways are offered
+// stays real, from Capacitor and VITE_GOOGLE_IOS_CLIENT_ID.
+const nativeSheets: { answer: NativeSignInModule.NativeResult } = vi.hoisted(() => ({
+  answer: { ok: true, name: null },
+}));
+vi.mock('@/lib/native-sign-in', async (original) => {
+  const sheet = (provider: string) => () => {
+    calls.order.push(`native:${provider}`);
+    if (nativeSheets.answer.ok) calls.setStatus('signed-up');
+    return Promise.resolve(nativeSheets.answer);
+  };
+  return {
+    ...(await original<typeof NativeSignInModule>()),
+    signInWithAppleNatively: sheet('apple'),
+    signInWithGoogleNatively: sheet('google'),
+  };
+});
+
 const { default: OnboardingPage } = await import('@/routes/onboarding/page');
 const { leadingWayIn } = await import('@/routes/onboarding/sign-in-steps');
 
@@ -391,6 +411,7 @@ beforeEach(() => {
   calls.promptAsked = false;
   calls.idTokenError = null;
   calls.passkeyError = null;
+  nativeSheets.answer = { ok: true, name: null };
 });
 
 afterEach(() => {
@@ -867,6 +888,29 @@ describe('coming back from the confirmation link', () => {
 });
 
 describe('the invite link', () => {
+  it('is kept when it opens while the page is already up, as the store app gets one', async () => {
+    let go: (to: string) => void = () => undefined;
+    function Navigator() {
+      const navigate = useNavigate();
+      go = (to) => void navigate(to);
+      return null;
+    }
+    render(
+      <MemoryRouter initialEntries={['/join']}>
+        <Navigator />
+        <Routes>
+          <Route path="/join" element={<OnboardingPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+    act(() => {
+      go('/join?invite=tok-late');
+    });
+    expect(await screen.findByText(/You have an invitation/)).toBeInTheDocument();
+    expect(window.localStorage.getItem('sciclub.inviteToken')).toBe('tok-late');
+  });
+
   it('claims the invite before asking whether the account is invited', async () => {
     calls.status = 'signed-up';
     renderJoin('/join?invite=tok-123');
@@ -1366,13 +1410,85 @@ describe('Google, Apple and passkeys', () => {
     });
   });
 
-  describe('in the store app, until it signs in to them natively', () => {
+  describe('in the store app', () => {
     let native: { mockRestore: () => void } | null = null;
+    let platform: { mockRestore: () => void } | null = null;
     afterEach(() => {
       native?.mockRestore();
+      platform?.mockRestore();
     });
 
-    it('offers only the email and password, on both doors, and says how to make one', async () => {
+    function onAnIphone(google: boolean) {
+      native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      platform = vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+      if (google) {
+        vi.stubEnv('VITE_GOOGLE_IOS_CLIENT_ID', '123456789012-abc.apps.googleusercontent.com');
+      }
+    }
+
+    it('on an iPhone, leads with Apple, with Google under Other ways, on both doors', async () => {
+      onAnIphone(true);
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+      expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Other ways to join' }));
+      expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+      expect(screen.getByText('or join with your email')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Already a member? Sign in' }));
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
+      expect(screen.getByText('Sign in the way you joined.')).toBeInTheDocument();
+      // Never the website's ways: no widget, no redirect.
+      expect(calls.onToken).toBeNull();
+    });
+
+    it('without Google’s iOS client, offers Apple alone and tells Google members what to do', async () => {
+      onAnIphone(false);
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Google|Other ways/ })).toBeNull();
+      expect(screen.getByText(/Joined with Google\? Choose Forgot password/)).toBeInTheDocument();
+    });
+
+    it('signs in with Apple’s sheet, then asks the club, and fills in the name Apple gave', async () => {
+      onAnIphone(true);
+      nativeSheets.answer = { ok: true, name: 'Dana Ruiz' };
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+      expect(await screen.findByPlaceholderText('ex. Ajay Shenoy')).toHaveValue('Dana Ruiz');
+      expect(calls.order).toEqual(['native:apple', 'my_invite_status']);
+    });
+
+    it('signs in with Google’s sheet, through the same check', async () => {
+      onAnIphone(true);
+      calls.invited = false;
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Other ways to sign in' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
+      await waitFor(() => {
+        expect(calls.order).toEqual(['native:google', 'my_invite_status']);
+      });
+    });
+
+    it('says nothing when a sheet is closed, and what went wrong otherwise', async () => {
+      onAnIphone(false);
+      nativeSheets.answer = { ok: false, error: null };
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Sign in with Apple' }));
+      await waitFor(() => {
+        expect(calls.order).toEqual(['native:apple']);
+      });
+      expect(screen.queryByRole('alert')).toBeNull();
+      nativeSheets.answer = { ok: false, error: 'Apple did not sign you in.' };
+      await userEvent.click(screen.getByRole('button', { name: 'Sign in with Apple' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('Apple did not sign you in.');
+    });
+
+    it('elsewhere (Android, for now), offers only the email and password, on both doors, and says how to make one', async () => {
       vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
       vi.stubEnv('VITE_PASSKEYS', '1');
       Object.defineProperty(window, 'PublicKeyCredential', {

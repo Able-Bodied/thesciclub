@@ -32,6 +32,12 @@ import {
   INVITE_PARAM,
 } from '@/lib/invite-token';
 import { useJoiningIsOpen } from '@/lib/joining';
+import {
+  type NativeResult,
+  nativeWaysIn,
+  signInWithAppleNatively,
+  signInWithGoogleNatively,
+} from '@/lib/native-sign-in';
 import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
 import {
   captureQrCode,
@@ -43,6 +49,7 @@ import {
 } from '@/lib/qr-codes';
 import { useRedirectTap } from '@/lib/redirect-tap';
 import { signInDestination } from '@/lib/sign-in-destination';
+import { isNative } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
@@ -168,6 +175,11 @@ export default function OnboardingPage() {
   const [inviteAddress, setInviteAddress] = useState<string | null>(null);
   useEffect(() => {
     if (!params.has(INVITE_PARAM) && !params.has(QR_PARAM)) return;
+    // A link opened while this page is already up (the store app, by a
+    // Universal Link) arrives here, not in the first render: keep it too.
+    const linked = captureInviteToken(params.toString()) !== null && params.has(INVITE_PARAM);
+    const coded = captureQrCode(params.toString()) !== null && params.has(QR_PARAM);
+    if (linked || coded) setStep((now) => (DOORS.includes(now) ? 'join' : now));
     setParams(
       (p) => {
         p.delete(INVITE_PARAM);
@@ -379,11 +391,31 @@ export default function OnboardingPage() {
   const [appleTaps, setAppleTaps] = useState(0);
 
   async function continueWithApple() {
+    if (isNative()) return void continueNatively(signInWithAppleNatively);
     if (!goesOut()) return;
     setAppleTaps((n) => n + 1);
     setError(null);
     const result = await signInWithApple();
     if (!result.ok) setError(result.error);
+  }
+
+  /** The store app's own sheet; a session follows and the gate takes over. */
+  async function continueNatively(signIn: () => Promise<NativeResult>) {
+    setBusy(true);
+    setError(null);
+    const result = await signIn().catch(() => ({
+      ok: false as const,
+      error: 'You were not signed in. Try again, or use your email.',
+    }));
+    setBusy(false);
+    if (!result.ok) {
+      // A closed sheet says nothing.
+      if (result.error) setError(result.error);
+      return;
+    }
+    // Apple's name, given once, into an empty box.
+    const { name } = result;
+    if (name) setData((d) => (d.displayName.trim() ? d : { ...d, displayName: name }));
   }
 
   async function continueWithPasskey() {
@@ -398,10 +430,16 @@ export default function OnboardingPage() {
   // rather than on the button, so the sign-in is collected on any door.
   const googleInBrowser = useGoogleInBrowser();
 
+  const [native] = useState(nativeWaysIn);
+
   const ways = {
     busy,
+    native,
     appleTaps,
     googleInBrowser,
+    onGoogleNative: () => {
+      void continueNatively(signInWithGoogleNatively);
+    },
     onGoogleToken: (token: string, nonce: string) => {
       void signInWithToken(token, nonce);
     },
