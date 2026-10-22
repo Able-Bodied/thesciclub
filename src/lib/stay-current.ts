@@ -19,8 +19,11 @@
  * update: a page with no worker in control when it opened does not reload.
  *
  * Started once from main.tsx, outside React, since it belongs to the page's
- * whole life.
+ * whole life. Not in the store app, which has no worker and updates from the
+ * store.
  */
+
+import { isNative } from '@/lib/standalone';
 
 export const CHECK_EVERY_MS = 30 * 60 * 1000;
 
@@ -38,7 +41,7 @@ export function stayCurrent({
   container?: Container | undefined;
   reload?: () => void;
 } = {}): () => void {
-  if (!container) return () => undefined;
+  if (!container || isNative()) return () => undefined;
   const sw = container;
 
   let hadController = sw.controller !== null;
