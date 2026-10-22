@@ -166,7 +166,9 @@ describe('NotificationSettings', () => {
       render(<NotificationSettings userId="u1" isMentor isAdmin />);
       await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
       expect(screen.getByRole('button', { name: /Somebody I invited/ })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /New reports/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'New reports, and the weekly count of blocks' }),
+      ).toBeInTheDocument();
     });
   });
 });

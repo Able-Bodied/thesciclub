@@ -487,7 +487,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'like', label: 'Likes on my posts', who: 'all' },
   { kind: 'group_add', label: 'Being added to a group', who: 'all' },
   { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
-  { kind: 'report', label: 'New reports', who: 'admin' },
+  { kind: 'report', label: 'New reports, and the weekly count of blocks', who: 'admin' },
 ] as const;
 
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]['kind'];
