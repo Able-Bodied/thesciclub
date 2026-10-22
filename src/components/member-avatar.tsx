@@ -30,7 +30,8 @@ export function MemberAvatar({
   photoAlt?: string | null | undefined;
   className?: string | undefined;
 }) {
-  const photo = usePhotoUrl(photoPath);
+  // A face beside a name is small: the small copy, not the 800px photograph.
+  const photo = usePhotoUrl(photoPath, 'thumb');
   const [from, to] = gradientFor(id);
 
   return (
