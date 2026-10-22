@@ -70,6 +70,7 @@ describe('apple-token', () => {
       form: { grant_type: 'refresh_token', refresh_token: 'rt-web' },
     });
     expect(log.kept).toEqual([`${MEMBER}|001.mine|com.thesciclub.web|rt-web`]);
+    expect(log.lines).toEqual([]);
   });
 
   it('keeps a web refresh token Apple accepts without an ID token, for the one Apple identity', async () => {
@@ -78,6 +79,9 @@ describe('apple-token', () => {
       200,
     );
     expect(log.kept).toEqual([`${MEMBER}|001.mine|com.thesciclub.web|rt-web`]);
+    expect(log.lines).toEqual([
+      'apple-token: WARNING the no-ID-token fallback took a com.thesciclub.web token; Apple answered with access_token',
+    ]);
     const two = setup({
       caller: { id: MEMBER, appleSubs: ['001.mine', '001.other'] },
       answer: { status: 200, body: { access_token: 'a' } },

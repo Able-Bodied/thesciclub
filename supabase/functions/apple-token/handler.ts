@@ -93,6 +93,14 @@ export async function keepAppleToken(
   if (!caller.appleSubs.includes(sub)) {
     return { status: 403, body: { error: 'That Apple sign-in is not this account’s.' } };
   }
+  // Kept only until Apple's real answer is seen once (HANDOFF); field names only.
+  if (!claims) {
+    deps.log(
+      `apple-token: WARNING the no-ID-token fallback took a ${client} token; Apple answered with ${
+        Object.keys(answer.body).sort().join(', ') || 'nothing'
+      }`,
+    );
+  }
 
   if (!(await deps.keep(caller.id, sub, client, kept))) {
     return { status: 409, body: { error: 'This account has no Apple sign-in.' } };
