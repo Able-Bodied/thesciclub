@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import type { ChatWriteResult } from '@/lib/chat/threads';
-import type { ChatReport } from '@/lib/chat/types';
+import type { ChatReport, ReportedProfile } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
@@ -67,7 +67,10 @@ export function reportNoteProblem(note: string): string | null {
  * this conversation" about a room post would be true and misleading; saying it
  * about a message is the whole of what was promised.
  */
-export function reportPreamble(kind: 'post' | 'message'): string {
+export function reportPreamble(kind: 'post' | 'message' | 'profile'): string {
+  if (kind === 'profile') {
+    return "This profile's name, @username, photograph and what the member wrote on it, as they are now, go to the club's administrators, with your name. Changing the profile later does not remove them. The member is not told.";
+  }
   if (kind === 'post') {
     return "This post, who wrote it and when go to the club's administrators, with your name, and they can open the topic it is in. The person is not told.";
   }
@@ -112,11 +115,23 @@ export async function reportMessage(
   return { ok: true, value: null };
 }
 
+/** Hand one member's profile over, as it is now (20261022130000). */
+export async function reportMember(memberId: string, note: string): Promise<ChatWriteResult<null>> {
+  const { error } = await getSupabase().rpc('report_member', {
+    member: memberId,
+    report_note: note.trim(),
+  });
+  if (error) return { ok: false, error: describeError(error, REPORT_REFUSALS) };
+  return { ok: true, value: null };
+}
+
 export interface MyReportsState {
   /** Posts this member has already reported. */
   postIds: Set<string>;
   /** Messages this member has already reported. */
   messageIds: Set<string>;
+  /** Members whose profile this member has already reported. */
+  memberIds: Set<string>;
   loading: boolean;
   error: string | null;
   reload: () => void;
@@ -138,6 +153,7 @@ export function useMyReports(): MyReportsState {
 
   const [postIds, setPostIds] = useState<Set<string>>(new Set());
   const [messageIds, setMessageIds] = useState<Set<string>>(new Set());
+  const [memberIds, setMemberIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef<AbortController | null>(null);
@@ -146,6 +162,7 @@ export function useMyReports(): MyReportsState {
     if (!memberId) {
       setPostIds(new Set());
       setMessageIds(new Set());
+      setMemberIds(new Set());
       setLoading(false);
       return;
     }
@@ -158,14 +175,15 @@ export function useMyReports(): MyReportsState {
       // See the header: no .eq() here, and the reason is not laziness.
       const { data, error: failure } = (await getSupabase()
         .from('chat_reports')
-        .select('post_id, message_id')
+        .select('post_id, message_id, profile_id')
         .abortSignal(controller.signal)) as Result<
-        { post_id: string | null; message_id: string | null }[]
+        { post_id: string | null; message_id: string | null; profile_id: string | null }[]
       >;
       if (aborted()) return;
       if (failure) {
         setPostIds(new Set());
         setMessageIds(new Set());
+        setMemberIds(new Set());
         setError(describeError(failure, 'Could not read what you have reported.'));
         setLoading(false);
         return;
@@ -174,6 +192,9 @@ export function useMyReports(): MyReportsState {
       setPostIds(new Set(rows.map((r) => r.post_id).filter((id): id is string => id !== null)));
       setMessageIds(
         new Set(rows.map((r) => r.message_id).filter((id): id is string => id !== null)),
+      );
+      setMemberIds(
+        new Set(rows.map((r) => r.profile_id).filter((id): id is string => id !== null)),
       );
       setError(null);
       setLoading(false);
@@ -195,7 +216,7 @@ export function useMyReports(): MyReportsState {
     void load();
   }, [load]);
 
-  return { postIds, messageIds, loading, error, reload };
+  return { postIds, messageIds, memberIds, loading, error, reload };
 }
 
 interface ReportRow {
@@ -206,6 +227,8 @@ interface ReportRow {
   message_id: string | null;
   body_snapshot: string;
   attachments: string[] | null;
+  profile_snapshot: Record<string, unknown> | null;
+  profile_photo_path: string | null;
   written_at: string;
   place: string;
   topic_id: string | null;
@@ -297,7 +320,14 @@ export function useAdminReports(): AdminReportsState {
 function toReport(row: ReportRow): ChatReport {
   return {
     id: row.id,
-    kind: row.kind === 'post' ? 'post' : row.kind === 'block' ? 'block' : 'message',
+    kind:
+      row.kind === 'post'
+        ? 'post'
+        : row.kind === 'block'
+          ? 'block'
+          : row.kind === 'profile'
+            ? 'profile'
+            : 'message',
     // 'direct' is the value that takes a control away, so an unknown one —
     // a database ahead of or behind this file — errs towards offering it.
     contextKind:
@@ -307,11 +337,15 @@ function toReport(row: ReportRow): ChatReport {
           ? 'group'
           : row.context_kind === 'member'
             ? 'member'
-            : 'room',
+            : row.context_kind === 'profile'
+              ? 'profile'
+              : 'room',
     postId: row.post_id,
     messageId: row.message_id,
     bodySnapshot: row.body_snapshot,
     attachments: row.attachments ?? [],
+    profile: row.kind === 'profile' ? toProfile(row.profile_snapshot) : null,
+    profilePhotoPath: row.profile_photo_path,
     writtenAt: row.written_at,
     place: row.place,
     topicId: row.topic_id,
@@ -328,6 +362,32 @@ function toReport(row: ReportRow): ChatReport {
     resolvedBy: row.resolved_by,
     resolvedByName: row.resolved_by_name,
     resolution: row.resolution,
+  };
+}
+
+/** The copy's own keys are snake_case jsonb; anything missing is simply absent. */
+function toProfile(copy: Record<string, unknown> | null): ReportedProfile {
+  const text = (key: string): string | null => {
+    const value = copy?.[key];
+    return typeof value === 'string' && value !== '' ? value : null;
+  };
+  const list = (key: string): string[] => {
+    const value = copy?.[key];
+    return Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];
+  };
+  return {
+    displayName: text('display_name') ?? 'Unnamed',
+    username: text('username'),
+    photoAlt: text('photo_alt'),
+    bio: text('bio'),
+    howInjured: text('how_injured'),
+    detail: text('detail'),
+    sportsEquipment: text('sports_equipment'),
+    grants: text('grants'),
+    fieldOfWork: text('field_of_work'),
+    interests: list('interests'),
+    topics: list('topics'),
+    selfCare: list('self_care'),
   };
 }
 

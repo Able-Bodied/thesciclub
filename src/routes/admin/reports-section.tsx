@@ -9,6 +9,7 @@ import { removePost } from '@/lib/chat/topics';
 import type { ChatAuthor, ChatEdit, ChatReport } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
 import { ReasonField, SmallButton } from '@/routes/admin/controls';
+import { ReportedProfileCopy } from '@/routes/admin/reported-profile';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 
@@ -183,8 +184,8 @@ export function ReportsSection({
         </span>
       </div>
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
-        One post or one message, handed over by the member who saw it. Nothing else about a
-        conversation comes with it, and there is no way from here into one.
+        One post, one message or one profile, handed over by the member who saw it. Nothing else
+        about a conversation comes with it, and there is no way from here into one.
       </p>
 
       {failure ? (
@@ -203,8 +204,8 @@ export function ReportsSection({
           <p className="px-3 py-6 text-center text-[0.8125rem] text-grey leading-[1.45]">{error}</p>
         ) : open.length === 0 ? (
           <p className="px-3 py-6 text-center text-[0.8125rem] text-grey leading-[1.45]">
-            Nothing has been reported. Members can hand over a post or a message from where they are
-            reading it.
+            Nothing has been reported. Members can hand over a post, a message or a member’s profile
+            from where they are reading it.
           </p>
         ) : (
           open.map((report) => (
@@ -369,6 +370,12 @@ function ReportRow({
         <p className="mt-1.5 text-[0.8125rem] text-ink2 leading-[1.5]">“{report.note}”</p>
       ) : null}
 
+      {report.kind === 'profile' ? (
+        <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
+          A profile is not removed from here. What to do about it is on their row, and the copy
+          above stays as it was when it was reported.
+        </p>
+      ) : null}
       {report.contextKind === 'direct' ? (
         <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
           A direct message is not removed from here: it protects nobody who has not already read it.
@@ -377,7 +384,8 @@ function ReportRow({
       ) : null}
 
       <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {report.contextKind === 'direct' ? null : report.alreadyRemoved ? (
+        {report.kind === 'profile' ||
+        report.contextKind === 'direct' ? null : report.alreadyRemoved ? (
           <span className="rounded-full bg-tint px-3 py-1.5 font-semibold text-[0.75rem] text-grey">
             Already removed
           </span>
@@ -476,6 +484,11 @@ function Where({
       <span className="ml-2 font-semibold text-[0.75rem] text-grey">
         {report.place} · {chatTimeLong(report.writtenAt)}
       </span>
+      {report.kind === 'profile' ? (
+        <span className="ml-2 rounded-full bg-tint px-2.5 py-[3px] font-extrabold font-head text-[0.6875rem] text-emphasis uppercase tracking-[0.08em]">
+          Profile report
+        </span>
+      ) : null}
     </p>
   );
 }
@@ -535,6 +548,9 @@ function MemberName({
  * evidence where it is. The sentence under the grid says so.
  */
 function Snapshot({ report, edits }: { report: ChatReport; edits: ChatEdit[] }) {
+  if (report.profile) {
+    return <ReportedProfileCopy profile={report.profile} photoPath={report.profilePhotoPath} />;
+  }
   return (
     <div className="mt-1.5 border-line border-l-2 pl-2.5">
       {report.bodySnapshot ? (

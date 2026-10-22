@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { REPORT_NOTE_MAX, reportNoteProblem, reportPreamble } from '@/lib/chat/reports';
+import { describe, expect, it, vi } from 'vitest';
+import {
+  REPORT_NOTE_MAX,
+  reportMember,
+  reportNoteProblem,
+  reportPreamble,
+} from '@/lib/chat/reports';
+
+// The one network call this file makes.
+const rpc = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/supabase', () => ({ getSupabase: () => ({ rpc }) }));
 
 /**
  * The pure half of reports.ts. The writes are three thin wrappers over rpc
@@ -44,6 +53,14 @@ describe('reportPreamble', () => {
     }
   });
 
+  it('says a profile goes as it is now, stays reported after an edit, and the member is not told', () => {
+    const said = reportPreamble('profile');
+    expect(said).toContain('as they are now');
+    expect(said).toContain('with your name');
+    expect(said).toContain('Changing the profile later does not remove them.');
+    expect(said).toContain('The member is not told.');
+  });
+
   it('promises a conversation stays shut, and does not promise it of a room', () => {
     // The difference is real and not a wording choice: a report about a message
     // carries no thread id, so there is no way back into the conversation. A
@@ -53,5 +70,20 @@ describe('reportPreamble', () => {
     expect(reportPreamble('message')).toContain('Nothing else in this conversation does.');
     expect(reportPreamble('post')).not.toContain('Nothing else');
     expect(reportPreamble('post')).toContain('open the topic it is in');
+  });
+});
+
+describe('reportMember', () => {
+  // PostgREST sends arguments by name, so the names are the contract.
+  it('sends the member and the trimmed note under the names the function takes', async () => {
+    rpc.mockResolvedValue({ error: null });
+    expect(await reportMember('bo', '  Rude bio ')).toEqual({ ok: true, value: null });
+    expect(rpc).toHaveBeenCalledWith('report_member', { member: 'bo', report_note: 'Rude bio' });
+  });
+
+  it('passes the database’s own sentence on', async () => {
+    rpc.mockResolvedValue({ error: { message: 'There is no such member.', code: 'P0002' } });
+    const result = await reportMember('bo', '');
+    expect(result).toEqual({ ok: false, error: 'There is no such member.' });
   });
 });
