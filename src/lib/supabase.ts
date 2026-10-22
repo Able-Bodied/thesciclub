@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { watchForAppleRefreshToken } from '@/lib/apple-web-token';
 import { watchForRecoveryLink } from '@/lib/recovery-link';
 import { watchSignIns } from '@/lib/sign-in-record';
 import { acceptSessionFromUrl, sessionStorageKey } from '@/lib/url-session';
@@ -36,7 +37,9 @@ export function getSupabase(): SupabaseClient {
     : createClient(url, key, { auth: { detectSessionInUrl } });
   // Before the client's first await, so a reset link it reads is seen.
   watchForRecoveryLink(client);
-  // Likewise, so the session it reads from the address is reported.
+  // Likewise, so the session it reads from the address is reported, and
+  // Apple's refresh token on it kept for revoking.
   watchSignIns(client);
+  watchForAppleRefreshToken(client);
   return client;
 }
