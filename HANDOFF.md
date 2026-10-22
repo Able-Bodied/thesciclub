@@ -60,10 +60,14 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
-  (2026-10-21). Push only once the owner has read them **and** that address
-  receives mail (MX at Spaceship, held by someone else). Then paste
-  `https://thesciclub.com/delete-account` into Play's Data safety form. A
-  lawyer should read them: injury details are health information.
+  (2026-10-21). They say deleting erases sign-in records, so
+  `20261022100000` (deletion also clears `auth.audit_log_entries`; probe
+  `sign-in-log-forgotten.sql`) goes live first: `db push --linked
+  --dry-run`, then the push. The client only once the owner has read the
+  pages **and** that address receives mail (MX at Spaceship, held by
+  someone else). Then paste `https://thesciclub.com/delete-account` into
+  Play's Data safety form. A lawyer should read them: injury details are
+  health information.
 
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
