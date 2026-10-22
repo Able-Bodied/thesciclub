@@ -1,5 +1,6 @@
+import { Capacitor } from '@capacitor/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isStandalone } from '@/lib/standalone';
+import { isNative, isStandalone } from '@/lib/standalone';
 
 function displayModeIs(standalone: boolean) {
   vi.stubGlobal(
@@ -11,6 +12,8 @@ function displayModeIs(standalone: boolean) {
 afterEach(() => {
   Reflect.deleteProperty(navigator, 'standalone');
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(window, 'androidBridge');
 });
 
 describe('isStandalone', () => {
@@ -31,5 +34,22 @@ describe('isStandalone', () => {
     expect(isStandalone()).toBe(true);
     displayModeIs(false);
     expect(isStandalone()).toBe(false);
+  });
+});
+
+describe('isNative', () => {
+  it('is false on the website', () => {
+    expect(isNative()).toBe(false);
+  });
+
+  it('is true inside the store app, whose bridge Capacitor finds', () => {
+    Object.defineProperty(window, 'androidBridge', { configurable: true, value: {} });
+    expect(isNative()).toBe(true);
+  });
+
+  it("asks Capacitor's own isNativePlatform", () => {
+    const asked = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    expect(isNative()).toBe(true);
+    expect(asked).toHaveBeenCalled();
   });
 });

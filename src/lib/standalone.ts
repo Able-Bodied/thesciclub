@@ -1,3 +1,15 @@
+import { Capacitor } from '@capacitor/core';
+
+/**
+ * The store app (Capacitor), on an iPhone or Android, rather than a browser
+ * tab or the Home Screen app. Whatever only makes sense in a browser asks this
+ * first and stays out of the app: installing, web push, the service worker,
+ * the Home Screen sign-in hand-off. The website never sees true.
+ */
+export function isNative(): boolean {
+  return Capacitor.isNativePlatform();
+}
+
 /**
  * Whether this is the club opened from the Home Screen, not a browser tab.
  *
