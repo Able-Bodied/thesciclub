@@ -113,6 +113,7 @@ const check = (label, actual, expected) => {
 
 await requireStorage();
 
+await root.from('chat_reports').delete().eq('reporter_id', OTHER);
 await root.from('members').delete().in('id', [ADMIN, MEMBER, OTHER]);
 await root
   .from('members')
@@ -266,6 +267,68 @@ check(
   `${firstTry.error?.message ?? 'stored'} / ${secondTry.error?.message ?? 'stored'}`,
   'stored / stored',
 );
+
+/**
+ * A profile photograph named on a report (20261022130000) cannot be deleted or
+ * overwritten, by the member or by an administrator, and the Storage API says
+ * nothing when it skips it. A photograph nobody reported still can be.
+ */
+console.log('\nA reported profile photograph is kept:\n');
+
+const REPORTED = `${MEMBER}/reported.png`;
+const UNREPORTED = `${MEMBER}/unreported.png`;
+for (const path of [REPORTED, UNREPORTED]) {
+  const { error } = await root.storage
+    .from('photos')
+    .upload(path, PNG, { upsert: true, contentType: 'image/png' });
+  if (error) {
+    console.error(`\n  Could not put ${path} in place: ${error.message}\n`);
+    process.exit(2);
+  }
+}
+await root.from('members').update({ photo_path: REPORTED }).eq('id', MEMBER);
+const reported = await as(OTHER).rpc('report_member', { member: MEMBER, report_note: null });
+if (reported.error) {
+  console.error(`\n  Could not report the profile: ${reported.error.message}\n`);
+  process.exit(2);
+}
+const has = async (name) =>
+  ((await root.storage.from('photos').list(MEMBER)).data ?? []).some((o) => o.name === name);
+
+await as(MEMBER).storage.from('photos').remove([REPORTED]);
+check('the member cannot delete the photograph named on a report', await has('reported.png'), true);
+
+await as(ADMIN).storage.from('photos').remove([REPORTED]);
+check('nor can an administrator', await has('reported.png'), true);
+
+const overwrite = await as(MEMBER)
+  .storage.from('photos')
+  .upload(REPORTED, Buffer.concat([PNG, Buffer.alloc(8)]), {
+    upsert: true,
+    contentType: 'image/png',
+  });
+check('nor overwrite it', overwrite.error !== null, true);
+
+const fresh = await as(MEMBER)
+  .storage.from('photos')
+  .upload(`${MEMBER}/fresh.png`, PNG, { upsert: true, contentType: 'image/png' });
+check('a new photograph under a new name is stored', fresh.error?.code ?? 'stored', 'stored');
+
+await as(MEMBER)
+  .storage.from('photos')
+  .remove([UNREPORTED, `${MEMBER}/fresh.png`]);
+check('a photograph nobody reported can still be deleted', await has('unreported.png'), false);
+check('a member can still delete their new one', await has('fresh.png'), false);
+
+check(
+  'an administrator can still open the reported photograph',
+  await signs(as(ADMIN), REPORTED),
+  true,
+);
+
+// Reports keep their rows when a member goes: clear them first.
+await root.from('chat_reports').delete().eq('profile_id', MEMBER);
+await root.storage.from('photos').remove([REPORTED]);
 
 await root.storage
   .from('photos')
