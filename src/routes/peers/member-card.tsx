@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
@@ -106,7 +107,10 @@ export function MemberCard({ member, onOpen, priority = false }: MemberCardProps
 
 function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
   const { organizations } = useOrganizations();
+  // The small copy draws at once; the photograph covers it once it is in.
+  const small = usePhotoUrl(member.photoPath, 'thumb');
   const photo = usePhotoUrl(member.photoPath);
+  const [loaded, setLoaded] = useState<string | null>(null);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);
   // Every affiliation, as a mark. It was `affiliations[0]` with its name
@@ -134,9 +138,9 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
         {initialsOf(member.displayName)}
       </span>
 
-      {photo ? (
+      {small ? (
         <img
-          src={photo}
+          src={small}
           alt=""
           // The first cards are the screen's largest picture; the rest wait
           // until they are scrolled near.
@@ -146,6 +150,22 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
           className="absolute inset-0 h-full w-full object-cover object-[50%_28%]"
           onError={(e) => {
             e.currentTarget.remove();
+          }}
+        />
+      ) : null}
+      {photo && photo !== small ? (
+        <img
+          src={photo}
+          alt=""
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          // Shown whole once it has loaded, never drawn in over the copy.
+          className={cn(
+            'absolute inset-0 h-full w-full object-cover object-[50%_28%]',
+            loaded === photo ? '' : 'opacity-0',
+          )}
+          onLoad={() => {
+            setLoaded(photo);
           }}
         />
       ) : null}

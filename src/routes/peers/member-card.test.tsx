@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type * as Organizations from '@/lib/organizations';
 import type { Organization } from '@/types/domain';
@@ -12,7 +12,8 @@ const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
 // signing request is refused by the network guard, storage-js turns that into
 // an ordinary error, and the badge quietly draws its short code instead.
 vi.mock('@/lib/photos', () => ({
-  usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed.test/${path}` : null),
+  usePhotoUrl: (path: string | null | undefined, size?: string) =>
+    path ? `https://signed.test/${path}${size === 'thumb' ? '?small' : ''}` : null,
 }));
 
 vi.mock('@/lib/organizations', async (importOriginal) => ({
@@ -205,6 +206,18 @@ describe('MemberCard', () => {
     );
     expect(screen.getByText('Three')).toBeInTheDocument();
     expect(screen.queryByText('Four')).not.toBeInTheDocument();
+  });
+
+  it('draws the small copy at once and the photograph over it once it has loaded', () => {
+    const { container } = render(
+      <MemberCard member={makeMember({ photoPath: 'u1/p.webp' })} onOpen={() => undefined} />,
+    );
+    const small = container.querySelector('img[src="https://signed.test/u1/p.webp?small"]');
+    const full = container.querySelector('img[src="https://signed.test/u1/p.webp"]');
+    expect(small).not.toHaveClass('opacity-0');
+    expect(full).toHaveClass('opacity-0');
+    if (full) fireEvent.load(full);
+    expect(full).not.toHaveClass('opacity-0');
   });
 
   it('renders the initials tile when there is no photo', () => {

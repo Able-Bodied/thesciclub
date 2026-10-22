@@ -38,7 +38,8 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 export function MeHero({ member }: { member: OwnMember }) {
-  const photo = usePhotoUrl(member.photoPath);
+  // An 88px square: the small copy fills it on a 3x screen.
+  const photo = usePhotoUrl(member.photoPath, 'thumb');
   const [from, to] = gradientFor(member.id);
   const age = ageFrom(member.birthDate);
 
