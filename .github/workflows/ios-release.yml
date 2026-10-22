@@ -188,10 +188,10 @@ jobs:
           grep -q 'Apple Distribution' "$SIGNING_DIR/identities.txt" \
             || { echo "::error::No Apple Distribution identity in the .p12"; exit 1; }
 
-      # Profile, build number, archive, export, upload: ios/App/fastlane.
+      # Profile, build number, archive and export: ios/App/fastlane.
       # TMPDIR keeps fastlane's temporary copy of the API key in the runner's
       # temp folder, which the last step empties.
-      - name: Sign, build and upload
+      - name: Sign and build
         working-directory: ios/App
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -205,7 +205,43 @@ jobs:
           FASTLANE_XCODEBUILD_SETTINGS_TIMEOUT: '120'
         run: |
           mkdir -p "$TMPDIR"
-          bundle exec fastlane release
+          bundle exec fastlane release_build
+
+      # What App Privacy's answers rest on: no Facebook SDK in the built app,
+      # bundled or linked. Before the upload, and with no secrets.
+      - name: No Facebook in the app
+        working-directory: ios/App
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apps=(build/TheSciClub.xcarchive/Products/Applications/*.app)
+          [ "${#apps[@]}" -eq 1 ] || { echo "::error::Expected one .app in the archive"; exit 1; }
+          app="${apps[0]}"
+          binary="$app/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Info.plist")"
+          [ -f "$binary" ] || { echo "::error::No executable in $app"; exit 1; }
+          found="$(find "$app" \( -iname '*facebook*' -o -iname 'FBSDK*' -o -iname 'FBAEM*' \) -print)"
+          linked="$(otool -L "$binary" | grep -iE 'facebook|FBSDK|FBAEM' || true)"
+          if [ -n "$found$linked" ]; then
+            echo "::error::The app contains Facebook's SDK:"
+            printf '%s\n' "$found" "$linked"
+            exit 1
+          fi
+          echo "Frameworks: $(ls "$app/Frameworks" 2>/dev/null | tr '\n' ' ')"
+          echo "No Facebook SDK in $(basename "$app")."
+
+      - name: Upload to TestFlight
+        working-directory: ios/App
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          TMPDIR: ${{ runner.temp }}/fastlane-tmp
+          FASTLANE_SKIP_UPDATE_CHECK: '1'
+          FASTLANE_OPT_OUT_USAGE: '1'
+          FASTLANE_SKIP_DOCS: '1'
+        run: |
+          mkdir -p "$TMPDIR"
+          bundle exec fastlane release_upload
 
       # Runs when an earlier step failed or the run was cancelled.
       - name: Remove the keychain and key files

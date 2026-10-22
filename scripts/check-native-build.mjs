@@ -2,7 +2,9 @@
  * Run after `cap sync ios`, by both iOS workflows: the sign-in plugin's
  * Package.swift must not pull in Facebook's SDK, which declares tracking.
  * capacitor.config.ts turns it off, and the plugin's own sync hook comments
- * the lines out; this proves the hook ran.
+ * the lines out; this proves the hook ran. Its product names count too, as
+ * a binary target need not say "facebook". ios-release.yml checks the built
+ * app as well.
  *
  *   node scripts/check-native-build.mjs
  */
@@ -14,10 +16,11 @@ import { dirname, join } from 'node:path';
 const require = createRequire(import.meta.url);
 const plugin = dirname(require.resolve('@capgo/capacitor-social-login/package.json'));
 const manifest = readFileSync(join(plugin, 'Package.swift'), 'utf8');
+const FACEBOOK = /facebook|FBSDK|FacebookCore|FacebookLogin|FBAEM/i;
 
 const live = manifest
   .split('\n')
-  .filter((line) => /facebook/i.test(line) && !line.trim().startsWith('//'));
+  .filter((line) => FACEBOOK.test(line) && !line.trim().startsWith('//'));
 
 if (live.length > 0) {
   console.error('::error::The sign-in plugin still includes Facebook’s SDK:');
