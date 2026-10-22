@@ -2,16 +2,14 @@ import { ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
- * The frame the Privacy Policy and the Terms of Service sit in.
+ * The frame the legal pages sit in.
  *
- * Outside the shell and outside `RequireMember`, because the people who most
- * need to read them have no account yet: somebody on the phone step, and the
- * carrier reviewers who check the text-message registration against them.
- * Its own `main`, as onboarding has, so a route change still has somewhere to
- * put focus.
+ * Outside the shell and outside `RequireMember`: somebody joining reads them
+ * before they have an account, and store reviewers with none at all. Its own
+ * `main`, so a route change still has somewhere to put focus.
  *
  * The way out goes to `/`, which sends a member to Home and anybody else to
- * the welcome screen. Not `navigate(-1)`: the phone step opens these in a new
+ * the welcome screen. Not `navigate(-1)`: onboarding opens these in a new
  * tab, where there is nothing behind them.
  */
 export function LegalPage({
@@ -61,6 +59,25 @@ export function P({ children }: { children: React.ReactNode }) {
 
 export function List({ children }: { children: React.ReactNode }) {
   return <ul className="mt-2.5 list-disc space-y-1.5 pl-5">{children}</ul>;
+}
+
+/** A boxed section ahead of the rest, such as what changed. */
+export function Note({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-[14px] border border-line bg-paper p-4">
+      <h2 className="font-extrabold font-head text-[1.125rem] text-ink leading-snug">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+/** A link to a page outside the club. */
+export function OutsideLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a href={href} className="font-semibold text-emphasis underline">
+      {children}
+    </a>
+  );
 }
 
 /** The address every question about the legal pages goes to. */

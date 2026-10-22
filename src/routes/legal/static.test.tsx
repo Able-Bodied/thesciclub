@@ -26,14 +26,12 @@ describe('the static Privacy Policy', () => {
       'We do not sell or share your email address or phone number with third parties for marketing or promotional purposes.',
     );
     expect(html).toContain('operated by Alfred Shaheen');
-    expect(html).not.toContain('Able Bodied Inc.');
+    expect(html).not.toContain('run by Able Bodied');
   });
 
-  it("carries the carriers' text-message wording in the HTML itself", () => {
-    expect(html).toContain(
-      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
-    );
-    expect(html).toContain('Message and data rates may apply.');
+  it('carries what changed, and no text-message sign-in, in the HTML itself', () => {
+    expect(html).toContain('What changed on');
+    expect(html).not.toContain('Message and data rates may apply.');
   });
 
   it('is not marked noindex, and still starts the app', () => {

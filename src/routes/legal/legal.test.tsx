@@ -37,22 +37,89 @@ describe('the Privacy Policy', () => {
     expect(document.body.textContent).not.toMatch(/run by Able Bodied|nonprofit/);
   });
 
-  // Twilio error 30908: the carriers' sentences, word for word.
-  it('carries the text-message wording carriers ask for', () => {
+  it('says up top who runs the club now and what changed', () => {
     open('/privacy');
-    const section = screen.getByRole('heading', { name: 'Text messages (SMS)' }).parentElement;
+    const note = screen.getByRole('heading', { name: /What changed on/ }).parentElement;
+    if (!note) throw new Error('no note');
+    expect(note).toHaveTextContent(
+      /now operated by Alfred Shaheen, no longer by Able Bodied Inc\./,
+    );
+    expect(note).toHaveTextContent(/Removed: signing in by text message/);
+  });
+
+  // Phone sign-in went 2026-10-10; the text-message section went 2026-10-21.
+  it('has no text-message sign-in', () => {
+    open('/privacy');
+    expect(screen.queryByRole('heading', { name: /Text messages/ })).toBeNull();
+    const page = document.body.textContent;
+    for (const gone of [/sign-in code/i, /code by text/, /Message and data rates/, /STOP/]) {
+      expect(page).not.toMatch(gone);
+    }
+  });
+
+  it('says it sells nothing, shows no ads and tracks nobody across apps', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(
+        'We do not sell your information. There is no advertising in the club, and we do not track you across other apps or websites.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says what the camera, photos and location are used for, and that OpenStreetMap gets a ZIP or position', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', {
+      name: /camera, photos and location/,
+    }).parentElement;
     if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/only when you choose to add a photograph/);
+    expect(section).toHaveTextContent(/only if you ask for it, while joining/);
     expect(section).toHaveTextContent(
-      'We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.',
+      /send the ZIP code, or your device’s position, to OpenStreetMap/,
     );
-    expect(section).toHaveTextContent(
-      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
-    );
-    expect(section).toHaveTextContent(
-      'Text messaging opt-in data and consent will not be shared with any third parties.',
-    );
-    expect(section).toHaveTextContent('Message and data rates may apply.');
-    expect(section).toHaveTextContent(/Text HELP for help and STOP/);
+    expect(section).toHaveTextContent(/Neither the ZIP code nor the position is kept/);
+  });
+
+  it('says links are fetched by the club, and YouTube hears of a video only on play', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Links and videos' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/the club’s own server visits that page once/);
+    expect(section).toHaveTextContent(/your phone contacts nobody when you read it/);
+    expect(section).toHaveTextContent(/YouTube receives anything only when you press play/);
+  });
+
+  it('names Apple and Google as notification services', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Apple’s on an iPhone/);
+    expect(section).toHaveTextContent(/Google’s on Android/);
+  });
+
+  // The owner, 2026-10-16 and 2026-10-20: Stats may name members.
+  it('says what administrators see, Stats included', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', {
+      name: 'What administrators can see',
+    }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/blocks: who blocked whom/);
+    expect(section).toHaveTextContent(/who has read each post and when/);
+    expect(section).toHaveTextContent(/on a phone or\s+tablet, or a computer/);
+  });
+
+  // Google Play requires a way to ask for deletion without the app.
+  it('says how to delete an account in the app and by email, and how long things are kept', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Me → Account → Delete my account/);
+    expect(section).toHaveTextContent(/email hello@thesciclub\.com to ask us to delete/);
+    const kept = screen.getByRole('heading', { name: 'How long we keep it' }).parentElement;
+    if (!kept) throw new Error('no section');
+    expect(kept).toHaveTextContent(/after 90 days/);
+    expect(kept).toHaveTextContent(/Your notifications list: 30 days/);
   });
 
   it('says email and phone number are not sold or shared for marketing', () => {
@@ -72,23 +139,22 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/do not send newsletters or promotions/);
   });
 
-  it('says a phone number is optional, for event hosts and sign-in codes', () => {
+  it('says a phone number is optional, for event hosts, and never signs anybody in', () => {
     open('/privacy');
-    expect(screen.getByText(/A phone number, only if you add one/)).toBeInTheDocument();
-    expect(document.body.textContent).not.toContain('It is never used to sign you in.');
+    const item = screen.getByText(/A phone number, only if you add one/).closest('li');
+    expect(item).toHaveTextContent(/It is never used to sign you in\./);
   });
 
-  // Kinds of provider, which is what the law asks for, and not which companies
-  // (the owner, 2026-10-03).
-  it('says what kinds of provider receive information, without naming companies', () => {
+  // Kinds of infrastructure provider, not which companies (the owner,
+  // 2026-10-03); the ones a member meets in the app are named.
+  it('says what kinds of provider receive information, naming only those a member meets', () => {
     open('/privacy');
-    expect(
-      screen.getByText(
-        /hosting, our database and sign-in, email delivery, text-message delivery, location lookup/,
-      ),
-    ).toBeInTheDocument();
+    const section = screen.getByRole('heading', { name: 'Service providers' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/hosting, our database, file storage and sign-in/);
+    expect(section).toHaveTextContent(/location lookup \(OpenStreetMap\)/);
     const page = document.body.textContent;
-    for (const company of ['Supabase', 'Twilio', 'Netlify', 'OpenStreetMap']) {
+    for (const company of ['Supabase', 'Twilio', 'Netlify', 'Resend', 'GitHub']) {
       expect(page).not.toContain(company);
     }
   });
@@ -103,7 +169,6 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/for that event only/);
     expect(section).toHaveTextContent(/Choosing Interested shares nothing/);
     expect(section).toHaveTextContent(/not to use your details for marketing/);
-    expect(section).toHaveTextContent(/opt-in data and consent are never shared with hosts/);
     expect(screen.queryByText(/It is never shared outside the club/)).toBeNull();
   });
 
