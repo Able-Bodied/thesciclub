@@ -8,6 +8,8 @@ const state = vi.hoisted(() => {
   const counted = {
     tables: {} as Record<string, Record<string, unknown>[]>,
     made: [] as { requests: unknown[] }[],
+    /** Every table read, with the columns asked for. */
+    selects: [] as [string, string][],
   };
   return { ...counted, requests: () => counted.made.reduce((n, db) => n + db.requests.length, 0) };
 });
@@ -15,17 +17,32 @@ vi.mock('@/lib/supabase', () => ({
   getSupabase: () => {
     const db = pagedDatabase(state.tables);
     state.made.push(db);
-    return db;
+    const from = db.from;
+    return {
+      ...db,
+      from: (table: string) => {
+        const query = from(table);
+        const select = query.select;
+        query.select = (...args: unknown[]) => {
+          state.selects.push([table, String(args[0])]);
+          return select();
+        };
+        return query;
+      },
+    };
   },
 }));
 
 beforeEach(() => {
+  // Six tags and a tally on every event, embedded as the read asks for them.
   const events = Array.from({ length: 2005 }, (_, index) => ({
     id: `event-${String(index).padStart(4, '0')}`,
     title: `Event ${index}`,
     description: '',
     start_time: index < 1000 ? '2020-01-01T00:00:00Z' : '2027-01-01T00:00:00Z',
     feed_id: null,
+    event_tags: Array.from({ length: 6 }, (_, tag) => ({ tag_id: `tag-${tag}` })),
+    event_rsvp_counts: [{ going_count: 2, interested_count: 3 }],
   }));
   state.tables = {
     events,
@@ -38,14 +55,6 @@ beforeEach(() => {
       })),
       { id: 'parent', name: 'Sport', slug: 'sport', parent_id: null },
     ],
-    event_tags: events.flatMap(({ id }) =>
-      Array.from({ length: 6 }, (_, tag) => ({ event_id: id, tag_id: `tag-${tag}` })),
-    ),
-    event_rsvp_counts: events.map(({ id }) => ({
-      event_id: id,
-      going_count: 2,
-      interested_count: 3,
-    })),
     data_feeds: [],
   };
 });
@@ -62,6 +71,19 @@ describe('large calendars', () => {
     expect(latest?.id).toBe('event-2004');
     expect(latest?.tags).toHaveLength(6);
     expect(latest?.goingCount).toBe(2);
+  });
+  it('reads the tags and tallies with the events, not after them', async () => {
+    state.selects.length = 0;
+    const { result } = renderHook(() => useEvents({ from: '2026-10-08T00:00:00Z' }));
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    const tables = state.selects.map(([table]) => table);
+    expect(tables).not.toContain('event_tags');
+    expect(tables).not.toContain('event_rsvp_counts');
+    const columns = state.selects.find(([table]) => table === 'events')?.[1] ?? '';
+    expect(columns).toContain('event_tags(tag_id)');
+    expect(columns).toContain('event_rsvp_counts(going_count, interested_count)');
   });
   it('reads a detail by ID even when it is beyond the first API page', async () => {
     const { result } = renderHook(() => useEvents({ id: 'event-2004' }));
