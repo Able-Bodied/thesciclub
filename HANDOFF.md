@@ -49,14 +49,18 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     (`lib/google-in-browser.ts`, `home-screen-handoff`).
   - **Home Screen app**: a signed-in iPhone tab hands the app a single-use
     code by cookie (`lib/home-screen-handoff.ts`).
-- **Checks**: 3,092 tests in 222 files on 2026-10-21; `pnpm check` (alone),
+- **Checks**: 3,155 tests in 225 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
-- **Blocking, not live**: `20261022050000` to `20261022080000` await the
-  owner's `pnpm exec supabase db push --linked --dry-run`, then the push,
-  then the client. Probe: `supabase/tests/member-blocks.sql`.
+- **Blocking, not live**: `20261022050000` to `20261022080000`, and
+  `20261022090000` (the weekly count of blocks, cron `blocks-weekly`), await
+  the owner's `pnpm exec supabase db push --linked --dry-run`, then the push,
+  then `pnpm exec supabase functions deploy push-notify --no-verify-jwt`, then
+  the client. That deploy also lets through `grant_open` and
+  `profile_reminder`, which the function refused until now. Probes:
+  `member-blocks.sql`, `blocks-weekly.sql`.
 
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
@@ -106,8 +110,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 All live but blocking (Open). Migration headers and the files named say how
 and why.
 
-- **Blocking**: profile ••• → Block (`peers/block-sheet.tsx`), Me → Settings
-  → Blocked members, Admin → Reports → Blocks. `member_blocks` is readable by
+- **Blocking**: Block in the ••• of a profile, message, post or reply
+  (`BlockMemberSheet`, `peers/block-sheet.tsx`), Me → Settings → Blocked
+  members, Admin → Reports → Blocks (`#blocks`), where Monday's count leads;
+  the New reports switch covers it. `member_blocks` is readable by
   the blocker only; content hides one way through `my_blocked_member_ids()`,
   Peers both ways in the views; `members_blocked()` is never granted.
 
@@ -306,8 +312,8 @@ and why.
 ## Shared pieces, not to write twice
 
 `member-avatar.tsx`, `SegmentPills`, `composer.tsx`, `ReportControl` /
-`report-sheet.tsx`, `FilterSheetShell`, `useDialogFocus`, `useAnnounce`,
-`SmallButton` / `ReasonField` (`admin/controls.tsx`), `lib/chat/time.ts`,
+`report-sheet.tsx`, `BlockMemberSheet`, `FilterSheetShell`, `useDialogFocus`,
+`useAnnounce`, `SmallButton` / `ReasonField` (`admin/controls.tsx`), `lib/chat/time.ts`,
 `describeError` / `describeThrown`, `organization-badge.tsx`, `ClubMark` /
 `ClubWordmark` (the owner's SVGs, never redrawn), `DateFields` /
 `lib/date-parts.ts` (every date as typed boxes; only the event form opens the
