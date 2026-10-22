@@ -561,6 +561,23 @@ describe('blocking from a message', () => {
     expect(await screen.findByText('You blocked Jan.')).toBeInTheDocument();
   });
 
+  it('leaves for Chat when it is a direct conversation with them, which is hidden whole', async () => {
+    const user = userEvent.setup();
+    db.messages = [message({ id: 'm1', body: 'From Jan.' })];
+    render(
+      <MemoryRouter initialEntries={['/chat/t/th1']}>
+        <Routes>
+          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+          <Route path="/chat" element={<p>The chat list</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Block Jan' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Jan?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Block Jan' }));
+    expect(await screen.findByText('The chat list')).toBeInTheDocument();
+  });
+
   it('keeps the message and the dialog, with the reason, when the block fails', async () => {
     const user = userEvent.setup();
     blocks.block.mockResolvedValue({ ok: false, error: 'They were not blocked.' });

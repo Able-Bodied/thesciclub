@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { FormerMemberAvatar, GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { motionReduced } from '@/lib/accessibility';
@@ -134,6 +134,7 @@ export default function ThreadPage() {
   // Block from a message's •••: hidden here at once, and by the database on
   // the next read. Focus then goes to the heading, as the bubble is gone.
   const blocks = useMyBlocks();
+  const navigate = useNavigate();
   const [blockedHere, setBlockedHere] = useState<ReadonlySet<string>>(new Set());
   const [blocking, setBlocking] = useState<{ id: string; name: string } | null>(null);
   const [blockedCount, setBlockedCount] = useState(0);
@@ -588,6 +589,11 @@ export default function ThreadPage() {
             setBlocking(null);
           }}
           onBlocked={() => {
+            // A direct conversation with them is hidden whole (20261022060000).
+            if (thread.kind === 'direct' && thread.otherMemberId === blocking.id) {
+              void navigate('/chat', { replace: true });
+              return;
+            }
             setBlockedHere((ids) => new Set(ids).add(blocking.id));
             if (replyingTo?.authorId === blocking.id) setReplyingTo(null);
             setBlocking(null);
