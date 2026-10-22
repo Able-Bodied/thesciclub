@@ -8,15 +8,27 @@ const state = vi.hoisted(() => ({
   onChange: null as ((event: string, session: { user: { id: string } } | null) => void) | null,
   lookup: vi.fn(),
   reject: false,
+  /** A restored session announcing itself before getSession answers. */
+  restoring: false,
 }));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     auth: {
-      getSession: () => Promise.resolve({ data: { session: { user: { id: 'me' } } }, error: null }),
+      getSession: () =>
+        new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({ data: { session: { user: { id: 'me' } } }, error: null });
+          }, 0);
+        }),
       onAuthStateChange: (
         callback: (event: string, session: { user: { id: string } } | null) => void,
       ) => {
         state.onChange = callback;
+        if (state.restoring) {
+          queueMicrotask(() => {
+            callback('SIGNED_IN', { user: { id: 'me' } });
+          });
+        }
         return { data: { sub: null, subscription: { unsubscribe: vi.fn() } } };
       },
     },
@@ -42,6 +54,7 @@ vi.mock('@/lib/supabase', () => ({
 beforeEach(() => {
   state.error = { message: 'Backend unavailable' };
   state.reject = false;
+  state.restoring = false;
   state.lookup.mockClear();
 });
 
@@ -98,5 +111,26 @@ describe('membership outages', () => {
       await Promise.resolve();
     });
     await waitFor(() => expect(screen.getByText('Join screen')).toBeInTheDocument());
+  });
+
+  it('reads the row once when a restored session announces itself first', async () => {
+    state.error = null;
+    state.restoring = true;
+    render(
+      <MemoryRouter initialEntries={['/home']}>
+        <Routes>
+          <Route
+            path="/home"
+            element={
+              <RequireMember>
+                <p>Home</p>
+              </RequireMember>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByText('Home');
+    expect(state.lookup).toHaveBeenCalledTimes(1);
   });
 });

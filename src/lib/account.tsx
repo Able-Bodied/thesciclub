@@ -152,6 +152,10 @@ export function useOwnAccount({
     let revision = attempt;
     // Whose membership this run has read or is reading.
     let reading: string | null | undefined;
+    // getSession waits for the client to restore its session, and answers
+    // for whatever it announces meanwhile (a restored session's SIGNED_IN
+    // was a second read of the same row at every start).
+    let answered = false;
     async function resolve(userId: string | null) {
       reading = userId;
       const request = ++revision;
@@ -192,6 +196,7 @@ export function useOwnAccount({
     void supabase.auth
       .getSession()
       .then(({ data, error }) => {
+        answered = true;
         if (error) {
           if (!aborted())
             fail({ status: 'error', userId: null, isAdmin: false, displayName: null });
@@ -200,6 +205,7 @@ export function useOwnAccount({
         void resolve(data.session?.user.id ?? null);
       })
       .catch(() => {
+        answered = true;
         if (!aborted()) fail({ status: 'error', userId: null, isAdmin: false, displayName: null });
       });
 
@@ -210,7 +216,7 @@ export function useOwnAccount({
       // refresh TOKEN_REFRESHED, for the same person: their row has not
       // changed, so only another person, a sign-out, or their own account
       // changing reads again.
-      if (event === 'INITIAL_SESSION') return;
+      if (event === 'INITIAL_SESSION' || !answered) return;
       const userId = session?.user.id ?? null;
       if (event !== 'USER_UPDATED' && userId !== null && userId === reading) return;
       void resolve(userId);
