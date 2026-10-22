@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import SHELL from '../index.html?raw';
+import { nativeCsp, webCsp } from '../native-csp';
 import NETLIFY from '../netlify.toml?raw';
 
 /**
@@ -83,5 +84,56 @@ describe('the Content-Security-Policy', () => {
 
   it('still lets no other site frame the club', () => {
     expect(directive('frame-ancestors')).toEqual(["'none'"]);
+  });
+});
+
+/**
+ * The store app's policy (native-csp.ts), written into its index.html: the
+ * website's, less what the app does not load and what a <meta> ignores.
+ */
+describe("the store app's Content-Security-Policy", () => {
+  const app = nativeCsp(webCsp(NETLIFY));
+
+  function appDirective(name: string): string[] {
+    const found = app
+      .split(';')
+      .map((part) => part.trim().split(/\s+/))
+      .find(([key]) => key === name);
+    return found?.slice(1) ?? [];
+  }
+
+  it("allows index.html's inline scripts by the same hashes, and nothing wholesale", async () => {
+    const allowed = appDirective('script-src');
+    for (const script of inline) expect(allowed).toContain(await sha256(script));
+    expect(allowed).not.toContain("'unsafe-inline'");
+    expect(app).not.toContain("'unsafe-eval'");
+  });
+
+  it('names the app’s own capacitor://localhost beside every self', () => {
+    for (const name of ['default-src', 'script-src', 'connect-src', 'img-src', 'font-src']) {
+      expect(appDirective(name)).toEqual(
+        expect.arrayContaining(["'self'", 'capacitor://localhost']),
+      );
+    }
+  });
+
+  it('reaches Supabase and the geocoder, and nothing from Google or YouTube', () => {
+    expect(appDirective('connect-src')).toEqual([
+      "'self'",
+      'capacitor://localhost',
+      'https://erijdvqnxavwezsbbojv.supabase.co',
+      'wss://erijdvqnxavwezsbbojv.supabase.co',
+      'https://nominatim.openstreetmap.org',
+    ]);
+    expect(app).not.toContain('google.com');
+    expect(app).not.toContain('youtube');
+    expect(appDirective('frame-src')).toEqual(["'none'"]);
+    expect(appDirective('object-src')).toEqual(["'none'"]);
+  });
+
+  it('leaves out what a <meta> ignores or the app has not', () => {
+    expect(appDirective('frame-ancestors')).toEqual([]);
+    expect(appDirective('worker-src')).toEqual([]);
+    expect(appDirective('manifest-src')).toEqual([]);
   });
 });

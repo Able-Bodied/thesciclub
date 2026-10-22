@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const auth = vi.hoisted(() => ({
@@ -126,6 +127,29 @@ describe('signInWithEmail', () => {
     auth.error = { message: 'Email not confirmed', code: 'email_not_confirmed' };
     const result = await signInWithEmail('a@example.com', 'pw');
     expect(result).toMatchObject({ ok: false, unconfirmed: true });
+  });
+});
+
+describe('in the store app', () => {
+  it('has every emailed link come back to thesciclub.com, keeping its path', async () => {
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    try {
+      window.history.replaceState(null, '', '/join?next=%2Fchat%2Ft%2Fshared');
+      await signUpWithEmail('dana@example.com', 'a long password');
+      await resendConfirmation('dana@example.com');
+      await sendPasswordReset('dana@example.com');
+      const sent = (i: number): unknown[] => auth.calls[i]?.args ?? [];
+      const up = sent(0)[0] as { options: { emailRedirectTo: string } };
+      const again = sent(1)[0] as { options: { emailRedirectTo: string } };
+      const reset = sent(2)[1] as { redirectTo: string };
+      expect(up.options.emailRedirectTo).toMatch(
+        /^https:\/\/thesciclub\.com\/join\?confirmed=1&next=/,
+      );
+      expect(again.options.emailRedirectTo).toMatch(/^https:\/\/thesciclub\.com\/join\?/);
+      expect(reset.redirectTo).toBe('https://thesciclub.com/reset-password');
+    } finally {
+      native.mockRestore();
+    }
   });
 });
 

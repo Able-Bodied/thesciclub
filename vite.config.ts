@@ -1,15 +1,38 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import type { Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { configDefaults, defineConfig } from 'vitest/config';
+import { nativeCsp, webCsp } from './native-csp.ts';
+
+/** The policy as a <meta> right after the charset, before the inline scripts it allows. */
+function nativeCspPlugin(): Plugin {
+  const charset = '<meta charset="UTF-8" />';
+  return {
+    name: 'native-csp',
+    transformIndexHtml(html) {
+      const policy = nativeCsp(webCsp(readFileSync('netlify.toml', 'utf8')));
+      if (!policy || !html.includes(charset)) throw new Error('native-csp: nothing to write');
+      return html.replace(
+        charset,
+        `${charset}\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`,
+      );
+    },
+  };
+}
 
 // https://vite.dev/config/
-export default defineConfig({
+// `--mode native` builds the store app's copy (capacitor.config.ts): no
+// service worker, its own folder, and the policy native-csp.ts writes.
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
+    ...(mode === 'native' ? [nativeCspPlugin()] : []),
     VitePWA({
+      disable: mode === 'native',
       registerType: 'autoUpdate',
       // Registered from src/main.tsx once the first screen has had its turn:
       // the generated script registered on `load`, when Home's reads start,
@@ -140,6 +163,7 @@ export default defineConfig({
     ...(process.env.TUNNEL ? { hmr: { protocol: 'wss', clientPort: 443 } } : {}),
   },
   build: {
+    ...(mode === 'native' ? { outDir: 'dist-native' } : {}),
     rolldownOptions: {
       output: {
         codeSplitting: {
@@ -163,6 +187,6 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
-    exclude: [...configDefaults.exclude, '.claude/**'],
+    exclude: [...configDefaults.exclude, '.claude/**', 'dist-native/**', 'ios/**', 'android/**'],
   },
-});
+}));

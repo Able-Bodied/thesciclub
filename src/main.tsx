@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App, { preloadScreen } from '@/App';
 import { takeHandoff } from '@/lib/home-screen-handoff';
+import { registerWorker } from '@/lib/register-worker';
 import { stayCurrent } from '@/lib/stay-current';
 import '@/index.css';
 
@@ -24,25 +25,7 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload();
 });
 
-// The service worker, after the first screen: it precaches the whole app,
-// which on a first visit competes with the screen's own reads. Load, then
-// the first idle moment (or 5 s), is late enough and costs nothing after the
-// first visit, when a worker is already in control.
-if ('serviceWorker' in navigator) {
-  const register = () => {
-    void navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => undefined);
-  };
-  const whenIdle = () => {
-    if (typeof (window.requestIdleCallback as unknown) === 'function') {
-      window.requestIdleCallback(register, { timeout: 5000 });
-    } else {
-      setTimeout(register, 3000);
-    }
-  };
-  if (navigator.serviceWorker.controller) register();
-  else if (document.readyState === 'complete') whenIdle();
-  else window.addEventListener('load', whenIdle, { once: true });
-}
+registerWorker();
 
 preloadScreen(window.location.pathname);
 

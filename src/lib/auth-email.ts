@@ -1,6 +1,7 @@
 import { describeError } from '@/lib/describe-error';
 import { heldInviteToken } from '@/lib/invite-token';
 import { signInDestination } from '@/lib/sign-in-destination';
+import { siteOrigin } from '@/lib/site-origin';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -53,7 +54,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
     email: cleanEmail(email),
     password,
     options: {
-      emailRedirectTo: `${window.location.origin}/join?${query}`,
+      emailRedirectTo: `${siteOrigin()}/join?${query}`,
       ...(token ? { data: { invite_token: token } } : {}),
     },
   });
@@ -105,7 +106,7 @@ export async function signInOnceConfirmed(
 /** Says the same whether or not the address has an account. */
 export async function sendPasswordReset(email: string): Promise<Result> {
   const { error } = await getSupabase().auth.resetPasswordForEmail(cleanEmail(email), {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: `${siteOrigin()}/reset-password`,
   });
   return error
     ? { ok: false, error: describeError(error, 'The email was not sent. Try again in a minute.') }
@@ -118,7 +119,7 @@ export async function resendConfirmation(email: string): Promise<Result> {
   const { error } = await getSupabase().auth.resend({
     type: 'signup',
     email: cleanEmail(email),
-    options: { emailRedirectTo: `${window.location.origin}/join?${query}` },
+    options: { emailRedirectTo: `${siteOrigin()}/join?${query}` },
   });
   return error
     ? { ok: false, error: describeError(error, 'The email was not sent. Try again in a minute.') }

@@ -53,7 +53,21 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     (`lib/google-in-browser.ts`, `home-screen-handoff`).
   - **Home Screen app**: a signed-in iPhone tab hands the app a single-use
     code by cookie (`lib/home-screen-handoff.ts`).
-- **Checks**: 3,204 tests in 226 files on 2026-10-22; `pnpm check` (alone),
+- **Store app** (Capacitor 8, `com.thesciclub.app`, iPhone only; Android
+  second): the web build bundled, never loaded from the site.
+  `pnpm native:sync` builds `dist-native` (`vite build --mode native`: no
+  service worker, its own CSP `<meta>` from `native-csp.ts`) and copies it
+  into `ios/` and `android/`; `pnpm native:assets` remakes icons and splash
+  from `assets/`. iOS uses Swift Package Manager; no Mac here, so
+  `.github/workflows/ios-build-check.yml` builds it unsigned for the
+  Simulator, in Alfredx48/TheSciClub only. `isNative()`
+  (`lib/standalone.ts`) keeps out of the app everything browser-only:
+  worker and reload, web push, install nudge and steps, the Home Screen
+  hand-off, Google, Apple and passkeys (until native sign-in). Links made
+  for others use `siteOrigin()`; the rest of the shell (splash, status bar,
+  back, outside links, iPhone Text Size) is `lib/native-shell.ts`. Fake it in
+  a browser with `window.CapacitorCustomPlatform = { name: 'ios' }`.
+- **Checks**: 3,255 tests in 230 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -83,6 +97,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   someone else). Then paste `https://thesciclub.com/delete-account` into
   Play's Data safety form. A lawyer should read them: injury details are
   health information.
+
+- **Store app, still to build**: native Google and Apple sign-in (then
+  retire the Home Screen pairing), native push, Universal Links and App
+  Links, signing and upload; the demo reviewers run live
+  (`scripts/demo-reviewers.mjs --live`). Never run on a device: Text
+  Size, the CSP under WebKit, Nominatim with the app's User-Agent.
 
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
@@ -275,7 +295,7 @@ All live. Migration headers and the files named say how and why.
   `Notification.permission` in an init script.
 - **CSP** (`netlify.toml`): `index.html`'s two inline scripts by hash and the
   Supabase host. `src/csp.test.ts` gives the new hash; a new outside host goes
-  there too.
+  there too, and reaches the store app's policy by itself (`native-csp.ts`).
 - **Netlify**: `pnpm exec netlify … --filter thesciclub`. Verify a deploy by
   grepping the live bundle for a string only the new code has.
 - **Ingest**: `.github/workflows/event-ingest.yml`, daily 04:10 UTC from

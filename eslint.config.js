@@ -7,7 +7,16 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'node_modules', 'src/components/ui/**', '.claude/worktrees/**'],
+    ignores: [
+      'dist',
+      'dist-native',
+      'ios',
+      'android',
+      'coverage',
+      'node_modules',
+      'src/components/ui/**',
+      '.claude/worktrees/**',
+    ],
   },
   {
     files: ['**/*.{ts,tsx}'],

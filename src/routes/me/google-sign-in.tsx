@@ -12,6 +12,7 @@ import {
   loadGoogleIdentity,
   unlinkGoogle,
 } from '@/lib/google-sign-in';
+import { isNative } from '@/lib/standalone';
 import { CARD_BUTTON, SignInCard } from '@/routes/me/sign-in-card';
 
 /**
@@ -140,6 +141,8 @@ export function GoogleSignIn({
   }
 
   if (identity === undefined) return null;
+  // Linking leaves for Google, which cannot come back into the store app.
+  if (!identity && isNative()) return null;
   const email = identity ? googleEmail(identity) : null;
 
   return (

@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -188,5 +189,25 @@ describe('the iPhone steps match the phones', () => {
     expect(sheet).toHaveTextContent('Open thesciclub.com in Safari.');
     expect(sheet).toHaveTextContent('View More');
     expect(sheet).not.toHaveTextContent('at the top left beside the address');
+  });
+});
+
+describe('in the store app', () => {
+  it('never nudges, on an iPhone or on Android', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    browserIs(IPHONE_SAFARI);
+    const view = renderAfterWait();
+    expect(view.container).toBeEmptyDOMElement();
+    view.unmount();
+    browserIs(ANDROID);
+    expect(renderAfterWait().container).toBeEmptyDOMElement();
+  });
+
+  it('has no Home Screen steps on Me', () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    browserIs(IPHONE_SAFARI);
+    const { container } = render(<InstallSettings />);
+    expect(container).toBeEmptyDOMElement();
+    expect(screen.queryByText('Home Screen')).toBeNull();
   });
 });

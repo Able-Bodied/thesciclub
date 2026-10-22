@@ -1,4 +1,5 @@
 import { describeError } from '@/lib/describe-error';
+import { isNative } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -24,6 +25,8 @@ export function passkeysEnabled(): boolean {
 
 /** On, and this browser has WebAuthn. */
 export function passkeysAvailable(): boolean {
+  // The store app's page is not thesciclub.com, which the passkeys belong to.
+  if (isNative()) return false;
   return passkeysEnabled() && typeof window !== 'undefined' && 'PublicKeyCredential' in window;
 }
 

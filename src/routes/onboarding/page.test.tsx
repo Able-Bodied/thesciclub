@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -1362,6 +1363,34 @@ describe('Google, Apple and passkeys', () => {
       expect(leadingWayIn('android', true)).toBe('google');
       expect(leadingWayIn('desktop', true)).toBe('both');
       expect(leadingWayIn('in-app', true)).toBe('both');
+    });
+  });
+
+  describe('in the store app, until it signs in to them natively', () => {
+    let native: { mockRestore: () => void } | null = null;
+    afterEach(() => {
+      native?.mockRestore();
+    });
+
+    it('offers only the email and password, on both doors, and says how to make one', async () => {
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '1');
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
+      native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+      expect(screen.queryByRole('button', { name: /Google|Apple/ })).toBeNull();
+      expect(screen.queryByText('or join with your email')).toBeNull();
+      expect(screen.getByLabelText('Email')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Already a member? Sign in' }));
+      expect(screen.queryByRole('button', { name: /Google|Apple|passkey/ })).toBeNull();
+      expect(
+        screen.getByText(/Joined with Google or Apple\? Choose Forgot password/),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Forgot password?' })).toBeInTheDocument();
     });
   });
 

@@ -12,6 +12,7 @@ import {
   snoozeNudge,
   useInstallPrompt,
 } from '@/lib/install';
+import { isNative } from '@/lib/standalone';
 
 /**
  * A nudge to put the club on the Home Screen, for somebody using it in a
@@ -32,9 +33,14 @@ import {
  * Only on mobile browsers (the owner, 2026-10-10), regardless of viewport
  * width: narrowing a desktop window must not show it, and a wide phone
  * must still offer installation. Not in the installed app or the first moments
- * after a screen opens, so it is not the first thing anybody sees.
+ * after a screen opens, so it is not the first thing anybody sees. Never in
+ * the store app, which is already installed.
  */
 export function InstallNudge() {
+  return isNative() ? null : <BrowserInstallNudge />;
+}
+
+function BrowserInstallNudge() {
   const { canPrompt, installed, prompt } = useInstallPrompt();
   const [platform] = useState<InstallPlatform>(() => currentInstallPlatform());
   const [ready, setReady] = useState(false);
@@ -205,9 +211,14 @@ export function InstallSheet({
 
 /**
  * The same steps, always reachable from Me, then Settings: for somebody who
- * closed the nudge, or who is on a computer. Nothing in the installed app.
+ * closed the nudge, or who is on a computer. Nothing in the installed app or
+ * the store app.
  */
 export function InstallSettings() {
+  return isNative() ? null : <BrowserInstallSettings />;
+}
+
+function BrowserInstallSettings() {
   const { canPrompt, installed, prompt } = useInstallPrompt();
   const [platform] = useState<InstallPlatform>(() => currentInstallPlatform());
   const [showing, setShowing] = useState(false);

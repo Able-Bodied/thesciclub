@@ -9,6 +9,8 @@ import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import { passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
+import { isNative } from '@/lib/standalone';
+import { cn } from '@/lib/utils';
 import { Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { OnboardingData } from '@/routes/onboarding/types';
 
@@ -23,7 +25,8 @@ import type { OnboardingData } from '@/routes/onboarding/types';
  * Apple and passkeys are shown only when their switches are on
  * (VITE_APPLE_SIGN_IN, VITE_PASSKEYS), and a passkey only in a browser that
  * can use one. Which of Google and Apple leads depends on the device
- * (`leadingWayIn`).
+ * (`leadingWayIn`). The store app shows neither until it signs in to them
+ * natively: Google's widget and Apple's web page cannot come back into it.
  */
 
 interface FieldsProps {
@@ -186,15 +189,29 @@ export function SignInStep({
   return (
     <>
       <Question>Welcome back</Question>
-      <Sub>Sign in the way you joined.</Sub>
+      {isNative() ? (
+        <Sub>
+          Sign in with your email and password. Joined with Google or Apple? Choose Forgot password
+          to make one.
+        </Sub>
+      ) : (
+        <Sub>Sign in the way you joined.</Sub>
+      )}
       {notice ? (
         <p role="status" className="mt-3 text-[0.84375rem] text-ink2 leading-[1.5]">
           {notice}
         </p>
       ) : null}
-      <SocialButtons mode="signin" ways={ways} />
-      <Divider>or use your email</Divider>
-      <label htmlFor="email" className="block font-bold text-[0.8125rem] text-ink">
+      {isNative() ? null : (
+        <>
+          <SocialButtons mode="signin" ways={ways} />
+          <Divider>or use your email</Divider>
+        </>
+      )}
+      <label
+        htmlFor="email"
+        className={cn('block font-bold text-[0.8125rem] text-ink', isNative() && 'mt-5')}
+      >
         Email
       </label>
       <Field
@@ -269,9 +286,16 @@ export function JoinStep({
           'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'
         )}
       </Sub>
-      <SocialButtons mode="join" ways={ways} />
-      <Divider>or join with your email</Divider>
-      <label htmlFor="email" className="block font-bold text-[0.8125rem] text-ink">
+      {isNative() ? null : (
+        <>
+          <SocialButtons mode="join" ways={ways} />
+          <Divider>or join with your email</Divider>
+        </>
+      )}
+      <label
+        htmlFor="email"
+        className={cn('block font-bold text-[0.8125rem] text-ink', isNative() && 'mt-5')}
+      >
         Email
       </label>
       <Field

@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHECK_EVERY_MS, stayCurrent } from '@/lib/stay-current';
 
@@ -125,5 +126,20 @@ describe('catching up when a new version takes over', () => {
     expect(() => {
       stayCurrent({ container: undefined })();
     }).not.toThrow();
+  });
+});
+
+describe('in the store app', () => {
+  it('neither looks for a new version nor reloads: the store updates it', async () => {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    const { container, update, takeOver } = fakeWorkers(true);
+    const reload = vi.fn();
+    stop = stayCurrent({ container, reload });
+    setVisibility('hidden');
+    setVisibility('visible');
+    takeOver();
+    await Promise.resolve();
+    expect(update).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
   });
 });

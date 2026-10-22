@@ -1,4 +1,5 @@
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { siteOrigin } from '@/lib/site-origin';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -44,7 +45,7 @@ export function forgetQrCode(): void {
 }
 
 /** What the code opens: the same address whether scanned or shared. */
-export function qrJoinUrl(code: string, origin: string = window.location.origin): string {
+export function qrJoinUrl(code: string, origin: string = siteOrigin()): string {
   return `${origin}/join?${new URLSearchParams({ [QR_PARAM]: code }).toString()}`;
 }
 

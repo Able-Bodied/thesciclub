@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { currentInstallPlatform } from '@/lib/install';
 import { useSession } from '@/lib/session';
 import { hintSignIn } from '@/lib/sign-in-record';
-import { isStandalone } from '@/lib/standalone';
+import { isNative, isStandalone } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -53,6 +53,7 @@ export function forgetHandoff(): void {
 
 /** An iPhone or iPad browser tab, whose sign-in the Home Screen app would not share. */
 export function handoffApplies(): boolean {
+  if (isNative()) return false;
   return currentInstallPlatform().startsWith('ios') && !isStandalone();
 }
 
@@ -123,7 +124,8 @@ export function LeaveHomeScreenHandoff(): null {
  * than at the welcome screen.
  */
 export async function takeHandoff(): Promise<'none' | 'signed-in' | 'refused'> {
-  if (!isStandalone()) return 'none';
+  // Never in the store app, which is to sign in natively (F6 to F9).
+  if (isNative() || !isStandalone()) return 'none';
   const code = heldHandoff();
   if (!code) return 'none';
   forgetHandoff();

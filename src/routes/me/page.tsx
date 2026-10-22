@@ -12,6 +12,7 @@ import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
 import { useInvitePermissions } from '@/lib/invite-permissions';
 import { useOwnMember } from '@/lib/members';
+import { isNative } from '@/lib/standalone';
 import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
@@ -396,7 +397,9 @@ export default function MePage() {
         {tab === 'settings' ? (
           <TabPanel id="me" value="settings">
             <p className="text-[0.875rem] text-ink2 leading-[1.5]">
-              Display, notifications and installing apply to this phone or computer only.
+              {isNative()
+                ? 'Display applies to this phone only.'
+                : 'Display, notifications and installing apply to this phone or computer only.'}
             </p>
             {/* Display first and always open: it is what somebody who finds
                 the club hard to read comes here for. */}
