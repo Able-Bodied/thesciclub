@@ -54,6 +54,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Blocking, not live**: `20261022050000` to `20261022080000` await the
+  owner's `pnpm exec supabase db push --linked --dry-run`, then the push,
+  then the client. Probe: `supabase/tests/member-blocks.sql`.
+
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
   still there with no member. Whoever is invited again can sign in with their
@@ -99,7 +103,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Built, and where to look
 
-All live. Migration headers and the files named say how and why.
+All live but blocking (Open). Migration headers and the files named say how
+and why.
+
+- **Blocking**: profile ••• → Block (`peers/block-sheet.tsx`), Me → Settings
+  → Blocked members, Admin → Reports → Blocks. `member_blocks` is readable by
+  the blocker only; content hides one way through `my_blocked_member_ids()`,
+  Peers both ways in the views; `members_blocked()` is never granted.
 
 - **Joining**: invites are emailed links (`send-invite`) that fill in their
   address (`invite_address_for_token`). A refused sign-up goes straight to the
