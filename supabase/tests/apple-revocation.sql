@@ -193,7 +193,17 @@ rollback to savepoint no_secret;
 reset role;
 
 \echo ''
-\echo '== 17c. ...and changed nothing: no try counted, none claimed (expect 3 | 0 | 0) =='
+\echo '== 17c. a wrong secret, its refusal caught in place so any claim would stay: nothing claimed, no try counted (expect NOTICE: refused: Not the database., then 3 | 0 | 0) =='
+set local role service_role;
+do $$
+begin
+  perform * from public.apple_revocations_due('not-the-secret');
+  raise notice 'claimed without the secret';
+exception when insufficient_privilege then
+  raise notice 'refused: %', sqlerrm;
+end;
+$$;
+reset role;
 select count(*) as queued, sum(attempts) as attempts, count(last_tried_at) as tried
   from private.apple_revocations where refresh_token like 'rt-%';
 
