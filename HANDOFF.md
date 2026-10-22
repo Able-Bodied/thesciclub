@@ -58,6 +58,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Profile reports, not live** (2026-10-22): `20261022130000` goes live
+  before the client (`db push --linked --dry-run` first). Until the Terms
+  stop saying a profile can only be reported by email, and Privacy and
+  `/delete-account` say a profile report keeps its copy of the profile
+  (name, photograph and words) after deletion, they are wrong; the legal
+  pages are the owner's to change.
+
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
   (2026-10-21). They say deleting erases sign-in records, so
@@ -122,6 +129,12 @@ All live. Migration headers and the files named say how and why.
   the blocker only; content hides one way through `my_blocked_member_ids()`,
   Peers both ways in the views; `members_blocked()` is never granted.
   Probes: `member-blocks.sql`, `blocks-weekly.sql`.
+- **Profile reports**: Report beside Block in a profile's ••• (`report_member`,
+  `ReportSheet kind="profile"`), a copy in `chat_reports.profile_snapshot`,
+  listed under Admin → Reports as a profile report. The photograph path is
+  kept like a chat photograph: no delete or overwrite while named, so each
+  upload is a new file name (`savePhoto`). Probe: `profile-reports.sql`;
+  storage steps in `pnpm check-photo-policy`.
 
 - **Joining**: invites are emailed links (`send-invite`) that fill in their
   address (`invite_address_for_token`). A refused sign-up goes straight to the
