@@ -20,9 +20,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   empty `git log --oneline origin/main..HEAD` means nothing is unreleased. The
   agent's sandbox refuses `git push`: the owner runs it.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261022030000` is live (2026-10-21). Edge functions: `push-notify`,
-  `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`
-  (`verify_jwt` off).
+  `20261022090000` is live (2026-10-21), blocking included. Edge functions:
+  `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
+  too), `link-preview`, `send-invite`, `sign-in-reminder`,
+  `home-screen-handoff` (`verify_jwt` off).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
   (`VITE_PASSKEYS`). No phone sign-in; the Phone provider is off.
   - **Invites**: the hook `signup_needs_an_invite` refuses an uninvited
@@ -53,14 +54,6 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
-
-- **Blocking, not live**: `20261022050000` to `20261022080000`, and
-  `20261022090000` (the weekly count of blocks, cron `blocks-weekly`), await
-  the owner's `pnpm exec supabase db push --linked --dry-run`, then the push,
-  then `pnpm exec supabase functions deploy push-notify --no-verify-jwt`, then
-  the client. That deploy also lets through `grant_open` and
-  `profile_reminder`, which the function refused until now. Probes:
-  `member-blocks.sql`, `blocks-weekly.sql`.
 
 - **Removed before `20261020010000`** (Remove now deletes the sign-in
   account too; probe `removed-member-can-rejoin.sql`): those accounts are
@@ -107,8 +100,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Built, and where to look
 
-All live but blocking (Open). Migration headers and the files named say how
-and why.
+All live. Migration headers and the files named say how and why.
 
 - **Blocking**: Block in the ••• of a profile, message, post or reply
   (`BlockMemberSheet`, `peers/block-sheet.tsx`), Me → Settings → Blocked
@@ -116,6 +108,7 @@ and why.
   the New reports switch covers it. `member_blocks` is readable by
   the blocker only; content hides one way through `my_blocked_member_ids()`,
   Peers both ways in the views; `members_blocked()` is never granted.
+  Probes: `member-blocks.sql`, `blocks-weekly.sql`.
 
 - **Joining**: invites are emailed links (`send-invite`) that fill in their
   address (`invite_address_for_token`). A refused sign-up goes straight to the
