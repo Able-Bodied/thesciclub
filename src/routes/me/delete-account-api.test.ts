@@ -5,6 +5,7 @@ const db = vi.hoisted(() => ({
   listed: [{ name: 'profile.webp' }] as { name: string }[],
   removeError: null as { message: string } | null,
   rpcError: null as { message: string; code?: string } | null,
+  removeFailsAfterRpc: false,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -23,6 +24,7 @@ vi.mock('@/lib/supabase', () => ({
     },
     rpc: (name: string) => {
       db.steps.push(`rpc ${name}`);
+      if (db.removeFailsAfterRpc) db.removeError = { message: 'boom' };
       return Promise.resolve({ data: null, error: db.rpcError });
     },
     auth: {
@@ -48,18 +50,29 @@ beforeEach(() => {
   db.listed = [{ name: 'profile.webp' }];
   db.removeError = null;
   db.rpcError = null;
+  db.removeFailsAfterRpc = false;
 });
 
 describe('deleting your own account', () => {
-  it('removes the photograph, then the device, then the account, then the session', async () => {
+  // The second pass takes a reported photograph, released by the delete.
+  it('removes the photographs, the device, the account, the photographs again, then the session', async () => {
     expect(await deleteMyAccount('u1')).toEqual({ ok: true });
     expect(db.steps).toEqual([
       'list u1',
       'remove u1/profile.webp',
       'forget device',
       'rpc delete_my_account',
+      'list u1',
+      'remove u1/profile.webp',
       'signOut local',
     ]);
+  });
+
+  it('still says deleted when the second pass fails: the account is gone', async () => {
+    db.removeFailsAfterRpc = true;
+    expect(await deleteMyAccount('u1')).toEqual({ ok: true });
+    expect(db.steps.filter((s) => s.startsWith('remove'))).toHaveLength(2);
+    expect(db.steps.at(-1)).toBe('signOut local');
   });
 
   it('skips the remove when there is no photograph', async () => {
