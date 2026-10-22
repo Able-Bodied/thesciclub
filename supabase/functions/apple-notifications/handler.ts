@@ -27,6 +27,28 @@ export interface Reply {
   body: Record<string, unknown>;
 }
 
+const KEYS_FOR_MS = 60 * 60_000;
+/** At most one fetch of Apple's keys a minute, however many unknown kids arrive. */
+const REFETCH_AFTER_MS = 60_000;
+
+/** Deps.keys, cached an hour; `fresh` refetches, but not within a minute of the last. */
+export function appleKeyCache(
+  fetchKeys: () => Promise<AppleJwk[] | null>,
+  nowMs: () => number,
+): Deps['keys'] {
+  let cached: { at: number; keys: AppleJwk[] } | null = null;
+  let fetchedAt = Number.NEGATIVE_INFINITY;
+  return async (fresh) => {
+    const now = nowMs();
+    if (!fresh && cached && now - cached.at < KEYS_FOR_MS) return cached.keys;
+    if (now - fetchedAt < REFETCH_AFTER_MS) return cached?.keys ?? [];
+    fetchedAt = now;
+    const keys = await fetchKeys();
+    if (keys) cached = { at: now, keys };
+    return cached?.keys ?? [];
+  };
+}
+
 /** Older than this, a notice is a replay, not news. */
 const MAX_AGE_S = 7 * 86_400;
 

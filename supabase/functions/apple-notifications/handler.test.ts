@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeAll, describe, expect, it } from 'vitest';
 import { base64url } from '../_shared/apple.ts';
-import { type AppleJwk, type Deps, receiveNotification } from './handler.ts';
+import { type AppleJwk, appleKeyCache, type Deps, receiveNotification } from './handler.ts';
 
 const NOW = 1_800_000_000;
 let pair: CryptoKeyPair;
@@ -143,5 +143,60 @@ describe('apple-notifications', () => {
     const { deps } = setup({ recorded: null });
     const token = await signed(notice({ type: 'account-delete', sub: '001.a' }));
     expect((await receiveNotification({ payload: token }, deps)).status).toBe(502);
+  });
+});
+
+describe('Apple’s keys, cached', () => {
+  function cache(answers: (AppleJwk[] | null)[]) {
+    let clock = 0;
+    let fetches = 0;
+    const keys = appleKeyCache(
+      () => Promise.resolve(answers[fetches++] ?? null),
+      () => clock,
+    );
+    return {
+      keys,
+      fetches: () => fetches,
+      wait: (ms: number) => {
+        clock += ms;
+      },
+    };
+  }
+  const k1 = { kid: 'k1' };
+  const k2 = { kid: 'k2' };
+
+  it('asks Apple once, then keeps the keys for an hour', async () => {
+    const c = cache([[k1], [k2]]);
+    expect(await c.keys(false)).toEqual([k1]);
+    c.wait(59 * 60_000);
+    expect(await c.keys(false)).toEqual([k1]);
+    expect(c.fetches()).toBe(1);
+    c.wait(2 * 60_000);
+    expect(await c.keys(false)).toEqual([k2]);
+    expect(c.fetches()).toBe(2);
+  });
+
+  it('asks again for an unknown kid at most once a minute, however many arrive', async () => {
+    const c = cache([[k1], [k1], [k1, k2]]);
+    await c.keys(false);
+    for (let i = 0; i < 50; i++) await c.keys(true);
+    expect(c.fetches()).toBe(1);
+    c.wait(61_000);
+    for (let i = 0; i < 50; i++) await c.keys(true);
+    expect(c.fetches()).toBe(2);
+    c.wait(61_000);
+    expect(await c.keys(true)).toEqual([k1, k2]);
+    expect(c.fetches()).toBe(3);
+  });
+
+  it('keeps the last keys when Apple cannot be reached, and waits a minute to retry', async () => {
+    const c = cache([[k1], null, [k2]]);
+    await c.keys(false);
+    c.wait(61 * 60_000);
+    expect(await c.keys(false)).toEqual([k1]);
+    expect(await c.keys(false)).toEqual([k1]);
+    expect(c.fetches()).toBe(2);
+    c.wait(61_000);
+    expect(await c.keys(false)).toEqual([k2]);
   });
 });

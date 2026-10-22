@@ -12,7 +12,7 @@
  */
 
 import { APPLE_KEYS_URL } from '../_shared/apple.ts';
-import { type AppleJwk, type Deps, receiveNotification } from './handler.ts';
+import { type AppleJwk, appleKeyCache, type Deps, receiveNotification } from './handler.ts';
 
 declare const Deno: {
   env: { get(name: string): string | undefined };
@@ -35,18 +35,16 @@ const serviceHeaders: Record<string, string> = {
 };
 if (!SERVICE_KEY.startsWith('sb_')) serviceHeaders.Authorization = `Bearer ${SERVICE_KEY}`;
 
-let cached: { at: number; keys: AppleJwk[] } | null = null;
-const KEYS_FOR_MS = 60 * 60_000;
-
 const deps: Deps = {
-  async keys(fresh) {
-    if (!fresh && cached && Date.now() - cached.at < KEYS_FOR_MS) return cached.keys;
-    const response = await fetch(APPLE_KEYS_URL);
-    if (!response.ok) return cached?.keys ?? [];
-    const keys = ((await response.json()) as { keys?: AppleJwk[] }).keys ?? [];
-    cached = { at: Date.now(), keys };
-    return keys;
-  },
+  keys: appleKeyCache(async () => {
+    try {
+      const response = await fetch(APPLE_KEYS_URL);
+      if (!response.ok) return null;
+      return ((await response.json()) as { keys?: AppleJwk[] }).keys ?? [];
+    } catch {
+      return null;
+    }
+  }, Date.now),
   async record(sub, kind, email) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/apple_notification_record`, {
       method: 'POST',
