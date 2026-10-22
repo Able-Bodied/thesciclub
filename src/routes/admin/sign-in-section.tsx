@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { cn } from '@/lib/utils';
+import { AppleNotices } from '@/routes/admin/apple-notices';
 import { SmallButton } from '@/routes/admin/controls';
 import {
   type AppleHealth,
@@ -101,6 +102,8 @@ export function SignInSection({
           renewed.
         </p>
       </section>
+
+      <AppleNotices />
 
       <section
         aria-labelledby="apple-renew-heading"

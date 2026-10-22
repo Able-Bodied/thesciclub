@@ -11,6 +11,11 @@ vi.mock('@/routes/admin/sign-in-health', async (importOriginal) => ({
   renewAppleSecret: renew,
 }));
 
+// Read on its own (apple-notices.test.tsx); here it stands in.
+vi.mock('@/routes/admin/apple-notices', () => ({
+  AppleNotices: () => <p>Apple's notices</p>,
+}));
+
 function renderSection(health = appleHealth(true, '2027-04-09', '2027-03-20')) {
   const onRenewed = vi.fn();
   render(
