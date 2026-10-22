@@ -10,6 +10,7 @@ import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import { passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { isNative } from '@/lib/standalone';
+import { cn } from '@/lib/utils';
 import { Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
 import type { OnboardingData } from '@/routes/onboarding/types';
 
@@ -207,7 +208,10 @@ export function SignInStep({
           <Divider>or use your email</Divider>
         </>
       )}
-      <label htmlFor="email" className="block font-bold text-[0.8125rem] text-ink">
+      <label
+        htmlFor="email"
+        className={cn('block font-bold text-[0.8125rem] text-ink', isNative() && 'mt-5')}
+      >
         Email
       </label>
       <Field
@@ -288,7 +292,10 @@ export function JoinStep({
           <Divider>or join with your email</Divider>
         </>
       )}
-      <label htmlFor="email" className="block font-bold text-[0.8125rem] text-ink">
+      <label
+        htmlFor="email"
+        className={cn('block font-bold text-[0.8125rem] text-ink', isNative() && 'mt-5')}
+      >
         Email
       </label>
       <Field
