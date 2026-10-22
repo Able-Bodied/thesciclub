@@ -113,8 +113,10 @@ export function ReportsSection({
     (report.messageId ? edits.byMessage.get(report.messageId) : null) ??
     [];
 
-  const open = reports.filter((r) => r.resolvedAt === null);
-  const closed = reports.filter((r) => r.resolvedAt !== null);
+  // A block waits for no decision, so it is listed apart (20261022050000).
+  const blocks = reports.filter((r) => r.kind === 'block');
+  const open = reports.filter((r) => r.resolvedAt === null && r.kind !== 'block');
+  const closed = reports.filter((r) => r.resolvedAt !== null && r.kind !== 'block');
 
   function removeReported(report: ChatReport) {
     const what = report.kind === 'post' ? 'post' : 'message';
@@ -208,6 +210,44 @@ export function ReportsSection({
           ))
         )}
       </div>
+
+      {blocks.length > 0 ? (
+        <>
+          <h2 className="mt-5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+            Blocks
+          </h2>
+          <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
+            A member blocked another. Nothing to decide and no words with it; the member blocked is
+            not told.
+          </p>
+          <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
+            {blocks.map((block) => (
+              <li key={block.id} className="border-line border-b p-3 last:border-b-0">
+                <p className="text-[0.875rem] text-ink leading-[1.45]">
+                  <MemberName
+                    id={block.reporterId}
+                    name={block.reporterName}
+                    gone="A deleted member"
+                    authors={authors}
+                    onGoToMember={onGoToMember}
+                  />{' '}
+                  blocked{' '}
+                  <MemberName
+                    id={block.reportedAuthorId}
+                    name={block.reportedAuthorName}
+                    gone="a deleted member"
+                    authors={authors}
+                    onGoToMember={onGoToMember}
+                  />
+                  <span className="ml-2 text-[0.75rem] text-grey">
+                    {chatTimeLong(block.createdAt)}
+                  </span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
 
       {closed.length > 0 ? (
         <>

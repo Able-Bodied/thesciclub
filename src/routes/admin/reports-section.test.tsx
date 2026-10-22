@@ -333,3 +333,34 @@ describe('the reports panel', () => {
     expect(screen.getByText(/Nothing has been reported/)).toBeInTheDocument();
   });
 });
+
+describe('blocks on the reports panel', () => {
+  const block = (id: string) =>
+    report({
+      id,
+      kind: 'block',
+      contextKind: 'member',
+      messageId: null,
+      bodySnapshot: '',
+      place: 'Blocked',
+      alreadyRemoved: true,
+    });
+
+  it('lists a block apart, as who blocked whom, with nothing to remove or settle', () => {
+    renderSection([block('b1')]);
+    const heading = screen.getByRole('heading', { name: 'Blocks' });
+    expect(heading).toBeInTheDocument();
+    expect(screen.getByText('Ada').closest('p')).toHaveTextContent(/Ada blocked Bo/);
+    expect(screen.queryByRole('button', { name: 'Settle it' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Remove/ })).toBeNull();
+    // Not among the reports waiting for a decision.
+    expect(screen.getByText(/Nothing has been reported/)).toBeInTheDocument();
+    expect(screen.getByText('nothing waiting')).toBeInTheDocument();
+  });
+
+  it('keeps a waiting report waiting beside a block', () => {
+    renderSection([block('b1'), report({ id: 'r1' })]);
+    expect(screen.getByText('1 waiting')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settle it' })).toBeInTheDocument();
+  });
+});

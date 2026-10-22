@@ -286,7 +286,8 @@ export function useAdminReports(): AdminReportsState {
 
   return {
     reports,
-    openCount: reports.filter((r) => r.resolvedAt === null).length,
+    // Blocks wait for no decision, so they are not counted as waiting.
+    openCount: reports.filter((r) => r.resolvedAt === null && r.kind !== 'block').length,
     loading,
     error,
     reload,
@@ -296,11 +297,17 @@ export function useAdminReports(): AdminReportsState {
 function toReport(row: ReportRow): ChatReport {
   return {
     id: row.id,
-    kind: row.kind === 'post' ? 'post' : 'message',
+    kind: row.kind === 'post' ? 'post' : row.kind === 'block' ? 'block' : 'message',
     // 'direct' is the value that takes a control away, so an unknown one —
     // a database ahead of or behind this file — errs towards offering it.
     contextKind:
-      row.context_kind === 'direct' ? 'direct' : row.context_kind === 'group' ? 'group' : 'room',
+      row.context_kind === 'direct'
+        ? 'direct'
+        : row.context_kind === 'group'
+          ? 'group'
+          : row.context_kind === 'member'
+            ? 'member'
+            : 'room',
     postId: row.post_id,
     messageId: row.message_id,
     bodySnapshot: row.body_snapshot,

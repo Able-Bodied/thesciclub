@@ -317,13 +317,14 @@ export interface ChatEdit {
  */
 export interface ChatReport {
   id: string;
-  kind: 'post' | 'message';
+  /** A block (20261022050000) has no post, message or words, and waits for no decision. */
+  kind: 'post' | 'message' | 'block';
   /**
    * Where it was said. Recorded when the report was filed, so it is still
    * known once the original is gone. The panel offers Remove for a room or a
    * group and not for a direct conversation — see reports-section.tsx.
    */
-  contextKind: 'room' | 'group' | 'direct';
+  contextKind: 'room' | 'group' | 'direct' | 'member';
   /** Null once the reported row itself is gone. The snapshot outlives it. */
   postId: string | null;
   messageId: string | null;
