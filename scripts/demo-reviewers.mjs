@@ -4,8 +4,9 @@
  *   node scripts/demo-reviewers.mjs            local stack, made-up @local.test addresses
  *   node scripts/demo-reviewers.mjs --reset    put the demo state back after a review
  *   node scripts/demo-reviewers.mjs --remove   delete every demo account and its content
- *   DEMO_REVIEWER_EMAIL=... DEMO_PEER_EMAIL=... DEMO_DELETE_EMAIL=... \
- *   DEMO_INVITE_EMAIL=... SUPABASE_SERVICE_ROLE_KEY=... \
+ *   All but --remove need DEMO_INVITER_EMAIL (Inviter, below).
+ *   DEMO_INVITER_EMAIL=... DEMO_REVIEWER_EMAIL=... DEMO_PEER_EMAIL=... \
+ *   DEMO_DELETE_EMAIL=... DEMO_INVITE_EMAIL=... SUPABASE_SERVICE_ROLE_KEY=... \
  *     node scripts/demo-reviewers.mjs --live [--reset]
  *
  * Makes Demo Reviewer and Demo Peer (finished profiles, email + password), one
@@ -23,8 +24,10 @@
  * an inbox somebody can open). Passwords: DEMO_REVIEWER_PASSWORD,
  * DEMO_PEER_PASSWORD, DEMO_DELETE_PASSWORD, else a random one is made when an
  * account is created and printed once, to a terminal only.
- * Other options: --mentor makes Demo Peer a mentor; DEMO_INVITER_ORG is the
- * organization short code the invites come from (default NCS).
+ * Inviter: the invites come from the member account with this address,
+ * --inviter-email or DEMO_INVITER_EMAIL, required except with --remove. Never
+ * write it into a file: the repo is public.
+ * Other options: --mentor makes Demo Peer a mentor.
  *
  * Local by default. --live needs SUPABASE_SERVICE_ROLE_KEY in the environment
  * (SUPABASE_URL defaults to the hosted project) and the project ref typed at
@@ -58,7 +61,13 @@ for (const arg of process.argv.slice(2)) {
   else flags.add(name.slice(2));
 }
 const KNOWN_FLAGS = ['live', 'reset', 'remove', 'mentor', 'help'];
-const KNOWN_VALUES = ['reviewer-email', 'peer-email', 'delete-email', 'invite-email'];
+const KNOWN_VALUES = [
+  'reviewer-email',
+  'peer-email',
+  'delete-email',
+  'invite-email',
+  'inviter-email',
+];
 for (const flag of flags) if (!KNOWN_FLAGS.includes(flag)) fail(`Unknown option --${flag}.`);
 for (const name of Object.keys(values)) {
   if (!KNOWN_VALUES.includes(name)) fail(`Unknown option --${name}.`);
@@ -273,6 +282,14 @@ const PEOPLE = [
 ];
 const [reviewer, peer] = PEOPLE;
 const inviteEmail = pick('invite', 'DEMO_INVITE_EMAIL', local('invitee'));
+const inviterEmail = (values['inviter-email'] ?? process.env.DEMO_INVITER_EMAIL ?? '')
+  .trim()
+  .toLowerCase();
+if (!inviterEmail && !remove) {
+  fail(
+    'Give the address of the member the invites come from: --inviter-email or DEMO_INVITER_EMAIL.',
+  );
+}
 
 const everyEmail = [...PEOPLE.map((p) => p.email), inviteEmail];
 for (const email of everyEmail) {
@@ -299,14 +316,20 @@ async function findUser(email) {
 
 const isDemoUser = (user) => user?.user_metadata?.demo_account === true;
 
-async function inviterOrganization() {
-  const code = (process.env.DEMO_INVITER_ORG ?? 'NCS').trim();
-  const [org] = await rest('GET', 'organizations', `short_code=eq.${enc(code)}&select=id`);
-  if (!org) fail(`No organization has the short code "${code}" (DEMO_INVITER_ORG).`);
-  return org.id;
+async function inviterMember() {
+  const user = await findUser(inviterEmail);
+  const [member] = user
+    ? await rest('GET', 'members', `id=eq.${user.id}&status=eq.active&select=id`)
+    : [];
+  if (!member || isDemoUser(user)) {
+    fail(
+      'The inviter address matches no active member. Check --inviter-email or DEMO_INVITER_EMAIL.',
+    );
+  }
+  return member.id;
 }
 
-async function ensureInvite(email, orgId) {
+async function ensureInvite(email, inviterId) {
   const live_ = await rest(
     'GET',
     'invites',
@@ -317,7 +340,7 @@ async function ensureInvite(email, orgId) {
     'POST',
     'invites',
     undefined,
-    { email, status: 'pending', invited_by_organization_id: orgId, note: NOTE },
+    { email, status: 'pending', invited_by_member_id: inviterId, note: NOTE },
     'return=representation',
   );
   return made;
@@ -335,7 +358,7 @@ function newPassword() {
   }
 }
 
-async function ensureAccount(person, orgId) {
+async function ensureAccount(person, inviterId) {
   const { email, member } = person;
   const existing = await findUser(email);
   if (existing && !isDemoUser(existing)) {
@@ -355,7 +378,7 @@ async function ensureAccount(person, orgId) {
       );
     }
     const password = person.password || newPassword();
-    await ensureInvite(email, orgId);
+    await ensureInvite(email, inviterId);
     user = await api('POST', '/auth/v1/admin/users', {
       email,
       password,
@@ -371,7 +394,7 @@ async function ensureAccount(person, orgId) {
 
   const [row] = await rest('GET', 'members', `id=eq.${user.id}&select=id`);
   if (!row) {
-    await ensureInvite(email, orgId);
+    await ensureInvite(email, inviterId);
     await rest('POST', 'members', undefined, { id: user.id, ...member });
     person.state = created ? 'created' : 'member row remade';
   } else if (reset) {
@@ -518,7 +541,7 @@ async function removeUser(user) {
   await rest('DELETE', 'members', `id=eq.${user.id}`);
 }
 
-async function ensureInviteAddress(orgId) {
+async function ensureInviteAddress(inviterId) {
   const user = await findUser(inviteEmail);
   const [invite] = await rest(
     'GET',
@@ -534,7 +557,7 @@ async function ensureInviteAddress(orgId) {
   if (!reset) {
     if (user) return 'already used: someone has an account here (--reset invites it again)';
     if (invite) return invite.status === 'pending' ? 'already invited' : 'invite already used';
-    await ensureInvite(inviteEmail, orgId);
+    await ensureInvite(inviteEmail, inviterId);
     return 'invited';
   }
   if (user) {
@@ -542,7 +565,7 @@ async function ensureInviteAddress(orgId) {
     await removeUser(user);
   }
   await rest('DELETE', 'invites', `email=eq.${enc(inviteEmail)}&note=eq.${enc(NOTE)}`);
-  await ensureInvite(inviteEmail, orgId);
+  await ensureInvite(inviteEmail, inviterId);
   return user ? 'account removed, invited again' : 'invited';
 }
 
@@ -590,7 +613,7 @@ if (remove) {
   process.exit(0);
 }
 
-const orgId = await inviterOrganization();
+const inviterId = await inviterMember();
 
 if (reset) {
   const existing = [];
@@ -602,9 +625,9 @@ if (reset) {
   console.log(`  Reset: wiped ${JSON.stringify(gone ?? {})}`);
 }
 
-for (const person of PEOPLE) await ensureAccount(person, orgId);
+for (const person of PEOPLE) await ensureAccount(person, inviterId);
 const content = await ensureContent();
-const invited = await ensureInviteAddress(orgId);
+const invited = await ensureInviteAddress(inviterId);
 
 console.log(`\n  ${live ? 'LIVE' : 'Local'} demo accounts`);
 for (const person of PEOPLE) {

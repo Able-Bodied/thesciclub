@@ -260,6 +260,8 @@ All live. Migration headers and the files named say how and why.
 - **Store-review demo accounts**: `scripts/demo-reviewers.mjs` (usage in its
   header; local by default, `--live` asks for the project ref). Names start
   "Demo ", usernames `demo.`; `--reset` after a review, `--remove` to delete.
+  Invites come from the member whose address is given in
+  `DEMO_INVITER_EMAIL` at run time, never written in a file.
 - **psql**: `docker run --rm -i --network host -e PGPASSWORD=postgres
   postgres:17-alpine psql -h 127.0.0.1 -p 54322 -U postgres -d postgres`.
 - **Playwright**: chromium with `LD_LIBRARY_PATH` as in `pnpm shoot`; no
