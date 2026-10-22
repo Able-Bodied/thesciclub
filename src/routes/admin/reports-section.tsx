@@ -370,7 +370,12 @@ function ReportRow({
         <p className="mt-1.5 text-[0.8125rem] text-ink2 leading-[1.5]">“{report.note}”</p>
       ) : null}
 
-      {report.kind === 'profile' ? (
+      {report.kind === 'profile' && !report.reportedAuthorId ? (
+        <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
+          Their account has been deleted. The name, @username and photograph went with it; what they
+          wrote stays.
+        </p>
+      ) : report.kind === 'profile' ? (
         <p className="mt-1.5 text-[0.75rem] text-grey leading-[1.45]">
           A profile is not removed from here. What to do about it is on their row, and the copy
           above stays as it was when it was reported.

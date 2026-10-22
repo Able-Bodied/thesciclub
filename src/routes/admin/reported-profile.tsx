@@ -5,8 +5,9 @@ import { usePhotoUrl } from '@/lib/photos';
 /**
  * A reported profile as it was when it was reported (20261022130000): the
  * photograph, the name and @username, and what the member wrote. Nothing here
- * is read from the member's row, so editing or deleting the profile changes
- * none of it. Answers the member left empty are not drawn.
+ * is read from the member's row, so editing the profile changes none of it.
+ * Once their account is deleted, the copy says "Deleted member" and keeps only
+ * the words (20261022150000). Answers the member left empty are not drawn.
  */
 export function ReportedProfileCopy({
   profile,
@@ -69,7 +70,7 @@ export function ReportedProfileCopy({
 /**
  * The reported photograph itself. It is the original, not a copy: no SQL can
  * copy a file, so the report names it and it cannot be deleted or overwritten
- * (20261022130000). It is drawn whole, uncropped.
+ * while the member's account exists (20261022130000). Drawn whole, uncropped.
  */
 function ReportedPhoto({ path, alt }: { path: string | null; alt: string | null }) {
   const url = usePhotoUrl(path);
@@ -95,7 +96,7 @@ function ReportedPhoto({ path, alt }: { path: string | null; alt: string | null 
       )}
       <p className="mt-1 text-[0.71875rem] text-grey leading-[1.45]">
         The photograph was reported with the profile, and kept: the member changing or deleting
-        their photograph, or their account, does not delete this one.
+        their photograph does not delete this one. Deleting their account does.
       </p>
     </div>
   );

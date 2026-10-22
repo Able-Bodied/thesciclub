@@ -467,6 +467,47 @@ describe('a profile report', () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
 
+  // 20261022150000: the copy of a deleted member keeps only the words.
+  it('is about Deleted member once their account is deleted, with no photograph', () => {
+    renderSection([
+      profileReport({
+        profile: {
+          displayName: 'Deleted member',
+          username: null,
+          photoAlt: null,
+          bio: 'The bio as reported.',
+          howInjured: null,
+          detail: null,
+          sportsEquipment: null,
+          grants: null,
+          fieldOfWork: null,
+          interests: ['Cycling', 'Chess'],
+          topics: [],
+          selfCare: [],
+        },
+        profilePhotoPath: null,
+        reportedAuthorId: null,
+        reportedAuthorName: null,
+        note: 'Rude in the bio',
+      }),
+    ]);
+    // Where the name was, in the heading and in the copy.
+    expect(screen.getAllByText('Deleted member')).toHaveLength(2);
+    expect(screen.queryByText(/^@/)).toBeNull();
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByText('No profile photograph.')).toBeInTheDocument();
+    expect(screen.queryByText(/Photograph described as/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Go to Deleted member/ })).toBeNull();
+    expect(screen.getByText('The bio as reported.')).toBeInTheDocument();
+    expect(screen.getByText('Cycling · Chess')).toBeInTheDocument();
+    expect(screen.getByText('“Rude in the bio”')).toBeInTheDocument();
+    expect(screen.getByText(/Their account has been deleted\./)).toHaveTextContent(
+      'The name, @username and photograph went with it; what they wrote stays.',
+    );
+    expect(screen.queryByText(/What to do about it is on their row/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Settle it' })).toBeInTheDocument();
+  });
+
   it('counts with the waiting reports and is not listed as a block', () => {
     renderSection([profileReport()]);
     expect(screen.getByText('1 waiting')).toBeInTheDocument();

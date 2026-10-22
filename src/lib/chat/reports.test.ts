@@ -4,6 +4,7 @@ import {
   reportMember,
   reportNoteProblem,
   reportPreamble,
+  toProfile,
 } from '@/lib/chat/reports';
 
 // The one network call this file makes.
@@ -85,5 +86,39 @@ describe('reportMember', () => {
     rpc.mockResolvedValue({ error: { message: 'There is no such member.', code: 'P0002' } });
     const result = await reportMember('bo', '');
     expect(result).toEqual({ ok: false, error: 'There is no such member.' });
+  });
+});
+
+describe('toProfile', () => {
+  // A deleted member's copy (20261022150000): no @username, no description.
+  it('reads a copy with only the name and the words', () => {
+    expect(
+      toProfile({ display_name: 'Deleted member', bio: 'Kept', interests: ['Chess'] }),
+    ).toEqual({
+      displayName: 'Deleted member',
+      username: null,
+      photoAlt: null,
+      bio: 'Kept',
+      howInjured: null,
+      detail: null,
+      sportsEquipment: null,
+      grants: null,
+      fieldOfWork: null,
+      interests: ['Chess'],
+      topics: [],
+      selfCare: [],
+    });
+  });
+
+  it('survives a copy with nothing in it', () => {
+    expect(toProfile(null)).toMatchObject({
+      displayName: 'Unnamed',
+      username: null,
+      interests: [],
+    });
+    expect(toProfile({ display_name: 7, topics: 'x' })).toMatchObject({
+      displayName: 'Unnamed',
+      topics: [],
+    });
   });
 });
