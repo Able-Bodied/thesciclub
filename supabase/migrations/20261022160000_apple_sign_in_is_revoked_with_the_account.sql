@@ -21,8 +21,13 @@
 -- unreachable revoke stays queued with its error, retried each day up to
 -- seven times.
 --
--- Vault secret `apple_revoke_url`: where the function is. Absent, nothing is
--- sent and the queue waits, so this is safe before the function is deployed.
+-- Two vault secrets, as push-notify has:
+--   apple_revoke_url     where the function is. Absent, nothing is sent and
+--                        the queue waits, so this is safe before the deploy.
+--   apple_revoke_secret  made here, at random. apple_revoke_send sends it and
+--                        apple_revocations_due checks it before claiming
+--                        anything, so a stranger calling the function's
+--                        public URL cannot spend a token's seven tries.
 -- ============================================================================
 
 create schema if not exists private;
@@ -91,6 +96,18 @@ $$;
 revoke all on function public.apple_token_keep(uuid, text, text, text) from public, anon, authenticated;
 grant execute on function public.apple_token_keep(uuid, text, text, text) to service_role;
 
+do $$
+begin
+  if not exists (select 1 from vault.secrets where name = 'apple_revoke_secret') then
+    perform vault.create_secret(
+      encode(extensions.gen_random_bytes(32), 'hex'),
+      'apple_revoke_secret',
+      'Sent by apple_revoke_send and checked by apple_revocations_due. Never leaves the database.'
+    );
+  end if;
+end;
+$$;
+
 -- ------------------------------------------------------------ asking Apple
 create or replace function private.apple_revoke_send()
 returns void
@@ -100,16 +117,19 @@ set search_path = ''
 as $$
 declare
   target text;
+  secret text;
 begin
   select s.decrypted_secret into target
     from vault.decrypted_secrets s where s.name = 'apple_revoke_url';
   if target is null or target = '' then
     return;  -- not switched on yet: the queue waits
   end if;
+  select s.decrypted_secret into secret
+    from vault.decrypted_secrets s where s.name = 'apple_revoke_secret';
   perform net.http_post(
     url := target,
     body := '{}'::jsonb,
-    headers := jsonb_build_object('Content-Type', 'application/json'),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-revoke-secret', coalesce(secret, '')),
     timeout_milliseconds := 10000
   );
 exception when others then
@@ -160,13 +180,26 @@ create trigger apple_identity_gone
 
 -- ------------------------------------------------- what the function reads
 -- Claims what is due (not tried in the last ten minutes, fewer than seven
--- tries), so two calls at once do not both send.
-create or replace function public.apple_revocations_due()
+-- tries), so two calls at once do not both send. Only for the caller holding
+-- apple_revoke_secret: a try is counted only when the database asked.
+drop function if exists public.apple_revocations_due();
+create or replace function public.apple_revocations_due(p_secret text)
 returns table (id bigint, client_id text, refresh_token text)
-language sql
+language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  expected text;
+begin
+  select s.decrypted_secret into expected
+    from vault.decrypted_secrets s where s.name = 'apple_revoke_secret';
+  -- Digests compared, so the time taken says nothing about the secret.
+  if p_secret is null or expected is null
+     or extensions.digest(p_secret, 'sha256') <> extensions.digest(expected, 'sha256') then
+    raise exception 'Not the database.' using errcode = '42501';
+  end if;
+  return query
   update private.apple_revocations r
      set attempts = r.attempts + 1, last_tried_at = now()
    where r.id in (
@@ -178,10 +211,11 @@ as $$
       for update skip locked
    )
   returning r.id, r.client_id, r.refresh_token;
+end;
 $$;
 
-revoke all on function public.apple_revocations_due() from public, anon, authenticated;
-grant execute on function public.apple_revocations_due() to service_role;
+revoke all on function public.apple_revocations_due(text) from public, anon, authenticated;
+grant execute on function public.apple_revocations_due(text) to service_role;
 
 -- Apple accepted (p_error null): the row goes. Otherwise its error is kept.
 create or replace function public.apple_revocation_done(p_id bigint, p_error text)

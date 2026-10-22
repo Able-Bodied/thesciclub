@@ -456,7 +456,7 @@ verify_jwt = false
 verify_jwt = false
 
 # Revokes queued Apple tokens. Called by the database (pg_net, from
-# apple_revoke_send) with no token in the call; it reads the queue itself.
+# apple_revoke_send) with the vault's apple_revoke_secret instead of a JWT.
 [functions.apple-revoke]
 verify_jwt = false
 

@@ -7,7 +7,8 @@
 -- by deleting the account either way or by unlinking, queues its tokens and
 -- asks the apple-revoke function. The function is a stub here: the vault's
 -- apple_revoke_url points at a closed port, and what is checked is the
--- request pg_net queued, never a call to Apple.
+-- request pg_net queued, never a call to Apple. Only a caller holding the
+-- vault's apple_revoke_secret may claim the queue (17b–18).
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -48,6 +49,10 @@ insert into public.members (id, type, status, display_name, birth_date, level_ra
 
 -- The stub: a closed port. pg_net only queues inside this transaction.
 select vault.create_secret('http://127.0.0.1:9/apple-revoke-stub', 'apple_revoke_url') is not null as stub;
+
+-- What apple_revoke_send sends; the service role cannot read the vault.
+select s.decrypted_secret as revoke_secret
+  from vault.decrypted_secrets s where s.name = 'apple_revoke_secret' \gset
 
 create temporary view probe_state as
 select
@@ -105,7 +110,7 @@ rollback to savepoint member_keeps;
 \echo ''
 \echo '== 8. ...nor take the queue (expect ERROR: permission denied for function apple_revocations_due) =='
 savepoint member_due;
-select * from public.apple_revocations_due();
+select * from public.apple_revocations_due(:'revoke_secret');
 rollback to savepoint member_due;
 reset role;
 
@@ -141,9 +146,12 @@ reset role;
 select * from probe_state;
 
 \echo ''
-\echo '== 12b. the request carries no token: the function reads the queue itself (expect {}) =='
-select convert_from(body, 'utf8') as body from net.http_request_queue
- where url = 'http://127.0.0.1:9/apple-revoke-stub';
+\echo '== 12b. the request carries no token, only the vault''s secret as x-revoke-secret (expect {} | t | Content-Type,x-revoke-secret) =='
+select convert_from(q.body, 'utf8') as body,
+       q.headers ->> 'x-revoke-secret' = :'revoke_secret' as secret_sent,
+       (select string_agg(k, ',' order by k) from jsonb_object_keys(q.headers) k) as headers
+  from net.http_request_queue q
+ where q.url = 'http://127.0.0.1:9/apple-revoke-stub';
 
 \echo ''
 \echo '== 13. Admin removes Removed (expect one row, admin_delete_member empty) =='
@@ -171,11 +179,31 @@ select client_id, refresh_token from private.apple_revocations where refresh_tok
 select refresh_token from private.apple_tokens where apple_sub like 'apple.%';
 
 \echo ''
-\echo '== 18. the function claims all three once (expect 3, then 0) =='
+\echo '== 17b. a caller without the secret is refused, wrong, empty or none (expect ERROR: Not the database. three times) =='
 set local role service_role;
-create temporary table probe_due on commit drop as select * from public.apple_revocations_due();
+savepoint wrong_secret;
+select * from public.apple_revocations_due('not-the-secret');
+rollback to savepoint wrong_secret;
+savepoint empty_secret;
+select * from public.apple_revocations_due('');
+rollback to savepoint empty_secret;
+savepoint no_secret;
+select * from public.apple_revocations_due(null);
+rollback to savepoint no_secret;
+reset role;
+
+\echo ''
+\echo '== 17c. ...and changed nothing: no try counted, none claimed (expect 3 | 0 | 0) =='
+select count(*) as queued, sum(attempts) as attempts, count(last_tried_at) as tried
+  from private.apple_revocations where refresh_token like 'rt-%';
+
+\echo ''
+\echo '== 18. the function, with the secret, claims all three once (expect 3, then 0) =='
+set local role service_role;
+create temporary table probe_due on commit drop as
+  select * from public.apple_revocations_due(:'revoke_secret');
 select count(*) from probe_due where refresh_token like 'rt-%';
-select count(*) from public.apple_revocations_due() where refresh_token like 'rt-%';
+select count(*) from public.apple_revocations_due(:'revoke_secret') where refresh_token like 'rt-%';
 
 \echo ''
 \echo '== 19. Apple accepts two, refuses one: the refused one stays with its error (expect 1 | HTTP 400 invalid_grant | 1) =='

@@ -4,6 +4,9 @@
  * revoked it themselves), the row goes; anything else keeps its error for
  * the next try. Nothing here can stop an account being deleted: that has
  * already happened.
+ *
+ * Only the database may call it: it sends the vault's apple_revoke_secret,
+ * which apple_revocations_due checks before claiming (and counting) a try.
  */
 
 import { type AppleAnswer, type AppleClient, appleError, isAppleClient } from '../_shared/apple.ts';
@@ -15,8 +18,8 @@ export interface DueRow {
 }
 
 export interface Deps {
-  /** Claims what is due (apple_revocations_due). */
-  due(): Promise<DueRow[] | null>;
+  /** Claims what is due (apple_revocations_due); 'refused' for a wrong secret. */
+  due(secret: string): Promise<DueRow[] | 'refused' | null>;
   /** POSTs to Apple's revoke endpoint, with client_id and client_secret added. */
   revoke(client: AppleClient, token: string): Promise<AppleAnswer>;
   /** Null error: done, the row goes. */
@@ -25,9 +28,12 @@ export interface Deps {
 }
 
 export async function revokeDue(
+  secret: string | null,
   deps: Deps,
 ): Promise<{ status: number; body: Record<string, number | string> }> {
-  const rows = await deps.due();
+  if (!secret) return { status: 401, body: { error: 'not the database' } };
+  const rows = await deps.due(secret);
+  if (rows === 'refused') return { status: 401, body: { error: 'not the database' } };
   if (!rows) return { status: 502, body: { error: 'could not read the queue' } };
   let revoked = 0;
   let failed = 0;

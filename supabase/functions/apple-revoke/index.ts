@@ -6,8 +6,9 @@
  * Called through pg_net by private.apple_revoke_send, after a deletion and
  * once a day while anything waits, with an empty body: it reads the queue
  * itself, so no token travels in the call. verify_jwt is off in config.toml
- * (the database has no JWT). Anybody may call it; the most that does is
- * revoke tokens already queued to be revoked.
+ * (the database has no JWT). Instead the call carries the vault's
+ * apple_revoke_secret as x-revoke-secret; like push-notify, this function
+ * never holds it, and apple_revocations_due says yes or no (401 otherwise).
  *
  * Secrets: APPLE_TEAM_ID, APPLE_SIWA_KEY_ID, APPLE_SIWA_KEY_P8.
  * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
@@ -53,14 +54,18 @@ function rpc(name: string, body: Record<string, unknown>): Promise<Response> {
 
 Deno.serve(async (request) => {
   if (request.method !== 'POST') return reply(405, { error: 'POST only' });
+  const secret = request.headers.get('x-revoke-secret');
+  if (!secret) return reply(401, { error: 'not the database' });
   const key = KEY;
   if (!key) {
     console.error('apple-revoke: APPLE_TEAM_ID, APPLE_SIWA_KEY_ID or APPLE_SIWA_KEY_P8 is not set');
     return reply(500, { error: 'not configured' });
   }
   const deps: Deps = {
-    async due() {
-      const response = await rpc('apple_revocations_due', {});
+    async due(given) {
+      const response = await rpc('apple_revocations_due', { p_secret: given });
+      // A wrong secret is 42501, which PostgREST answers with 401 or 403.
+      if (response.status === 401 || response.status === 403) return 'refused';
       if (!response.ok) {
         console.error('apple-revoke: apple_revocations_due failed', response.status);
         return null;
@@ -84,6 +89,6 @@ Deno.serve(async (request) => {
       console.error(message);
     },
   };
-  const result = await revokeDue(deps);
+  const result = await revokeDue(secret, deps);
   return reply(result.status, result.body);
 });
