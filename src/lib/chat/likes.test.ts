@@ -340,4 +340,31 @@ describe('usePostLikes', () => {
       expect(db.reads).toHaveLength(2);
     });
   });
+
+  it('keeps the likes drawn while it reads them again, and through a failed read', async () => {
+    db.rows = [{ post_id: 'p1', member_id: 'ana' }];
+    const loading: boolean[] = [];
+    const { result } = renderHook(() => {
+      const state = usePostLikes(['p1']);
+      loading.push(state.loading);
+      return state;
+    });
+    await waitFor(() => {
+      expect(result.current.byPost.get('p1')).toEqual(['ana']);
+    });
+    loading.length = 0;
+    db.readError = { message: 'offline' };
+    act(() => {
+      result.current.reload();
+    });
+    await waitFor(() => {
+      expect(db.reads).toHaveLength(2);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(loading).not.toContain(true);
+    expect(result.current.byPost.get('p1')).toEqual(['ana']);
+    expect(result.current.error).toBeNull();
+  });
 });

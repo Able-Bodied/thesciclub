@@ -79,6 +79,34 @@ describe('post views', () => {
     expect(db.calls).toHaveLength(2);
   });
 
+  it('keeps the counts drawn while it reads them again', async () => {
+    db.rows = [{ post_id: 'one', view_count: 4 }];
+    const { result } = renderHook(() => usePostViews(['one']));
+    await waitFor(() => {
+      expect(result.current.byPost.get('one')).toBe(4);
+    });
+    let release: () => void = () => undefined;
+    db.hold = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    db.rows = [{ post_id: 'one', view_count: 5 }];
+    act(() => {
+      announcePostViewsChanged();
+    });
+    await waitFor(() => {
+      expect(db.calls).toHaveLength(2);
+    });
+    expect(result.current.loading).toBe(false);
+    expect(result.current.byPost.get('one')).toBe(4);
+    await act(async () => {
+      release();
+      await Promise.resolve();
+    });
+    await waitFor(() => {
+      expect(result.current.byPost.get('one')).toBe(5);
+    });
+  });
+
   it('does not invent zero counts when the database refuses the read', async () => {
     db.error = { message: 'unavailable' };
     const { result } = renderHook(() => usePostViews(['one']));

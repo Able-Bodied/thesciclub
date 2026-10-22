@@ -23,7 +23,12 @@ export function useInvitePermissions(memberId: string | null) {
       setState({ memberId, canInvite: false, unlimited: false, loading: false, error: null });
       return;
     }
-    setState({ memberId, canInvite: false, unlimited: false, loading: true, error: null });
+    // Read again for the same member, what is drawn stays up.
+    setState((current) =>
+      current.memberId === memberId
+        ? current
+        : { memberId, canInvite: false, unlimited: false, loading: true, error: null },
+    );
     void (async () => {
       try {
         const { data, error } = (await getSupabase()

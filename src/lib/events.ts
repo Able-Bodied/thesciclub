@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { PHOTOS_BUCKET } from '@/lib/photos';
@@ -248,6 +248,10 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
   // A stable key, so a new array of the same ids does not read again.
   const idsKey = ids === undefined ? undefined : ids === null ? null : [...ids].sort().join(',');
   const [state, setState] = useState<EventsState>({ events: [], loading: true, error: null });
+  // The query whose events are drawn. Read again (a kept tab showing, a
+  // reload), they stay up until the new read lands.
+  const shown = useRef<string | null>(null);
+  const query = JSON.stringify([from, to, id, organizationId, idsKey]);
   // Bumped to read again; part of the effect's dependencies for that reason.
   const [round, setRound] = useState(0);
   const reload = useCallback(() => {
@@ -257,9 +261,11 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
   // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
     if (idsKey === null) {
+      shown.current = null;
       setState({ events: [], loading: true, error: null });
       return;
     }
+    const again = shown.current === query;
     const controller = new AbortController();
     const { signal } = controller;
     // Read through a call, not a property: the type checker narrows
@@ -268,8 +274,13 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
     const aborted = () => signal.aborted;
     const only = idsKey === undefined ? null : idsKey === '' ? [] : idsKey.split(',');
 
+    // A failed refresh keeps what is drawn.
+    const fail = (error: string) => {
+      if (!again) setState({ events: [], loading: false, error });
+    };
+
     async function load() {
-      setState({ events: [], loading: true, error: null });
+      if (!again) setState({ events: [], loading: true, error: null });
       try {
         const supabase = getSupabase();
         // Not waiting on the events: neither depends on which were read.
@@ -309,11 +320,7 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
           : await readRange(null);
         if (aborted()) return;
         if (events.error) {
-          setState({
-            events: [],
-            loading: false,
-            error: describeError(events.error, 'Could not load events.'),
-          });
+          fail(describeError(events.error, 'Could not load events.'));
           return;
         }
         const ids = (events.data ?? []).map((event) => event.id);
@@ -365,14 +372,11 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
 
         const failure = [events, links, tags, counts, feeds].find((result) => result.error);
         if (failure?.error) {
-          setState({
-            events: [],
-            loading: false,
-            error: describeError(failure.error, 'Could not load events.'),
-          });
+          fail(describeError(failure.error, 'Could not load events.'));
           return;
         }
 
+        shown.current = query;
         setState({
           events: toEvents({
             events: events.data ?? [],
@@ -391,11 +395,7 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
         });
       } catch (e) {
         if (aborted()) return;
-        setState({
-          events: [],
-          loading: false,
-          error: describeThrown(e, 'Could not load events.'),
-        });
+        fail(describeThrown(e, 'Could not load events.'));
       }
     }
 
@@ -403,7 +403,7 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
     return () => {
       controller.abort();
     };
-  }, [from, to, id, organizationId, idsKey, round]);
+  }, [from, to, id, organizationId, idsKey, query, round]);
 
   return { ...state, reload };
 }
@@ -983,6 +983,8 @@ export function useAttendeesByEvent(
     loading: true,
     error: null,
   });
+  // The events whose faces are drawn; read again, they stay up meanwhile.
+  const shown = useRef<string | null>(null);
   // A stable key, so a new array holding the same ids does not read again.
   const key = window
     ? `window|${window.from ?? ''}|${window.to ?? ''}`
@@ -1001,7 +1003,8 @@ export function useAttendeesByEvent(
     const inWindow = kind === 'window' ? { start, end } : null;
     const ids = inWindow || key === '*' ? null : key === '' ? [] : key.split(',');
     // Another set of events: say so, so a screen waiting on the faces waits.
-    setState((current) => (current.loading ? current : { ...current, loading: true }));
+    const again = shown.current === key;
+    if (!again) setState((current) => (current.loading ? current : { ...current, loading: true }));
 
     async function load() {
       try {
@@ -1035,11 +1038,13 @@ export function useAttendeesByEvent(
         const data = results.flatMap((result) => result.data ?? []);
         if (aborted()) return;
         if (error) {
-          setState({
-            byEvent: new Map(),
-            loading: false,
-            error: describeError(error, 'Could not load who is going.'),
-          });
+          if (!again) {
+            setState({
+              byEvent: new Map(),
+              loading: false,
+              error: describeError(error, 'Could not load who is going.'),
+            });
+          }
           return;
         }
 
@@ -1053,9 +1058,10 @@ export function useAttendeesByEvent(
           if (existing) existing.push(attendee);
           else byEvent.set(row.event_id, [attendee]);
         }
+        shown.current = key;
         setState({ byEvent, loading: false, error: null });
       } catch (e) {
-        if (aborted()) return;
+        if (aborted() || again) return;
         setState({
           byEvent: new Map(),
           loading: false,
