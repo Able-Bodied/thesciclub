@@ -45,7 +45,8 @@ export type NotificationKind =
   | 'event_reminder'
   | 'org_events'
   | 'grant_open'
-  | 'profile_reminder';
+  | 'profile_reminder'
+  | 'blocks_weekly';
 
 interface Row {
   id: string;
@@ -251,6 +252,14 @@ export function notificationSentence(n: AppNotification): string {
       return n.detail === 'details'
         ? 'Finish Your details, so other members can find you'
         : 'Finish your profile, so members can find what you have in common';
+    // An administrator's weekly count (20261022090000): nobody named.
+    case 'blocks_weekly': {
+      const blocked = Number(n.detail);
+      if (!Number.isInteger(blocked) || blocked < 1) return 'Members were blocked this week';
+      return blocked === 1
+        ? '1 member was blocked this week'
+        : `${blocked} members were blocked this week`;
+    }
     default:
       return 'Something new in the club';
   }

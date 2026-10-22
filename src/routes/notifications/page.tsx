@@ -1,5 +1,6 @@
 import {
   AtSign,
+  Ban,
   CalendarDays,
   Flag,
   HandCoins,
@@ -53,6 +54,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   org_events: CalendarDays,
   grant_open: HandCoins,
   profile_reminder: UserPen,
+  blocks_weekly: Ban,
 };
 
 export default function NotificationsPage() {

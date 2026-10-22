@@ -98,6 +98,15 @@ describe('what a notification says', () => {
     );
   });
 
+  it('counts the week’s blocks for an administrator, naming nobody', () => {
+    expect(notificationSentence(n({ kind: 'blocks_weekly', detail: '3', actorName: null }))).toBe(
+      '3 members were blocked this week',
+    );
+    expect(notificationSentence(n({ kind: 'blocks_weekly', detail: '1', actorName: null }))).toBe(
+      '1 member was blocked this week',
+    );
+  });
+
   it('reminds of the step that is left', () => {
     expect(notificationSentence(n({ kind: 'profile_reminder', detail: 'details' }))).toBe(
       'Finish Your details, so other members can find you',
