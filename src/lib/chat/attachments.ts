@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { describeError } from '@/lib/describe-error';
-import { preparePhoto } from '@/lib/image';
+import { preparePhoto, prepareThumb } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -52,6 +52,8 @@ export const CHAT_BUCKET: SignedBucket = 'chat';
 export const MAX_ATTACHMENTS = 4;
 export const MAX_ATTACHMENT_EDGE = 1600;
 export const MAX_SOURCE_BYTES = 10 * 1024 * 1024;
+/** A chat photograph's small copy: a tile in a topic or on Home, not the viewer. */
+export const CHAT_THUMB_EDGE = 800;
 
 /** Not quite the hour storage signs for, so nothing is drawn on its last second. */
 const SIGNED_FOR_SECONDS = 3600;
@@ -109,9 +111,19 @@ export async function uploadAttachments(
   for (const file of files) {
     const { blob, ext } = await preparePhoto(file, maxEdge);
     const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await storage.upload(path, blob, { contentType: blob.type, upsert: false });
+    // The small copy beside it, best effort: a tile draws the photograph without one.
+    const thumb = await prepareThumb(blob, CHAT_THUMB_EDGE);
+    const [{ error }] = await Promise.all([
+      storage.upload(path, blob, { contentType: blob.type, upsert: false }),
+      thumb
+        ? storage
+            .upload(thumbPath(path), thumb, { contentType: thumb.type, upsert: false })
+            .catch(() => null)
+        : null,
+    ]);
     if (error) {
-      await deleteAttachments(uploaded);
+      // The refused one's copy may have gone up beside it.
+      await deleteAttachments([...uploaded, path]);
       return { ok: false, error: describeError(error, UPLOAD_REFUSAL) };
     }
     uploaded.push(path);
@@ -123,7 +135,9 @@ export async function uploadAttachments(
 export async function deleteAttachments(paths: string[]): Promise<void> {
   if (paths.length === 0) return;
   try {
-    await getSupabase().storage.from(CHAT_BUCKET).remove(paths);
+    await getSupabase()
+      .storage.from(CHAT_BUCKET)
+      .remove([...paths, ...paths.map(thumbPath)]);
   } catch {
     // Nothing to tell anybody. The file is still behind the read policy.
   }
@@ -197,9 +211,21 @@ function saveKept(): void {
 restoreKept();
 
 /**
- * Small copies storage refused: not made yet (photos.ts names them
- * `*.thumb.*`). Not asked for again while the page lives, so a screen of older
- * photographs does not sign each missing copy on every visit.
+ * Where a photograph's small copy is kept: beside it, in the same folder, so
+ * every storage rule that covers the photograph covers the copy
+ * (`u1/profile-1a2b.webp` → `u1/profile-1a2b.thumb.webp`).
+ */
+export function thumbPath(path: string): string {
+  const dot = path.lastIndexOf('.');
+  return dot > path.lastIndexOf('/')
+    ? `${path.slice(0, dot)}.thumb${path.slice(dot)}`
+    : `${path}.thumb`;
+}
+
+/**
+ * Small copies storage refused: not made yet. Not asked for again while the
+ * page lives, so a screen of older photographs does not sign each missing
+ * copy on every visit.
  */
 const missingCopies = new Set<string>();
 const isCopy = (path: string) => path.includes('.thumb.');
@@ -341,4 +367,26 @@ export function useAttachmentUrls(
 
   if (!key) return NONE;
   return arrived.key === key ? arrived.urls : cachedUrls(bucket, key.split('\n'));
+}
+
+/**
+ * Each photograph's small copy and the photograph itself, signed in one
+ * request. `small` has the copy, or the photograph once storage says there
+ * is no copy (one uploaded before copies were made); `full` the photograph.
+ */
+export function useSmallCopies(
+  paths: readonly string[],
+  bucket: SignedBucket = CHAT_BUCKET,
+): { small: Map<string, string>; full: Map<string, string> } {
+  const full = useAttachmentUrls(
+    paths.flatMap((path) => [thumbPath(path), path]),
+    bucket,
+  );
+  const small = new Map<string, string>();
+  for (const path of paths) {
+    const copy = thumbPath(path);
+    const url = full.get(copy) ?? (copyMissing(bucket, copy) ? full.get(path) : undefined);
+    if (url) small.set(path, url);
+  }
+  return { small, full };
 }

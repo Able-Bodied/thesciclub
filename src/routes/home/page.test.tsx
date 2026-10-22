@@ -119,6 +119,11 @@ vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof Attachments>()),
   useAttachmentUrls: (paths: readonly string[]) =>
     new Map(paths.map((path) => [path, `https://signed/${path}`])),
+  // No small copies here: tiles and viewer draw the same URL.
+  useSmallCopies: (paths: readonly string[]) => {
+    const found = new Map(paths.map((path) => [path, `https://signed/${path}`]));
+    return { small: found, full: found };
+  },
 }));
 
 vi.mock('@/lib/events', async (importOriginal) => ({

@@ -1,4 +1,9 @@
-import { copyMissing, type SignedBucket, useAttachmentUrls } from '@/lib/chat/attachments';
+import {
+  type SignedBucket,
+  thumbPath,
+  useAttachmentUrls,
+  useSmallCopies,
+} from '@/lib/chat/attachments';
 import { prepareThumb } from '@/lib/image';
 import { getSupabase } from '@/lib/supabase';
 
@@ -38,17 +43,7 @@ import { getSupabase } from '@/lib/supabase';
  */
 export const PHOTOS_BUCKET: SignedBucket = 'photos';
 
-/**
- * Where a photograph's small copy is kept: beside it, in the same folder, so
- * every storage rule that covers the photograph covers the copy
- * (`u1/profile-1a2b.webp` → `u1/profile-1a2b.thumb.webp`).
- */
-export function thumbPath(path: string): string {
-  const dot = path.lastIndexOf('.');
-  return dot > path.lastIndexOf('/')
-    ? `${path.slice(0, dot)}.thumb${path.slice(dot)}`
-    : `${path}.thumb`;
-}
+export { thumbPath };
 
 /**
  * Upload a fitted photograph and, beside it, its small copy (2026-10-22).
@@ -81,18 +76,9 @@ export function usePhotoUrls(
   size: PhotoSize = 'full',
 ): Map<string, string> {
   const given = paths.filter((path): path is string => Boolean(path));
-  const urls = useAttachmentUrls(
-    size === 'thumb' ? given.flatMap((path) => [thumbPath(path), path]) : given,
-    PHOTOS_BUCKET,
-  );
-  if (size === 'full') return urls;
-  const out = new Map<string, string>();
-  for (const path of given) {
-    const small = thumbPath(path);
-    const url = urls.get(small) ?? (copyMissing(PHOTOS_BUCKET, small) ? urls.get(path) : undefined);
-    if (url) out.set(path, url);
-  }
-  return out;
+  const copies = useSmallCopies(size === 'thumb' ? given : [], PHOTOS_BUCKET);
+  const urls = useAttachmentUrls(size === 'thumb' ? [] : given, PHOTOS_BUCKET);
+  return size === 'thumb' ? copies.small : urls;
 }
 
 /**

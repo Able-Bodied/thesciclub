@@ -77,6 +77,11 @@ vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
   ...(await importOriginal<typeof Attachments>()),
   useAttachmentUrls: (paths: readonly string[]) =>
     new Map([...db.urls].filter(([path]) => paths.includes(path))),
+  // No small copies here: tiles and viewer draw the same URL.
+  useSmallCopies: (paths: readonly string[]) => {
+    const found = new Map([...db.urls].filter(([path]) => paths.includes(path)));
+    return { small: found, full: found };
+  },
 }));
 
 // Mutes read and write the club; the button has its own test.
