@@ -5,7 +5,8 @@
 -- function (service role). Consent revoked or Apple Account deleted drops the
 -- stored tokens and tells administrators; the account and member stay. Hide
 -- My Email turning off or on is told only when the account's own address is
--- that relay. Administrators read the notices; members cannot. 9b: a
+-- that relay. A notice Apple sends again (same jti) is kept once (2b).
+-- Administrators read the notices; members cannot. 9b: a
 -- revocation given up after seven tries leads the administrators' list.
 --
 -- 10–14: the native app signs in with an ID token, as the website's Google
@@ -74,7 +75,7 @@ select set_config('request.jwt.claims',
   '{"sub":"bbbbbbbb-1700-0000-0000-000000000002","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
 savepoint member_records;
-select public.apple_notification_record('apple.noor', 'account-delete', null);
+select public.apple_notification_record('apple.noor', 'account-delete', null, null);
 rollback to savepoint member_records;
 reset role;
 
@@ -82,6 +83,20 @@ reset role;
 \echo '== 2. Relay stops using Sign in with Apple (expect t) =='
 set local role service_role;
 select public.apple_notification_record('apple.relay', 'consent-revoked', null);
+
+\echo ''
+\echo '== 2b. the same notice again, by Apple''s jti, is kept once; without a jti both are kept (expect t | f, then t | t, then 1 | 2) =='
+select public.apple_notification_record('apple.relay', 'account-delete', null, 'probe-jti-1') as first,
+       public.apple_notification_record('apple.relay', 'account-delete', null, 'probe-jti-1') as again;
+select public.apple_notification_record('apple.relay', 'email-enabled', 'x7k2@privaterelay.appleid.com') as no_jti_1,
+       public.apple_notification_record('apple.relay', 'email-enabled', 'x7k2@privaterelay.appleid.com') as no_jti_2;
+reset role;
+select count(*) filter (where kind = 'account-delete') as by_jti,
+       count(*) filter (where kind = 'email-enabled') as no_jti
+  from public.apple_account_notices where member_id = 'aaaaaaaa-1700-0000-0000-000000000001';
+delete from public.apple_account_notices
+ where member_id = 'aaaaaaaa-1700-0000-0000-000000000001' and kind in ('account-delete', 'email-enabled');
+set local role service_role;
 
 \echo ''
 \echo '== 3. Hide My Email stops forwarding to Relay''s own address (expect t) =='

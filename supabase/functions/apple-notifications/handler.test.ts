@@ -51,14 +51,15 @@ function setup({
   keys?: () => AppleJwk[];
   recorded?: boolean | null;
 } = {}) {
-  const log = { recorded: [] as string[], fresh: 0 };
+  const log = { recorded: [] as string[], jtis: [] as (string | null)[], fresh: 0 };
   const deps: Deps = {
     keys: (fresh) => {
       if (fresh) log.fresh += 1;
       return Promise.resolve(keys());
     },
-    record: (sub, kind, email) => {
+    record: (sub, kind, email, jti) => {
       log.recorded.push(`${sub}|${kind}|${email ?? ''}`);
+      log.jtis.push(jti);
       return Promise.resolve(recorded);
     },
     nowSeconds: () => NOW,
@@ -111,11 +112,33 @@ describe('apple-notifications', () => {
       { aud: 'com.example.app' },
       { iss: 'https://example.com' },
       { iat: NOW - 8 * 86_400 },
+      { iat: NOW + 600 },
+      { iat: undefined },
+      { exp: NOW - 600 },
     ]) {
       const token = await signed(notice(event, over));
       expect((await receiveNotification({ payload: token }, deps)).status).toBe(401);
     }
     expect(log.recorded).toEqual([]);
+  });
+
+  it('allows five minutes of clock difference either way', async () => {
+    const { deps, log } = setup();
+    const event = { type: 'account-delete', sub: '001.a' };
+    for (const over of [{ iat: NOW + 240 }, { exp: NOW - 240 }, { exp: NOW + 3600 }]) {
+      const token = await signed(notice(event, over));
+      expect((await receiveNotification({ payload: token }, deps)).status).toBe(200);
+    }
+    expect(log.recorded).toHaveLength(3);
+  });
+
+  it('passes Apple’s jti on, so the database keeps a resent notice once', async () => {
+    const { deps, log } = setup();
+    const event = { type: 'consent-revoked', sub: '001.a' };
+    await receiveNotification({ payload: await signed(notice(event)) }, deps);
+    await receiveNotification({ payload: await signed(notice(event, { jti: undefined })) }, deps);
+    await receiveNotification({ payload: await signed(notice(event, { jti: 7 })) }, deps);
+    expect(log.jtis).toEqual(['j1', null, null]);
   });
 
   it('asks Apple again for a key it has not seen, once', async () => {

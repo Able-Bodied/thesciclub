@@ -16,8 +16,13 @@ export interface AppleJwk extends JsonWebKey {
 export interface Deps {
   /** Apple's public keys; `fresh` skips any cache, for a key Apple just added. */
   keys(fresh: boolean): Promise<AppleJwk[]>;
-  /** Whether a notice was kept; null when the database could not be reached. */
-  record(sub: string, kind: string, email: string | null): Promise<boolean | null>;
+  /** Whether a notice was kept (not for a `jti` already kept); null when the database could not be reached. */
+  record(
+    sub: string,
+    kind: string,
+    email: string | null,
+    jti: string | null,
+  ): Promise<boolean | null>;
   nowSeconds(): number;
   log(message: string): void;
 }
@@ -51,6 +56,8 @@ export function appleKeyCache(
 
 /** Older than this, a notice is a replay, not news. */
 const MAX_AGE_S = 7 * 86_400;
+/** Clock difference allowed between Apple and here. */
+const SKEW_S = 300;
 
 function json(part: string): Record<string, unknown> | null {
   try {
@@ -101,11 +108,13 @@ export async function receiveNotification(payload: unknown, deps: Deps): Promise
   if (!claims) return { status: 401, body: { error: 'Not signed by Apple.' } };
   const now = deps.nowSeconds();
   const iat = typeof claims.iat === 'number' ? claims.iat : 0;
+  const expired = typeof claims.exp === 'number' && claims.exp < now - SKEW_S;
   if (
     claims.iss !== APPLE_ISSUER ||
     !isAppleClient(claims.aud) ||
     iat < now - MAX_AGE_S ||
-    iat > now + 300
+    iat > now + SKEW_S ||
+    expired
   ) {
     return { status: 401, body: { error: 'Not for the club.' } };
   }
@@ -124,7 +133,9 @@ export async function receiveNotification(payload: unknown, deps: Deps): Promise
     return { status: 400, body: { error: 'No event.' } };
   }
   const email = typeof event.email === 'string' ? event.email : null;
-  const recorded = await deps.record(event.sub, event.type, email);
+  // Apple's id for this notice: a resent one is not shown twice.
+  const jti = typeof claims.jti === 'string' && claims.jti.length <= 200 ? claims.jti : null;
+  const recorded = await deps.record(event.sub, event.type, email, jti);
   // Not 200, so Apple sends it again.
   if (recorded === null) return { status: 502, body: { error: 'Not recorded.' } };
   deps.log(`apple-notifications: ${event.type}${recorded ? ', recorded' : ''}`);

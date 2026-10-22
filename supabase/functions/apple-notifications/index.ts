@@ -45,11 +45,11 @@ const deps: Deps = {
       return null;
     }
   }, Date.now),
-  async record(sub, kind, email) {
+  async record(sub, kind, email, jti) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/apple_notification_record`, {
       method: 'POST',
       headers: serviceHeaders,
-      body: JSON.stringify({ p_sub: sub, p_kind: kind, p_email: email }),
+      body: JSON.stringify({ p_sub: sub, p_kind: kind, p_email: email, p_jti: jti }),
     });
     if (!response.ok) {
       console.error('apple-notifications: apple_notification_record failed', response.status);

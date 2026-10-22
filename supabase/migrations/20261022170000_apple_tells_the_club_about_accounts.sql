@@ -25,7 +25,9 @@ create table if not exists public.apple_account_notices (
   id bigint generated always as identity primary key,
   member_id uuid not null references public.members (id) on delete cascade,
   kind text not null check (kind in ('consent-revoked', 'account-delete', 'email-disabled', 'email-enabled')),
-  received_at timestamptz not null default now()
+  received_at timestamptz not null default now(),
+  -- Apple's id for the notice, so one sent again is kept once.
+  jti text unique
 );
 
 comment on table public.apple_account_notices is
@@ -43,8 +45,15 @@ create policy "administrators read Apple notices"
   using (public.is_admin());
 
 -- ----------------------------------------------------------- recording one
--- The function only. Returns whether a notice was kept.
-create or replace function public.apple_notification_record(p_sub text, p_kind text, p_email text)
+-- The function only. Returns whether a notice was kept; false for a jti
+-- already kept.
+drop function if exists public.apple_notification_record(text, text, text);
+create or replace function public.apple_notification_record(
+  p_sub text,
+  p_kind text,
+  p_email text,
+  p_jti text default null
+)
 returns boolean
 language plpgsql
 security definer
@@ -76,13 +85,14 @@ begin
     end if;
   end if;
 
-  insert into public.apple_account_notices (member_id, kind) values (account, p_kind);
-  return true;
+  insert into public.apple_account_notices (member_id, kind, jti) values (account, p_kind, p_jti)
+  on conflict (jti) do nothing;
+  return found;
 end;
 $$;
 
-revoke all on function public.apple_notification_record(text, text, text) from public, anon, authenticated;
-grant execute on function public.apple_notification_record(text, text, text) to service_role;
+revoke all on function public.apple_notification_record(text, text, text, text) from public, anon, authenticated;
+grant execute on function public.apple_notification_record(text, text, text, text) to service_role;
 
 -- --------------------------------------------------------- reading them
 -- First, one line for Apple revocations given up after seven tries
