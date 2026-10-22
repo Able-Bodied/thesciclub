@@ -142,6 +142,43 @@ describe('the Terms of Service', () => {
     }
   });
 
+  // Apple 1.2 and Google Play's UGC policy.
+  it('defines objectionable content, with zero tolerance and a 24-hour review', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'What is not allowed' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Objectionable content is anything that/);
+    expect(section).toHaveTextContent(/threatens, harasses, bullies/);
+    expect(section).toHaveTextContent(
+      'The club has zero tolerance for objectionable content and for abusive members.',
+    );
+    expect(
+      screen.getByText('We review every report within 24 hours and act on it.'),
+    ).toBeInTheDocument();
+  });
+
+  it('says how to report and how to block, and that content and membership can go', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'Reporting and blocking' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/To report a message, a post or a reply, press the •••/);
+    expect(section).toHaveTextContent(/To block a member, press the •••/);
+    expect(section).toHaveTextContent(/Me → Settings → Blocked members/);
+    expect(screen.getByText(/We may remove anything that breaks these terms/)).toHaveTextContent(
+      /pause a membership, or end it/,
+    );
+  });
+
+  // Apple 1.4.1 and Google Play's health apps policy.
+  it('says nothing in the club is medical advice, and to call 911 in an emergency', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'Not medical advice' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/nothing here is medical advice/);
+    expect(section).toHaveTextContent(/check with your own doctor or care team/);
+    expect(section).toHaveTextContent('In an emergency, call 911.');
+  });
+
   it('asks for an email address on the list, not a phone number', () => {
     open('/terms');
     expect(screen.getByText(/puts your email address on the club’s list/)).toBeInTheDocument();

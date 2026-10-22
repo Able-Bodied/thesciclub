@@ -4,18 +4,13 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
 /**
  * The Terms of Service, at /terms.
  *
- * The club's full terms, at the owner's word (2026-10-01): membership and the
- * four ways to lose it. The four are the ones CONTEXT.md has always held, which
- * said they would go "in the terms of service when there is one to link to".
- * This is it.
- *
- * The text-message terms went on 2026-10-10 with phone sign-in
- * (EMAIL-SIGN-IN-PLAN.md): the club sends no texts, so there is no SMS program
- * to describe. "Email" says what it does send.
+ * The four ways to lose a membership are CONTEXT.md's, word for word. What is
+ * not allowed, the 24-hour promise and how to report and block are what
+ * Apple (1.2) and Google Play (UGC) ask a club like this to say.
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 10, 2026">
+    <LegalPage title="Terms of Service" updated="October 21, 2026">
       <Section title="The club">
         <P>
           The SCI Club is a private community for adults living with spinal cord injury, operated by
@@ -40,6 +35,41 @@ export default function TermsPage() {
         </List>
       </Section>
 
+      <Section title="Not medical advice">
+        <P>
+          Members share their own experience, and that is what makes the club worth having. But
+          nothing here is medical advice, from members, mentors or organizations. Every body is
+          different. Before you change your care, your medicines or your equipment, check with your
+          own doctor or care team.
+        </P>
+        <P>
+          <b>In an emergency, call 911.</b>
+        </P>
+      </Section>
+
+      <Section title="What is not allowed">
+        <P>Objectionable content is anything that:</P>
+        <List>
+          <li>threatens, harasses, bullies or humiliates anyone;</li>
+          <li>
+            attacks people for their race, ethnicity, religion, disability, sex, sexual orientation,
+            gender identity, age or where they come from;
+          </li>
+          <li>is pornographic, or is sexual and sent to someone who did not ask for it;</li>
+          <li>shows or encourages violence, self-harm or anything illegal;</li>
+          <li>shares somebody else’s private details or photographs without their permission;</li>
+          <li>pretends to be somebody else;</li>
+          <li>sells, advertises or spams.</li>
+        </List>
+        <P>
+          Talking frankly about bodies, bladder and bowel care, and sex after injury is part of the
+          club, and welcome.
+        </P>
+        <P>
+          <b>The club has zero tolerance for objectionable content and for abusive members.</b>
+        </P>
+      </Section>
+
       <Section title="Losing your membership">
         <P>Membership can be taken away. Any of these will end it:</P>
         <List>
@@ -49,26 +79,58 @@ export default function TermsPage() {
           <li>Repeating outside a room what was said in it.</li>
         </List>
         <P>
-          Any member can report a message or a post that breaks these. Administrators see only the
-          reported message, and the person reported is not told.
+          Posting objectionable content can end it too. We may remove anything that breaks these
+          terms, give a strike (it shows on your Standing card, on Me), pause a membership, or end
+          it.
         </P>
+      </Section>
+
+      <Section title="Reporting and blocking">
+        <P>
+          <b>We review every report within 24 hours and act on it.</b>
+        </P>
+        <List>
+          <li>
+            <b>To report</b> a message, a post or a reply, press the <b>•••</b> beside it and choose{' '}
+            <b>Report</b>. Administrators see only that one message, with who wrote it and when. The
+            person reported is not told. To report anything else, such as a member’s profile, email{' '}
+            <ContactEmail />.
+          </li>
+          <li>
+            <b>To block</b> a member, press the <b>•••</b> on their profile, or beside anything they
+            wrote, and choose <b>Block</b>. You stop seeing what they write, neither of you can
+            message the other, and nothing they do notifies you. They are not told; administrators
+            are. Unblock them at any time from <b>Me → Settings → Blocked members</b>.
+          </li>
+        </List>
       </Section>
 
       <Section title="What you write">
         <P>
-          What you write is yours. Members cannot rename or delete a room once it is started;
-          administrators can close a room, and can remove a post or a topic that should not be
-          there. If you delete your account, what you wrote in Chat stays and says “Deleted member”
-          instead of your name, until the other person in a one-to-one conversation deletes it.
+          What you write is yours. By posting it, you let the club keep it and show it to the
+          members who can read where you posted it. Post only what is yours to share.
+        </P>
+        <P>
+          Members cannot rename or delete a room once it is started; administrators can close a
+          room, and can remove a post or a topic that should not be there. If you delete your
+          account, what you wrote in Chat stays and says “Deleted member” instead of your name,
+          until the other person in a one-to-one conversation deletes it.
+        </P>
+      </Section>
+
+      <Section title="Events and other sites">
+        <P>
+          Events in the club are run by the organizations and people who host them, not by us. A
+          link to another site opens that site, under its own terms.
         </P>
       </Section>
 
       <Section title="Email">
         <P>
           <b>What the club emails you.</b> The club emails you to run your account: the link that
-          confirms your address, a link to reset or change your password, and an invitation link
-          when somebody invites you. It does not send newsletters or promotions. Questions or
-          trouble getting an email: <ContactEmail />.
+          confirms your address, a link to reset or change your password, a notice when your
+          password changes, and an invitation link when somebody invites you. It does not send
+          newsletters or promotions. Questions or trouble getting an email: <ContactEmail />.
         </P>
         <P>
           <b>A phone number is optional.</b> If you add one, it is only so the host of an event you
@@ -83,8 +145,15 @@ export default function TermsPage() {
 
       <Section title="Leaving">
         <P>
-          You can delete your account at any time from <b>Delete my account</b> at the foot of Me.
-          The Privacy Policy says what that erases and what stays.
+          You can delete your account at any time from <b>Me → Account → Delete my account</b>. The
+          Privacy Policy says what that erases and what stays.
+        </P>
+      </Section>
+
+      <Section title="Changes">
+        <P>
+          If these terms change, the date at the top changes with them. Using the club after that
+          means you accept the new terms.
         </P>
       </Section>
 
