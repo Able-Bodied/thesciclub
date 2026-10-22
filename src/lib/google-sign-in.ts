@@ -76,17 +76,21 @@ export async function signInWithGoogle(): Promise<{ ok: false; error: string } |
 }
 
 /**
- * Signs in with the ID token Google's widget handed back (src/lib/google-identity.ts).
+ * Signs in with the ID token Google handed back: its widget
+ * (src/lib/google-identity.ts), or the store app's Google Sign-In, which also
+ * gives the access token the ID token's at_hash is checked against.
  */
 export async function signInWithGoogleToken(
   token: string,
   nonce: string,
+  accessToken?: string,
 ): Promise<{ ok: false; error: string } | { ok: true }> {
   hintSignIn({ provider: 'google' });
   const { error } = await getSupabase().auth.signInWithIdToken({
     provider: 'google',
     token,
     nonce,
+    ...(accessToken ? { access_token: accessToken } : {}),
   });
   return error ? { ok: false, error: GOOGLE_NOT_SIGNED_IN } : { ok: true };
 }
@@ -94,12 +98,18 @@ export async function signInWithGoogleToken(
 /** Said when Google's widget picked an account and Supabase refused it. */
 export const GOOGLE_NOT_SIGNED_IN = 'Google did not sign you in. Try again, or use your email.';
 
-/** Links the Google account picked in Google's widget to the signed-in member. */
+/** Links the Google account picked in Google's widget, or the app's, to the signed-in member. */
 export async function linkGoogleToken(
   token: string,
   nonce: string,
+  accessToken?: string,
 ): Promise<{ ok: false; error: string } | { ok: true }> {
-  const { error } = await getSupabase().auth.linkIdentity({ provider: 'google', token, nonce });
+  const { error } = await getSupabase().auth.linkIdentity({
+    provider: 'google',
+    token,
+    nonce,
+    ...(accessToken ? { access_token: accessToken } : {}),
+  });
   if (!error) return { ok: true };
   // GoTrue's code for a Google account already on another member's sign-in.
   if (error.code === 'identity_already_exists') return { ok: false, error: GOOGLE_TAKEN };
