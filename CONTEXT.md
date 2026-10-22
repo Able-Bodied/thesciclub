@@ -61,9 +61,9 @@ deleting what you sent is not a way out of it. The person reported is not told.
 
 ## Blocking
 
-A member can block another from the ••• on that member's profile, after a
-dialog that says what it does (the owner, 2026-10-21, for App Store and Google
-Play review). It is immediate and asks no reason. Everything the blocked member
+A member can block another from the ••• on that member's profile, or on any of
+their messages, posts or replies (2026-10-22), after the same dialog saying what
+it does (the owner, 2026-10-21, for App Store and Google Play review). It is immediate and asks no reason. Everything the blocked member
 writes — topics, posts, replies, messages, likes, reactions — is hidden from the
 blocker everywhere, shared rooms and groups included, and nothing they do
 notifies the blocker. Neither can start a direct conversation with the other, and
@@ -72,7 +72,10 @@ it, saying only "You can't message this member". Neither can add the other to a
 group. They drop out of each other's Peers and profiles. The blocked member is not
 told and cannot read who blocked them. Each block is recorded for administrators,
 naming both and nothing else, on the Reports tab under Blocks, apart from the
-reports waiting for a decision. Blocking never limits an administrator's tools.
+reports waiting for a decision. No notification for each block; administrators
+get one a week, on Mondays, counting the members blocked and naming nobody, and
+none in a week with no blocks (2026-10-22). Blocking never limits an
+administrator's tools.
 Me → Settings → Blocked members lists everybody blocked, with Unblock; the
 profile's ••• has it too.
 
