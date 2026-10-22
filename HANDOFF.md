@@ -49,7 +49,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     (`lib/google-in-browser.ts`, `home-screen-handoff`).
   - **Home Screen app**: a signed-in iPhone tab hands the app a single-use
     code by cookie (`lib/home-screen-handoff.ts`).
-- **Checks**: 3,155 tests in 225 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,192 tests in 229 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -81,6 +81,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Verify's pooled sender (then withdraw the refused A2P campaign; its opt-in
   proof is `c550eff^:public/sms-opt-in/`) or the campaign with a public
   opt-in page and SMS terms back in Privacy and Terms. Build to their answer.
+- **Photo small copies**: 63 made on the live project with
+  `pnpm reprocess-photos --thumbs` before this release went out. Once it is
+  live, run it again for photographs uploaded meanwhile, with `pnpm dev`
+  running, dry run first: `SUPABASE_URL=https://erijdvqnxavwezsbbojv.supabase.co
+  SUPABASE_SERVICE_ROLE_KEY=<sb_secret_…> pnpm reprocess-photos --thumbs
+  --dry-run`, then without `--dry-run`. Adds files only; safe to run again.
+  Without a copy a face falls back to the whole photograph.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
 - **Passkeys**: built, off. To turn on: a Netlify preview with
@@ -160,6 +167,18 @@ and why.
 - **Notifications**: a `notifications` row per member before any push (kept
   30 days). A tap reaches a running or starting app through the worker
   (`NAVIGATE`, `FollowNotification`).
+- **Speed** (2026-10-22): Home, Peers, Chat, Events and Me stay mounted once
+  opened (`KeptTabs` in `App.tsx`, React's `<Activity>`): hidden, a tab keeps
+  its state and scroll and its effects stop; shown again, its reads run
+  again behind what is drawn, so hooks keep their data while they re-read
+  the same query (`shown` refs). A new member, or none, remounts the shell
+  and clears signed URLs and shared reads (`RequireMember`). Photographs
+  have a small copy beside them (`<name>.thumb.<ext>`: 400px for members,
+  800px for chat), made at upload (`uploadPhoto`, `uploadAttachments`);
+  `usePhotoUrl(path, 'thumb')` and `useSmallCopies` draw it, or the
+  photograph where there is none. A profile photograph gets a fresh name
+  each upload (`profile-<8 hex>.<ext>`), so a reported one is never
+  overwritten (20261022130000).
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
   Events on Home are within Events' default 20 miles of home, online ones
   anywhere (`events_within_miles`).
@@ -283,7 +302,8 @@ and why.
 - **Pre-membership screens** read through `my_invite_status()`,
   `claim_invite()` and `invite_address_for_token()`.
 - **Photos**: private buckets; every face is a signed URL (`usePhotoUrl`,
-  `MemberAvatar`). `photo_alt` belongs to one picture; a new one clears it.
+  `MemberAvatar`). Anything new that uploads or deletes one handles its small
+  copy too (Speed, above). `photo_alt` belongs to one picture; a new one clears it.
   Delete files through the Storage API, before the rows that make them
   readable.
 - **Colours by role, light and dark**: `emphasis` for links, outlines and
