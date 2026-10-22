@@ -78,12 +78,12 @@ function ReportedPhoto({ path, alt }: { path: string | null; alt: string | null 
     return <p className="mb-1.5 text-[0.75rem] text-grey leading-[1.45]">No profile photograph.</p>;
   }
   return (
-    <div className="mb-1.5 max-w-[16rem]">
+    <div className="mb-1.5 max-w-[12rem]">
       {url && !broken ? (
         <img
           src={url}
           alt={alt ?? 'The reported profile photograph'}
-          className="max-h-[20rem] w-full rounded-[12px] object-contain"
+          className="max-h-[16rem] w-full rounded-[12px] object-contain"
           onError={() => {
             setBroken(true);
           }}

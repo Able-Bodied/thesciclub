@@ -1,5 +1,5 @@
 import { MoreHorizontal } from 'lucide-react';
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useDialogFocus } from '@/lib/dialog-focus';
 
@@ -10,6 +10,7 @@ export function ItemActions({
   children,
   title = 'Message actions',
   buttonClassName = 'text-grey hover:bg-tint',
+  buttonRef,
 }: {
   what: string;
   children: ReactNode;
@@ -17,11 +18,14 @@ export function ItemActions({
   title?: string;
   /** Colour of the ••• button, for one drawn over a photograph. */
   buttonClassName?: string;
+  /** For a screen that puts focus back on the ••• after a sheet it opened closes. */
+  buttonRef?: Ref<HTMLButtonElement>;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button
+        ref={buttonRef}
         type="button"
         aria-label={`Actions for ${what}`}
         aria-haspopup="dialog"
