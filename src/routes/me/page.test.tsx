@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
@@ -559,6 +560,17 @@ describe('the three tabs', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Blocked members' })).toBeInTheDocument();
     expect(screen.getByText(/These follow your account, wherever you sign in/)).toBeInTheDocument();
+  });
+
+  it('in the store app, says nothing of installing or of a computer', () => {
+    const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    try {
+      renderMe('/me?tab=settings');
+      expect(screen.getByText('Display applies to this phone only.')).toBeInTheDocument();
+      expect(screen.queryByText(/installing|computer|Home Screen/)).toBeNull();
+    } finally {
+      native.mockRestore();
+    }
   });
 
   it('moves between tabs with the arrow keys, as tabs do', async () => {
