@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AUTHOR_COLUMNS, type ChatAuthorRow, rememberChatAuthors } from '@/lib/chat/authors';
 import { POST_COLUMNS, type PostRow, toPost } from '@/lib/chat/topics';
 import type { ChatPost, ChatRoom } from '@/lib/chat/types';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
@@ -62,7 +63,8 @@ interface TopicRow {
   /** Absent from a database before 20261010010000. */
   is_question?: boolean;
   opening?: PostRow[] | null;
-  replies?: PostRow[] | null;
+  replies?: (PostRow & { author?: ChatAuthorRow | null })[] | null;
+  author?: ChatAuthorRow | null;
 }
 
 function toSummary(row: TopicRow): HomeTopicSummary {
@@ -172,7 +174,7 @@ export function useHomeTopics(): HomeTopicsState {
         const topicRows = (await supabase
           .from('chat_topics')
           .select(
-            `${TOPIC_COLUMNS}, chat_rooms!inner(show_in_home, opened_at), opening:chat_posts(${POST_COLUMNS}), replies:chat_posts(${POST_COLUMNS})`,
+            `${TOPIC_COLUMNS}, author:chat_authors!chat_topics_author_id_fkey(${AUTHOR_COLUMNS}), chat_rooms!inner(show_in_home, opened_at), opening:chat_posts(${POST_COLUMNS}), replies:chat_posts(${POST_COLUMNS}, author:chat_authors!chat_posts_author_id_fkey(${AUTHOR_COLUMNS}))`,
           )
           .eq('chat_rooms.show_in_home', true)
           .not('chat_rooms.opened_at', 'is', null)
@@ -202,6 +204,12 @@ export function useHomeTopics(): HomeTopicsState {
           }
         }
         const posts = [...byId.values()];
+        // The cards' names and faces came with the topics: no second read.
+        rememberChatAuthors(
+          rows
+            .flatMap((row) => [row.author, ...(row.replies ?? []).map((reply) => reply.author)])
+            .filter((author): author is ChatAuthorRow => Boolean(author)),
+        );
         setState({ topics, posts, loading: false, error: null });
       } catch (e) {
         if (aborted()) return;

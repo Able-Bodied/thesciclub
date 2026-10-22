@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ChatAuthor } from '@/lib/chat/types';
 import { readInBatches } from '@/lib/read-pages';
 import { onForgetSharedReads } from '@/lib/shared-reads';
@@ -54,7 +54,11 @@ export function resetChatAuthors(): void {
 // At sign-out too: the next member on the phone reads authors as themselves.
 onForgetSharedReads(resetChatAuthors);
 
-interface ChatAuthorRow {
+/** What a face and a byline need, read alone or embedded in another read. */
+export const AUTHOR_COLUMNS =
+  'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, is_admin, has_profile';
+
+export interface ChatAuthorRow {
   id: string;
   display_name: string;
   /** Optional: absent from a database before 20261012010000. */
@@ -92,6 +96,11 @@ function toAuthor(row: ChatAuthorRow): ChatAuthor {
   };
 }
 
+/** Authors that came embedded in another read (Home's topics). */
+export function rememberChatAuthors(rows: readonly ChatAuthorRow[]): void {
+  for (const row of rows) cache.set(row.id, toAuthor(row));
+}
+
 /**
  * Read a set of authors, whatever is not already known.
  *
@@ -101,12 +110,7 @@ export async function fetchChatAuthors(ids: string[]): Promise<Map<string, ChatA
   const wanted = [...new Set(ids)].filter((id) => !cache.has(id) && !missing.has(id));
   if (wanted.length > 0) {
     const { data, error } = await readInBatches<ChatAuthorRow>(wanted, (batch) =>
-      getSupabase()
-        .from('chat_authors')
-        .select(
-          'id, display_name, username, photo_path, photo_alt, avatar_color, level_range, exact_level, injury_type, condition_name, is_admin, has_profile',
-        )
-        .in('id', batch),
+      getSupabase().from('chat_authors').select(AUTHOR_COLUMNS).in('id', batch),
     );
     // A failure leaves the ids uncached, so the next render tries again. The
     // screens draw an unnamed tile meanwhile, which is what they draw for a
@@ -143,5 +147,11 @@ export function useChatAuthors(ids: (string | null)[]): Map<string, ChatAuthor> 
     };
   }, [key]);
 
-  return byId;
+  // Authors already known (remembered with the read that named them) are
+  // drawn on the first render, not "…" until the effect has run.
+  return useMemo(
+    () =>
+      key.split(',').some((id) => id && !byId.has(id) && cache.has(id)) ? new Map(cache) : byId,
+    [byId, key],
+  );
 }
