@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -575,6 +575,18 @@ describe('the three tabs', () => {
   it('comes back from Google on Account, where the answer is shown', () => {
     renderMe('/me?google=linked');
     expect(screen.getByRole('tab', { name: 'Account' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  // Apple 5.1.1(i) and Google Play: the policies stay reachable after joining.
+  it('links the Privacy Policy, the Terms and account deletion from Account', () => {
+    renderMe('/me?tab=account');
+    const links = within(screen.getByRole('region', { name: 'Privacy and terms' }));
+    expect(links.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+    expect(links.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/terms');
+    expect(links.getByRole('link', { name: 'Deleting your account' })).toHaveAttribute(
+      'href',
+      '/delete-account',
+    );
   });
 });
 
