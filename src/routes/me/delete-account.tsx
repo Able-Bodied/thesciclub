@@ -90,8 +90,8 @@ export function DeleteAccount({ userId, isAdmin }: { userId: string; isAdmin: bo
       </h2>
       <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.55]">
         This erases your name, phone number, photo, birthday, injury details and everything you told
-        the club about yourself. Your number comes off the club’s list, so coming back would take a
-        new invite.
+        the club about yourself. Your email address comes off the club’s list, so coming back would
+        take a new invite.
       </p>
       <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.55]">
         What you wrote in Chat stays, so other people’s conversations still make sense, but it will
