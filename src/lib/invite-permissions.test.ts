@@ -41,11 +41,12 @@ describe('invite permissions', () => {
     act(() => {
       result.current.reload();
     });
+    // The last answer stays up while it reads again; then the new one.
+    expect(result.current.loading).toBe(false);
     await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+      expect(result.current.unlimited).toBe(false);
     });
     expect(result.current.canInvite).toBe(false);
-    expect(result.current.unlimited).toBe(false);
   });
   it('fails closed with a retry instead of guessing a ten-invite cap', async () => {
     db.error = { message: 'Offline' };
