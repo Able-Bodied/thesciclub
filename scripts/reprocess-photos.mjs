@@ -4,8 +4,8 @@
  *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… pnpm reprocess-photos [--dry-run]
  *
  * With --thumbs, instead: make the small copy (`prepareThumb`) beside every
- * member photograph that has none, as an upload now does (2026-10-22). It
- * only adds files; no row changes. Safe to run again.
+ * member photograph and every chat photograph that has none, as an upload now
+ * does (2026-10-22). It only adds files; no row changes. Safe to run again.
  *
  *   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… pnpm reprocess-photos --thumbs [--dry-run]
  *
@@ -67,8 +67,36 @@ for (const m of members.filter((m) => !own(m))) {
 }
 
 if (THUMBS) {
-  await makeThumbs(members.filter(own));
+  const chat = await chatPhotographs();
+  await makeThumbs([
+    ...members
+      .filter(own)
+      .map((m) => ({ bucket: 'photos', path: m.photo_path, who: m.display_name })),
+    ...chat.map((path) => ({ bucket: 'chat', path, who: 'chat' })),
+  ]);
   process.exit(0);
+}
+
+/** Every chat photograph: two folders deep, under rooms/ and threads/. */
+async function chatPhotographs() {
+  const all = async (folder) => {
+    const out = [];
+    for (let offset = 0; ; offset += 1000) {
+      const { data, error } = await db.storage.from('chat').list(folder, { limit: 1000, offset });
+      if (error) throw new Error(`${folder}: ${error.message}`);
+      out.push(...data);
+      if (data.length < 1000) return out;
+    }
+  };
+  const paths = [];
+  for (const kind of ['rooms', 'threads']) {
+    for (const scope of await all(kind)) {
+      for (const file of await all(`${kind}/${scope.name}`)) {
+        if (file.id) paths.push(`${kind}/${scope.name}/${file.name}`);
+      }
+    }
+  }
+  return paths;
 }
 
 /** The small copies, made by the app's own code in a page (see above). */
@@ -76,40 +104,54 @@ async function makeThumbs(list) {
   const browser = await chromium.launch();
   const page = await (await browser.newContext()).newPage();
   await page.goto(`${BASE}/join`, { waitUntil: 'domcontentloaded' });
+  const names = new Map();
   let made = 0;
-  for (const m of list) {
-    const thumb = await page.evaluate(async (path) => {
-      const { thumbPath } = await import('/src/lib/photos.ts');
-      return thumbPath(path);
-    }, m.photo_path);
-    const listed = await db.storage.from('photos').list(m.id);
-    if (listed.data?.some((o) => `${m.id}/${o.name}` === thumb)) continue;
-    const full = await db.storage.from('photos').download(m.photo_path);
+  for (const { bucket, path, who } of list) {
+    if (path.includes('.thumb.')) continue;
+    const thumb = await page.evaluate(async (p) => {
+      const { thumbPath } = await import('/src/lib/chat/attachments.ts');
+      return thumbPath(p);
+    }, path);
+    // What is already in the folder, listed once per folder.
+    const folder = path.slice(0, path.lastIndexOf('/'));
+    if (!names.has(`${bucket}/${folder}`)) {
+      const listed = await db.storage.from(bucket).list(folder, { limit: 1000 });
+      names.set(
+        `${bucket}/${folder}`,
+        new Set((listed.data ?? []).map((o) => `${folder}/${o.name}`)),
+      );
+    }
+    if (names.get(`${bucket}/${folder}`).has(thumb)) continue;
+    const full = await db.storage.from(bucket).download(path);
     if (full.error) {
-      console.log(`  ${m.display_name}: could not fetch ${m.photo_path} (${full.error.message})`);
+      console.log(`  ${who}: could not fetch ${path} (${full.error.message})`);
       continue;
     }
     const bytes = Buffer.from(await full.data.arrayBuffer());
     const small = await page.evaluate(
-      async ([data, type]) => {
-        const { prepareThumb } = await import('/src/lib/image.ts');
-        const blob = await prepareThumb(new Blob([new Uint8Array(data)], { type }));
+      async ([data, type, isChat]) => {
+        const { prepareThumb, THUMB_EDGE } = await import('/src/lib/image.ts');
+        const { CHAT_THUMB_EDGE } = await import('/src/lib/chat/attachments.ts');
+        const blob = await prepareThumb(
+          new Blob([new Uint8Array(data)], { type }),
+          isChat ? CHAT_THUMB_EDGE : THUMB_EDGE,
+        );
         return blob
           ? { bytes: [...new Uint8Array(await blob.arrayBuffer())], type: blob.type }
           : null;
       },
-      [[...bytes], full.data.type],
+      [[...bytes], full.data.type, bucket === 'chat'],
     );
     if (!small) {
-      console.log(`  ${m.display_name}: no copy (already small, or not webp or JPEG)`);
+      console.log(`  ${who}: ${path} no copy (already small, or not webp or JPEG)`);
       continue;
     }
     console.log(
-      `  ${m.display_name}: ${thumb} ${Math.round(small.bytes.length / 1024)}KB (photograph ${Math.round(bytes.length / 1024)}KB)`,
+      `  ${who}: ${thumb} ${Math.round(small.bytes.length / 1024)}KB (photograph ${Math.round(bytes.length / 1024)}KB)`,
     );
     if (DRY) continue;
     const up = await db.storage
-      .from('photos')
+      .from(bucket)
       .upload(thumb, Buffer.from(small.bytes), { upsert: false, contentType: small.type });
     if (up.error) console.log(`    upload failed: ${up.error.message}`);
     else made += 1;
