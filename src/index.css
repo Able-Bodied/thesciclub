@@ -403,9 +403,13 @@
  * This replaced a `zoom` implementation, which was honest about nothing: it
  * scaled the entire interface including spacing and images, which is what the
  * browser's own zoom already does, and left the browser font setting ignored.
+ *
+ * The store app's web view on an iPhone ignores the phone's Text Size, so the
+ * app reads it and sets `--system-text-scale`, never below 1
+ * (src/lib/native-shell.ts). The website never sets it.
  */
 :root {
-  font-size: calc(100% * var(--text-scale, 1));
+  font-size: calc(100% * var(--text-scale, 1) * var(--system-text-scale, 1));
 }
 
 /* ------------------------------------------------------------ tap targets */

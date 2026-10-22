@@ -1,7 +1,8 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
-import { type PluginListenerHandle, SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { Capacitor, type PluginListenerHandle, SystemBars, SystemBarsStyle } from '@capacitor/core';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { TextZoom } from '@capacitor/text-zoom';
 import { SITE_ORIGIN } from '@/lib/site-origin';
 
 /**
@@ -43,6 +44,25 @@ export function barStyle(root: DOMStringMap, systemDark: boolean): SystemBarsSty
   if (root.forceLight !== undefined) return SystemBarsStyle.Light;
   const dark = root.appearance === 'dark' || (root.appearance !== 'light' && systemDark);
   return dark ? SystemBarsStyle.Dark : SystemBarsStyle.Light;
+}
+
+/**
+ * The phone's Text Size as a multiplier on the club's own (index.css), never
+ * below 1: a smaller setting leaves the club's sizes as they are.
+ */
+export function systemTextScale(preferred: number): number {
+  if (!Number.isFinite(preferred) || preferred <= 1) return 1;
+  return Math.round(preferred * 100) / 100;
+}
+
+/**
+ * WKWebView ignores the iPhone's Text Size, so it is read and applied here.
+ * Android's web view already follows the system's font size by itself.
+ */
+async function followTextSize(): Promise<void> {
+  if (Capacitor.getPlatform() !== 'ios') return;
+  const { value } = await TextZoom.getPreferred();
+  document.documentElement.style.setProperty('--system-text-scale', String(systemTextScale(value)));
 }
 
 function quietly(work: Promise<unknown>): void {
@@ -90,8 +110,19 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
   scheme.addEventListener('change', paintBar);
   paintBar();
 
-  // The first screen is drawn: the splash can go.
-  quietly(SplashScreen.hide({ fadeOutDuration: 200 }));
+  // Text Size is changed in Settings, so coming back is when to look again.
+  listeners.push(
+    App.addListener('resume', () => {
+      quietly(followTextSize());
+    }),
+  );
+
+  // The first screen is drawn: the splash goes once its text is the right size.
+  quietly(
+    followTextSize()
+      .catch(() => undefined)
+      .then(() => SplashScreen.hide({ fadeOutDuration: 200 })),
+  );
 
   return () => {
     document.removeEventListener('click', onClick, true);

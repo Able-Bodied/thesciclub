@@ -3,13 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const native = vi.hoisted(() => ({
   back: null as ((event: { canGoBack: boolean }) => void) | null,
+  resume: null as (() => void) | null,
   calls: [] as string[],
+  /** What the phone's Text Size reads as. */
+  textSize: 1,
 }));
 
 vi.mock('@capacitor/app', () => ({
   App: {
     addListener: (name: string, listener: (event: { canGoBack: boolean }) => void) => {
       if (name === 'backButton') native.back = listener;
+      if (name === 'resume') native.resume = listener as () => void;
       return Promise.resolve({ remove: () => Promise.resolve() });
     },
     minimizeApp: () => {
@@ -34,6 +38,14 @@ vi.mock('@capacitor/splash-screen', () => ({
     },
   },
 }));
+vi.mock('@capacitor/text-zoom', () => ({
+  TextZoom: {
+    getPreferred: () => {
+      native.calls.push('text size read');
+      return Promise.resolve({ value: native.textSize });
+    },
+  },
+}));
 vi.mock('@capacitor/core', async (importOriginal) => {
   const core = await importOriginal<typeof CapacitorCore>();
   return {
@@ -47,7 +59,10 @@ vi.mock('@capacitor/core', async (importOriginal) => {
   };
 });
 
-const { backStep, barStyle, linkTarget, startNativeShell } = await import('@/lib/native-shell');
+const { backStep, barStyle, linkTarget, startNativeShell, systemTextScale } = await import(
+  '@/lib/native-shell'
+);
+const { Capacitor } = await import('@capacitor/core');
 
 describe('where a link goes in the store app', () => {
   const app = 'capacitor://localhost';
@@ -100,6 +115,8 @@ describe('starting the shell', () => {
   beforeEach(() => {
     native.calls = [];
     native.back = null;
+    native.resume = null;
+    native.textSize = 1;
     navigate.mockClear();
     vi.stubGlobal('matchMedia', () => ({
       matches: false,
@@ -112,12 +129,16 @@ describe('starting the shell', () => {
 
   afterEach(() => {
     stop();
+    vi.restoreAllMocks();
+    document.documentElement.style.removeProperty('--system-text-scale');
     vi.unstubAllGlobals();
     document.body.innerHTML = '';
   });
 
-  it('hides the splash and paints the status bar for the page', () => {
-    expect(native.calls).toEqual(['bar LIGHT', 'splash hidden']);
+  it('hides the splash and paints the status bar for the page', async () => {
+    await vi.waitFor(() => {
+      expect(native.calls).toEqual(['bar LIGHT', 'splash hidden']);
+    });
   });
 
   it('opens another site in the in-app browser instead of in place of the club', () => {
@@ -164,5 +185,66 @@ describe('starting the shell', () => {
     document.documentElement.dataset.appearance = 'dark';
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(native.calls).toContain('bar DARK');
+  });
+});
+
+describe('the iPhone’s Text Size', () => {
+  it('multiplies the club’s own sizes, and never makes text smaller', () => {
+    expect(systemTextScale(0.82)).toBe(1);
+    expect(systemTextScale(1)).toBe(1);
+    expect(systemTextScale(1.2353)).toBe(1.24);
+    expect(systemTextScale(3.1176)).toBe(3.12);
+    expect(systemTextScale(Number.NaN)).toBe(1);
+  });
+
+  const root = document.documentElement;
+  const scale = () => root.style.getPropertyValue('--system-text-scale');
+  let stop: () => void = () => undefined;
+
+  beforeEach(() => {
+    native.calls = [];
+    native.textSize = 1;
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+  });
+
+  afterEach(() => {
+    stop();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    root.style.removeProperty('--system-text-scale');
+  });
+
+  it('is applied on an iPhone before the splash goes, and again on coming back', async () => {
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+    native.textSize = 1.47;
+    stop = startNativeShell(vi.fn());
+    await vi.waitFor(() => {
+      expect(native.calls).toContain('splash hidden');
+    });
+    expect(native.calls.indexOf('text size read')).toBeLessThan(
+      native.calls.indexOf('splash hidden'),
+    );
+    expect(scale()).toBe('1.47');
+
+    native.textSize = 0.9;
+    native.resume?.();
+    await vi.waitFor(() => {
+      expect(scale()).toBe('1');
+    });
+  });
+
+  it('is left to Android, whose web view follows it already', async () => {
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+    native.textSize = 1.3;
+    stop = startNativeShell(vi.fn());
+    await vi.waitFor(() => {
+      expect(native.calls).toContain('splash hidden');
+    });
+    expect(native.calls).not.toContain('text size read');
+    expect(scale()).toBe('');
   });
 });
