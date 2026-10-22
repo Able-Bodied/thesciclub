@@ -93,24 +93,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
-- **Profile reports, not live** (2026-10-22): `20261022130000` and
-  `20261022150000` (a deleted member's copy reads "Deleted member", keeps
-  the words, and frees the photograph to be deleted; probe
-  `profile-reports.sql`, `pnpm check-photo-policy`) go live before the
-  client. No function deploy. Terms, Privacy and `/delete-account` say so,
-  and wait for the owner's read like the other legal pages.
-
-- **`20261022140000`, not live**: an inviter may only withdraw their own
-  unused invite (probe `invite-withdrawal.sql`). The client needs no change:
-  `db push --linked --dry-run`, then the push.
-
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
-  (2026-10-21). They say deleting erases sign-in records, so
-  `20261022100000` (deletion also clears `auth.audit_log_entries`; probe
-  `sign-in-log-forgotten.sql`) goes live first: `db push --linked
-  --dry-run`, then the push. The client only once the owner has read the
-  pages **and** that address receives mail (MX at Spaceship, held by
+  (2026-10-21). Their database side is live (`20261022100000` to
+  `20261022150000`: sign-in records erased on deletion, profile reports,
+  inviters only withdraw, a deleted member's reports unnamed). The client
+  only once the owner has read the pages **and** that address receives mail (MX at Spaceship, held by
   someone else). Then paste `https://thesciclub.com/delete-account` into
   Play's Data safety form. A lawyer should read them: injury details are
   health information.
@@ -147,8 +135,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
      ```
      Expect `apple_revoke_secret`, `apple_revoke_url`.
   7. `pnpm exec supabase db push --linked --dry-run` lists exactly
-     `20261022100000`, `20261022130000`, `20261022140000`,
-     `20261022150000`, `20261022160000`, `20261022170000`; then the push.
+     `20261022160000` and `20261022170000` (the four before them are live);
+     then the push.
   8. `pnpm exec supabase functions deploy apple-token`, then
      `apple-revoke --no-verify-jwt` and `apple-notifications
      --no-verify-jwt`. A bare `curl -X POST …/functions/v1/apple-revoke`
