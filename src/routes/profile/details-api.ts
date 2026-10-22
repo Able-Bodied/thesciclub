@@ -284,7 +284,9 @@ export async function savePhoto(
   // came off the phone was being served to every member: 7 megapixels and 2.6MB
   // to fill, in one place, a 34 pixel square.
   const { blob, ext } = await preparePhoto(file);
-  const path = `${userId}/profile.${ext}`;
+  // A fresh name each time: a reported photograph cannot be overwritten, and
+  // the member must not meet a refusal for it (20261022130000).
+  const path = `${userId}/profile-${crypto.randomUUID().slice(0, 8)}.${ext}`;
 
   const upload = await supabase.storage
     .from('photos')
@@ -305,16 +307,13 @@ export async function savePhoto(
 /**
  * Delete every other object in this member's photo folder.
  *
- * The path is `<id>/profile.<ext>`, so changing the *type* of your photograph
- * writes a new object and leaves the old one behind for ever — the row moves,
- * the file does not, and a public bucket keeps serving it. Found on the live
- * bucket: one member had both `profile.jpg` and `profile.jpeg`, 718KB of it
- * unreferenced by anything.
+ * Each upload is a new object, so the old ones are left behind: the row moves,
+ * the file does not. Found on the live bucket, a member with both
+ * `profile.jpg` and `profile.jpeg`. A photograph named on a report stays:
+ * storage skips what its policy refuses, and says nothing.
  *
- * Runs after the upload, never before: a failure here costs some bytes, and a
- * failure the other way round costs the photograph. It is deliberately not
- * awaited into the result for the same reason — a member whose new picture is
- * stored should not see an error because the old one would not delete.
+ * Runs after the upload, never before, and its failure is not the caller's: a
+ * failure here costs some bytes, the other way round costs the photograph.
  */
 async function removeOtherPhotos(userId: string, keep: string): Promise<void> {
   const supabase = getSupabase();
