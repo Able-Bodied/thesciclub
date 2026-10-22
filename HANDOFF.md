@@ -315,8 +315,10 @@ All live. Migration headers and the files named say how and why.
   grepping the live bundle for a string only the new code has.
 - **Ingest**: `.github/workflows/event-ingest.yml`, daily 04:10 UTC from
   `main`, rewrites every event's format (a fix goes in `jobs/`, not the
-  database). Dry run: `gh workflow run "Event ingest" --repo
-  Able-Bodied/thesciclub -f dry_run=true`.
+  database). It runs in Alfredx48/TheSciClub only, with its own Supabase
+  secret key; it's off in Able-Bodied, which holds no secrets (2026-10-22).
+  Dry run: `gh workflow run "Event ingest" --repo Alfredx48/TheSciClub -f
+  dry_run=true`.
 - **Supabase logs** through the Management API: `…/analytics/endpoints/logs`,
   `from logs where source_name = 'auth_logs'`.
 
