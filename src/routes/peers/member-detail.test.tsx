@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Blocks from '@/lib/blocks';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
 
@@ -28,6 +29,29 @@ vi.mock('@/lib/chat/rooms', () => ({
     error: null,
     reload: () => undefined,
   }),
+}));
+
+// Blocks: the viewer's list, and the two writes, which are network calls.
+const blocks = vi.hoisted(() => ({
+  ids: new Set<string>(),
+  reload: vi.fn(),
+  block: vi.fn(),
+  unblock: vi.fn(),
+}));
+vi.mock('@/lib/blocks', async (importOriginal) => ({
+  ...(await importOriginal<typeof Blocks>()),
+  useMyBlocks: () => ({
+    blocked: [...blocks.ids].map((memberId) => ({ memberId, blockedAt: '2026-10-21' })),
+    ids: blocks.ids,
+    loading: false,
+    error: null,
+    reload: blocks.reload,
+  }),
+  blockMember: blocks.block,
+  unblockMember: blocks.unblock,
+}));
+vi.mock('@/lib/chat/authors', () => ({
+  useChatAuthors: () => new Map([['abc', { id: 'abc', displayName: 'Nicole' }]]),
 }));
 
 // A signed URL for any stored photograph: signing is a storage call.
@@ -74,6 +98,57 @@ function renderDetail() {
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
   chatRooms.rooms = [];
+  blocks.ids = new Set();
+  blocks.reload.mockReset();
+  blocks.block.mockReset().mockResolvedValue({ ok: true, value: null });
+  blocks.unblock.mockReset().mockResolvedValue({ ok: true, value: null });
+});
+
+describe('blocking from a profile', () => {
+  it('asks first, says what blocking does, then blocks', async () => {
+    const user = userEvent.setup();
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Block Nicole' }));
+    const dialog = screen.getByRole('dialog', { name: 'Block Nicole?' });
+    expect(dialog).toHaveTextContent('Nicole is not told.');
+    expect(dialog).toHaveTextContent('Neither of you can message the other');
+    expect(blocks.block).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Block Nicole' }));
+    expect(blocks.block).toHaveBeenCalledWith('abc');
+    expect(blocks.reload).toHaveBeenCalled();
+  });
+
+  it('keeps the dialog open with the reason when it fails', async () => {
+    const user = userEvent.setup();
+    blocks.block.mockResolvedValue({ ok: false, error: 'They were not blocked.' });
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Block Nicole' }));
+    await user.click(screen.getByRole('button', { name: 'Block Nicole' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('They were not blocked.');
+    expect(blocks.reload).not.toHaveBeenCalled();
+  });
+
+  it('is not offered on your own profile', () => {
+    state.current = ok(makeMember({ id: 'me', displayName: 'Alex' }));
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /^Actions for/ })).not.toBeInTheDocument();
+  });
+
+  it('shows a member you blocked as blocked, with Unblock', async () => {
+    const user = userEvent.setup();
+    blocks.ids = new Set(['abc']);
+    renderDetail();
+    expect(screen.getByRole('heading', { name: 'Nicole' })).toBeInTheDocument();
+    expect(screen.getByText(/You blocked Nicole/)).toBeInTheDocument();
+    expect(screen.queryByText('@nicole.s')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Unblock Nicole' }));
+    expect(blocks.unblock).toHaveBeenCalledWith('abc');
+    expect(blocks.reload).toHaveBeenCalled();
+  });
 });
 
 describe('the @username', () => {

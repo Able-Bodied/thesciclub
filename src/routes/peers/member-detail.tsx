@@ -1,9 +1,12 @@
 import { ChevronLeft } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { useAccount } from '@/lib/account';
+import { useAnnounce } from '@/lib/announce';
+import { blockMember, unblockMember, useMyBlocks } from '@/lib/blocks';
+import { useChatAuthors } from '@/lib/chat/authors';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
@@ -11,7 +14,9 @@ import { useBrowseMember } from '@/lib/members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
+import { ItemActions } from '@/routes/chat/item-actions';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { BlockSheet } from '@/routes/peers/block-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { RepresentationTags } from '@/routes/peers/representation-tags';
 import type { BeforeAfter, BrowseMember } from '@/types/domain';
@@ -190,7 +195,121 @@ function injuryLine(member: BrowseMember): string | null {
   return since ?? (when ? `Injured ${when}` : null);
 }
 
+/**
+ * A member the viewer blocked has no profile for them (20261022060000), so
+ * this page says so instead, with Unblock.
+ */
 export default function MemberDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const blocks = useMyBlocks();
+  const [justBlocked, setJustBlocked] = useState(false);
+  if (blocks.loading) return <Centered role="status">Loading…</Centered>;
+  if (id && blocks.ids.has(id)) {
+    return <BlockedProfile id={id} focusHeading={justBlocked} onUnblocked={blocks.reload} />;
+  }
+  return (
+    <MemberProfile
+      // Read again after Unblock: the profile was hidden until now.
+      key={blocks.blocked.length}
+      onBlocked={() => {
+        setJustBlocked(true);
+        blocks.reload();
+      }}
+    />
+  );
+}
+
+/** The ••• over a profile's photograph: white on a phone, as the back link is. */
+const ACTIONS_BUTTON =
+  'text-white drop-shadow-[0_1px_2px_rgba(10,29,54,0.6)] hover:bg-white/15 lg:text-grey lg:drop-shadow-none lg:hover:bg-tint';
+
+function BlockedProfile({
+  id,
+  focusHeading,
+  onUnblocked,
+}: {
+  id: string;
+  focusHeading: boolean;
+  onUnblocked: () => void;
+}) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const announce = useAnnounce();
+  const author = useChatAuthors([id]).get(id);
+  const name = author?.displayName ?? 'This member';
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const heading = useRef<HTMLHeadingElement | null>(null);
+
+  useEffect(() => {
+    if (focusHeading) heading.current?.focus();
+  }, [focusHeading]);
+
+  function unblock() {
+    if (busy) return;
+    setBusy(true);
+    setFailure(null);
+    void unblockMember(id).then((result) => {
+      setBusy(false);
+      if (!result.ok) {
+        setFailure(result.error);
+        return;
+      }
+      announce(`Unblocked ${name}.`);
+      onUnblocked();
+    });
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto w-full max-w-[560px] px-4 pt-3 pb-8">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => {
+              void navigate(-1);
+            }}
+            className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1.5 font-semibold text-[0.875rem] text-emphasis"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            {backFrom(location.state)}
+          </button>
+          <ItemActions what={name} title="Member actions">
+            <button type="button" onClick={unblock}>
+              Unblock {name}
+            </button>
+          </ItemActions>
+        </div>
+        <h1
+          ref={heading}
+          tabIndex={-1}
+          className="mt-4 font-extrabold font-display text-[1.875rem] text-ink leading-tight outline-none"
+        >
+          {name}
+        </h1>
+        <p className="mt-3 text-[0.9375rem] text-ink2 leading-[1.55]">
+          You blocked {name}. You don't see anything they post or send, and neither of you can
+          message the other. They have not been told.
+        </p>
+        <button
+          type="button"
+          onClick={unblock}
+          disabled={busy}
+          className="mt-5 min-h-[48px] w-full rounded-[13px] bg-tint px-5 font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-line disabled:opacity-50"
+        >
+          {busy ? 'Unblocking…' : `Unblock ${name}`}
+        </button>
+        {failure ? (
+          <p role="alert" className="mt-2 text-[0.875rem] text-destructive leading-[1.45]">
+            {failure}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -202,6 +321,8 @@ export default function MemberDetailPage() {
   const photo = usePhotoUrl(member?.photoPath);
   // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const announce = useAnnounce();
   // Focus goes back here on close: Safari does not focus a button it clicks.
   const photoButton = useRef<HTMLButtonElement | null>(null);
 
@@ -250,26 +371,59 @@ export default function MemberDetailPage() {
           {/* An administrator's profile is their own, with an Admin chip
               beside Peer mentor (the owner, 2026-10-01); it was the club's
               "official account" page until administrators were people. */}
-          {member.type !== 'peer' || member.isAdmin ? (
-            <span className="flex flex-wrap justify-end gap-1.5">
-              {member.type === 'mentor' ? (
-                <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
-                  Peer mentor
-                </span>
-              ) : null}
-              {member.type === 'organization' ? (
-                <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
-                  Organization
-                </span>
-              ) : null}
-              {member.isAdmin ? (
-                <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase tracking-[0.08em] lg:bg-action lg:text-white">
-                  Admin
-                </span>
-              ) : null}
-            </span>
-          ) : null}
+          <span className="flex items-center gap-1.5">
+            {member.type !== 'peer' || member.isAdmin ? (
+              <span className="flex flex-wrap justify-end gap-1.5">
+                {member.type === 'mentor' ? (
+                  <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
+                    Peer mentor
+                  </span>
+                ) : null}
+                {member.type === 'organization' ? (
+                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
+                    Organization
+                  </span>
+                ) : null}
+                {member.isAdmin ? (
+                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase tracking-[0.08em] lg:bg-action lg:text-white">
+                    Admin
+                  </span>
+                ) : null}
+              </span>
+            ) : null}
+            {canMessage ? (
+              <ItemActions
+                what={member.displayName}
+                title="Member actions"
+                buttonClassName={ACTIONS_BUTTON}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBlocking(true);
+                  }}
+                >
+                  Block {member.displayName}
+                </button>
+              </ItemActions>
+            ) : null}
+          </span>
         </div>
+        {blocking ? (
+          <BlockSheet
+            name={member.displayName}
+            onCancel={() => {
+              setBlocking(false);
+            }}
+            onBlock={async () => {
+              const result = await blockMember(member.id);
+              if (!result.ok) return result.error;
+              announce(`You blocked ${member.displayName}.`);
+              onBlocked();
+              return null;
+            }}
+          />
+        ) : null}
         {/*
          * From `lg` the picture is floated, not a column: the profile runs
          * beside it and then takes the whole width once it is past the bottom
