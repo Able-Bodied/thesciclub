@@ -17,7 +17,7 @@ const GOOGLE = [
   'DTSTAMP:20261022T180000Z',
   'ORGANIZER;CN=NorCal SCI:mailto:rep@norcalsci.org',
   'UID:abc123@google.com',
-  'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=events@thesciclub.org:mailto:events@thesciclub.org',
+  'ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;CN=events@thesciclub.com:mailto:events@thesciclub.com',
   'DESCRIPTION:Join us on the patio\\, first-timers welcome.\\nBring water.\\n\\n-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-\\nInvitation from Google Calendar',
   'LOCATION:Lakeside Park\\, Oakland',
   'SEQUENCE:0',

@@ -1,15 +1,15 @@
 /**
  * calendar-inbound: events from calendar invitations sent to
- * events@thesciclub.org (the owner, 2026-10-22).
+ * events@thesciclub.com (the owner, 2026-10-22).
  *
- * Resend receives the mail for thesciclub.org and posts `email.received`
- * here. This checks Resend's signature, reads the email back from Resend's
- * API (the webhook carries no attachments), finds the calendar file, and hands
- * the invitation to `calendar_invite_receive` (20261022220000), which decides
- * everything: who sent it, whether it was verified, which organization, and
- * whether it is added, changed, cancelled or held. Then it emails the sender,
- * and for a held one the organization's representatives. The logic is in
- * handler.ts; this file is only the network.
+ * events@ is a Zoho alias; Zoho forwards it to inbox@events.thesciclub.com,
+ * where Resend receives it and posts `email.received` here. This checks
+ * Resend's signature, reads the email back from Resend's API (the webhook
+ * carries no attachments), finds the calendar file, and hands the invitation
+ * to `calendar_invite_receive` (20261022220000), which decides whether it is
+ * added, changed, cancelled or held. Then it emails the sender, and for a
+ * held one the organization's representatives. The logic is in handler.ts;
+ * this file is only the network.
  *
  * Deploy with `--no-verify-jwt`: Resend has no Supabase session; its own
  * signature is checked instead.
