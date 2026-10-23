@@ -85,16 +85,28 @@ describe('a YouTube video', () => {
     expect(screen.queryByRole('link', { name: /Open in YouTube/ })).toBeNull();
   });
 
-  it('in the store app, play is the same button and the same player in place', async () => {
+  it("on the website, frames YouTube itself, never the app's player page", async () => {
+    const { container } = render(<LinkPreviewCard preview={video} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Play video: A song' }));
+    const src = container.querySelector('iframe')?.getAttribute('src') ?? '';
+    expect(src.startsWith('https://www.youtube-nocookie.com/embed/')).toBe(true);
+    expect(src).not.toContain('thesciclub.com');
+  });
+
+  // YouTube refuses a frame on capacitor://localhost; the club's page is on thesciclub.com.
+  it("in the store app, play frames the club's player page in place", async () => {
     const native = vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
     try {
       const { container } = render(<LinkPreviewCard preview={video} />);
       expect(screen.queryByRole('link', { name: /Open in YouTube/ })).toBeNull();
       await userEvent.click(screen.getByRole('button', { name: 'Play video: A song' }));
-      expect(container.querySelector('iframe')).toHaveAttribute(
+      const player = container.querySelector('iframe');
+      expect(player).toHaveAttribute(
         'src',
-        'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1',
+        'https://thesciclub.com/embed/youtube.html?v=dQw4w9WgXcQ',
       );
+      expect(player).toHaveAttribute('title', 'YouTube video: A song');
+      expect(player).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
     } finally {
       native.mockRestore();
     }

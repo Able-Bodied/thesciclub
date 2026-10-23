@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { appYoutubeEmbedUrl } from '@/lib/chat/link-preview';
 import SHELL from '../index.html?raw';
-import { nativeCsp, webCsp } from '../native-csp';
+import { APP_FRAMES, nativeCsp, webCsp } from '../native-csp';
 import NETLIFY from '../netlify.toml?raw';
 
 /**
@@ -139,15 +140,12 @@ describe("the store app's Content-Security-Policy", () => {
     expect(appDirective('object-src')).toEqual(["'none'"]);
   });
 
-  // The website's YouTube host and nothing more: not Google's sign-in, and
-  // YouTube appears in no other directive.
-  it("frames only YouTube's privacy-enhanced player, as the website does", () => {
-    expect(appDirective('frame-src')).toEqual(['https://www.youtube-nocookie.com']);
-    expect(appDirective('frame-src')).toEqual(
-      directive('frame-src').filter((source) => source.includes('youtube')),
-    );
-    const others = app.split(';').filter((part) => !part.trim().startsWith('frame-src'));
-    expect(others.join(';')).not.toContain('youtube');
+  // YouTube refuses capacitor://localhost, so the app frames the club's
+  // player page, which frames YouTube. Nothing else, Google's sign-in included.
+  it("frames only the club's YouTube player page", () => {
+    expect(appDirective('frame-src')).toEqual(['https://thesciclub.com/embed/']);
+    expect(appYoutubeEmbedUrl('dQw4w9WgXcQ').startsWith(APP_FRAMES)).toBe(true);
+    expect(app).not.toContain('youtube');
   });
 
   it('leaves out what a <meta> ignores or the app has not', () => {

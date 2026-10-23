@@ -66,7 +66,13 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ['**/*.{js,css,html,woff2,svg}'],
         // A domain-ownership file for a checker, not a page: never opened in
         // the app, so not downloaded by every first install.
-        globIgnores: ['**/node_modules/**', 'sw.js', '351f1d05184f1216b6844862231b8fbc.html'],
+        // Nor the store app's YouTube page, which the website never opens.
+        globIgnores: [
+          '**/node_modules/**',
+          'sw.js',
+          '351f1d05184f1216b6844862231b8fbc.html',
+          'embed/**',
+        ],
       },
       manifest: {
         // Launchers can choose either name; both must be the owner's install name.
