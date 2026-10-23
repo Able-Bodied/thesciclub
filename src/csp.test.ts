@@ -132,6 +132,12 @@ describe("the store app's Content-Security-Policy", () => {
     return found?.slice(1) ?? [];
   }
 
+  it('is made from the site-wide policy, whatever rule comes first', () => {
+    expect(webCsp(NETLIFY)).toBe(policy);
+    const page = `[[headers]]\n  for = "/x"\n  [headers.values]\n    Content-Security-Policy = "default-src 'none'"\n`;
+    expect(webCsp(page + NETLIFY)).toBe(policy);
+  });
+
   it("allows index.html's inline scripts by the same hashes, and nothing wholesale", async () => {
     const allowed = appDirective('script-src');
     for (const script of inline) expect(allowed).toContain(await sha256(script));

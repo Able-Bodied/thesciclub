@@ -99,14 +99,17 @@ export function LinkPreviewCard({
       {video ? (
         playing ? (
           <>
-            <iframe
-              src={isNative() ? appYoutubeEmbedUrl(video) : youtubeEmbedUrl(video)}
-              title={`YouTube video: ${title}`}
-              className="block aspect-video w-full"
-              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-              allowFullScreen
-              referrerPolicy="strict-origin-when-cross-origin"
-            />
+            {/* Black, not white, until the player paints. */}
+            <div className="aspect-video w-full bg-black">
+              <iframe
+                src={isNative() ? appYoutubeEmbedUrl(video) : youtubeEmbedUrl(video)}
+                title={`YouTube video: ${title}`}
+                className="block h-full w-full bg-black"
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            </div>
             {isNative() ? (
               <a
                 href={preview.url}
