@@ -5,7 +5,6 @@ import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/membe
 import { chatTimeLong, messageTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
-import { Composer } from '@/routes/chat/composer';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import type { ReactionBarProps } from '@/routes/chat/reaction-bar';
 import { ReportControl } from '@/routes/chat/report-control';
@@ -57,8 +56,8 @@ import { ReportControl } from '@/routes/chat/report-control';
  * ---------------------------------------------------------------------------
  * Edit and Reply, then Remove on yours or Report on theirs
  * ---------------------------------------------------------------------------
- * Edit is the author's own, in place: the bubble is swapped for the composer
- * holding the words, with Save and Cancel. Reply is on every standing
+ * Edit is the author's own: the words go into the composer at the foot of
+ * the thread, and the bubble is outlined meanwhile. Reply is on every standing
  * bubble. Then Remove or Report, never both and never neither: your own
  * bubble carries Remove; somebody else's carries Report, which hands that
  * one message and nothing else in the conversation to the administrators. An
@@ -93,8 +92,6 @@ export function MessageBubble({
   canEdit,
   editing,
   onEdit,
-  onSaveEdit,
-  onCancelEdit,
   canReply,
   onReply,
   canRemove,
@@ -119,12 +116,9 @@ export function MessageBubble({
   flash: boolean;
   /** The reader's own standing message. */
   canEdit: boolean;
-  /** The composer is in place of the bubble. */
+  /** Its words are in the composer. */
   editing: boolean;
   onEdit: () => void;
-  /** Resolves to null once saved, or to the sentence to show. */
-  onSaveEdit: (body: string) => Promise<string | null>;
-  onCancelEdit: () => void;
   /** Any standing message, while there is somebody to reply to. */
   canReply: boolean;
   onReply: () => void;
@@ -213,9 +207,9 @@ export function MessageBubble({
   ) : null;
 
   const controls =
-    removed || message.pending || editing ? null : (
+    removed || message.pending ? null : (
       <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-        {canEdit ? (
+        {canEdit && !editing ? (
           <button
             type="button"
             onClick={onEdit}
@@ -269,6 +263,7 @@ export function MessageBubble({
           ? 'rounded-[15px_15px_4px_15px] bg-action text-white'
           : 'rounded-[4px_15px_15px_15px] border border-line bg-paper text-ink') +
         (message.pending ? ' opacity-60' : '') +
+        (editing ? ' outline-2 outline-emphasis outline-offset-2' : '') +
         (flash ? ' message-flash' : '')
       }
     >
@@ -278,7 +273,7 @@ export function MessageBubble({
     </div>
   );
   const content =
-    reactions && !removed && !message.pending && !editing ? (
+    reactions && !removed && !message.pending ? (
       cloneElement(reactions, {
         compact: true,
         attached: true,
@@ -290,7 +285,7 @@ export function MessageBubble({
     ) : (
       <>
         {bubble}
-        {!removed && !message.pending && !editing ? (
+        {!removed && !message.pending ? (
           <>
             {reply}
             {controls}
@@ -302,23 +297,7 @@ export function MessageBubble({
   if (mine) {
     return (
       <div id={anchor} className="mb-3.5 flex flex-col items-end">
-        {editing ? (
-          <div className="w-full">
-            <Composer
-              placeholder="Your message"
-              sendLabel="Save your message"
-              sendOnEnter={false}
-              onSend={(body) => onSaveEdit(body)}
-              edit={{
-                initial: message.body,
-                allowEmpty: message.attachments.length > 0,
-                onCancel: onCancelEdit,
-              }}
-            />
-          </div>
-        ) : (
-          content
-        )}
+        {content}
       </div>
     );
   }
