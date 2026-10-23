@@ -7,6 +7,8 @@
  * Pure: no network, no clock, so it is tested on its own (ics.test.ts).
  */
 
+import { type Format, whereOf } from './place.ts';
+
 export interface RepeatRule {
   unit: 'day' | 'week' | 'month';
   /** Every this many days, weeks or months; 1 to 30. */
@@ -27,8 +29,14 @@ export interface InviteEvent {
   recurrenceId: string | null;
   title: string;
   description: string;
+  /** The physical place only; links are taken out (place.ts). */
   location: string;
+  /** The meeting link, else the invitation's own URL. */
   url: string | null;
+  format: Format | null;
+  /** From a US address only. */
+  city: string | null;
+  state: string | null;
   /** ISO, UTC. */
   starts: string;
   ends: string | null;
@@ -352,6 +360,18 @@ export function readInvite(text: string): InviteEvent | null {
   const { repeat, note } =
     rrule && !recurrence ? readRepeat(rrule, start) : { repeat: null, note: null };
   const url = find(event, 'URL')?.value.trim() ?? null;
+  const prop = (name: string) => unescapeText(find(event, name)?.value ?? '');
+  const where = whereOf({
+    location: prop('LOCATION'),
+    url: url && /^https?:\/\/\S+$/i.test(url) ? url : null,
+    conference: [
+      'X-GOOGLE-CONFERENCE',
+      'X-MICROSOFT-SKYPETEAMSMEETINGURL',
+      'X-MICROSOFT-ONLINEMEETINGEXTERNALLINK',
+      'X-MICROSOFT-ONLINEMEETINGCONFLINK',
+    ].map(prop),
+    description: `${prop('DESCRIPTION')}\n${prop('X-ALT-DESC')}`,
+  });
   const status = find(event, 'STATUS')?.value.trim().toUpperCase();
 
   return {
@@ -366,10 +386,11 @@ export function readInvite(text: string): InviteEvent | null {
     description: cleanDescription(
       unescapeText(find(event, 'X-ALT-DESC')?.value ?? find(event, 'DESCRIPTION')?.value ?? ''),
     ),
-    location: unescapeText(find(event, 'LOCATION')?.value ?? '')
-      .trim()
-      .slice(0, 300),
-    url: url && /^https?:\/\/\S+$/i.test(url) ? url : null,
+    location: where.place,
+    url: where.link,
+    format: where.format,
+    city: where.city,
+    state: where.state,
     starts: new Date(start.utcMs).toISOString(),
     // An all-day event's DTEND is the next day: the club keeps no end for it.
     ends:
