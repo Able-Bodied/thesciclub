@@ -146,6 +146,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
      not a representative, or from the club's domain; Resend's webhook log
      shows the function's `outcome`.
   The invitation's other guests are never kept: only its own fields.
+  - **Place and link** (owner's first real test, 2026-10-23): meeting links
+    (LOCATION, X-GOOGLE-CONFERENCE, Teams, description) go to the link, the
+    place keeps the address, a US address gives city and state (`place.ts`,
+    `20261023000000`, which also repairs events already made). Not live: push,
+    then redeploy the function (step 4).
 
 - **Ask anonymously, put off** (the owner, 2026-10-22: later, after smaller
   changes). A post's `author_id` is readable by every member (table-level
@@ -390,7 +395,10 @@ All live. Migration headers and the files named say how and why.
   against a throwaway stack behind a 0.3s HTTP/2 proxy (in the commits).
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
   Events on Home are within Events' default 20 miles of home, online ones
-  anywhere (`events_within_miles`).
+  anywhere (`events_within_miles`). An event's place for that is its own
+  coordinates or city, else (no city) its organization's city; unknown,
+  it shows at any distance (the owner, 2026-10-23, `20261023010000`, not
+  live). The nightly import also places event cities nobody geocoded.
 - **Events**: administrators and an organization's designated members add,
   change and delete them (Pacific time). A series' dates are rows made 92
   days ahead, extended nightly (`event-series-extend`). Administrators change
