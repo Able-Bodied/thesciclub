@@ -430,6 +430,59 @@ describe('EventDetailPage', () => {
   });
 });
 
+describe('an event\u2019s link', () => {
+  it('is "Join online" for a meeting, with the service in its name', () => {
+    state.events = [
+      makeEvent({
+        id: 'call',
+        url: 'https://meet.google.com/abc-defg-hij',
+        startTime: aheadByDays(3),
+        format: 'online',
+      }),
+    ];
+    renderDetail('call');
+    const join = screen.getByRole('link', { name: 'Join online, opens Google Meet' });
+    expect(join).toHaveAttribute('href', 'https://meet.google.com/abc-defg-hij');
+    expect(join).toHaveAttribute('target', '_blank');
+    expect(screen.queryByText('Details on their site')).toBeNull();
+  });
+
+  it('keeps "Details on their site" for any other address', () => {
+    state.events = [
+      makeEvent({ id: 'page', url: 'https://norcalsci.org/happy-hour', startTime: aheadByDays(3) }),
+    ];
+    renderDetail('page');
+    expect(screen.getByRole('link', { name: /Details on their site/ })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/happy-hour',
+    );
+    expect(screen.queryByText('Join online')).toBeNull();
+  });
+
+  it('offers the registration beside a meeting, and Join online only once', () => {
+    state.events = [
+      makeEvent({
+        id: 'both',
+        url: 'https://zoom.us/j/1',
+        registrationUrl: 'https://norcalsci.org/register',
+        startTime: aheadByDays(3),
+      }),
+    ];
+    renderDetail('both');
+    expect(screen.getAllByRole('link', { name: /Join online/ })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: /Register/ })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/register',
+    );
+  });
+
+  it('does not offer a meeting once the event is over', () => {
+    state.events = [makeEvent({ id: 'old', url: 'https://zoom.us/j/1' })];
+    renderDetail('old');
+    expect(screen.queryByText('Join online')).toBeNull();
+  });
+});
+
 describe('an event that is over', () => {
   it('offers no RSVP, the way the list stopped offering one', () => {
     // The same finished evening used to answer two different ways depending on

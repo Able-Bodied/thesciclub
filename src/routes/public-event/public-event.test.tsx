@@ -96,6 +96,26 @@ describe('the public event page', () => {
     ]);
   });
 
+  it('says "Join online" for a meeting link, to anybody with the page', async () => {
+    api.event = { ...EVENT, format: 'online', url: 'https://us02web.zoom.us/j/123' };
+    renderAt('/e/picnic');
+    const join = await screen.findByRole('link', {
+      name: 'Join online, opens Zoom',
+    });
+    expect(join).toHaveAttribute('href', 'https://us02web.zoom.us/j/123');
+    expect(screen.queryByText('Details on their site')).toBeNull();
+  });
+
+  it('keeps "Details on their site" for any other link', async () => {
+    api.event = { ...EVENT, url: 'https://norcalsci.org/happy-hour' };
+    renderAt('/e/picnic');
+    expect(await screen.findByRole('link', { name: 'Details on their site' })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/happy-hour',
+    );
+    expect(screen.queryByText('Join online')).toBeNull();
+  });
+
   it('opens the form from Going', async () => {
     renderAt('/e/picnic');
     await userEvent.click(await screen.findByRole('button', { name: 'Going' }));
