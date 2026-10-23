@@ -43,14 +43,28 @@ export function WelcomeScreen({
   onJoin,
   onSignIn,
   joiningOpen = false,
+  registered = false,
 }: {
   onJoin: () => void;
   onSignIn: () => void;
   /** Anybody can join right now (20261014000000): nobody needs an invite to ask for. */
   joiningOpen?: boolean;
+  /** Just registered for a public event (src/lib/event-audience.ts). */
+  registered?: boolean;
 }) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
+      {/* The same words whoever registered (the owner, 2026-10-22): this page
+          must never say whether an address is a member's, so it asks both. */}
+      {registered ? (
+        <div
+          role="status"
+          className="mx-[18px] mt-[max(14px,env(safe-area-inset-top))] flex-none rounded-[13px] border-gold border-l-4 bg-gold-lt px-3.5 py-3 text-[0.875rem] text-ink leading-[1.45]"
+        >
+          <b className="block font-extrabold font-head">You're registered.</b>
+          Sign in or join to complete your registration and see who is coming to the event.
+        </div>
+      ) : null}
       <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">
         <div className="my-auto">
           <div className="flex justify-center">

@@ -133,6 +133,8 @@ export function AppNav() {
         })}
         {/* Desktop only, at the far end: on a phone the bell is in Home's
             header, and a sixth tab would crowd the five. */}
+        {/* Display lives on Me only (the owner, 2026-10-22: the bar looked
+            too busy), so the bell takes the push to the right. */}
         {wide !== false ? (
           <NotificationBell
             variant="bar"

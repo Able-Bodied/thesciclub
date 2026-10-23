@@ -21,7 +21,7 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 21, 2026">
+    <LegalPage title="Privacy Policy" updated="October 22, 2026">
       <Note title="What changed on October 21, 2026">
         <List>
           <li>
@@ -83,6 +83,11 @@ export default function PrivacyPage() {
             <b>What you do in the club:</b> your messages, posts and photographs, the events you
             reply to, the organizations you follow, the posts you like, react to or save, the posts
             you have read, in a room or on Home, and anything you report or anyone you block.
+          </li>
+          <li>
+            <b>If you register for an event on its public page:</b> your name, your email address,
+            your phone number if you give one, and whether you are going or interested, whether or
+            not you have an account.
           </li>
           <li>
             <b>Your answers while you join:</b> what you have answered so far and the step you are
@@ -274,6 +279,14 @@ export default function PrivacyPage() {
           shares nothing. Hosts agree not to use your details for marketing, fundraising or
           promotions, and not to pass them on. The Going button says this before you press it.
         </P>
+        {/* Public event pages and registrations, 2026-10-22 (20261022190000). */}
+        <P>
+          An event can have a public page that anyone with its link can open. It shows the event's
+          details only, never who is going or how many. Registering there shares your name, email
+          address and phone number, if you give it, with the event's organizers and the club's
+          administrators, for that event only. If you then sign in or join with that address, the
+          registration becomes your Going or Interested, and the paragraph above applies.
+        </P>
       </Section>
 
       <Section title="Grants">
@@ -342,6 +355,9 @@ export default function PrivacyPage() {
           <li>
             <b>Your answers while you join:</b> deleted once you finish joining, or after 90 days if
             you do not.
+          </li>
+          <li>
+            <b>A registration from an event's public page:</b> 90 days after the event.
           </li>
           <li>
             <b>Your notifications list:</b> 30 days.

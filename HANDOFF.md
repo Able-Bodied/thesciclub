@@ -98,6 +98,19 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Every event public by default** (the owner, 2026-10-22): `20261022200000`
+  sets the default to `public` and makes the club's existing events public
+  (all imported from public calendars), not live until the owner's push.
+  A signed-out visitor on `/events/<id>` is sent to `/e/<id>` when the event
+  is public (`RequireMember`), so an address copied from the bar works too.
+- **Public events and audiences** (2026-10-22, the owner): `20261022180000`
+  and `20261022190000` are live, and the client with them (released to
+  `main` on its own, ahead of this branch's unreleased work). Not filtered
+  yet: the daily "N new events" count for followers includes a groups-only
+  event (a number, never a title); a member with an event cover's path can
+  read it. The PGlite script in the session that built it covered 31 cases;
+  worth a `supabase/tests/event-audiences.sql`.
+
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
   (2026-10-21). Their database side is live (`20261022100000` to

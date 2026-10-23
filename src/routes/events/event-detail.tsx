@@ -20,6 +20,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
 import { GOING_SHARES_CONTACT } from '@/routes/events/event-card';
 import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
@@ -97,22 +98,29 @@ export default function EventDetailPage() {
   }
   if (!event) {
     // An event that has finished and been cleared, or a link somebody kept. Not
-    // an error to report — just a thing that is no longer there.
+    // an error to report — just a thing that is no longer there. Or one for
+    // an audience this member is not in (20261022180000): then who it is for.
     return (
-      <div className="px-6 py-10 text-center">
-        <p className="text-[0.875rem] text-ink2 leading-relaxed">
-          This event is not on the calendar.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            void navigate(back);
-          }}
-          className="mt-4 font-bold font-head text-[0.9375rem] text-emphasis"
-        >
-          Back to Events
-        </button>
-      </div>
+      <OutsideTheAudience
+        eventId={id ?? ''}
+        onFollowed={() => reload?.()}
+        missing={
+          <div className="px-6 py-10 text-center">
+            <p className="text-[0.875rem] text-ink2 leading-relaxed">
+              This event is not on the calendar.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                void navigate(back);
+              }}
+              className="mt-4 font-bold font-head text-[0.9375rem] text-emphasis"
+            >
+              Back to Events
+            </button>
+          </div>
+        }
+      />
     );
   }
 
@@ -326,6 +334,12 @@ export default function EventDetailPage() {
               )}
             </>
           ) : null}
+
+          <EventAudienceSection
+            event={event}
+            organizationName={organization?.name ?? null}
+            canChange={canChange}
+          />
 
           {canChange && !event.handAdded ? (
             <ChangeImportedEvent

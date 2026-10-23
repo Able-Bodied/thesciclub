@@ -5,7 +5,14 @@ import { PHOTOS_BUCKET } from '@/lib/photos';
 import { readInBatches, readPages } from '@/lib/read-pages';
 import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
-import type { ClubEvent, EventAttendee, EventFormat, EventTag, RsvpStatus } from '@/types/domain';
+import type {
+  ClubEvent,
+  EventAttendee,
+  EventAudience,
+  EventFormat,
+  EventTag,
+  RsvpStatus,
+} from '@/types/domain';
 import { memberType } from '@/types/domain';
 
 /**
@@ -41,7 +48,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, admin_override, feed_values';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience, admin_override, feed_values';
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
@@ -51,7 +58,7 @@ const EVENT_COLUMNS =
  * (2026-10-14).
  */
 const LIST_COLUMNS =
-  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state';
+  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
 
 /**
  * Each event's tags and tallies, embedded in the same read. They were two
@@ -113,6 +120,8 @@ interface EventRow {
   all_day: boolean;
   /** Two letters, in person only (20261021040000). */
   state: string | null;
+  /** Who can see it (20261022180000). */
+  audience?: EventAudience | null;
   /** Imported events an administrator changed (20261012060000). Not in a list's read. */
   admin_override?: Record<string, unknown> | null;
   feed_values?: Record<string, unknown> | null;
@@ -213,6 +222,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       seriesId: row.series_id,
       photoPath: row.photo_path,
       photoAlt: row.photo_alt,
+      audience: row.audience ?? 'public',
       // The description's HTML moves with its words, so it is not listed apart.
       adminChanged: Object.keys(row.admin_override ?? {}).filter((f) => f !== 'description_html'),
       calendarValues: row.feed_values ?? null,

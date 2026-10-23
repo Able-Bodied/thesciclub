@@ -1,9 +1,15 @@
-import { Fragment, useEffect, useRef } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
 import { AccountProvider, useOwnAccount } from '@/lib/account';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
+import {
+  claimEventRegistrations,
+  fetchPublicEvent,
+  forgetPendingRegistration,
+  pendingRegistration,
+} from '@/lib/event-audience';
 import { restoreDeviceNotifications } from '@/lib/push/notifications';
 import { forgetSharedReads } from '@/lib/shared-reads';
 import { signInDoor } from '@/lib/sign-in-destination';
@@ -23,6 +29,7 @@ import { signInDoor } from '@/lib/sign-in-destination';
  */
 export function RequireMember({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   // The one read for everything inside (AccountProvider), again on each
   // screen so a change to the member's own row is never more than a screen
   // old.
@@ -58,16 +65,35 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
     lastMember.current = now;
   }, [status, account.userId]);
 
+  // A registration made on a public event's page before signing in or joining
+  // (src/lib/event-audience.ts): once a member, it becomes their RSVP, and the
+  // event opens, now with who is going. Joining claims it in the database as
+  // the member is made; signing in claims it here.
+  const claimed = useRef(false);
+  useEffect(() => {
+    if (status !== 'member' || claimed.current) return;
+    const pending = pendingRegistration();
+    if (!pending) return;
+    claimed.current = true;
+    void claimEventRegistrations().then(() => {
+      forgetPendingRegistration();
+      void navigate(`/events/${pending.eventId}`, { replace: true });
+    });
+  }, [status, navigate]);
+
   if (status === 'error') return <AccountProblem account={account} />;
 
   if (status === 'loading') {
     return <div className="min-h-dvh bg-canvas" />;
   }
   if (status === 'signed-out' || status === 'signed-up') {
+    const door = signInDoor(`${location.pathname}${location.search}${location.hash}`);
+    // An event's own address, shared from the address bar: its public page
+    // when it has one (20261022180000), the door otherwise.
+    const eventId = EVENT_PATH.exec(location.pathname)?.[1];
+    if (eventId) return <ToPublicEvent eventId={eventId} door={door} />;
     // Someone part-way through signup goes back to finish it, not to a wall.
-    return (
-      <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
-    );
+    return <Navigate to={door} replace />;
   }
   // Not a redirect: there is nowhere to send them that is truer than this, and
   // bouncing a suspended member around the app while every screen comes back
@@ -81,4 +107,27 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
       <Fragment key={account.userId}>{children}</Fragment>
     </AccountProvider>
   );
+}
+
+/** An event's page in the club, by id: `/events/<uuid>`, nothing after it. */
+const EVENT_PATH = /^\/events\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i;
+
+/**
+ * Somebody signed out on an event's own address: the public page if the event
+ * has one, which is what a member who copied the address bar meant to share;
+ * the door if not, as for any other page in the club.
+ */
+function ToPublicEvent({ eventId, door }: { eventId: string; door: string }) {
+  const [to, setTo] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicEvent(eventId).then((result) => {
+      if (!cancelled) setTo(result.ok && result.value ? `/e/${eventId}` : door);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, door]);
+  if (!to) return <div className="min-h-dvh bg-canvas" />;
+  return <Navigate to={to} replace />;
 }

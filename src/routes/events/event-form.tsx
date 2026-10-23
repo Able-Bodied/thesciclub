@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
@@ -6,6 +6,7 @@ import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
+import { fetchAudienceGroups, setEventAudience } from '@/lib/event-audience';
 import {
   adminChangeImportedEvent,
   type CoverChange,
@@ -17,6 +18,7 @@ import {
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
+import { type AudienceChoice, AudienceField, audienceReady } from '@/routes/events/audience-field';
 import { CoverField } from '@/routes/events/cover-field';
 import { DescriptionEditor } from '@/routes/events/description-editor';
 import {
@@ -40,7 +42,12 @@ import {
   repeatLabels,
   TITLE_MAX,
 } from '@/routes/events/event-draft';
-import { EVENT_FORMAT_LABELS, EVENT_FORMATS, type EventFormat } from '@/types/domain';
+import {
+  EVENT_FORMAT_LABELS,
+  EVENT_FORMATS,
+  type EventAudience,
+  type EventFormat,
+} from '@/types/domain';
 
 /**
  * Adding an event by hand, or changing one that was (the owner, 2026-10-05).
@@ -108,6 +115,9 @@ export default function EventFormPage() {
           : emptyDraft(!account.isAdmin && options.length === 1 ? (options[0]?.id ?? null) : null)
       }
       initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
+      // A new event has a public page unless its organizer says otherwise
+      // (the owner, 2026-10-22).
+      initialAudience={existing?.audience ?? 'public'}
       initialFailure={coverFailureFrom(location.state)}
       imported={
         existing && !existing.handAdded
@@ -141,6 +151,7 @@ function EventForm({
   eventId,
   initial,
   initialCover,
+  initialAudience,
   initialFailure,
   imported,
   isAdmin,
@@ -156,6 +167,8 @@ function EventForm({
   initial: EventDraft;
   /** The picture the event has, and its words, before anything is changed. */
   initialCover: { path: string | null; alt: string };
+  /** Who can see it before anything is changed (20261022180000). */
+  initialAudience: EventAudience;
   /** A picture that did not go up when the event was saved, said on arrival. */
   initialFailure: string | null;
   isAdmin: boolean;
@@ -165,6 +178,24 @@ function EventForm({
   const announce = useAnnounce();
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [cover, setCover] = useState<CoverChange>({ kind: 'keep', ...initialCover });
+  const [audience, setAudience] = useState<AudienceChoice>({
+    audience: initialAudience,
+    groups: [],
+  });
+  const [initialGroups, setInitialGroups] = useState<string[]>([]);
+  // The groups a groups-only event is for, read for the organizer who changes it.
+  useEffect(() => {
+    if (!eventId || initialAudience !== 'groups') return;
+    let cancelled = false;
+    void fetchAudienceGroups(eventId).then((groups) => {
+      if (cancelled) return;
+      setInitialGroups(groups);
+      setAudience((current) => ({ ...current, groups }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, initialAudience]);
   // A picture pasted into the description becomes the cover (lib/paste-photos.ts).
   const coverTarget = useRef<PhotoTarget | null>(null);
   const [saving, setSaving] = useState(false);
@@ -192,8 +223,18 @@ function EventForm({
     (cover.kind === 'remove' && initialCover.path !== null) ||
     (cover.kind === 'keep' && cover.path !== null && cover.alt !== initialCover.alt);
 
+  // Followers are an organization's: with no organization hosting, there are
+  // none to choose, and the event is for the club instead.
+  const hostName = options.find((option) => option.id === draft.host)?.name ?? null;
+  const chosenAudience: AudienceChoice =
+    audience.audience === 'followers' && !hostName ? { ...audience, audience: 'club' } : audience;
+  const audienceChanged =
+    isNew ||
+    chosenAudience.audience !== initialAudience ||
+    chosenAudience.groups.slice().sort().join() !== initialGroups.slice().sort().join();
+
   function submit() {
-    if (!reading.ok || saving) return;
+    if (!reading.ok || saving || !audienceReady(chosenAudience)) return;
     setSaving(true);
     const repeat = reading.repeat;
     const payload = reading.payload;
@@ -213,6 +254,20 @@ function EventForm({
       // a filled-in "add" form that would add the event a second time.
       if (coverChanged) {
         const saved = await saveEventCover(result.id, cover);
+        if (!saved.ok) {
+          void navigate(`/events/${result.id}/edit`, {
+            replace: true,
+            state: { coverFailure: `The event is saved. ${saved.error}` },
+          });
+          return;
+        }
+      }
+      if (audienceChanged) {
+        const saved = await setEventAudience(
+          result.id,
+          chosenAudience.audience,
+          chosenAudience.groups,
+        );
         if (!saved.ok) {
           void navigate(`/events/${result.id}/edit`, {
             replace: true,
@@ -464,6 +519,17 @@ function EventForm({
           fieldClassName={FIELD}
         />
 
+        <AudienceField
+          value={chosenAudience}
+          onChange={(next) => {
+            setAudience(next);
+            setFailure(null);
+          }}
+          organizationName={hostName}
+          labelClassName={LABEL}
+          hintClassName={HINT}
+        />
+
         <label htmlFor="event-registration" className={LABEL}>
           Sign-up link (optional)
         </label>
@@ -510,7 +576,7 @@ function EventForm({
         <button
           type="button"
           onClick={submit}
-          disabled={!reading.ok || saving}
+          disabled={!reading.ok || saving || !audienceReady(chosenAudience)}
           aria-describedby={reading.ok ? undefined : 'event-missing'}
           className="mt-4 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
         >

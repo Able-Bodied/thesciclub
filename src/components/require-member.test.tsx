@@ -24,6 +24,23 @@ vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({ member: null, invitedBy: 'NorCal SCI', loading: false, error: null }),
 }));
 
+// A registration from a public event's page (20261022190000).
+const registration = vi.hoisted(() => ({
+  pending: null as null | { eventId: string },
+  publicEvent: null as null | { id: string },
+  claimed: vi.fn(() => Promise.resolve(['picnic'])),
+  forgotten: vi.fn(),
+}));
+vi.mock('@/lib/event-audience', () => ({
+  pendingRegistration: () => registration.pending,
+  claimEventRegistrations: registration.claimed,
+  fetchPublicEvent: () => Promise.resolve({ ok: true, value: registration.publicEvent }),
+  forgetPendingRegistration: () => {
+    registration.forgotten();
+    registration.pending = null;
+  },
+}));
+
 const { RequireMember } = await import('@/components/require-member');
 
 function renderGuarded() {
@@ -31,6 +48,7 @@ function renderGuarded() {
     <MemoryRouter initialEntries={['/peers']}>
       <Routes>
         <Route path="/join" element={<p>Welcome screen</p>} />
+        <Route path="/events/:id" element={<p>The event</p>} />
         <Route
           path="/peers"
           element={
@@ -45,6 +63,9 @@ function renderGuarded() {
 }
 
 beforeEach(() => {
+  registration.pending = null;
+  registration.claimed.mockClear();
+  registration.forgotten.mockClear();
   account.restore.mockClear();
   forgotten.urls.mockClear();
   forgotten.reads.mockClear();
@@ -167,5 +188,59 @@ describe('RequireMember', () => {
     );
     expect(forgotten.urls).toHaveBeenCalledTimes(1);
     expect(forgotten.reads).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a registration made before signing in', () => {
+  it('becomes the member’s RSVP, and opens the event', async () => {
+    registration.pending = { eventId: 'picnic' };
+    renderGuarded();
+    expect(await screen.findByText('The event')).toBeInTheDocument();
+    expect(registration.claimed).toHaveBeenCalledTimes(1);
+    expect(registration.forgotten).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not asked about when there is none', () => {
+    renderGuarded();
+    expect(screen.getByText('Inside the club')).toBeInTheDocument();
+    expect(registration.claimed).not.toHaveBeenCalled();
+  });
+});
+
+// An event's own address, copied from the address bar and opened signed out.
+describe('an event address, signed out', () => {
+  const EVENT = '7f3a9c00-0000-4000-8000-000000000001';
+  function renderEvent() {
+    return render(
+      <MemoryRouter initialEntries={[`/events/${EVENT}`]}>
+        <Routes>
+          <Route path="/join" element={<p>Welcome screen</p>} />
+          <Route path="/e/:id" element={<p>The public page</p>} />
+          <Route
+            path="/events/:id"
+            element={
+              <RequireMember>
+                <p>Inside the club</p>
+              </RequireMember>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('opens the public page when the event has one', async () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    registration.publicEvent = { id: EVENT };
+    renderEvent();
+    expect(await screen.findByText('The public page')).toBeInTheDocument();
+    registration.publicEvent = null;
+  });
+
+  it('opens the door when it does not', async () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    registration.publicEvent = null;
+    renderEvent();
+    expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
   });
 });
