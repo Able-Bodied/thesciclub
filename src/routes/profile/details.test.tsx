@@ -1,9 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import { AnnounceProvider } from '@/lib/announce';
+import { getSupabase } from '@/lib/supabase';
 import type * as DetailsApi from '@/routes/profile/details-api';
 import type { MemberDetails } from '@/routes/profile/details-api';
 
@@ -16,6 +17,7 @@ const api = vi.hoisted(() => ({
   /** What each photograph chosen returns, in turn; saved when the list runs out. */
   photoResults: [] as ({ ok: true; path: string } | { ok: false; error: string })[],
   removeFails: null as string | null,
+  photosSaved: [] as File[],
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
@@ -37,8 +39,12 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
     api.saves.push({ details, levelRange });
     return Promise.resolve({ ok: true });
   },
-  savePhoto: () =>
-    Promise.resolve(api.photoResults.shift() ?? { ok: true as const, path: 'u1/profile.jpg' }),
+  savePhoto: (_id: string, file: File) => {
+    api.photosSaved.push(file);
+    return Promise.resolve(
+      api.photoResults.shift() ?? { ok: true as const, path: 'u1/profile.jpg' },
+    );
+  },
   removePhoto: () =>
     Promise.resolve(api.removeFails ? { ok: false, error: api.removeFails } : { ok: true }),
 }));
@@ -98,6 +104,7 @@ beforeEach(() => {
   api.failWith = null;
   api.photoResults = [];
   api.removeFails = null;
+  api.photosSaved = [];
 });
 
 describe('Your details', () => {
@@ -441,5 +448,75 @@ describe('declining a detail', () => {
     await waitFor(() => {
       expect(api.declineSaves).toEqual([[]]);
     });
+  });
+});
+
+// The owner, 2026-10-22: offered to a Google account, saved only when chosen.
+describe("Your details: the member's Google photo", () => {
+  const AVATAR = 'https://lh3.googleusercontent.com/a/ACg8ocKnicole=s96-c';
+  let fetched: string[] = [];
+
+  function sessionWith(provider: string) {
+    vi.spyOn(getSupabase().auth, 'getSession').mockResolvedValue({
+      data: {
+        session: {
+          user: { identities: [{ provider, identity_data: { avatar_url: AVATAR } }] },
+        },
+      },
+      error: null,
+    } as never);
+  }
+
+  beforeEach(() => {
+    fetched = [];
+    URL.createObjectURL = () => 'blob:google';
+    URL.revokeObjectURL = () => undefined;
+    // Google's host only; anything else is refused, as everywhere in tests.
+    vi.stubGlobal('fetch', (url: string) => {
+      fetched.push(url);
+      if (!url.startsWith('https://lh3.googleusercontent.com/')) {
+        return Promise.reject(new Error(`Tests must not use the network: ${url}`));
+      }
+      return Promise.resolve(
+        new Response(new Uint8Array([1, 2]), { headers: { 'content-type': 'image/png' } }),
+      );
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('saves it through the same path as an upload, then asks for a description', async () => {
+    sessionWith('google');
+    renderDetails();
+    await userEvent.click(await screen.findByRole('button', { name: 'Use my Google photo' }));
+    await waitFor(() => {
+      expect(api.photosSaved.map((file) => file.name)).toEqual(['google-photo.png']);
+    });
+    expect(fetched.filter((url) => url.includes('google'))).toEqual([
+      'https://lh3.googleusercontent.com/a/ACg8ocKnicole=s800-c',
+    ]);
+    expect(await screen.findByLabelText('Describe your photo')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use my Google photo' })).toBeNull();
+  });
+
+  it('saves nothing until it is chosen', async () => {
+    sessionWith('google');
+    renderDetails();
+    await screen.findByRole('button', { name: 'Use my Google photo' });
+    expect(api.photosSaved).toEqual([]);
+  });
+
+  it('offers nothing to an Apple account', async () => {
+    sessionWith('apple');
+    renderDetails();
+    await screen.findByLabelText('Name');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('button', { name: 'Use my Google photo' })).toBeNull();
+    expect(fetched).toEqual([]);
   });
 });

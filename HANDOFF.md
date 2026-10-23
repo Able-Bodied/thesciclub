@@ -105,7 +105,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   inviters only withdraw, a deleted member's reports unnamed). The client
   only once the owner has read the pages **and** that address receives mail (MX at Spaceship, held by
   someone else). Then paste `https://thesciclub.com/delete-account` into
-  Play's Data safety form. A lawyer should read them: injury details are
+  Play's Data safety form. Privacy still needs a sentence on the Google
+  photo (Built, Google photo), for the owner to word. A lawyer should read them: injury details are
   health information.
 
 - **Native sign-in and Universal Links, not live** (2026-10-22), in order:
@@ -254,6 +255,10 @@ All live. Migration headers and the files named say how and why.
   photo; the account's copy goes when the member is made, or after 90 days.
   `onboarding_steps` feeds Stats. Notifications are asked once, by the
   installed app (`AskOnOpening`).
+- **Google photo** (2026-10-22, not pushed): a Google account is offered its
+  photo on the photo step and Your details, copied only on a tap. The browser
+  fetches it from `lh3.googleusercontent.com` (connect-src; Google allows any
+  origin) and uploads it as a chosen file (`lib/google-photo.ts`).
 - **Admin → Stats** (`admin_club_stats(period)`): counts, never who, from what
   the club already keeps, in place of Google Analytics (turned down). Two
   things name members, by the owner's choice and said in Privacy: signing in
