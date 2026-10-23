@@ -161,3 +161,109 @@ describe('the pieces', () => {
     ).toBe('2026-11-01T18:00:00.000Z');
   });
 });
+
+describe('where it is, from each calendar', () => {
+  const at = (lines: string[]) =>
+    GOOGLE.replace('LOCATION:Lakeside Park\\, Oakland', lines.join('\r\n'));
+
+  it('Google: an address, with Meet only in its conference field', () => {
+    const event = readInvite(
+      at([
+        'LOCATION:1 Hacker Wy\\, Menlo Park\\, CA 94025\\, USA',
+        'X-GOOGLE-CONFERENCE:https://meet.google.com/rgz-aaxe-xyf',
+      ]),
+    );
+    expect(event).toMatchObject({
+      location: '1 Hacker Wy, Menlo Park, CA 94025, USA',
+      url: 'https://meet.google.com/rgz-aaxe-xyf',
+      format: 'in_person',
+      city: 'Menlo Park',
+      state: 'CA',
+    });
+  });
+
+  it('Google: an address glued to its Meet link', () => {
+    expect(
+      readInvite(
+        at([
+          'LOCATION:1 Hacker Wy\\, Menlo Park\\, CA 94025\\, USA; https://meet.google.com/rgz-aaxe-xyf',
+        ]),
+      ),
+    ).toMatchObject({
+      location: '1 Hacker Wy, Menlo Park, CA 94025, USA',
+      url: 'https://meet.google.com/rgz-aaxe-xyf',
+      format: 'hybrid',
+      city: 'Menlo Park',
+    });
+  });
+
+  it('Google: no place, Meet in the description’s footer only', () => {
+    const footer = GOOGLE.replace('LOCATION:Lakeside Park\\, Oakland\r\n', '').replace(
+      '\\nInvitation from Google Calendar',
+      '\\nJoin with Google Meet: https://meet.google.com/abc-defg-hij\\nInvitation from Google Calendar',
+    );
+    expect(readInvite(footer)).toMatchObject({
+      location: '',
+      url: 'https://meet.google.com/abc-defg-hij',
+      format: 'online',
+      city: null,
+    });
+  });
+
+  it('Outlook: a Teams meeting, its link in a header of its own', () => {
+    const teams = 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0';
+    expect(
+      readInvite(
+        at([
+          'LOCATION:Microsoft Teams Meeting',
+          `X-MICROSOFT-SKYPETEAMSMEETINGURL:${teams}`,
+        ]).replaceAll('TZID=America/Los_Angeles', 'TZID="Pacific Standard Time"'),
+      ),
+    ).toMatchObject({ location: '', url: teams, format: 'online', city: null, state: null });
+  });
+
+  it('Outlook: a room and a Zoom link', () => {
+    expect(
+      readInvite(at(['LOCATION:Room 4; https://us02web.zoom.us/j/8812?pwd=abc'])),
+    ).toMatchObject({
+      location: 'Room 4',
+      url: 'https://us02web.zoom.us/j/8812?pwd=abc',
+      format: 'hybrid',
+      city: null,
+    });
+  });
+
+  it('Apple: a venue over its address, on two lines', () => {
+    expect(
+      readInvite(
+        at([
+          'LOCATION:Apple Park\\n1 Apple Park Way\\, Cupertino\\, CA 95014\\, United States',
+          'X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-TITLE=Apple Park:geo:37.33,-122.01',
+        ]),
+      ),
+    ).toMatchObject({
+      location: 'Apple Park, 1 Apple Park Way, Cupertino, CA 95014, United States',
+      url: null,
+      format: 'in_person',
+      city: 'Cupertino',
+      state: 'CA',
+    });
+  });
+
+  it('Apple: an address abroad, and its own URL', () => {
+    expect(
+      readInvite(
+        at([
+          'LOCATION:10 Downing St\\, London SW1A 2AA\\, UK',
+          'URL;VALUE=URI:https://example.org/visit',
+        ]),
+      ),
+    ).toMatchObject({
+      location: '10 Downing St, London SW1A 2AA, UK',
+      url: 'https://example.org/visit',
+      format: 'in_person',
+      city: null,
+      state: null,
+    });
+  });
+});
