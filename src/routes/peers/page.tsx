@@ -1,7 +1,6 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DisplayButton } from '@/components/display-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useBrowseMembers } from '@/lib/members';
@@ -100,7 +99,6 @@ export default function PeersPage() {
             Peers
           </h1>
           <span className="flex items-center gap-2">
-            <DisplayButton variant="round" />
             <button
               type="button"
               onClick={() => {
