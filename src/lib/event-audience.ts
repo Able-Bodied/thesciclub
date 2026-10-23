@@ -191,6 +191,8 @@ export interface Registration {
   name: string;
   email: string;
   phone: string;
+  /** The hosting organization's name, for the welcome page. */
+  organizer?: string;
 }
 
 /** Keeps a registration for the event's organizers, account or not. */
@@ -250,6 +252,7 @@ export function pendingRegistration(): Registration | null {
       name: typeof value.name === 'string' ? value.name : '',
       email: value.email,
       phone: typeof value.phone === 'string' ? value.phone : '',
+      ...(typeof value.organizer === 'string' ? { organizer: value.organizer } : {}),
     };
   } catch {
     return null;
