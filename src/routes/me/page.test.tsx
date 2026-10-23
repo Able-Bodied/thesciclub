@@ -195,6 +195,18 @@ describe('MePage', () => {
     expect(screen.getByText(/Signed in as/)).toBeInTheDocument();
   });
 
+  // The one tab with it (the owner, 2026-10-22), with a member row or without.
+  it('has the Display button in its header', () => {
+    renderMe();
+    expect(screen.getByRole('button', { name: 'Display settings' })).toBeInTheDocument();
+  });
+
+  it('has the Display button before the member row arrives too', () => {
+    own.member = null;
+    renderMe();
+    expect(screen.getByRole('button', { name: 'Display settings' })).toBeInTheDocument();
+  });
+
   it('says who vouched for you', () => {
     renderMe();
     expect(screen.getByText('Invited by NorCal SCI')).toBeInTheDocument();

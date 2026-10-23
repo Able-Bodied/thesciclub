@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { DisplayButton } from '@/components/display-sheet';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -134,13 +133,11 @@ export function AppNav() {
         })}
         {/* Desktop only, at the far end: on a phone the bell is in Home's
             header, and a sixth tab would crowd the five. */}
-        {/* Display leads the far end, so it takes the push to the right. */}
-        <DisplayButton variant="bar" className="hidden md:ml-auto md:flex" />
         {wide !== false ? (
           <NotificationBell
             variant="bar"
             className={cn(
-              'hidden md:flex',
+              'hidden md:ml-auto md:flex',
               location.pathname === '/notifications' && 'text-emphasis',
             )}
           />

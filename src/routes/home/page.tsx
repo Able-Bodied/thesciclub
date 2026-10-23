@@ -1,7 +1,6 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { DisplayButton } from '@/components/display-sheet';
 import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
@@ -372,7 +371,6 @@ export default function HomePage() {
               chosen chips under the pills (the mock has one): Events and Peers
               draw none, and the dot and the name say a filter is on. */}
           <span className="flex items-center gap-2">
-            <DisplayButton variant="round" />
             {/* A phone's way to the list; a desktop has it in the top bar. */}
             {wide !== true ? <NotificationBell variant="round" className="md:hidden" /> : null}
             <button

@@ -240,6 +240,13 @@ beforeEach(() => {
   db.nearAskedFor = [];
 });
 
+// Display is on Me only (the owner, 2026-10-22).
+it('has no Display button in its header', () => {
+  renderPage();
+  expect(screen.getByRole('heading', { name: 'Home' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Display settings' })).toBeNull();
+});
+
 // 2026-10-21: Home suggested events Events leaves out for distance.
 describe('events near home', () => {
   beforeEach(() => {

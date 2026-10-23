@@ -5,13 +5,10 @@ import { cn } from '@/lib/utils';
 import { DisplayControls } from '@/routes/me/accessibility-settings';
 
 /**
- * The Display settings, one tap from the main screens (2026-10-20).
- *
- * The same controls as Me → Settings, in a sheet. Opened by a round button in
- * the headers of Home, Peers, Chat, Events and Me on a phone, by the top bar
- * on a desktop, and by a link beside "Skip to content" for a keyboard. Never a
- * floating button: one would sit over the Send button in a conversation (the
- * owner, 2026-10-20).
+ * The Display settings, one tap from Me (2026-10-20), in a sheet: the same
+ * controls as Me → Settings. Every other screen reaches it by the button beside
+ * "Skip to content" for a keyboard. Only Me has the button since 2026-10-22
+ * (the owner); never a floating one, which would cover Send in a conversation.
  */
 
 const DisplaySheetContext = createContext<(() => void) | null>(null);
@@ -42,43 +39,22 @@ function noop() {
   // No sheet to open.
 }
 
-/**
- * The button. `round` sits in a screen's header beside its other round
- * buttons and is phone-only; `plate` is the same on Me's navy band; `bar` is
- * the desktop top bar's, drawn like the Notifications item next to it.
- */
+/** The button: `round` on a light header, `plate` on Me's navy band. */
 export function DisplayButton({
   variant,
   className,
 }: {
-  variant: 'round' | 'plate' | 'bar';
+  variant: 'round' | 'plate';
   className?: string;
 }) {
   const open = useOpenDisplaySheet();
-  if (variant === 'bar') {
-    return (
-      <button
-        type="button"
-        onClick={open}
-        className={cn(
-          'relative flex items-center gap-2 rounded-xl px-3 py-1.5 font-bold text-[0.875rem] text-grey hover:bg-tint',
-          className,
-        )}
-      >
-        <span className="grid h-7 w-7 place-items-center rounded-[10px]">
-          <ALargeSmall aria-hidden="true" className="h-[20px] w-[20px]" />
-        </span>
-        <span>Display</span>
-      </button>
-    );
-  }
   return (
     <button
       type="button"
       onClick={open}
       aria-label="Display settings"
       className={cn(
-        'grid h-[44px] w-[44px] flex-none place-items-center rounded-full transition-colors md:hidden',
+        'grid h-[44px] w-[44px] flex-none place-items-center rounded-full transition-colors',
         variant === 'round'
           ? 'bg-tint text-emphasis hover:bg-line'
           : 'bg-plate-chip text-white hover:bg-plate-hover',

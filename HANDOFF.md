@@ -267,7 +267,8 @@ All live. Migration headers and the files named say how and why.
   days). `lib/standalone.ts` trusts only `navigator.standalone` on iPhones.
   The installed app is **The Sci Club**; page zoom is stopped only there.
   Share target: Android only (`/share-target`, `sw.ts`, `/share`).
-- **Display** (Me → Settings, and the "Aa" button on the five main screens):
+- **Display** (Me → Settings, Me's "Aa" button, and the keyboard's second
+  stop on every screen; the owner took the button off the other tabs 2026-10-22):
   appearance, higher contrast, text size, easier-to-read text, underline
   links, bigger tap targets, reduce motion; per device (`lib/accessibility.tsx`).
   Built in place of an overlay widget like accessiBe, on purpose.

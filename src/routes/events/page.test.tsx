@@ -121,6 +121,13 @@ describe('EventsPage', () => {
     expect(screen.getByText('Driving Q&A')).toBeInTheDocument();
   });
 
+  // Display is on Me only (the owner, 2026-10-22).
+  it('has no Display button in its header', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Events' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Display settings' })).toBeNull();
+  });
+
   // The owner, 2026-10-20: within 20 miles unless widened in Filters.
   describe('distance from home', () => {
     it('lists what is within 20 miles, and online events, until widened to any distance', async () => {
