@@ -34,7 +34,12 @@ export function nativeCsp(webPolicy: string): string {
     .join('; ');
 }
 
-/** The policy from netlify.toml's text. */
+/**
+ * The site-wide policy from netlify.toml's text: the one under `for = "/*"`.
+ * Pages with their own (the YouTube embed's) come before it, as Netlify keeps
+ * the first match, so the first policy in the file is not the site's.
+ */
 export function webCsp(netlifyToml: string): string {
-  return /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(netlifyToml)?.[1] ?? '';
+  const site = netlifyToml.slice(Math.max(0, netlifyToml.indexOf('for = "/*"')));
+  return /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(site)?.[1] ?? '';
 }
