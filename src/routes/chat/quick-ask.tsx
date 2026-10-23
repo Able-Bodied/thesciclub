@@ -16,9 +16,13 @@ import { SimilarTopics } from '@/routes/chat/similar-topics';
  * card to tap, a screen to load, a title box, a first-post box and a button.
  * Here it is one tap into the box (the phone's keyboard opens on that tap,
  * which is the only way iOS opens it) and one on Post. Everything else is
- * optional and comes after the words: whether it is a question (ticked), which
- * room (General from Home, this one in a room), and "Add details or a
- * photo", which carries the words into the full form rather than losing them.
+ * optional: whether it is a question (ticked), which room (General from Home,
+ * this one in a room), and "Add details or a photo", which carries the words
+ * into the full form rather than losing them.
+ *
+ * Those open with the tap into the box, not after the first word (the owner,
+ * 2026-10-22), so they are seen before the words are written; tapping away
+ * from an empty box folds them up again.
  *
  * The words are the topic's title, and its first post too: a post needs words,
  * and the topic page does not draw them twice. 140 characters, the title's
@@ -62,6 +66,7 @@ export function QuickAsk({
   const [isQuestion, setIsQuestion] = useState(true);
   const [chosenRoom, setChosenRoom] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,6 +87,7 @@ export function QuickAsk({
     null;
   const words = text.trim();
   const started = text.length > 0;
+  const expanded = started || focused;
 
   function post() {
     if (!room || !words || saving) return;
@@ -112,6 +118,14 @@ export function QuickAsk({
         event.preventDefault();
         post();
       }}
+      onFocus={() => {
+        setFocused(true);
+      }}
+      // Folded up again only once focus has left the whole box: moving from
+      // the words to the room or the tick keeps it open.
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
+      }}
     >
       <label htmlFor={`${id}-text`} className="flex items-center gap-2.5">
         <span
@@ -126,7 +140,7 @@ export function QuickAsk({
       </label>
       <textarea
         id={`${id}-text`}
-        rows={started ? 3 : 1}
+        rows={expanded ? 3 : 1}
         maxLength={LIMIT}
         value={text}
         onChange={(event) => {
@@ -145,7 +159,7 @@ export function QuickAsk({
         className="mt-2 w-full resize-none rounded-[12px] border-[1.6px] border-line bg-canvas px-3.5 py-2.5 text-[1rem] text-ink leading-[1.45] outline-none focus:border-emphasis"
       />
 
-      {started ? (
+      {expanded ? (
         <>
           <SimilarTopics text={text} linkState={linkState} />
           {text.length > LIMIT - 40 ? (
