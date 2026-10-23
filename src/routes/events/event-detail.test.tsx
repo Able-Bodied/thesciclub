@@ -293,10 +293,11 @@ describe('EventDetailPage', () => {
       expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
     });
 
-    it('tells somebody who is not going what going would get them', () => {
+    // The owner, 2026-10-22: going is not needed to join (20261022210000).
+    it('lets somebody who is not going join the chat too', () => {
       renderDetail();
-      expect(screen.queryByRole('button', { name: /group chat/i })).not.toBeInTheDocument();
-      expect(screen.getByText(/There is a group chat for everyone who is/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Join the group chat' })).toBeInTheDocument();
+      expect(screen.getByText(/going or not/)).toBeInTheDocument();
     });
 
     it('surfaces a refusal instead of navigating', async () => {
@@ -314,24 +315,16 @@ describe('EventDetailPage', () => {
         state.events = [makeEvent({ id: 'rugby', startTime: '2020-03-04T18:00:00Z' })];
       });
 
-      it('takes no new joins, and says why rather than offering a button', () => {
-        state.rsvps = new Map([['rugby', 'going']]);
+      // The owner, 2026-10-22: somebody who missed it may want to ask about it.
+      it('still takes new joins', () => {
         renderDetail();
-        expect(screen.queryByRole('button', { name: /group chat/i })).not.toBeInTheDocument();
-        expect(screen.getByText(/stays open to whoever was already in it/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Join the group chat' })).toBeInTheDocument();
       });
 
       it('still opens for somebody who was in it', () => {
         state.threads = [{ id: 'th-ev', eventId: 'rugby' }];
         renderDetail();
         expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
-      });
-
-      it('says nothing at all to somebody who was never in it', () => {
-        // No action and no fact worth the space, on a page somebody is reading
-        // for the description.
-        renderDetail();
-        expect(screen.queryByText(/group chat/i)).not.toBeInTheDocument();
       });
     });
   });

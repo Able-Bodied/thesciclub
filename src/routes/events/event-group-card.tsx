@@ -11,12 +11,7 @@ import { describeThrown } from '@/lib/describe-error';
  * It has to know whether the member is already in it
  * ---------------------------------------------------------------------------
  * Which is why it reads `chat_my_threads()` — one call, and the thread carries
- * its `event_id`. Three of the five things this card can say depend on the
- * answer, and the important one is the past event: somebody who was in the
- * group keeps reading it forever, and somebody who was not cannot join it any
- * more. Offering them a button that the database is going to refuse is the
- * thing this codebase calls a control that gets demoed, believed and then
- * explained.
+ * its `event_id`: Open for somebody already in it, Join for anybody else.
  *
  * It is a component of its own so that the read happens only for a signed-in
  * member. An event page is public — CONTEXT.md, events are the shopfront — and
@@ -24,22 +19,14 @@ import { describeThrown } from '@/lib/describe-error';
  * gets rendered.
  *
  * ---------------------------------------------------------------------------
- * Un-RSVPing does not take somebody out
+ * Anyone who can see the event may join
  * ---------------------------------------------------------------------------
- * `chat_join_event_group` is lazy and there is no trigger across RSVP and
- * chat — see 20260918140000. So the card says so where somebody might be about
- * to change their mind, rather than letting them find out by still being in a
- * conversation about a day they are no longer going to.
+ * Not only those going, and at any time, before the event or after it (the
+ * owner, 2026-10-22; 20261022210000): somebody deciding whether to go, or
+ * who missed it, is who most wants to ask. The chat is made the first time
+ * anybody opens it (`chat_join_event_group`); leaving is from the group.
  */
-export function EventGroupCard({
-  eventId,
-  going,
-  past,
-}: {
-  eventId: string;
-  going: boolean;
-  past: boolean;
-}) {
+export function EventGroupCard({ eventId }: { eventId: string }) {
   const navigate = useNavigate();
   const { threads, loading } = useMyThreads();
   const [opening, setOpening] = useState(false);
@@ -71,26 +58,6 @@ export function EventGroupCard({
   // somebody is reading.
   if (loading) return null;
 
-  // A past event nobody joined has no group and will not get one. Say nothing:
-  // there is no action and no fact worth the space.
-  if (!existing && past && !going) return null;
-
-  if (!existing && !going) {
-    return (
-      <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
-        Going? There is a group chat for everyone who is.
-      </p>
-    );
-  }
-
-  if (!existing && past) {
-    return (
-      <p className="mt-3.5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
-        This event is over. Its group chat stays open to whoever was already in it.
-      </p>
-    );
-  }
-
   return (
     <div className="mt-3.5">
       <button
@@ -103,8 +70,8 @@ export function EventGroupCard({
       </button>
       <p className="mt-1.5 text-[0.7875rem] text-grey leading-[1.45]">
         {existing
-          ? 'Everyone going to this can read it. Changing your mind about the event does not take you out of it — leave from the group itself.'
-          : 'Everyone going to this can read it, including what was said before you joined. You can leave it at any time.'}
+          ? 'Anyone who can see this event can join it. Leave from the group itself.'
+          : 'For anyone who can see this event, going or not. You read what was said before you joined, and can leave at any time.'}
       </p>
       {failure ? (
         <p className="mt-2 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
