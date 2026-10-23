@@ -122,6 +122,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   event (a number, never a title); a member with an event cover's path can
   read it. The PGlite script in the session that built it covered 31 cases;
   worth a `supabase/tests/event-audiences.sql`.
+- **A registration is not an invite, not live** (the owner, 2026-10-22: "a
+  security hole"). `20261022190000` let any address registered for a public
+  event sign up and join; `20261022220000` puts `i_am_invited` and the
+  sign-up hook back (probe `a-registration-is-not-an-invite.sql`). Push it
+  alone, then cherry-pick its welcome-page commit onto `main`, then check
+  who joined that way while it was live (read-only query: the message of the
+  commit that added this item).
 
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
