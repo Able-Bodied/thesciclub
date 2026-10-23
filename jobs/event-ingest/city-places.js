@@ -3,7 +3,8 @@
  * Events (20261022000000). Only cities and states are read and kept, never
  * who lives there. A city not found is kept as null and tried again in 30 days.
  * Also the cities of events nobody geocoded, such as those from a calendar
- * invitation (20261023010000).
+ * invitation (20261023010000), and for one with a state but no city, its
+ * organization's city in that state (20261023020000).
  */
 
 import { geocodeLocation, RateLimited } from './scrapers/geocode.js';
@@ -30,23 +31,36 @@ export function citiesToPlace(homes, placed, now = new Date()) {
   return [...wanted.values()];
 }
 
+/** Each event's own city, or with none, its organization's city in its state. */
+export function eventCities(events, organizations) {
+  const orgCity = new Map(organizations.map((o) => [o.id, o.city]));
+  return events.flatMap(({ city, state, organization_id, event_format }) => {
+    if (cityKey(city)) return [{ city, state }];
+    const fallback = event_format === 'online' ? null : orgCity.get(organization_id);
+    return cityKey(fallback) ? [{ city: fallback, state }] : [];
+  });
+}
+
 export async function placeMemberCities(supabase, { dryRun }, lookup = geocodeLocation) {
   const { data: homes, error } = await supabase.from('members').select('city, state');
   if (error) throw new Error(`Could not read members' cities: ${error.message}`);
   const { data: events, error: eventsError } = await supabase
     .from('events')
-    .select('city, state')
+    .select('city, state, organization_id, event_format')
     .is('latitude', null)
-    .not('city', 'is', null)
     .not('state', 'is', null)
     .gte('start_time', new Date(Date.now() - 365 * 86400000).toISOString());
   if (eventsError) throw new Error(`Could not read events' cities: ${eventsError.message}`);
+  const { data: organizations, error: orgError } = await supabase
+    .from('organizations')
+    .select('id, city');
+  if (orgError) throw new Error(`Could not read organizations' cities: ${orgError.message}`);
   const { data: placed, error: placedError } = await supabase
     .from('city_places')
     .select('city_key, state, latitude, placed_at');
   if (placedError) throw new Error(`Could not read city_places: ${placedError.message}`);
 
-  const todo = citiesToPlace([...homes, ...(events ?? [])], placed);
+  const todo = citiesToPlace([...homes, ...eventCities(events ?? [], organizations ?? [])], placed);
   console.log(`Members' cities: ${todo.length} to place`);
   let lastRequestAt = 0;
   for (const city of todo) {
