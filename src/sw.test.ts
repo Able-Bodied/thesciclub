@@ -161,3 +161,22 @@ describe('system notification clicks', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('the navigation fallback', () => {
+  // Workbox tests the denylist against the path and the query together.
+  async function denied(pathAndQuery: string) {
+    const { NavigationRoute } = await import('workbox-routing');
+    const options = vi.mocked(NavigationRoute).mock.calls.at(-1)?.[1];
+    return (options?.denylist ?? []).some((pattern) => pattern.test(pathAndQuery));
+  }
+
+  it("leaves the store app's YouTube page to the network, query and all", async () => {
+    expect(await denied('/embed/youtube.html?v=dQw4w9WgXcQ')).toBe(true);
+    expect(await denied('/embed/youtube.html')).toBe(true);
+  });
+
+  it("still answers the app's own screens", async () => {
+    expect(await denied('/chat')).toBe(false);
+    expect(await denied('/join?invite=abc')).toBe(false);
+  });
+});

@@ -11,7 +11,9 @@ import NETLIFY from '../netlify.toml?raw';
  * here instead, with the value to paste.
  */
 
-const policy = /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(NETLIFY)?.[1] ?? '';
+// The site-wide rule's policy; the player page's own rule comes first.
+const SITE = NETLIFY.slice(NETLIFY.indexOf('for = "/*"'));
+const policy = /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(SITE)?.[1] ?? '';
 
 function directive(name: string): string[] {
   const found = policy
