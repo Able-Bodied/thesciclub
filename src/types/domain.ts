@@ -621,6 +621,14 @@ export interface EventTag {
   categoryName: string;
 }
 
+/**
+ * Who can see an event (the owner, 2026-10-22, 20261022180000): anyone with
+ * the link (a public page, no counts, nobody's name), the whole club, the
+ * hosting organization's followers, or the members of chosen group chats.
+ */
+export const EVENT_AUDIENCES = ['public', 'club', 'followers', 'groups'] as const;
+export type EventAudience = (typeof EVENT_AUDIENCES)[number];
+
 export interface ClubEvent {
   id: string;
   title: string;
@@ -677,6 +685,8 @@ export interface ClubEvent {
   photoPath: string | null;
   /** What a screen reader says for the cover picture. */
   photoAlt: string | null;
+  /** Who can see it (20261022180000). */
+  audience: EventAudience;
   /**
    * On an imported event, the fields an administrator changed
    * (`title`, `start_time`, …); empty when it reads as its calendar has it.

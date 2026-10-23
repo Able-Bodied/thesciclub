@@ -24,6 +24,21 @@ vi.mock('@/lib/members', () => ({
   useOwnMember: () => ({ member: null, invitedBy: 'NorCal SCI', loading: false, error: null }),
 }));
 
+// A registration from a public event's page (20261022190000).
+const registration = vi.hoisted(() => ({
+  pending: null as null | { eventId: string },
+  claimed: vi.fn(() => Promise.resolve(['picnic'])),
+  forgotten: vi.fn(),
+}));
+vi.mock('@/lib/event-audience', () => ({
+  pendingRegistration: () => registration.pending,
+  claimEventRegistrations: registration.claimed,
+  forgetPendingRegistration: () => {
+    registration.forgotten();
+    registration.pending = null;
+  },
+}));
+
 const { RequireMember } = await import('@/components/require-member');
 
 function renderGuarded() {
@@ -31,6 +46,7 @@ function renderGuarded() {
     <MemoryRouter initialEntries={['/peers']}>
       <Routes>
         <Route path="/join" element={<p>Welcome screen</p>} />
+        <Route path="/events/:id" element={<p>The event</p>} />
         <Route
           path="/peers"
           element={
@@ -45,6 +61,9 @@ function renderGuarded() {
 }
 
 beforeEach(() => {
+  registration.pending = null;
+  registration.claimed.mockClear();
+  registration.forgotten.mockClear();
   account.restore.mockClear();
   forgotten.urls.mockClear();
   forgotten.reads.mockClear();
@@ -167,5 +186,21 @@ describe('RequireMember', () => {
     );
     expect(forgotten.urls).toHaveBeenCalledTimes(1);
     expect(forgotten.reads).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('a registration made before signing in', () => {
+  it('becomes the member’s RSVP, and opens the event', async () => {
+    registration.pending = { eventId: 'picnic' };
+    renderGuarded();
+    expect(await screen.findByText('The event')).toBeInTheDocument();
+    expect(registration.claimed).toHaveBeenCalledTimes(1);
+    expect(registration.forgotten).toHaveBeenCalledTimes(1);
+  });
+
+  it('is not asked about when there is none', () => {
+    renderGuarded();
+    expect(screen.getByText('Inside the club')).toBeInTheDocument();
+    expect(registration.claimed).not.toHaveBeenCalled();
   });
 });

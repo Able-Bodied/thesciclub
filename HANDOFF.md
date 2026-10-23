@@ -98,6 +98,22 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Public events and audiences, not live** (2026-10-22, the owner):
+  `20261022180000` (who can see an event: public, club, followers, groups;
+  `can_see_event` behind the events, series, tags and RSVP policies and both
+  RSVP views; `public_event` for `/e/<id>`; anon reads a public event's
+  cover) and `20261022190000` (registrations from the public page, the
+  organizers' `event_guest_list`, `claim_event_registrations` and a trigger
+  as a member is made, a registration admits its address while invite-only,
+  cron `event-registrations-expire` at 90 days). Both go live before the
+  client. A `db push` also applies `20261022160000` and `20261022170000`,
+  which wait on the Apple steps below: settle those first, or push all four
+  together once they are done. Not filtered yet: the daily "N new events"
+  count for followers includes a groups-only event (a number, never a
+  title); a member with an event cover's path can read it. Probe: the PGlite
+  script in the session that built it covered 31 cases; worth a
+  `supabase/tests/event-audiences.sql`.
+
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
   (2026-10-21). Their database side is live (`20261022100000` to
