@@ -52,8 +52,13 @@ describe('the registration kept on this device', () => {
       name: 'Maria',
       email: 'maria@example.com',
       phone: '',
+      organizer: 'NorCal SCI',
     });
-    expect(pendingRegistration()).toMatchObject({ eventId: 'e1', status: 'interested' });
+    expect(pendingRegistration()).toMatchObject({
+      eventId: 'e1',
+      status: 'interested',
+      organizer: 'NorCal SCI',
+    });
     forgetPendingRegistration();
     expect(pendingRegistration()).toBeNull();
   });

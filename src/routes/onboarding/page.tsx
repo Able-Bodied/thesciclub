@@ -610,7 +610,7 @@ export default function OnboardingPage() {
       <WithInstallNudge>
         <WelcomeScreen
           joiningOpen={joiningOpen}
-          registered={registered !== null}
+          registered={registered}
           onJoin={() => {
             setStep('join');
           }}

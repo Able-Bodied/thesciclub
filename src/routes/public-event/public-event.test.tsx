@@ -146,7 +146,11 @@ describe('registering', () => {
       email: 'maria@example.com',
       phone: '(408) 555-0112',
     });
-    expect(api.kept[0]).toMatchObject({ eventId: 'picnic', email: 'maria@example.com' });
+    expect(api.kept[0]).toMatchObject({
+      eventId: 'picnic',
+      email: 'maria@example.com',
+      organizer: 'NorCal SCI',
+    });
   });
 
   it('stays on the form and says why when it is refused', async () => {

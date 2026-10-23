@@ -18,10 +18,10 @@ import type { RsvpStatus } from '@/types/domain';
  * 2026-10-22; register_for_event, 20261022190000).
  *
  * The same short form for anybody: kept for the event's organizers as soon as
- * it is sent, so nobody is lost to the club's onboarding. Then the welcome
- * page asks them to sign in or join, the same page whoever they are, so it
- * never says whether an address is a member's. A copy stays on this device
- * so the app can open the event once they are in.
+ * it is sent. Then the welcome page, the same whoever they are, so it never
+ * says whether an address is a member's. A registration is not an invite
+ * (20261022220000). A copy stays on this device so the app can open the
+ * event once a member signs in.
  */
 
 const FIELD =
@@ -68,7 +68,12 @@ export default function RegisterForEventPage() {
       setError(result.error);
       return;
     }
-    keepPendingRegistration({ ...registration, email: email.trim(), name: name.trim() });
+    keepPendingRegistration({
+      ...registration,
+      email: email.trim(),
+      name: name.trim(),
+      ...(event?.organization ? { organizer: event.organization.name } : {}),
+    });
     void navigate('/join', { replace: true });
   }
 
