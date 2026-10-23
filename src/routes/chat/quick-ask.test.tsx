@@ -60,11 +60,26 @@ beforeEach(() => {
 });
 
 describe('asking from Home', () => {
-  it('is one box until something is typed', () => {
+  it('is one box until it is tapped', () => {
     renderAsk();
     expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Post' })).toBeNull();
     expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  // The owner, 2026-10-22: the choices open with the tap, before any words.
+  it('opens its choices as soon as the box is tapped, and folds them away empty', async () => {
+    renderAsk();
+    await userEvent.click(screen.getByRole('textbox', { name: 'Ask or post to the club' }));
+    expect(screen.getByRole('button', { name: 'Post' })).toBeDisabled();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Add details or a photo' })).toBeInTheDocument();
+    // Moving within the box keeps it open.
+    await userEvent.click(screen.getByRole('combobox'));
+    expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument();
+    // Leaving it empty folds it up.
+    await userEvent.click(document.body);
+    expect(screen.queryByRole('button', { name: 'Post' })).toBeNull();
   });
 
   it('posts to General as a question in one tap, and opens it with the way back', async () => {
