@@ -108,4 +108,4 @@ export async function decideInvite(
 }
 
 /** The address an organization's representatives invite. */
-export const EVENTS_ADDRESS = 'events@thesciclub.org';
+export const EVENTS_ADDRESS = 'events@thesciclub.com';

@@ -62,7 +62,7 @@ function fakeDeps(o: {
       Promise.resolve(
         o.email ?? {
           from: 'NorCal SCI <rep@norcalsci.org>',
-          to: ['events@thesciclub.org'],
+          to: ['events@thesciclub.com'],
           authentication: { dmarc: 'pass' },
           attachments: [{ id: 'att1', filename: 'invite.ics', content_type: 'text/calendar' }],
         },
@@ -110,15 +110,17 @@ describe('the webhook’s signature', () => {
 });
 
 describe('the address', () => {
-  it('finds events@ and its short code, at either domain', () => {
-    expect(eventsAddress({ from: '', to: ['events@thesciclub.org'] })).toEqual({ tag: null });
-    expect(eventsAddress({ from: '', to: ['Events <events+NCS@thesciclub.org>'] })).toEqual({
+  it('finds events@thesciclub.com and its short code', () => {
+    expect(eventsAddress({ from: '', to: ['events@thesciclub.com'] })).toEqual({ tag: null });
+    expect(eventsAddress({ from: '', to: ['Events <events+NCS@thesciclub.com>'] })).toEqual({
       tag: 'ncs',
     });
     expect(
       eventsAddress({ from: '', to: ['x@y.z'], received_for: ['events@thesciclub.com'] }),
     ).toEqual({ tag: null });
-    expect(eventsAddress({ from: '', to: ['hello@thesciclub.org'] })).toBeNull();
+    expect(eventsAddress({ from: '', to: ['hello@thesciclub.com'] })).toBeNull();
+    // The club does not own thesciclub.org.
+    expect(eventsAddress({ from: '', to: ['events@thesciclub.org'] })).toBeNull();
   });
 
   it('reads the bare sender', () => {
@@ -166,7 +168,7 @@ describe('an invitation arriving', () => {
     const deps = fakeDeps({
       email: {
         from: 'rep@norcalsci.org',
-        to: ['events@thesciclub.org'],
+        to: ['events@thesciclub.com'],
         authentication: { dmarc: 'fail' },
         attachments: [{ id: 'att1', filename: 'invite.ics', content_type: 'text/calendar' }],
       },
@@ -190,7 +192,7 @@ describe('an invitation arriving', () => {
   });
 
   it('leaves mail to other addresses alone', async () => {
-    const deps = fakeDeps({ email: { from: 'a@b.c', to: ['hello@thesciclub.org'] } });
+    const deps = fakeDeps({ email: { from: 'a@b.c', to: ['hello@thesciclub.com'] } });
     expect((await handle(deps, webhook, await sign(webhook))).outcome).toBe('not for events@');
     expect(deps.received).toHaveLength(0);
   });

@@ -6,8 +6,10 @@ import { type InviteEvent, readInvite } from './ics.ts';
  * 20261022220000_calendar_invites.sql for the rules.
  */
 
-/** events@ or events+<short code>@, at either of the club's domains. */
-const ADDRESS = /^events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.(?:org|com)$/i;
+/** What representatives invite: a Zoho alias, forwarded to Resend. */
+const EVENTS = 'events@thesciclub.com';
+/** events@ or events+<short code>@. */
+const ADDRESS = /^events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.com$/i;
 
 export interface ReceivedEmail {
   from: string;
@@ -227,7 +229,7 @@ export function repliesFor(
           .map((address) => ({
             to: address,
             subject: `A calendar invitation is waiting: ${title}`,
-            text: `${sender} invited events@thesciclub.org to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
+            text: `${sender} invited ${EVENTS} to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
           })),
       ];
     }
