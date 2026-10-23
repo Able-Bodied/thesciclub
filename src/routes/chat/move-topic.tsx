@@ -8,7 +8,8 @@ import type { ChatRoom } from '@/lib/chat/types';
  * Filing a topic in the right room after it was asked (the owner,
  * 2026-10-09): an administrator, or the member who started it.
  *
- * Closed until asked for, because it is the rare thing on this screen. The
+ * Closed until asked for, because it is the rare thing on this screen, and
+ * closed again once the topic has moved, saying where to. The
  * rooms are a native select under their headings, as on Home's ask screen;
  * an administrator sees closed rooms too, marked, since chat_move_topic lets
  * them file a topic into a room before it opens.
@@ -31,21 +32,32 @@ export function MoveTopic({
   const [target, setTarget] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Said beside the button once it has closed: the page changes room under
+  // the reader, so the panel closing alone could read as nothing happening.
+  const [moved, setMoved] = useState<string | null>(null);
   const choices = rooms.filter((room) => room.id !== roomId && (isAdmin || room.openedAt !== null));
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => {
-          setOpen(true);
-        }}
-        data-target="small"
-        // A transparent border, so it is exactly Mute's height beside it.
-        className="rounded-full border border-transparent bg-tint px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-emphasis leading-[1.3] transition-colors hover:bg-line"
-      >
-        Move to another room
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            setMoved(null);
+          }}
+          data-target="small"
+          // A transparent border, so it is exactly Mute's height beside it.
+          className="rounded-full border border-transparent bg-tint px-[0.85em] py-[0.45em] font-bold font-head text-[0.75rem] text-emphasis leading-[1.3] transition-colors hover:bg-line"
+        >
+          Move to another room
+        </button>
+        {moved ? (
+          <span role="status" className="self-center font-semibold text-[0.75rem] text-emphasis">
+            Moved to {moved}.
+          </span>
+        ) : null}
+      </>
     );
   }
 
@@ -66,6 +78,11 @@ export function MoveTopic({
             }
             const name = rooms.find((room) => room.id === target)?.name ?? 'the room';
             announce(`Moved to ${name}.`);
+            // Closed once it has worked (the owner, 2026-10-22): left open, it
+            // felt as though nothing had happened.
+            setOpen(false);
+            setTarget('');
+            setMoved(name);
             onMoved(target);
           })
           .finally(() => {
