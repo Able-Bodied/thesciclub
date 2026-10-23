@@ -1,7 +1,6 @@
 import { SquarePen } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { DisplayButton } from '@/components/display-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
@@ -137,7 +136,6 @@ export default function ChatPage() {
             Chat
           </h1>
           <span className="flex items-center gap-2">
-            <DisplayButton variant="round" />
             {/* Writing to one person, from here (2026-10-10). Before, only a
               profile's Message button started a conversation. */}
             <Link

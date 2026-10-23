@@ -1,7 +1,6 @@
 import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { DisplayButton } from '@/components/display-sheet';
 import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
@@ -262,7 +261,6 @@ export default function EventsPage() {
             Events
           </h1>
           <div className="flex items-center gap-2">
-            <DisplayButton variant="round" />
             {canAdd ? (
               <Link
                 to="/events/new"
