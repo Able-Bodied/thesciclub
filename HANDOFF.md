@@ -88,12 +88,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   apple-app-site-association` (`src/universal-links.test.ts` says which
   paths and why). Fake it in a browser with
   `window.CapacitorCustomPlatform = { name: 'ios' }`.
-  YouTube cards play in place in the app (native CSP frames
-  youtube-nocookie) with an "Open in YouTube" link under the player; never
-  tried on a device (`ios-v1.0.1`): look for it playing, or an error in the
-  frame and the link working. If it fails, next is a small player page on
-  thesciclub.com.
-- **Checks**: 3,355 tests in 240 files on 2026-10-22; `pnpm check` (alone),
+  YouTube cards in the app frame the club's player page
+  (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
+  YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
+  sits under it. Needs the page live on `main` before the next TestFlight.
+- **Checks**: 3,395 tests in 242 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
