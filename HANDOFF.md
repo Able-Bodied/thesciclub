@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-22. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-23. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
 definition and wins over this file. Older handoffs, by `git show
 <sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
@@ -23,7 +23,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Alfredx48/TheSciClub (remote `mine`) at once, fetching from Able-Bodied
   only: pull before pushing, or the two diverge.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261022090000` is live (2026-10-21), blocking included. Edge functions:
+  `20261023010000` is live (2026-10-23). Edge functions:
   `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
   too), `link-preview`, `send-invite`, `sign-in-reminder`,
   `home-screen-handoff` (`verify_jwt` off). Written, not deployed:
@@ -396,9 +396,12 @@ All live. Migration headers and the files named say how and why.
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
   Events on Home are within Events' default 20 miles of home, online ones
   anywhere (`events_within_miles`). An event's place for that is its own
-  coordinates or city, else (no city) its organization's city; unknown,
-  it shows at any distance (the owner, 2026-10-23, `20261023010000`, not
-  live). The nightly import also places event cities nobody geocoded.
+  coordinates or city; with no city, its organization's city in the event's
+  state (no state: a city the map knows once). Unplaced in another state
+  than the member's: out of range; nothing known: any distance (the owner,
+  2026-10-23, `20261023020000`, not live). The nightly import reads a city
+  from the event's own address when the map misses (`address.js`), and
+  places those cities.
 - **Events**: administrators and an organization's designated members add,
   change and delete them (Pacific time). A series' dates are rows made 92
   days ahead, extended nightly (`event-series-extend`). Administrators change
