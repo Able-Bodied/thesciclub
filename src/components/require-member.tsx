@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
@@ -6,6 +6,7 @@ import { AccountProvider, useOwnAccount } from '@/lib/account';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
 import {
   claimEventRegistrations,
+  fetchPublicEvent,
   forgetPendingRegistration,
   pendingRegistration,
 } from '@/lib/event-audience';
@@ -86,10 +87,13 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
     return <div className="min-h-dvh bg-canvas" />;
   }
   if (status === 'signed-out' || status === 'signed-up') {
+    const door = signInDoor(`${location.pathname}${location.search}${location.hash}`);
+    // An event's own address, shared from the address bar: its public page
+    // when it has one (20261022180000), the door otherwise.
+    const eventId = EVENT_PATH.exec(location.pathname)?.[1];
+    if (eventId) return <ToPublicEvent eventId={eventId} door={door} />;
     // Someone part-way through signup goes back to finish it, not to a wall.
-    return (
-      <Navigate to={signInDoor(`${location.pathname}${location.search}${location.hash}`)} replace />
-    );
+    return <Navigate to={door} replace />;
   }
   // Not a redirect: there is nowhere to send them that is truer than this, and
   // bouncing a suspended member around the app while every screen comes back
@@ -103,4 +107,27 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
       <Fragment key={account.userId}>{children}</Fragment>
     </AccountProvider>
   );
+}
+
+/** An event's page in the club, by id: `/events/<uuid>`, nothing after it. */
+const EVENT_PATH = /^\/events\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i;
+
+/**
+ * Somebody signed out on an event's own address: the public page if the event
+ * has one, which is what a member who copied the address bar meant to share;
+ * the door if not, as for any other page in the club.
+ */
+function ToPublicEvent({ eventId, door }: { eventId: string; door: string }) {
+  const [to, setTo] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchPublicEvent(eventId).then((result) => {
+      if (!cancelled) setTo(result.ok && result.value ? `/e/${eventId}` : door);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, door]);
+  if (!to) return <div className="min-h-dvh bg-canvas" />;
+  return <Navigate to={to} replace />;
 }

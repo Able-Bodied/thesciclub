@@ -214,8 +214,9 @@ who is in the club: no counts, no attendees, not the host's name. Anybody can
 register there with a name, an email and a phone; the event's organizers and
 administrators see that, and the welcome page that follows asks everybody the
 same thing, sign in or join, so it never says whether an address is a member's.
-A registration also lets its address join while the club is invite-only. An
-event can instead be for the whole club, for the hosting organization's
+A registration also lets its address join while the club is invite-only.
+Every event is public unless its organizer says otherwise, the imported ones
+too (20261022200000). An event can instead be for the whole club, for the hosting organization's
 followers, or for chosen group chats, and nobody outside its audience sees it
 (`can_see_event`, 20261022180000; registrations, 20261022190000).
 

@@ -54,6 +54,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Every event public by default** (the owner, 2026-10-22): `20261022200000`
+  sets the default to `public` and makes the club's existing events public
+  (all imported from public calendars), not live until the owner's push.
+  A signed-out visitor on `/events/<id>` is sent to `/e/<id>` when the event
+  is public (`RequireMember`), so an address copied from the bar works too.
 - **Public events and audiences** (2026-10-22, the owner): `20261022180000`
   and `20261022190000` are live, and the client with them (released on its
   own, ahead of the branch's unreleased work). Who can see an event: public,
