@@ -109,3 +109,18 @@
   for = "/brand/*"
   [headers.values]
     Cache-Control = "public, max-age=86400"
+
+# The store app's YouTube player (public/embed/youtube.html): YouTube refuses
+# capacitor://localhost, so the app frames this page. Last on purpose: a later
+# block's header replaces the same one from "/*", so every header the page
+# needs is named here. Only the app (iOS, Android) and the club may frame it;
+# browsers ignore X-Frame-Options once frame-ancestors is set.
+# src/embed-youtube.test.ts checks this against the page.
+[[headers]]
+  for = "/embed/youtube.html"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'none'; script-src 'sha256-xV0u9Ur8udktvZYVkC5PqoFUTOjkQMR2lAsrZ7WJfkk='; style-src 'sha256-G+rCEijMLKwsAtYZLVJiYQinNSYAgkNmR1jOBLnbSX4='; frame-src https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'; frame-ancestors capacitor://localhost https://localhost https://thesciclub.com"
+    X-Frame-Options = "SAMEORIGIN"
