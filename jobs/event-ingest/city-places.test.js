@@ -32,12 +32,23 @@ describe('citiesToPlace', () => {
   });
 });
 
-function fakeSupabase(homes) {
+function fakeSupabase(homes, events = []) {
   const written = [];
+  const rows = { members: homes, events };
+  // A read that may be narrowed (events) or awaited as it is (members).
+  const query = (data) => {
+    const read = Promise.resolve({ data, error: null });
+    const narrowed = Object.assign(read, {
+      is: () => narrowed,
+      not: () => narrowed,
+      gte: () => read,
+    });
+    return narrowed;
+  };
   return {
     written,
     from: (table) => ({
-      select: () => Promise.resolve({ data: table === 'members' ? homes : [], error: null }),
+      select: () => query(rows[table] ?? []),
       upsert: (row) => {
         written.push(row);
         return Promise.resolve({ error: null });
@@ -62,6 +73,26 @@ describe('placeMemberCities', () => {
     expect(supabase.written.map((r) => [r.city_key, r.latitude])).toEqual([
       ['davis', 38.5],
       ['springfield', null],
+    ]);
+  });
+});
+
+describe('events nobody geocoded', () => {
+  it('places their cities beside members’ ones', async () => {
+    const supabase = fakeSupabase(
+      [{ city: 'Davis', state: 'CA' }],
+      [{ city: 'Menlo Park', state: 'CA' }],
+    );
+    await placeMemberCities(supabase, { dryRun: false }, (query) =>
+      Promise.resolve({
+        state: 'CA',
+        latitude: query === 'Davis, CA' ? 38.5 : 37.45,
+        longitude: -122,
+      }),
+    );
+    expect(supabase.written.map((r) => [r.city_key, r.latitude])).toEqual([
+      ['davis', 38.5],
+      ['menlo park', 37.45],
     ]);
   });
 });

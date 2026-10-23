@@ -2,6 +2,8 @@
  * The middle of each city members live in, for "within so many miles" on
  * Events (20261022000000). Only cities and states are read and kept, never
  * who lives there. A city not found is kept as null and tried again in 30 days.
+ * Also the cities of events nobody geocoded, such as those from a calendar
+ * invitation (20261023010000).
  */
 
 import { geocodeLocation, RateLimited } from './scrapers/geocode.js';
@@ -31,12 +33,20 @@ export function citiesToPlace(homes, placed, now = new Date()) {
 export async function placeMemberCities(supabase, { dryRun }, lookup = geocodeLocation) {
   const { data: homes, error } = await supabase.from('members').select('city, state');
   if (error) throw new Error(`Could not read members' cities: ${error.message}`);
+  const { data: events, error: eventsError } = await supabase
+    .from('events')
+    .select('city, state')
+    .is('latitude', null)
+    .not('city', 'is', null)
+    .not('state', 'is', null)
+    .gte('start_time', new Date(Date.now() - 365 * 86400000).toISOString());
+  if (eventsError) throw new Error(`Could not read events' cities: ${eventsError.message}`);
   const { data: placed, error: placedError } = await supabase
     .from('city_places')
     .select('city_key, state, latitude, placed_at');
   if (placedError) throw new Error(`Could not read city_places: ${placedError.message}`);
 
-  const todo = citiesToPlace(homes, placed);
+  const todo = citiesToPlace([...homes, ...(events ?? [])], placed);
   console.log(`Members' cities: ${todo.length} to place`);
   let lastRequestAt = 0;
   for (const city of todo) {
