@@ -1,7 +1,7 @@
 import { Play } from 'lucide-react';
 import { type ReactNode, useState } from 'react';
 import { useAttachmentUrls } from '@/lib/chat/attachments';
-import { siteOf, youtubeEmbedUrl } from '@/lib/chat/link-preview';
+import { appYoutubeEmbedUrl, siteOf, youtubeEmbedUrl } from '@/lib/chat/link-preview';
 import type { LinkPreview } from '@/lib/chat/types';
 import { isNative } from '@/lib/standalone';
 import { cn } from '@/lib/utils';
@@ -17,8 +17,8 @@ import { cn } from '@/lib/utils';
  * A YouTube video plays where it is, on a press and not before: the button
  * swaps the picture for YouTube's privacy-enhanced player, which is the
  * first moment anything reaches YouTube. The store app plays it in place
- * too, with an "Open in YouTube" link under it in case YouTube refuses a
- * frame whose address is capacitor://localhost. Everything else, Instagram included
+ * too, through the club's player page (YouTube refuses capacitor://localhost),
+ * with an "Open in YouTube" link under it. Everything else, Instagram included
  * at the owner's choice, opens its page in a new tab the way the link in the
  * words does.
  *
@@ -100,7 +100,7 @@ export function LinkPreviewCard({
         playing ? (
           <>
             <iframe
-              src={youtubeEmbedUrl(video)}
+              src={isNative() ? appYoutubeEmbedUrl(video) : youtubeEmbedUrl(video)}
               title={`YouTube video: ${title}`}
               className="block aspect-video w-full"
               allow="autoplay; encrypted-media; picture-in-picture; fullscreen"

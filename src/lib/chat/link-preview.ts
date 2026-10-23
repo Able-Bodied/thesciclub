@@ -1,4 +1,5 @@
 import type { LinkPreview } from '@/lib/chat/types';
+import { SITE_ORIGIN } from '@/lib/site-origin';
 
 /**
  * A row's `link_preview`, read defensively.
@@ -34,6 +35,14 @@ export function toLinkPreview(raw: unknown): LinkPreview | null {
 /** The player's address, from YouTube's privacy-enhanced host. Only ever built from a checked id. */
 export function youtubeEmbedUrl(id: string): string {
   return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&playsinline=1`;
+}
+
+/**
+ * The store app's player: the club's page that frames the one above, since
+ * YouTube refuses capacitor://localhost (public/embed/youtube.html).
+ */
+export function appYoutubeEmbedUrl(id: string): string {
+  return `${SITE_ORIGIN}/embed/youtube.html?v=${id}`;
 }
 
 /** "reeve.org", for the card's small line when the page names no site. */
