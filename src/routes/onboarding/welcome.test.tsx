@@ -7,7 +7,7 @@ const noop = () => undefined;
 describe('the welcome screen after registering for an event', () => {
   // The same words for everybody who registered: the page must never say
   // whether an address is a member's. A registration is not an invite
-  // (20261022220000), so it does not promise a way in.
+  // (20261022230000), so it does not promise a way in.
   it('says who has the details, and that joining needs an invite', () => {
     render(
       <WelcomeScreen onJoin={noop} onSignIn={noop} registered={{ organizer: 'NorCal SCI' }} />,

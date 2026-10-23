@@ -20,7 +20,7 @@ import type { RsvpStatus } from '@/types/domain';
  * The same short form for anybody: kept for the event's organizers as soon as
  * it is sent. Then the welcome page, the same whoever they are, so it never
  * says whether an address is a member's. A registration is not an invite
- * (20261022220000). A copy stays on this device so the app can open the
+ * (20261022230000). A copy stays on this device so the app can open the
  * event once a member signs in.
  */
 

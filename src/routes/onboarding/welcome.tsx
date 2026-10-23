@@ -55,7 +55,7 @@ export function WelcomeScreen({
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       {/* The same words whoever registered: never whether an address is a
-          member's. A registration is not an invite (20261022220000). */}
+          member's. A registration is not an invite (20261022230000). */}
       {registered ? (
         <div
           role="status"
