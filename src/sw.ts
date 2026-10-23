@@ -54,8 +54,11 @@ cleanupOutdatedCaches();
 // to the club first. A path that ends in an extension goes to the network.
 // One route has a dot on purpose: /auth/confirm.html, the emailed links' page,
 // so the network's newest app answers it, never an older cached one.
+// /embed/ is the store app's YouTube page, whose ?v= hides its extension here.
 registerRoute(
-  new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/\.[a-z0-9]+$/i] }),
+  new NavigationRoute(createHandlerBoundToURL('index.html'), {
+    denylist: [/\.[a-z0-9]+$/i, /^\/embed\//],
+  }),
 );
 
 // "Share to The SCI Club" (manifest share_target, Android). The share is a
