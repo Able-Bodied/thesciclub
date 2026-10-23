@@ -78,7 +78,7 @@ export function DisplayButton({
       onClick={open}
       aria-label="Display settings"
       className={cn(
-        'grid h-[44px] w-[44px] flex-none place-items-center rounded-full transition-colors md:hidden',
+        'grid h-[44px] w-[44px] flex-none place-items-center rounded-full transition-colors',
         variant === 'round'
           ? 'bg-tint text-emphasis hover:bg-line'
           : 'bg-plate-chip text-white hover:bg-plate-hover',
