@@ -73,7 +73,10 @@ no year and hours with no am/pm. RSVPs go to its Borrow a Freedom Trax form.
 2. **Geocodes** the free-text location through Nominatim — city, postal code,
    coordinates, and whether the match was a building or just an area. One
    request per second, per their usage policy, and skipped entirely when the
-   location has not changed since last time.
+   location has not changed since last time. A location that is only a
+   venue's name takes the one address its description gives
+   ([`address.js`](address.js)), and a city the map cannot find is read
+   from the location's own words.
 3. **Classifies** format and tags with rules ([`classify.js`](classify.js)).
    ab-peers left both to an AI verification pass that was never wired up; there
    are no AI calls and no paid keys here.
