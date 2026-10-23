@@ -80,6 +80,12 @@ describe('the YouTube page', () => {
     expect(refused).toHaveTextContent("This video can't be played here.");
   });
 
+  it('stays dark until the player paints, with the message in white', () => {
+    expect(STYLE).toMatch(/html,\s*body \{[^}]*background: #000;/);
+    expect(STYLE).toMatch(/iframe \{[^}]*background: #000;/);
+    expect(STYLE).toMatch(/p \{[^}]*color: #fff;/);
+  });
+
   it('is not indexed', () => {
     expect(PAGE).toContain('<meta name="robots" content="noindex, nofollow" />');
     expect(PAGE).toContain('<html lang="en">');
