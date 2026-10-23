@@ -89,13 +89,10 @@ describe('the YouTube page', () => {
 });
 
 describe("the YouTube page's headers", () => {
-  it('come after the site-wide block, so they replace its framing rules', () => {
-    expect(blocks[0]).toContain('for = "/*"');
-    expect(blocks.at(-1)).toBe(block);
-    // The site-wide policy stays the first one, which csp.test.ts and the app read.
-    expect(/Content-Security-Policy = "([^"]+)"/.exec(NETLIFY)?.[1]).toContain(
-      "frame-ancestors 'none'",
-    );
+  it('come before the site-wide block, as Netlify keeps the first match', () => {
+    // Seen live 2026-10-23: placed after "/*", the page got frame-ancestors 'none'.
+    expect(blocks[0]).toBe(block);
+    expect(blocks[1]).toContain('for = "/*"');
   });
 
   it("allow the page's inline script and style by hash, and nothing else", async () => {
