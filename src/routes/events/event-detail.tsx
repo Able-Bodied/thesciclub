@@ -14,6 +14,7 @@ import {
   useEvents,
   useViewerEvents,
 } from '@/lib/events';
+import { meetingService } from '@/lib/meeting-link';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
@@ -27,6 +28,7 @@ import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
+import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
@@ -134,6 +136,10 @@ export default function EventDetailPage() {
   // these two are links on the same page from the same source.
   const registerHref = safeHref(event.registrationUrl);
   const pageHref = safeHref(event.url);
+  // A call to join, not a page about the event: it goes up with the time, and
+  // is not offered once the event is over.
+  const meeting = meetingService(pageHref);
+  const moreHref = meeting ? null : pageHref;
   const goingList = attendees.filter((a) => a.status === 'going');
   const interestedList = attendees.filter((a) => a.status === 'interested');
   const organization = event.organizationId
@@ -196,6 +202,10 @@ export default function EventDetailPage() {
                   </span>
                 ))}
               </div>
+            ) : null}
+
+            {pageHref && meeting && !isPastEvent(event) ? (
+              <MeetingLinkButton href={pageHref} service={meeting} tone="plate" className="mt-3" />
             ) : null}
 
             {/* No RSVP on an event that is over. The list stopped offering it when
@@ -264,9 +274,9 @@ export default function EventDetailPage() {
             className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_ul]:mt-2 [&_ul]:list-disc"
           />
 
-          {registerHref || pageHref ? (
+          {registerHref || moreHref ? (
             <a
-              href={registerHref ?? pageHref ?? undefined}
+              href={registerHref ?? moreHref ?? undefined}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
