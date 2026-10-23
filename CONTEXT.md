@@ -61,10 +61,11 @@ deleting what you sent is not a way out of it. The person reported is not told.
 
 A member can also **report a profile**, from the ••• on it beside Block (2026-10-22, for App Store and
 Google Play review). The report keeps a copy of the profile as it is at that moment: name,
-@username, photograph, and what the member wrote (bio and answers). Editing or deleting the profile,
-or the account, afterwards removes none of it, and the photograph file cannot be deleted or
-overwritten once reported. Administrators see it under Reports, labelled as a profile report, and
-settle it like the others; the member is not told.
+@username, photograph, and what the member wrote (bio and answers). Editing the profile afterwards
+removes none of it, and the photograph file cannot be deleted or overwritten once reported. When
+the account is deleted, by the member or an administrator, the copy reads "Deleted member": the
+name, @username and photograph go, the file too, and what they wrote stays. Administrators see it
+under Reports, labelled as a profile report, and settle it like the others; the member is not told.
 
 ## Blocking
 
@@ -95,7 +96,7 @@ sign-in account, and every invite holding their address — coming back takes a
 new invite. What they
 wrote in Chat stays, so other people's conversations still make sense, and says
 "Deleted member" where their name was; a report keeps its copy of reported words
-with nobody named (a profile report keeps its copy of the profile, name and photograph included). The member left in a direct conversation with a deleted
+with nobody named (a profile report keeps what they wrote, without their name, @username or photograph). The member left in a direct conversation with a deleted
 member can delete it (2026-10-05): every message from both of them and every
 photograph go, and a report keeps its copy. An administrator cannot delete
 their own account from the app. The same "Deleted member" stands for anybody whose account is gone,
