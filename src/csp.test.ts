@@ -12,8 +12,13 @@ import NETLIFY from '../netlify.toml?raw';
  * here instead, with the value to paste.
  */
 
-// The site-wide rule's policy; the player page's own rule comes first.
-const SITE = NETLIFY.slice(NETLIFY.indexOf('for = "/*"'));
+// Each [[headers]] rule, by its path; the policy is the site-wide rule's.
+const RULES = new Map(
+  NETLIFY.split('[[headers]]')
+    .slice(1)
+    .map((text) => [/^\s*for = "([^"]+)"$/m.exec(text)?.[1] ?? '', text]),
+);
+const SITE = RULES.get('/*') ?? '';
 const policy = /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(SITE)?.[1] ?? '';
 
 function directive(name: string): string[] {
@@ -96,6 +101,19 @@ describe('the Content-Security-Policy', () => {
 
   it('still lets no other site frame the club', () => {
     expect(directive('frame-ancestors')).toEqual(["'none'"]);
+    expect(SITE).toMatch(/^\s*X-Frame-Options = "DENY"$/m);
+  });
+
+  // The YouTube page's edge function (src/embed-youtube.test.ts) is the one
+  // exception, for that path alone.
+  it('is not loosened for any other page', () => {
+    expect([...RULES.keys()]).toContain('/*');
+    for (const [path, text] of RULES) {
+      if (path === '/*') continue;
+      expect(text, path).not.toMatch(/Content-Security-Policy|X-Frame-Options/);
+    }
+    const edgePaths = [...NETLIFY.matchAll(/^\s*path = "([^"]+)"$/gm)].map((m) => m[1]);
+    expect(edgePaths).toEqual(['/embed/youtube.html']);
   });
 });
 

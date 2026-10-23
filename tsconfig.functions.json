@@ -28,7 +28,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  // The Edge Functions: Deno at runtime, checked here by the same tsc as
-  // everything else so a type error cannot wait until deploy to be found.
-  "include": ["supabase/functions"]
+  // Supabase and Netlify Edge Functions: Deno at runtime, checked here by the
+  // same tsc as everything else so a type error cannot wait until deploy.
+  "include": ["supabase/functions", "netlify/edge-functions"]
 }
