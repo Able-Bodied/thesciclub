@@ -346,3 +346,53 @@ describe('an invitation Zoho forwarded', () => {
     expect(deps.sent).toHaveLength(0);
   });
 });
+
+describe('Zoho’s forwarding confirmation', () => {
+  // Sent to the inbox when the owner sets up forwarding; read in Resend.
+  const confirmation: ReceivedEmail = {
+    from: 'Zoho Mail <noreply@zohomail.com>',
+    to: [INBOX],
+    received_for: [INBOX],
+    subject: 'Confirm email forwarding from alfred@thesciclub.com',
+    authentication: { spf: 'pass', dkim: 'pass', dmarc: 'pass' },
+    headers: { to: INBOX },
+    attachments: [],
+    raw: { download_url: 'https://example.resend.com/raw/1' },
+  };
+
+  function watched(email: ReceivedEmail) {
+    const deps = fakeDeps({ email });
+    let read = 0;
+    deps.fetchAttachment = () => {
+      read += 1;
+      return Promise.resolve(null);
+    };
+    deps.fetchText = () => {
+      read += 1;
+      return Promise.resolve('Your confirmation code is 123456');
+    };
+    return { deps, read: () => read };
+  }
+
+  it('is answered 200 and left alone: nothing read, kept or sent', async () => {
+    const { deps, read } = watched(confirmation);
+    expect(await handle(deps, webhook, await sign(webhook))).toEqual({
+      status: 200,
+      outcome: 'not for events@',
+    });
+    expect(read()).toBe(0);
+    expect(deps.received).toHaveLength(0);
+    expect(deps.sent).toHaveLength(0);
+  });
+
+  it('is left alone even if Zoho addresses it to events@', async () => {
+    const { deps, read } = watched({ ...confirmation, headers: { to: 'events@thesciclub.com' } });
+    expect(await handle(deps, webhook, await sign(webhook))).toEqual({
+      status: 200,
+      outcome: 'from the club or its forwarder',
+    });
+    expect(read()).toBe(0);
+    expect(deps.received).toHaveLength(0);
+    expect(deps.sent).toHaveLength(0);
+  });
+});
