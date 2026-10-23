@@ -459,6 +459,28 @@ describe('an event\u2019s link', () => {
     expect(screen.queryByText('Join online')).toBeNull();
   });
 
+  it('offers Join online from the description, and Details on their site, for an ordinary link', () => {
+    state.events = [
+      makeEvent({
+        id: 'norcal',
+        url: 'https://norcalsci.org/happy-hour',
+        descriptionHtml:
+          '<p>To join this Zoom meeting, <a href="https://us02web.zoom.us/j/86004299187">CLICK HERE</a></p>',
+        startTime: aheadByDays(3),
+        format: 'online',
+      }),
+    ];
+    renderDetail('norcal');
+    expect(screen.getByRole('link', { name: 'Join online, opens Zoom' })).toHaveAttribute(
+      'href',
+      'https://us02web.zoom.us/j/86004299187',
+    );
+    expect(screen.getByRole('link', { name: /Details on their site/ })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/happy-hour',
+    );
+  });
+
   it('offers the registration beside a meeting, and Join online only once', () => {
     state.events = [
       makeEvent({

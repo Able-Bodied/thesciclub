@@ -106,6 +106,25 @@ describe('the public event page', () => {
     expect(screen.queryByText('Details on their site')).toBeNull();
   });
 
+  it('offers Join online from the description beside Details on their site', async () => {
+    api.event = {
+      ...EVENT,
+      format: 'online',
+      url: 'https://norcalsci.org/happy-hour',
+      descriptionHtml:
+        '<p>To join this Zoom meeting, <a href="https://us02web.zoom.us/j/86004299187">CLICK HERE</a></p>',
+    };
+    renderAt('/e/picnic');
+    expect(await screen.findByRole('link', { name: 'Join online, opens Zoom' })).toHaveAttribute(
+      'href',
+      'https://us02web.zoom.us/j/86004299187',
+    );
+    expect(screen.getByRole('link', { name: 'Details on their site' })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/happy-hour',
+    );
+  });
+
   it('keeps "Details on their site" for any other link', async () => {
     api.event = { ...EVENT, url: 'https://norcalsci.org/happy-hour' };
     renderAt('/e/picnic');

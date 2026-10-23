@@ -5,8 +5,8 @@ import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
-import { meetingService } from '@/lib/meeting-link';
 import { EventCover } from '@/routes/events/event-cover';
+import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
@@ -48,8 +48,8 @@ export default function PublicEventPage() {
   const place = event ? [event.location, event.city].filter(Boolean).join(' · ') : '';
   const registerHref = safeHref(event?.registrationUrl ?? null);
   const pageHref = safeHref(event?.url ?? null);
-  const meeting = meetingService(pageHref);
-  const moreHref = meeting ? null : pageHref;
+  const meeting = event ? eventMeetingLink(event) : null;
+  const moreHref = meeting?.inUrl ? null : pageHref;
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[560px] bg-canvas pb-[max(28px,env(safe-area-inset-bottom))]">
@@ -108,8 +108,13 @@ export default function PublicEventPage() {
               .join(' · ')}
           </p>
 
-          {pageHref && meeting && !over ? (
-            <MeetingLinkButton href={pageHref} service={meeting} tone="page" className="mt-4" />
+          {meeting && !over ? (
+            <MeetingLinkButton
+              href={meeting.href}
+              service={meeting.service}
+              tone="page"
+              className="mt-4"
+            />
           ) : null}
 
           {over ? (
