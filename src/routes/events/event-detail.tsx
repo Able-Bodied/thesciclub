@@ -279,9 +279,7 @@ export default function EventDetailPage() {
           {/* Where the mock puts a group chat, and now what it puts there.
             Members only: the read behind it is the viewer's own conversation
             list, and an event page is the one surface that is public. */}
-          {memberId ? (
-            <EventGroupCard eventId={event.id} going={going} past={isPastEvent(event)} />
-          ) : null}
+          {memberId ? <EventGroupCard eventId={event.id} /> : null}
 
           <AttendeeSection
             title="Going"
