@@ -706,33 +706,35 @@ describe('a topic', () => {
       expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
     });
 
-    it('swaps the words for the composer, and saves what was changed', async () => {
+    it('puts the words in the reply composer, and Send saves them', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
+      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
-      const box = screen.getByLabelText('Your post');
+      const box = screen.getByLabelText('Edit your post');
       expect(box).toHaveValue('First draft.');
-      // Nothing has changed yet, so Save waits: the database would refuse it.
-      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      expect(box).toHaveFocus();
+      expect(screen.getByText('Editing post')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Post this reply' })).toBeNull();
       await userEvent.type(box, ' Second thoughts.');
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() => {
         expect(db.edited).toEqual([['2', 'First draft. Second thoughts.']]);
       });
-      // The editor closes; the words come back from the reload.
-      await waitFor(() => {
-        expect(screen.queryByLabelText('Your post')).toBeNull();
-      });
+      // No new reply, and the unsent one is back.
+      expect(db.sent).toEqual([]);
+      expect(await screen.findByLabelText('Reply to this topic')).toHaveValue('Half a reply');
+      expect(screen.queryByText('Editing post')).toBeNull();
     });
 
-    it('keeps the draft and says why when the edit is refused', async () => {
+    it('keeps the words and says why when the edit is refused', async () => {
       db.editFails = 'Your edit was not saved. You can only edit your own post.';
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
-      const box = screen.getByLabelText('Your post');
+      const box = screen.getByLabelText('Edit your post');
       await userEvent.type(box, ' More.');
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
       expect(await screen.findByRole('alert')).toHaveTextContent(/You can only edit your own post/);
       expect(box).toHaveValue('First draft. More.');
     });
@@ -740,14 +742,32 @@ describe('a topic', () => {
     it('is cancelled by the button and by Escape, with nothing saved', async () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
+      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Half a reply');
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-      expect(screen.queryByLabelText('Your post')).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel editing' }));
+      expect(screen.getByLabelText('Reply to this topic')).toHaveValue('Half a reply');
       expect(screen.getByText('First draft.')).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
-      await userEvent.type(screen.getByLabelText('Your post'), ' gone{Escape}');
-      expect(screen.queryByLabelText('Your post')).toBeNull();
+      await userEvent.type(screen.getByLabelText('Edit your post'), ' gone{Escape}');
+      expect(screen.getByLabelText('Reply to this topic')).toHaveValue('Half a reply');
       expect(db.edited).toEqual([]);
+    });
+
+    it('ends when the post is removed', async () => {
+      db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
+      renderTopic();
+      await userEvent.type(screen.getByLabelText('Reply to this topic'), 'Half a reply');
+      await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+      // What the next read brings, drawn on the re-render Remove causes.
+      db.posts = [
+        post({ id: '2', authorId: 'me', body: '', removedAt: '2026-09-01T12:00:00Z' }),
+        post({ id: '3' }),
+      ];
+      await userEvent.click(screen.getByRole('button', { name: 'Remove your post' }));
+      await waitFor(() => {
+        expect(screen.queryByText('Editing post')).toBeNull();
+      });
+      expect(screen.getByLabelText('Reply to this topic')).toHaveValue('Half a reply');
     });
 
     it('says Edited, with the time, under an edited post', () => {
@@ -814,8 +834,8 @@ describe('a topic', () => {
       db.posts = [post({ id: '2', authorId: 'me', body: 'First draft.' })];
       renderTopic();
       await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
-      await userEvent.type(screen.getByLabelText('Your post'), ' More.');
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.type(screen.getByLabelText('Edit your post'), ' More.');
+      await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
       await waitFor(() => {
         expect(db.editsReloads).toBe(1);
       });

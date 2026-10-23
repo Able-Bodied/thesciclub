@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AnnounceProvider } from '@/lib/announce';
 import { Composer } from '@/routes/chat/composer';
 
 /**
@@ -119,71 +121,212 @@ describe('the composer', () => {
   });
 });
 
-describe('editing in place', () => {
-  function renderEditor(o: { initial?: string; allowEmpty?: boolean } = {}) {
-    const onSend = vi.fn<OnSend>(() => Promise.resolve(null));
-    const onCancel = vi.fn();
-    render(
-      <Composer
-        placeholder="Your post"
-        sendLabel="Save your post"
-        onSend={onSend}
-        edit={{ initial: o.initial ?? 'First draft.', allowEmpty: o.allowEmpty ?? false, onCancel }}
-      />,
+describe('editing in the composer', () => {
+  type OnSave = (body: string) => Promise<string | null>;
+
+  /** A message with a ••• that starts the edit, and the box below it. */
+  function Harness({
+    onSave,
+    onSend,
+    initial,
+    photos,
+  }: {
+    onSave: OnSave;
+    onSend: OnSend;
+    initial: string;
+    photos: number;
+  }) {
+    const [editing, setEditing] = useState(false);
+    return (
+      <AnnounceProvider>
+        <div id="message-m1">
+          <button
+            type="button"
+            data-item-actions=""
+            onClick={() => {
+              setEditing(true);
+            }}
+          >
+            Edit your message
+          </button>
+        </div>
+        <Composer
+          placeholder="Message Bo"
+          sendLabel="Send this message"
+          sendOnEnter
+          onSend={onSend}
+          editing={
+            editing
+              ? {
+                  id: 'm1',
+                  initial,
+                  noun: 'message',
+                  photos,
+                  anchor: 'message-m1',
+                  onSave,
+                  onClose: () => {
+                    setEditing(false);
+                  },
+                }
+              : null
+          }
+        />
+      </AnnounceProvider>
     );
-    return { onSend, onCancel };
   }
 
-  it('starts with the words as they are, and no photo picker', () => {
-    renderEditor();
-    expect(screen.getByLabelText('Your post')).toHaveValue('First draft.');
+  function renderEditor(o: { initial?: string; photos?: number; refuse?: string } = {}) {
+    const onSave = vi.fn<OnSave>(() => Promise.resolve(o.refuse ?? null));
+    const onSend = vi.fn<OnSend>(() => Promise.resolve(null));
+    render(
+      <Harness
+        onSave={onSave}
+        onSend={onSend}
+        initial={o.initial ?? 'First draft.'}
+        photos={o.photos ?? 0}
+      />,
+    );
+    return { onSave, onSend, user: userEvent.setup() };
+  }
+
+  /** Types an unsent draft, then chooses Edit. */
+  async function startEditing(user: ReturnType<typeof userEvent.setup>, draft = 'Half a thought') {
+    await user.type(screen.getByLabelText('Message Bo'), draft);
+    await user.click(screen.getByRole('button', { name: 'Edit your message' }));
+  }
+
+  it('loads the words with the caret at the end, under an Editing bar', async () => {
+    const { user } = renderEditor();
+    await startEditing(user);
+    const box = screen.getByLabelText('Edit your message');
+    expect(box).toHaveValue('First draft.');
+    expect(box).toHaveFocus();
+    expect((box as HTMLTextAreaElement).selectionStart).toBe('First draft.'.length);
+    expect(screen.getByText('Editing message')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel editing' })).toBeInTheDocument();
+    // The same button, named for what it does now; no photo picker.
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Send this message' })).toBeNull();
     expect(document.querySelector('input[type=file]')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Save your post' })).toBeNull();
+    expect(await screen.findByText('Editing your message.')).toBeInTheDocument();
   });
 
-  // The database refuses an edit that changes nothing, so that "Edited" is
-  // never a lie; a control that will be refused should not look available.
-  it('will not save what has not changed, spaces included', async () => {
-    renderEditor();
-    const save = screen.getByRole('button', { name: 'Save' });
-    expect(save).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Your post'), '  ');
-    expect(save).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Your post'), 'x');
-    expect(save).toBeEnabled();
-  });
-
-  it('will not save nothing, unless the row has photographs', async () => {
-    const { onSend } = renderEditor({ allowEmpty: true });
-    await userEvent.clear(screen.getByLabelText('Your post'));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+  it('saves with Enter, sends nothing new, and gives the draft back', async () => {
+    const { user, onSave, onSend } = renderEditor();
+    await startEditing(user);
+    await user.type(screen.getByLabelText('Edit your message'), ' Second thoughts. {Enter}');
     await waitFor(() => {
-      expect(onSend).toHaveBeenCalledWith('', []);
+      expect(onSave).toHaveBeenCalledWith('First draft. Second thoughts.');
     });
-  });
-
-  it('refuses nothing on a post with no photographs', async () => {
-    renderEditor({ allowEmpty: false });
-    await userEvent.clear(screen.getByLabelText('Your post'));
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
-  });
-
-  it('sends the new words trimmed, with no files', async () => {
-    const { onSend } = renderEditor();
-    await userEvent.type(screen.getByLabelText('Your post'), ' Second thoughts. ');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => {
-      expect(onSend).toHaveBeenCalledWith('First draft. Second thoughts.', []);
-    });
-  });
-
-  it('is cancelled by Escape and by Cancel', async () => {
-    const { onCancel, onSend } = renderEditor();
-    await userEvent.type(screen.getByLabelText('Your post'), '{Escape}');
-    expect(onCancel).toHaveBeenCalledTimes(1);
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(onCancel).toHaveBeenCalledTimes(2);
     expect(onSend).not.toHaveBeenCalled();
+    expect(await screen.findByLabelText('Message Bo')).toHaveValue('Half a thought');
+    expect(screen.queryByText('Editing message')).toBeNull();
+    expect(await screen.findByText('Changes saved.')).toBeInTheDocument();
+    // Back to the message's •••.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Edit your message' })).toHaveFocus();
+    });
+  });
+
+  it('saves with the button too', async () => {
+    const { user, onSave } = renderEditor();
+    await startEditing(user);
+    await user.type(screen.getByLabelText('Edit your message'), '!');
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith('First draft.!');
+    });
+    expect(await screen.findByLabelText('Message Bo')).toHaveValue('Half a thought');
+  });
+
+  it('is cancelled by Cancel, giving the draft back unsaved', async () => {
+    const { user, onSave } = renderEditor();
+    await startEditing(user);
+    await user.type(screen.getByLabelText('Edit your message'), ' gone');
+    await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
+    expect(screen.getByLabelText('Message Bo')).toHaveValue('Half a thought');
+    expect(onSave).not.toHaveBeenCalled();
+    expect(await screen.findByText('Edit cancelled.')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Edit your message' })).toHaveFocus();
+    });
+  });
+
+  it('is cancelled by Escape', async () => {
+    const { user, onSave } = renderEditor();
+    await startEditing(user);
+    await user.type(screen.getByLabelText('Edit your message'), ' gone{Escape}');
+    expect(screen.getByLabelText('Message Bo')).toHaveValue('Half a thought');
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  // The database refuses an edit that changes nothing, so "Edited" is never a lie.
+  it('only closes on unchanged words, spaces included', async () => {
+    const { user, onSave } = renderEditor();
+    await startEditing(user);
+    await user.type(screen.getByLabelText('Edit your message'), '  {Enter}');
+    expect(onSave).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Message Bo')).toHaveValue('Half a thought');
+    expect(await screen.findByText('Nothing changed. Edit cancelled.')).toBeInTheDocument();
+  });
+
+  it('will not save nothing, and says Remove is the way', async () => {
+    const { user, onSave } = renderEditor();
+    await startEditing(user);
+    await user.clear(screen.getByLabelText('Edit your message'));
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByText(/To delete it, use Remove/)).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Edit your message'), '{Enter}');
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('saves blank words when the message has photographs, which stay', async () => {
+    const { user, onSave } = renderEditor({ photos: 2 });
+    await startEditing(user);
+    expect(screen.getByText('Its 2 photographs stay as they are.')).toBeInTheDocument();
+    await user.clear(screen.getByLabelText('Edit your message'));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(onSave).toHaveBeenCalledWith('');
+    });
+  });
+
+  it('keeps the edit open, with the words, when the save is refused', async () => {
+    const { user } = renderEditor({ refuse: 'You can only edit your own message.' });
+    await startEditing(user);
+    await user.type(screen.getByLabelText('Edit your message'), '!{Enter}');
+    expect(await screen.findByRole('alert')).toHaveTextContent(/only edit your own message/);
+    expect(screen.getByLabelText('Edit your message')).toHaveValue('First draft.!');
+  });
+
+  it('does not give back a draft that was sent while it was set aside', async () => {
+    let complete!: (problem: string | null) => void;
+    const onSend = vi.fn<OnSend>(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    render(<Harness onSave={vi.fn<OnSave>()} onSend={onSend} initial="First draft." photos={0} />);
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Message Bo'), 'On its way{Enter}');
+    await user.click(screen.getByRole('button', { name: 'Edit your message' }));
+    await act(async () => {
+      complete(null);
+      await Promise.resolve();
+    });
+    await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
+    expect(screen.getByLabelText('Message Bo')).toHaveValue('');
+  });
+
+  it('keeps photographs chosen for the draft while editing', async () => {
+    const { user } = renderEditor();
+    await user.upload(fileInput(), photo('a.jpg'));
+    await startEditing(user, 'With a picture');
+    expect(screen.queryByRole('button', { name: 'Take back a.jpg' })).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Cancel editing' }));
+    expect(screen.getByRole('button', { name: 'Take back a.jpg' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Message Bo')).toHaveValue('With a picture');
   });
 });
 

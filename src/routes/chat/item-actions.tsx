@@ -27,6 +27,8 @@ export function ItemActions({
       <button
         ref={buttonRef}
         type="button"
+        // Where focus goes back to after an edit (composer.tsx).
+        data-item-actions=""
         aria-label={`Actions for ${what}`}
         aria-haspopup="dialog"
         onClick={() => {

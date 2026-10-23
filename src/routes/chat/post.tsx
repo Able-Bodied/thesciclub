@@ -5,7 +5,6 @@ import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
-import { Composer } from '@/routes/chat/composer';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
@@ -55,12 +54,11 @@ import { EventDescription } from '@/routes/events/rich-text';
  * have.
  *
  * ---------------------------------------------------------------------------
- * Editing is the composer, in place
+ * Editing is the composer at the foot of the topic
  * ---------------------------------------------------------------------------
- * Pressing Edit swaps the words for the composer holding them, with Save and
- * Cancel. The photographs stay drawn and stay as they are: an edit changes
- * the words only. "Edited · 9:30am" sits under the body afterwards, in the
- * byline's colour, for everybody; an administrator also gets the earlier
+ * Pressing Edit puts the words in the topic's composer and outlines the post
+ * meanwhile. An edit changes the words only. "Edited · 9:30am" sits under the
+ * body afterwards, for everybody; an administrator also gets the earlier
  * versions, under a disclosure, from chat_edits.
  *
  * ---------------------------------------------------------------------------
@@ -91,8 +89,6 @@ export function Post({
   canEdit,
   editing,
   onEdit,
-  onSaveEdit,
-  onCancelEdit,
   canReply = false,
   onReply,
   canRemove,
@@ -124,12 +120,9 @@ export function Post({
   depth?: number;
   /** The reader's own standing post. */
   canEdit: boolean;
-  /** The composer is in place of the words. */
+  /** Its words are in the composer. */
   editing: boolean;
   onEdit: () => void;
-  /** Resolves to null once saved, or to the sentence to show. */
-  onSaveEdit: (body: string) => Promise<string | null>;
-  onCancelEdit: () => void;
   /** Whether the reader may write in this room at all. */
   canReply?: boolean;
   onReply?: () => void;
@@ -215,7 +208,7 @@ export function Post({
           {save.saved ? 'Remove from Saved' : 'Save post'}
         </button>
       ) : null}
-      {canEdit && !hideBody ? (
+      {canEdit && !hideBody && !editing ? (
         <button
           type="button"
           onClick={onEdit}
@@ -274,7 +267,7 @@ export function Post({
               ? 'mt-2.5 rounded-bl-xl border-line border-l-2 pl-3'
               : 'mt-2.5'
             : 'mb-2.5 rounded-[15px] border border-line bg-paper px-3.5 py-[13px]',
-        'outline-none',
+        editing ? 'outline-2 outline-emphasis outline-offset-2' : 'outline-none',
         flash && 'message-flash',
       )}
     >
@@ -330,19 +323,7 @@ export function Post({
         </div>
       )}
 
-      {editing ? (
-        <Composer
-          placeholder="Your post"
-          sendLabel="Save your post"
-          sendOnEnter={false}
-          onSend={(body) => onSaveEdit(body)}
-          edit={{
-            initial: post.body,
-            allowEmpty: post.attachments.length > 0,
-            onCancel: onCancelEdit,
-          }}
-        />
-      ) : post.body && !hideBody ? (
+      {post.body && !hideBody ? (
         // Formatted (the owner, 2026-10-11): the first post's toolbar writes
         // a small Markdown (lib/markdown.ts), shown through the same allowlist
         // as an event's description. Plain text reads as it did: its line
@@ -356,47 +337,42 @@ export function Post({
       {post.attachments.length > 0 ? (
         <AttachmentGrid paths={post.attachments} from={author?.displayName ?? 'a deleted member'} />
       ) : null}
-      {post.linkPreview && !editing ? <LinkPreviewCard preview={post.linkPreview} /> : null}
-      {post.editedAt && !editing ? (
+      {post.linkPreview ? <LinkPreviewCard preview={post.linkPreview} /> : null}
+      {post.editedAt ? (
         <p className="mt-1 text-[0.78125rem] text-grey">Edited · {chatTime(post.editedAt)}</p>
       ) : null}
-      {edits && edits.length > 0 && !editing ? <EarlierVersions edits={edits} from={name} /> : null}
+      {edits && edits.length > 0 ? <EarlierVersions edits={edits} from={name} /> : null}
 
-      {editing ? null : (
-        <div
-          className={cn(
-            'flex flex-wrap items-center gap-x-3.5 gap-y-1',
-            hideBody ? 'mt-0' : 'mt-2',
-          )}
-        >
-          {likes ? (
-            <PostLikes
-              likedBy={likes.likedBy}
-              readerId={likes.readerId}
-              what={`${whose} post`}
-              onToggle={likes.onToggle}
-              className="text-[0.75rem]"
-              loading={likes.loading}
-              unavailable={likes.unavailable}
-            />
-          ) : null}
-          <ViewCount count={viewCount} postId={post.id} />
-          {reactions ? (
-            cloneElement(reactions, { compact: true, actions: controls, reply })
-          ) : (
-            <>
-              {reply}
-              {controls}
-            </>
-          )}
-        </div>
-      )}
-      {likes?.failure && !editing ? (
+      <div
+        className={cn('flex flex-wrap items-center gap-x-3.5 gap-y-1', hideBody ? 'mt-0' : 'mt-2')}
+      >
+        {likes ? (
+          <PostLikes
+            likedBy={likes.likedBy}
+            readerId={likes.readerId}
+            what={`${whose} post`}
+            onToggle={likes.onToggle}
+            className="text-[0.75rem]"
+            loading={likes.loading}
+            unavailable={likes.unavailable}
+          />
+        ) : null}
+        <ViewCount count={viewCount} postId={post.id} />
+        {reactions ? (
+          cloneElement(reactions, { compact: true, actions: controls, reply })
+        ) : (
+          <>
+            {reply}
+            {controls}
+          </>
+        )}
+      </div>
+      {likes?.failure ? (
         <p role="alert" className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
           {likes.failure}
         </p>
       ) : null}
-      {save?.failure && !editing ? (
+      {save?.failure ? (
         <p role="alert" className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]">
           {save.failure}
         </p>

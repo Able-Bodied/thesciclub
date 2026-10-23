@@ -656,31 +656,56 @@ describe('editing a message', () => {
     expect(screen.getAllByRole('button', { name: 'Edit your message' })).toHaveLength(1);
   });
 
-  it('swaps the bubble for the composer and saves the change', async () => {
+  it('puts the words in the composer, and Send saves them', async () => {
     db.messages = [message({ id: 'm2', authorId: 'me', body: 'Saturday works.' })];
     renderThread();
+    await userEvent.type(screen.getByLabelText('Message Jan'), 'Half a thought');
     await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
-    const box = screen.getByLabelText('Your message');
+    const box = screen.getByLabelText('Edit your message');
     expect(box).toHaveValue('Saturday works.');
-    await userEvent.type(box, ' Sunday too.');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(box).toHaveFocus();
+    expect(screen.getByText('Editing message')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send this message' })).toBeNull();
+    // Enter saves, as it sends.
+    await userEvent.type(box, ' Sunday too.{Enter}');
     await waitFor(() => {
       expect(db.edited).toEqual([['m2', 'Saturday works. Sunday too.']]);
     });
-    await waitFor(() => {
-      expect(screen.queryByLabelText('Your message')).toBeNull();
-    });
+    expect(db.sent).toEqual([]);
+    expect(await screen.findByLabelText('Message Jan')).toHaveValue('Half a thought');
+    expect(screen.queryByText('Editing message')).toBeNull();
   });
 
-  it('keeps the draft and says why when the edit is refused', async () => {
+  it('keeps the words and says why when the edit is refused', async () => {
     db.editFailure = 'Your edit was not saved. You can only edit your own message.';
     db.messages = [message({ id: 'm2', authorId: 'me', body: 'Saturday works.' })];
     renderThread();
     await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
-    await userEvent.type(screen.getByLabelText('Your message'), '!');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.type(screen.getByLabelText('Edit your message'), '!');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/only edit your own message/);
-    expect(screen.getByLabelText('Your message')).toHaveValue('Saturday works.!');
+    expect(screen.getByLabelText('Edit your message')).toHaveValue('Saturday works.!');
+  });
+
+  it('is cancelled by Escape, with the draft back and nothing saved', async () => {
+    db.messages = [message({ id: 'm2', authorId: 'me', body: 'Saturday works.' })];
+    renderThread();
+    await userEvent.type(screen.getByLabelText('Message Jan'), 'Half a thought');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
+    await userEvent.type(screen.getByLabelText('Edit your message'), ' gone{Escape}');
+    expect(screen.getByLabelText('Message Jan')).toHaveValue('Half a thought');
+    expect(db.edited).toEqual([]);
+  });
+
+  it('hides the reply bar while editing, and Reply ends the edit', async () => {
+    db.messages = [message({ id: 'm1' }), message({ id: 'm2', authorId: 'me' })];
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: "Reply to Jan's message" }));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
+    expect(screen.queryByText(/Replying to/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: "Reply to Jan's message" }));
+    expect(screen.queryByText('Editing message')).toBeNull();
+    expect(screen.getByText(/Replying to/)).toBeInTheDocument();
   });
 
   it('labels an edited bubble and keeps its edit date available', () => {

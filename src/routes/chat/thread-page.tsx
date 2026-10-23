@@ -66,7 +66,7 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
  * than presenting a box that would fail.
  *
  * ---------------------------------------------------------------------------
- * Replies are quotes, and editing is in place — since 2026-09-29
+ * Replies are quotes — since 2026-09-29; editing in the composer — 2026-10-22
  * ---------------------------------------------------------------------------
  * Reply on a bubble puts "Replying to Jan" over the composer and sends the
  * next message with `reply_to` set; the bubble that lands carries a quote of
@@ -74,8 +74,8 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
  * decision 11 — a nest in a chat would break the one thing a conversation
  * is). Tapping a quote scrolls the quoted message into view and lights it
  * up once, with `prefers-reduced-motion` honoured for both. Edit on the
- * reader's own bubble swaps it for the composer holding the words; one at a
- * time, by id.
+ * reader's own bubble puts its words in the composer and Send saves them; one
+ * at a time, by id.
  *
  * ---------------------------------------------------------------------------
  * Reporting is the one way anything said here reaches an administrator
@@ -149,6 +149,10 @@ export default function ThreadPage() {
   useEffect(() => {
     if (blockedCount > 0) heading.current?.focus();
   }, [blockedCount]);
+  // Only while it stands: a removal over the wire ends the edit.
+  const edited = shown.find(
+    (m) => m.id === editingId && m.removedAt === null && !m.pending && !m.notice,
+  );
 
   const authors = useChatAuthors([
     thread?.otherMemberId ?? null,
@@ -302,13 +306,6 @@ export default function ThreadPage() {
     requestAnimationFrame(() => {
       setFlashId(messageId);
     });
-  }
-
-  async function saveEdit(messageId: string, body: string): Promise<string | null> {
-    const problem = await edit(messageId, body);
-    if (problem) return problem;
-    setEditingId(null);
-    return null;
   }
 
   function removeMessage(messageId: string) {
@@ -487,16 +484,13 @@ export default function ThreadPage() {
                   // The author's own, standing, while there is a conversation
                   // to edit in. chat_edit_message decides; this only asks.
                   canEdit={!gone && message.authorId === account.userId && !message.pending}
-                  editing={editingId === message.id}
+                  editing={edited?.id === message.id}
                   onEdit={() => {
                     setEditingId(message.id);
                   }}
-                  onSaveEdit={(body) => saveEdit(message.id, body)}
-                  onCancelEdit={() => {
-                    setEditingId(null);
-                  }}
                   canReply={!gone && !message.pending}
                   onReply={() => {
+                    setEditingId(null);
                     setReplyingTo(message);
                   }}
                   // An administrator can remove anybody's; everybody else only
@@ -558,6 +552,21 @@ export default function ThreadPage() {
           sendLabel="Send this message"
           // Enter sends here — see the header.
           sendOnEnter
+          editing={
+            edited
+              ? {
+                  id: edited.id,
+                  initial: edited.body,
+                  noun: 'message',
+                  photos: edited.attachments.length,
+                  anchor: `message-${edited.id}`,
+                  onSave: (body) => edit(edited.id, body),
+                  onClose: () => {
+                    setEditingId(null);
+                  },
+                }
+              : null
+          }
           replyingTo={
             replyingTo
               ? {
