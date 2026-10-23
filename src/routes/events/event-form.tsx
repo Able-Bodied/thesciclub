@@ -4,6 +4,7 @@ import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
+import { EVENTS_ADDRESS } from '@/lib/calendar-invites';
 import { partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
 import { fetchAudienceGroups, setEventAudience } from '@/lib/event-audience';
@@ -309,9 +310,17 @@ function EventForm({
           {isNew ? 'Add an event' : 'Change this event'}
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-          Club members can read this event.
-          {isNew ? ' It goes on the calendar as soon as you add it.' : ''}
+          {isNew ? 'It goes on the calendar as soon as you add it. ' : ''}
+          Who can see it is chosen below.
         </p>
+        {/* The other way in (20261022220000): an invitation from the
+            organization's own calendar. */}
+        {isNew ? (
+          <p className="mt-2 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            Or invite <b className="text-ink">{EVENTS_ADDRESS}</b> to the event in Google, Outlook
+            or Apple Calendar, and it is added here, and kept up to date when you change it there.
+          </p>
+        ) : null}
         {imported ? <ImportedNote imported={imported} options={options} /> : null}
 
         {/* ------------------------------------------------------ host */}

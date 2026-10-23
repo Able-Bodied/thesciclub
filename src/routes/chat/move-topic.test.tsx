@@ -61,6 +61,19 @@ describe('moving a topic', () => {
     expect(db.moved).toEqual([['t1', 'equip']]);
   });
 
+  it('closes once it has moved, and says where to', async () => {
+    const user = userEvent.setup();
+    renderMove(false);
+    await user.click(screen.getByRole('button', { name: 'Move to another room' }));
+    await user.selectOptions(screen.getByRole('combobox'), 'equip');
+    await user.click(screen.getByRole('button', { name: 'Move it' }));
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Moved to Equipment & assistive tech.',
+    );
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Move to another room' })).toBeInTheDocument();
+  });
+
   it('offers an administrator closed rooms too, marked as closed', async () => {
     const user = userEvent.setup();
     renderMove(true);
