@@ -66,6 +66,15 @@ describe('the Content-Security-Policy', () => {
     expect(directive('font-src')).toEqual(["'self'"]);
   });
 
+  // Only to copy a member's Google photo when they choose it (2026-10-22).
+  it("fetches from Google's photo host and no other of Google's", () => {
+    const google = directive('connect-src').filter((s) => s.includes('google'));
+    expect(google).toEqual([
+      'https://lh3.googleusercontent.com',
+      'https://accounts.google.com/gsi/',
+    ]);
+  });
+
   // A video plays from YouTube's privacy-enhanced host; nothing else may be
   // framed inside the club, Instagram included (the owner, 2026-10-06).
   it("frames only YouTube's privacy-enhanced player and Google's sign-in", () => {
@@ -117,13 +126,14 @@ describe("the store app's Content-Security-Policy", () => {
     }
   });
 
-  it('reaches Supabase and the geocoder, and nothing from Google', () => {
+  it('reaches Supabase, the geocoder and Google photos, and nothing else of Google', () => {
     expect(appDirective('connect-src')).toEqual([
       "'self'",
       'capacitor://localhost',
       'https://erijdvqnxavwezsbbojv.supabase.co',
       'wss://erijdvqnxavwezsbbojv.supabase.co',
       'https://nominatim.openstreetmap.org',
+      'https://lh3.googleusercontent.com',
     ]);
     expect(app).not.toContain('google.com');
     expect(appDirective('object-src')).toEqual(["'none'"]);
