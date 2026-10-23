@@ -1,11 +1,12 @@
 import { SendHorizontal, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useAnnounce } from '@/lib/announce';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
- * The box at the foot of a topic or a thread — and, since 2026-09-29, the
- * editor of a post or a message, in place.
+ * The box at the foot of a topic or a thread, which also edits a post or a
+ * message there.
  *
  * ---------------------------------------------------------------------------
  * A textarea, not the mock's input
@@ -75,16 +76,13 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
  * same way the words do.
  *
  * ---------------------------------------------------------------------------
- * Editing is this box, not a second one — since 2026-09-29
+ * Editing loads the words into this box — the owner, 2026-10-22
  * ---------------------------------------------------------------------------
- * `edit` puts it in place of a post's or a message's words, holding them,
- * with Save and Cancel where Send was and Escape as Cancel. No photo picker:
- * an edit changes the words and not the photographs (HANDOFF.md "What Home is", step 2b),
- * so the strip has nothing to offer. Save is unavailable while the words are
- * what they were, because the database refuses an edit that changes nothing
- * — "Edited" is never a lie — and a control that will be refused should not
- * look available. It is also unavailable on blank words unless the row has
- * photographs, which is the row's own check said before the round trip.
+ * `editing` puts a post's or a message's words here, under an "Editing" bar,
+ * and Send saves them. The member's unsent draft is put aside and comes back
+ * on Cancel, Escape or a save. Words only: the photographs stay as they are.
+ * Unchanged words just close the edit, since the database refuses an edit
+ * that changes nothing; blank words need photographs, as the row's own check.
  *
  * ---------------------------------------------------------------------------
  * The reply bar
@@ -117,12 +115,20 @@ function fitToContent(element: HTMLTextAreaElement) {
   element.style.overflowY = wanted > MAX_HEIGHT ? 'auto' : 'hidden';
 }
 
-export interface ComposerEdit {
-  /** The words as they are now. */
+export interface ComposerEditing {
+  /** The post or message being edited; a new id loads its words. */
+  id: string;
+  /** Its words as they are now. */
   initial: string;
-  /** Whether Save may send no words: true when the row has photographs. */
-  allowEmpty: boolean;
-  onCancel: () => void;
+  noun: 'message' | 'post';
+  /** How many photographs it has. An edit keeps them. */
+  photos: number;
+  /** The item's element id: its ••• takes focus afterwards. */
+  anchor: string;
+  /** Resolves to null once saved, or to the sentence to show. */
+  onSave: (body: string) => Promise<string | null>;
+  /** The edit is over: saved, cancelled, or nothing changed. */
+  onClose: () => void;
 }
 
 export interface ComposerReplyingTo {
@@ -133,14 +139,27 @@ export interface ComposerReplyingTo {
   onCancel: () => void;
 }
 
+/** Back to the edited item's •••, or the box when it has none. */
+function focusAfterEdit(anchor: string, fallback: HTMLElement | null) {
+  const actions = document
+    .getElementById(anchor)
+    ?.querySelector<HTMLElement>('[data-item-actions]');
+  (actions ?? fallback)?.focus();
+}
+
+function excerpt(text: string): string {
+  const line = text.replace(/\s+/g, ' ').trim();
+  return line.length > 90 ? `${line.slice(0, 90)}…` : line;
+}
+
 export function Composer({
   placeholder,
   sendLabel,
   onSend,
   sendOnEnter = false,
   maxLength = 4000,
-  edit,
   replyingTo = null,
+  editing = null,
 }: {
   placeholder: string;
   /** What the send button says to a screen reader. */
@@ -149,12 +168,13 @@ export function Composer({
   onSend: (body: string, files: File[]) => Promise<string | null>;
   sendOnEnter?: boolean;
   maxLength?: number;
-  /** Editing in place: see the header. */
-  edit?: ComposerEdit;
   /** A reply in progress, drawn over the box. */
   replyingTo?: ComposerReplyingTo | null;
+  /** A post or message whose words are in the box: see the header. */
+  editing?: ComposerEditing | null;
 }) {
-  const [draft, setDraft] = useState(edit?.initial ?? '');
+  const announce = useAnnounce();
+  const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   // Pictures pasted into the box join the photographs (lib/paste-photos.ts).
   // Null while editing, which keeps the photographs it had.
@@ -163,21 +183,52 @@ export function Composer({
   const [failure, setFailure] = useState<string | null>(null);
   const box = useRef<HTMLTextAreaElement | null>(null);
   const draftVersion = useRef(0);
-  // Whether this box was born as an editor. A ref, because the effect below
-  // runs once, on mount, and `edit` is stable for the life of an editor.
-  const bornEditing = useRef(edit !== undefined);
+  /** The member's own draft, put aside while they edit. */
+  const setAside = useRef<{ text: string; version: number } | null>(null);
+  /** Whose words are in the box: the edited item's id, or null for the draft. */
+  const loaded = useRef<string | null>(null);
+  /** Bumped when the words are swapped, to fit the box and place the caret. */
+  const [swaps, setSwaps] = useState(0);
 
   useEffect(() => {
     const element = box.current;
-    if (!element) return;
+    if (element) fitToContent(element);
+  }, []);
+
+  const editingId = editing?.id ?? null;
+  const editingWords = editing?.initial ?? '';
+  const editingNoun = editing?.noun ?? 'message';
+  useLayoutEffect(() => {
+    if (editingId === loaded.current) return;
+    const from = loaded.current;
+    loaded.current = editingId;
+    setFailure(null);
+    if (editingId !== null) {
+      if (from === null) setAside.current = { text: draft, version: draftVersion.current };
+      draftVersion.current += 1;
+      setDraft(editingWords);
+      announce(`Editing your ${editingNoun}.`);
+    } else {
+      // The draft's own version too, so a send still in flight clears it.
+      const back = setAside.current;
+      setAside.current = null;
+      draftVersion.current = back ? back.version : draftVersion.current + 1;
+      setDraft(back ? back.text : '');
+    }
+    setSwaps((n) => n + 1);
+  }, [editingId, editingWords, editingNoun, draft, announce]);
+
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (swaps === 0 || !element) return;
     fitToContent(element);
-    if (bornEditing.current) {
-      // Editing starts with the caret at the end of what is there, which is
-      // where somebody fixing a sentence wants it.
+    // Editing starts with the caret at the end, where somebody fixing a
+    // sentence wants it.
+    if (loaded.current !== null) {
       element.focus();
       element.setSelectionRange(element.value.length, element.value.length);
     }
-  }, []);
+  }, [swaps]);
 
   // Pressing Reply is a decision to write, so the box takes focus.
   const replyingToId = replyingTo?.id ?? null;
@@ -191,13 +242,47 @@ export function Composer({
   }
 
   const body = draft.trim();
-  const unchanged = edit ? body === edit.initial.trim() : false;
-  const allowEmpty = edit?.allowEmpty ?? false;
   const empty = body === '' && files.length === 0;
-  const cannotSend = sending || unchanged || (empty && !allowEmpty);
+  // Blank words with no photographs: Remove is the way to take it back.
+  const blank = editing !== null && body === '' && editing.photos === 0;
+  const cannotSend = sending || (editing ? blank : empty);
+
+  function finishEdit(current: ComposerEditing, message: string) {
+    current.onClose();
+    announce(message);
+    requestAnimationFrame(() => {
+      // Not once the screen has gone.
+      if (box.current) focusAfterEdit(current.anchor, box.current);
+    });
+  }
+
+  function saveEdit(current: ComposerEditing) {
+    if (body === current.initial.trim()) {
+      finishEdit(current, 'Nothing changed. Edit cancelled.');
+      return;
+    }
+    setSending(true);
+    setFailure(null);
+    void current
+      .onSave(body)
+      .then((problem) => {
+        if (problem) {
+          setFailure(problem);
+          return;
+        }
+        finishEdit(current, 'Changes saved.');
+      })
+      .finally(() => {
+        setSending(false);
+      });
+  }
 
   function send() {
     if (cannotSend) return;
+    if (editing) {
+      saveEdit(editing);
+      return;
+    }
     const submittedVersion = draftVersion.current;
     setSending(true);
     setFailure(null);
@@ -207,8 +292,10 @@ export function Composer({
           setFailure(problem);
           return;
         }
-        // A member may already be writing the next message while this one saves.
+        // A member may already be writing the next message while this one
+        // saves, or editing another with this draft put aside.
         if (draftVersion.current === submittedVersion) setDraft('');
+        else if (setAside.current?.version === submittedVersion) setAside.current.text = '';
         setFiles([]);
         // The box shrinks back only once the words have actually gone.
         requestAnimationFrame(resize);
@@ -224,9 +311,9 @@ export function Composer({
       value={draft}
       rows={1}
       maxLength={maxLength}
-      placeholder={placeholder}
-      aria-label={placeholder}
-      readOnly={Boolean(edit) && sending}
+      placeholder={editing ? `Edit your ${editing.noun}` : placeholder}
+      aria-label={editing ? `Edit your ${editing.noun}` : placeholder}
+      readOnly={editing !== null && sending}
       onPaste={(event) => {
         pastePhotos(event, photos.current);
       }}
@@ -236,9 +323,9 @@ export function Composer({
         resize();
       }}
       onKeyDown={(event) => {
-        if (event.key === 'Escape' && edit) {
+        if (event.key === 'Escape' && editing) {
           event.preventDefault();
-          edit.onCancel();
+          if (!sending) finishEdit(editing, 'Edit cancelled.');
           return;
         }
         // Safari can report composition Enter only through legacy keyCode.
@@ -263,37 +350,42 @@ export function Composer({
     </p>
   ) : null;
 
-  if (edit) {
-    return (
-      <div className="mt-2">
-        {failureLine}
-        <div className="flex w-full items-end gap-[9px]">{textarea}</div>
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            onClick={send}
-            disabled={cannotSend}
-            className="min-h-[2.75rem] rounded-full bg-action px-[1.1em] font-bold font-head text-[0.875rem] text-white transition-opacity disabled:opacity-35"
-          >
-            {sending ? 'Saving…' : 'Save'}
-          </button>
-          <button
-            type="button"
-            onClick={edit.onCancel}
-            disabled={sending}
-            className="min-h-[2.75rem] rounded-full border border-line px-[1.1em] font-bold font-head text-[0.875rem] text-emphasis"
-          >
-            Cancel
-          </button>
-        </div>
+  const editBar = editing ? (
+    <div className="mx-auto mb-2 flex w-full max-w-[720px] items-center gap-2 rounded-[11px] border-emphasis border-l-[3px] bg-tint py-1 pr-1 pl-3">
+      <div className="min-w-0 flex-1 py-1 text-[0.8125rem] text-ink2 leading-[1.4]">
+        <p className="font-semibold text-ink">Editing {editing.noun}</p>
+        {editing.initial.trim() ? <p className="truncate">{excerpt(editing.initial)}</p> : null}
+        {editing.photos > 0 ? (
+          <p>
+            {editing.photos === 1
+              ? 'Its photograph stays as it is.'
+              : `Its ${editing.photos} photographs stay as they are.`}
+          </p>
+        ) : null}
+        <p aria-live="polite">
+          {blank ? `A ${editing.noun} needs words. To delete it, use Remove.` : ''}
+        </p>
       </div>
-    );
-  }
+      <button
+        type="button"
+        onClick={() => {
+          finishEdit(editing, 'Edit cancelled.');
+        }}
+        disabled={sending}
+        aria-label="Cancel editing"
+        className="inline-flex min-h-11 flex-none items-center gap-1 rounded-full px-3 font-semibold text-[0.8125rem] text-emphasis hover:bg-line disabled:opacity-50"
+      >
+        <X className="h-4 w-4" aria-hidden="true" />
+        Cancel
+      </button>
+    </div>
+  ) : null;
 
   return (
     <div className="flex-none border-line border-t bg-paper px-3.5 py-2.5">
       {failureLine}
-      {replyingTo ? (
+      {editBar}
+      {replyingTo && !editing ? (
         <div className="mx-auto mb-2 flex w-full max-w-[720px] items-center justify-between gap-2 rounded-[11px] bg-tint px-3 py-1.5">
           <span className="min-w-0 truncate text-[0.78125rem] text-ink2">
             Replying to <span className="font-semibold text-ink">{replyingTo.name}</span>
@@ -309,23 +401,27 @@ export function Composer({
           </button>
         </div>
       ) : null}
-      <div className="mx-auto w-full max-w-[720px]">
-        <PhotoStrip
-          files={files}
-          disabled={sending}
-          onRemove={(index) => {
-            setFiles((current) => current.filter((_, i) => i !== index));
-          }}
-        />
-      </div>
+      {editing ? null : (
+        <div className="mx-auto w-full max-w-[720px]">
+          <PhotoStrip
+            files={files}
+            disabled={sending}
+            onRemove={(index) => {
+              setFiles((current) => current.filter((_, i) => i !== index));
+            }}
+          />
+        </div>
+      )}
       <div className="mx-auto flex w-full max-w-[720px] items-end gap-[9px]">
-        <PhotoPicker ref={photos} files={files} onChange={setFiles} disabled={sending} compact />
+        {editing ? null : (
+          <PhotoPicker ref={photos} files={files} onChange={setFiles} disabled={sending} compact />
+        )}
         {textarea}
         <button
           type="button"
           onClick={send}
           disabled={cannotSend}
-          aria-label={sendLabel}
+          aria-label={editing ? 'Save changes' : sendLabel}
           // 44px, and never data-target="small": this is the control the whole
           // screen exists for.
           className="grid h-11 w-11 flex-none place-items-center rounded-full bg-action text-white transition-opacity disabled:opacity-35"

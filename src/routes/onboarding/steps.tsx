@@ -1,8 +1,11 @@
 import { Loader2, LocateFixed } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
+import { GooglePhotoOffer } from '@/components/google-photo-offer';
+import { useAnnounce } from '@/lib/announce';
 import { type DateParts, readDate } from '@/lib/date-parts';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
+import { useGooglePhoto } from '@/lib/google-photo';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { formatPhoneInput } from '@/lib/phone';
@@ -576,7 +579,14 @@ export function CityStep({ data, set }: StepProps) {
   );
 }
 
-export function PhotoStep({ data, set }: StepProps) {
+export function PhotoStep({
+  data,
+  set,
+  googlePhotoUrl = null,
+}: StepProps & { googlePhotoUrl?: string | null }) {
+  const google = useGooglePhoto(googlePhotoUrl);
+  const announce = useAnnounce();
+  const usingGoogle = google !== null && data.photoFile === google.file;
   return (
     <>
       <Question>Add a photo?</Question>
@@ -607,6 +617,21 @@ export function PhotoStep({ data, set }: StepProps) {
           }}
         />
       </label>
+      {google && !usingGoogle ? (
+        <GooglePhotoOffer
+          photo={google}
+          className="mx-auto mt-4 w-fit"
+          onUse={() => {
+            set({ photoFile: google.file, photoPreviewUrl: URL.createObjectURL(google.file) });
+            announce('Your Google photo is chosen.');
+          }}
+        />
+      ) : null}
+      {usingGoogle ? (
+        <p className="mt-3 text-center text-[0.875rem] text-ink2">
+          Your Google photo. It is copied to the club when you enter.
+        </p>
+      ) : null}
       <Fine>Skip, and your tile is made from your initials.</Fine>
     </>
   );

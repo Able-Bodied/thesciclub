@@ -3,14 +3,17 @@ import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
+import { GooglePhotoOffer } from '@/components/google-photo-offer';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { type DateParts, EMPTY_DATE_PARTS, partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
+import { googlePhotoUrl, useGooglePhoto } from '@/lib/google-photo';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
 import { usePhotoUrl } from '@/lib/photos';
 import { signInDoor } from '@/lib/sign-in-destination';
+import { getSupabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { SpinalCordFields } from '@/routes/onboarding/spinal-cord-fields';
 import {
@@ -67,6 +70,18 @@ export default function ProfileDetailsPage() {
   // Above the two early returns: a hook runs on every render or none.
   const photo = usePhotoUrl(details?.photoPath ?? null);
   const announce = useAnnounce();
+  // A Google account's photo, offered beside the photo control.
+  const [googleUrl, setGoogleUrl] = useState<string | null>(null);
+  const [usedGoogle, setUsedGoogle] = useState(false);
+  const google = useGooglePhoto(googleUrl);
+  useEffect(() => {
+    if (account.status !== 'member') return;
+    void getSupabase()
+      .auth.getSession()
+      .then(({ data }) => {
+        setGoogleUrl(googlePhotoUrl(data.session?.user));
+      });
+  }, [account.status]);
 
   if (account.status === 'error') return <AccountProblem account={account} />;
   if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
@@ -159,7 +174,7 @@ export default function ProfileDetailsPage() {
       });
   }
 
-  function onPhoto(file: File) {
+  function onPhoto(file: File, fromGoogle = false) {
     if (!account.userId) return;
     setSaving(true);
     // Cleared as submit clears it. The photos bucket refuses a file since
@@ -168,8 +183,13 @@ export default function ProfileDetailsPage() {
     setError(null);
     savePhoto(account.userId, file)
       .then((result) => {
-        if (result.ok) set({ photoPath: result.path, photoAlt: null });
-        else setError(result.error);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        set({ photoPath: result.path, photoAlt: null });
+        setUsedGoogle(fromGoogle);
+        if (fromGoogle) announce('Your Google photo is saved.');
       })
       .catch((e: unknown) => {
         setError(describeThrown(e, 'Could not upload that photo.'));
@@ -282,6 +302,16 @@ export default function ProfileDetailsPage() {
                       </span>
                     )}
                   </div>
+                  {google && !usedGoogle ? (
+                    <GooglePhotoOffer
+                      photo={google}
+                      disabled={saving}
+                      className="mt-3"
+                      onUse={() => {
+                        onPhoto(google.file, true);
+                      }}
+                    />
+                  ) : null}
                 </Field>
 
                 {/* Asked only once there is a picture to describe. Every avatar of

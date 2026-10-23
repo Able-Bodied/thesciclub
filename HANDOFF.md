@@ -88,12 +88,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   apple-app-site-association` (`src/universal-links.test.ts` says which
   paths and why). Fake it in a browser with
   `window.CapacitorCustomPlatform = { name: 'ios' }`.
-  YouTube cards play in place in the app (native CSP frames
-  youtube-nocookie) with an "Open in YouTube" link under the player; never
-  tried on a device (`ios-v1.0.1`): look for it playing, or an error in the
-  frame and the link working. If it fails, next is a small player page on
-  thesciclub.com.
-- **Checks**: 3,355 tests in 240 files on 2026-10-22; `pnpm check` (alone),
+  YouTube cards in the app frame the club's player page
+  (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
+  YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
+  sits under it. Needs the page live on `main` before the next TestFlight.
+- **Checks**: 3,448 tests in 247 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -148,7 +147,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   inviters only withdraw, a deleted member's reports unnamed). The client
   only once the owner has read the pages **and** that address receives mail (MX at Spaceship, held by
   someone else). Then paste `https://thesciclub.com/delete-account` into
-  Play's Data safety form. A lawyer should read them: injury details are
+  Play's Data safety form. Privacy still needs a sentence on the Google
+  photo (Built, Google photo), for the owner to word. A lawyer should read them: injury details are
   health information.
 
 - **Native sign-in and Universal Links, not live** (2026-10-22), in order:
@@ -297,6 +297,10 @@ All live. Migration headers and the files named say how and why.
   photo; the account's copy goes when the member is made, or after 90 days.
   `onboarding_steps` feeds Stats. Notifications are asked once, by the
   installed app (`AskOnOpening`).
+- **Google photo** (2026-10-22, not pushed): a Google account is offered its
+  photo on the photo step and Your details, copied only on a tap. The browser
+  fetches it from `lh3.googleusercontent.com` (connect-src; Google allows any
+  origin) and uploads it as a chosen file (`lib/google-photo.ts`).
 - **Admin → Stats** (`admin_club_stats(period)`): counts, never who, from what
   the club already keeps, in place of Google Analytics (turned down). Two
   things name members, by the owner's choice and said in Privacy: signing in
@@ -310,7 +314,8 @@ All live. Migration headers and the files named say how and why.
   days). `lib/standalone.ts` trusts only `navigator.standalone` on iPhones.
   The installed app is **The Sci Club**; page zoom is stopped only there.
   Share target: Android only (`/share-target`, `sw.ts`, `/share`).
-- **Display** (Me → Settings, and the "Aa" button on the five main screens):
+- **Display** (Me → Settings, Me's "Aa" button, and the keyboard's second
+  stop on every screen; the owner took the button off the other tabs 2026-10-22):
   appearance, higher contrast, text size, easier-to-read text, underline
   links, bigger tap targets, reduce motion; per device (`lib/accessibility.tsx`).
   Built in place of an overlay widget like accessiBe, on purpose.

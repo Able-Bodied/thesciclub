@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { siteOf, toLinkPreview, youtubeEmbedUrl } from '@/lib/chat/link-preview';
+import {
+  appYoutubeEmbedUrl,
+  siteOf,
+  toLinkPreview,
+  youtubeEmbedUrl,
+} from '@/lib/chat/link-preview';
 
 const full = {
   url: 'https://www.reeve.org/',
@@ -47,6 +52,14 @@ describe('youtubeEmbedUrl', () => {
   it('plays from the privacy-enhanced host, inline on a phone', () => {
     expect(youtubeEmbedUrl('dQw4w9WgXcQ')).toBe(
       'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&playsinline=1',
+    );
+  });
+});
+
+describe('appYoutubeEmbedUrl', () => {
+  it("is the club's player page, passing only the id", () => {
+    expect(appYoutubeEmbedUrl('dQw4w9WgXcQ')).toBe(
+      'https://thesciclub.com/embed/youtube.html?v=dQw4w9WgXcQ',
     );
   });
 });

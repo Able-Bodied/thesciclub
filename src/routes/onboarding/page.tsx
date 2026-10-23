@@ -18,6 +18,7 @@ import {
 import { describeError } from '@/lib/describe-error';
 import { pendingRegistration } from '@/lib/event-audience';
 import { useGoogleInBrowser } from '@/lib/google-in-browser';
+import { googlePhotoUrl } from '@/lib/google-photo';
 import {
   GOOGLE_NOT_SIGNED_IN,
   GOOGLE_RETURN_PARAM,
@@ -153,6 +154,8 @@ export default function OnboardingPage() {
   const [blockedEmail, setBlockedEmail] = useState<string | null>(null);
   // Refused at the join form (20261012040000): no account, so nothing to sign out of.
   const [blockedAtSignUp, setBlockedAtSignUp] = useState(false);
+  // The account's Google photo, if any, for the photo step to offer.
+  const [googlePhoto, setGooglePhoto] = useState<string | null>(null);
 
   const set = useCallback((patch: Partial<OnboardingData>) => {
     setData((d) => ({ ...d, ...patch }));
@@ -297,6 +300,8 @@ export default function OnboardingPage() {
     }
     // The name Google or Apple gave, only into an empty box.
     const given = nameFromMetadata(user?.user_metadata);
+    // Offered on the photo step, never taken unasked.
+    setGooglePhoto(googlePhotoUrl(user));
     // Where this account left off, on this device or another (progress.ts).
     const saved = user?.id ? await savedProgress(user.id) : null;
     setData((d) => {
@@ -963,6 +968,7 @@ export default function OnboardingPage() {
       {step === 'photo' ? (
         <PhotoStep
           data={data}
+          googlePhotoUrl={googlePhoto}
           set={(patch) => {
             // Another photograph chosen after a refusal: the sentence was
             // about the last one.

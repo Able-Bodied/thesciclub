@@ -57,6 +57,13 @@ describe('PeersPage', () => {
     expect(screen.getByText('Kerry')).toBeInTheDocument();
   });
 
+  // Display is on Me only (the owner, 2026-10-22).
+  it('has no Display button in its header', async () => {
+    renderPage();
+    expect(await screen.findByText('Nicole')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Display settings' })).toBeNull();
+  });
+
   it('narrows to mentors when that segment is chosen', async () => {
     renderPage();
     await userEvent.click(screen.getByRole('button', { name: 'Mentors' }));

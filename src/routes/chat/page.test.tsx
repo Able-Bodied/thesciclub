@@ -157,6 +157,13 @@ describe('the chat screen', () => {
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 
+  // Display is on Me only (the owner, 2026-10-22).
+  it('has no Display button in its header', () => {
+    renderPage();
+    expect(screen.getByRole('heading', { name: 'Chat' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Display settings' })).toBeNull();
+  });
+
   // Two different blanks with two different ways out. A direct conversation
   // starts from somebody's profile and a group starts here, so neither empty
   // state is a dead end and neither points at the other one's door.

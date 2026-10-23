@@ -85,11 +85,10 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
  * ---------------------------------------------------------------------------
  * Editing, since 2026-09-29
  * ---------------------------------------------------------------------------
- * Edit on the reader's own standing post swaps its words for the composer
- * holding them (post.tsx). One post at a time, by id, so that a removal
- * arriving over the wire cannot leave an editor open on a post that is no
- * longer drawn. `chat_edit_post` decides; a refusal comes back into the
- * composer with the draft still in it.
+ * Edit on the reader's own standing post puts its words in the composer at
+ * the foot, and Send saves them (composer.tsx); the opening post too, as its
+ * Markdown. One post at a time, by id, so a removal arriving over the wire
+ * ends the edit. `chat_edit_post` decides; a refusal keeps the words.
  *
  * ---------------------------------------------------------------------------
  * Likes, since 2026-09-30
@@ -279,7 +278,6 @@ export default function TopicPage() {
   async function saveEdit(postId: string, body: string): Promise<string | null> {
     const result = await editPost(postId, body);
     if (!result.ok) return result.error;
-    setEditingId(null);
     reload();
     edits.reload();
     return null;
@@ -359,6 +357,11 @@ export default function TopicPage() {
     };
   };
 
+  // Only while it is drawn: a removal over the wire ends the edit.
+  const edited = editingId
+    ? posts.find((p) => p.id === editingId && p.removedAt === null)
+    : undefined;
+
   /** Controls act on this specific post, including replies to replies. */
   const postProps = (post: ChatPost) => ({
     post,
@@ -366,16 +369,13 @@ export default function TopicPage() {
     // The author's own, and nobody else's — not an administrator's either.
     // chat_edit_post decides; this only asks.
     canEdit: canPost && post.authorId === account.userId,
-    editing: editingId === post.id,
+    editing: edited?.id === post.id,
     onEdit: () => {
       setEditingId(post.id);
     },
-    onSaveEdit: (body: string) => saveEdit(post.id, body),
-    onCancelEdit: () => {
-      setEditingId(null);
-    },
     canReply: canPost,
     onReply: () => {
+      setEditingId(null);
       setReplyingTo(post);
     },
     // An administrator can remove anybody's; everybody else only their own.
@@ -604,6 +604,21 @@ export default function TopicPage() {
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.
           sendOnEnter={false}
+          editing={
+            edited
+              ? {
+                  id: edited.id,
+                  initial: edited.body,
+                  noun: 'post',
+                  photos: edited.attachments.length,
+                  anchor: `post-${edited.id}`,
+                  onSave: (body) => saveEdit(edited.id, body),
+                  onClose: () => {
+                    setEditingId(null);
+                  },
+                }
+              : null
+          }
           replyingTo={
             replyingTo
               ? {

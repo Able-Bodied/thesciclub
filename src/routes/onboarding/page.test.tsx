@@ -2181,6 +2181,96 @@ describe('a photograph the club cannot hold', () => {
   });
 });
 
+// The owner, 2026-10-22: offered, and copied only when chosen.
+describe("the member's Google photo", () => {
+  const AVATAR = 'https://lh3.googleusercontent.com/a/ACg8ocKdana=s96-c';
+  let fetched: string[] = [];
+
+  beforeEach(() => {
+    fetched = [];
+    URL.createObjectURL = () => 'blob:preview';
+    URL.revokeObjectURL = () => undefined;
+    vi.stubGlobal('fetch', (url: string) => {
+      fetched.push(url);
+      return Promise.resolve(
+        new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/jpeg' } }),
+      );
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function signedInWith(provider: string) {
+    calls.user = {
+      email: 'dana@example.com',
+      user_metadata: { avatar_url: AVATAR },
+      app_metadata: { providers: [provider] },
+      identities: [{ provider, identity_data: { avatar_url: AVATAR } }],
+    } as typeof calls.user;
+  }
+
+  async function reachPhoto() {
+    calls.invited = true;
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Rather not say' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await userEvent.selectOptions(await screen.findByLabelText('State'), 'CA');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('What is your phone number?');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Add a photo?');
+  }
+
+  it('offers it, large, with a preview, and chooses nothing by itself', async () => {
+    signedInWith('google');
+    await reachPhoto();
+    expect(await screen.findByRole('button', { name: 'Use my Google photo' })).toBeInTheDocument();
+    expect(fetched).toEqual(['https://lh3.googleusercontent.com/a/ACg8ocKdana=s800-c']);
+    expect(document.querySelector('img[src="blob:preview"]')).not.toBeNull();
+    expect(screen.getByLabelText('Choose a photo')).toBeInTheDocument();
+  });
+
+  it('sends it as the photograph once chosen, as an upload would be', async () => {
+    signedInWith('google');
+    await reachPhoto();
+    await userEvent.click(await screen.findByRole('button', { name: 'Use my Google photo' }));
+    expect(screen.getByLabelText('Change the photo')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Use my Google photo' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Enter the club' }));
+    await waitFor(() => {
+      expect(calls.submitted).not.toBeNull();
+    });
+    const file = calls.submitted?.photoFile as File;
+    expect(file.name).toBe('google-photo.jpg');
+    expect(file.type).toBe('image/jpeg');
+  });
+
+  it('still lets them skip it', async () => {
+    signedInWith('google');
+    await reachPhoto();
+    await screen.findByRole('button', { name: 'Use my Google photo' });
+    await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+    await waitFor(() => {
+      expect(calls.submitted).not.toBeNull();
+    });
+    expect(calls.submitted?.photoFile).toBeNull();
+  });
+
+  it('offers nothing to an Apple account, and asks Google for nothing', async () => {
+    signedInWith('apple');
+    await reachPhoto();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('button', { name: 'Use my Google photo' })).toBeNull();
+    expect(fetched).toEqual([]);
+  });
+});
+
 // The owner, 2026-10-01: nothing that has already been answered should need a
 // second press to move on.
 describe('steps that move on by themselves', () => {

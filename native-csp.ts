@@ -11,10 +11,14 @@ export const IOS_APP_ORIGIN = 'capacitor://localhost';
 // A <meta> policy ignores frame-ancestors; the app has no manifest or worker.
 const DROPPED = new Set(['frame-ancestors', 'manifest-src', 'worker-src']);
 
-// Not in the app: Google's widget, until native sign-in. YouTube's player
-// stays, as on the website; if it refuses capacitor://localhost, the card's
-// "Open in YouTube" link is the way.
+// Not in the app: Google's widget, until native sign-in.
 const NOT_IN_THE_APP = ['accounts.google.com'];
+
+/**
+ * The app frames only the club's YouTube page, which frames YouTube itself:
+ * YouTube refuses capacitor://localhost (public/embed/youtube.html).
+ */
+export const APP_FRAMES = 'https://thesciclub.com/embed/';
 
 export function nativeCsp(webPolicy: string): string {
   return webPolicy
@@ -22,6 +26,7 @@ export function nativeCsp(webPolicy: string): string {
     .map((part) => part.trim().split(/\s+/))
     .filter(([name]) => name !== undefined && name !== '' && !DROPPED.has(name))
     .map(([name, ...sources]) => {
+      if (name === 'frame-src') return `${name} ${APP_FRAMES}`;
       const kept = sources.filter(
         (source) => !NOT_IN_THE_APP.some((host) => source.includes(host)),
       );
@@ -34,12 +39,9 @@ export function nativeCsp(webPolicy: string): string {
     .join('; ');
 }
 
-/**
- * The site-wide policy from netlify.toml's text: the one under `for = "/*"`.
- * Pages with their own (the YouTube embed's) come before it, as Netlify keeps
- * the first match, so the first policy in the file is not the site's.
- */
+/** The policy from netlify.toml's text. */
 export function webCsp(netlifyToml: string): string {
-  const site = netlifyToml.slice(Math.max(0, netlifyToml.indexOf('for = "/*"')));
+  // The site-wide "/*" rule's policy; the YouTube page's own rule comes first.
+  const site = netlifyToml.slice(netlifyToml.indexOf('for = "/*"'));
   return /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(site)?.[1] ?? '';
 }

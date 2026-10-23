@@ -190,8 +190,8 @@ function ShellContent() {
       >
         Skip to content
       </a>
-      {/* The second thing: Display, from every screen, not only the five with
-          the round button in their header. */}
+      {/* The second thing: Display, from every screen, not only Me, which has
+          the button in its header. */}
       <button
         type="button"
         onClick={openDisplay}
