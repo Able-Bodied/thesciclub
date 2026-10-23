@@ -12,6 +12,12 @@ const EVENTS = 'events@thesciclub.com';
 const ADDRESS = /^events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.com$/i;
 /** Where Zoho forwards it, so Resend's envelope recipient; never the one intended. */
 export const INBOX = 'inbox@events.thesciclub.com';
+/**
+ * The club's own mail and the forwarder's: never a representative. Zoho signs
+ * what it forwards as thesciclub.com, so DMARC passes even for a forged From.
+ */
+const NEVER_A_SENDER =
+  /(^|\.)(thesciclub\.com|zoho(mail)?\.(com|eu|in|jp|sa|ca|uk|com\.au|com\.cn))$/i;
 
 export interface ReceivedEmail {
   from: string;
@@ -137,6 +143,24 @@ export function addressesIn(values: string[]): string[] {
       value.replace(/"(?:[^"\\]|\\.)*"/g, ' ').match(/[^\s<>,;:"()[\]]+@[^\s<>,;:"()[\]]+/g) ?? []
     ).map((address) => address.toLowerCase()),
   );
+}
+
+/**
+ * Who sent it, and whether Resend's DMARC verdict is about them. DMARC judges
+ * the From domain, so only an original From is verified; when a forwarder
+ * rewrote From, the original (X-Original-From, then Reply-To) is unverified.
+ */
+export function senderOf(email: ReceivedEmail): { address: string; verified: boolean } | null {
+  const usable = (address: string) =>
+    address.includes('@') && !NEVER_A_SENDER.test(address.split('@').pop() ?? '');
+  const from = bareAddress(email.from);
+  if (usable(from)) return { address: from, verified: email.authentication?.dmarc === 'pass' };
+  const original = addressesIn([
+    ...header(email, 'x-original-from'),
+    ...(email.reply_to ?? []),
+    ...header(email, 'reply-to'),
+  ]).find(usable);
+  return original ? { address: original, verified: false } : null;
 }
 
 /**
@@ -306,14 +330,15 @@ export async function handle(
   if (!email) return { status: 502, outcome: 'could not read the email' };
   const to = eventsAddress(email);
   if (!to) return { status: 200, outcome: 'not for events@' };
+  const from = senderOf(email);
+  if (!from) return { status: 200, outcome: 'from the club or its forwarder' };
 
   const text = await calendarText(deps, emailId, email);
   const invite = text ? readInvite(text) : null;
   if (!invite) return { status: 200, outcome: 'no invitation in it' };
 
-  const sender = bareAddress(email.from);
-  const verified = email.authentication?.dmarc === 'pass';
-  const result = await deps.receive(sender, verified, to.tag, invite);
+  const sender = from.address;
+  const result = await deps.receive(sender, from.verified, to.tag, invite);
   for (const mail of repliesFor(result, invite, sender, deps.site)) {
     await deps.send(mail);
   }
