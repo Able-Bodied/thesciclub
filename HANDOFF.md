@@ -97,6 +97,19 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Ask anonymously, put off** (the owner, 2026-10-22: later, after smaller
+  changes). A post's `author_id` is readable by every member (table-level
+  select on `chat_topics`/`chat_posts`, embeds by
+  `chat_*_author_id_fkey`, `chat_topics_for.author_id`/`participant_ids`,
+  realtime, `notifications.actor_id`, `my_notifications`, `push_owed`), so
+  hiding it on screen is not enough. The plan when it is picked up: an
+  `anonymous` flag; revoke select on `author_id` and expose a masked
+  `shown_author_id` (null when anonymous) with its own foreign key for
+  embeds; a way for the author to know a post is theirs; notifications and
+  push say "A member"; administrators read the real author through an
+  admin-only function. Earlier choices: administrators see who; questions
+  and replies.
+
 - **Every event public by default** (the owner, 2026-10-22): `20261022200000`
   sets the default to `public` and makes the club's existing events public
   (all imported from public calendars), not live until the owner's push.
