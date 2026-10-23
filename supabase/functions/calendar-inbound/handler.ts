@@ -10,10 +10,15 @@ import { type InviteEvent, readInvite } from './ics.ts';
 const EVENTS = 'events@thesciclub.com';
 /** events@ or events+<short code>@. */
 const ADDRESS = /^events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.com$/i;
+/** Where Zoho forwards it, so Resend's envelope recipient; never the one intended. */
+export const INBOX = 'inbox@events.thesciclub.com';
 
 export interface ReceivedEmail {
   from: string;
   to: string[];
+  cc?: string[] | null;
+  reply_to?: string[] | null;
+  headers?: Record<string, string | string[] | null> | null;
   received_for?: string[] | null;
   subject?: string | null;
   authentication?: { spf?: string; dkim?: string; dmarc?: string } | null;
@@ -115,13 +120,45 @@ export function bareAddress(from: string): string {
   return (angled?.[1] ?? from).trim().toLowerCase();
 }
 
-/** Which of the club's event addresses it was sent to, and its short code. */
-export function eventsAddress(email: ReceivedEmail): { tag: string | null } | null {
-  for (const address of [...email.to, ...(email.received_for ?? [])]) {
-    const match = ADDRESS.exec(bareAddress(address));
-    if (match) return { tag: match[1] ?? null };
+/** A header's values, whatever case Resend keys it by. */
+export function header(email: ReceivedEmail, name: string): string[] {
+  const values: string[] = [];
+  for (const [key, value] of Object.entries(email.headers ?? {})) {
+    if (key.toLowerCase() !== name || value == null) continue;
+    values.push(...(Array.isArray(value) ? value : [value]));
   }
-  return null;
+  return values;
+}
+
+/** Every address in address lists, display names and quoted parts left out. */
+export function addressesIn(values: string[]): string[] {
+  return values.flatMap((value) =>
+    (
+      value.replace(/"(?:[^"\\]|\\.)*"/g, ' ').match(/[^\s<>,;:"()[\]]+@[^\s<>,;:"()[\]]+/g) ?? []
+    ).map((address) => address.toLowerCase()),
+  );
+}
+
+/**
+ * Which event address it was sent to, and its short code. After Zoho's hop the
+ * envelope says INBOX, so the headers say whom it was meant for.
+ */
+export function eventsAddress(email: ReceivedEmail): { tag: string | null } | null {
+  const addresses = addressesIn([
+    ...email.to,
+    ...(email.cc ?? []),
+    ...['to', 'cc', 'delivered-to', 'x-original-to', 'x-forwarded-to'].flatMap((name) =>
+      header(email, name),
+    ),
+    ...(email.received_for ?? []),
+  ]);
+  let found: { tag: string | null } | null = null;
+  for (const address of addresses) {
+    const match = ADDRESS.exec(address);
+    if (match?.[1]) return { tag: match[1] };
+    if (match) found = { tag: null };
+  }
+  return found;
 }
 
 function decodeQuotedPrintable(text: string): string {

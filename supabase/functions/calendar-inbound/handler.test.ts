@@ -5,6 +5,7 @@ import {
   type Deps,
   eventsAddress,
   handle,
+  INBOX,
   type Mail,
   type ReceivedEmail,
   type ReceiveResult,
@@ -121,6 +122,24 @@ describe('the address', () => {
     expect(eventsAddress({ from: '', to: ['hello@thesciclub.com'] })).toBeNull();
     // The club does not own thesciclub.org.
     expect(eventsAddress({ from: '', to: ['events@thesciclub.org'] })).toBeNull();
+  });
+
+  it('after Zoho forwards it, reads whom it was meant for from the headers', () => {
+    const forwarded = (headers: Record<string, string | string[]>) =>
+      eventsAddress({ from: '', to: [INBOX], received_for: [INBOX], headers });
+    expect(forwarded({ To: 'NorCal SCI Events <events@thesciclub.com>' })).toEqual({ tag: null });
+    expect(forwarded({ cc: ['a@b.c, "Club" <events+NCS@thesciclub.com>'] })).toEqual({
+      tag: 'ncs',
+    });
+    expect(forwarded({ 'Delivered-To': 'events+ab@thesciclub.com' })).toEqual({ tag: 'ab' });
+    expect(forwarded({ 'X-Original-To': 'events@thesciclub.com' })).toEqual({ tag: null });
+    // The short code wins over the bare address, wherever each is.
+    expect(
+      forwarded({ to: 'events@thesciclub.com', 'x-original-to': 'events+ncs@thesciclub.com' }),
+    ).toEqual({ tag: 'ncs' });
+    // The inbox alone is not an event address, nor a quoted name that looks like one.
+    expect(forwarded({})).toBeNull();
+    expect(forwarded({ to: '"events@thesciclub.com" <hello@thesciclub.com>' })).toBeNull();
   });
 
   it('reads the bare sender', () => {
