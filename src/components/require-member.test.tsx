@@ -27,12 +27,14 @@ vi.mock('@/lib/members', () => ({
 // A registration from a public event's page (20261022190000).
 const registration = vi.hoisted(() => ({
   pending: null as null | { eventId: string },
+  publicEvent: null as null | { id: string },
   claimed: vi.fn(() => Promise.resolve(['picnic'])),
   forgotten: vi.fn(),
 }));
 vi.mock('@/lib/event-audience', () => ({
   pendingRegistration: () => registration.pending,
   claimEventRegistrations: registration.claimed,
+  fetchPublicEvent: () => Promise.resolve({ ok: true, value: registration.publicEvent }),
   forgetPendingRegistration: () => {
     registration.forgotten();
     registration.pending = null;
@@ -202,5 +204,43 @@ describe('a registration made before signing in', () => {
     renderGuarded();
     expect(screen.getByText('Inside the club')).toBeInTheDocument();
     expect(registration.claimed).not.toHaveBeenCalled();
+  });
+});
+
+// An event's own address, copied from the address bar and opened signed out.
+describe('an event address, signed out', () => {
+  const EVENT = '7f3a9c00-0000-4000-8000-000000000001';
+  function renderEvent() {
+    return render(
+      <MemoryRouter initialEntries={[`/events/${EVENT}`]}>
+        <Routes>
+          <Route path="/join" element={<p>Welcome screen</p>} />
+          <Route path="/e/:id" element={<p>The public page</p>} />
+          <Route
+            path="/events/:id"
+            element={
+              <RequireMember>
+                <p>Inside the club</p>
+              </RequireMember>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('opens the public page when the event has one', async () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    registration.publicEvent = { id: EVENT };
+    renderEvent();
+    expect(await screen.findByText('The public page')).toBeInTheDocument();
+    registration.publicEvent = null;
+  });
+
+  it('opens the door when it does not', async () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    registration.publicEvent = null;
+    renderEvent();
+    expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
   });
 });
