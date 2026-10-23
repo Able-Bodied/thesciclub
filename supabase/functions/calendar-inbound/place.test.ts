@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cityOf, whereOf } from './place.ts';
+import { meetingService } from '../../../src/lib/meeting-link.ts';
+import { cityOf, isMeetingLink, whereOf } from './place.ts';
 
 const none = { url: null, conference: [], description: '' };
 
@@ -116,5 +117,23 @@ describe('a place and its link, apart', () => {
 
   it('nothing at all is left to the database', () => {
     expect(whereOf({ ...none, location: '' }).format).toBeNull();
+  });
+});
+
+// The website's list (src/lib/meeting-link.ts) is a superset of this one: a link
+// the importer keeps apart as a meeting must read "Join online" on the pages.
+describe('the meeting hosts, against the website', () => {
+  it.each([
+    'meet.google.com',
+    'zoom.us',
+    'us02web.zoom.us',
+    'zoomgov.com',
+    'teams.microsoft.com',
+    'teams.live.com',
+    'acme.webex.com',
+  ])('%s', (host) => {
+    const url = `https://${host}/j/1`;
+    expect(isMeetingLink(url)).toBe(true);
+    expect(meetingService(url)).not.toBeNull();
   });
 });
