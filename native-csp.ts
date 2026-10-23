@@ -41,5 +41,7 @@ export function nativeCsp(webPolicy: string): string {
 
 /** The policy from netlify.toml's text. */
 export function webCsp(netlifyToml: string): string {
-  return /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(netlifyToml)?.[1] ?? '';
+  // The site-wide "/*" rule's policy; the YouTube page's own rule comes first.
+  const site = netlifyToml.slice(netlifyToml.indexOf('for = "/*"'));
+  return /^\s*Content-Security-Policy = "([^"]+)"$/m.exec(site)?.[1] ?? '';
 }
