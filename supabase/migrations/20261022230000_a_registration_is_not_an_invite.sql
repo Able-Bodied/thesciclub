@@ -48,7 +48,7 @@ as $$
 $$;
 
 comment on function public.i_am_invited() is
-  'True when joining is open and the caller has a CONFIRMED address, or a pending invite is claimed by the caller or names that address, or the caller is who consumed an invite; never when the address is blocked. A registration for an event never counts (20261022220000). Answers only about the caller.';
+  'True when joining is open and the caller has a CONFIRMED address, or a pending invite is claimed by the caller or names that address, or the caller is who consumed an invite; never when the address is blocked. A registration for an event never counts (20261022230000). Answers only about the caller.';
 
 revoke all on function public.i_am_invited() from public, anon;
 grant execute on function public.i_am_invited() to authenticated;
@@ -105,10 +105,10 @@ end;
 $$;
 
 comment on function public.signup_needs_an_invite(jsonb) is
-  'Before User Created hook: an email sign-up needs a pending invite for its address, or a live invite token, unless joining is open. A registration for an event never counts. See 20261012040000, 20261014000000 and 20261022220000.';
+  'Before User Created hook: an email sign-up needs a pending invite for its address, or a live invite token, unless joining is open. A registration for an event never counts. See 20261012040000, 20261014000000 and 20261022230000.';
 
 revoke execute on function public.signup_needs_an_invite(jsonb) from public, anon, authenticated;
 grant execute on function public.signup_needs_an_invite(jsonb) to supabase_auth_admin;
 
 comment on table public.event_registrations is
-  'Sign-ups from a public event''s page, account or not. Read through event_guest_list only. Never an invite (20261022220000). See 20261022190000.';
+  'Sign-ups from a public event''s page, account or not. Read through event_guest_list only. Never an invite (20261022230000). See 20261022190000.';

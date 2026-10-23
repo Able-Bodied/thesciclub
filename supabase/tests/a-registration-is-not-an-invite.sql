@@ -1,5 +1,5 @@
 -- ============================================================================
--- A registration for a public event is never an invite (20261022220000)
+-- A registration for a public event is never an invite (20261022230000)
 -- ============================================================================
 -- Under 20261022190000, steps 3, 4 and 5 answered {}, t and INSERT 0 1: an
 -- address registered on a public page could sign up and join with no invite.

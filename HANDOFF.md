@@ -124,7 +124,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   worth a `supabase/tests/event-audiences.sql`.
 - **A registration is not an invite, not live** (the owner, 2026-10-22: "a
   security hole"). `20261022190000` let any address registered for a public
-  event sign up and join; `20261022220000` puts `i_am_invited` and the
+  event sign up and join; `20261022230000` puts `i_am_invited` and the
   sign-up hook back (probe `a-registration-is-not-an-invite.sql`). Push it
   alone, then cherry-pick its welcome-page commit onto `main`, then check
   who joined that way while it was live (read-only query: the message of the

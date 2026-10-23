@@ -26,7 +26,7 @@ first two true. The one exception is an administrator's: for a few weeks of even
 opened to anybody, so somebody met there joins on the spot, and closed again afterwards (Admin →
 Invites, 2026-10-14). A blocked address stays out either way, and whoever joined while it was open
 stays a member. Registering for a public event is not an invite (the owner, 2026-10-22;
-20261022220000). A closed room of two hundred people who have all been through it is worth more
+20261022230000). A closed room of two hundred people who have all been through it is worth more
 than an open one with twenty thousand registrations and fifty monthly visitors.
 
 ## Why closed, specifically
