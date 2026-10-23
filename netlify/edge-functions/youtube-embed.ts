@@ -19,7 +19,7 @@ export const EMBED_HEADERS: Readonly<Record<string, string>> = {
   'Content-Security-Policy': [
     "default-src 'none'",
     "script-src 'sha256-xV0u9Ur8udktvZYVkC5PqoFUTOjkQMR2lAsrZ7WJfkk='",
-    "style-src 'sha256-G+rCEijMLKwsAtYZLVJiYQinNSYAgkNmR1jOBLnbSX4='",
+    "style-src 'sha256-pTXWBUXwSv2U25eVaY4YmGaJreAcdJZXGVEK/Ol4afw='",
     'frame-src https://www.youtube-nocookie.com',
     "base-uri 'none'",
     "form-action 'none'",
