@@ -455,6 +455,11 @@ verify_jwt = false
 [functions.home-screen-handoff]
 verify_jwt = false
 
+# Calendar invitations to events@thesciclub.org, posted by Resend: Resend's
+# own signature (RESEND_INBOUND_SECRET) is checked instead. 20261022220000.
+[functions.calendar-inbound]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

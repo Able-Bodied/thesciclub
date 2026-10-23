@@ -49,6 +49,7 @@ const HomeNewPage = lazy(() => import('@/routes/home/new'));
 const PublicEventPage = lazy(() => import('@/routes/public-event/page'));
 const RegisterForEventPage = lazy(() => import('@/routes/public-event/register'));
 const GuestListPage = lazy(() => import('@/routes/events/guest-list'));
+const HeldInvitesPage = lazy(() => import('@/routes/events/held-invites'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
 const SavedPage = lazy(() => import('@/routes/me/saved-page'));
@@ -243,6 +244,7 @@ function ShellContent() {
             who speak for an organization. The page sends anybody else back to
             Events. No event id can be "new": they are uuids. */}
             <Route path="/events/new" element={<EventFormPage />} />
+            <Route path="/events/invites" element={<HeldInvitesPage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/events/:id/edit" element={<EventFormPage />} />
             <Route path="/events/:id/guests" element={<GuestListPage />} />
