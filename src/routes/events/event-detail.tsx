@@ -14,7 +14,6 @@ import {
   useEvents,
   useViewerEvents,
 } from '@/lib/events';
-import { meetingService } from '@/lib/meeting-link';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
@@ -26,6 +25,7 @@ import { GOING_SHARES_CONTACT } from '@/routes/events/event-card';
 import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
+import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
@@ -137,9 +137,10 @@ export default function EventDetailPage() {
   const registerHref = safeHref(event.registrationUrl);
   const pageHref = safeHref(event.url);
   // A call to join, not a page about the event: it goes up with the time, and
-  // is not offered once the event is over.
-  const meeting = meetingService(pageHref);
-  const moreHref = meeting ? null : pageHref;
+  // is not offered once the event is over. The event's link, or failing that
+  // one in its description.
+  const meeting = eventMeetingLink(event);
+  const moreHref = meeting?.inUrl ? null : pageHref;
   const goingList = attendees.filter((a) => a.status === 'going');
   const interestedList = attendees.filter((a) => a.status === 'interested');
   const organization = event.organizationId
@@ -204,8 +205,13 @@ export default function EventDetailPage() {
               </div>
             ) : null}
 
-            {pageHref && meeting && !isPastEvent(event) ? (
-              <MeetingLinkButton href={pageHref} service={meeting} tone="plate" className="mt-3" />
+            {meeting && !isPastEvent(event) ? (
+              <MeetingLinkButton
+                href={meeting.href}
+                service={meeting.service}
+                tone="plate"
+                className="mt-3"
+              />
             ) : null}
 
             {/* No RSVP on an event that is over. The list stopped offering it when
