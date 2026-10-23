@@ -98,20 +98,53 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 ## Open
 
 - **Events from calendar invitations, not live** (the owner, 2026-10-22):
-  invite `events@thesciclub.org` (or `events+<short code>@`) to an event in
+  invite `events@thesciclub.com` (or `events+<short code>@`) to an event in
   Google, Outlook or Apple Calendar and it is added, changed and cancelled in
-  the club. `20261022220000` (`calendar_invite_receive`, held invitations,
-  `/events/invites`) and the `calendar-inbound` function. A representative's
-  invitation is added when Resend's DMARC verdict passes, held for approval
-  otherwise; anybody else's is ignored, with no reply. To make it live:
-  1. Resend → Domains: add `thesciclub.org` with receiving on, and put the MX
-     record Resend shows at Spaceship (thesciclub.org has no mail today).
-  2. `pnpm exec supabase db push --linked` (dry run first).
-  3. `pnpm exec supabase functions deploy calendar-inbound --no-verify-jwt`.
-  4. Resend → Webhooks: `https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/calendar-inbound`,
-     event `email.received`; then `pnpm exec supabase secrets set
-     RESEND_INBOUND_SECRET=whsec_…` with its signing secret.
-  5. Send an invitation from a representative's calendar and check the reply.
+  the club. `20261022220000` (live: `calendar_invite_receive`, held
+  invitations, `/events/invites`) and the `calendar-inbound` function. The
+  club does not own thesciclub.org; thesciclub.com's mail stays at Zoho.
+  - **Route**: `events@` is a Zoho alias; a Zoho filter forwards it to
+    `inbox@events.thesciclub.com`, which Resend receives; Resend posts
+    `email.received` to the function. Whom it was meant for comes from the
+    headers (To, Cc, Delivered-To, X-Original-To), not the envelope; mail not
+    meant for `events@`/`events+…@thesciclub.com` gets 200 and nothing else,
+    Zoho's forwarding confirmation included.
+  - **Trust**: Zoho keeps the original From (it rewrites only the
+    envelope; its docs say nothing either way), and Resend's own server
+    judges DMARC on the From domain, which after the hop passes only if the
+    sender's DKIM survived. Original From + DMARC pass: added. A
+    representative's invitation otherwise is held: DMARC fail/none, or a From
+    rewritten to the club or Zoho, whose original (X-Original-From, then
+    Reply-To) is used but never verified. A From at thesciclub.com (any
+    subdomain) or Zoho is never a sender, even passing DMARC, as Zoho signs
+    what it forwards as thesciclub.com. Anybody else: ignored, no reply.
+  To make it live:
+  1. **Resend** → Domains: add `events.thesciclub.com` with receiving on. At
+     Spaceship (whoever holds the account), add only the records Resend shows,
+     at the `events` subdomain. Don't touch thesciclub.com's MX (Zoho).
+  2. **Webhook** (Resend → Webhooks): `email.received` →
+     `https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/calendar-inbound`.
+     `RESEND_INBOUND_SECRET` is set; re-set it (`pnpm exec supabase secrets
+     set RESEND_INBOUND_SECRET=whsec_…`) only if the webhook is recreated.
+  3. **Zoho**: (a) add the alias `events@thesciclub.com` to a mailbox;
+     (b) add a filter: To/Cc contains `events@thesciclub.com` or
+     `events+` → forward to `inbox@events.thesciclub.com` (a filter, not the
+     mailbox's own forwarding, which would send everything); (c) Zoho emails
+     a confirmation to the inbox: read it in Resend → Emails (received) and
+     confirm; (d) don't keep a copy in the inbox: have the filter delete it,
+     or move it to a folder if a record is wanted (Resend keeps one anyway).
+     Check `events+<code>@` too: send to `events+test@thesciclub.com` and see
+     it in Resend. If Zoho bounces it, sub-addressing is off for aliases;
+     plain `events@` still works, and a representative of several
+     organizations picks one in `/events/invites`.
+  4. **Deploy**: `pnpm exec supabase functions deploy calendar-inbound --no-verify-jwt`.
+  5. **First test**: from a representative's own calendar (their club sign-in
+     address, not @thesciclub.com), invite `events@thesciclub.com`. Added
+     automatically: they get "Added to The SCI Club: <title>" and it is on
+     `/events`. Held: "Waiting for approval: <title>", and it waits in
+     `/events/invites` (sign in as that representative). Nothing at all:
+     not a representative, or from the club's domain; Resend's webhook log
+     shows the function's `outcome`.
   The invitation's other guests are never kept: only its own fields.
 
 - **Ask anonymously, put off** (the owner, 2026-10-22: later, after smaller
