@@ -93,7 +93,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   tried on a device (`ios-v1.0.1`): look for it playing, or an error in the
   frame and the link working. If it fails, next is a small player page on
   thesciclub.com.
-- **Checks**: 3,355 tests in 240 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,392 tests in 242 files on 2026-10-22; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
