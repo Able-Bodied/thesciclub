@@ -16,6 +16,7 @@ import {
   signUpWithEmail,
 } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
+import { pendingRegistration } from '@/lib/event-audience';
 import { useGoogleInBrowser } from '@/lib/google-in-browser';
 import {
   GOOGLE_NOT_SIGNED_IN,
@@ -33,6 +34,7 @@ import {
 } from '@/lib/invite-token';
 import { useJoiningIsOpen } from '@/lib/joining';
 import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
+import { formatPhoneInput } from '@/lib/phone';
 import {
   captureQrCode,
   claimHeldQrCode,
@@ -123,7 +125,19 @@ export default function OnboardingPage() {
   const navigate = useNavigate();
   const account = useAccount();
   const [phase, setPhase] = useState<Phase>('wizard');
-  const [data, setData] = useState<OnboardingData>(INITIAL_ONBOARDING_DATA);
+  // Just registered for a public event (src/lib/event-audience.ts): the
+  // welcome page says so, and joining starts from what they typed.
+  const [registered] = useState(pendingRegistration);
+  const [data, setData] = useState<OnboardingData>(() =>
+    registered
+      ? {
+          ...INITIAL_ONBOARDING_DATA,
+          email: registered.email,
+          displayName: registered.name,
+          phone: formatPhoneInput(registered.phone),
+        }
+      : INITIAL_ONBOARDING_DATA,
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -596,6 +610,7 @@ export default function OnboardingPage() {
       <WithInstallNudge>
         <WelcomeScreen
           joiningOpen={joiningOpen}
+          registered={registered !== null}
           onJoin={() => {
             setStep('join');
           }}

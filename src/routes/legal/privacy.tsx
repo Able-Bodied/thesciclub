@@ -17,7 +17,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 21, 2026">
+    <LegalPage title="Privacy Policy" updated="October 22, 2026">
       <Section title="Who we are">
         <P>
           The SCI Club is a private, invite-only community for adults living with spinal cord
@@ -56,6 +56,11 @@ export default function PrivacyPage() {
             a room or on Home, and anything you report. A post shows members how many people have
             read it, never who. Administrators can see who has read each post and when, including
             reads from before October 20, 2026.
+          </li>
+          <li>
+            <b>If you register for an event on its public page:</b> your name, your email address,
+            your phone number if you give one, and whether you are going or interested, whether or
+            not you have an account.
           </li>
           <li>
             <b>Your answers while you join:</b> what you have answered so far and the step you are
@@ -176,6 +181,15 @@ export default function PrivacyPage() {
           shares nothing. Hosts agree not to use your details for marketing, fundraising or
           promotions, and not to pass them on. The Going button says this before you press it. Your
           text messaging opt-in data and consent are never shared with hosts.
+        </P>
+        {/* Public event pages and registrations, 2026-10-22 (20261022190000). */}
+        <P>
+          An event can have a public page that anyone with its link can open. It shows the event's
+          details only, never who is going or how many. Registering there shares your name, email
+          address and phone number, if you give it, with the event's organizers and the club's
+          administrators, for that event only. If you then sign in or join with that address, the
+          registration becomes your Going or Interested, and the paragraph above applies. A
+          registration is deleted 90 days after the event.
         </P>
       </Section>
 

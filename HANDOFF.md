@@ -54,6 +54,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Public events and audiences** (2026-10-22, the owner): `20261022180000`
+  and `20261022190000` are live, and the client with them (released on its
+  own, ahead of the branch's unreleased work). Who can see an event: public,
+  club, followers, groups (`can_see_event` behind the events, series, tags
+  and RSVP policies and both RSVP views); `/e/<id>` for a public one
+  (`public_event`); registrations from it (`event_guest_list`,
+  `claim_event_registrations`, cron `event-registrations-expire`), which
+  also admit their address while invite-only. Not filtered yet: the daily
+  "N new events" count for followers includes a groups-only event (a number,
+  never a title); a member with an event cover's path can read it.
 - **Blocking, not live**: `20261022050000` to `20261022080000`, and
   `20261022090000` (the weekly count of blocks, cron `blocks-weekly`), await
   the owner's `pnpm exec supabase db push --linked --dry-run`, then the push,

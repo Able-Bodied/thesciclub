@@ -1,9 +1,14 @@
 import { Fragment, useEffect, useRef } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { SuspendedScreen } from '@/components/suspended-screen';
 import { AccountProvider, useOwnAccount } from '@/lib/account';
 import { resetAttachmentUrls } from '@/lib/chat/attachments';
+import {
+  claimEventRegistrations,
+  forgetPendingRegistration,
+  pendingRegistration,
+} from '@/lib/event-audience';
 import { restoreDeviceNotifications } from '@/lib/push/notifications';
 import { forgetSharedReads } from '@/lib/shared-reads';
 import { signInDoor } from '@/lib/sign-in-destination';
@@ -23,6 +28,7 @@ import { signInDoor } from '@/lib/sign-in-destination';
  */
 export function RequireMember({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   // The one read for everything inside (AccountProvider), again on each
   // screen so a change to the member's own row is never more than a screen
   // old.
@@ -57,6 +63,22 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
     }
     lastMember.current = now;
   }, [status, account.userId]);
+
+  // A registration made on a public event's page before signing in or joining
+  // (src/lib/event-audience.ts): once a member, it becomes their RSVP, and the
+  // event opens, now with who is going. Joining claims it in the database as
+  // the member is made; signing in claims it here.
+  const claimed = useRef(false);
+  useEffect(() => {
+    if (status !== 'member' || claimed.current) return;
+    const pending = pendingRegistration();
+    if (!pending) return;
+    claimed.current = true;
+    void claimEventRegistrations().then(() => {
+      forgetPendingRegistration();
+      void navigate(`/events/${pending.eventId}`, { replace: true });
+    });
+  }, [status, navigate]);
 
   if (status === 'error') return <AccountProblem account={account} />;
 

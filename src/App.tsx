@@ -46,6 +46,9 @@ const EventDetailPage = lazy(() => import('@/routes/events/event-detail'));
 const EventFormPage = lazy(() => import('@/routes/events/event-form'));
 const OrganizationDetailPage = lazy(() => import('@/routes/events/organization-detail'));
 const HomeNewPage = lazy(() => import('@/routes/home/new'));
+const PublicEventPage = lazy(() => import('@/routes/public-event/page'));
+const RegisterForEventPage = lazy(() => import('@/routes/public-event/register'));
+const GuestListPage = lazy(() => import('@/routes/events/guest-list'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
 const SavedPage = lazy(() => import('@/routes/me/saved-page'));
@@ -242,6 +245,7 @@ function ShellContent() {
             <Route path="/events/new" element={<EventFormPage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/events/:id/edit" element={<EventFormPage />} />
+            <Route path="/events/:id/guests" element={<GuestListPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/me" element={null} />
             {/* Administrators only; the page sends anybody else to Me. */}
@@ -414,6 +418,24 @@ function AppRoutes() {
           build the condition is false, so the route and the page itself are
           dropped from the bundle. See the page's file header. */}
         {import.meta.env.DEV && <Route path="/dev-login" element={<DevLoginPage />} />}
+        {/* A public event's page and its registration form, for anybody with
+          the link (20261022180000). Outside the shell, always light. */}
+        <Route
+          path="/e/:id"
+          element={
+            <InLight>
+              <PublicEventPage />
+            </InLight>
+          }
+        />
+        <Route
+          path="/e/:id/register"
+          element={
+            <InLight>
+              <RegisterForEventPage />
+            </InLight>
+          }
+        />
         {/* Public, with no account: somebody on the phone step reads them before
           they have one, and so do the carriers checking the text-message
           registration. See src/routes/legal/legal-page.tsx. */}

@@ -207,6 +207,18 @@ choice, 2026-10-08). Shared links resume after sign-in; they do not provide
 public access. Legal and sign-in pages remain available without an account.
 The club's content is not intended for search indexing.
 
+The one exception, the owner's choice of 2026-10-22: an event its organizer
+makes **public** has a page at `/e/<id>` that anyone with the link can open,
+with what an organization would put on its own calendar and nothing that says
+who is in the club: no counts, no attendees, not the host's name. Anybody can
+register there with a name, an email and a phone; the event's organizers and
+administrators see that, and the welcome page that follows asks everybody the
+same thing, sign in or join, so it never says whether an address is a member's.
+A registration also lets its address join while the club is invite-only. An
+event can instead be for the whole club, for the hosting organization's
+followers, or for chosen group chats, and nobody outside its audience sees it
+(`can_see_event`, 20261022180000; registrations, 20261022190000).
+
 A public directory of disabled people with names, photos, injury levels and
 catheter preferences is a scraping target and a training-data donation. Member pages carry
 `noindex`, and the API requires a session. `browse_members` is the single projection through which

@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as ChatGroups from '@/lib/chat/groups';
 import type * as Threads from '@/lib/chat/threads';
+import type * as EventAudience from '@/lib/event-audience';
 import type * as EventPhone from '@/lib/event-phone';
 import type * as Events from '@/lib/events';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
@@ -43,6 +44,21 @@ vi.mock('@/lib/events', async (importOriginal) => ({
   }),
   setRsvp: (...args: unknown[]): Promise<{ ok: boolean; error?: string }> =>
     state.setRsvp(...args) as Promise<{ ok: boolean; error?: string }>,
+}));
+
+// Who an event is for, for a member outside its audience (20261022180000).
+const audience = vi.hoisted(() => ({
+  hint: null as null | {
+    audience: 'followers' | 'groups';
+    organization: { id: string; name: string; shortCode: string; logoPath: null } | null;
+  },
+}));
+vi.mock('@/lib/event-audience', async (importOriginal) => ({
+  ...(await importOriginal<typeof EventAudience>()),
+  fetchAudienceHint: () => Promise.resolve(audience.hint),
+}));
+vi.mock('@/lib/organization-follows', () => ({
+  useOrganizationFollows: () => ({ following: new Set<string>(), toggle: () => undefined }),
 }));
 
 vi.mock('@/lib/organizations', () => ({
@@ -149,9 +165,38 @@ describe('EventDetailPage', () => {
     expect(screen.getByText('nothing')).toBeInTheDocument();
   });
 
-  it('says plainly that an unknown event is not there, rather than erroring', () => {
+  it('says plainly that an unknown event is not there, rather than erroring', async () => {
+    audience.hint = null;
     renderDetail('does-not-exist');
-    expect(screen.getByText(/not on the calendar/)).toBeInTheDocument();
+    expect(await screen.findByText(/not on the calendar/)).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-22: a member outside an event's audience who has its
+  // link is told who it is for, and nothing more.
+  it('tells a member outside a followers event whose followers it is for', async () => {
+    audience.hint = {
+      audience: 'followers',
+      organization: { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null },
+    };
+    renderDetail('for-followers');
+    expect(await screen.findByText("For NorCal SCI's followers")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Follow/ })).toBeInTheDocument();
+    audience.hint = null;
+  });
+
+  it('never names the group of a groups event', async () => {
+    audience.hint = { audience: 'groups', organization: null };
+    renderDetail('for-a-group');
+    expect(await screen.findByText("For a group you're not in")).toBeInTheDocument();
+    audience.hint = null;
+  });
+
+  it('says who can see it, and gives a public event a link to share', () => {
+    state.events = [makeEvent({ id: 'picnic', audience: 'public' })];
+    renderDetail('picnic');
+    expect(screen.getByText('Anyone with the link')).toBeInTheDocument();
+    expect(screen.getByText('https://thesciclub.com/e/picnic')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument();
   });
 
   describe('RSVP', () => {
