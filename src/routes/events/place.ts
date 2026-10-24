@@ -121,20 +121,26 @@ export function placeLine(
 }
 
 /**
- * Google Maps for the event's address, so the place line can be tapped for
- * directions (the owner, 2026-10-24); null when there is no address to find.
+ * Google Maps for the event's place, so the place line can be tapped for
+ * directions (the owner, 2026-10-24); null when there is nothing to find.
  *
  * The feed's whole string, not the trimmed line: a plus code or a postcode is
- * exactly what pins the right spot. The geocoded city goes on the end when the
- * string lacks it, so a bare street does not land in another state. A link in
- * the field is an online event's, not a place.
+ * exactly what pins the right spot. The geocoded city and state go on the end
+ * when the string lacks the city, so a bare street does not land in another
+ * state. Most imported events have no address at all, only the city the page
+ * shows, and that is still worth a tap. A link in the field is an online
+ * event's, not a place.
  */
-export function mapsUrl(event: Pick<ClubEvent, 'location' | 'city'>): string | null {
-  const location = event.location.replace(/\s+/g, ' ').trim();
-  if (!location || /^(https?:\/\/|www\.)/i.test(location)) return null;
+export function mapsUrl(event: Pick<ClubEvent, 'location' | 'city' | 'state'>): string | null {
+  let location = event.location.replace(/\s+/g, ' ').trim();
+  if (/^(https?:\/\/|www\.)/i.test(location)) location = '';
+  const city = event.city?.trim() ?? '';
+  // A state alone is no place to search for.
+  const area = city ? [city, event.state?.trim() ?? ''].filter(Boolean).join(', ') : '';
   const query =
-    event.city && !location.toLowerCase().includes(event.city.toLowerCase())
-      ? `${location}, ${event.city}`
-      : location;
+    location && city && !location.toLowerCase().includes(city.toLowerCase())
+      ? `${location}, ${area}`
+      : location || area;
+  if (!query) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

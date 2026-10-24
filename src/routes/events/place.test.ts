@@ -151,6 +151,7 @@ describe('mapsUrl', () => {
     const url = mapsUrl({
       location: 'Archer Bicycle 431 13th Street Oakland, California, 94607 United States',
       city: 'Oakland',
+      state: 'CA',
     });
     expect(url?.startsWith('https://www.google.com/maps/search/?api=1&query=')).toBe(true);
     expect(query(url)).toBe(
@@ -158,15 +159,25 @@ describe('mapsUrl', () => {
     );
   });
 
-  it('adds the city when the address lacks it', () => {
-    expect(query(mapsUrl({ location: '141 Brookwood Dr', city: 'Santa Cruz' }))).toBe(
-      '141 Brookwood Dr, Santa Cruz',
+  it('adds the city and state when the address lacks them', () => {
+    expect(query(mapsUrl({ location: '141 Brookwood Dr', city: 'Santa Cruz', state: 'CA' }))).toBe(
+      '141 Brookwood Dr, Santa Cruz, CA',
+    );
+    expect(query(mapsUrl({ location: '141 Brookwood Dr', city: null, state: 'CA' }))).toBe(
+      '141 Brookwood Dr',
     );
   });
 
-  it('has nothing to find without an address, or with a link for one', () => {
-    expect(mapsUrl({ location: '', city: 'Oakland' })).toBeNull();
-    expect(mapsUrl({ location: '   ', city: null })).toBeNull();
-    expect(mapsUrl({ location: 'https://zoom.us/j/123', city: null })).toBeNull();
+  // Most imported events: no address, only the city the page shows.
+  it('finds the city when there is no address', () => {
+    expect(query(mapsUrl({ location: '', city: 'Oakland', state: 'CA' }))).toBe('Oakland, CA');
+    expect(
+      query(mapsUrl({ location: 'https://zoom.us/j/123', city: 'Oakland', state: null })),
+    ).toBe('Oakland');
+  });
+
+  it('has nothing to find with no address and no city', () => {
+    expect(mapsUrl({ location: '   ', city: null, state: null })).toBeNull();
+    expect(mapsUrl({ location: 'https://zoom.us/j/123', city: null, state: 'CA' })).toBeNull();
   });
 });
