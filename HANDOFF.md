@@ -229,14 +229,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`apns.ts`; 410 or BadDeviceToken forgets it). Asked as the Home Screen app
   asks, never on the app's first launch; Me has the row, and Open Settings
   after a refusal; a tap routes like a link that opened the app. Before the
-  next TestFlight tag (Native sign-in, step 10), in order:
+  next TestFlight tag (`ios-v1.0.3`; 1.0.2 is out), in order:
   1. `pnpm exec supabase db push --linked --dry-run` lists `20261023030000`
      (with whatever else is unreleased); then the push.
   2. Secrets, from the APNs .p8 on the owner's own machine (it goes straight
      from the file into the command):
      `pnpm exec supabase secrets set APNS_KEY_ID=W8K8K2VX3C
      APNS_TEAM_ID=3RZ3A2CJ9N APNS_BUNDLE_ID=com.thesciclub.app
-     APNS_KEY_P8="$(base64 < AuthKey_W8K8K2VX3C.p8 | tr -d '\n')"`.
+     APNS_KEY_P8="$(base64 < AuthKey_W8K8K2VX3C.p8 | tr -d '\n')"`. With
+     no file, only the password manager's base64: `read -rs APNS_KEY_P8`,
+     paste, Enter, then `APNS_KEY_P8="$APNS_KEY_P8"` in the same command.
   3. `pnpm exec supabase functions deploy push-notify --no-verify-jwt`.
   4. Nothing in the Apple portal while Push Notifications stays on for
      `com.thesciclub.app`: `release_build` makes a new App Store profile when
