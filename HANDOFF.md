@@ -97,21 +97,18 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
-- **Events from calendar invitations, not live** (the owner, 2026-10-22):
-  invite `events@thesciclub.org` (or `events+<short code>@`) to an event in
+- **Events from calendar invitations** (the owner, 2026-10-22): invite
+  `invites@events.thesciclub.com` (or `invites+<short code>@`) to an event in
   Google, Outlook or Apple Calendar and it is added, changed and cancelled in
   the club. `20261022220000` (`calendar_invite_receive`, held invitations,
   `/events/invites`) and the `calendar-inbound` function. A representative's
   invitation is added when Resend's DMARC verdict passes, held for approval
-  otherwise; anybody else's is ignored, with no reply. To make it live:
-  1. Resend → Domains: add `thesciclub.org` with receiving on, and put the MX
-     record Resend shows at Spaceship (thesciclub.org has no mail today).
-  2. `pnpm exec supabase db push --linked` (dry run first).
-  3. `pnpm exec supabase functions deploy calendar-inbound --no-verify-jwt`.
-  4. Resend → Webhooks: `https://erijdvqnxavwezsbbojv.supabase.co/functions/v1/calendar-inbound`,
-     event `email.received`; then `pnpm exec supabase secrets set
-     RESEND_INBOUND_SECRET=whsec_…` with its signing secret.
-  5. Send an invitation from a representative's calendar and check the reply.
+  otherwise; anybody else's is ignored, with no reply. Alfred set up Resend
+  receiving on `events.thesciclub.com` (2026-10-23) rather than the planned
+  `events@thesciclub.org`, which the function still accepts. Live: the
+  migration, the function, the webhook and its secret. Still to do: deploy the
+  function again for the new address, send a test invitation, and release
+  `/events/invites` and the event form's hint.
   The invitation's other guests are never kept: only its own fields.
 
 - **Ask anonymously, put off** (the owner, 2026-10-22: later, after smaller

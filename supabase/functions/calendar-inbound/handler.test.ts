@@ -111,6 +111,15 @@ describe('the webhook’s signature', () => {
 
 describe('the address', () => {
   it('finds events@ and its short code, at either domain', () => {
+    expect(eventsAddress({ from: '', to: ['invites@events.thesciclub.com'] })).toEqual({
+      tag: null,
+    });
+    expect(
+      eventsAddress({ from: '', to: ['Invites <invites+ncs@Events.TheSciClub.com>'] }),
+    ).toEqual({
+      tag: 'ncs',
+    });
+    expect(eventsAddress({ from: '', to: ['invites@thesciclub.com'] })).toBeNull();
     expect(eventsAddress({ from: '', to: ['events@thesciclub.org'] })).toEqual({ tag: null });
     expect(eventsAddress({ from: '', to: ['Events <events+NCS@thesciclub.org>'] })).toEqual({
       tag: 'ncs',

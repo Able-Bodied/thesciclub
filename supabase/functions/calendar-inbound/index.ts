@@ -1,8 +1,8 @@
 /**
  * calendar-inbound: events from calendar invitations sent to
- * events@thesciclub.org (the owner, 2026-10-22).
+ * invites@events.thesciclub.com (the owner, 2026-10-22).
  *
- * Resend receives the mail for thesciclub.org and posts `email.received`
+ * Resend receives the mail for events.thesciclub.com and posts `email.received`
  * here. This checks Resend's signature, reads the email back from Resend's
  * API (the webhook carries no attachments), finds the calendar file, and hands
  * the invitation to `calendar_invite_receive` (20261022220000), which decides

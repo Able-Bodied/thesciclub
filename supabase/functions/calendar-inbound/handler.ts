@@ -6,8 +6,16 @@ import { type InviteEvent, readInvite } from './ics.ts';
  * 20261022220000_calendar_invites.sql for the rules.
  */
 
-/** events@ or events+<short code>@, at either of the club's domains. */
-const ADDRESS = /^events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.(?:org|com)$/i;
+/** The address representatives invite, as Alfred set it up in Resend (2026-10-23). */
+export const INVITE_ADDRESS = 'invites@events.thesciclub.com';
+
+/**
+ * invites@events.thesciclub.com, or invites+<short code>@ to name the
+ * organization. events@ (or events+<short code>@) at thesciclub.org or .com,
+ * the address first planned, is still taken, should mail ever reach it.
+ */
+const ADDRESS =
+  /^(?:invites(?:\+([a-z0-9-]{1,20}))?@events\.thesciclub\.com|events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.(?:org|com))$/i;
 
 export interface ReceivedEmail {
   from: string;
@@ -117,7 +125,7 @@ export function bareAddress(from: string): string {
 export function eventsAddress(email: ReceivedEmail): { tag: string | null } | null {
   for (const address of [...email.to, ...(email.received_for ?? [])]) {
     const match = ADDRESS.exec(bareAddress(address));
-    if (match) return { tag: match[1] ?? null };
+    if (match) return { tag: match[1] ?? match[2] ?? null };
   }
   return null;
 }
@@ -227,7 +235,7 @@ export function repliesFor(
           .map((address) => ({
             to: address,
             subject: `A calendar invitation is waiting: ${title}`,
-            text: `${sender} invited events@thesciclub.org to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
+            text: `${sender} invited ${INVITE_ADDRESS} to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
           })),
       ];
     }
