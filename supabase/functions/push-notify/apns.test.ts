@@ -103,6 +103,20 @@ describe('providerToken', () => {
     expect(next).not.toBe(first);
   });
 
+  it('is signed once when many sends ask at the same moment', async () => {
+    const { keys } = await testKey();
+    const now = Date.UTC(2026, 9, 23, 14, 0);
+    const tokens = await Promise.all(Array.from({ length: 5 }, () => providerToken(keys, now)));
+    expect(new Set(tokens).size).toBe(1);
+  });
+
+  it('signs again after a key that would not sign', async () => {
+    const { keys } = await testKey();
+    const now = Date.UTC(2026, 9, 23, 15, 0);
+    await expect(providerToken({ ...keys, keyP8: btoa('no key') }, now)).rejects.toThrow();
+    expect(await providerToken(keys, now)).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/);
+  });
+
   it('takes the .p8 as base64 or as its PEM', async () => {
     const { keys, pem } = await testKey();
     expect(p8Bytes(pem)).toEqual(p8Bytes(keys.keyP8));

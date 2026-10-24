@@ -80,13 +80,24 @@ export function p8Bytes(keyP8: string): Uint8Array<ArrayBuffer> {
   return bytes(body);
 }
 
-let cached: { keyId: string; iat: number; token: string } | null = null;
+// The promise, not the token: a message to many iPhones asks at once, and
+// all of them must share one signature.
+let cached: { keyId: string; iat: number; token: Promise<string> } | null = null;
 
 /** The provider token for this half hour, signed once per running copy. */
-export async function providerToken(keys: ApnsKeys, now: number = Date.now()): Promise<string> {
+export function providerToken(keys: ApnsKeys, now: number = Date.now()): Promise<string> {
   const iat = Math.floor(now / 1000 / TOKEN_WINDOW) * TOKEN_WINDOW;
   if (cached?.keyId === keys.keyId && cached.iat === iat) return cached.token;
+  const token = signToken(keys, iat);
+  const entry = { keyId: keys.keyId, iat, token };
+  cached = entry;
+  token.catch(() => {
+    if (cached === entry) cached = null;
+  });
+  return token;
+}
 
+async function signToken(keys: ApnsKeys, iat: number): Promise<string> {
   const header = toBase64Url(encoder.encode(JSON.stringify({ alg: 'ES256', kid: keys.keyId })));
   const claims = toBase64Url(encoder.encode(JSON.stringify({ iss: keys.teamId, iat })));
   const key = await crypto.subtle.importKey(
@@ -102,9 +113,7 @@ export async function providerToken(keys: ApnsKeys, now: number = Date.now()): P
     key,
     encoder.encode(`${header}.${claims}`),
   );
-  const token = `${header}.${claims}.${toBase64Url(new Uint8Array(signature))}`;
-  cached = { keyId: keys.keyId, iat, token };
-  return token;
+  return `${header}.${claims}.${toBase64Url(new Uint8Array(signature))}`;
 }
 
 /**
