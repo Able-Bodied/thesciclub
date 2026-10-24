@@ -11,6 +11,8 @@ const hook = vi.hoisted(() => ({
   busy: false,
   turnedOn: 0,
   turnedOff: 0,
+  /** The store app on an iPhone. */
+  app: false,
 }));
 
 const kinds = vi.hoisted(() => ({
@@ -21,6 +23,7 @@ const kinds = vi.hoisted(() => ({
 vi.mock('@/lib/push/notifications', async (importOriginal) => ({
   // The real list, so the test reads the labels a member will.
   NOTIFICATION_KINDS: (await importOriginal<typeof Notifications>()).NOTIFICATION_KINDS,
+  isAppPush: () => hook.app,
   useNotificationKinds: () => ({
     muted: kinds.muted,
     busy: null,
@@ -48,6 +51,7 @@ beforeEach(() => {
   hook.busy = false;
   hook.turnedOn = 0;
   hook.turnedOff = 0;
+  hook.app = false;
   kinds.muted = new Set();
   kinds.toggled = [];
 });
@@ -96,6 +100,18 @@ describe('NotificationSettings', () => {
     render(<NotificationSettings userId="u1" />);
     expect(screen.getByText(/open Settings, then Notifications/)).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Open Settings' })).not.toBeInTheDocument();
+  });
+
+  it('in the iPhone app, opens the club’s page in Settings after a refusal', () => {
+    hook.state = 'refused';
+    hook.app = true;
+    render(<NotificationSettings userId="u1" />);
+    expect(screen.getByText(/turn on Allow Notifications/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open Settings' })).toHaveAttribute(
+      'href',
+      'app-settings:',
+    );
   });
 
   // The state sentence is what answers the button, so it must be announced.

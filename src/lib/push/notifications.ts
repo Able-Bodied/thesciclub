@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { isNative, isStandalone } from '@/lib/standalone';
@@ -38,8 +39,11 @@ import { getSupabase } from '@/lib/supabase';
  * to lose the gesture. So `turnOn` calls `Notification.requestPermission()`
  * before it awaits anything else. Do not move it.
  *
- * None of this is the store app's: web push needs a service worker, which it
- * has not. Until native push, the app neither asks nor shows the row.
+ * The store app on an iPhone has no service worker; it asks iOS for a device
+ * token instead (app-push.ts), kept by `push_subscribe_app` and sent to
+ * through Apple. The same row, the same five states (never "install"), the
+ * same asking. Android's app has no sender yet, so it neither asks nor shows
+ * the row.
  */
 
 export type NotificationState = 'install' | 'unsupported' | 'off' | 'on' | 'refused';
@@ -83,6 +87,18 @@ function sameBytes(a: ArrayBuffer | null, b: Uint8Array): boolean {
   const view = new Uint8Array(a);
   return view.every((byte, i) => byte === b[i]);
 }
+
+/** The store app on an iPhone, which notifies through Apple, not a service worker. */
+export function isAppPush(): boolean {
+  return isNative() && Capacitor.getPlatform() === 'ios';
+}
+
+/** The club can notify here: the iPhone app, or a website with the VAPID key. */
+export function notificationsOffered(): boolean {
+  return isAppPush() || (!isNative() && vapidPublicKey() !== null);
+}
+
+const loadApp = () => import('@/lib/push/app-push');
 
 function canPush(): boolean {
   if (isNative()) return false;
@@ -158,6 +174,30 @@ export function openingFacts(): OpeningFacts {
   };
 }
 
+// The app's first launch on a phone never asks: the member has only just
+// arrived. Remembered per device; when it cannot be, it does not ask.
+const APP_OPENED_KEY = 'thesciclub.appOpenedBefore';
+let firstAppLaunch: boolean | null = null;
+
+function isFirstAppLaunch(): boolean {
+  if (firstAppLaunch === null) {
+    try {
+      firstAppLaunch = localStorage.getItem(APP_OPENED_KEY) === null;
+      if (firstAppLaunch) localStorage.setItem(APP_OPENED_KEY, new Date().toISOString());
+    } catch {
+      firstAppLaunch = true;
+    }
+  }
+  return firstAppLaunch;
+}
+
+/** openingFacts for the iPhone app, whose permission iOS answers asynchronously. */
+export async function appOpeningFacts(): Promise<OpeningFacts> {
+  const askedRecently = isFirstAppLaunch() || notificationsAskedRecently();
+  const { appPermission } = await loadApp();
+  return { enabled: true, standalone: true, permission: await appPermission(), askedRecently };
+}
+
 // A device preference belongs to an account, not everyone using this phone.
 // Keep it through logout; browser permission alone is not consent for a new account.
 const PREFERENCE_KEY = 'thesciclub.deviceNotifications.';
@@ -210,23 +250,46 @@ async function readyWorker(): Promise<ServiceWorkerRegistration | null> {
   ]);
 }
 
+/**
+ * The device can hold a subscription the club does not have for this member:
+ * the sender deleted it after the push service said it was dead, or somebody
+ * else signed in on this phone and took it over.
+ */
+async function heldBy(userId: string, endpoint: string): Promise<boolean> {
+  const { data, error } = await getSupabase()
+    .from('push_subscriptions')
+    .select('endpoint')
+    .eq('member_id', userId)
+    .eq('endpoint', endpoint)
+    .maybeSingle();
+  if (error) throw error;
+  return data !== null;
+}
+
+/** This iPhone's endpoint, or null when iOS has not been allowed to notify. */
+async function appDeviceEndpoint(): Promise<string | null> {
+  const app = await loadApp();
+  if ((await app.appPermission()) !== 'granted') return null;
+  return app.appEndpoint(await app.appToken());
+}
+
+async function readAppState(userId: string): Promise<NotificationState> {
+  const { appPermission } = await loadApp();
+  const permission = await appPermission();
+  const endpoint = permission === 'granted' ? await appDeviceEndpoint() : null;
+  const subscribed = endpoint !== null && (await heldBy(userId, endpoint));
+  if (subscribed) rememberPreference(userId, true);
+  return notificationState({ canPush: true, standalone: true, permission, subscribed });
+}
+
 export async function readDeviceState(userId: string): Promise<NotificationState> {
+  if (isAppPush()) return readAppState(userId);
   const push = canPush();
   let subscribed = false;
   if (push) {
     const subscription = await currentSubscription();
     if (subscription) {
-      // The browser can hold a subscription the club does not have for this
-      // member: the sender deleted it after the push service said it was dead,
-      // or somebody else signed in on this phone and took it over.
-      const { data, error } = await getSupabase()
-        .from('push_subscriptions')
-        .select('endpoint')
-        .eq('member_id', userId)
-        .eq('endpoint', subscription.endpoint)
-        .maybeSingle();
-      if (error) throw error;
-      subscribed = data !== null;
+      subscribed = await heldBy(userId, subscription.endpoint);
       if (subscribed) rememberPreference(userId, true);
     }
   }
@@ -243,6 +306,7 @@ export type Outcome = { ok: true; state: NotificationState } | { ok: false; erro
 const NOT_TURNED_ON = 'Notifications were not turned on.';
 
 export async function turnOnNotifications(userId: string): Promise<Outcome> {
+  if (isAppPush()) return turnOnApp(userId);
   const key = vapidPublicKey();
   if (!key || isNative()) return { ok: false, error: NOT_TURNED_ON };
 
@@ -328,11 +392,74 @@ async function registerSubscription(
   return { ok: true, state: 'on' };
 }
 
+async function turnOnApp(userId: string): Promise<Outcome> {
+  const requestedRevision = revision;
+  const app = await loadApp();
+  const permission = await app.askAppPermission();
+  if (permission === 'denied') return { ok: true, state: 'refused' };
+  if (permission !== 'granted') return { ok: true, state: 'off' };
+  return inDeviceOrder(() =>
+    requestedRevision === revision
+      ? subscribeApp(userId)
+      : Promise.resolve<Outcome>({ ok: false, error: NOT_TURNED_ON }),
+  );
+}
+
+async function subscribeApp(userId: string): Promise<Outcome> {
+  const app = await loadApp();
+  let token: string;
+  try {
+    token = await app.appToken();
+  } catch (e) {
+    console.error(e);
+    return {
+      ok: false,
+      error: `${NOT_TURNED_ON} This iPhone could not reach Apple’s notification service. Try again in a minute.`,
+    };
+  }
+
+  // The account may have changed while waiting for Apple.
+  const { data, error: sessionError } = await getSupabase().auth.getSession();
+  if (sessionError) throw sessionError;
+  if (data.session?.user.id !== userId) return { ok: false, error: NOT_TURNED_ON };
+
+  const { error } = await getSupabase().rpc('push_subscribe_app', {
+    app_token: token,
+    app_environment: app.apnsEnvironment(),
+    app_user_agent: navigator.userAgent,
+  });
+  if (error) return { ok: false, error: describeError(error, NOT_TURNED_ON) };
+  rememberPreference(userId, true);
+  return { ok: true, state: 'on' };
+}
+
 export function turnOffNotifications(userId: string): Promise<Outcome> {
   return inDeviceOrder(() => disableDevice(userId));
 }
 
+async function disableApp(userId: string): Promise<Outcome> {
+  let endpoint: string | null;
+  try {
+    endpoint = await appDeviceEndpoint();
+  } catch (e) {
+    // Without the token there is no telling which row is this iPhone's.
+    console.error(e);
+    return { ok: false, error: 'Notifications are still on. Try again in a minute.' };
+  }
+  if (endpoint) {
+    const { error } = await getSupabase()
+      .from('push_subscriptions')
+      .delete()
+      .eq('endpoint', endpoint)
+      .eq('member_id', userId);
+    if (error) return { ok: false, error: describeError(error, 'Notifications are still on.') };
+  }
+  rememberPreference(userId, false);
+  return { ok: true, state: 'off' };
+}
+
 async function disableDevice(userId: string): Promise<Outcome> {
+  if (isAppPush()) return disableApp(userId);
   const subscription = await currentSubscription();
   if (!subscription) {
     rememberPreference(userId, false);
@@ -367,6 +494,8 @@ async function disableDevice(userId: string): Promise<Outcome> {
 export function restoreDeviceNotifications(userId: string): Promise<NotificationState> {
   const requestedRevision = revision;
   return inDeviceOrder(async () => {
+    if (isAppPush())
+      return requestedRevision === revision ? restoreApp(userId, requestedRevision) : 'off';
     if (!vapidPublicKey() || !canPush() || requestedRevision !== revision) return 'off';
     // On a cold PWA launch registration can still be starting. Wait only
     // for a saved opt-in, rather than missing its subscription on this visit.
@@ -393,12 +522,27 @@ export function restoreDeviceNotifications(userId: string): Promise<Notification
 }
 
 /**
+ * The app's restore: the token is asked of iOS on every launch and handed to
+ * the club again if this account had notifications on, which also catches a
+ * token that changed (a restored or reinstalled phone).
+ */
+async function restoreApp(userId: string, requestedRevision: number): Promise<NotificationState> {
+  const state = await readAppState(userId);
+  if (state !== 'off' || rememberedPreference(userId) !== 'on') return state;
+  if ((await (await loadApp()).appPermission()) !== 'granted') return state;
+  if (requestedRevision !== revision) return state;
+  const outcome = await subscribeApp(userId);
+  if (!outcome.ok) throw new Error(outcome.error);
+  return outcome.state;
+}
+
+/**
  * Pause delivery while signed out without undoing the account's device opt-in
  * or destroying its browser subscription. Bounded and best effort as before.
  */
 export async function forgetThisDevice(): Promise<void> {
   revision += 1;
-  if (!canPush()) return;
+  if (!canPush() && !isAppPush()) return;
   const attempt = inDeviceOrder(async () => {
     const { data, error: sessionError } = await getSupabase().auth.getSession();
     if (sessionError) throw sessionError;
@@ -408,12 +552,14 @@ export async function forgetThisDevice(): Promise<void> {
     await readDeviceState(userId).catch((e: unknown) => {
       console.error(e);
     });
-    const subscription = await currentSubscription();
-    if (!subscription) return;
+    const endpoint = isAppPush()
+      ? await appDeviceEndpoint()
+      : ((await currentSubscription())?.endpoint ?? null);
+    if (!endpoint) return;
     const { error } = await getSupabase()
       .from('push_subscriptions')
       .delete()
-      .eq('endpoint', subscription.endpoint)
+      .eq('endpoint', endpoint)
       .eq('member_id', userId);
     if (error) throw error;
   }).catch((e: unknown) => {
@@ -429,7 +575,7 @@ export function useDeviceNotifications(userId: string | null) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userId || !vapidPublicKey() || isNative()) return;
+    if (!userId || !notificationsOffered()) return;
     let live = true;
     restoreDeviceNotifications(userId)
       .then((next) => {
@@ -438,8 +584,21 @@ export function useDeviceNotifications(userId: string | null) {
       .catch((e: unknown) => {
         if (live) setError(describeThrown(e, 'Could not check notifications on this device.'));
       });
+    // Back from Settings, where the permission may have changed.
+    function onVisible() {
+      if (document.visibilityState !== 'visible' || !userId) return;
+      readDeviceState(userId)
+        .then((next) => {
+          if (live) setState(next);
+        })
+        .catch((e: unknown) => {
+          console.error(e);
+        });
+    }
+    if (isAppPush()) document.addEventListener('visibilitychange', onVisible);
     return () => {
       live = false;
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, [userId]);
 

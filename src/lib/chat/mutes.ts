@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError } from '@/lib/describe-error';
-import { vapidPublicKey } from '@/lib/push/notifications';
+import { notificationsOffered } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -12,7 +12,7 @@ import { getSupabase } from '@/lib/supabase';
  * bug, HANDOFF.md). A double tap is absorbed by the unique key: a duplicate
  * means it is already muted, which is what was asked for.
  *
- * Only offered while notifications exist at all (`vapidPublicKey()`): a mute
+ * Only offered while notifications exist at all (`notificationsOffered()`): a mute
  * button with nothing to mute is a control that does nothing.
  *
  * Screen tests stub this module; it reads and writes the club.
@@ -31,7 +31,7 @@ const TABLES = {
 
 /** Notifications exist in this build, so a mute means something. */
 export function mutesOffered(): boolean {
-  return vapidPublicKey() !== null;
+  return notificationsOffered();
 }
 
 export async function readMuted(target: MuteTarget, userId: string): Promise<boolean> {

@@ -14,7 +14,7 @@ import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/on
  * (`push_subscribe`), which exists by the time the app is opened.
  *
  * It only asks what can be answered. It is not shown at all while the club
- * cannot send (`vapidPublicKey()`), and it goes straight on
+ * cannot send (`notificationsOffered()`), and it goes straight on
  * when the device is already on, has refused before (the system will not ask
  * again), or cannot show notifications at all. On an iPhone in a Safari tab
  * nothing can be asked until the club is on the Home Screen, so that state

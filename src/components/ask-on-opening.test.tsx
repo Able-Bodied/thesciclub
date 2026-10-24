@@ -14,18 +14,23 @@ interface Db {
   facts: Notifications.OpeningFacts;
   state: string | null;
   turnedOn: number;
+  /** The iPhone app, whose facts come from iOS asynchronously. */
+  app: boolean;
 }
 const db = vi.hoisted(
   (): Db => ({
     facts: { enabled: true, standalone: true, permission: 'default', askedRecently: false },
     state: 'off',
     turnedOn: 0,
+    app: false,
   }),
 );
 
 vi.mock('@/lib/push/notifications', async (importOriginal) => ({
   ...(await importOriginal<typeof Notifications>()),
   openingFacts: () => ({ ...db.facts }),
+  isAppPush: () => db.app,
+  appOpeningFacts: () => Promise.resolve({ ...db.facts }),
   useDeviceNotifications: () => ({
     state: db.state,
     busy: false,
@@ -56,6 +61,7 @@ beforeEach(() => {
   db.facts = { enabled: true, standalone: true, permission: 'default', askedRecently: false };
   db.state = 'off';
   db.turnedOn = 0;
+  db.app = false;
 });
 
 describe('the first time the installed app opens', () => {
@@ -101,5 +107,21 @@ describe('every other opening', () => {
     expect(screen.queryByText('Turn on notifications?')).toBeNull();
     // Out of light, too: nothing of the question was ever drawn.
     expect(document.documentElement.dataset.forceLight).toBeUndefined();
+  });
+});
+
+describe('in the iPhone app', () => {
+  it('asks once iOS has answered', async () => {
+    db.app = true;
+    renderOpening();
+    expect(await screen.findByText('Turn on notifications?')).toBeInTheDocument();
+  });
+
+  it('goes to the club when it should not ask, the first launch included', async () => {
+    db.app = true;
+    db.facts = { ...db.facts, askedRecently: true };
+    renderOpening();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+    expect(screen.queryByText('Turn on notifications?')).toBeNull();
   });
 });

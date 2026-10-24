@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  appOpeningFacts,
   askOnOpening,
   base64UrlToBytes,
   type DeviceFacts,
@@ -37,6 +38,39 @@ const calls = vi.hoisted(() => ({
   beforeRpc: null as (() => Promise<void>) | null,
 }));
 
+/** iOS, as the push plugin reports it in the store app. */
+interface Ios {
+  permission: string;
+  /** What the system prompt answers. */
+  answer: string;
+  token: string | null;
+  listeners: Record<string, (event: Record<string, string>) => void>;
+}
+const ios = vi.hoisted(
+  (): Ios => ({ permission: 'prompt', answer: 'granted', token: null, listeners: {} }),
+);
+
+vi.mock('@capacitor/push-notifications', () => ({
+  PushNotifications: {
+    checkPermissions: () => Promise.resolve({ receive: ios.permission }),
+    requestPermissions: () => {
+      calls.log.push('ios prompt');
+      ios.permission = ios.answer;
+      return Promise.resolve({ receive: ios.answer });
+    },
+    addListener: (name: string, listener: (event: Record<string, string>) => void) => {
+      ios.listeners[name] = listener;
+      return Promise.resolve({ remove: () => Promise.resolve() });
+    },
+    register: () => {
+      calls.log.push('ios register');
+      if (ios.token) ios.listeners.registration?.({ value: ios.token });
+      else ios.listeners.registrationError?.({ error: 'no network' });
+      return Promise.resolve();
+    },
+  },
+}));
+
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     auth: {
@@ -47,7 +81,11 @@ vi.mock('@/lib/supabase', () => ({
         }),
     },
     rpc: async (name: string, args: Record<string, unknown>) => {
-      calls.log.push(`rpc ${name} ${String(args.sub_endpoint)}`);
+      const device =
+        name === 'push_subscribe_app'
+          ? `${String(args.app_token)} ${String(args.app_environment)}`
+          : String(args.sub_endpoint);
+      calls.log.push(`rpc ${name} ${device}`);
       await calls.beforeRpc?.();
       if (!calls.rpcError) calls.onFile = true;
       return { error: calls.rpcError };
@@ -276,9 +314,10 @@ describe('turning on and off', () => {
     vi.restoreAllMocks();
   });
 
-  describe('in the store app, which has no web push', () => {
+  describe('in the Android app, which has no sender yet', () => {
     beforeEach(() => {
       vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
     });
 
     it('never asks on opening, whatever the permission says', () => {
@@ -299,6 +338,99 @@ describe('turning on and off', () => {
       expect(await restoreDeviceNotifications('me')).toBe('off');
       await forgetThisDevice();
       expect(calls.log).toEqual([]);
+    });
+  });
+
+  describe('in the iPhone app, through Apple', () => {
+    const token = 'AB'.repeat(32);
+    const device = `apns:production:${'ab'.repeat(32)}`;
+
+    beforeEach(() => {
+      vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+      vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+      ios.permission = 'prompt';
+      ios.answer = 'granted';
+      ios.token = token;
+      calls.onFile = false;
+    });
+
+    it('is off until asked, and asks iOS for nothing yet', async () => {
+      expect(await readDeviceState('me')).toBe('off');
+      expect(calls.log).toEqual([]);
+    });
+
+    it('asks iOS, then hands the club the token', async () => {
+      expect(await turnOnNotifications('me')).toEqual({ ok: true, state: 'on' });
+      expect(calls.log).toEqual([
+        'ios prompt',
+        'ios register',
+        `rpc push_subscribe_app ${token} production`,
+      ]);
+      expect(await readDeviceState('me')).toBe('on');
+    });
+
+    it('says refused at a no, and hands over nothing', async () => {
+      ios.answer = 'denied';
+      expect(await turnOnNotifications('me')).toEqual({ ok: true, state: 'refused' });
+      expect(await readDeviceState('me')).toBe('refused');
+      expect(calls.log).toEqual(['ios prompt']);
+    });
+
+    it('says so when Apple gives no token', async () => {
+      ios.token = null;
+      // A fresh launch: the token is asked of iOS once per launch.
+      vi.resetModules();
+      const fresh = await import('@/lib/push/notifications');
+      const outcome = await fresh.turnOnNotifications('me');
+      expect(outcome.ok).toBe(false);
+      expect(calls.log.some((entry) => entry.startsWith('rpc'))).toBe(false);
+    });
+
+    it('turns off by deleting this iPhone’s row', async () => {
+      await turnOnNotifications('me');
+      calls.log = [];
+      expect(await turnOffNotifications('me')).toEqual({ ok: true, state: 'off' });
+      expect(calls.log).toEqual([`delete push_subscriptions endpoint=${device} member_id=me`]);
+    });
+
+    it('pauses at logout and hands the token over again after login, without asking', async () => {
+      await turnOnNotifications('me');
+      await forgetThisDevice();
+      expect(calls.onFile).toBe(false);
+      calls.log = [];
+      expect(await restoreDeviceNotifications('me')).toBe('on');
+      expect(calls.log).toEqual([`rpc push_subscribe_app ${token} production`]);
+    });
+
+    it('never opts in another account on this iPhone', async () => {
+      await turnOnNotifications('me');
+      await forgetThisDevice();
+      calls.memberId = 'somebody-else';
+      calls.log = [];
+      expect(await restoreDeviceNotifications('somebody-else')).toBe('off');
+      expect(calls.log).toEqual([]);
+    });
+
+    it('draws the row on Me', async () => {
+      const { result } = renderHook(() => useDeviceNotifications('me'));
+      await vi.waitFor(() => {
+        expect(result.current.state).toBe('off');
+      });
+    });
+
+    it('never asks on the app’s first launch on a phone, and asks on a later one', async () => {
+      expect(askOnOpening(await appOpeningFacts())).toBe(false);
+      expect(localStorage.getItem('thesciclub.appOpenedBefore')).not.toBeNull();
+      vi.resetModules();
+      const later = await import('@/lib/push/notifications');
+      const facts = await later.appOpeningFacts();
+      expect(facts).toEqual({
+        enabled: true,
+        standalone: true,
+        permission: 'default',
+        askedRecently: false,
+      });
+      expect(later.askOnOpening(facts)).toBe(true);
     });
   });
 
