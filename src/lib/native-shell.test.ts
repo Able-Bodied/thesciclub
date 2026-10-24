@@ -5,6 +5,7 @@ const native = vi.hoisted(() => ({
   back: null as ((event: { canGoBack: boolean }) => void) | null,
   resume: null as (() => void) | null,
   opened: null as ((event: { url: string }) => void) | null,
+  tapped: null as ((event: { notification: { data: unknown } }) => void) | null,
   calls: [] as string[],
   /** What the phone's Text Size reads as. */
   textSize: 1,
@@ -21,6 +22,14 @@ vi.mock('@capacitor/app', () => ({
     minimizeApp: () => {
       native.calls.push('minimize');
       return Promise.resolve();
+    },
+  },
+}));
+vi.mock('@capacitor/push-notifications', () => ({
+  PushNotifications: {
+    addListener: (name: string, listener: NonNullable<typeof native.tapped>) => {
+      if (name === 'pushNotificationActionPerformed') native.tapped = listener;
+      return Promise.resolve({ remove: () => Promise.resolve() });
     },
   },
 }));
@@ -61,8 +70,20 @@ vi.mock('@capacitor/core', async (importOriginal) => {
   };
 });
 
-const { backStep, barStyle, linkTarget, openedLinkPath, startNativeShell, systemTextScale } =
-  await import('@/lib/native-shell');
+/** A tap on a notification whose payload carries `url`. */
+function tapNotification(url: string) {
+  native.tapped?.({ notification: { data: { url } } });
+}
+
+const {
+  backStep,
+  barStyle,
+  linkTarget,
+  notificationPath,
+  openedLinkPath,
+  startNativeShell,
+  systemTextScale,
+} = await import('@/lib/native-shell');
 const { Capacitor } = await import('@capacitor/core');
 
 describe('where a link goes in the store app', () => {
@@ -108,6 +129,27 @@ describe('a link that opened the app', () => {
       openedLinkPath('com.googleusercontent.apps.123-abc:/oauth2redirect?code=x', app),
     ).toBeNull();
     expect(openedLinkPath('https://norcalsci.org/join', app)).toBeNull();
+  });
+});
+
+describe('a tapped notification', () => {
+  const app = 'capacitor://localhost';
+
+  it('opens its address inside the app', () => {
+    expect(notificationPath({ url: '/chat/t/1?message=2', aps: {} }, app)).toBe(
+      '/chat/t/1?message=2',
+    );
+    expect(notificationPath({ url: '/admin?tab=reports#blocks' }, app)).toBe(
+      '/admin?tab=reports#blocks',
+    );
+  });
+
+  it('opens nothing that is not the club’s', () => {
+    expect(notificationPath({ url: '//evil.example/x' }, app)).toBeNull();
+    expect(notificationPath({ url: 'https://evil.example/x' }, app)).toBeNull();
+    expect(notificationPath({ url: 'javascript:alert(1)' }, app)).toBeNull();
+    expect(notificationPath({}, app)).toBeNull();
+    expect(notificationPath(null, app)).toBeNull();
   });
 });
 
@@ -278,6 +320,20 @@ describe('the iPhone’s Text Size', () => {
     await vi.waitFor(() => {
       expect(scale()).toBe('1');
     });
+  });
+
+  it('follows a tapped notification on an iPhone, and listens for none on Android', () => {
+    const navigate = vi.fn();
+    native.tapped = null;
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('android');
+    stop = startNativeShell(navigate);
+    expect(native.tapped).toBeNull();
+    stop();
+
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+    stop = startNativeShell(navigate);
+    tapNotification('/events/7');
+    expect(navigate).toHaveBeenCalledWith('/events/7');
   });
 
   it('is left to Android, whose web view follows it already', async () => {

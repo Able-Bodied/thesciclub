@@ -1,4 +1,4 @@
-import type { ClubEvent } from '@/types/domain';
+import { type ClubEvent, stateCodeForName } from '@/types/domain';
 
 /**
  * Turning a feed's location field into the one line a card can show.
@@ -72,12 +72,35 @@ export function venueName(raw: string | null | undefined): string | null {
   return name.replace(UNIT, '').trim() || null;
 }
 
+const STREET = /^\d+[A-Za-z]?\s+[A-Za-z0-9]/;
+const UNIT_PART = /^(#|(suite|ste|unit|apt|bldg|building|room|rm|floor|fl)\b)/i;
+const CITY = /^[A-Za-z][A-Za-z.'-]*( [A-Za-z][A-Za-z.'-]*){0,3}$/;
+
+/**
+ * The city in "Venue, 1 Main St, Atlanta, GA 30342", for an event with no
+ * city on file: only after a street, before a state. Null otherwise.
+ */
+export function cityInLocation(raw: string | null | undefined): string | null {
+  const parts = (raw ?? '')
+    .split(',')
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+  if (/^(united states( of america)?|usa?)$/i.test(parts.at(-1) ?? '')) parts.pop();
+  if (/^\d{5}(-\d{4})?$/.test(parts.at(-1) ?? '')) parts.pop();
+  const state = (parts.pop() ?? '').replace(/\s+\d{5}(-\d{4})?$/, '');
+  if (!/^[A-Z]{2}$/.test(state) && !stateCodeForName(state)) return null;
+  const city = parts.pop() ?? '';
+  while (parts.length > 0 && UNIT_PART.test(parts.at(-1) ?? '')) parts.pop();
+  return CITY.test(city) && !UNIT_PART.test(city) && STREET.test(parts.at(-1) ?? '') ? city : null;
+}
+
 /** What a card or a detail hero prints for "where", or null for nothing. */
 export function placeLine(
   // The public page's event carries its format as plain text, so any string.
   event: Pick<ClubEvent, 'location' | 'city'> & { format: string | null },
 ): string | null {
   const head = venueName(event.location) ?? tidyLocation(event.location);
+  const city = event.city?.trim() ? event.city : cityInLocation(event.location);
 
   if (!head) {
     // An online event has no venue and should not be made to look like it is
@@ -85,14 +108,14 @@ export function placeLine(
     // else with an empty field is a real gap, and hybrid belongs here too: it
     // has a physical leg and the feed did not say where.
     if (event.format === 'online') return null;
-    if (event.city) return event.city;
+    if (city) return city;
     return 'Location on the organizer’s page';
   }
 
   // The city is already inside most of these addresses. Appending the geocoded
   // one as well printed it twice, a line apart, on every card.
-  if (event.city && !head.toLowerCase().includes(event.city.toLowerCase())) {
-    return `${head} · ${event.city}`;
+  if (city && !head.toLowerCase().includes(city.toLowerCase())) {
+    return `${head}, ${city}`;
   }
   return head;
 }

@@ -1,6 +1,7 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import {
+  isAppPush,
   NOTIFICATION_KINDS,
   type NotificationState,
   useDeviceNotifications,
@@ -16,8 +17,9 @@ import { cn } from '@/lib/utils';
  *
  * Every state says which it is in and what, if anything, can be done — the
  * lib's header has the five and why iOS needs two kinds of "cannot". Not drawn
- * at all until the club can send (`VITE_VAPID_PUBLIC_KEY`), nor while the
+ * at all until the club can send (`notificationsOffered()`), nor while the
  * state is being read, so it never shows a button that is about to change.
+ * In the iPhone app a refusal has a way to the club's page in Settings.
  *
  * The sentence is a polite live region, so pressing the button is answered
  * aloud: the words change from "Off on this device." to "On for this device."
@@ -34,6 +36,9 @@ const SENTENCES: Record<NotificationState, string> = {
   refused:
     'This device has said no to the club’s notifications, and it will not ask again. To change it, open Settings, then Notifications, and find the club.',
 };
+
+const APP_REFUSED =
+  'This iPhone has said no to the club’s notifications, and it will not ask again. To change it, open Settings, then Notifications, and turn on Allow Notifications.';
 
 /**
  * Which kinds, once notifications are on. Its own component so the hook runs
@@ -168,8 +173,19 @@ export function NotificationSettings({
       <div className="rounded-[17px] border border-line bg-paper p-3.5">
         {state ? (
           <p aria-live="polite" className="text-[0.875rem] text-ink2 leading-[1.45]">
-            {SENTENCES[state]}
+            {state === 'refused' && isAppPush() ? APP_REFUSED : SENTENCES[state]}
           </p>
+        ) : null}
+
+        {state === 'refused' && isAppPush() ? (
+          // iOS opens the club's own page in Settings (Capacitor hands the
+          // address to the system).
+          <a
+            href="app-settings:"
+            className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint"
+          >
+            Open Settings
+          </a>
         ) : null}
 
         {state === 'off' || state === 'on' ? (

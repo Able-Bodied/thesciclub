@@ -1,8 +1,8 @@
 -- ============================================================================
--- Events from a calendar invitation: invite events@thesciclub.org
+-- Events from a calendar invitation: invite events@thesciclub.com
 -- ============================================================================
 -- The owner, 2026-10-22. An organization's representative adds
--- events@thesciclub.org as a guest to an event in Google Calendar, Outlook or
+-- events@thesciclub.com as a guest to an event in Google Calendar, Outlook or
 -- Apple Calendar, and the event appears in the club. The invitation's email
 -- reaches the `calendar-inbound` function (through Resend), which reads its
 -- calendar file and calls calendar_invite_receive below.
@@ -15,7 +15,7 @@
 -- discard it in the app (the owner's choice). From anybody else, nothing.
 --
 -- Which organization: the one the sender speaks for; with several, the one
--- named in the address, events+ncs@thesciclub.org by its short code; without
+-- named in the address, events+ncs@thesciclub.com by its short code; without
 -- that, held for them to choose. An administrator who speaks for none adds
 -- events hosted by the club itself.
 --

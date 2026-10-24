@@ -98,6 +98,45 @@ describe('the public event page', () => {
     ]);
   });
 
+  it('says "Join online" for a meeting link, to anybody with the page', async () => {
+    api.event = { ...EVENT, format: 'online', url: 'https://us02web.zoom.us/j/123' };
+    renderAt('/e/picnic');
+    const join = await screen.findByRole('link', {
+      name: 'Join online, opens Zoom',
+    });
+    expect(join).toHaveAttribute('href', 'https://us02web.zoom.us/j/123');
+    expect(screen.queryByText('Details on their site')).toBeNull();
+  });
+
+  it('offers Join online from the description beside Details on their site', async () => {
+    api.event = {
+      ...EVENT,
+      format: 'online',
+      url: 'https://norcalsci.org/happy-hour',
+      descriptionHtml:
+        '<p>To join this Zoom meeting, <a href="https://us02web.zoom.us/j/86004299187">CLICK HERE</a></p>',
+    };
+    renderAt('/e/picnic');
+    expect(await screen.findByRole('link', { name: 'Join online, opens Zoom' })).toHaveAttribute(
+      'href',
+      'https://us02web.zoom.us/j/86004299187',
+    );
+    expect(screen.getByRole('link', { name: 'Details on their site' })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/happy-hour',
+    );
+  });
+
+  it('keeps "Details on their site" for any other link', async () => {
+    api.event = { ...EVENT, url: 'https://norcalsci.org/happy-hour' };
+    renderAt('/e/picnic');
+    expect(await screen.findByRole('link', { name: 'Details on their site' })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/happy-hour',
+    );
+    expect(screen.queryByText('Join online')).toBeNull();
+  });
+
   it('opens the form from Going', async () => {
     renderAt('/e/picnic');
     await userEvent.click(await screen.findByRole('button', { name: 'Going' }));
@@ -148,7 +187,11 @@ describe('registering', () => {
       email: 'maria@example.com',
       phone: '(408) 555-0112',
     });
-    expect(api.kept[0]).toMatchObject({ eventId: 'picnic', email: 'maria@example.com' });
+    expect(api.kept[0]).toMatchObject({
+      eventId: 'picnic',
+      email: 'maria@example.com',
+      organizer: 'NorCal SCI',
+    });
   });
 
   it('stays on the form and says why when it is refused', async () => {

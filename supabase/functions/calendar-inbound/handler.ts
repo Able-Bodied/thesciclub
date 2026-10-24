@@ -6,20 +6,32 @@ import { type InviteEvent, readInvite } from './ics.ts';
  * 20261022220000_calendar_invites.sql for the rules.
  */
 
-/** The address representatives invite, as Alfred set it up in Resend (2026-10-23). */
-export const INVITE_ADDRESS = 'invites@events.thesciclub.com';
-
 /**
- * invites@events.thesciclub.com, or invites+<short code>@ to name the
- * organization. events@ (or events+<short code>@) at thesciclub.org or .com,
- * the address first planned, is still taken, should mail ever reach it.
+ * What representatives invite: received by Resend directly, so Zoho's spam
+ * folder never sees it (the owner, 2026-10-23).
+ */
+const INVITES = 'invites@events.thesciclub.com';
+/**
+ * invites@events. or the older events@ (a Zoho alias, forwarded), either with
+ * +<short code>.
  */
 const ADDRESS =
-  /^(?:invites(?:\+([a-z0-9-]{1,20}))?@events\.thesciclub\.com|events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.(?:org|com))$/i;
+  /^(?:invites(?:\+([a-z0-9-]{1,20}))?@events\.thesciclub\.com|events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.com)$/i;
+/** Where Zoho forwards events@, so Resend's envelope recipient; never the one intended. */
+export const INBOX = 'inbox@events.thesciclub.com';
+/**
+ * The club's own mail and the forwarder's: never a representative. Zoho signs
+ * what it forwards as thesciclub.com, so DMARC passes even for a forged From.
+ */
+const NEVER_A_SENDER =
+  /(^|\.)(thesciclub\.com|zoho(mail)?\.(com|eu|in|jp|sa|ca|uk|com\.au|com\.cn))$/i;
 
 export interface ReceivedEmail {
   from: string;
   to: string[];
+  cc?: string[] | null;
+  reply_to?: string[] | null;
+  headers?: Record<string, string | string[] | null> | null;
   received_for?: string[] | null;
   subject?: string | null;
   authentication?: { spf?: string; dkim?: string; dmarc?: string } | null;
@@ -121,13 +133,64 @@ export function bareAddress(from: string): string {
   return (angled?.[1] ?? from).trim().toLowerCase();
 }
 
-/** Which of the club's event addresses it was sent to, and its short code. */
-export function eventsAddress(email: ReceivedEmail): { tag: string | null } | null {
-  for (const address of [...email.to, ...(email.received_for ?? [])]) {
-    const match = ADDRESS.exec(bareAddress(address));
-    if (match) return { tag: match[1] ?? match[2] ?? null };
+/** A header's values, whatever case Resend keys it by. */
+export function header(email: ReceivedEmail, name: string): string[] {
+  const values: string[] = [];
+  for (const [key, value] of Object.entries(email.headers ?? {})) {
+    if (key.toLowerCase() !== name || value == null) continue;
+    values.push(...(Array.isArray(value) ? value : [value]));
   }
-  return null;
+  return values;
+}
+
+/** Every address in address lists, display names and quoted parts left out. */
+export function addressesIn(values: string[]): string[] {
+  return values.flatMap((value) =>
+    (
+      value.replace(/"(?:[^"\\]|\\.)*"/g, ' ').match(/[^\s<>,;:"()[\]]+@[^\s<>,;:"()[\]]+/g) ?? []
+    ).map((address) => address.toLowerCase()),
+  );
+}
+
+/**
+ * Who sent it, and whether Resend's DMARC verdict is about them. DMARC judges
+ * the From domain, so only an original From is verified; when a forwarder
+ * rewrote From, the original (X-Original-From, then Reply-To) is unverified.
+ */
+export function senderOf(email: ReceivedEmail): { address: string; verified: boolean } | null {
+  const usable = (address: string) =>
+    address.includes('@') && !NEVER_A_SENDER.test(address.split('@').pop() ?? '');
+  const from = bareAddress(email.from);
+  if (usable(from)) return { address: from, verified: email.authentication?.dmarc === 'pass' };
+  const original = addressesIn([
+    ...header(email, 'x-original-from'),
+    ...(email.reply_to ?? []),
+    ...header(email, 'reply-to'),
+  ]).find(usable);
+  return original ? { address: original, verified: false } : null;
+}
+
+/**
+ * Which invitation address it was sent to, and its short code. After Zoho's
+ * hop the envelope says INBOX, so the headers say whom it was meant for.
+ */
+export function eventsAddress(email: ReceivedEmail): { tag: string | null } | null {
+  const addresses = addressesIn([
+    ...email.to,
+    ...(email.cc ?? []),
+    ...['to', 'cc', 'delivered-to', 'x-original-to', 'x-forwarded-to'].flatMap((name) =>
+      header(email, name),
+    ),
+    ...(email.received_for ?? []),
+  ]);
+  let found: { tag: string | null } | null = null;
+  for (const address of addresses) {
+    const match = ADDRESS.exec(address);
+    const tag = match?.[1] ?? match?.[2];
+    if (tag) return { tag };
+    if (match) found = { tag: null };
+  }
+  return found;
 }
 
 function decodeQuotedPrintable(text: string): string {
@@ -235,7 +298,7 @@ export function repliesFor(
           .map((address) => ({
             to: address,
             subject: `A calendar invitation is waiting: ${title}`,
-            text: `${sender} invited ${INVITE_ADDRESS} to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
+            text: `${sender} invited ${INVITES} to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
           })),
       ];
     }
@@ -274,15 +337,16 @@ export async function handle(
   const email = await deps.fetchEmail(emailId);
   if (!email) return { status: 502, outcome: 'could not read the email' };
   const to = eventsAddress(email);
-  if (!to) return { status: 200, outcome: 'not for events@' };
+  if (!to) return { status: 200, outcome: 'not for invites@ or events@' };
+  const from = senderOf(email);
+  if (!from) return { status: 200, outcome: 'from the club or its forwarder' };
 
   const text = await calendarText(deps, emailId, email);
   const invite = text ? readInvite(text) : null;
   if (!invite) return { status: 200, outcome: 'no invitation in it' };
 
-  const sender = bareAddress(email.from);
-  const verified = email.authentication?.dmarc === 'pass';
-  const result = await deps.receive(sender, verified, to.tag, invite);
+  const sender = from.address;
+  const result = await deps.receive(sender, from.verified, to.tag, invite);
   for (const mail of repliesFor(result, invite, sender, deps.site)) {
     await deps.send(mail);
   }

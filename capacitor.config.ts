@@ -35,6 +35,11 @@ const config: CapacitorConfig = {
       providers: { apple: true, google: true, facebook: false, twitter: false },
       logLevel: 1,
     },
+    // A notification that arrives while the app is open still shows, as the
+    // website's do (src/sw.ts). No badge: the app cannot clear one yet.
+    PushNotifications: {
+      presentationOptions: ['banner', 'list', 'sound'],
+    },
   },
 };
 

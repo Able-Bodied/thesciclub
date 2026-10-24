@@ -25,7 +25,8 @@ the club emails you a link, before you can join. The app itself cannot let you i
 first two true. The one exception is an administrator's: for a few weeks of events, joining can be
 opened to anybody, so somebody met there joins on the spot, and closed again afterwards (Admin →
 Invites, 2026-10-14). A blocked address stays out either way, and whoever joined while it was open
-stays a member. A closed room of two hundred people who have all been through it is worth more
+stays a member. Registering for a public event is not an invite (the owner, 2026-10-22;
+20261022230000). A closed room of two hundred people who have all been through it is worth more
 than an open one with twenty thousand registrations and fifty monthly visitors.
 
 ## Why closed, specifically
@@ -215,9 +216,9 @@ makes **public** has a page at `/e/<id>` that anyone with the link can open,
 with what an organization would put on its own calendar and nothing that says
 who is in the club: no counts, no attendees, not the host's name. Anybody can
 register there with a name, an email and a phone; the event's organizers and
-administrators see that, and the welcome page that follows asks everybody the
-same thing, sign in or join, so it never says whether an address is a member's.
-A registration also lets its address join while the club is invite-only.
+administrators see that, and the welcome page that follows says the same to
+everybody, so it never says whether an address is a member's. A registration
+never lets anybody join: that still takes an invite.
 Every event is public unless its organizer says otherwise, the imported ones
 too (20261022200000). An event can instead be for the whole club, for the hosting organization's
 followers, or for chosen group chats, and nobody outside its audience sees it

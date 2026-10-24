@@ -50,9 +50,11 @@ export const LIKED_LENGTH = 80;
 
 /** One row of `push_owed`. */
 export interface Owed {
+  /** A browser's push service URL, or the store app's `apns:<environment>:<token>`. */
   endpoint: string;
-  p256dh: string;
-  auth: string;
+  /** A browser's keys; null for the app. */
+  p256dh: string | null;
+  auth: string | null;
   kind: string;
   /** Who did it: the author, the adder, the member who joined. */
   actor_name: string | null;

@@ -1,22 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { youtubeEmbedUrl } from '@/lib/chat/link-preview';
+import * as edge from '../netlify/edge-functions/youtube-embed';
 import NETLIFY from '../netlify.toml?raw';
 import PAGE from '../public/embed/youtube.html?raw';
 
 /**
- * The store app's YouTube player, public/embed/youtube.html, and its headers
- * in netlify.toml. YouTube refuses a frame on capacitor://localhost, so the
- * app frames this page on thesciclub.com instead.
+ * The store app's YouTube player, public/embed/youtube.html, and the headers
+ * its edge function sets. YouTube refuses a frame on capacitor://localhost,
+ * so the app frames this page on thesciclub.com instead.
  */
 
 const SCRIPT = /<script>([\s\S]*?)<\/script>/.exec(PAGE)?.[1] ?? '';
 const STYLE = /<style>([\s\S]*?)<\/style>/.exec(PAGE)?.[1] ?? '';
 
-const blocks = NETLIFY.split('[[headers]]').slice(1);
-const block = blocks.find((text) => text.includes('for = "/embed/youtube.html"')) ?? '';
-
 function header(name: string): string | undefined {
-  return new RegExp(`^\\s*${name} = "([^"]+)"$`, 'm').exec(block)?.[1];
+  return edge.EMBED_HEADERS[name];
 }
 
 function directive(name: string): string[] {
@@ -82,6 +80,12 @@ describe('the YouTube page', () => {
     expect(refused).toHaveTextContent("This video can't be played here.");
   });
 
+  it('stays dark until the player paints, with the message in white', () => {
+    expect(STYLE).toMatch(/html,\s*body \{[^}]*background: #000;/);
+    expect(STYLE).toMatch(/iframe \{[^}]*background: #000;/);
+    expect(STYLE).toMatch(/p \{[^}]*color: #fff;/);
+  });
+
   it('is not indexed', () => {
     expect(PAGE).toContain('<meta name="robots" content="noindex, nofollow" />');
     expect(PAGE).toContain('<html lang="en">');
@@ -89,10 +93,34 @@ describe('the YouTube page', () => {
 });
 
 describe("the YouTube page's headers", () => {
-  it('come before the site-wide block, as Netlify keeps the first match', () => {
-    // Seen live 2026-10-23: placed after "/*", the page got frame-ancestors 'none'.
-    expect(blocks[0]).toBe(block);
-    expect(blocks[1]).toContain('for = "/*"');
+  it('are set by an edge function for exactly this page', () => {
+    const declared = NETLIFY.split('[[edge_functions]]').slice(1);
+    expect(declared).toHaveLength(1);
+    expect(declared[0]).toMatch(/^\s*path = "\/embed\/youtube\.html"$/m);
+    expect(declared[0]).toMatch(/^\s*function = "youtube-embed"$/m);
+    // An inline config would add paths beside netlify.toml's.
+    expect('config' in edge).toBe(false);
+  });
+
+  it("replace the site-wide headers on the page's response", async () => {
+    const siteWide = new Response('<!doctype html>', {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html; charset=UTF-8',
+        'Content-Security-Policy': "default-src 'self'; frame-ancestors 'none'",
+        'X-Frame-Options': 'DENY',
+      },
+    });
+    const response = await edge.default(new Request('https://thesciclub.com/embed/youtube.html'), {
+      next: () => Promise.resolve(siteWide),
+    });
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe('<!doctype html>');
+    expect(response.headers.get('Content-Type')).toBe('text/html; charset=UTF-8');
+    // Exactly the page's value: an appended one would read "a, b".
+    for (const [name, value] of Object.entries(edge.EMBED_HEADERS)) {
+      expect(response.headers.get(name), name).toBe(value);
+    }
   });
 
   it("allow the page's inline script and style by hash, and nothing else", async () => {
@@ -109,11 +137,12 @@ describe("the YouTube page's headers", () => {
 
   it('let only the iPhone app, the Android app and the club frame it', () => {
     expect(directive('frame-ancestors')).toEqual([
+      'capacitor:',
       'capacitor://localhost',
       'https://localhost',
       'https://thesciclub.com',
     ]);
-    expect(header('X-Frame-Options')).not.toBe('DENY');
+    expect(header('X-Frame-Options')).toBe('SAMEORIGIN');
   });
 
   it('send the club as the referrer, and keep the page out of search', () => {

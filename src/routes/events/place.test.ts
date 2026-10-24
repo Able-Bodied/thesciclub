@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapsUrl, placeLine, tidyLocation, venueName } from '@/routes/events/place';
+import { cityInLocation, mapsUrl, placeLine, tidyLocation, venueName } from '@/routes/events/place';
 
 /**
  * Every `location` string in here is a real one from the ingested feeds, not an
@@ -63,7 +63,7 @@ describe('placeLine', () => {
         city: 'Oakland',
         format: 'in_person',
       }),
-    ).toBe('Archer Bicycle · Oakland');
+    ).toBe('Archer Bicycle, Oakland');
   });
 
   it('does not print the city twice', () => {
@@ -106,8 +106,41 @@ describe('placeLine', () => {
     );
   });
 
+  it('reads the city from the address when none is on file', () => {
+    // BlazeSports' Wheelchair Basketball showed only the church (2026-10-23).
+    expect(
+      placeLine({
+        location:
+          'St. James United Methodist Church, 4400 Peachtree Dunwoody Rd NE, Atlanta, GA 30342',
+        city: null,
+        format: 'in_person',
+      }),
+    ).toBe('St. James United Methodist Church, Atlanta');
+  });
+
   it('falls back to the city when that is all there is', () => {
     expect(placeLine({ location: '', city: 'Berkeley', format: 'in_person' })).toBe('Berkeley');
+  });
+});
+
+describe('cityInLocation', () => {
+  it('takes the city after a street, past a suite, before a state', () => {
+    expect(cityInLocation('Vista Yoga, 2836 Lavista Rd, Unit D, Decatur, GA 30033')).toBe(
+      'Decatur',
+    );
+    expect(
+      cityInLocation('Mill Springs Academy, 13660 New Providence Road, Alpharetta, Georgia'),
+    ).toBe('Alpharetta');
+    expect(cityInLocation('955 Harbor Island Dr, San Diego, CA 92101, USA')).toBe('San Diego');
+  });
+
+  it('is null when no street comes before it', () => {
+    expect(cityInLocation('St. James United Methodist Church')).toBeNull();
+    expect(cityInLocation('CSUS, The Welcome Center, Sacramento, CA')).toBeNull();
+    expect(
+      cityInLocation("Gino's Pizza 1761 Monterey Street San Luis Obispo, CA, 93401 United States"),
+    ).toBeNull();
+    expect(cityInLocation('')).toBeNull();
   });
 });
 

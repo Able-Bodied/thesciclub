@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Native Sign in with Apple, and the links that open the app
-  (public/.well-known/apple-app-site-association). The App Store profile must
-  carry both: ios/App/fastlane/Fastfile checks it, and makes a new profile if
-  it does not.
+  Native Sign in with Apple, the links that open the app
+  (public/.well-known/apple-app-site-association) and notifications. The App
+  Store profile must carry all three: ios/App/fastlane/Fastfile checks it, and
+  makes a new profile if it does not. APS_ENVIRONMENT is production for
+  Release (TestFlight, the App Store) and development for Debug (project.pbxproj).
 -->
 <plist version="1.0">
 <dict>
@@ -12,6 +13,8 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<key>aps-environment</key>
+	<string>$(APS_ENVIRONMENT)</string>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:thesciclub.com</string>

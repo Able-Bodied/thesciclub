@@ -34,6 +34,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { placeInOwnWords } from './address.js';
 import { placeMemberCities } from './city-places.js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 import { ActiveNetEventsScraper } from './scrapers/activenet-events.js';
@@ -339,6 +340,16 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
     usable.push(event);
   }
 
+  // A venue-only location takes the address its description gives, and a
+  // city the map cannot find is read from the event's own words.
+  const ownWords = new Map();
+  for (const event of usable) {
+    const own = placeInOwnWords(event);
+    if (!own) continue;
+    event.location = own.location;
+    ownWords.set(event, own);
+  }
+
   await geocodeEvents(usable, priorByExternalId);
 
   // An administrator's changes are put back over the scrape, field by field
@@ -363,7 +374,10 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
         // In person only: from the place's own words, else the map lookup's
         // answer (20261021040000).
         state: event.location
-          ? (stateOfPlace(event.location) ?? event.geocoded_state ?? null)
+          ? (stateOfPlace(event.location) ??
+            ownWords.get(event)?.state ??
+            event.geocoded_state ??
+            null)
           : null,
         // The feed's own name for the host, then a club organization if that name
         // matches one. Both are kept: the name is what the source said, and the id
@@ -372,7 +386,7 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
         organization_id:
           matchOrganization(event.host_name, organizations) ?? feed.organization_id ?? null,
         event_format: classifyFormat(event),
-        city: event.city ?? null,
+        city: event.city ?? ownWords.get(event)?.city ?? null,
         postal_code: event.postal_code ?? null,
         latitude: event.latitude ?? null,
         longitude: event.longitude ?? null,
@@ -462,6 +476,20 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
   return { scraped: scraped.length, written: written.length, changed };
 }
 
+/**
+ * Runs a feed, and once more after a pause if it fails: a partner's site that
+ * does not answer for a moment should not fail the night's import.
+ */
+export async function withOneRetry(run, { pauseMs = 30_000, onRetry = () => {} } = {}) {
+  try {
+    return await run();
+  } catch (error) {
+    onRetry(error);
+    await new Promise((resolve) => setTimeout(resolve, pauseMs));
+    return run();
+  }
+}
+
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
   const feedArg = process.argv.find((arg) => arg.startsWith('--feed='));
@@ -482,7 +510,10 @@ async function main() {
   let failed = 0;
   for (const feed of feeds) {
     try {
-      await ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun });
+      await withOneRetry(
+        () => ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun }),
+        { onRetry: (error) => log(`  failed (${error.message}); trying once more in 30 seconds`) },
+      );
     } catch (error) {
       failed++;
       // One broken feed must not stop the other. A site that changed its markup

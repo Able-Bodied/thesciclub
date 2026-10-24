@@ -107,6 +107,9 @@ describe('a YouTube video', () => {
       );
       expect(player).toHaveAttribute('title', 'YouTube video: A song');
       expect(player).toHaveAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      // Dark, not a white flash, before the page paints.
+      expect(player).toHaveClass('bg-black');
+      expect(player?.parentElement).toHaveClass('bg-black', 'aspect-video');
     } finally {
       native.mockRestore();
     }
@@ -121,7 +124,7 @@ describe('a YouTube video', () => {
       expect(open).toHaveAttribute('href', video.url);
       expect(open).toHaveAttribute('target', '_blank');
       expect(open).toHaveClass('min-h-[44px]');
-      expect(open.previousElementSibling).toBe(container.querySelector('iframe'));
+      expect(open.previousElementSibling).toBe(container.querySelector('iframe')?.parentElement);
     } finally {
       native.mockRestore();
     }

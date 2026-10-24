@@ -1,13 +1,15 @@
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { Capacitor, type PluginListenerHandle, SystemBars, SystemBarsStyle } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { TextZoom } from '@capacitor/text-zoom';
 import { SITE_ORIGIN } from '@/lib/site-origin';
 
 /**
  * The store app's native pieces: the splash, the status bar, Android's back
- * button, links to other sites and links that open the app. Loaded only in the app (NativeShell), so
+ * button, links to other sites, links that open the app and taps on its
+ * notifications. Loaded only in the app (NativeShell), so
  * the website never downloads the plugins.
  */
 
@@ -42,6 +44,22 @@ export function linkTarget(href: string, appOrigin: string): LinkTarget {
 export function openedLinkPath(href: string, appOrigin: string): string | null {
   const target = linkTarget(href, appOrigin);
   return target && 'inside' in target ? target.inside : null;
+}
+
+/**
+ * Where a tapped notification goes: its `url` (push-notify's apns.ts), routed
+ * as a link that opened the app would be. Anything not the club's is ignored.
+ */
+export function notificationPath(data: unknown, appOrigin: string): string | null {
+  const url = typeof data === 'object' && data !== null ? (data as { url?: unknown }).url : null;
+  if (typeof url !== 'string' || url === '') return null;
+  let href: string;
+  try {
+    href = new URL(url, SITE_ORIGIN).href;
+  } catch {
+    return null;
+  }
+  return openedLinkPath(href, appOrigin);
 }
 
 /** Android's back: closes an open sheet first, then goes back, then leaves. */
@@ -107,6 +125,17 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
       if (path) navigate(path);
     }),
   );
+
+  // A tapped notification, cold or warm; kept by the plugin until this
+  // listener takes it. iPhone only: Android has no sender yet.
+  if (Capacitor.getPlatform() === 'ios') {
+    listeners.push(
+      PushNotifications.addListener('pushNotificationActionPerformed', ({ notification }) => {
+        const path = notificationPath(notification.data, window.location.origin);
+        if (path) navigate(path);
+      }),
+    );
+  }
 
   function onClick(event: MouseEvent) {
     if (event.defaultPrevented || event.button !== 0) return;

@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-22. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-23. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
 definition and wins over this file. Older handoffs, by `git show
 <sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
@@ -23,7 +23,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Alfredx48/TheSciClub (remote `mine`) at once, fetching from Able-Bodied
   only: pull before pushing, or the two diverge.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261022090000` is live (2026-10-21), blocking included. Edge functions:
+  `20261023010000` is live (2026-10-23). Edge functions:
   `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
   too), `link-preview`, `send-invite`, `sign-in-reminder`,
   `home-screen-handoff` (`verify_jwt` off). Written, not deployed:
@@ -79,7 +79,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   see Release to TestFlight). `isNative()`
   (`lib/standalone.ts`) keeps out of the app everything browser-only:
   worker and reload, web push, install nudge and steps, the Home Screen
-  hand-off, passkeys. Apple and Google sign in natively
+  hand-off, passkeys. Notifications on an iPhone come through APNs instead
+  (`lib/push/app-push.ts`; Open, Native push). Apple and Google sign in natively
   (`lib/native-sign-in.ts`, `@capgo/capacitor-social-login` with Facebook's
   SDK left out: `scripts/check-native-build.mjs`), iPhone only. Links made
   for others use `siteOrigin()`; the rest of the shell (splash, status bar,
@@ -92,24 +93,33 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 3,448 tests in 247 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,618 tests in 254 files on 2026-10-23; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
-- **Events from calendar invitations** (the owner, 2026-10-22): invite
+- **Events from calendar invitations** (live 2026-10-23): invite
   `invites@events.thesciclub.com` (or `invites+<short code>@`) to an event in
   Google, Outlook or Apple Calendar and it is added, changed and cancelled in
-  the club. `20261022220000` (`calendar_invite_receive`, held invitations,
-  `/events/invites`) and the `calendar-inbound` function. A representative's
-  invitation is added when Resend's DMARC verdict passes, held for approval
-  otherwise; anybody else's is ignored, with no reply. Alfred set up Resend
-  receiving on `events.thesciclub.com` (2026-10-23) rather than the planned
-  `events@thesciclub.org`, which the function still accepts. Live: the
-  migration, the function, the webhook and its secret. Still to do: deploy the
-  function again for the new address, send a test invitation, and release
-  `/events/invites` and the event form's hint.
-  The invitation's other guests are never kept: only its own fields.
+  the club (`20261022220000`, `/events/invites`, the `calendar-inbound`
+  function). The club does not own thesciclub.org.
+  - **Route**: `events.thesciclub.com`'s MX is Resend, so `invites@` reaches
+    Resend directly, never Zoho's spam folder (the owner, 2026-10-23). The
+    older `events@thesciclub.com` still works as a backup: a Zoho alias whose
+    filter forwards it to `inbox@events.thesciclub.com`, but Zoho filters skip
+    spam, so it can stall there. Resend posts `email.received` to the function
+    (webhook set; deployed `--no-verify-jwt`). Whom it was meant for comes from
+    the headers; anything not for `invites@`/`events@` gets 200 and nothing else.
+  - **Trust**: original From + Resend's DMARC pass: added. A representative's
+    invitation otherwise is held (DMARC fail/none, or a From rewritten by
+    Zoho, whose original is never verified). A From at thesciclub.com (any
+    subdomain) or Zoho is never a sender. Anybody else: ignored, no reply.
+    The invitation's other guests are never kept.
+  - **Place and link**: meeting links go to the link, the place keeps the
+    address, a US address gives city and state (`place.ts`, `20261023000000`).
+  - **Not live**: `invites@` needs `pnpm exec supabase functions deploy
+    calendar-inbound --no-verify-jwt` and the app released; then send one
+    test invitation to it.
 
 - **Ask anonymously, put off** (the owner, 2026-10-22: later, after smaller
   changes). A post's `author_id` is readable by every member (table-level
@@ -136,6 +146,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   event (a number, never a title); a member with an event cover's path can
   read it. The PGlite script in the session that built it covered 31 cases;
   worth a `supabase/tests/event-audiences.sql`.
+- **A registration is not an invite, not live** (the owner, 2026-10-22: "a
+  security hole"). `20261022190000` let any address registered for a public
+  event sign up and join; `20261022230000` puts `i_am_invited` and the
+  sign-up hook back (probe `a-registration-is-not-an-invite.sql`). Push it
+  alone, then cherry-pick its welcome-page commit onto `main`, then check
+  who joined that way while it was live (read-only query: the message of the
+  commit that added this item).
 
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
@@ -205,10 +222,43 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   no-ID-token fallback` means Apple's refresh answer had no ID token (the
   line names its fields); a web keep without it means Apple sends one, so
   delete the fallback (`onlySub` in `apple-token/handler.ts`) and its test.
-- **Store app, still to build**: native push; Android (Google needs a client
+- **Native push in the iPhone app, not live** (2026-10-23). The device token
+  is a `push_subscriptions` row, `apns:<production|sandbox>:<hex>`
+  (`push_subscribe_app`, `20261023030000`), so blocks, mutes, switches,
+  `push_forget` and deletion cover it; `push-notify` sends it to Apple
+  (`apns.ts`; 410 or BadDeviceToken forgets it). Asked as the Home Screen app
+  asks, never on the app's first launch; Me has the row, and Open Settings
+  after a refusal; a tap routes like a link that opened the app. Before the
+  next TestFlight tag (`ios-v1.0.3`; 1.0.2 is out), in order:
+  1. `pnpm exec supabase db push --linked --dry-run` lists `20261023030000`
+     (with whatever else is unreleased); then the push.
+  2. Secrets, from the APNs .p8 on the owner's own machine (it goes straight
+     from the file into the command):
+     `pnpm exec supabase secrets set APNS_KEY_ID=W8K8K2VX3C
+     APNS_TEAM_ID=3RZ3A2CJ9N APNS_BUNDLE_ID=com.thesciclub.app
+     APNS_KEY_P8="$(base64 < AuthKey_W8K8K2VX3C.p8 | tr -d '\n')"`. With
+     no file, only the password manager's base64: `read -rs APNS_KEY_P8`,
+     paste, Enter, then `APNS_KEY_P8="$APNS_KEY_P8"` in the same command.
+  3. `pnpm exec supabase functions deploy push-notify --no-verify-jwt`.
+  4. Nothing in the Apple portal while Push Notifications stays on for
+     `com.thesciclub.app`: `release_build` makes a new App Store profile when
+     the old one lacks `aps-environment`. If the run says the App ID does not
+     have it, turn Push Notifications on there and run again.
+  First device: turn on in Me → Settings, have another account message you,
+  read the lock screen, tap it cold and warm. push-notify's log: `Apple said
+  403 InvalidProviderToken` is a wrong key, key ID or team; every token
+  `BadDeviceToken` is the wrong environment; `skipped` is missing secrets.
+  Known and accepted: anybody once signed in on a phone can read its token and
+  take it over, as with web push; APNs payloads are readable by Apple, unlike
+  web push's (a sentence in Privacy, for the owner to word). No badge: the app
+  cannot clear one yet.
+- **Store app, still to build**: Android (Google needs a client
   made with the Play signing SHA-1, Apple there is a web flow, and App
   Links need `public/.well-known/assetlinks.json` with the Play signing
-  SHA-256); the demo reviewers run live (`scripts/demo-reviewers.mjs
+  SHA-256; push needs a Firebase project, its `google-services.json`, an
+  `fcm:<token>` endpoint and an FCM sender in `push-notify`'s `deliver`, and
+  `isAppPush()` widened; `android/` is not synced with the push plugin yet);
+  the demo reviewers run live (`scripts/demo-reviewers.mjs
   --live`). Never run on a device: Text Size, the CSP under WebKit,
   Nominatim with the app's User-Agent, native sign-in, Universal Links.
 - **Home Screen pairing, to retire** once members have the store app (owner's
@@ -332,7 +382,9 @@ All live. Migration headers and the files named say how and why.
   one: `link_preview_request('chat_posts', <id>)`.
 - **Notifications**: a `notifications` row per member before any push (kept
   30 days). A tap reaches a running or starting app through the worker
-  (`NAVIGATE`, `FollowNotification`).
+  (`NAVIGATE`, `FollowNotification`); in the store app, through
+  `pushNotificationActionPerformed` (`lib/native-shell.ts`). Probe:
+  `push-app-tokens.sql`.
 - **Speed** (2026-10-22; live once pushed, see Open): Home, Peers, Chat,
   Events and Me stay mounted once opened (`KeptTabs` in `App.tsx`, React's
   `<Activity>`): hidden, a tab keeps its state and scroll and its effects
@@ -347,7 +399,13 @@ All live. Migration headers and the files named say how and why.
   against a throwaway stack behind a 0.3s HTTP/2 proxy (in the commits).
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
   Events on Home are within Events' default 20 miles of home, online ones
-  anywhere (`events_within_miles`).
+  anywhere (`events_within_miles`). An event's place for that is its own
+  coordinates or city; with no city, its organization's city in the event's
+  state (no state: a city the map knows once). Unplaced in another state
+  than the member's: out of range; nothing known: any distance (the owner,
+  2026-10-23, `20261023020000`, not live). The nightly import reads a city
+  from the event's own address when the map misses (`address.js`), and
+  places those cities.
 - **Events**: administrators and an organization's designated members add,
   change and delete them (Pacific time). A series' dates are rows made 92
   days ahead, extended nightly (`event-series-extend`). Administrators change
@@ -468,6 +526,10 @@ All live. Migration headers and the files named say how and why.
   before data loads; mocking the thing under test; a probe run as the
   superuser. Make each new test fail once.
 - **Other sessions share the folder**: commit named paths only, never `-a`.
+- **APNs environment**: the app labels its token production unless built
+  with `VITE_APNS_ENVIRONMENT=sandbox`, which only an Xcode development build
+  wants. Never in a release: Apple would refuse every token and the club
+  would forget them.
 - **Migration numbers**: fetch before numbering one. `db push` silently skips
   a version the live database already has, even from another file.
 - **Nothing is granted by itself** (Supabase, from 2026-10-30; locally now,

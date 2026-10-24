@@ -6,7 +6,9 @@ import { useAccount } from '@/lib/account';
 import { fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { EventCover } from '@/routes/events/event-cover';
+import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { longWhen, timeRange } from '@/routes/events/format';
+import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
@@ -48,6 +50,8 @@ export default function PublicEventPage() {
   const place = event ? placeLine(event) : null;
   const registerHref = safeHref(event?.registrationUrl ?? null);
   const pageHref = safeHref(event?.url ?? null);
+  const meeting = event ? eventMeetingLink(event) : null;
+  const moreHref = meeting?.inUrl ? null : pageHref;
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[560px] bg-canvas pb-[max(28px,env(safe-area-inset-bottom))]">
@@ -109,6 +113,15 @@ export default function PublicEventPage() {
             />
           </p>
 
+          {meeting && !over ? (
+            <MeetingLinkButton
+              href={meeting.href}
+              service={meeting.service}
+              tone="page"
+              className="mt-4"
+            />
+          ) : null}
+
           {over ? (
             <p className="mt-4 text-[0.875rem] text-grey">This event is over.</p>
           ) : (
@@ -140,16 +153,16 @@ export default function PublicEventPage() {
             className="mt-5 text-[0.9375rem] text-ink leading-[1.55] [&>*+*]:mt-3"
           />
 
-          {pageHref || registerHref ? (
+          {moreHref || registerHref ? (
             <p className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-[0.875rem]">
-              {pageHref ? (
+              {moreHref ? (
                 <a
-                  href={pageHref}
+                  href={moreHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-bold text-emphasis underline"
+                  className="flex min-h-[44px] items-center font-bold text-emphasis underline"
                 >
-                  The event's page
+                  Details on their site
                 </a>
               ) : null}
               {registerHref ? (
@@ -157,7 +170,7 @@ export default function PublicEventPage() {
                   href={registerHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-bold text-emphasis underline"
+                  className="flex min-h-[44px] items-center font-bold text-emphasis underline"
                 >
                   The organizer's sign-up
                 </a>

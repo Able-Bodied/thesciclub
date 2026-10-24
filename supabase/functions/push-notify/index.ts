@@ -5,10 +5,11 @@
  * the daily cron — with `{ event, key }`: what happened and which row. It asks
  * the database who is owed a notification and what it may say (`push_owed`),
  * words each one
- * (compose.ts), encrypts and signs it (webpush.ts) and sends it. A push
- * service that answers 404 or 410 has forgotten the phone, so the club
- * forgets it too (`push_forget`) — otherwise the table fills with phones that
- * were wiped.
+ * (compose.ts), and sends it: to a browser through its push service
+ * (webpush.ts), to the store app's iPhones through Apple (apns.ts). A device
+ * the service calls gone (404 or 410; Apple's BadDeviceToken too) is
+ * forgotten (`push_forget`) — otherwise the table fills with phones that
+ * were wiped. An Android sender (FCM) would be one more branch in `deliver`.
  *
  * Deployed with `verify_jwt = false` (supabase/config.toml): the caller is
  * the database, not a member, and carries the vault's `push_notify_secret`
@@ -17,11 +18,14 @@
  * called by anybody and does nothing for them.
  *
  * Secrets (`pnpm exec supabase secrets set`): VAPID_PUBLIC_KEY,
- * VAPID_PRIVATE_KEY, and optionally VAPID_SUBJECT. SUPABASE_URL and
- * SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
+ * VAPID_PRIVATE_KEY, and optionally VAPID_SUBJECT; for the app, APNS_KEY_ID,
+ * APNS_TEAM_ID, APNS_BUNDLE_ID and APNS_KEY_P8 (the .p8, base64). Without the
+ * four, iPhones in the app are skipped and browsers still sent to.
+ * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided by the platform.
  */
 
-import { compose, type Owed } from './compose.ts';
+import { apnsDevice, apnsGone, apnsKeys, sendApns } from './apns.ts';
+import { compose, type Owed, type PushMessage } from './compose.ts';
 import { sendPush } from './webpush.ts';
 
 declare const Deno: {
@@ -38,6 +42,7 @@ const VAPID = {
 // How a push service reaches us about abuse. A site URL rather than
 // somebody's inbox.
 const SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://thesciclub.netlify.app';
+const APNS = apnsKeys((name) => Deno.env.get(name));
 
 const EVENTS = new Set([
   'message',
@@ -58,6 +63,48 @@ function reply(status: number, body: Record<string, unknown>): Response {
     status,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+type Delivery = 'sent' | 'gone' | 'failed' | 'skipped';
+
+/** Which service a device is on, for the log; never the device itself. */
+function service(endpoint: string): string {
+  const app = apnsDevice(endpoint);
+  if (app) return `apns ${app.environment}`;
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return 'unknown';
+  }
+}
+
+/** One message to one device, by the service it is on. */
+async function deliver(row: Owed, message: PushMessage): Promise<Delivery> {
+  const app = apnsDevice(row.endpoint);
+  if (app) {
+    if (!APNS) return 'skipped';
+    const result = await sendApns(app, message, APNS);
+    if (apnsGone(result)) return 'gone';
+    if (result.status !== 200) {
+      console.error('push-notify: Apple said', result.status, result.reason, app.environment);
+      return 'failed';
+    }
+    return 'sent';
+  }
+  if (!row.endpoint.startsWith('https://') || !row.p256dh || !row.auth) return 'failed';
+  const status = await sendPush(
+    { endpoint: row.endpoint, p256dh: row.p256dh, auth: row.auth },
+    JSON.stringify(message),
+    VAPID,
+    SUBJECT,
+  );
+  if (status === 404 || status === 410) return 'gone';
+  if (status >= 400) {
+    // The endpoint's host names the service; the path is the device.
+    console.error('push-notify: push service said', status, service(row.endpoint));
+    return 'failed';
+  }
+  return 'sent';
 }
 
 /** A PostgREST rpc as the service role. A new-format key goes as `apikey` only. */
@@ -108,30 +155,31 @@ Deno.serve(async (request) => {
 
   const gone: string[] = [];
   let sent = 0;
+  let skipped = 0;
   await Promise.all(
     owed.map(async (row) => {
       const message = compose(row);
       if (!message) return;
       try {
-        const status = await sendPush(row, JSON.stringify(message), VAPID, SUBJECT);
-        if (status === 404 || status === 410) {
+        const delivery = await deliver(row, message);
+        if (delivery === 'gone') {
           // Worth a line: a device forgotten by mistake is a member who
           // silently stops being told anything.
           console.log(
-            'push-notify: forgetting a device the push service called gone',
-            status,
-            new URL(row.endpoint).host,
+            'push-notify: forgetting a device the service called gone',
+            service(row.endpoint),
           );
           gone.push(row.endpoint);
-        } else if (status >= 400) {
-          // The endpoint's host names the service; the path is the device.
-          console.error('push-notify: push service said', status, new URL(row.endpoint).host);
-        } else sent++;
+        } else if (delivery === 'sent') sent++;
+        else if (delivery === 'skipped') skipped++;
       } catch (e) {
-        console.error('push-notify: send failed', new URL(row.endpoint).host, e);
+        console.error('push-notify: send failed', service(row.endpoint), e);
       }
     }),
   );
+  if (skipped > 0) {
+    console.log('push-notify: APNs secrets are not set; skipped', skipped, 'iPhone(s) in the app');
+  }
 
   if (gone.length > 0) {
     const forgot = await rpc('push_forget', { p_secret: secret, p_endpoints: gone });
@@ -139,5 +187,5 @@ Deno.serve(async (request) => {
       console.error('push-notify: push_forget failed', forgot.status, await forgot.text());
   }
 
-  return reply(200, { owed: owed.length, sent, forgotten: gone.length });
+  return reply(200, { owed: owed.length, sent, skipped, forgotten: gone.length });
 });
