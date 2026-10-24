@@ -73,7 +73,10 @@ export function venueName(raw: string | null | undefined): string | null {
 }
 
 /** What a card or a detail hero prints for "where", or null for nothing. */
-export function placeLine(event: Pick<ClubEvent, 'location' | 'city' | 'format'>): string | null {
+export function placeLine(
+  // The public page's event carries its format as plain text, so any string.
+  event: Pick<ClubEvent, 'location' | 'city'> & { format: string | null },
+): string | null {
   const head = venueName(event.location) ?? tidyLocation(event.location);
 
   if (!head) {
@@ -92,4 +95,23 @@ export function placeLine(event: Pick<ClubEvent, 'location' | 'city' | 'format'>
     return `${head} · ${event.city}`;
   }
   return head;
+}
+
+/**
+ * Google Maps for the event's address, so the place line can be tapped for
+ * directions (the owner, 2026-10-24); null when there is no address to find.
+ *
+ * The feed's whole string, not the trimmed line: a plus code or a postcode is
+ * exactly what pins the right spot. The geocoded city goes on the end when the
+ * string lacks it, so a bare street does not land in another state. A link in
+ * the field is an online event's, not a place.
+ */
+export function mapsUrl(event: Pick<ClubEvent, 'location' | 'city'>): string | null {
+  const location = event.location.replace(/\s+/g, ' ').trim();
+  if (!location || /^(https?:\/\/|www\.)/i.test(location)) return null;
+  const query =
+    event.city && !location.toLowerCase().includes(event.city.toLowerCase())
+      ? `${location}, ${event.city}`
+      : location;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

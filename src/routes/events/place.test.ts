@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { placeLine, tidyLocation, venueName } from '@/routes/events/place';
+import { mapsUrl, placeLine, tidyLocation, venueName } from '@/routes/events/place';
 
 /**
  * Every `location` string in here is a real one from the ingested feeds, not an
@@ -108,5 +108,32 @@ describe('placeLine', () => {
 
   it('falls back to the city when that is all there is', () => {
     expect(placeLine({ location: '', city: 'Berkeley', format: 'in_person' })).toBe('Berkeley');
+  });
+});
+
+describe('mapsUrl', () => {
+  const query = (url: string | null) => (url ? new URL(url).searchParams.get('query') : null);
+
+  it('searches Google Maps for the whole address, as the feed wrote it', () => {
+    const url = mapsUrl({
+      location: 'Archer Bicycle 431 13th Street Oakland, California, 94607 United States',
+      city: 'Oakland',
+    });
+    expect(url?.startsWith('https://www.google.com/maps/search/?api=1&query=')).toBe(true);
+    expect(query(url)).toBe(
+      'Archer Bicycle 431 13th Street Oakland, California, 94607 United States',
+    );
+  });
+
+  it('adds the city when the address lacks it', () => {
+    expect(query(mapsUrl({ location: '141 Brookwood Dr', city: 'Santa Cruz' }))).toBe(
+      '141 Brookwood Dr, Santa Cruz',
+    );
+  });
+
+  it('has nothing to find without an address, or with a link for one', () => {
+    expect(mapsUrl({ location: '', city: 'Oakland' })).toBeNull();
+    expect(mapsUrl({ location: '   ', city: null })).toBeNull();
+    expect(mapsUrl({ location: 'https://zoom.us/j/123', city: null })).toBeNull();
   });
 });

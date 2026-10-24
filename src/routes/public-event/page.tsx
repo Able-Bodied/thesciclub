@@ -8,6 +8,8 @@ import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { EventCover } from '@/routes/events/event-cover';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { mapsUrl, placeLine } from '@/routes/events/place';
+import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 
 /**
@@ -43,7 +45,7 @@ export default function PublicEventPage() {
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
   const over = event ? new Date(event.endTime ?? event.startTime).getTime() < Date.now() : false;
-  const place = event ? [event.location, event.city].filter(Boolean).join(' · ') : '';
+  const place = event ? placeLine(event) : null;
   const registerHref = safeHref(event?.registrationUrl ?? null);
   const pageHref = safeHref(event?.url ?? null);
 
@@ -99,9 +101,12 @@ export default function PublicEventPage() {
             {event.title}
           </h1>
           <p className="mt-1.5 text-[0.875rem] text-ink2 leading-[1.45]">
-            {[timeRange(event.startTime, event.endTime, timezone, event.allDay), place]
-              .filter(Boolean)
-              .join(' · ')}
+            {timeRange(event.startTime, event.endTime, timezone, event.allDay)}
+            <Place
+              line={place}
+              href={mapsUrl(event)}
+              className="underline decoration-ink2/50 underline-offset-2 hover:text-emphasis"
+            />
           </p>
 
           {over ? (
