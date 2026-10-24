@@ -179,6 +179,30 @@ export default function PublicEventPage() {
             </p>
           ) : null}
 
+          {/* A stronger ask to join, set apart (the owner, 2026-10-24): what
+              the club adds to an event is the people and the chat. Both
+              buttons go to the same door, which asks which of the two. */}
+          <section
+            aria-label="Join the club"
+            className="mt-6 rounded-[16px] bg-plate px-4 pt-4 pb-3 text-white"
+          >
+            <p className="font-extrabold font-head text-[1.0625rem] leading-[1.35]">
+              Join the club to see who's coming and join the group chat.
+            </p>
+            <Link
+              to={signInTo(id)}
+              className="mt-3 flex min-h-[48px] items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
+            >
+              Join the club
+            </Link>
+            <p className="mt-2 text-center text-[#B9CADF] text-[0.8125rem]">
+              Already a member?{' '}
+              <Link to={signInTo(id)} className="inline-block py-2 font-bold text-white underline">
+                Sign in
+              </Link>
+            </p>
+          </section>
+
           {event.organization ? (
             <>
               <h2 className="mt-6 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
@@ -192,14 +216,6 @@ export default function PublicEventPage() {
               </div>
             </>
           ) : null}
-
-          <p className="mt-6 text-center text-[0.84375rem] text-ink2">
-            In the club?{' '}
-            <Link to={signInTo(id)} className="font-bold text-emphasis underline">
-              Sign in
-            </Link>{' '}
-            to see who's going.
-          </p>
         </article>
       ) : null}
     </main>

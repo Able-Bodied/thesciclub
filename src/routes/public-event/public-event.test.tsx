@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -89,13 +89,21 @@ describe('the public event page', () => {
     );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.getByText('Everyone is welcome.')).toBeInTheDocument();
-    // No counts and no attendees: the only "going" is the button, and the
-    // line saying members see who is.
+    // No counts and no attendees: the only "going" is the button.
     expect(screen.queryByText(/\d+ (going|interested)/i)).toBeNull();
-    expect(screen.getAllByText(/going/i).map((el) => el.textContent)).toEqual([
-      'Going',
-      expect.stringContaining("see who's going"),
-    ]);
+    expect(screen.getAllByText(/going/i).map((el) => el.textContent)).toEqual(['Going']);
+  });
+
+  // The owner, 2026-10-24: a stronger ask to join, set apart.
+  it('asks the reader to join the club, to see who is coming and the chat', async () => {
+    renderAt('/e/picnic');
+    const ask = await screen.findByRole('region', { name: 'Join the club' });
+    expect(ask).toHaveTextContent("Join the club to see who's coming and join the group chat.");
+    expect(within(ask).getByRole('link', { name: 'Join the club' })).toHaveAttribute(
+      'href',
+      '/join?next=%2Fevents%2Fpicnic',
+    );
+    expect(within(ask).getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('says "Join online" for a meeting link, to anybody with the page', async () => {
