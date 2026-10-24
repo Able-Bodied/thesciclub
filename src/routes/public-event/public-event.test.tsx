@@ -84,7 +84,9 @@ describe('the public event page', () => {
   it('shows the event and its host, and nothing about who is going', async () => {
     renderAt('/e/picnic');
     expect(await screen.findByRole('heading', { name: 'Friday Happy Hour' })).toBeInTheDocument();
-    expect(screen.getByText(/Lakeside Park · Oakland/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /in Google Maps/ })).toHaveTextContent(
+      'Lakeside Park, Oakland',
+    );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.getByText('Everyone is welcome.')).toBeInTheDocument();
     // No counts and no attendees: the only "going" is the button, and the
