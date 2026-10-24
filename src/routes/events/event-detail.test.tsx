@@ -170,6 +170,14 @@ describe('EventDetailPage', () => {
     expect(link).toHaveAttribute('target', '_blank');
   });
 
+  it('links a place that is only a city, as most imported events are', () => {
+    state.events = [makeEvent({ id: 'rugby', location: '', city: 'Oakland', state: 'CA' })];
+    renderDetail();
+    const link = screen.getByRole('link', { name: /in Google Maps/ });
+    expect(link).toHaveTextContent('Oakland');
+    expect(new URL(link.getAttribute('href') ?? '').searchParams.get('query')).toBe('Oakland, CA');
+  });
+
   it('renders the organization’s own formatting', () => {
     renderDetail();
     expect(screen.getByText('nothing')).toBeInTheDocument();
