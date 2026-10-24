@@ -13,7 +13,7 @@ describe('the welcome screen after registering for an event', () => {
       <WelcomeScreen onJoin={noop} onSignIn={noop} registered={{ organizer: 'NorCal SCI' }} />,
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      "You're registered.NorCal SCI has your details. Members can sign in to see who is going. Joining the club needs an invite.",
+      "You're on the guest list.NorCal SCI has your details. Members can sign in to see who is going. Joining the club needs an invite.",
     );
     expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
   });
@@ -21,7 +21,7 @@ describe('the welcome screen after registering for an event', () => {
   it('names the organizer generically when no organization hosts it', () => {
     render(<WelcomeScreen onJoin={noop} onSignIn={noop} registered={{}} />);
     expect(screen.getByRole('status')).toHaveTextContent(
-      "You're registered.The event's organizer has your details.",
+      "You're on the guest list.The event's organizer has your details.",
     );
   });
 
@@ -32,6 +32,6 @@ describe('the welcome screen after registering for an event', () => {
 
   it('says nothing of it otherwise', () => {
     render(<WelcomeScreen onJoin={noop} onSignIn={noop} />);
-    expect(screen.queryByText(/You're registered/)).toBeNull();
+    expect(screen.queryByText(/You're on the guest list/)).toBeNull();
   });
 });

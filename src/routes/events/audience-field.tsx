@@ -26,7 +26,7 @@ const CHOICES: { value: EventAudience; title: string; hint: string }[] = [
   {
     value: 'public',
     title: 'Anyone with the link',
-    hint: "A public page; anyone can register. Who's going stays in the club.",
+    hint: "A public page; anyone can join the guest list. Who's going stays in the club.",
   },
   { value: 'club', title: 'Everyone in the club', hint: 'Members only.' },
   { value: 'followers', title: 'Followers', hint: 'Members who follow the organization.' },

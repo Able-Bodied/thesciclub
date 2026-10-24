@@ -141,9 +141,30 @@ describe('the public event page', () => {
     renderAt('/e/picnic');
     await userEvent.click(await screen.findByRole('button', { name: 'Going' }));
     expect(
-      await screen.findByRole('heading', { name: 'Register for this event' }),
+      await screen.findByRole('heading', { name: 'Get added to the guest list' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Going' })).toBeChecked();
+  });
+
+  // The owner, 2026-10-24: the form is the club's guest list, not the host's
+  // own sign-up, and says so, pointing to theirs when there is one.
+  it('says the form is not the host’s own sign-up, and links theirs', async () => {
+    api.event = { ...EVENT, registrationUrl: 'https://norcalsci.org/rsvp' };
+    renderAt('/e/picnic/register');
+    expect(await screen.findByText(/tells NorCal SCI you're coming/)).toHaveTextContent(
+      "This tells NorCal SCI you're coming. It doesn't sign you up on their site; for that, use their sign-up.",
+    );
+    expect(screen.getByRole('link', { name: 'their sign-up' })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/rsvp',
+    );
+  });
+
+  it('underlines the links in the description', async () => {
+    api.event = { ...EVENT, description: 'Details at [our site](https://norcalsci.org).' };
+    renderAt('/e/picnic');
+    const link = await screen.findByRole('link', { name: 'our site' });
+    expect(link.closest('[class*="[&_a]:underline"]')).not.toBeNull();
   });
 
   it('says so for an event with no public page', async () => {
