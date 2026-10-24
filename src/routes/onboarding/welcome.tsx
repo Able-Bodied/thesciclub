@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
 import { CONSULTATION_URL } from '@/lib/consultation';
 import { NewTabLink } from '@/routes/onboarding/steps';
@@ -50,7 +51,7 @@ export function WelcomeScreen({
   /** Anybody can join right now (20261014000000): nobody needs an invite to ask for. */
   joiningOpen?: boolean;
   /** Just registered for a public event (src/lib/event-audience.ts). */
-  registered?: { organizer?: string } | null;
+  registered?: { organizer?: string; eventId?: string } | null;
 }) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
@@ -61,9 +62,24 @@ export function WelcomeScreen({
           role="status"
           className="mx-[18px] mt-[max(14px,env(safe-area-inset-top))] flex-none rounded-[13px] border-gold border-l-4 bg-gold-lt px-3.5 py-3 text-[0.875rem] text-ink leading-[1.45]"
         >
-          <b className="block font-extrabold font-head">You're on the guest list.</b>
-          {registered.organizer ?? "The event's organizer"} has your details. Members can sign in to
-          see who is going.{joiningOpen ? '' : ' Joining the club needs an invite.'}
+          <b className="block font-extrabold font-head">You're on our list.</b>
+          {/* Many hosts are not in the club (the owner, 2026-10-24): their own
+              registration may still be needed. */}
+          {registered.organizer ? (
+            <>
+              You may also need to register with {registered.organizer}, so check the{' '}
+              {registered.eventId ? (
+                <Link to={`/e/${registered.eventId}`} className="font-bold underline">
+                  event details
+                </Link>
+              ) : (
+                'event details'
+              )}
+              .{' '}
+            </>
+          ) : null}
+          Members can sign in to see who is going.
+          {joiningOpen ? '' : ' Joining the club needs an invite.'}
         </div>
       ) : null}
       <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">

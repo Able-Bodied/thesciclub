@@ -87,7 +87,7 @@ export default function RegisterForEventPage() {
         ← Back to the event
       </Link>
       <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink leading-tight">
-        Get added to the guest list
+        Get added to our list
       </h1>
 
       {event === null ? (
@@ -116,6 +116,34 @@ export default function RegisterForEventPage() {
               </span>
             </span>
           </div>
+
+          {/* Not a sign-up with the host (the owner, 2026-10-24): many
+              organizations are not in the club and never see this list, so
+              it says plainly that their own registration may still be needed. */}
+          <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            This adds you to The SCI Club's list for this event.
+            {event.organization ? (
+              <>
+                {` It doesn't register you with ${event.organization.name}: you may need to do that too`}
+                {signUp ? (
+                  <>
+                    {', with '}
+                    <a
+                      href={signUp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-emphasis underline"
+                    >
+                      their sign-up
+                    </a>
+                    .
+                  </>
+                ) : (
+                  ', so check the event details.'
+                )}
+              </>
+            ) : null}
+          </p>
 
           <fieldset className="mt-4">
             <legend className="sr-only">Your answer</legend>
@@ -193,29 +221,6 @@ export default function RegisterForEventPage() {
           <p className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
             The event's organizer and the club's administrators see these, for this event only. They
             are deleted 90 days after it.
-          </p>
-          {/* Not a sign-up with the host (the owner, 2026-10-24): filling this
-              in does not register anybody on the organization's own site. */}
-          <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-            This tells {event.organization?.name ?? 'the organizer'}{' '}
-            {status === 'going' ? "you're coming" : "you're interested"}. It doesn't sign you up on
-            their site
-            {signUp ? (
-              <>
-                {'; for that, use '}
-                <a
-                  href={signUp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-emphasis underline"
-                >
-                  their sign-up
-                </a>
-                .
-              </>
-            ) : (
-              '.'
-            )}
           </p>
 
           {error ? (
