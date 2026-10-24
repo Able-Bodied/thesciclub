@@ -112,6 +112,19 @@ describe('the webhook’s signature', () => {
 });
 
 describe('the address', () => {
+  it('finds invites@events.thesciclub.com, which Resend receives directly, and its short code', () => {
+    expect(eventsAddress({ from: '', to: ['invites@events.thesciclub.com'] })).toEqual({
+      tag: null,
+    });
+    expect(eventsAddress({ from: '', to: ['Club <Invites+NCS@events.thesciclub.com>'] })).toEqual({
+      tag: 'ncs',
+    });
+    // Zoho's forwarding target is not an address to invite.
+    expect(eventsAddress({ from: '', to: [INBOX] })).toBeNull();
+    expect(eventsAddress({ from: '', to: ['invites@thesciclub.com'] })).toBeNull();
+    expect(eventsAddress({ from: '', to: ['events@events.thesciclub.com'] })).toBeNull();
+  });
+
   it('finds events@thesciclub.com and its short code', () => {
     expect(eventsAddress({ from: '', to: ['events@thesciclub.com'] })).toEqual({ tag: null });
     expect(eventsAddress({ from: '', to: ['Events <events+NCS@thesciclub.com>'] })).toEqual({
@@ -184,6 +197,23 @@ describe('an invitation arriving', () => {
     expect(deps.sent[0]?.text).toContain('https://thesciclub.com/events/e1');
   });
 
+  it('one sent to invites@ directly is verified by its own DMARC', async () => {
+    const deps = fakeDeps({
+      email: {
+        from: 'NorCal SCI <rep@norcalsci.org>',
+        to: ['invites+ncs@events.thesciclub.com'],
+        authentication: { dmarc: 'pass' },
+        attachments: [{ id: 'att1', filename: 'invite.ics', content_type: 'text/calendar' }],
+      },
+    });
+    expect((await handle(deps, webhook, await sign(webhook))).outcome).toBe('added');
+    expect(deps.received[0]).toMatchObject({
+      sender: 'rep@norcalsci.org',
+      verified: true,
+      tag: 'ncs',
+    });
+  });
+
   it('one that fails DMARC goes to the database as unverified', async () => {
     const deps = fakeDeps({
       email: {
@@ -213,7 +243,9 @@ describe('an invitation arriving', () => {
 
   it('leaves mail to other addresses alone', async () => {
     const deps = fakeDeps({ email: { from: 'a@b.c', to: ['hello@thesciclub.com'] } });
-    expect((await handle(deps, webhook, await sign(webhook))).outcome).toBe('not for events@');
+    expect((await handle(deps, webhook, await sign(webhook))).outcome).toBe(
+      'not for invites@ or events@',
+    );
     expect(deps.received).toHaveLength(0);
   });
 });
@@ -341,7 +373,9 @@ describe('an invitation Zoho forwarded', () => {
 
   it('meant for another of the club’s addresses, is left alone', async () => {
     const deps = fakeDeps({ email: forwarded({ headers: { to: 'hello@thesciclub.com' } }) });
-    expect((await handle(deps, webhook, await sign(webhook))).outcome).toBe('not for events@');
+    expect((await handle(deps, webhook, await sign(webhook))).outcome).toBe(
+      'not for invites@ or events@',
+    );
     expect(deps.received).toHaveLength(0);
     expect(deps.sent).toHaveLength(0);
   });
@@ -378,7 +412,7 @@ describe('Zoho’s forwarding confirmation', () => {
     const { deps, read } = watched(confirmation);
     expect(await handle(deps, webhook, await sign(webhook))).toEqual({
       status: 200,
-      outcome: 'not for events@',
+      outcome: 'not for invites@ or events@',
     });
     expect(read()).toBe(0);
     expect(deps.received).toHaveLength(0);

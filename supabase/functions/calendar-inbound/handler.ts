@@ -6,11 +6,18 @@ import { type InviteEvent, readInvite } from './ics.ts';
  * 20261022220000_calendar_invites.sql for the rules.
  */
 
-/** What representatives invite: a Zoho alias, forwarded to Resend. */
-const EVENTS = 'events@thesciclub.com';
-/** events@ or events+<short code>@. */
-const ADDRESS = /^events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.com$/i;
-/** Where Zoho forwards it, so Resend's envelope recipient; never the one intended. */
+/**
+ * What representatives invite: received by Resend directly, so Zoho's spam
+ * folder never sees it (the owner, 2026-10-23).
+ */
+const INVITES = 'invites@events.thesciclub.com';
+/**
+ * invites@events. or the older events@ (a Zoho alias, forwarded), either with
+ * +<short code>.
+ */
+const ADDRESS =
+  /^(?:invites(?:\+([a-z0-9-]{1,20}))?@events\.thesciclub\.com|events(?:\+([a-z0-9-]{1,20}))?@thesciclub\.com)$/i;
+/** Where Zoho forwards events@, so Resend's envelope recipient; never the one intended. */
 export const INBOX = 'inbox@events.thesciclub.com';
 /**
  * The club's own mail and the forwarder's: never a representative. Zoho signs
@@ -164,8 +171,8 @@ export function senderOf(email: ReceivedEmail): { address: string; verified: boo
 }
 
 /**
- * Which event address it was sent to, and its short code. After Zoho's hop the
- * envelope says INBOX, so the headers say whom it was meant for.
+ * Which invitation address it was sent to, and its short code. After Zoho's
+ * hop the envelope says INBOX, so the headers say whom it was meant for.
  */
 export function eventsAddress(email: ReceivedEmail): { tag: string | null } | null {
   const addresses = addressesIn([
@@ -179,7 +186,8 @@ export function eventsAddress(email: ReceivedEmail): { tag: string | null } | nu
   let found: { tag: string | null } | null = null;
   for (const address of addresses) {
     const match = ADDRESS.exec(address);
-    if (match?.[1]) return { tag: match[1] };
+    const tag = match?.[1] ?? match?.[2];
+    if (tag) return { tag };
     if (match) found = { tag: null };
   }
   return found;
@@ -290,7 +298,7 @@ export function repliesFor(
           .map((address) => ({
             to: address,
             subject: `A calendar invitation is waiting: ${title}`,
-            text: `${sender} invited ${EVENTS} to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
+            text: `${sender} invited ${INVITES} to ${title} (${whenLine(invite)}).\n\n${result.reason ?? ''}\n\nApprove or discard it: ${waiting}`,
           })),
       ];
     }
@@ -329,7 +337,7 @@ export async function handle(
   const email = await deps.fetchEmail(emailId);
   if (!email) return { status: 502, outcome: 'could not read the email' };
   const to = eventsAddress(email);
-  if (!to) return { status: 200, outcome: 'not for events@' };
+  if (!to) return { status: 200, outcome: 'not for invites@ or events@' };
   const from = senderOf(email);
   if (!from) return { status: 200, outcome: 'from the club or its forwarder' };
 
