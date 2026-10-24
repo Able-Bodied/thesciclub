@@ -85,7 +85,7 @@ describe('the public event page', () => {
     renderAt('/e/picnic');
     expect(await screen.findByRole('heading', { name: 'Friday Happy Hour' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /in Google Maps/ })).toHaveTextContent(
-      'Lakeside Park · Oakland',
+      'Lakeside Park, Oakland',
     );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.getByText('Everyone is welcome.')).toBeInTheDocument();
