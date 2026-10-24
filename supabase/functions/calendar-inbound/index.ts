@@ -1,9 +1,8 @@
 /**
  * calendar-inbound: events from calendar invitations sent to
- * events@thesciclub.com (the owner, 2026-10-22).
- *
- * events@ is a Zoho alias; Zoho forwards it to inbox@events.thesciclub.com,
- * where Resend receives it and posts `email.received` here. This checks
+ * invites@events.thesciclub.com, which Resend receives directly, or to the
+ * older events@thesciclub.com, a Zoho alias that Zoho forwards to
+ * inbox@events.thesciclub.com. Resend posts `email.received` here. This checks
  * Resend's signature, reads the email back from Resend's API (the webhook
  * carries no attachments), finds the calendar file, and hands the invitation
  * to `calendar_invite_receive` (20261022220000), which decides whether it is
