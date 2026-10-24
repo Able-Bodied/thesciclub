@@ -94,8 +94,10 @@ It will. These are other people's websites and they get redesigned.
 
 The list parsers throw rather than returning zero events, because "the markup
 changed" and "there are no events this month" look identical from the outside
-and only one of them is an emergency. One feed failing does not stop the other,
-and the job exits non-zero so the scheduled run goes red.
+and only one of them is an emergency. A failed feed is tried once more after
+30 seconds, since a site that does not answer for a moment is not broken. One
+feed failing does not stop the other, and the job exits non-zero so the
+scheduled run goes red.
 
 To see what a scraper currently reads without touching the database:
 

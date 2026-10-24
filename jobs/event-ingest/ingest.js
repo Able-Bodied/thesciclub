@@ -476,6 +476,20 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
   return { scraped: scraped.length, written: written.length, changed };
 }
 
+/**
+ * Runs a feed, and once more after a pause if it fails: a partner's site that
+ * does not answer for a moment should not fail the night's import.
+ */
+export async function withOneRetry(run, { pauseMs = 30_000, onRetry = () => {} } = {}) {
+  try {
+    return await run();
+  } catch (error) {
+    onRetry(error);
+    await new Promise((resolve) => setTimeout(resolve, pauseMs));
+    return run();
+  }
+}
+
 async function main() {
   const dryRun = process.argv.includes('--dry-run');
   const feedArg = process.argv.find((arg) => arg.startsWith('--feed='));
@@ -496,7 +510,10 @@ async function main() {
   let failed = 0;
   for (const feed of feeds) {
     try {
-      await ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun });
+      await withOneRetry(
+        () => ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun }),
+        { onRetry: (error) => log(`  failed (${error.message}); trying once more in 30 seconds`) },
+      );
     } catch (error) {
       failed++;
       // One broken feed must not stop the other. A site that changed its markup
