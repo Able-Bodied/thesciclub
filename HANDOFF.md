@@ -117,9 +117,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     The invitation's other guests are never kept.
   - **Place and link**: meeting links go to the link, the place keeps the
     address, a US address gives city and state (`place.ts`, `20261023000000`).
-  - **Not live**: `invites@` needs `pnpm exec supabase functions deploy
-    calendar-inbound --no-verify-jwt` and the app released; then send one
-    test invitation to it.
+  - `invites@` tested end to end 2026-10-24 (function deployed). The
+    website still shows `events@` until the branch reaches `main`.
 
 - **Ask anonymously, put off** (the owner, 2026-10-22: later, after smaller
   changes). A post's `author_id` is readable by every member (table-level
@@ -222,14 +221,15 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   no-ID-token fallback` means Apple's refresh answer had no ID token (the
   line names its fields); a web keep without it means Apple sends one, so
   delete the fallback (`onlySub` in `apple-token/handler.ts`) and its test.
-- **Native push in the iPhone app, not live** (2026-10-23). The device token
+- **Native push in the iPhone app, live in TestFlight 1.0.3** (owner tested
+  on a device, 2026-10-24). The device token
   is a `push_subscriptions` row, `apns:<production|sandbox>:<hex>`
   (`push_subscribe_app`, `20261023030000`), so blocks, mutes, switches,
   `push_forget` and deletion cover it; `push-notify` sends it to Apple
   (`apns.ts`; 410 or BadDeviceToken forgets it). Asked as the Home Screen app
   asks, never on the app's first launch; Me has the row, and Open Settings
-  after a refusal; a tap routes like a link that opened the app. Before the
-  next TestFlight tag (`ios-v1.0.3`; 1.0.2 is out), in order:
+  after a refusal; a tap routes like a link that opened the app. How it was
+  set up (done for 1.0.3; redo only for a new key or project):
   1. `pnpm exec supabase db push --linked --dry-run` lists `20261023030000`
      (with whatever else is unreleased); then the push.
   2. Secrets, from the APNs .p8 on the owner's own machine (it goes straight
