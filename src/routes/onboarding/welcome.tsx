@@ -61,7 +61,7 @@ export function WelcomeScreen({
           role="status"
           className="mx-[18px] mt-[max(14px,env(safe-area-inset-top))] flex-none rounded-[13px] border-gold border-l-4 bg-gold-lt px-3.5 py-3 text-[0.875rem] text-ink leading-[1.45]"
         >
-          <b className="block font-extrabold font-head">You're registered.</b>
+          <b className="block font-extrabold font-head">You're on the guest list.</b>
           {registered.organizer ?? "The event's organizer"} has your details. Members can sign in to
           see who is going.{joiningOpen ? '' : ' Joining the club needs an invite.'}
         </div>

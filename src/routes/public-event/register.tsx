@@ -11,6 +11,7 @@ import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { formatPhoneInput } from '@/lib/phone';
 import { shortDate, timeOfDay } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { safeHref } from '@/routes/events/rich-text';
 import type { RsvpStatus } from '@/types/domain';
 
 /**
@@ -78,6 +79,7 @@ export default function RegisterForEventPage() {
   }
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
+  const signUp = safeHref(event?.registrationUrl ?? null);
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[480px] bg-canvas px-[18px] pt-[max(16px,env(safe-area-inset-top))] pb-[max(28px,env(safe-area-inset-bottom))]">
@@ -85,12 +87,12 @@ export default function RegisterForEventPage() {
         ← Back to the event
       </Link>
       <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink leading-tight">
-        Register for this event
+        Get added to the guest list
       </h1>
 
       {event === null ? (
         <p role="alert" className="mt-4 text-[0.875rem] text-ink2">
-          This event is not taking registrations.
+          This event's page is not public.
         </p>
       ) : null}
 
@@ -191,6 +193,29 @@ export default function RegisterForEventPage() {
           <p className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
             The event's organizer and the club's administrators see these, for this event only. They
             are deleted 90 days after it.
+          </p>
+          {/* Not a sign-up with the host (the owner, 2026-10-24): filling this
+              in does not register anybody on the organization's own site. */}
+          <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            This tells {event.organization?.name ?? 'the organizer'}{' '}
+            {status === 'going' ? "you're coming" : "you're interested"}. It doesn't sign you up on
+            their site
+            {signUp ? (
+              <>
+                {'; for that, use '}
+                <a
+                  href={signUp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-emphasis underline"
+                >
+                  their sign-up
+                </a>
+                .
+              </>
+            ) : (
+              '.'
+            )}
           </p>
 
           {error ? (

@@ -53,7 +53,8 @@ export function EventAudienceSection({
         {event.audience === 'public' ? (
           <>
             <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-              Anyone with the link sees the event and can register. Who's going stays in the club.
+              Anyone with the link sees the event and can add themselves to the guest list. Who's
+              going stays in the club.
             </p>
             <div className="mt-2.5 flex items-center justify-between gap-3">
               <span className="min-w-0 break-all text-[0.8125rem] text-ink2">{link}</span>
