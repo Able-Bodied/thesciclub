@@ -548,13 +548,20 @@ export async function forgetThisDevice(): Promise<void> {
     if (sessionError) throw sessionError;
     const userId = data.session?.user.id;
     if (!userId) return;
-    // Also preserves subscriptions enabled before device preferences existed.
-    await readDeviceState(userId).catch((e: unknown) => {
-      console.error(e);
-    });
-    const endpoint = isAppPush()
-      ? await appDeviceEndpoint()
-      : ((await currentSubscription())?.endpoint ?? null);
+    let endpoint: string | null;
+    if (isAppPush()) {
+      // Whatever iOS's permission says now: a member who switched it off in
+      // Settings still has a row, and the next person may switch it back on.
+      // iOS hands out the token either way.
+      const app = await loadApp();
+      endpoint = app.appEndpoint(await app.appToken());
+    } else {
+      // Also preserves subscriptions enabled before device preferences existed.
+      await readDeviceState(userId).catch((e: unknown) => {
+        console.error(e);
+      });
+      endpoint = (await currentSubscription())?.endpoint ?? null;
+    }
     if (!endpoint) return;
     const { error } = await getSupabase()
       .from('push_subscriptions')

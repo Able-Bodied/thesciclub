@@ -402,6 +402,15 @@ describe('turning on and off', () => {
       expect(calls.log).toEqual([`rpc push_subscribe_app ${token} production`]);
     });
 
+    it('forgets this iPhone at logout even once iOS was switched off in Settings', async () => {
+      await turnOnNotifications('me');
+      ios.permission = 'denied';
+      calls.log = [];
+      await forgetThisDevice();
+      expect(calls.log).toEqual([`delete push_subscriptions endpoint=${device} member_id=me`]);
+      expect(calls.onFile).toBe(false);
+    });
+
     it('never opts in another account on this iPhone', async () => {
       await turnOnNotifications('me');
       await forgetThisDevice();
