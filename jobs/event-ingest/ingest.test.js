@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eventChanged, matchOrganization, withAdminOverride } from './ingest.js';
+import { eventChanged, matchOrganization, withAdminOverride, withOneRetry } from './ingest.js';
 
 const ORGANIZATIONS = [
   { id: 'ncs', name: 'NorCal SCI', short_code: 'NCS', aliases: [] },
@@ -208,5 +208,39 @@ describe('withAdminOverride', () => {
   it('ignores a key that is not an event field', () => {
     const next = withAdminOverride(scraped, { admin_override: { feed_id: 'elsewhere' } });
     expect(next).toEqual({ ...scraped, feed_values: null });
+  });
+});
+
+describe('withOneRetry', () => {
+  it('tries a failed feed once more and keeps the second result', async () => {
+    let calls = 0;
+    const retried = [];
+    const result = await withOneRetry(
+      async () => {
+        calls++;
+        if (calls === 1) throw new Error('fetch failed');
+        return 'ok';
+      },
+      { pauseMs: 0, onRetry: (error) => retried.push(error.message) },
+    );
+    expect(result).toBe('ok');
+    expect(calls).toBe(2);
+    expect(retried).toEqual(['fetch failed']);
+  });
+
+  it('gives up after the second failure', async () => {
+    let calls = 0;
+    const run = async () => {
+      calls++;
+      throw new Error(`fail ${calls}`);
+    };
+    await expect(withOneRetry(run, { pauseMs: 0 })).rejects.toThrow('fail 2');
+    expect(calls).toBe(2);
+  });
+
+  it('runs a feed that works only once', async () => {
+    let calls = 0;
+    await withOneRetry(async () => calls++, { pauseMs: 0 });
+    expect(calls).toBe(1);
   });
 });
