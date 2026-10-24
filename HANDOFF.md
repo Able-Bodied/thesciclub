@@ -79,7 +79,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   see Release to TestFlight). `isNative()`
   (`lib/standalone.ts`) keeps out of the app everything browser-only:
   worker and reload, web push, install nudge and steps, the Home Screen
-  hand-off, passkeys. Apple and Google sign in natively
+  hand-off, passkeys. Notifications on an iPhone come through APNs instead
+  (`lib/push/app-push.ts`; Open, Native push). Apple and Google sign in natively
   (`lib/native-sign-in.ts`, `@capgo/capacitor-social-login` with Facebook's
   SDK left out: `scripts/check-native-build.mjs`), iPhone only. Links made
   for others use `siteOrigin()`; the rest of the shell (splash, status bar,
@@ -92,7 +93,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 3,448 tests in 247 files on 2026-10-22; `pnpm check` (alone),
+- **Checks**: 3,618 tests in 254 files on 2026-10-23; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -221,10 +222,41 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   no-ID-token fallback` means Apple's refresh answer had no ID token (the
   line names its fields); a web keep without it means Apple sends one, so
   delete the fallback (`onlySub` in `apple-token/handler.ts`) and its test.
-- **Store app, still to build**: native push; Android (Google needs a client
+- **Native push in the iPhone app, not live** (2026-10-23). The device token
+  is a `push_subscriptions` row, `apns:<production|sandbox>:<hex>`
+  (`push_subscribe_app`, `20261023030000`), so blocks, mutes, switches,
+  `push_forget` and deletion cover it; `push-notify` sends it to Apple
+  (`apns.ts`; 410 or BadDeviceToken forgets it). Asked as the Home Screen app
+  asks, never on the app's first launch; Me has the row, and Open Settings
+  after a refusal; a tap routes like a link that opened the app. Before the
+  next TestFlight tag (Native sign-in, step 10), in order:
+  1. `pnpm exec supabase db push --linked --dry-run` lists `20261023030000`
+     (with whatever else is unreleased); then the push.
+  2. Secrets, from the APNs .p8 on the owner's own machine (it goes straight
+     from the file into the command):
+     `pnpm exec supabase secrets set APNS_KEY_ID=W8K8K2VX3C
+     APNS_TEAM_ID=3RZ3A2CJ9N APNS_BUNDLE_ID=com.thesciclub.app
+     APNS_KEY_P8="$(base64 < AuthKey_W8K8K2VX3C.p8 | tr -d '\n')"`.
+  3. `pnpm exec supabase functions deploy push-notify --no-verify-jwt`.
+  4. Nothing in the Apple portal while Push Notifications stays on for
+     `com.thesciclub.app`: `release_build` makes a new App Store profile when
+     the old one lacks `aps-environment`. If the run says the App ID does not
+     have it, turn Push Notifications on there and run again.
+  First device: turn on in Me → Settings, have another account message you,
+  read the lock screen, tap it cold and warm. push-notify's log: `Apple said
+  403 InvalidProviderToken` is a wrong key, key ID or team; every token
+  `BadDeviceToken` is the wrong environment; `skipped` is missing secrets.
+  Known and accepted: anybody once signed in on a phone can read its token and
+  take it over, as with web push; APNs payloads are readable by Apple, unlike
+  web push's (a sentence in Privacy, for the owner to word). No badge: the app
+  cannot clear one yet.
+- **Store app, still to build**: Android (Google needs a client
   made with the Play signing SHA-1, Apple there is a web flow, and App
   Links need `public/.well-known/assetlinks.json` with the Play signing
-  SHA-256); the demo reviewers run live (`scripts/demo-reviewers.mjs
+  SHA-256; push needs a Firebase project, its `google-services.json`, an
+  `fcm:<token>` endpoint and an FCM sender in `push-notify`'s `deliver`, and
+  `isAppPush()` widened; `android/` is not synced with the push plugin yet);
+  the demo reviewers run live (`scripts/demo-reviewers.mjs
   --live`). Never run on a device: Text Size, the CSP under WebKit,
   Nominatim with the app's User-Agent, native sign-in, Universal Links.
 - **Home Screen pairing, to retire** once members have the store app (owner's
@@ -348,7 +380,9 @@ All live. Migration headers and the files named say how and why.
   one: `link_preview_request('chat_posts', <id>)`.
 - **Notifications**: a `notifications` row per member before any push (kept
   30 days). A tap reaches a running or starting app through the worker
-  (`NAVIGATE`, `FollowNotification`).
+  (`NAVIGATE`, `FollowNotification`); in the store app, through
+  `pushNotificationActionPerformed` (`lib/native-shell.ts`). Probe:
+  `push-app-tokens.sql`.
 - **Speed** (2026-10-22; live once pushed, see Open): Home, Peers, Chat,
   Events and Me stay mounted once opened (`KeptTabs` in `App.tsx`, React's
   `<Activity>`): hidden, a tab keeps its state and scroll and its effects
@@ -490,6 +524,10 @@ All live. Migration headers and the files named say how and why.
   before data loads; mocking the thing under test; a probe run as the
   superuser. Make each new test fail once.
 - **Other sessions share the folder**: commit named paths only, never `-a`.
+- **APNs environment**: the app labels its token production unless built
+  with `VITE_APNS_ENVIRONMENT=sandbox`, which only an Xcode development build
+  wants. Never in a release: Apple would refuse every token and the club
+  would forget them.
 - **Migration numbers**: fetch before numbering one. `db push` silently skips
   a version the live database already has, even from another file.
 - **Nothing is granted by itself** (Supabase, from 2026-10-30; locally now,
