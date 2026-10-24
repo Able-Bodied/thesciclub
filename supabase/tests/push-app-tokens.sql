@@ -12,6 +12,7 @@
 --   6. the table's checks: an app row has no keys, a browser row needs both
 --   7. push_owed reaches the app row, and a block stops it as it does a browser
 --   8. push_forget forgets an app token; deleting the member deletes the rest
+--   9. a member keeps ten app tokens at most, the newest
 --
 -- Run it against a local stack (never the hosted project):
 --
@@ -217,6 +218,27 @@ begin
   assert (select count(*) from public.push_subscriptions
            where member_id = 'a99a0000-0000-0000-0000-00000000000a') = 0, 'the account''s token stayed';
   raise notice 'PASS 8: forgotten both ways';
+end;
+$$;
+
+\echo ''
+\echo '== 9. ten app tokens at most, the newest kept =='
+\echo '   expect: PASS 9'
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"a99a0000-0000-0000-0000-00000000000b","role":"authenticated"}', true) is not null as bo;
+do $$
+declare
+  i int;
+begin
+  for i in 1 .. 12 loop
+    perform public.push_subscribe_app(lpad(to_hex(i), 64, '0'), 'production');
+  end loop;
+  assert (select count(*) from public.push_subscriptions) = 10, 'not ten';
+  assert exists (select 1 from public.push_subscriptions where endpoint like '%' || lpad(to_hex(12), 64, '0')),
+    'the newest went';
+  assert not exists (select 1 from public.push_subscriptions where endpoint like '%' || lpad(to_hex(1), 64, '0')),
+    'the oldest stayed';
+  raise notice 'PASS 9: ten, the newest';
 end;
 $$;
 

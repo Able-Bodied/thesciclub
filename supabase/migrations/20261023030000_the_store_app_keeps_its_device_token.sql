@@ -20,7 +20,9 @@
 --
 -- Written only by push_subscribe_app, which takes the token over from whoever
 -- held it, as push_subscribe does for a browser (20260927000000): the token is
--- a capability that only that iPhone's registration hands out.
+-- a capability that only that iPhone's registration hands out. A member keeps
+-- at most ten app tokens, the newest: anything more would only be made-up
+-- tokens, each one more request to Apple under the club's key.
 -- ============================================================================
 
 alter table public.push_subscriptions
@@ -81,8 +83,18 @@ begin
   -- Whoever held this iPhone before, it is the caller's now.
   delete from public.push_subscriptions where endpoint = device;
 
-  insert into public.push_subscriptions (endpoint, member_id, p256dh, auth, user_agent)
-  values (device, auth.uid(), null, null, left(app_user_agent, 512));
+  insert into public.push_subscriptions (endpoint, member_id, p256dh, auth, user_agent, created_at)
+  values (device, auth.uid(), null, null, left(app_user_agent, 512), clock_timestamp());
+
+  delete from public.push_subscriptions s
+   where s.member_id = auth.uid()
+     and s.endpoint like 'apns:%'
+     and s.endpoint not in (
+       select k.endpoint from public.push_subscriptions k
+        where k.member_id = auth.uid() and k.endpoint like 'apns:%'
+        order by k.created_at desc, k.endpoint
+        limit 10
+     );
 end;
 $$;
 
