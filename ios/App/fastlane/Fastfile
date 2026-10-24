@@ -68,7 +68,8 @@ platform :ios do
     reversed_client_id = google_reversed_client_id
 
     # Finds the App Store profile for the installed certificate, or makes one,
-    # and makes a new one if it lacks Sign in with Apple or Associated Domains.
+    # and makes a new one if it lacks Sign in with Apple, Associated Domains
+    # or Push Notifications (aps-environment).
     get_provisioning_profile(api_key: key, app_identifier: APP_ID)
     missing = missing_entitlements(lane_context[SharedValues::SIGH_PROFILE_PATH])
     unless missing.empty?
