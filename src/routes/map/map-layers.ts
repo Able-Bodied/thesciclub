@@ -34,11 +34,13 @@ const PEER_ICON = 'club-peer';
 const ORGANIZATION_ICON = 'club-organization';
 /** An organization at its city's middle: a ring, as an event there is. */
 const ORGANIZATION_RING = 'club-organization-ring';
-const ICONS = [PEER_ICON, ORGANIZATION_ICON, ORGANIZATION_RING];
+/** The member's own city: a house, drawn on the map like the pins. */
+const HOME = 'club-home';
+const ICONS = [PEER_ICON, ORGANIZATION_ICON, ORGANIZATION_RING, HOME];
 
 /** Badges drawn by path, not roundRect, which iOS 15's Safari lacks. */
 function drawIcon(id: string): ImageData | null {
-  const size = id === PEER_ICON ? 34 : 30;
+  const size = id === PEER_ICON ? 34 : id === HOME ? 28 : 30;
   const canvas = document.createElement('canvas');
   canvas.width = size * 2;
   canvas.height = size * 2;
@@ -46,6 +48,31 @@ function drawIcon(id: string): ImageData | null {
   if (!pen) return null;
   pen.scale(2, 2);
   pen.beginPath();
+  if (id === HOME) {
+    pen.arc(14, 14, 12.5, 0, Math.PI * 2);
+    pen.lineWidth = 2.5;
+    pen.fillStyle = WHITE;
+    pen.strokeStyle = NAVY;
+    pen.fill();
+    pen.stroke();
+    // Roof and walls, with the door left white.
+    pen.beginPath();
+    pen.moveTo(7, 14.5);
+    pen.lineTo(14, 7.5);
+    pen.lineTo(21, 14.5);
+    pen.lineTo(19, 14.5);
+    pen.lineTo(19, 20.5);
+    pen.lineTo(15.5, 20.5);
+    pen.lineTo(15.5, 16.5);
+    pen.lineTo(12.5, 16.5);
+    pen.lineTo(12.5, 20.5);
+    pen.lineTo(9, 20.5);
+    pen.lineTo(9, 14.5);
+    pen.closePath();
+    pen.fillStyle = NAVY;
+    pen.fill();
+    return pen.getImageData(0, 0, canvas.width, canvas.height);
+  }
   if (id === PEER_ICON) {
     const [from, to, r] = [1.5, size - 1.5, 8];
     pen.moveTo(from + r, from);
@@ -102,7 +129,20 @@ export function addLayers(map: MapLibreMap): void {
     });
   }
   if (!map.getSource(FOCUS)) map.addSource(FOCUS, { type: 'geojson', data: EMPTY });
+  if (!map.getSource(HOME)) map.addSource(HOME, { type: 'geojson', data: EMPTY });
   const layers: AddLayerObject[] = [
+    // Under every pin, so they stay tappable; just below the city's middle.
+    {
+      id: HOME,
+      type: 'symbol',
+      source: HOME,
+      layout: {
+        'icon-image': HOME,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+      },
+      paint: { 'icon-translate': [0, 18] },
+    },
     // An open organization's other places: a white then navy ring round each.
     {
       id: `${FOCUS}-outer`,
@@ -241,6 +281,16 @@ export function addLayers(map: MapLibreMap): void {
   for (const layer of layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
 }
 
+/** Puts the house at the member's city, or takes it away. */
+export function setHome(map: MapLibreMap, at: [number, number] | null): void {
+  void map.getSource<GeoJSONSource>(HOME)?.setData({
+    type: 'FeatureCollection',
+    features: at
+      ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: at }, properties: {} }]
+      : [],
+  });
+}
+
 /** The page's text size (Me → Display, and the iPhone's Text Size), as a multiple of 16px. */
 export function pageTextScale(): number {
   const size = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
@@ -250,6 +300,8 @@ export function pageTextScale(): number {
 /** Counts and badges grow with the text, so a count still fits its pin. */
 export function applyTextScale(map: MapLibreMap, scale: number): void {
   const at = (n: number) => n * scale;
+  map.setLayoutProperty(HOME, 'icon-size', scale);
+  map.setPaintProperty(HOME, 'icon-translate', [0, at(18)]);
   map.setLayoutProperty('club-organizations', 'text-size', at(12));
   map.setLayoutProperty('club-organizations', 'icon-size', scale);
   map.setPaintProperty('club-organizations', 'icon-translate', [at(15), at(-15)]);

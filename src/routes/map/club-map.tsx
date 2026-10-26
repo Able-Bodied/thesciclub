@@ -41,6 +41,7 @@ import {
   pageTextScale,
   pick,
   SOURCES,
+  setHome,
 } from '@/routes/map/map-layers';
 import { MapSheet } from '@/routes/map/map-sheet';
 import { MapPlaceholder } from '@/routes/map/map-view';
@@ -245,6 +246,11 @@ export default function ClubMap({
     if (map) applyTextScale(map, scale);
   }, [map, scale]);
 
+  const home = contents.home;
+  useEffect(() => {
+    if (map) setHome(map, home ? [home.longitude, home.latitude] : null);
+  }, [map, home]);
+
   useEffect(() => {
     if (!map) return;
     for (const layer of LAYERS) {
@@ -416,21 +422,7 @@ export default function ClubMap({
     );
   };
 
-  const markers: MapMarker[] = [
-    ...(contents.home
-      ? [
-          {
-            id: 'home',
-            at: [contents.home.longitude, contents.home.latitude] as [number, number],
-            // Below the city's middle, where its own pins are.
-            anchor: 'top' as const,
-            offset: [0, 22] as [number, number],
-            children: <YourCity />,
-          },
-        ]
-      : []),
-    ...(here ? [{ id: 'here', at: here, children: <YouAreHere /> }] : []),
-  ];
+  const markers: MapMarker[] = here ? [{ id: 'here', at: here, children: <YouAreHere /> }] : [];
 
   const toggleLayer = (layer: Layer) => {
     setLayers((now) => {
@@ -695,6 +687,15 @@ function LayerPanel({
           <p className="mt-1 flex items-center gap-2.5 px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
             <span
               aria-hidden="true"
+              className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full border-2 border-[#102a4c] bg-white"
+            >
+              <House className="h-2.5 w-2.5 fill-[#102a4c] text-[#102a4c]" strokeWidth={2.5} />
+            </span>
+            The house is your city, as your profile gives it.
+          </p>
+          <p className="flex items-center gap-2.5 px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
+            <span
+              aria-hidden="true"
               className="h-[18px] w-[18px] flex-none rounded-full border-[3.5px] border-[#102a4c] bg-white"
             />
             A ring is an event or organization shown at its city’s middle, not its address.
@@ -750,19 +751,6 @@ function LayerKey({ layer }: { layer: Layer }) {
       aria-hidden="true"
       className="h-[16px] w-[16px] flex-none rotate-45 border-2 border-white bg-[#5b3d8f] shadow-[0_0_0_1px_#5b3d8f]"
     />
-  );
-}
-
-function YourCity() {
-  return (
-    <span
-      role="img"
-      aria-label="Your city"
-      className="flex items-center gap-1 rounded-full border-2 border-ink bg-paper px-2 py-1 font-bold text-[0.75rem] text-ink shadow-md"
-    >
-      <House aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.4} />
-      Your city
-    </span>
   );
 }
 
