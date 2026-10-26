@@ -132,11 +132,24 @@ describe('apnsPayload', () => {
     tag: 'thread:1',
   };
 
-  it('carries the title, the words and where a tap goes, and no badge', () => {
+  it('carries the title, the words, the badge and where a tap goes', () => {
     expect(JSON.parse(apnsPayload({ ...message, badge: 3 }) ?? '')).toEqual({
-      aps: { alert: { title: 'Direct message from Bo', body: 'See you there' }, sound: 'default' },
+      aps: {
+        alert: { title: 'Direct message from Bo', body: 'See you there' },
+        sound: 'default',
+        badge: 3,
+      },
       url: '/chat/t/1',
     });
+  });
+
+  it('sends 0 to clear the icon, and leaves it alone with no count', () => {
+    const badge = (m: typeof message & { badge?: number }) =>
+      (JSON.parse(apnsPayload(m) ?? '') as { aps: { badge?: number } }).aps.badge;
+    expect(badge({ ...message, badge: 0 })).toBe(0);
+    expect(badge(message)).toBeUndefined();
+    expect(badge({ ...message, badge: -1 })).toBeUndefined();
+    expect(badge({ ...message, badge: 1.5 })).toBeUndefined();
   });
 
   it('drops the words rather than go over Apple’s limit', () => {
@@ -144,6 +157,12 @@ describe('apnsPayload', () => {
     expect(new TextEncoder().encode(payload).length).toBeLessThanOrEqual(APNS_MAX_BYTES);
     const parsed = JSON.parse(payload) as { aps: { alert: { body: string } } };
     expect(parsed.aps.alert.body).toBe('');
+  });
+
+  it('keeps the badge when it drops the words', () => {
+    const long = { ...message, body: 'x'.repeat(APNS_MAX_BYTES), badge: 12 };
+    const parsed = JSON.parse(apnsPayload(long) ?? '') as { aps: { badge: number } };
+    expect(parsed.aps.badge).toBe(12);
   });
 });
 

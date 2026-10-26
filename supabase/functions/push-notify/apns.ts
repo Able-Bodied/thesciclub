@@ -117,14 +117,20 @@ async function signToken(keys: ApnsKeys, iat: number): Promise<string> {
 }
 
 /**
- * The alert: the same title and words as web push, nothing more. No badge:
- * the app cannot clear one yet (no badge plugin), so it would stay on the
- * icon after the message is read.
+ * The alert: the same title, words and badge as web push. The badge is the
+ * member's unread count, on message pushes only; 0 clears the icon, and none
+ * leaves it as it is. The app keeps it true while open (src/lib/chat/unread.ts).
  */
 export function apnsPayload(message: PushMessage): string | null {
+  const { badge } = message;
+  const counted = typeof badge === 'number' && Number.isInteger(badge) && badge >= 0;
   const shape = (body: string) =>
     JSON.stringify({
-      aps: { alert: { title: message.title, body }, sound: 'default' },
+      aps: {
+        alert: { title: message.title, body },
+        sound: 'default',
+        ...(counted ? { badge } : {}),
+      },
       url: message.url,
     });
   let payload = shape(message.body);
