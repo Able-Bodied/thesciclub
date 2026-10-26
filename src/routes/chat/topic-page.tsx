@@ -45,6 +45,7 @@ import { Post } from '@/routes/chat/post';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 import { SaveTopicButton } from '@/routes/chat/save-button';
+import { SharePostButton } from '@/routes/chat/share-post';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 
 /**
@@ -393,6 +394,8 @@ export default function TopicPage() {
       setReportingId(post.id);
     },
     onBlock: blockOffer(post),
+    // Not from a closed room: no member could read what arrived.
+    share: closed ? null : <SharePostButton postId={post.id} words={post.body || topic.title} />,
     edits: edits.byPost.get(post.id) ?? [],
     viewCount: views.loading ? undefined : (views.byPost.get(post.id) ?? null),
     // Keep Like visible while counts load, without inventing a zero count.

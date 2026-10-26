@@ -98,6 +98,7 @@ export function Post({
   reported,
   onReport,
   onBlock,
+  share,
   edits,
   likes,
   viewCount,
@@ -136,6 +137,8 @@ export function Post({
   onReport: () => void;
   /** Somebody else's post, by a member not yet blocked. Absent draws no Block. */
   onBlock?: (() => void) | undefined;
+  /** Share into a conversation (share-post.tsx). Absent draws none. */
+  share?: ReactNode;
   /** Earlier versions, for an administrator. Absent or empty for everybody else. */
   edits?: ChatEdit[];
   /**
@@ -359,10 +362,11 @@ export function Post({
         ) : null}
         <ViewCount count={viewCount} postId={post.id} />
         {reactions ? (
-          cloneElement(reactions, { compact: true, actions: controls, reply })
+          cloneElement(reactions, { compact: true, actions: controls, reply, share })
         ) : (
           <>
             {reply}
+            {share}
             {controls}
           </>
         )}

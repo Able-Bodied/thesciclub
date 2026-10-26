@@ -32,6 +32,8 @@ export interface ReactionBarProps {
   align?: 'start' | 'end';
   actions?: ReactNode;
   reply?: ReactNode;
+  /** Share, after Reply (share-post.tsx). */
+  share?: ReactNode;
 }
 export function ReactionBar({
   target,
@@ -45,6 +47,7 @@ export function ReactionBar({
   align = 'start',
   actions,
   reply,
+  share,
 }: ReactionBarProps) {
   const [open, setOpen] = useState(false);
   // The emoji whose chip was held: the names sheet opens with it first.
@@ -115,6 +118,7 @@ export function ReactionBar({
         {bubble ? null : counts}
         {trigger}
         {reply}
+        {share}
         {compact ? <ItemActions what={words}>{actions}</ItemActions> : null}
       </div>
       {state.error ? (
