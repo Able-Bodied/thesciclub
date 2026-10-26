@@ -89,13 +89,11 @@ describe('the way out', () => {
     expect(screen.getByText(/You may have joined with another email/)).toBeInTheDocument();
   });
 
-  // Hidden for launch (the owner, 2026-10-10): the screen keeps the
-  // consultation link and nothing that looks through a phone's contacts.
-  it('offers the consultation link and no “ask somebody you know”', () => {
+  // Nothing that looks through a phone's contacts (the owner, 2026-10-10), and
+  // no consultation call for now (2026-10-25).
+  it('offers no consultation call and no “ask somebody you know”', () => {
     render(<BlockedScreen onTryAnother={noop} email={null} />);
-    const call = screen.getByRole('link', { name: /Book a call with Wojtek/ });
-    expect(call.getAttribute('href')).toMatch(/^https:\/\/calendar\.google\.com\//);
-    expect(call).toHaveAttribute('target', '_blank');
+    expect(screen.queryByRole('link', { name: /Book a call/ })).toBeNull();
     expect(screen.queryByText(/Ask somebody/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /contacts/i })).toBeNull();
     expect(screen.queryByLabelText(/number of somebody/i)).toBeNull();

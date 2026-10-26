@@ -1039,11 +1039,11 @@ describe('the not-invited screen', () => {
     expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
-  it('names only the organizations that can invite, and the consultation link', async () => {
+  it('names only the organizations that can invite, and no consultation call', async () => {
     renderJoin();
     expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.queryByText('Wheel with Me Foundation')).toBeNull();
-    expect(screen.getByRole('link', { name: /Book a call with Wojtek/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Book a call/ })).toBeNull();
   });
 
   it('does not offer to ask somebody you know', async () => {

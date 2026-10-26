@@ -1,10 +1,8 @@
 import { ShieldCheck } from 'lucide-react';
-import { CONSULTATION_URL } from '@/lib/consultation';
 import { useOrganizations } from '@/lib/organizations';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
-import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
  * The address is not on the list: refused at sign-up, before any email
@@ -111,9 +109,8 @@ export function BlockedScreen({
           </div>
         ) : null}
 
-        <p className="mt-4 text-[0.8875rem] text-ink2 leading-[1.5]">
-          No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
-        </p>
+        {/* No consultation call here for now (the owner, 2026-10-25); it may
+            come back, with CONSULTATION_URL as on the welcome screen. */}
 
         {fromCode && !fromCode.joiningOpen ? null : (
           <p className="mt-4 text-[0.78125rem] text-grey leading-[1.5]">
