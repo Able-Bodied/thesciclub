@@ -8,7 +8,7 @@ import { ContactEmail, LegalPage, List, P, Section, Steps } from '@/routes/legal
  */
 export default function DeleteAccountPage() {
   return (
-    <LegalPage title="Deleting your account" updated="October 21, 2026">
+    <LegalPage title="Deleting your account" updated="October 25, 2026">
       <P>How to delete your account in The SCI Club, and what that erases.</P>
 
       <Section title="In the app">
@@ -39,7 +39,10 @@ export default function DeleteAccountPage() {
         <List>
           <li>Your name, username, email address, phone number, photograph and birthday.</li>
           <li>Your injury or condition, and everything you answered about yourself.</li>
-          <li>Any Google or Apple account you linked.</li>
+          <li>
+            Any Google or Apple account you linked. For Apple, we also ask Apple to end the club’s
+            Sign in with Apple.
+          </li>
           <li>Your sign-in records, with the email and IP addresses they hold.</li>
           <li>
             Your likes, reactions, saved posts, followed organizations, replies to events, blocks
@@ -61,6 +64,8 @@ export default function DeleteAccountPage() {
             profile keeps what you wrote on it; your name, @username and photograph go from it.
           </li>
           <li>Details already passed to the host of an event you were going to.</li>
+          <li>A registration on an event’s public page, until 90 days after the event.</li>
+          <li>A calendar invitation you sent, with the address it came from.</li>
         </List>
         <P>
           The{' '}

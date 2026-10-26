@@ -10,7 +10,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 21, 2026">
+    <LegalPage title="Terms of Service" updated="October 25, 2026">
       <Section title="The club">
         <P>
           The SCI Club is a private community for adults living with spinal cord injury and their
@@ -131,8 +131,9 @@ export default function TermsPage() {
         <P>
           <b>What the club emails you.</b> The club emails you to run your account: the link that
           confirms your address, a link to reset or change your password, a notice when your
-          password changes, and an invitation link when somebody invites you. It does not send
-          newsletters or promotions. Questions or trouble getting an email: <ContactEmail />.
+          password changes, an invitation link when somebody invites you, and, if you add an event
+          by calendar invitation, what became of it. It does not send newsletters or promotions.
+          Questions or trouble getting an email: <ContactEmail />.
         </P>
         <P>
           <b>A phone number is optional.</b> If you add one, it is only so the host of an event you

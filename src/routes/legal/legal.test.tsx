@@ -97,6 +97,65 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/Google’s on Android/);
   });
 
+  // APNs payloads are not end-to-end encrypted, unlike web push (HANDOFF).
+  it('says the iPhone app’s notifications go through Apple, who could read them, and badge the icon', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/through Apple Push Notification service/);
+    expect(section).toHaveTextContent(/a token for your iPhone/);
+    expect(section).toHaveTextContent(/so Apple\s+could read them on the way/);
+    expect(section).toHaveTextContent(/how many of\s+your conversations have unread messages/);
+  });
+
+  // public/embed/youtube.html: YouTube refuses to play inside the app.
+  it('says the iPhone app plays YouTube through the club’s embed page', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Links and videos' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/thesciclub\.com\/embed\//);
+  });
+
+  // lib/google-photo.ts: copied only on a tap.
+  it('says the Google photo is copied only if the member chooses it', () => {
+    open('/privacy');
+    const item = screen.getByText(/Your Google photo, only if you choose it/).closest('li');
+    expect(item).toHaveTextContent(/copied to the club only if you press Use my Google photo/);
+  });
+
+  // 20261022160000 and 20261022170000.
+  it('says why Apple’s token is kept, and that Apple tells the club about the account', () => {
+    open('/privacy');
+    const item = screen.getByText('If you sign in with Apple:').closest('li');
+    expect(item).toHaveTextContent(/kept only so we can ask Apple to\s+end/);
+    expect(item).toHaveTextContent(/deleted your\s+Apple Account/);
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!deleting) throw new Error('no section');
+    expect(deleting).toHaveTextContent(/we also ask Apple to end the club’s Sign in with Apple/);
+  });
+
+  // 20261022190000: event_guest_list, and what stays after deletion.
+  it('says who sees a public event’s list, that it is not the host’s sign-up, and that it outlives an account', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Event hosts' }).parentElement;
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!section || !deleting) throw new Error('no section');
+    expect(section).toHaveTextContent(
+      /administrators and anybody in the club who manages that event/,
+    );
+    expect(section).toHaveTextContent(/It\s+does not register you with the host/);
+    expect(section).toHaveTextContent(/whether the address\s+belongs to a member/);
+    expect(deleting).toHaveTextContent(/stays until 90 days after the event/);
+  });
+
+  // 20261022220000: the sender and the event are kept; the other guests never.
+  it('says what a calendar invitation keeps', () => {
+    open('/privacy');
+    const item = screen.getByText('If you add an event by calendar invitation').closest('li');
+    expect(item).toHaveTextContent(/the address it came from/);
+    expect(item).toHaveTextContent(/Its other guests are never kept/);
+  });
+
   // The owner, 2026-10-16 and 2026-10-20: Stats may name members.
   it('says what administrators see, Stats included', () => {
     open('/privacy');
@@ -362,6 +421,8 @@ describe('Deleting your account', () => {
     expect(stays).toHaveTextContent(
       /A report of your profile keeps what you wrote on it; your name, @username and photograph go from it/,
     );
+    expect(stays).toHaveTextContent(/A registration on an event’s public page, until 90 days/);
+    expect(erased).toHaveTextContent(/we also ask Apple to end the club’s\s+Sign in with Apple/);
   });
 
   it('is linked from the Privacy Policy and the Terms', () => {

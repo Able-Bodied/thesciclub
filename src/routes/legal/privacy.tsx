@@ -21,17 +21,19 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 22, 2026">
-      <Note title="What changed on October 21, 2026">
+    <LegalPage title="Privacy Policy" updated="October 25, 2026">
+      <Note title="What changed on October 25, 2026">
         <List>
           <li>
             <b>Who runs the club.</b> The SCI Club is now operated by Alfred Shaheen, no longer by
             Able Bodied Inc. Questions go to <ContactEmail />.
           </li>
           <li>
-            <b>Added:</b> link previews, YouTube videos, looking up where you live, photographs,
-            notifications, blocking, reporting a profile, what administrators can see, how long we
-            keep things, and deleting your account by email.
+            <b>Added:</b> the iPhone app, link previews, YouTube videos, your Google photo, Sign in
+            with Apple, looking up where you live, photographs, notifications, public event pages
+            and their guest lists, adding events by calendar invitation, blocking, reporting a
+            profile, what administrators can see, how long we keep things, and deleting your account
+            by email.
           </li>
           <li>
             <b>Removed:</b> signing in by text message, which the club does not offer.
@@ -108,6 +110,18 @@ export default function PrivacyPage() {
             makes for us.
           </li>
           <li>
+            <b>Your Google photo, only if you choose it.</b> Signed in with Google, the photo step
+            and Your details offer your Google profile photo. Your device fetches it from Google to
+            show you; it is copied to the club only if you press <b>Use my Google photo</b>.
+          </li>
+          <li>
+            <b>If you sign in with Apple:</b> a token from Apple, kept only so we can ask Apple to
+            end the club’s Sign in with Apple when you unlink Apple or delete your account. Apple
+            may also tell us that you stopped using Sign in with Apple with the club, deleted your
+            Apple Account, or turned Hide My Email forwarding off or on. Administrators are shown
+            that, so they can help you keep a way to sign in.
+          </li>
+          <li>
             <b>How you sign in:</b> whether you joined with email, Google or Apple, and when and
             which way you sign in, and whether it was in the app added to your Home Screen.
           </li>
@@ -118,6 +132,12 @@ export default function PrivacyPage() {
           <li>
             <b>If you invite somebody:</b> the email address you give us, which goes on the club’s
             list, and we email them a link. You can withdraw the invite until it is used.
+          </li>
+          <li>
+            <b>If you add an event by calendar invitation</b> (members who speak for an
+            organization, and administrators): the address it came from, and what it says about the
+            event: title, time, place, link and description. Its other guests are never kept. An
+            invitation from anybody else is ignored, and the club keeps nothing from it.
           </li>
         </List>
         <P>
@@ -171,7 +191,9 @@ export default function PrivacyPage() {
           <OutsideLink href="https://policies.google.com/privacy">
             Google’s Privacy Policy
           </OutsideLink>
-          .
+          . In the iPhone app, the player is loaded through a page of the club’s website,
+          thesciclub.com/embed/, because YouTube will not play inside the app itself. YouTube then
+          receives what it would from its player on any website.
         </P>
       </Section>
 
@@ -181,6 +203,13 @@ export default function PrivacyPage() {
           → Settings. They reach your device through its notification service: Apple’s on an iPhone,
           iPad or Mac, Google’s on Android or in Chrome, or your browser maker’s. A notification can
           show the first words of a message on your lock screen.
+        </P>
+        <P>
+          In the iPhone app, notifications go through Apple Push Notification service, and the
+          address we keep is a token for your iPhone. On the website, a notification’s words are
+          encrypted so that only your device can read them; in the app they are not, so Apple could
+          read them on the way. Once notifications are on, the app’s icon shows how many of your
+          conversations have unread messages.
         </P>
       </Section>
 
@@ -222,8 +251,8 @@ export default function PrivacyPage() {
           <li>
             <b>Members who speak for organizations</b>, such as hospitals and peer support programs,
             see the same profile inside the app as anybody else, to help match members with peers
-            and mentors. They do not see your email address or phone number in the app; a host
-            receives them only as described under Event hosts, below.
+            and mentors. They see your email address and phone number only on the guest list of an
+            event they manage, and only if you chose Going (see Event hosts, below).
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it.
@@ -278,14 +307,18 @@ export default function PrivacyPage() {
           about changes, to remind you, and to look after the people who come. Choosing Interested
           shares nothing. Hosts agree not to use your details for marketing, fundraising or
           promotions, and not to pass them on. The Going button says this before you press it.
+          Anybody in the club who manages the event sees them on its guest list; for other hosts, an
+          administrator passes them on.
         </P>
         {/* Public event pages and registrations, 2026-10-22 (20261022190000). */}
         <P>
           An event can have a public page that anyone with its link can open. It shows the event's
-          details only, never who is going or how many. Registering there shares your name, email
-          address and phone number, if you give it, with the event's organizers and the club's
-          administrators, for that event only. If you then sign in or join with that address, the
-          registration becomes your Going or Interested, and the paragraph above applies.
+          details only, never who is going or how many. Adding yourself to the club’s list there
+          shares your name, email address and phone number, if you give it, with the club’s
+          administrators and anybody in the club who manages that event, for that event only. It
+          does not register you with the host. The guest list also says whether the address belongs
+          to a member, or to somebody joining. If you then sign in or join with that address, it
+          becomes your Going or Interested, and the paragraph above applies.
         </P>
       </Section>
 
@@ -303,7 +336,9 @@ export default function PrivacyPage() {
           We email you only to run your account: the link that confirms your address, a link to
           reset or change your password, a notice when your password changes, and the invitation
           link if somebody invites you. Invitation links are sent by the club on behalf of the
-          member or organization that invited you. We do not send newsletters or promotions.
+          member or organization that invited you. If you add an event by calendar invitation, we
+          email you what became of it, and when it waits for approval we email whoever may approve
+          it, with your address. We do not send newsletters or promotions.
         </P>
         <P>
           <b>
@@ -330,19 +365,21 @@ export default function PrivacyPage() {
         </P>
         <List>
           <li>hosting, our database, file storage and sign-in;</li>
-          <li>email delivery;</li>
+          <li>sending email, and receiving calendar invitations and the email you send us;</li>
           <li>running the nightly job that imports events;</li>
           <li>location lookup (OpenStreetMap);</li>
           <li>device notifications (Apple, Google, or your browser’s maker);</li>
           <li>Google or Apple, if you sign in with them.</li>
         </List>
         <P>
-          Screens that offer Google sign-in load Google’s button from Google, so Google can see that
-          the page was opened, under{' '}
+          On the website, screens that offer Google sign-in load Google’s button from Google, so
+          Google can see that the page was opened, under{' '}
           <OutsideLink href="https://policies.google.com/privacy">
             Google’s Privacy Policy
           </OutsideLink>
-          . No other part of the app loads anything from Google.
+          . In the iPhone app, Google is contacted only when you press its button. Apart from that,
+          a YouTube video you play and your Google photo, nothing in the club loads anything from
+          Google.
         </P>
       </Section>
 
@@ -361,6 +398,14 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Your notifications list:</b> 30 days.
+          </li>
+          <li>
+            <b>Apple’s token:</b> until you unlink Apple or delete your account, and then until
+            Apple confirms the link is ended.
+          </li>
+          <li>
+            <b>A calendar invitation:</b> kept with the address it came from, as the record of where
+            its event came from, after the event too.
           </li>
           <li>
             <b>A ZIP code or position</b> used to find your city: not kept at all.
@@ -404,7 +449,7 @@ export default function PrivacyPage() {
           Google or Apple account you linked, everything you answered about yourself, and your
           likes, reactions, saves, follows, replies to events, blocks and notifications, and your
           sign-in records with their email and IP addresses, and takes your address off the invite
-          list.
+          list. If you signed in with Apple, we also ask Apple to end the club’s Sign in with Apple.
         </P>
         <P>
           What you wrote in Chat, and the photographs you shared there, stay, so other people’s
@@ -413,7 +458,8 @@ export default function PrivacyPage() {
           wrote and every photograph in it. A report keeps its copy of the reported words, with
           nobody named. A report of your profile keeps what you wrote on it, but your name,
           @username and photograph go from it. Details already passed to an event’s host stay with
-          that host.
+          that host. A registration on an event’s public page stays until 90 days after the event,
+          and a calendar invitation you sent keeps the address it came from.
         </P>
         <P>
           If you cannot sign in, or are an administrator, email <ContactEmail /> to ask us to delete
