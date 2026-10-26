@@ -454,6 +454,58 @@ describe('staying on the newest message while photographs load', () => {
     expect(box.scrollTop).toBe(300);
     vi.unstubAllGlobals();
   });
+
+  // The owner, 2026-10-26: on a computer a small scroll up was pulled back
+  // down, because it stayed within the slack that takes the hold up again.
+  it('leaves a small scroll up where it is, and holds again on the way back down', async () => {
+    let resized: (() => void) | null = null;
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(callback: () => void) {
+          resized = callback;
+        }
+        observe() {
+          // The test calls `resized` itself.
+        }
+        disconnect() {
+          // Nothing was watched.
+        }
+      },
+    );
+    renderThread();
+    const box = (await screen.findByRole('log')).parentElement;
+    if (!box) throw new Error('The log has no scrolling box around it.');
+    let height = 1400;
+    Object.defineProperty(box, 'scrollHeight', { configurable: true, get: () => height });
+    act(() => {
+      resized?.();
+    });
+    expect(box.scrollTop).toBe(1400);
+    fireEvent.scroll(box);
+
+    // A notch of the wheel up, well inside the slack.
+    fireEvent.wheel(box);
+    box.scrollTop = 1360;
+    fireEvent.scroll(box);
+    expect(box.scrollTop).toBe(1360);
+    height = 1800;
+    act(() => {
+      resized?.();
+    });
+    expect(box.scrollTop).toBe(1360);
+
+    // Back down to the newest message: held again, so a photograph follows.
+    fireEvent.wheel(box);
+    box.scrollTop = 1800;
+    fireEvent.scroll(box);
+    height = 2200;
+    act(() => {
+      resized?.();
+    });
+    expect(box.scrollTop).toBe(2200);
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('reporting a message', () => {
