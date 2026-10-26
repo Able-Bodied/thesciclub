@@ -21,7 +21,17 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 25, 2026">
+    <LegalPage title="Privacy Policy" updated="October 26, 2026">
+      <Note title="What changed on October 26, 2026">
+        <List>
+          <li>
+            <b>Added:</b> the map. Members are counted at the middle of their city, never closer;
+            Show me on the map, on Me, leaves you out. Use my location on the map stays on your
+            device. Map pictures come from the club’s own copy of OpenStreetMap, served by
+            Cloudflare. Event and organization addresses are looked up with OpenStreetMap.
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on October 25, 2026">
         <List>
           <li>
@@ -159,9 +169,18 @@ export default function PrivacyPage() {
             position is kept. Or skip both and choose your state and city yourself.
           </li>
           <li>
-            <b>Events near you:</b> to show events within a distance of home, a nightly job looks up
-            the middle of each city members live in, also with OpenStreetMap. It sends only the city
-            and state, never who lives there.
+            <b>On the map:</b> <b>Use my location</b> asks your device only when you press it, and
+            only for your approximate position. It is used on your device to show where you are, and
+            is never sent to the club or kept.
+          </li>
+          <li>
+            <b>Events near you:</b> to show events within a distance of home, and to place members
+            on the map, a nightly job looks up the middle of each city members live in, also with
+            OpenStreetMap. It sends only the city and state, never who lives there.
+          </li>
+          <li>
+            <b>Event and organization addresses</b> are looked up with OpenStreetMap when they are
+            saved, so they can be placed on the map. Only the address is sent.
           </li>
         </List>
         <P>
@@ -238,6 +257,12 @@ export default function PrivacyPage() {
             live and what you have chosen to share. They never see your email address, your phone
             number or your birthday; your age is worked out from your birthday on our side. You can
             hide yourself from Peers, on Me.
+          </li>
+          <li>
+            <b>On the map</b>, other members see how many members live in each city, shown at the
+            middle of the city, never your address or anything closer. Turn off{' '}
+            <b>Show me on the map</b>, on Me, to be left out; hiding yourself from Peers leaves you
+            off the map too.
           </li>
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
@@ -364,6 +389,11 @@ export default function PrivacyPage() {
           <li>sending email, and receiving calendar invitations and the email you send us;</li>
           <li>running the nightly job that imports events;</li>
           <li>location lookup (OpenStreetMap);</li>
+          <li>
+            map pictures (Cloudflare, which stores and serves the club’s own copy of OpenStreetMap’s
+            map; like any web host, it sees your device’s internet address and which parts of the
+            map it loads);
+          </li>
           <li>device notifications (Apple, Google, or your browser’s maker);</li>
           <li>Google or Apple, if you sign in with them.</li>
         </List>

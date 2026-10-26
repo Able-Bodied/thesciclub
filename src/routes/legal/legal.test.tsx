@@ -40,10 +40,12 @@ describe('the Privacy Policy', () => {
   // The note names no earlier operator (the owner, 2026-10-26).
   it('says up top what changed, and names no earlier operator', () => {
     open('/privacy');
-    const note = screen.getByRole('heading', { name: /What changed on/ }).parentElement;
-    if (!note) throw new Error('no note');
-    expect(note).not.toHaveTextContent(/Able Bodied/);
-    expect(note).toHaveTextContent(/Removed: signing in by text message/);
+    const notes = screen
+      .getAllByRole('heading', { name: /What changed on/ })
+      .map((heading) => heading.parentElement?.textContent ?? '');
+    expect(notes[0]).toMatch(/Added: the map/);
+    for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
+    expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });
 
   // Phone sign-in went 2026-10-10; the text-message section went 2026-10-21.
