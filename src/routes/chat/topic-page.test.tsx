@@ -322,6 +322,28 @@ beforeEach(() => {
   db.saveFailure = null;
 });
 
+describe('sharing a post', () => {
+  it('is offered on every standing post, named for it', () => {
+    db.posts = [
+      post({ id: '1', body: 'Which cushion do you use?' }),
+      post({ id: '2', replyTo: '1', authorId: 'me', body: 'Air cells.' }),
+    ];
+    renderTopic();
+    expect(screen.getAllByRole('button', { name: /^Share / }).map((b) => b.ariaLabel)).toEqual([
+      'Share “Which cushion do you use?” in a conversation',
+      'Share “Air cells.” in a conversation',
+    ]);
+  });
+
+  // No member could read what arrived.
+  it('is not offered in a closed room', () => {
+    db.rooms = db.rooms.map((r) => ({ ...r, openedAt: null }));
+    db.isAdmin = true;
+    renderTopic();
+    expect(screen.queryByRole('button', { name: /^Share / })).toBeNull();
+  });
+});
+
 describe('blocking from a post', () => {
   beforeEach(() => {
     if (db.topic) db.topic = { ...db.topic, authorId: 'me' };

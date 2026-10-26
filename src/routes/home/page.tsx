@@ -22,6 +22,7 @@ import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { QuickAsk } from '@/routes/chat/quick-ask';
 import { ReactionBar } from '@/routes/chat/reaction-bar';
+import { SharePostButton } from '@/routes/chat/share-post';
 import { EventCard } from '@/routes/events/event-card';
 import { dateWindowRange } from '@/routes/events/filters';
 import { ComposeCard } from '@/routes/home/compose-card';
@@ -301,6 +302,9 @@ export default function HomePage() {
                   what={item.topic.title}
                   state={reactions}
                   readerId={memberId}
+                  share={
+                    <SharePostButton postId={item.topic.opening.id} words={item.topic.title} />
+                  }
                 />
               ) : null
             }
@@ -324,6 +328,9 @@ export default function HomePage() {
                   what={item.topic.title}
                   state={reactions}
                   readerId={memberId}
+                  share={
+                    <SharePostButton postId={item.topic.opening.id} words={item.topic.title} />
+                  }
                 />
               ) : null
             }
