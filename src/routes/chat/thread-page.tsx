@@ -243,13 +243,22 @@ export default function ThreadPage() {
     else setBehind(true);
   }, [messages.length, toBottom, pin]);
 
-  /** Coming back down to the newest message takes the hold up again. */
+  /**
+   * Coming back down to the newest message takes the hold up again, without a
+   * jump. Only on the way down: a small scroll up stays within the slack, and
+   * taking the hold up then pulled the reader back to the bottom (the owner,
+   * 2026-10-26).
+   */
+  const lastTop = useRef(0);
   function onScroll() {
     const element = scroller.current;
-    if (!element || pin.holding()) return;
+    if (!element) return;
+    const goingDown = element.scrollTop > lastTop.current;
+    lastTop.current = element.scrollTop;
+    if (pin.holding() || !goingDown) return;
     const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
     if (shouldFollowScroll(distance)) {
-      pin.hold(snapToBottom);
+      pin.hold(snapToBottom, { now: false });
       setBehind(false);
     }
   }
