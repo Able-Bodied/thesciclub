@@ -100,6 +100,25 @@ export function notificationsOffered(): boolean {
 
 const loadApp = () => import('@/lib/push/app-push');
 
+/**
+ * The unread count on the app icon, where there is one: the iPhone app's
+ * (app-push.ts), or a Home Screen app on iOS 16.4+ or installed Chrome. A push
+ * sets it while the app is closed; src/lib/chat/unread.ts keeps it true while
+ * open. 0 clears it. Never fails.
+ */
+export function showOnAppIcon(count: number): Promise<void> {
+  if (isAppPush()) {
+    return loadApp()
+      .then((app) => app.setIconBadge(count))
+      .catch(() => undefined);
+  }
+  // TypeScript's DOM library declares these everywhere; the platform has them
+  // only where there is an icon to put a number on.
+  if (isNative() || !('setAppBadge' in navigator)) return Promise.resolve();
+  const pending = count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge();
+  return pending.catch(() => undefined);
+}
+
 function canPush(): boolean {
   if (isNative()) return false;
   return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -542,7 +561,9 @@ async function restoreApp(userId: string, requestedRevision: number): Promise<No
  */
 export async function forgetThisDevice(): Promise<void> {
   revision += 1;
-  if (!canPush() && !isAppPush()) return;
+  // The next person on this phone does not see this member's count.
+  const cleared = showOnAppIcon(0);
+  if (!canPush() && !isAppPush()) return cleared;
   const attempt = inDeviceOrder(async () => {
     const { data, error: sessionError } = await getSupabase().auth.getSession();
     if (sessionError) throw sessionError;
@@ -572,7 +593,10 @@ export async function forgetThisDevice(): Promise<void> {
   }).catch((e: unknown) => {
     console.error(e);
   });
-  await Promise.race([attempt, new Promise((resolve) => setTimeout(resolve, 3_000))]);
+  await Promise.race([
+    Promise.all([attempt, cleared]),
+    new Promise((resolve) => setTimeout(resolve, 3_000)),
+  ]);
 }
 
 /** The row on Me: where this device stands, and the two things a member can do. */

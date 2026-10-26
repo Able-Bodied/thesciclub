@@ -1,11 +1,12 @@
 import type { PluginListenerHandle } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
+import { Badge } from '@capawesome/capacitor-badge';
 
 /**
- * The store app's side of notifications on an iPhone: the system's permission
- * and the APNs device token. notifications.ts decides what to do with them;
- * this only asks iOS. Loaded only in the app, so the website never downloads
- * the plugin.
+ * The store app's side of notifications on an iPhone: the system's permission,
+ * the APNs device token and the number on the icon. notifications.ts decides
+ * what to do with them; this only asks iOS. Loaded only in the app, so the
+ * website never downloads the plugins.
  *
  * The token goes to the club as `apns:<environment>:<token>`
  * (20261023030000). TestFlight and App Store builds get production tokens; a
@@ -78,4 +79,20 @@ export function appToken(): Promise<string> {
     throw e;
   });
   return token;
+}
+
+let badge: Promise<void> = Promise.resolve();
+
+/**
+ * The unread count on the app's icon; 0 clears it. One at a time, so the last
+ * count wins. Only once notifications are allowed: the badge plugin's `set`
+ * asks iOS itself, and the club never asks on its own.
+ */
+export function setIconBadge(count: number): Promise<void> {
+  const next = badge.then(async () => {
+    if ((await appPermission()) !== 'granted') return;
+    await Badge.set({ count });
+  });
+  badge = next.catch(() => undefined);
+  return next;
 }

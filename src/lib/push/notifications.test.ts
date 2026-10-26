@@ -14,6 +14,7 @@ import {
   openingFacts,
   readDeviceState,
   restoreDeviceNotifications,
+  showOnAppIcon,
   turnOffNotifications,
   turnOnNotifications,
   useDeviceNotifications,
@@ -45,14 +46,39 @@ interface Ios {
   answer: string;
   token: string | null;
   listeners: Record<string, (event: Record<string, string>) => void>;
+  /** Every number put on the icon, in order. */
+  badges: number[];
+  /** How long the next permission check takes, in ms. */
+  slowCheck: number;
 }
 const ios = vi.hoisted(
-  (): Ios => ({ permission: 'prompt', answer: 'granted', token: null, listeners: {} }),
+  (): Ios => ({
+    permission: 'prompt',
+    answer: 'granted',
+    token: null,
+    listeners: {},
+    badges: [],
+    slowCheck: 0,
+  }),
 );
+
+vi.mock('@capawesome/capacitor-badge', () => ({
+  Badge: {
+    set: ({ count }: { count: number }) => {
+      ios.badges.push(count);
+      return Promise.resolve();
+    },
+  },
+}));
 
 vi.mock('@capacitor/push-notifications', () => ({
   PushNotifications: {
-    checkPermissions: () => Promise.resolve({ receive: ios.permission }),
+    checkPermissions: async () => {
+      const wait = ios.slowCheck;
+      ios.slowCheck = 0;
+      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+      return { receive: ios.permission };
+    },
     requestPermissions: () => {
       calls.log.push('ios prompt');
       ios.permission = ios.answer;
@@ -339,6 +365,14 @@ describe('turning on and off', () => {
       await forgetThisDevice();
       expect(calls.log).toEqual([]);
     });
+
+    it('puts no number on the icon', async () => {
+      ios.badges = [];
+      ios.permission = 'granted';
+      await showOnAppIcon(3);
+      await forgetThisDevice();
+      expect(ios.badges).toEqual([]);
+    });
   });
 
   describe('in the iPhone app, through Apple', () => {
@@ -420,6 +454,39 @@ describe('turning on and off', () => {
       expect(calls.log).toEqual([]);
     });
 
+    it('puts the unread count on the icon, and 0 clears it', async () => {
+      ios.permission = 'granted';
+      ios.badges = [];
+      await showOnAppIcon(3);
+      await showOnAppIcon(0);
+      expect(ios.badges).toEqual([3, 0]);
+    });
+
+    // The badge plugin's `set` asks iOS for permission itself.
+    it('leaves the icon alone until notifications are allowed, and never asks', async () => {
+      ios.badges = [];
+      await showOnAppIcon(3);
+      ios.permission = 'denied';
+      await showOnAppIcon(3);
+      expect(ios.badges).toEqual([]);
+      expect(calls.log).toEqual([]);
+    });
+
+    it('sets the icon in order, so the last count wins', async () => {
+      ios.permission = 'granted';
+      ios.badges = [];
+      ios.slowCheck = 20;
+      await Promise.all([showOnAppIcon(2), showOnAppIcon(0)]);
+      expect(ios.badges).toEqual([2, 0]);
+    });
+
+    it('clears the icon at logout', async () => {
+      await turnOnNotifications('me');
+      ios.badges = [];
+      await forgetThisDevice();
+      expect(ios.badges).toEqual([0]);
+    });
+
     it('draws the row on Me', async () => {
       const { result } = renderHook(() => useDeviceNotifications('me'));
       await vi.waitFor(() => {
@@ -441,6 +508,27 @@ describe('turning on and off', () => {
       });
       expect(later.askOnOpening(facts)).toBe(true);
     });
+  });
+
+  it('on the website, puts the count on the icon and clears it at logout', async () => {
+    ios.badges = [];
+    const icon: string[] = [];
+    vi.stubGlobal('navigator', {
+      userAgent: 'test',
+      setAppBadge: (count: number) => {
+        icon.push(`set ${count}`);
+        return Promise.resolve();
+      },
+      clearAppBadge: () => {
+        icon.push('clear');
+        return Promise.resolve();
+      },
+    });
+    await showOnAppIcon(4);
+    await showOnAppIcon(0);
+    await forgetThisDevice();
+    expect(icon).toEqual(['set 4', 'clear', 'clear']);
+    expect(ios.badges).toEqual([]);
   });
 
   it('on the website, the same phone would be asked', () => {

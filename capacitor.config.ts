@@ -36,9 +36,17 @@ const config: CapacitorConfig = {
       logLevel: 1,
     },
     // A notification that arrives while the app is open still shows, as the
-    // website's do (src/sw.ts). No badge: the app cannot clear one yet.
+    // website's do (src/sw.ts). Its badge is left out: while open, the app
+    // sets the icon's number itself (src/lib/chat/unread.ts), and a push's
+    // count can be older than a conversation just read.
     PushNotifications: {
       presentationOptions: ['banner', 'list', 'sound'],
+    },
+    // The icon's number is only ever the club's count, never one the plugin
+    // remembered from an earlier launch.
+    Badge: {
+      persist: false,
+      autoClear: false,
     },
   },
 };

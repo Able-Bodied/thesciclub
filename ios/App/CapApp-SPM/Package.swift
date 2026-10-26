@@ -18,6 +18,7 @@ let package = Package(
         .package(name: "CapacitorPushNotifications", path: "../../../node_modules/.pnpm/@capacitor+push-notifications@8.1.3_@capacitor+core@8.5.3/node_modules/@capacitor/push-notifications"),
         .package(name: "CapacitorSplashScreen", path: "../../../node_modules/.pnpm/@capacitor+splash-screen@8.0.2_@capacitor+core@8.5.3/node_modules/@capacitor/splash-screen"),
         .package(name: "CapacitorTextZoom", path: "../../../node_modules/.pnpm/@capacitor+text-zoom@8.0.1_@capacitor+core@8.5.3/node_modules/@capacitor/text-zoom"),
+        .package(name: "CapawesomeCapacitorBadge", path: "../../../node_modules/.pnpm/@capawesome+capacitor-badge@8.0.4_@capacitor+core@8.5.3/node_modules/@capawesome/capacitor-badge"),
         .package(name: "CapgoCapacitorSocialLogin", path: "../../../node_modules/.pnpm/@capgo+capacitor-social-login@8.5.13_@capacitor+core@8.5.3/node_modules/@capgo/capacitor-social-login")
     ],
     targets: [
@@ -32,6 +33,7 @@ let package = Package(
                 .product(name: "CapacitorPushNotifications", package: "CapacitorPushNotifications"),
                 .product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen"),
                 .product(name: "CapacitorTextZoom", package: "CapacitorTextZoom"),
+                .product(name: "CapawesomeCapacitorBadge", package: "CapawesomeCapacitorBadge"),
                 .product(name: "CapgoCapacitorSocialLogin", package: "CapgoCapacitorSocialLogin")
             ]
         )
