@@ -37,13 +37,12 @@ describe('the Privacy Policy', () => {
     expect(document.body.textContent).not.toMatch(/run by Able Bodied|nonprofit/);
   });
 
-  it('says up top who runs the club now and what changed', () => {
+  // The note names no earlier operator (the owner, 2026-10-26).
+  it('says up top what changed, and names no earlier operator', () => {
     open('/privacy');
     const note = screen.getByRole('heading', { name: /What changed on/ }).parentElement;
     if (!note) throw new Error('no note');
-    expect(note).toHaveTextContent(
-      /now operated by Alfred Shaheen, no longer by Able Bodied Inc\./,
-    );
+    expect(note).not.toHaveTextContent(/Able Bodied/);
     expect(note).toHaveTextContent(/Removed: signing in by text message/);
   });
 
