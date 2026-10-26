@@ -165,16 +165,17 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   `i_am_invited` and the sign-up hook back (probe
   `a-registration-is-not-an-invite.sql`). Nobody joined that way.
 
-- **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
-  name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
-  (2026-10-21). Their database side is live (`20261022100000` to
-  `20261022150000`: sign-in records erased on deletion, profile reports,
-  inviters only withdraw, a deleted member's reports unnamed). The client
-  only once the owner has read the pages **and** that address receives mail (MX at Spaceship, held by
-  someone else). Then paste `https://thesciclub.com/delete-account` into
-  Play's Data safety form. Privacy still needs a sentence on the Google
-  photo (Built, Google photo), for the owner to word. A lawyer should read them: injury details are
-  health information.
+- **Legal pages, live 2026-10-26** (`release-legal` → `main`, owner approved
+  the wording 2026-10-25): Terms, Privacy and `/delete-account` name Alfred
+  Shaheen as operator and `hello@thesciclub.com` as contact, and cover the
+  iPhone app, Apple and Google sign-in, push, public event guest lists and
+  calendar invitations. Kept as written: no postal address, guest-list
+  labels, guest-list sign-ups kept to 90 days after the event, calendar
+  invitations kept. The same release put the Universal Links file live, the
+  sign-up agreement line on the join and sign-in forms, and took the
+  consultation call off the closed door. Still to do: paste
+  `https://thesciclub.com/delete-account` into Play's Data safety form; a
+  lawyer should read the pages (injury details are health information).
 
 - **Native sign-in and Universal Links, not live** (2026-10-22), in order:
   1. Google: an iOS OAuth client (bundle `com.thesciclub.app`, Team
