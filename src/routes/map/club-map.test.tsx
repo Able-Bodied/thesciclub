@@ -46,6 +46,7 @@ function fakeMap() {
     getCanvas: () => ({ style: {} as Record<string, string> }),
     easeTo: vi.fn(),
     getZoom: () => 10,
+    doubleClickZoom: { disable: vi.fn() },
   };
 }
 
@@ -377,5 +378,142 @@ describe('View on the map', () => {
     await ready();
     expect(shown).not.toHaveBeenCalled();
     expect(screen.queryByText(/isn’t on the map/)).toBeNull();
+  });
+});
+
+describe('a double on a pin', () => {
+  const at = (coordinates: [number, number]) => ({ type: 'Point', coordinates });
+  const exactEvent = {
+    source: 'club-events',
+    geometry: at([-122.27, 37.87]),
+    properties: { key: '37.87,-122.27|exact', count: 1, exact: true },
+  };
+
+  /** Two clicks at one point, as MapLibre reports them. */
+  function twice(hit: unknown, touch = false) {
+    the.map?.queryRenderedFeatures.mockReturnValue(hit ? [hit] : []);
+    act(() => {
+      for (let i = 0; i < 2; i++) {
+        if (touch) the.map?.fire('touchstart');
+        the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122, lat: 37 } });
+      }
+    });
+  }
+
+  it('goes to street level on a single event, and keeps the sheet a mouse opened', async () => {
+    render(<Screen />);
+    await ready();
+    twice(exactEvent);
+    await waitFor(() => {
+      expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.27, 37.87], zoom: 17 });
+    });
+    expect(await screen.findByRole('dialog')).toBeVisible();
+  });
+
+  it('goes only as close as the city to a place known by its city', async () => {
+    render(<Screen focus="organizations" />);
+    await ready();
+    twice({ ...exactEvent, source: 'club-organizations', properties: { key: 'k', exact: false } });
+    await waitFor(() => {
+      expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.27, 37.87], zoom: 12 });
+    });
+  });
+
+  it('takes an organization at its address to street level', async () => {
+    render(<Screen focus="organizations" />);
+    await ready();
+    twice({ ...exactEvent, source: 'club-organizations', properties: { key: 'k', exact: true } });
+    await waitFor(() => {
+      expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.27, 37.87], zoom: 17 });
+    });
+  });
+
+  it('never takes a city of members closer than the city', async () => {
+    render(<Screen focus="peers" />);
+    await ready();
+    twice({
+      source: 'club-peers',
+      geometry: at([-122.27, 37.8]),
+      properties: { key: 'Oakland|CA' },
+    });
+    await waitFor(() => {
+      expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.27, 37.8], zoom: 11 });
+    });
+  });
+
+  it('takes a cluster to where it splits', async () => {
+    render(<Screen />);
+    await ready();
+    const source = the.map?.sources.get('club-events') as unknown as Record<string, unknown>;
+    source.getClusterExpansionZoom = vi.fn(() => Promise.resolve(13));
+    source.getClusterLeaves = vi.fn(() => Promise.resolve([]));
+    twice({
+      source: 'club-events',
+      geometry: at([-122.2, 37.8]),
+      properties: { cluster_id: 7, point_count: 4, count: 4 },
+    });
+    await waitFor(() => {
+      expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.2, 37.8], zoom: 13 });
+    });
+    expect(source.getClusterExpansionZoom).toHaveBeenCalledWith(7);
+  });
+
+  it('steps in as MapLibre would on empty map', async () => {
+    render(<Screen />);
+    await ready();
+    twice(null);
+    expect(the.map?.easeTo).toHaveBeenCalledWith({ zoom: 11, around: { lng: -122, lat: 37 } });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('a single tap', () => {
+  const hit = {
+    source: 'club-events',
+    geometry: { type: 'Point', coordinates: [-122.27, 37.87] },
+    properties: { key: '37.87,-122.27|exact', count: 1, exact: true },
+  };
+  const tap = (touch: boolean) => {
+    act(() => {
+      if (touch) the.map?.fire('touchstart');
+      the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.87 } });
+    });
+  };
+
+  it('opens the sheet at once with a mouse', async () => {
+    render(<Screen />);
+    await ready();
+    the.map?.queryRenderedFeatures.mockReturnValue([hit]);
+    tap(false);
+    expect(await screen.findByRole('dialog', {}, { timeout: 100 })).toBeVisible();
+  });
+
+  it('opens it after the double-tap window with a finger, and never on a double', async () => {
+    render(<Screen />);
+    await ready();
+    the.map?.queryRenderedFeatures.mockReturnValue([hit]);
+    tap(true);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(await screen.findByRole('dialog', {}, { timeout: 400 })).toBeVisible();
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
+    );
+    // A double: no sheet, before or after.
+    tap(true);
+    tap(true);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.27, 37.87], zoom: 17 });
+  });
+
+  it('offers the same up close from the sheet, for a keyboard', async () => {
+    render(<Screen />);
+    await ready();
+    the.map?.queryRenderedFeatures.mockReturnValue([hit]);
+    tap(false);
+    await userEvent.click(await screen.findByRole('button', { name: 'Show up close' }));
+    expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-122.27, 37.87], zoom: 17 });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

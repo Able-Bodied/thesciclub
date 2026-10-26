@@ -398,3 +398,34 @@ export const boxOf = (map: MapLibreMap): Box => {
   const bounds = map.getBounds();
   return [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()];
 };
+
+/** A double on a pin (the owner, 2026-10-26): how close each kind goes. */
+export const STREET_ZOOM = 17;
+/** A place known only by its city: closer would point at one street. */
+export const CITY_CLOSE_ZOOM = 12;
+/** Members are counted by city: never closer than this. */
+export const PEER_CITY_ZOOM = 11;
+
+export interface CloseUp {
+  center: [number, number];
+  zoom: number;
+}
+
+/** Where a double on this pin goes: a cluster to where it splits, a place up close. */
+export async function closeUpOf(map: MapLibreMap, hit: MapGeoJSONFeature): Promise<CloseUp | null> {
+  const layer = LAYERS.find((name) => SOURCES[name] === hit.source);
+  const geometry = (hit as unknown as { geometry: { type: string; coordinates: number[] } })
+    .geometry;
+  if (!layer || geometry.type !== 'Point') return null;
+  const [lng = 0, lat = 0] = geometry.coordinates;
+  const center: [number, number] = [lng, lat];
+  const properties = hit.properties as { cluster_id?: number; exact?: boolean };
+  if (typeof properties.cluster_id === 'number') {
+    const source = map.getSource<GeoJSONSource>(SOURCES[layer]);
+    if (!source) return null;
+    return { center, zoom: await source.getClusterExpansionZoom(properties.cluster_id) };
+  }
+  // Already closer than a city: centred, not zoomed out.
+  if (layer === 'peers') return { center, zoom: Math.max(map.getZoom(), PEER_CITY_ZOOM) };
+  return { center, zoom: properties.exact === true ? STREET_ZOOM : CITY_CLOSE_ZOOM };
+}

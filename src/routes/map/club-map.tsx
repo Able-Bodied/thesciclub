@@ -36,11 +36,16 @@ import {
   applyFocus,
   applyTextScale,
   boxOf,
+  CITY_CLOSE_ZOOM,
+  type CloseUp,
+  closeUpOf,
   LAYER_IDS,
+  PEER_CITY_ZOOM,
   type Picked,
   pageTextScale,
   pick,
   SOURCES,
+  STREET_ZOOM,
   setHome,
 } from '@/routes/map/map-layers';
 import { MapSheet } from '@/routes/map/map-sheet';
@@ -109,6 +114,12 @@ export interface ClubMapProps {
 
 /** Half a 44px target around a tap. */
 const REACH = 22;
+/** A second tap this soon is a double; a single tap's sheet waits this long (touch only). */
+const DOUBLE_TAP_MS = 250;
+/** A mouse's double-click window; its sheet does not wait. */
+const DOUBLE_CLICK_MS = 400;
+/** A click this soon after a touch came from a finger. */
+const TOUCH_CLICK_MS = 800;
 const CITY_ZOOM = 10;
 const NONE_EVENTS: ClubEvent[] = [];
 const NONE_MEMBERS: BrowseMember[] = [];
@@ -248,6 +259,8 @@ export default function ClubMap({
       return;
     }
     addLayers(created);
+    // Doubles are ours: up close on a pin, MapLibre's step elsewhere.
+    created.doubleClickZoom.disable();
     setBox(boxOf(created));
     live.current = created;
     setHeld(created);
@@ -319,15 +332,53 @@ export default function ClubMap({
         { layers: visibleIds() },
       );
     };
+    // A double on a pin goes up close; elsewhere, MapLibre's step in, done
+    // here as its own double-click zoom is off (onReady). A mouse's first
+    // click opens the sheet at once, beside the map; a finger's waits out
+    // the double-tap window, as the phone's sheet would take the second tap.
+    let last: { at: number; x: number; y: number } | null = null;
+    let lastTouch = Number.NEGATIVE_INFINITY;
+    let opening: ReturnType<typeof setTimeout> | undefined;
+    const onTouch = () => {
+      lastTouch = performance.now();
+    };
     const onClick = (event: MapMouseEvent) => {
+      const at = performance.now();
+      const touch = at - lastTouch < TOUCH_CLICK_MS;
+      const { x, y } = event.point;
+      const double =
+        last !== null &&
+        at - last.at < (touch ? DOUBLE_TAP_MS : DOUBLE_CLICK_MS) &&
+        Math.hypot(x - last.x, y - last.y) < REACH;
+      if (double) {
+        last = null;
+        clearTimeout(opening);
+        const hit = near(event.point)[0];
+        if (!hit) {
+          const shift = (event.originalEvent as MouseEvent | undefined)?.shiftKey === true;
+          map.easeTo({ zoom: map.getZoom() + (shift ? -1 : 1), around: event.lngLat });
+          return;
+        }
+        closeUpOf(map, hit)
+          .then((target) => {
+            if (target && live.current === map) map.easeTo(target);
+          })
+          .catch(() => undefined);
+        return;
+      }
+      last = { at, x, y };
       const hits = near(event.point);
       if (hits.length === 0) return;
-      // The map can be removed before a cluster answers; then the tap is moot.
-      pick(map, hits, [event.lngLat.lng, event.lngLat.lat])
-        .then(({ keys, zoomTo }) => {
-          if (live.current === map) setSheet({ kind: 'place', keys, zoomTo });
-        })
-        .catch(() => undefined);
+      const open = () => {
+        // The map can be removed before a cluster answers; then the tap is moot.
+        pick(map, hits, [event.lngLat.lng, event.lngLat.lat])
+          .then(({ keys, zoomTo }) => {
+            if (live.current === map) setSheet({ kind: 'place', keys, zoomTo });
+          })
+          .catch(() => undefined);
+      };
+      if (touch) opening = setTimeout(open, DOUBLE_TAP_MS);
+      else open();
     };
     // At most once a frame, however fast the pointer moves.
     let pending: { x: number; y: number } | null = null;
@@ -342,9 +393,12 @@ export default function ClubMap({
     map.on('moveend', onMoved);
     map.on('movestart', onMoving);
     map.on('click', onClick);
+    map.on('touchstart', onTouch);
     map.on('mousemove', onPointer);
     return () => {
+      clearTimeout(opening);
       cancelAnimationFrame(raf);
+      map.off('touchstart', onTouch);
       map.off('moveend', onMoved);
       map.off('movestart', onMoving);
       map.off('click', onClick);
@@ -482,6 +536,20 @@ export default function ClubMap({
     });
   };
 
+  // One place in a tapped sheet: what a double on its pin does, for a keyboard too.
+  const closeUp = ((): CloseUp | null => {
+    if (sheet?.kind !== 'place') return null;
+    const e = spots.filter((spot) => sheet.keys.events.has(spot.key));
+    const p = cities.filter((city) => sheet.keys.peers.has(city.key));
+    const o = placedOrganizations.spots.filter((spot) => sheet.keys.organizations.has(spot.key));
+    const [only] = [...e, ...p, ...o];
+    if (!only || e.length + p.length + o.length !== 1) return null;
+    const center: [number, number] = [only.longitude, only.latitude];
+    if (p.length) return { center, zoom: Math.max(map?.getZoom() ?? 0, PEER_CITY_ZOOM) };
+    const exact = 'exact' in only && only.exact;
+    return { center, zoom: exact ? STREET_ZOOM : CITY_CLOSE_ZOOM };
+  })();
+
   const eventsQuiet = eventsNote && layers.has('events') ? eventsNote : null;
 
   return (
@@ -607,14 +675,15 @@ export default function ClubMap({
           layers={layers}
           area={sheet.kind === 'area'}
           zoomIn={
-            sheet.kind === 'place' && sheet.zoomTo && map
+            sheet.kind === 'place' && map && (sheet.zoomTo ?? closeUp)
               ? () => {
-                  const target = sheet.zoomTo;
+                  const target = sheet.zoomTo ?? closeUp;
                   if (target) map.easeTo(target);
                   setSheet(null);
                 }
               : undefined
           }
+          zoomLabel={sheet.kind === 'place' && sheet.zoomTo ? 'Zoom in here' : 'Show up close'}
           events={shownEvents}
           {...(sheet.kind === 'place' && sheet.selected ? { selected: sheet.selected } : {})}
           places={contents.organizations}
@@ -821,6 +890,7 @@ export function PlaceSheet({
   layers,
   area,
   zoomIn,
+  zoomLabel = 'Zoom in here',
   events,
   places = [],
   here = new Set(),
@@ -834,6 +904,8 @@ export function PlaceSheet({
   layers: ReadonlySet<Layer>;
   area: boolean;
   zoomIn: (() => void) | undefined;
+  /** "Zoom in here" for a cluster, "Show up close" for one place. */
+  zoomLabel?: string;
   events: ClubEvent[];
   /** Every organization place on the map, for "Also in". */
   places?: MapOrganization[];
@@ -875,7 +947,7 @@ export function PlaceSheet({
             onClick={zoomIn}
             className="mt-1 min-h-[44px] font-semibold text-[0.875rem] text-emphasis underline underline-offset-2"
           >
-            Zoom in here
+            {zoomLabel}
           </button>
         ) : undefined
       }

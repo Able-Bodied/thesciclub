@@ -51,6 +51,7 @@ function fakeMap() {
     getCanvas: () => ({ style: {} }),
     easeTo: alive(undefined),
     getZoom: () => 10,
+    doubleClickZoom: { disable: vi.fn() },
   };
 }
 
