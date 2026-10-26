@@ -10,6 +10,7 @@ import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import { passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboarding/chrome';
+import { NewTabLink } from '@/routes/onboarding/steps';
 import type { OnboardingData } from '@/routes/onboarding/types';
 
 /**
@@ -187,6 +188,12 @@ export function SignInStep({
     <>
       <Question>Welcome back</Question>
       <Sub>Sign in the way you joined.</Sub>
+      {/* Apple or Google here makes an account for somebody new, who never
+          sees the join form's line. */}
+      <Fine>
+        By continuing, you agree to our <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
+        <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
+      </Fine>
       {notice ? (
         <p role="status" className="mt-3 text-[0.84375rem] text-ink2 leading-[1.5]">
           {notice}
@@ -269,6 +276,12 @@ export function JoinStep({
           'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'
         )}
       </Sub>
+      {/* Above every way in, so it is read before any of them (the owner,
+          2026-10-25; it was under the name from 2026-10-15). */}
+      <Fine>
+        By signing up, you agree to our <NewTabLink href="/terms">Terms of Service</NewTabLink> and{' '}
+        <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
+      </Fine>
       <SocialButtons mode="join" ways={ways} />
       <Divider>or join with your email</Divider>
       <label htmlFor="email" className="block font-bold text-[0.8125rem] text-ink">
