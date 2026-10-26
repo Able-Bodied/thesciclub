@@ -3,7 +3,9 @@
 -- ============================================================================
 -- 20261023010000, the owner's rule: an event's own coordinates or own city
 -- first; with no city, its organization's city; with neither on the map, it
--- shows at any distance. Online events show anywhere in the list already.
+-- shows at any distance. Online events show anywhere in the list already,
+-- and since 20261025020000 are not returned; an organization's city counts
+-- only with the organization's state.
 --
 -- The member's home is Sacramento. Distances from it: Los Angeles ~360 miles,
 -- Menlo Park ~90. Asked as that signed-in member.
@@ -33,12 +35,18 @@ insert into public.city_places (city_key, state, latitude, longitude) values
   ('portland', 'OR', 45.52, -122.68),
   ('portland', 'ME', 43.66, -70.26),
   ('nowhere', 'CA', null, null);
+-- Settlements, as the import keeps them (20261025020000).
+update public.city_places set settlement = true where latitude is not null;
 
-insert into public.organizations (id, short_code, name, city) values
-  ('bbbbbbbb-d1d1-0000-0000-000000000001', 'PRDS', 'Probe Sacramento', 'Sacramento'),
-  ('bbbbbbbb-d1d1-0000-0000-000000000002', 'PRDL', 'Probe Los Angeles', 'Los Angeles'),
-  ('bbbbbbbb-d1d1-0000-0000-000000000003', 'PRDB', 'Probe Bay Area', 'Bay Area'),
-  ('bbbbbbbb-d1d1-0000-0000-000000000004', 'PRDP', 'Probe Portland', 'Portland');
+insert into public.organizations (id, short_code, name, city, state) values
+  ('bbbbbbbb-d1d1-0000-0000-000000000001', 'PRDS', 'Probe Sacramento', 'Sacramento', 'CA'),
+  ('bbbbbbbb-d1d1-0000-0000-000000000002', 'PRDL', 'Probe Los Angeles', 'Los Angeles', 'CA'),
+  ('bbbbbbbb-d1d1-0000-0000-000000000003', 'PRDB', 'Probe Bay Area', 'Bay Area', null),
+  ('bbbbbbbb-d1d1-0000-0000-000000000004', 'PRDP', 'Probe Portland', 'Portland', null);
+-- Their confirmed main places (20261025015000); the directory's text is not used.
+insert into public.organization_places (organization_id, position, city, state) values
+  ('bbbbbbbb-d1d1-0000-0000-000000000001', 0, 'Sacramento', 'CA'),
+  ('bbbbbbbb-d1d1-0000-0000-000000000002', 0, 'Los Angeles', 'CA');
 
 -- Hand-made, so no coordinates, unless given.
 insert into public.events (id, title, start_time, location, city, state, latitude, longitude,
@@ -75,11 +83,11 @@ select current_user;
 \echo '   No city, org in Sacramento              | t | t | t   (the organization''s city)'
 \echo '   No city, org in Los Angeles             | f | f | t   (the organization''s city)'
 \echo '   No city, org in the Bay Area            | t | t | t   (not on the map: any distance)'
-\echo '   No city, org in two Portlands           | t | t | t   (ambiguous: any distance)'
+\echo '   No city, org in two Portlands           | t | t | t   (no organization state: any distance)'
 \echo '   Menlo Park, org in Sacramento           | f | t | t   (its own city wins)'
 \echo '   Own coordinates in LA, org in Sacramento| f | f | t   (its own coordinates win)'
 \echo '   A city not on the map                   | t | t | t   (any distance)'
-\echo '   Online, org in Los Angeles              | t | t | t   (no place: any distance)'
+\echo '   Online, org in Los Angeles              | f | f | f   (online: not asked; the list shows it)'
 select e.title,
        e.id = any (public.events_within_miles(20)) as at_20,
        e.id = any (public.events_within_miles(150)) as at_150,

@@ -39,7 +39,7 @@ import { placeMemberCities } from './city-places.js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 import { ActiveNetEventsScraper } from './scrapers/activenet-events.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
-import { geocodeEvents } from './scrapers/geocode.js';
+import { geocodeEvents, geocodeKey } from './scrapers/geocode.js';
 import { IcsEventsScraper } from './scrapers/ics-events.js';
 import { MyCalendarEventsScraper } from './scrapers/mycalendar-events.js';
 import { NatureTrackTraxScraper } from './scrapers/naturetrack-trax.js';
@@ -54,6 +54,7 @@ import { UsaHockeySledScraper } from './scrapers/usahockey-sled.js';
 import { UspsaEventsScraper } from './scrapers/uspsa-events.js';
 import { UstaWheelchairScraper } from './scrapers/usta-wheelchair.js';
 import { seriesAssignments, syncSeries } from './series.js';
+import { placeStaleEvents } from './stale-places.js';
 
 const SCRAPERS = {
   'norcalsci-events': () => new NorCalSCIEventsJsonScraper(),
@@ -77,7 +78,8 @@ const SCRAPERS = {
 const PRIOR_COLUMNS =
   'id, external_id, title, description, description_html, start_time, end_time, location, url, ' +
   'registration_url, city, postal_code, latitude, longitude, location_precision, ' +
-  'source_last_modified, detail_fetched_at, admin_override, timezone, all_day, state';
+  'source_last_modified, detail_fetched_at, admin_override, timezone, all_day, state, ' +
+  'geocoded_location';
 
 function log(message) {
   console.log(message);
@@ -226,6 +228,34 @@ export function withAdminOverride(payload, prior) {
   return next;
 }
 
+/** An administrator changed its place: never placed at the feed's (20261025030000). */
+export function placeIsOverridden(prior) {
+  const override = prior?.admin_override;
+  return Boolean(
+    override && typeof override === 'object' && ('location' in override || 'city' in override),
+  );
+}
+
+/** A moved event keeps the database's place; placeStaleEvents places it if stale. */
+export function keepPriorPlace(event, prior) {
+  event.city = prior.city ?? null;
+  event.postal_code = prior.postal_code ?? null;
+  event.latitude = prior.latitude ?? null;
+  event.longitude = prior.longitude ?? null;
+  event.location_precision = prior.location_precision ?? null;
+  event.geocoded_state = prior.state ?? null;
+  event.geocoded_location = prior.geocoded_location ?? null;
+}
+
+/** What the coordinates were found for, read once overrides are applied. */
+export function withGeocodedLocation(payload, event, moved) {
+  if (moved) return { ...payload, geocoded_location: event.geocoded_location ?? null };
+  const key = event.geocode_tried
+    ? geocodeKey(payload.location, payload.city, payload.state)
+    : null;
+  return { ...payload, geocoded_location: key };
+}
+
 export function eventChanged(prior, scraped) {
   if (!prior) return true;
   return DIFF_FIELDS.some((field) =>
@@ -350,11 +380,21 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
     ownWords.set(event, own);
   }
 
-  await geocodeEvents(usable, priorByExternalId);
+  const moved = new Set();
+  for (const event of usable) {
+    const prior = priorByExternalId.get(event.external_id);
+    if (!placeIsOverridden(prior)) continue;
+    keepPriorPlace(event, prior);
+    moved.add(event);
+  }
+  await geocodeEvents(
+    usable.filter((event) => !moved.has(event)),
+    priorByExternalId,
+  );
 
   // An administrator's changes are put back over the scrape, field by field
   // (withAdminOverride, 20261012060000).
-  const payloads = usable.map((event) =>
+  const scrapedPayloads = usable.map((event) =>
     withAdminOverride(
       {
         feed_id: feed.id,
@@ -402,6 +442,10 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
       },
       priorByExternalId.get(event.external_id),
     ),
+  );
+
+  const payloads = scrapedPayloads.map((payload, i) =>
+    withGeocodedLocation(payload, usable[i], moved.has(usable[i])),
   );
 
   const changed = payloads.filter((payload) =>
@@ -527,6 +571,13 @@ async function main() {
   if (!only) {
     try {
       await placeMemberCities(supabase, { dryRun });
+    } catch (error) {
+      failed++;
+      console.error(`  FAILED: ${error.message}`);
+    }
+    // Any event whose pin is for an older address, including hand-added ones.
+    try {
+      await placeStaleEvents(supabase, { dryRun });
     } catch (error) {
       failed++;
       console.error(`  FAILED: ${error.message}`);

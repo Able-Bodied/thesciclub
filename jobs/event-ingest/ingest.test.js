@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { eventChanged, matchOrganization, withAdminOverride, withOneRetry } from './ingest.js';
+import {
+  eventChanged,
+  keepPriorPlace,
+  matchOrganization,
+  placeIsOverridden,
+  withAdminOverride,
+  withGeocodedLocation,
+  withOneRetry,
+} from './ingest.js';
 
 const ORGANIZATIONS = [
   { id: 'ncs', name: 'NorCal SCI', short_code: 'NCS', aliases: [] },
@@ -242,5 +250,58 @@ describe('withOneRetry', () => {
     let calls = 0;
     await withOneRetry(async () => calls++, { pauseMs: 0 });
     expect(calls).toBe(1);
+  });
+});
+
+describe('an event an administrator moved', () => {
+  const prior = {
+    admin_override: { location: '9 New St' },
+    city: 'Davis',
+    postal_code: '95616',
+    latitude: 38.55,
+    longitude: -121.74,
+    location_precision: 'exact',
+    state: 'CA',
+    geocoded_location: '9 New St, Davis, CA',
+  };
+
+  it('is one whose place or city was changed, not its title', () => {
+    expect(placeIsOverridden(prior)).toBe(true);
+    expect(placeIsOverridden({ admin_override: { city: 'Davis' } })).toBe(true);
+    expect(placeIsOverridden({ admin_override: { title: 'Renamed' } })).toBe(false);
+    expect(placeIsOverridden({ admin_override: null })).toBe(false);
+    expect(placeIsOverridden(undefined)).toBe(false);
+  });
+
+  it("keeps the place the database found for the administrator's address", () => {
+    const event = { external_id: 'x', location: '1 Feed St', latitude: 1, longitude: 2 };
+    keepPriorPlace(event, prior);
+    const payload = withGeocodedLocation(
+      withAdminOverride(
+        { location: event.location, city: event.city, latitude: event.latitude },
+        prior,
+      ),
+      event,
+      true,
+    );
+    expect(payload).toMatchObject({
+      location: '9 New St',
+      city: 'Davis',
+      latitude: 38.55,
+      geocoded_location: '9 New St, Davis, CA',
+    });
+  });
+});
+
+describe('what the coordinates were found for', () => {
+  const payload = { location: 'Gym', city: 'Davis', state: 'CA' };
+
+  it('is the written place once asked, and nothing when the lookup was paused', () => {
+    expect(withGeocodedLocation(payload, { geocode_tried: true }, false).geocoded_location).toBe(
+      'Gym, Davis, CA',
+    );
+    expect(
+      withGeocodedLocation(payload, { geocode_tried: false }, false).geocoded_location,
+    ).toBeNull();
   });
 });

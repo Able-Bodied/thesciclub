@@ -103,6 +103,18 @@ rollback to peer_invite;
 savepoint peer_type;
 update public.members set type='organization' where id=auth.uid();
 rollback to peer_type;
+\echo '== 8b. the state (20261025015000): set, kept by an older app, cleared; a bad one refused =='
+\echo '   expect: CT, CT, null, then ERROR: Enter a name, place...'
+set local request.jwt.claims='{"sub":"aaaaaaaa-9090-0000-0000-000000000001","role":"authenticated"}';
+select public.save_organization(:'other','TSTP','Other organization probe','Stratford','',array[]::text[],false,' ct ') is not null as ok;
+select state from public.organizations where id = :'other';
+select public.save_organization(:'other','TSTP','Other organization probe','Stratford','',array[]::text[],false) is not null as ok;
+select state from public.organizations where id = :'other';
+select public.save_organization(:'other','TSTP','Other organization probe','Stratford','',array[]::text[],false,'') is not null as ok;
+select coalesce(state, 'null') as state from public.organizations where id = :'other';
+savepoint bad_state;
+select public.save_organization(:'other','TSTP','Other organization probe','Stratford','',array[]::text[],false,'Conn');
+rollback to bad_state;
 \echo '== 9. anon has no management or permission RPC: three permission ERRORs =='
 set local role anon;
 set local request.jwt.claims='{"role":"anon"}';

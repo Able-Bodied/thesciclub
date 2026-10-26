@@ -37,6 +37,8 @@ values ('bbbbbbbb-c0c0-0000-0000-00000000000b', 'aaaaaaaa-c0c0-0000-0000-0000000
 insert into public.city_places (city_key, state, latitude, longitude)
 values ('sacramento', 'CA', 38.58, -121.49)
 on conflict (city_key, state) do update set latitude = excluded.latitude, longitude = excluded.longitude;
+-- Settlements, as the import keeps them (20261025020000).
+update public.city_places set settlement = true where latitude is not null;
 delete from public.city_places where city_key = 'menlo park';
 
 -- What a payload holds, the times one day ahead.
@@ -97,7 +99,7 @@ select quote_literal(location) as location, url, event_format,
   from public.events where title = 'Probe online';
 
 \echo ''
-\echo '== 5. a city that is not in the address is not believed (expect added, then null | null) =='
+\echo '== 5. a city that is not in the address is not believed (expect added, then null | CA, the saver''s state) =='
 set local role service_role;
 select public.calendar_invite_receive('rep@probe.example', true, null,
   base || jsonb_build_object('uid', 'probe-forged@google.com', 'title', 'Probe forged',
@@ -119,7 +121,7 @@ reset role;
 
 \echo ''
 \echo '== 7. once Menlo Park is placed, ~90 miles from Sacramento (expect f at 20, t at 150) =='
-insert into public.city_places (city_key, state, latitude, longitude) values ('menlo park', 'CA', 37.45, -122.18);
+insert into public.city_places (city_key, state, latitude, longitude, settlement) values ('menlo park', 'CA', 37.45, -122.18, true);
 set local role authenticated;
 select (select id from public.events where title = 'SCI Club test event')
        = any (public.events_within_miles(20)) as at_20,

@@ -95,6 +95,9 @@ function fallbackQueries(trimmed) {
 /** Nominatim said "too many requests": asking again only makes it longer. */
 export class RateLimited extends Error {}
 
+/** No attempt got an answer: not the same as "nowhere" (20261025030000). */
+export class Unreachable extends Error {}
+
 async function searchNominatim(query) {
   const url = new URL(NOMINATIM_URL);
   url.searchParams.set('q', query);
@@ -109,7 +112,7 @@ async function searchNominatim(query) {
   });
   if (res.status === 429 || res.status === 403)
     throw new RateLimited(`Nominatim answered ${res.status}`);
-  if (!res.ok) return null;
+  if (!res.ok) throw new Unreachable(`Nominatim answered ${res.status}`);
 
   const results = await res.json();
   const top = results?.[0];
@@ -128,6 +131,67 @@ async function searchNominatim(query) {
 }
 
 /**
+ * What a city's middle may be: a city, town or village, or a named part of
+ * one (Van Nuys and Tarzana come back as suburbs of Los Angeles). Never a
+ * building, a street, a block or a lone dwelling (20261025020000).
+ */
+const SETTLEMENTS = new Set([
+  'city',
+  'town',
+  'village',
+  'hamlet',
+  'municipality',
+  'borough',
+  'city_district',
+  'district',
+  'suburb',
+  'quarter',
+  'neighbourhood',
+]);
+
+/**
+ * The middle of a city, town or village: Nominatim's settlement search, and
+ * only a settlement-level answer. Anything else is null, so a "city" typed as
+ * a hospital or an address is never kept as one. Throws as searchNominatim.
+ */
+export async function lookUpSettlement(query) {
+  const trimmed = (query || '').trim();
+  if (!trimmed) return null;
+  const url = new URL(NOMINATIM_URL);
+  url.searchParams.set('q', trimmed);
+  url.searchParams.set('format', 'jsonv2');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('countrycodes', 'us');
+  url.searchParams.set('featuretype', 'settlement');
+  let res;
+  let results;
+  try {
+    res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) results = await res.json();
+  } catch (error) {
+    // A dropped connection or the ten-second timeout: asked again next run.
+    throw new Unreachable(
+      `No answer for ${trimmed}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+  if (res.status === 429 || res.status === 403)
+    throw new RateLimited(`Nominatim answered ${res.status}`);
+  if (!res.ok) throw new Unreachable(`Nominatim answered ${res.status}`);
+  const top = results?.[0];
+  if (!top || !SETTLEMENTS.has(top.addresstype)) return null;
+  return {
+    state: /^US-([A-Z]{2})$/.exec(top.address?.['ISO3166-2-lvl4'] ?? '')?.[1] ?? null,
+    latitude: Number(top.lat),
+    longitude: Number(top.lon),
+    settlement: top.addresstype,
+  };
+}
+
+/**
  * Looks up one location string, retrying with the rewrites above when the
  * literal text has no match. Returns null (never throws) when the string is
  * empty, every attempt fails, or Nominatim has nothing for any of them — a
@@ -137,21 +201,51 @@ async function searchNominatim(query) {
  * geocodeEvents), not per-attempt.
  */
 export async function geocodeLocation(query) {
+  try {
+    return await lookUpPlace(query);
+  } catch (error) {
+    if (error instanceof Unreachable) return null;
+    throw error;
+  }
+}
+
+/** As geocodeLocation, but throws Unreachable when no attempt was answered. */
+export async function lookUpPlace(query) {
   const trimmed = (query || '').trim();
   if (!trimmed) return null;
 
   const attempts = [trimmed, ...fallbackQueries(trimmed)];
+  let answered = false;
   for (let i = 0; i < attempts.length; i++) {
     if (i > 0) await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS));
     try {
       const result = await searchNominatim(attempts[i]);
+      answered = true;
       if (result) return result;
     } catch (error) {
       if (error instanceof RateLimited) throw error;
       // Try the next rewrite rather than giving up on the first network hiccup.
     }
   }
+  if (!answered) throw new Unreachable(`No answer for ${trimmed}`);
   return null;
+}
+
+/**
+ * What latitude and longitude were found for: the place, with its city and
+ * state when it does not already name them. Mirrors public.geocode_key
+ * (20261025030000).
+ */
+const EDGES = /^[ \t\r\n]+|[ \t\r\n]+$/g;
+export function geocodeKey(location, city, state) {
+  const place = (location ?? '').replace(EDGES, '');
+  if (!place) return null;
+  const town = (city ?? '').replace(EDGES, '');
+  const st = (state ?? '').replace(EDGES, '');
+  let key = place;
+  if (town && !place.toLowerCase().includes(town.toLowerCase())) key += `, ${town}`;
+  if (st && !place.includes(st)) key += `, ${st}`;
+  return key;
 }
 
 /**
@@ -189,6 +283,7 @@ export async function geocodeEvents(events, existingByExternalId, lookup = geoco
       event.longitude = existing.longitude ?? null;
       event.location_precision = existing.location_precision ?? null;
       event.geocoded_state = existing.state ?? null;
+      event.geocode_tried = true;
       continue;
     }
 
@@ -198,6 +293,7 @@ export async function geocodeEvents(events, existingByExternalId, lookup = geoco
       event.latitude = null;
       event.longitude = null;
       event.location_precision = null;
+      event.geocode_tried = false;
       continue;
     }
 
@@ -223,6 +319,8 @@ export async function geocodeEvents(events, existingByExternalId, lookup = geoco
     event.longitude = result?.longitude ?? null;
     event.location_precision = result?.precision ?? null;
     event.geocoded_state = result?.state ?? null;
+    // Not asked (paused): left stale for the next run.
+    event.geocode_tried = result !== undefined;
   }
 
   return events;

@@ -127,9 +127,10 @@ select set_config('request.jwt.claims',
 select status from public.admin_invites where email = 'joiner@probe.test';
 
 \echo ''
-\echo '== 12. signed out (expect five permission ERRORs) =='
+\echo '== 12. signed out (expect nine permission ERRORs) =='
 \echo '   the signup hook, a strike count, nearby_events, browse_members; then'
-\echo '   RSVP counts, now behind membership with the calendar (20261012080000)'
+\echo '   RSVP counts, now behind membership with the calendar (20261012080000);'
+\echo '   then the four map functions (20261025020000)'
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true) is not null as ok;
@@ -148,6 +149,18 @@ rollback to savepoint anon_browse;
 savepoint counts_read;
 select count(*) >= 0 as reads from public.event_rsvp_counts;
 rollback to savepoint counts_read;
+savepoint anon_map_events;
+select * from public.map_events();
+rollback to savepoint anon_map_events;
+savepoint anon_map_peers;
+select * from public.map_peer_cities();
+rollback to savepoint anon_map_peers;
+savepoint anon_map_organizations;
+select * from public.map_organizations();
+rollback to savepoint anon_map_organizations;
+savepoint anon_map_home;
+select * from public.map_home();
+rollback to savepoint anon_map_home;
 
 reset role;
 

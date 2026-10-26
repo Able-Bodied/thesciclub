@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { citiesToPlace, eventCities, placeMemberCities } from './city-places.js';
+import {
+  citiesToPlace,
+  eventCities,
+  organizationCities,
+  placeMemberCities,
+} from './city-places.js';
 
 const NOW = new Date('2026-10-20T12:00:00Z');
 
@@ -16,14 +21,20 @@ describe('citiesToPlace', () => {
       NOW,
     );
     expect(todo).toEqual([
-      { city_key: 'san jose', state: 'CA', query: 'San Jose, CA' },
-      { city_key: 'portland', state: 'OR', query: 'Portland, OR' },
+      { city_key: 'san jose', state: 'CA', query: 'San Jose, CA', placed: false },
+      { city_key: 'portland', state: 'OR', query: 'Portland, OR', placed: false },
     ]);
   });
 
   it('leaves a placed city, and a missed one until a month has gone', () => {
     const placed = [
-      { city_key: 'san jose', state: 'CA', latitude: 37.3, placed_at: '2026-01-01T00:00:00Z' },
+      {
+        city_key: 'san jose',
+        state: 'CA',
+        latitude: 37.3,
+        placed_at: '2026-01-01T00:00:00Z',
+        settlement: true,
+      },
       { city_key: 'nowhere', state: 'CA', latitude: null, placed_at: '2026-10-10T00:00:00Z' },
       { city_key: 'elsewhere', state: 'CA', latitude: null, placed_at: '2026-09-01T00:00:00Z' },
     ];
@@ -32,9 +43,9 @@ describe('citiesToPlace', () => {
   });
 });
 
-function fakeSupabase(homes, events = [], organizations = []) {
+function fakeSupabase(homes, events = [], organizations = [], places = []) {
   const written = [];
-  const rows = { members: homes, events, organizations };
+  const rows = { members: homes, events, organizations, organization_places: places };
   // A read that may be narrowed (events) or awaited as it is (members).
   const query = (data) => {
     const read = Promise.resolve({ data, error: null });
@@ -45,16 +56,18 @@ function fakeSupabase(homes, events = [], organizations = []) {
     });
     return narrowed;
   };
-  return {
+  const fake = {
     written,
+    placed: [],
     from: (table) => ({
-      select: () => query(rows[table] ?? []),
+      select: () => query(table === 'city_places' ? fake.placed : (rows[table] ?? [])),
       upsert: (row) => {
         written.push(row);
         return Promise.resolve({ error: null });
       },
     }),
   };
+  return fake;
 }
 
 describe('placeMemberCities', () => {
@@ -98,12 +111,14 @@ describe('events nobody geocoded', () => {
 });
 
 describe('an event with a state and no city', () => {
+  // Main places (position 0), as organization_places holds them.
   const organizations = [
-    { id: 'blz', city: 'Atlanta' },
-    { id: 'none', city: null },
+    { organization_id: 'blz', position: 0, city: 'Atlanta', state: 'GA' },
+    { organization_id: 'blz', position: 1, city: 'Decatur', state: 'GA' },
+    { organization_id: 'none', position: 0, city: null, state: 'GA' },
   ];
 
-  it('is placed by its organization’s city in its own state', () => {
+  it('is placed by its organization’s main place in its own state', () => {
     expect(
       eventCities(
         [
@@ -125,7 +140,8 @@ describe('an event with a state and no city', () => {
     const supabase = fakeSupabase(
       [],
       [{ city: null, state: 'GA', organization_id: 'blz', event_format: 'in_person' }],
-      organizations,
+      [],
+      organizations.slice(0, 1),
     );
     const asked = [];
     await placeMemberCities(supabase, { dryRun: false }, (query) => {
@@ -134,5 +150,125 @@ describe('an event with a state and no city', () => {
     });
     expect(asked).toEqual(['Atlanta, GA']);
     expect(supabase.written.map((r) => [r.city_key, r.state])).toEqual([['atlanta', 'GA']]);
+  });
+});
+
+describe('organizations, for the map', () => {
+  const organizations = [
+    { id: 'mtw', city: 'Stratford', state: 'CT' },
+    { id: 'ibf', city: 'Columbus', state: null },
+    { id: 'blz', city: 'Atlanta', state: 'GA' },
+  ];
+
+  it('asks for each city in its own state, and not for one with no state', async () => {
+    const supabase = fakeSupabase(
+      [{ city: 'Stratford', state: 'CA' }],
+      [],
+      organizations,
+      organizations.filter((o) => o.state).map(({ city, state }) => ({ city, state })),
+    );
+    const asked = [];
+    await placeMemberCities(supabase, { dryRun: false }, (query) => {
+      asked.push(query);
+      return Promise.resolve({ state: query.slice(-2), latitude: 41.2, longitude: -73.1 });
+    });
+    expect(asked).toEqual(['Stratford, CA', 'Stratford, CT', 'Atlanta, GA']);
+    expect(supabase.written.map((r) => `${r.city_key}|${r.state}`)).toEqual([
+      'stratford|CA',
+      'stratford|CT',
+      'atlanta|GA',
+    ]);
+  });
+
+  it('places an event at its organization’s city only in the organization’s own state', () => {
+    expect(organizationCities(organizations)).toEqual([
+      { city: 'Stratford', state: 'CT' },
+      { city: 'Atlanta', state: 'GA' },
+    ]);
+    const places = organizations
+      .filter((o) => o.state)
+      .map(({ id, city, state }) => ({ organization_id: id, position: 0, city, state }));
+    expect(
+      eventCities(
+        [
+          { city: null, state: 'TX', organization_id: 'blz', event_format: 'in_person' },
+          { city: null, state: 'GA', organization_id: 'blz', event_format: 'in_person' },
+          { city: null, state: 'OH', organization_id: 'ibf', event_format: 'in_person' },
+        ],
+        places,
+      ),
+    ).toEqual([{ city: 'Atlanta', state: 'GA' }]);
+  });
+
+  it('never uses the directory’s city text: an organization with no place places nothing', () => {
+    expect(
+      eventCities(
+        [{ city: null, state: 'CA', organization_id: 'scas', event_format: 'in_person' }],
+        [],
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('only a settlement is a middle (20261025020000)', () => {
+  it('places again a city kept before settlements were asked for', () => {
+    const placed = [
+      { city_key: 'davis', state: 'CA', latitude: 38.5, placed_at: '2026-10-01T00:00:00Z' },
+      {
+        city_key: 'chico',
+        state: 'CA',
+        latitude: 39.7,
+        placed_at: '2026-10-01T00:00:00Z',
+        settlement: true,
+      },
+    ];
+    const homes = ['Davis', 'Chico'].map((city) => ({ city, state: 'CA' }));
+    expect(citiesToPlace(homes, placed, NOW).map((c) => c.city_key)).toEqual(['davis']);
+  });
+
+  it('keeps what the settlement search found, and nothing for a building', async () => {
+    const supabase = fakeSupabase([
+      { city: 'Davis', state: 'CA' },
+      { city: 'UC Davis Medical Center', state: 'CA' },
+    ]);
+    await placeMemberCities(supabase, { dryRun: false }, (query) =>
+      Promise.resolve(
+        query === 'Davis, CA'
+          ? { state: 'CA', latitude: 38.5, longitude: -121.7, settlement: 'city' }
+          : null,
+      ),
+    );
+    expect(supabase.written.map((r) => [r.city_key, r.latitude, r.settlement])).toEqual([
+      ['davis', 38.5, true],
+      ['uc davis medical center', null, false],
+    ]);
+  });
+});
+
+describe('a check never wipes a place (20261025020000)', () => {
+  it('keeps the coordinates of a placed city the settlement search refuses', async () => {
+    const supabase = fakeSupabase([{ city: 'Tarzana', state: 'CA' }]);
+    supabase.placed = [
+      { city_key: 'tarzana', state: 'CA', latitude: 34.17, placed_at: '2026-01-01T00:00:00Z' },
+    ];
+    await placeMemberCities(supabase, { dryRun: false }, () => Promise.resolve(null));
+    expect(supabase.written).toHaveLength(1);
+    expect(supabase.written[0]).not.toHaveProperty('latitude');
+    expect(supabase.written[0]).toMatchObject({ city_key: 'tarzana', settlement: null });
+  });
+
+  it('asks again after a month, not every night', () => {
+    const homes = [{ city: 'Tarzana', state: 'CA' }];
+    const row = (checked) => ({
+      city_key: 'tarzana',
+      state: 'CA',
+      latitude: 34.17,
+      placed_at: '2026-01-01T00:00:00Z',
+      settlement: null,
+      settlement_checked_at: checked,
+    });
+    expect(citiesToPlace(homes, [row('2026-10-19T00:00:00Z')], NOW)).toEqual([]);
+    expect(citiesToPlace(homes, [row('2026-09-01T00:00:00Z')], NOW)).toHaveLength(1);
+    expect(citiesToPlace(homes, [row(null)], NOW)).toHaveLength(1);
   });
 });
