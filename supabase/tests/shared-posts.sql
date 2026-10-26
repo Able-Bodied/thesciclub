@@ -218,7 +218,7 @@ $$;
 
 \echo ''
 \echo '== 4. removed, deleted, taken back =='
-\echo '   expect: PASS 4 (no cards for the three; the messages stay; no sharing again)'
+\echo '   expect: PASS 4 (no cards for the three; the messages stay, a removed one naming no post; no sharing again)'
 select set_config('request.jwt.claims','{"sub":"5a4e0000-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ada;
 select public.chat_remove_post('5a4e0000-0000-0000-0000-0000000000a3');
 select set_config('request.jwt.claims','{"sub":"5a4e0000-0000-0000-0000-00000000000f","role":"authenticated"}', true) is not null as ivy;
@@ -252,6 +252,8 @@ begin
     current_setting('probe.m_later')::uuid, current_setting('probe.m_gone')::uuid, current_setting('probe.m_taken')::uuid])),
     'a card for a removed post, a deleted topic or a removed message';
   assert exists (select 1 from public.chat_shared_posts(array[current_setting('probe.m_opener')::uuid])), 'the standing card went too';
+  assert (select shared_post_id from public.chat_messages where id = current_setting('probe.m_taken')::uuid) is null,
+    'a removed message still names its post';
   raise notice 'PASS 4b: no card for any of the three, and the messages stay';
 end;
 $$;

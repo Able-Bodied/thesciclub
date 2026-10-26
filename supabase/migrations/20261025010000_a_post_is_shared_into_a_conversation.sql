@@ -259,3 +259,51 @@ begin
   on conflict (reporter_id, message_id) do nothing;
 end;
 $$;
+
+-- ----------------------------------------------------------------- removal --
+-- As 20260930020000, blanking the shared post too, as it blanks the words.
+create or replace function public.chat_remove_message(message uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target public.chat_messages;
+begin
+  select * into target from public.chat_messages m where m.id = message;
+  if not found then
+    raise exception 'There is no such message.' using errcode = 'P0002';
+  end if;
+
+  if not public.is_thread_member(target.thread_id) and not public.is_admin() then
+    raise exception 'There is no such message.' using errcode = 'P0002';
+  end if;
+
+  if target.author_id is distinct from auth.uid() and not public.is_admin() then
+    raise exception 'Only the person who wrote a message, or an administrator, can remove it.'
+      using errcode = '42501';
+  end if;
+
+  if target.notice is not null and not public.is_admin() then
+    raise exception 'A line about a change to the group stays, so everybody can see who made it.'
+      using errcode = '42501';
+  end if;
+
+  if target.removed_at is not null then
+    return;
+  end if;
+
+  insert into public.chat_removed_bodies (message_id, body, attachments, removed_by)
+  values (target.id, target.body, target.attachments, auth.uid())
+  on conflict (message_id) do nothing;
+
+  update public.chat_messages
+     set body = '',
+         attachments = '{}',
+         shared_post_id = null,
+         removed_at = now(),
+         removed_by_admin = (target.author_id is distinct from auth.uid())
+   where id = target.id;
+end;
+$$;
