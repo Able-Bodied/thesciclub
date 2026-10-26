@@ -94,11 +94,24 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 3,618 tests in 254 files on 2026-10-23; `pnpm check` (alone),
+- **Checks**: 3,644 tests in 257 files on 2026-10-25; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
+- **Share a post into a chat, not live** (the owner, 2026-10-25): Share
+  beside React and Reply on every post and Home card sends it to a
+  conversation or a member, with an optional line. The message holds only
+  `shared_post_id`; `chat_shared_posts` draws the card with the reader's
+  own rights, else "This post isn't available" (closed room, removed,
+  deleted, a block either way). Probe: `shared-posts.sql`. To release, in
+  order: `db push` (`20261025010000`), then push the client (it reads the
+  new column, so a client first breaks conversations), then deploy
+  `push-notify` ("Shared a post." on the lock screen; until then a share
+  with no words pushes an empty line). Owner's call: a blocked member sees
+  "isn't available" on a post by the member who blocked them, and the
+  Share refusal says the same, so they can infer the block, as "You can't
+  message this member" already lets them.
 - **Events from calendar invitations** (live 2026-10-23): invite
   `invites@events.thesciclub.com` (or `invites+<short code>@`) to an event in
   Google, Outlook or Apple Calendar and it is added, changed and cancelled in
