@@ -23,11 +23,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Alfredx48/TheSciClub (remote `mine`) at once, fetching from Able-Bodied
   only: pull before pushing, or the two diverge.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261023010000` is live (2026-10-23). Edge functions:
+  `20261023030000` is live (2026-10-24). Edge functions:
   `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
-  too), `link-preview`, `send-invite`, `sign-in-reminder`,
-  `home-screen-handoff` (`verify_jwt` off). Written, not deployed:
-  `apple-token`, `apple-revoke` and `apple-notifications` (Open).
+  too; the icon badge needs a redeploy once 1.0.4 is installed),
+  `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`,
+  `calendar-inbound`, `apple-token`, `apple-revoke` and `apple-notifications`
+  (all deployed; Apple revocation set up live 2026-10-22).
 - **Sign-in**: email + password, Google, Apple; passkeys built but off
   (`VITE_PASSKEYS`). No phone sign-in; the Phone provider is off.
   - **Invites**: the hook `signup_needs_an_invite` refuses an uninvited
@@ -145,13 +146,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   event (a number, never a title); a member with an event cover's path can
   read it. The PGlite script in the session that built it covered 31 cases;
   worth a `supabase/tests/event-audiences.sql`.
-- **A registration is not an invite, not live** (the owner, 2026-10-22: "a
+- **A registration is not an invite, live** (the owner, 2026-10-22: "a
   security hole"). `20261022190000` let any address registered for a public
-  event sign up and join; `20261022230000` puts `i_am_invited` and the
-  sign-up hook back (probe `a-registration-is-not-an-invite.sql`). Push it
-  alone, then cherry-pick its welcome-page commit onto `main`, then check
-  who joined that way while it was live (read-only query: the message of the
-  commit that added this item).
+  event sign up and join; `20261022230000` (live 2026-10-23) puts
+  `i_am_invited` and the sign-up hook back (probe
+  `a-registration-is-not-an-invite.sql`). Nobody joined that way.
 
 - **Legal pages, not pushed**: Terms, Privacy and the new `/delete-account`
   name Alfred Shaheen as operator and `hello@thesciclub.com` as contact
