@@ -423,13 +423,23 @@ All live. Migration headers and the files named say how and why.
   against a throwaway stack behind a 0.3s HTTP/2 proxy (in the commits).
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
   Events on Home are within Events' default 20 miles of home, online ones
-  anywhere (`events_within_miles`). An event's place for that is its own
-  coordinates or city; with no city, its organization's city in the event's
-  state (no state: a city the map knows once). Unplaced in another state
-  than the member's: out of range; nothing known: any distance (the owner,
-  2026-10-23, `20261023020000`, not live). The nightly import reads a city
-  from the event's own address when the map misses (`address.js`), and
-  places those cities.
+  anywhere (`events_within_miles`). Distance is measured from exactly what
+  the map may show (`private.visible_event_places`, `20261025020000`): the
+  exact pin, else the city middle, else the host organization's confirmed
+  main place in the same state. The nightly import reads a city from the
+  event's own address when the map misses (`address.js`), and places those
+  cities.
+- **Map** (2026-10-25, migrations `20261025015000`–`040000`): List | Map on
+  Events and Peers (`src/routes/map/`, `src/lib/map/`). Peers are a count at
+  a confirmed city middle (`city_places.settlement`), never finer; "Show me
+  on the map" in Me. Events and organization places get an exact pin only
+  when the geocoded address matches the current one; the `geocode-event`
+  function places a saved address within a minute, under daily caps
+  (`private.geocode_claim`). Tiles: Cloudflare R2 behind the
+  `tiles-worker/` Worker at sciclub-tiles.thesciclub.workers.dev (owner's
+  account; `pnpm tiles-worker:deploy`, `pnpm map-tiles --upload`; a new
+  build's files go up before the deploy that names them). Organization
+  places data: `~/.cache/thesciclub-map/` on the owner's machine.
 - **Events**: administrators and an organization's designated members add,
   change and delete them (Pacific time). A series' dates are rows made 92
   days ahead, extended nightly (`event-series-extend`). Administrators change
@@ -468,6 +478,13 @@ All live. Migration headers and the files named say how and why.
 - **Probes** (`supabase/tests/`, each rolled back, header says how to run):
   as a signed-in role, a savepoint per expected refusal, read every log
   against its `expect` lines, count on a fresh stack, sabotage a fix once.
+- **Organization facts come from the organization's own site, visible text
+  only** (never hidden SEO markup, directories or governing bodies). Every
+  organization added or scraped gets at least a city and a two-letter state,
+  with the source URL and quoted text. Some location info but an uncertain
+  state (a region, a city in several states, an area code): ask the owner.
+  None at all: leave it null. Full rules, on the owner's machine:
+  `~/.claude/projects/-home-alfred-projects-thesciclub/memory/org-facts-from-their-own-sites.md`.
 - **Decided, do not reopen**: no phone sign-in or SMS (2026-10-10, until the
   Twilio item above). Staying Driven Wheelchair Fitness is online
   (`STATED_FORMATS` in `jobs/event-ingest/classify.js`) until NorCal SCI says
