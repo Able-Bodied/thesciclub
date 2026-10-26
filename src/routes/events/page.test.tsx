@@ -100,6 +100,10 @@ vi.mock('@/routes/map/club-map', () => ({
         <button type="button" onClick={props.onUnsupported}>
           No WebGL2
         </button>
+        <p>Showing: {props.show ? `${props.show.id} ${props.show.event?.title ?? '?'}` : 'none'}</p>
+        <button type="button" onClick={props.onShown}>
+          Shown
+        </button>
       </div>
     );
   },
@@ -542,5 +546,24 @@ describe('List or Map', () => {
     await userEvent.click(within(sheet).getByRole('button', { name: 'Show 1' }));
     await userEvent.click(screen.getByRole('button', { name: 'List' }));
     expect(screen.getByRole('searchbox', { name: 'Search organizations' })).toHaveValue('berkeley');
+  });
+
+  it('offers View on the map only on an event the map can hold', () => {
+    renderPage();
+    expect(screen.getByRole('link', { name: 'View Wheelchair rugby on the map' })).toHaveAttribute(
+      'href',
+      '/events?view=map&show=rugby',
+    );
+    expect(screen.queryByRole('link', { name: 'View Driving Q&A on the map' })).toBeNull();
+  });
+
+  it('opens the map on the event, and forgets it once shown so back and refresh stay put', async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole('link', { name: 'View Wheelchair rugby on the map' }));
+    expect(address()).toBe('?view=map&show=rugby');
+    expect(await screen.findByText('Showing: rugby Wheelchair rugby')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Shown' }));
+    expect(address()).toBe('?view=map');
+    expect(screen.getByText('Showing: none')).toBeInTheDocument();
   });
 });

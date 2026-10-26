@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { EventCard, type EventCardProps } from '@/routes/events/event-card';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
@@ -255,5 +256,31 @@ describe('the host logo', () => {
     const props = renderCard({ event: makeEvent({ hostName: 'Bay Rollers' }) });
     await userEvent.click(screen.getByText('BR'));
     expect(props.onOpen).toHaveBeenCalled();
+  });
+});
+
+describe('View on the map on a card', () => {
+  it("is a link of its own beside the card's button, never inside it", () => {
+    render(
+      <MemoryRouter>
+        <EventCard
+          event={makeEvent({ title: 'Rugby' })}
+          status={null}
+          attendees={[]}
+          organization={null}
+          onOpen={vi.fn()}
+          onRsvp={vi.fn()}
+          mapHref="/events?view=map&show=x"
+        />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link', { name: 'View Rugby on the map' });
+    expect(link).toHaveAttribute('href', '/events?view=map&show=x');
+    expect(link.closest('button')).toBeNull();
+  });
+
+  it('is not drawn without a place to go', () => {
+    renderCard();
+    expect(screen.queryByRole('link', { name: /on the map/ })).toBeNull();
   });
 });

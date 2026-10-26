@@ -63,6 +63,7 @@ import {
   type PlaceContents,
   peerCities,
   peerFeatures,
+  spotKeyOf,
 } from '@/routes/map/places';
 import { othersOnly } from '@/routes/peers/filters';
 import {
@@ -100,6 +101,10 @@ export interface ClubMapProps {
   /** The List view is showing: the map's sources are left alone. */
   hidden?: boolean;
   onUnsupported: () => void;
+  /** "View on the map": the event to open on; null `event` is one not found. */
+  show?: { id: string; event: ClubEvent | null; ready: boolean } | undefined;
+  /** Called once it has been shown, or said to be off the map. */
+  onShown?: (() => void) | undefined;
 }
 
 /** Half a 44px target around a tap. */
@@ -115,7 +120,13 @@ const LAYER_LABELS: Record<Layer, string> = {
 };
 
 type Sheet =
-  | { kind: 'place'; keys: Record<Layer, Set<string>>; zoomTo: Picked['zoomTo'] }
+  | {
+      kind: 'place';
+      keys: Record<Layer, Set<string>>;
+      zoomTo: Picked['zoomTo'];
+      /** An event to list first: the one "View on the map" opened. */
+      selected?: string;
+    }
   | { kind: 'area'; keys: Record<Layer, Set<string>> }
   | { kind: 'unplaced' };
 
@@ -165,6 +176,8 @@ export default function ClubMap({
   backState,
   hidden = false,
   onUnsupported,
+  show,
+  onShown,
 }: ClubMapProps) {
   // Per mount, so "Try the map again" (map-view.tsx) asks for the script again.
   const [MapCanvas] = useState(() => lazy(loadMapCanvas));
@@ -194,7 +207,16 @@ export default function ClubMap({
   const [ownMembers, setOwnMembers] = useState<BrowseMember[] | null>(null);
   const directory = useOrganizations().organizations;
   const organizations = chosenOrganizations ?? directory;
-  const shownEvents = events ?? ownEvents ?? NONE_EVENTS;
+  const listedEvents = events ?? ownEvents ?? NONE_EVENTS;
+  // An event opened by "View on the map" is drawn even when the filters leave it out.
+  const [pinned, setPinned] = useState<ClubEvent | null>(null);
+  const shownEvents = useMemo(
+    () =>
+      pinned && !listedEvents.some((event) => event.id === pinned.id)
+        ? [...listedEvents, pinned]
+        : listedEvents,
+    [listedEvents, pinned],
+  );
   const shownMembers = members ?? ownMembers ?? NONE_MEMBERS;
 
   const spots = useMemo(
@@ -375,22 +397,50 @@ export default function ClubMap({
   }, [map, hidden, focusKey, rings]);
 
   /** Moves the map to a place, clear of the open sheet. */
+
+  /** Moves the map to a place, clear of the open sheet. */
   const goTo = (place: MapOrganization) => {
     if (!map) return;
-    const panel = frame.current?.querySelector('[role="dialog"]')?.getBoundingClientRect();
-    const whole = frame.current?.getBoundingClientRect();
-    const padding = { top: 0, right: 0, bottom: 0, left: 0 };
-    if (panel && whole) {
-      if (panel.width >= whole.width - 1)
-        padding.bottom = Math.min(panel.height, whole.height - 80);
-      else padding.left = panel.right - whole.left;
-    }
     map.easeTo({
       center: [place.longitude, place.latitude],
       zoom: Math.max(map.getZoom(), 11),
-      padding,
+      offset: clearOfSheet(frame.current),
     });
   };
+
+  // "View on the map": once the map and the event are ready, its sheet opens
+  // and the map goes to it, at a street (exact) or the city (approximate).
+  const showing = useRef<string | null>(null);
+  const [centreOn, setCentreOn] = useState<{ at: [number, number]; zoom: number } | null>(null);
+  const done = useRef(onShown);
+  done.current = onShown;
+  useEffect(() => {
+    if (!show) showing.current = null;
+    if (!map || hidden || !show?.ready || showing.current === show.id) return;
+    showing.current = show.id;
+    const place = contents.events.find((event) => event.id === show.id);
+    if (!place || !show.event) {
+      setNotice('This event isn’t on the map yet.');
+    } else {
+      setPinned(show.event);
+      setLayers((now) => (now.has('events') ? now : new Set([...now, 'events'])));
+      setSheet({
+        kind: 'place',
+        keys: { events: new Set([spotKeyOf(place)]), peers: new Set(), organizations: new Set() },
+        zoomTo: null,
+        selected: show.id,
+      });
+      setCentreOn({ at: [place.longitude, place.latitude], zoom: place.exact ? 15 : 11 });
+    }
+    done.current?.();
+  }, [map, hidden, show, contents.events]);
+  // After the sheet is drawn, so the event lands in the map it leaves showing.
+  useEffect(() => {
+    if (!map || !centreOn) return;
+    // Reduced motion: MapLibre makes this a jump (MapCanvas's reduceMotion).
+    map.easeTo({ center: centreOn.at, zoom: centreOn.zoom, offset: clearOfSheet(frame.current) });
+    setCentreOn(null);
+  }, [map, centreOn]);
 
   const locate = () => {
     setNotice(null);
@@ -566,6 +616,7 @@ export default function ClubMap({
               : undefined
           }
           events={shownEvents}
+          {...(sheet.kind === 'place' && sheet.selected ? { selected: sheet.selected } : {})}
           places={contents.organizations}
           here={herePlaces}
           onGoTo={goTo}
@@ -588,6 +639,16 @@ function withSomething(contents: PlaceContents, layers: ReadonlySet<Layer>): Rea
     organizations: contents.organizations.length,
   };
   return new Set(LAYERS.filter((layer) => layers.has(layer) && sizes[layer] > 0));
+}
+
+/** How far to shift a target so it sits in the map left uncovered by the open sheet. */
+function clearOfSheet(frame: HTMLElement | null): [number, number] {
+  const panel = frame?.querySelector('[role="dialog"]')?.getBoundingClientRect();
+  const whole = frame?.getBoundingClientRect();
+  if (!panel || !whole) return [0, 0];
+  // A phone's sheet covers the bottom; a desktop's panel the left.
+  if (panel.width >= whole.width - 1) return [0, -Math.min(panel.height, whole.height - 80) / 2];
+  return [(panel.right - whole.left) / 2, 0];
 }
 
 const CHIP =
@@ -693,13 +754,6 @@ function LayerPanel({
             </span>
             The house is your city, as your profile gives it.
           </p>
-          <p className="flex items-center gap-2.5 px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
-            <span
-              aria-hidden="true"
-              className="h-[18px] w-[18px] flex-none rounded-full border-[3.5px] border-[#102a4c] bg-white"
-            />
-            A ring is an event or organization shown at its city’s middle, not its address.
-          </p>
           <p className="px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
             Members are only ever counted by city.
           </p>
@@ -763,7 +817,7 @@ function YouAreHere() {
 }
 
 export function PlaceSheet({
-  contents,
+  contents: given,
   layers,
   area,
   zoomIn,
@@ -771,6 +825,7 @@ export function PlaceSheet({
   places = [],
   here = new Set(),
   onGoTo,
+  selected,
   renderEvent,
   backState,
   onClose,
@@ -785,11 +840,17 @@ export function PlaceSheet({
   /** The places this sheet is about. */
   here?: ReadonlySet<string>;
   onGoTo?: (place: MapOrganization) => void;
+  /** Listed first. */
+  selected?: string;
   renderEvent: ((event: ClubEvent) => ReactNode) | undefined;
   backState: Record<string, string>;
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const first = (item: { event: ClubEvent }) => (item.event.id === selected ? 0 : 1);
+  const contents = selected
+    ? { ...given, events: [...given.events].sort((a, b) => first(a) - first(b)) }
+    : given;
   const shown = withSomething(contents, layers);
   const words = countWords(contents, shown);
   const cityNames = [

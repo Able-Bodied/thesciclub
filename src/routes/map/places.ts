@@ -35,6 +35,10 @@ export interface OrganizationSpot extends MapPoint {
 
 const at = (point: MapPoint) => `${point.latitude},${point.longitude}`;
 
+/** The spot an event is drawn in: one venue, or one city's middle. */
+export const spotKeyOf = (place: MapContents['events'][number]) =>
+  `${at(place)}|${place.exact ? 'exact' : 'city'}`;
+
 /** The list's events that have a place, grouped by point; list order kept within each. */
 export function eventSpots(placed: MapContents['events'], shown: ClubEvent[]): EventSpot[] {
   const where = new Map(placed.map((event) => [event.id, event]));
@@ -42,7 +46,7 @@ export function eventSpots(placed: MapContents['events'], shown: ClubEvent[]): E
   for (const event of shown) {
     const place = where.get(event.id);
     if (!place) continue;
-    const key = `${at(place)}|${place.exact ? 'exact' : 'city'}`;
+    const key = spotKeyOf(place);
     const spot = spots.get(key);
     if (spot) spot.events.push(event);
     else

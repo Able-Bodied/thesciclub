@@ -32,11 +32,9 @@ export const LAYER_IDS: Record<Layer, string[]> = {
 const FOCUS = 'club-organization-focus';
 const PEER_ICON = 'club-peer';
 const ORGANIZATION_ICON = 'club-organization';
-/** An organization at its city's middle: a ring, as an event there is. */
-const ORGANIZATION_RING = 'club-organization-ring';
 /** The member's own city: a house, drawn on the map like the pins. */
 const HOME = 'club-home';
-const ICONS = [PEER_ICON, ORGANIZATION_ICON, ORGANIZATION_RING, HOME];
+const ICONS = [PEER_ICON, ORGANIZATION_ICON, HOME];
 
 /** Badges drawn by path, not roundRect, which iOS 15's Safari lacks. */
 function drawIcon(id: string): ImageData | null {
@@ -91,10 +89,9 @@ function drawIcon(id: string): ImageData | null {
     pen.lineTo(middle, size - 2);
     pen.lineTo(2, middle);
     pen.closePath();
-    const ring = id === ORGANIZATION_RING;
-    pen.lineWidth = ring ? 3.5 : 2.5;
-    pen.fillStyle = ring ? WHITE : PLUM;
-    pen.strokeStyle = ring ? PLUM : WHITE;
+    pen.lineWidth = 2.5;
+    pen.fillStyle = PLUM;
+    pen.strokeStyle = WHITE;
   }
   pen.fill();
   pen.stroke();
@@ -143,7 +140,7 @@ export function addLayers(map: MapLibreMap): void {
       },
       paint: { 'icon-translate': [0, 18] },
     },
-    // An open organization's other places: a white then navy ring round each.
+    // An open organization's other places: a white then navy circle round each.
     {
       id: `${FOCUS}-outer`,
       type: 'circle',
@@ -173,12 +170,7 @@ export function addLayers(map: MapLibreMap): void {
       type: 'symbol',
       source: SOURCES.organizations,
       layout: {
-        'icon-image': [
-          'case',
-          ['any', ['has', 'point_count'], ['==', ['get', 'exact'], true]],
-          ORGANIZATION_ICON,
-          ORGANIZATION_RING,
-        ],
+        'icon-image': ORGANIZATION_ICON,
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
         'text-field': ['case', ['>', ['get', 'count'], 1], ['to-string', ['get', 'count']], ''],
@@ -189,12 +181,7 @@ export function addLayers(map: MapLibreMap): void {
       },
       // Up and right of the point, so a city's events stay in view.
       paint: {
-        'text-color': [
-          'case',
-          ['any', ['has', 'point_count'], ['==', ['get', 'exact'], true]],
-          WHITE,
-          PLUM,
-        ],
+        'text-color': WHITE,
         'icon-translate': [15, -15],
         'text-translate': [15, -15],
       },
@@ -223,10 +210,10 @@ export function addLayers(map: MapLibreMap): void {
       filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'count'], 1]],
       paint: {
         'circle-radius': 9,
-        // Filled at its address; a ring at its city's middle.
-        'circle-color': ['case', ['==', ['get', 'exact'], true], NAVY, WHITE],
-        'circle-stroke-color': ['case', ['==', ['get', 'exact'], true], WHITE, NAVY],
-        'circle-stroke-width': ['case', ['==', ['get', 'exact'], true], 2.5, 3.5],
+        // One look, exact or not (the owner, 2026-10-26); the sheet says which.
+        'circle-color': NAVY,
+        'circle-stroke-color': WHITE,
+        'circle-stroke-width': 2.5,
       },
     },
     {
@@ -236,24 +223,9 @@ export function addLayers(map: MapLibreMap): void {
       filter: ['any', ['has', 'point_count'], ['>', ['get', 'count'], 1]],
       paint: {
         'circle-radius': ['step', ['get', 'count'], 14, 10, 17, 100, 20],
-        'circle-color': [
-          'case',
-          ['any', ['has', 'point_count'], ['==', ['get', 'exact'], true]],
-          NAVY,
-          WHITE,
-        ],
-        'circle-stroke-color': [
-          'case',
-          ['any', ['has', 'point_count'], ['==', ['get', 'exact'], true]],
-          WHITE,
-          NAVY,
-        ],
-        'circle-stroke-width': [
-          'case',
-          ['any', ['has', 'point_count'], ['==', ['get', 'exact'], true]],
-          2.5,
-          3.5,
-        ],
+        'circle-color': NAVY,
+        'circle-stroke-color': WHITE,
+        'circle-stroke-width': 2.5,
       },
     },
     {
@@ -268,14 +240,7 @@ export function addLayers(map: MapLibreMap): void {
         'text-allow-overlap': true,
         'text-ignore-placement': true,
       },
-      paint: {
-        'text-color': [
-          'case',
-          ['any', ['has', 'point_count'], ['==', ['get', 'exact'], true]],
-          WHITE,
-          NAVY,
-        ],
-      },
+      paint: { 'text-color': WHITE },
     },
   ];
   for (const layer of layers) if (!map.getLayer(layer.id)) map.addLayer(layer);

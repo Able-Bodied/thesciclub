@@ -43,10 +43,10 @@ describe("the map's badges", () => {
       pen as unknown as CanvasRenderingContext2D,
     );
     const map = { hasImage: () => false, addImage: vi.fn() };
-    for (const id of ['club-peer', 'club-organization', 'club-organization-ring', 'club-home']) {
+    for (const id of ['club-peer', 'club-organization', 'club-home']) {
       addIcon(map as never, id);
     }
-    expect(map.addImage).toHaveBeenCalledTimes(4);
+    expect(map.addImage).toHaveBeenCalledTimes(3);
     expect(calls).toContain('arcTo');
     expect(calls).not.toContain('roundRect');
   });
@@ -93,5 +93,25 @@ describe('your city', () => {
     });
     setHome(map as never, null);
     expect(home?.setData).toHaveBeenLastCalledWith({ type: 'FeatureCollection', features: [] });
+  });
+});
+
+describe('one look for every pin', () => {
+  it('draws events and organizations the same whether exact or at a city middle', () => {
+    const added: unknown[] = [];
+    const map = {
+      hasImage: () => true,
+      addImage: vi.fn(),
+      on: vi.fn(),
+      getSource: () => undefined,
+      addSource: vi.fn(),
+      getLayer: () => false,
+      addLayer: (layer: unknown) => added.push(layer),
+    };
+    addLayers(map as never);
+    const drawn = JSON.stringify(added);
+    // The sheet says "Approximate location"; the pin does not change for it.
+    expect(drawn).not.toContain('exact');
+    expect(drawn).not.toContain('club-organization-ring');
   });
 });

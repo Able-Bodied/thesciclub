@@ -39,6 +39,7 @@ import {
 import { SeriesFooter } from '@/routes/events/series-card';
 import { groupBySeries } from '@/routes/events/series-groups';
 import { type MapProblem, MapProblemNote, MapView } from '@/routes/map/map-view';
+import { canShowOnMap, mapLinkFor, SHOW_PARAM } from '@/routes/map/show-on-map';
 import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
 import {
   type ClubEvent,
@@ -149,6 +150,18 @@ export default function EventsPage() {
   );
   // The map, once opened, stays mounted and is hidden for the list.
   const [view, setView] = useListOrMap('/events');
+  // "View on the map": the event to open the map on, until the map has done it.
+  const showId = view === 'map' ? searchParams.get(SHOW_PARAM) : null;
+  const [readShown, setReadShown] = useState<{ id: string; event: ClubEvent | null } | null>(null);
+  const clearShow = useCallback(() => {
+    setSearchParams(
+      (current) => {
+        current.delete(SHOW_PARAM);
+        return current;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
   const [mapOpened, setMapOpened] = useState(view === 'map');
   if (view === 'map' && !mapOpened) setMapOpened(true);
   const [mapProblem, setMapProblem] = useState<MapProblem | null>(null);
@@ -279,6 +292,17 @@ export default function EventsPage() {
   const filterCount = activeFilterCount(filters) + (rsvp ? 1 : 0);
   const showingList = segment !== 'orgs';
 
+  // The event "View on the map" asked for: from the list, or read by itself
+  // when the filters leave it out (it is shown anyway).
+  const listed = showId ? events.find((event) => event.id === showId) : undefined;
+  const show = !showId
+    ? undefined
+    : listed
+      ? { id: showId, event: listed, ready: true }
+      : readShown?.id === showId
+        ? { id: showId, event: readShown.event, ready: true }
+        : { id: showId, event: null, ready: false };
+
   // An event in a sheet on the map, as the list draws it.
   const mapCard = (event: ClubEvent) => (
     <EventCard
@@ -377,8 +401,12 @@ export default function EventsPage() {
             filters={directory}
             onShown={setMapOrganizations}
           />
+          {showId && !listed && !loading ? (
+            <ShownEventRead id={showId} onRead={setReadShown} />
+          ) : null}
           <MapView
             hidden={!showingMap}
+            {...(show ? { show, onShown: clearShow } : {})}
             onProblem={setMapProblem}
             focus={segment === 'orgs' ? 'organizations' : 'events'}
             events={visible}
@@ -464,6 +492,9 @@ export default function EventsPage() {
                       ) : undefined
                     }
                     status={viewer.rsvps.get(event.id) ?? null}
+                    mapHref={
+                      !asLine && canShowOnMap(event) ? mapLinkFor(event.id, segment) : undefined
+                    }
                     attendees={attendeesByEvent.get(event.id) ?? []}
                     organization={
                       event.organizationId
@@ -546,6 +577,21 @@ export default function EventsPage() {
       {phoneSheet}
     </div>
   );
+}
+
+/** One event by itself, for "View on the map" when the list does not hold it. */
+function ShownEventRead({
+  id,
+  onRead,
+}: {
+  id: string;
+  onRead: (read: { id: string; event: ClubEvent | null }) => void;
+}) {
+  const { events, loading } = useEvents({ id });
+  useEffect(() => {
+    if (!loading) onRead({ id, event: events[0] ?? null });
+  }, [id, events, loading, onRead]);
+  return null;
 }
 
 /** The directory as its filters leave it, for the map; read only once the map is opened. */

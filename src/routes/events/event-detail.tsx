@@ -34,6 +34,8 @@ import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
+import { ViewOnMap } from '@/routes/events/view-on-map';
+import { canShowOnMap, mapLinkFor } from '@/routes/map/show-on-map';
 import { type EventAttendee, injuryLabel, type RsvpStatus } from '@/types/domain';
 
 /**
@@ -187,6 +189,14 @@ export default function EventDetailPage() {
               />
             </p>
             <OutOfStateMark state={event.state} onNavy className="mt-2" />
+            {canShowOnMap(event) ? (
+              <ViewOnMap
+                title={event.title}
+                to={mapLinkFor(event.id)}
+                tone="plate"
+                className="mt-2.5"
+              />
+            ) : null}
 
             {isOnline(event) || event.tags.length ? (
               <div className="mt-2.5 flex flex-wrap gap-1.5">

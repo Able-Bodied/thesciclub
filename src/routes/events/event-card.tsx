@@ -7,6 +7,7 @@ import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
+import { ViewOnMap } from '@/routes/events/view-on-map';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
 /**
@@ -77,6 +78,8 @@ export interface EventCardProps {
    * occurrences, which is when.
    */
   occurrence?: boolean;
+  /** The Events map opened on it; only for one the map can hold (show-on-map.ts). */
+  mapHref?: string | undefined;
   /**
    * Draw this as a record of something that happened rather than as an offer.
    *
@@ -109,6 +112,7 @@ export function EventCard({
   attached = false,
   footer,
   occurrence = false,
+  mapHref,
 }: EventCardProps) {
   const goingNote = useId();
 
@@ -353,6 +357,8 @@ export function EventCard({
       <p id={goingNote} className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
         {GOING_SHARES_CONTACT}
       </p>
+      {/* Beside the card's own button, never inside it. */}
+      {mapHref ? <ViewOnMap title={event.title} to={mapHref} className="mt-2.5" /> : null}
 
       {footer ? <div className="mt-2.5 border-line border-t pt-1">{footer}</div> : null}
     </div>

@@ -264,7 +264,7 @@ describe("an organization's places", () => {
     return screen.findByRole('dialog');
   }
 
-  it('rings its other places and fades every other pin while its sheet is open', async () => {
+  it('circles its other places and fades every other pin while its sheet is open', async () => {
     await openBerkeley();
     const rings = the.map?.sources
       .get('club-organization-focus')
@@ -303,5 +303,79 @@ describe("an organization's places", () => {
       features: unknown[];
     };
     expect(sent.features).toEqual([]);
+  });
+});
+
+describe('View on the map', () => {
+  const placed: MapContents = {
+    ...contents,
+    events: [
+      { id: 'e1', latitude: 37.87, longitude: -122.27, exact: true },
+      { id: 'e2', latitude: 37.34, longitude: -121.89, exact: false },
+    ],
+  };
+  const near = makeEvent({ id: 'e1', title: 'Adaptive yoga' });
+  const away = makeEvent({ id: 'e2', title: 'Hand cycling ride', city: 'San Jose' });
+
+  it('goes to an exact event at street level and opens its sheet, then says it is done', async () => {
+    const shown = vi.fn();
+    render(
+      <Screen
+        contents={placed}
+        events={[near]}
+        show={{ id: 'e1', event: near, ready: true }}
+        onShown={shown}
+      />,
+    );
+    await ready();
+    expect(await screen.findByRole('dialog', { name: '1 event here' })).toBeVisible();
+    expect(screen.getByText('Adaptive yoga')).toBeVisible();
+    expect(the.map?.easeTo).toHaveBeenCalledWith(
+      expect.objectContaining({ center: [-122.27, 37.87], zoom: 15 }),
+    );
+    expect(shown).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes to an approximate one at city level, saying so, though the filters left it out', async () => {
+    render(
+      <Screen contents={placed} events={[near]} show={{ id: 'e2', event: away, ready: true }} />,
+    );
+    await ready();
+    expect(await screen.findByText('Hand cycling ride')).toBeVisible();
+    expect(screen.getByText('Approximate location')).toBeVisible();
+    expect(the.map?.easeTo).toHaveBeenCalledWith(
+      expect.objectContaining({ center: [-121.89, 37.34], zoom: 11 }),
+    );
+    // Drawn as well, so its pin is where the sheet says.
+    const drawn = the.map?.sources.get('club-events')?.setData.mock.calls.at(-1)?.[0] as {
+      features: { properties: { key: string } }[];
+    };
+    expect(drawn.features.map((f) => f.properties.key)).toContain('37.34,-121.89|city');
+  });
+
+  it('says so politely when the event is not on the map, and goes nowhere', async () => {
+    const shown = vi.fn();
+    render(
+      <Screen
+        contents={placed}
+        show={{ id: 'gone', event: makeEvent({ id: 'gone' }), ready: true }}
+        onShown={shown}
+      />,
+    );
+    await ready();
+    expect(await screen.findByText('This event isn’t on the map yet.')).toBeVisible();
+    expect(the.map?.easeTo).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(shown).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits until the event is known', async () => {
+    const shown = vi.fn();
+    render(
+      <Screen contents={placed} show={{ id: 'e1', event: null, ready: false }} onShown={shown} />,
+    );
+    await ready();
+    expect(shown).not.toHaveBeenCalled();
+    expect(screen.queryByText(/isn’t on the map/)).toBeNull();
   });
 });
