@@ -274,6 +274,8 @@ export interface ChatMessage {
   notice: ChatNotice | null;
   /** The first link's page, filled in by the club a moment after sending. */
   linkPreview: LinkPreview | null;
+  /** A post from a room this message shares, drawn as a card, or null. */
+  sharedPostId: string | null;
   /**
    * True while this is a bubble the reader has sent and the database has not
    * confirmed. Never set on a row that came back from a read.

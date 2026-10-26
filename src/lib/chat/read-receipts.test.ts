@@ -32,6 +32,7 @@ const message: ChatMessage = {
   replyTo: null,
   notice: null,
   linkPreview: null,
+  sharedPostId: null,
 };
 
 beforeEach(() => {
