@@ -73,13 +73,6 @@ export function NameStep({ data, set }: StepProps) {
           set({ displayName: e.target.value });
         }}
       />
-      {/* The terms are agreed by going on (the owner, 2026-10-15), not on a
-          screen of their own with a box to tick. The first question after
-          the invite check, so somebody turned away is never asked. */}
-      <Fine>
-        By continuing, you agree to our <NewTabLink href="/terms">Terms of Service</NewTabLink> and
-        confirm you read our <NewTabLink href="/privacy">Privacy Policy</NewTabLink>.
-      </Fine>
     </>
   );
 }

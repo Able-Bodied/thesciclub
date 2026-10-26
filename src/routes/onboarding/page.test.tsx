@@ -1760,14 +1760,13 @@ describe('the phone for events', () => {
   });
 });
 
-// The owner, 2026-10-15: no screen of their own and no box to tick. The
-// name step says that going on is agreeing, with both documents linked.
+// No screen of their own and no box to tick (the owner, 2026-10-15). The join
+// form says signing up is agreeing, with both documents linked (2026-10-25).
 describe('agreeing to the terms', () => {
-  it('says so under the name, with both documents a tap away, and no box to tick', async () => {
-    calls.status = 'signed-up';
-    renderJoin();
-    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
-    expect(screen.getByText(/By continuing, you agree to our/)).toBeInTheDocument();
+  it('says so on the join form, with both documents a tap away, and no box to tick', () => {
+    renderJoin('/join?invite=tok-123');
+    expect(screen.getByRole('heading', { name: 'Join the club' })).toBeInTheDocument();
+    expect(screen.getByText(/By signing up, you agree to our/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
       'href',
       '/terms',
@@ -1784,12 +1783,21 @@ describe('agreeing to the terms', () => {
     expect(screen.queryByText(/Text me/)).toBeNull();
   });
 
-  it('is not asked of somebody turned away', async () => {
-    calls.status = 'signed-up';
-    calls.invited = false;
+  it('says so on the sign-in form too, where Apple or Google can make a new account', async () => {
     renderJoin();
-    await screen.findByText(/isn't on the list/i);
-    expect(screen.queryByText(/By continuing, you agree/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+    expect(await screen.findByText(/By continuing, you agree to our/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+  });
+
+  it('is not repeated under the name', async () => {
+    calls.status = 'signed-up';
+    renderJoin();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
+    expect(screen.queryByText(/you agree to our/)).toBeNull();
   });
 });
 
