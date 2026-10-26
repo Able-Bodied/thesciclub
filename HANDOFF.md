@@ -108,16 +108,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   App Store Connect → App Review. Owner-side sheet: `app-store-submission.md`
   (untracked).
 
-- **Share a post into a chat, not live** (the owner, 2026-10-25): Share
+- **Share a post into a chat, live** (the owner, 2026-10-25; website and
+  1.0.4+ on 2026-10-26, with editing in the composer): Share
   beside React and Reply on every post and Home card sends it to a
   conversation or a member, with an optional line. The message holds only
   `shared_post_id`; `chat_shared_posts` draws the card with the reader's
   own rights, else "This post isn't available" (closed room, removed,
-  deleted, a block either way). Probe: `shared-posts.sql`. To release, in
-  order: `db push` (`20261025010000`), then push the client (it reads the
-  new column, so a client first breaks conversations), then deploy
-  `push-notify` ("Shared a post." on the lock screen; until then a share
-  with no words pushes an empty line). Kept by the owner (2026-10-25): a
+  deleted, a block either way). Probe: `shared-posts.sql`. Kept by the owner (2026-10-25): a
   blocked member sees "isn't available" on a post by the member who blocked
   them, and the Share refusal says the same, so they can infer the block, as
   "You can't message this member" already lets them.
