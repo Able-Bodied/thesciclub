@@ -455,6 +455,15 @@ verify_jwt = false
 [functions.home-screen-handoff]
 verify_jwt = false
 
+# Revokes queued Apple tokens. Called by the database (pg_net, from
+# apple_revoke_send) with the vault's apple_revoke_secret instead of a JWT.
+[functions.apple-revoke]
+verify_jwt = false
+
+# Apple's server-to-server notices: Apple's own signature is checked instead.
+[functions.apple-notifications]
+verify_jwt = false
+
 # Calendar invitations to events@thesciclub.org, posted by Resend: Resend's
 # own signature (RESEND_INBOUND_SECRET) is checked instead. 20261022220000.
 [functions.calendar-inbound]
