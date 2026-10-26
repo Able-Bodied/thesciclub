@@ -120,6 +120,19 @@ describe('the cards', () => {
     expect(result.current.answered.has('m2')).toBe(true);
   });
 
+  it('reads again when the conversation reloads, for the same messages', async () => {
+    const { rerender } = renderHook(({ again }) => useSharedPosts(['m1'], again), {
+      initialProps: { again: 1 },
+    });
+    await waitFor(() => {
+      expect(db.rpcs).toHaveLength(1);
+    });
+    rerender({ again: 2 });
+    await waitFor(() => {
+      expect(db.rpcs).toHaveLength(2);
+    });
+  });
+
   it('does not call a failed read unavailable', async () => {
     db.rpcError = { message: 'offline', code: 'PGRST000' };
     const { result } = renderHook(() => useSharedPosts(['m1']));

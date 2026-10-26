@@ -101,19 +101,31 @@ function SharePostSheet({
 
   const chosen = target ? targetKey(target.value) : null;
 
+  /** A conversation's name as it reads now: a name still loading when picked fills in. */
+  function nameOf(to: { value: ShareTarget; name: string }): string {
+    const value = to.value;
+    if (!('threadId' in value)) return to.name;
+    const thread = offered.find((t) => t.id === value.threadId);
+    if (!thread) return to.name;
+    const other = thread.otherMemberId ? authors.get(thread.otherMemberId) : undefined;
+    return threadTitle(thread, other?.displayName ?? null) || to.name;
+  }
+  const targetName = target ? nameOf(target) : '';
+
   function send() {
     if (!target || !memberId || sending) return;
     setSending(true);
     setFailure(null);
     const to = target;
+    const name = targetName;
     void sharePost(postId, to.value, memberId, line)
       .then((result) => {
         if (!result.ok) {
           setFailure(result.error);
           return;
         }
-        setSent({ threadId: result.threadId, name: to.name });
-        announce(`Shared with ${to.name}.`);
+        setSent({ threadId: result.threadId, name });
+        announce(`Shared with ${name}.`);
       })
       .finally(() => {
         setSending(false);
@@ -263,7 +275,10 @@ function SharePostSheet({
                 aria-expanded={picking}
                 aria-controls="share-post-members"
                 onClick={() => {
-                  setPicking((on) => !on);
+                  // A member chosen from the list goes with it, so Send never
+                  // names somebody whose choice is no longer on screen.
+                  if (picking && target && 'memberId' in target.value) setTarget(null);
+                  setPicking(!picking);
                 }}
                 className="mt-2 inline-flex min-h-11 items-center font-semibold text-[0.875rem] text-emphasis underline underline-offset-2"
               >
@@ -313,7 +328,7 @@ function SharePostSheet({
               disabled={!target || sending}
               className="mt-4 flex min-h-12 w-full items-center justify-center rounded-xl bg-action px-4 font-bold text-[0.9375rem] text-white disabled:opacity-40"
             >
-              {sending ? 'Sending…' : target ? `Send to ${target.name}` : 'Send'}
+              {sending ? 'Sending…' : target ? `Send to ${targetName}` : 'Send'}
             </button>
           </form>
         )}
@@ -344,10 +359,12 @@ function MemberChoices({
       .filter(
         (member) =>
           needle === '' ||
+          // The chosen one stays, so the choice never vanishes from the group.
+          `member:${member.id}` === chosen ||
           member.displayName.toLowerCase().includes(needle) ||
           (member.username ?? '').includes(needle.replace(/^@/, '')),
       );
-  }, [members, viewerId, filter]);
+  }, [members, viewerId, filter, chosen]);
 
   if (loading) {
     return (
