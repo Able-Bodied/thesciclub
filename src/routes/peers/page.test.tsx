@@ -1,8 +1,10 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MapData } from '@/lib/map-data';
 import type { MembersState } from '@/lib/members';
+import type { ClubMapProps } from '@/routes/map/club-map';
 import { makeMember } from '@/test/factory';
 
 const state = vi.hoisted(() => ({ current: null as MembersState | null }));
@@ -10,13 +12,48 @@ vi.mock('@/lib/members', () => ({
   useBrowseMembers: () => state.current,
 }));
 
+const map = vi.hoisted(() => ({ props: null as ClubMapProps | null }));
+vi.mock('@/lib/map', () => ({ loadMapCanvas: () => Promise.resolve({ default: () => null }) }));
+vi.mock('@/lib/map-data', () => ({
+  useMapData: (): MapData => ({
+    status: 'ready',
+    retry: () => undefined,
+    events: [],
+    peerCities: [],
+    organizations: [],
+    home: null,
+    contents: { events: [], peerCities: [], organizations: [], home: null },
+  }),
+}));
+vi.mock('@/routes/map/club-map', () => ({
+  default: (props: ClubMapProps) => {
+    map.props = props;
+    return (
+      <div data-testid="club-map">
+        <p>Counted: {(props.members ?? []).map((member) => member.displayName).join(', ')}</p>
+        <button type="button" onClick={props.filters.onOpen}>
+          {props.filters.label}
+        </button>
+        <button type="button" onClick={props.onUnsupported}>
+          No WebGL2
+        </button>
+      </div>
+    );
+  },
+}));
+
 const { default: PeersPage } = await import('@/routes/peers/page');
 
+function Address() {
+  return <output data-testid="address">{useLocation().search}</output>;
+}
+
 /** Cards navigate to a profile, so the page needs a router around it. */
-function renderPage() {
+function renderPage(entry = '/peers') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[entry]}>
       <PeersPage />
+      <Address />
     </MemoryRouter>,
   );
 }
@@ -47,6 +84,7 @@ const deck = [
 
 beforeEach(() => {
   state.current = { members: deck, loading: false, error: null, signedOut: false };
+  map.props = null;
 });
 
 describe('PeersPage', () => {
@@ -269,5 +307,66 @@ describe('layout', () => {
     expect(screen.getByText('Todd')).toBeInTheDocument();
     expect(screen.getByText('Kerry')).toBeInTheDocument();
     expect(screen.getAllByText('Nicole')).toHaveLength(1);
+  });
+});
+
+describe('the map of peers', () => {
+  it('opens from the switch, in the address, in place of the deck', async () => {
+    renderPage();
+    const card = await screen.findByText('Nicole');
+    await userEvent.click(screen.getByRole('button', { name: 'Map' }));
+    expect(screen.getByTestId('address').textContent).toBe('?view=map');
+    expect(await screen.findByTestId('club-map')).toBeVisible();
+    expect(card).not.toBeVisible();
+    expect(map.props?.focus).toBe('peers');
+  });
+
+  it("counts the deck's members, so a segment and the filters narrow it too", async () => {
+    state.current = {
+      members: [
+        makeMember({ id: '1', displayName: 'Nicole', type: 'peer', age: 34 }),
+        makeMember({ id: '2', displayName: 'Todd', type: 'mentor', age: 52 }),
+        makeMember({ id: '3', displayName: 'Kerry', type: 'mentor', age: 38 }),
+      ],
+      loading: false,
+      error: null,
+      signedOut: false,
+    };
+    renderPage('/peers?view=map');
+    expect(await screen.findByText('Counted: Nicole, Todd, Kerry')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Mentors' }));
+    expect(screen.getByText('Counted: Todd, Kerry')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Filter peers' }));
+    const sheet = screen.getByRole('dialog', { name: 'Filter peers' });
+    await userEvent.click(within(sheet).getByRole('button', { name: '30 to 39' }));
+    expect(screen.getByText('Counted: Kerry')).toBeInTheDocument();
+  });
+
+  it('shows the deck with a note where the map cannot be drawn', async () => {
+    renderPage('/peers?view=map');
+    await userEvent.click(await screen.findByRole('button', { name: 'No WebGL2' }));
+    expect(screen.getByText(/can’t draw the map, so here is the list/)).toBeVisible();
+    expect(screen.getByText('Nicole')).toBeVisible();
+  });
+});
+
+describe('the age filter in the deck', () => {
+  it('narrows the list too', async () => {
+    state.current = {
+      members: [
+        makeMember({ id: '1', displayName: 'Nicole', age: 24 }),
+        makeMember({ id: '2', displayName: 'Todd', age: 61 }),
+      ],
+      loading: false,
+      error: null,
+      signedOut: false,
+    };
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    await userEvent.click(screen.getByRole('button', { name: '60 to 69' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Show 1' }));
+    expect(screen.queryByText('Nicole')).toBeNull();
+    expect(screen.getByText('Todd')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
   });
 });

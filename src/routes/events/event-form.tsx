@@ -48,6 +48,7 @@ import {
   EVENT_FORMATS,
   type EventAudience,
   type EventFormat,
+  US_STATES,
 } from '@/types/domain';
 
 /**
@@ -113,7 +114,12 @@ export default function EventFormPage() {
       initial={
         existing
           ? draftFromEvent(existing)
-          : emptyDraft(!account.isAdmin && options.length === 1 ? (options[0]?.id ?? null) : null)
+          : (() => {
+              const onlyHost =
+                !account.isAdmin && options.length === 1 ? (options[0]?.id ?? null) : null;
+              const host = organizations.find((o) => o.id === onlyHost);
+              return emptyDraft(onlyHost, host?.state ?? '');
+            })()
       }
       initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
       // A new event has a public page unless its organizer says otherwise
@@ -210,6 +216,10 @@ function EventForm({
   const dateIso = dateReading.kind === 'date' ? dateReading.iso : null;
   const startReading = readTime(draft.startTime);
   const endReading = readTime(draft.endTime);
+
+  const [stateChosen, setStateChosen] = useState(false);
+  const directory = useOrganizations().organizations;
+  const stateOfHost = (id: string) => directory.find((o) => o.id === id)?.state ?? null;
 
   function set<K extends keyof EventDraft>(key: K, value: EventDraft[K]) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -338,6 +348,10 @@ function EventForm({
               value={draft.host}
               onChange={(e) => {
                 set('host', e.target.value);
+                // The state follows the host until somebody chooses one.
+                if (!stateChosen) {
+                  set('state', stateOfHost(e.target.value) ?? draft.state);
+                }
               }}
               className={FIELD}
             >
@@ -493,6 +507,30 @@ function EventForm({
         />
         <p id="event-city-hint" className={HINT}>
           So members can find it by place.
+        </p>
+
+        <label htmlFor="event-state" className={LABEL}>
+          State
+        </label>
+        <select
+          id="event-state"
+          value={draft.state}
+          onChange={(e) => {
+            setStateChosen(true);
+            set('state', e.target.value);
+          }}
+          aria-describedby="event-state-hint"
+          className={FIELD}
+        >
+          <option value="">Choose a state</option>
+          {US_STATES.map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <p id="event-state-hint" className={HINT}>
+          Where it happens, if not where its host is. Its address is looked up there.
         </p>
 
         {/* ----------------------------------------------------- about */}

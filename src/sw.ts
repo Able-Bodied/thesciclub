@@ -61,6 +61,63 @@ registerRoute(
   }),
 );
 
+// The map's script, worker, glyphs and sprites: left out of the precache
+// (vite.config.ts, MAP_FILES) and kept here once fetched, so a second map
+// opens without the network. Tiles are range requests and are not kept.
+const MAP_CACHE = 'club:map';
+const MAP_FILE = /^\/(?:assets\/maplibre-[\w-]+\.(?:js|css)|map\/v\d+\/.+)$/;
+/** Glyphs and sprites never change in place: a new set is a new folder (v1, v2). */
+const mapFolder = (path: string) => /^\/map\/(v\d+)\//.exec(path)?.[1];
+/** A built file's name without its hash: a new build's copy replaces the old. */
+const builtName = (path: string) => path.replace(/-[\w-]{8}(\.\w+)$/, '$1');
+
+/** What a map file must be: never the site's index.html standing in for a file gone. */
+export function isMapFile(path: string, contentType: string | null): boolean {
+  const type = (contentType ?? '').toLowerCase();
+  if (type.includes('text/html')) return false;
+  if (path.endsWith('.js')) return type.includes('javascript');
+  if (path.endsWith('.css')) return type.includes('text/css');
+  if (path.endsWith('.json')) return type.includes('json');
+  if (path.endsWith('.png')) return type.includes('image/png');
+  return true;
+}
+
+export async function mapFile({ request, url }: { request: Request; url: URL }) {
+  const cache = await caches.open(MAP_CACHE).catch(() => undefined);
+  const kept = await cache?.match(request).catch(() => undefined);
+  if (kept) return kept;
+  const response = await fetch(request);
+  // Only a real copy replaces the kept one, and only once it is in: storage
+  // that is full never costs the page its answer, nor the old copy.
+  if (
+    cache &&
+    response.status === 200 &&
+    isMapFile(url.pathname, response.headers.get('content-type'))
+  ) {
+    try {
+      await cache.put(request, response.clone());
+      const name = builtName(url.pathname);
+      const folder = mapFolder(url.pathname);
+      for (const old of await cache.keys()) {
+        const path = new URL(old.url).pathname;
+        const replaced = builtName(path) === name;
+        const otherFolder =
+          folder !== undefined && mapFolder(path) !== undefined && mapFolder(path) !== folder;
+        if (old.url !== request.url && (replaced || otherFolder)) await cache.delete(old);
+      }
+    } catch {
+      // Kept as it was.
+    }
+  }
+  return response;
+}
+
+registerRoute(
+  ({ url, request }) =>
+    url.origin === self.location.origin && request.method === 'GET' && MAP_FILE.test(url.pathname),
+  mapFile,
+);
+
 // "Share to The SCI Club" (manifest share_target, Android). The share is a
 // POST the app cannot read, so it is kept in a cache of its own, photographs
 // and all, and the app is opened on /share, which reads it once. A 303, so

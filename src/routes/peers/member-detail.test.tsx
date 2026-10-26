@@ -282,6 +282,8 @@ describe('backFrom', () => {
     expect(backFrom({ from: 'me' })).toBe('Me');
     expect(backFrom({ from: 'home', segment: 'people' })).toBe('Home');
     expect(backFrom(null)).toBe('Peers');
+    expect(backFrom({ segment: 'upcoming', view: 'map' })).toBe('Events');
+    expect(backFrom({ from: 'peers-map' })).toBe('Peers');
   });
 });
 

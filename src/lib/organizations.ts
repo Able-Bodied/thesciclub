@@ -3,7 +3,7 @@ import { describeError, describeThrown } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
 import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
-import type { Organization } from '@/types/domain';
+import type { Organization, OrganizationPlace } from '@/types/domain';
 
 /** The member directory, excluding entries an administrator removed. */
 interface OrganizationRow {
@@ -15,6 +15,31 @@ interface OrganizationRow {
   tags: string[] | null;
   can_invite: boolean;
   logo_path: string | null;
+  state?: string | null;
+  organization_places?: PlaceRow[] | null;
+}
+
+interface PlaceRow {
+  id: string;
+  position: number;
+  label: string | null;
+  address: string | null;
+  city: string;
+  state: string;
+}
+
+/** Main place first. */
+export function toOrganizationPlaces(rows: PlaceRow[] | null | undefined): OrganizationPlace[] {
+  return [...(rows ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map(({ id, position, label, address, city, state }) => ({
+      id,
+      position,
+      label,
+      address,
+      city,
+      state,
+    }));
 }
 
 export function toOrganization(row: OrganizationRow): Organization {
@@ -27,6 +52,8 @@ export function toOrganization(row: OrganizationRow): Organization {
     tags: row.tags ?? [],
     canInvite: row.can_invite,
     logoPath: row.logo_path,
+    state: row.state ?? null,
+    places: toOrganizationPlaces(row.organization_places),
   };
 }
 
@@ -99,7 +126,9 @@ function readOrganizations(): Promise<OrganizationsRead> {
       const { data, error } = await readPages<OrganizationRow>((from, to) =>
         getSupabase()
           .from('organizations')
-          .select('id, short_code, name, city, description, tags, can_invite, logo_path')
+          .select(
+            'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)',
+          )
           .is('removed_at', null)
           .order('name')
           .order('id')

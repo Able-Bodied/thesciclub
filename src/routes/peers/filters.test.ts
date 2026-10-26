@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   activeFilterCount,
+  ageBandsIn,
   citiesIn,
   filterMembers,
   hasConditions,
@@ -232,5 +233,37 @@ describe('the spinal cord condition filter', () => {
     expect(activeFilterCount({ ...none, condition: true })).toBe(1);
     expect(hasConditions(deck)).toBe(true);
     expect(hasConditions(deck.slice(0, 2))).toBe(false);
+  });
+});
+
+describe('the age filter', () => {
+  const deck = [
+    makeMember({ id: 'young', age: 24 }),
+    makeMember({ id: 'thirty', age: 30 }),
+    makeMember({ id: 'forties', age: 49 }),
+    makeMember({ id: 'older', age: 71 }),
+    makeMember({ id: 'unsaid', age: null }),
+  ];
+  const ids = (ages: string[]) =>
+    filterMembers(deck, { ...none, ages }, 'everyone').map((m) => m.id);
+
+  it('keeps the members in any ticked group, edges included', () => {
+    expect(ids(['30s'])).toEqual(['thirty']);
+    expect(ids(['under-30', '40s'])).toEqual(['young', 'forties']);
+    expect(ids(['70-plus'])).toEqual(['older']);
+  });
+
+  it('leaves out a member who gave no age only once a group is ticked', () => {
+    expect(ids([])).toContain('unsaid');
+    expect(ids(['under-30', '30s', '40s', '50s', '60s', '70-plus'])).not.toContain('unsaid');
+  });
+
+  it('offers only the groups somebody is in, youngest first', () => {
+    expect(ageBandsIn(deck)).toEqual(['under-30', '30s', '40s', '70-plus']);
+  });
+
+  it('counts towards the filter dot', () => {
+    expect(activeFilterCount({ ...none, ages: ['30s', '40s'] })).toBe(2);
+    expect(toggleFilter({ ...none, ages: ['30s'] }, 'ages', '30s').ages).toEqual([]);
   });
 });

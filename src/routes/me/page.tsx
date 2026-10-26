@@ -21,6 +21,7 @@ import { BlockedMembers } from '@/routes/me/blocked-members';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
 import { MeHero } from '@/routes/me/hero';
+import { MapVisibility } from '@/routes/me/map-visibility';
 import { NotificationSettings } from '@/routes/me/notification-settings';
 import { SignInSection } from '@/routes/me/sign-in-section';
 import { StandingCard } from '@/routes/me/standing';
@@ -176,6 +177,7 @@ export default function MePage() {
   // Null until the details load, so the switch is not drawn in the wrong
   // position for a moment and then corrected under the reader's eye.
   const [showInBrowse, setShowInBrowse] = useState<boolean | null>(null);
+  const [showOnMap, setShowOnMap] = useState<boolean | null>(null);
   // Null until they arrive, so the card does not say "Good standing" for a
   // moment to somebody who is on two and then correct itself.
   const [strikes, setStrikes] = useState<MyStrike[] | null>(null);
@@ -222,6 +224,7 @@ export default function MePage() {
         setMissing(missingDetails(result.details));
         setDetailsDone(detailsPercent(result.details));
         setShowInBrowse(result.details.showInBrowse);
+        setShowOnMap(result.details.showOnMap);
       }
     });
   }, [userId]);
@@ -312,6 +315,9 @@ export default function MePage() {
                     showInBrowse={showInBrowse}
                     onChange={setShowInBrowse}
                   />
+                ) : null}
+                {userId && showOnMap !== null ? (
+                  <MapVisibility userId={userId} showOnMap={showOnMap} onChange={setShowOnMap} />
                 ) : null}
               </section>
               <div className="min-w-0 space-y-6">

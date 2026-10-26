@@ -71,6 +71,8 @@ export function childrenLabel(
 export function backFrom(state: unknown): string {
   const from = (state as { from?: unknown } | null)?.from;
   if (from === 'me') return 'Me';
+  // A city's members, from the map on Events.
+  if ((state as { view?: unknown } | null)?.view === 'map') return 'Events';
   // A photograph's author or a member worth meeting, opened from Home.
   if (from === 'home') return 'Home';
   return 'Peers';

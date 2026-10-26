@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { appYoutubeEmbedUrl } from '@/lib/chat/link-preview';
+import { TILES_ORIGIN } from '@/lib/map/tiles';
 import SHELL from '../index.html?raw';
 import { APP_FRAMES, nativeCsp, webCsp } from '../native-csp';
 import NETLIFY from '../netlify.toml?raw';
@@ -72,6 +73,15 @@ describe('the Content-Security-Policy', () => {
       'https://erijdvqnxavwezsbbojv.supabase.co',
     ]);
     expect(directive('font-src')).toEqual(["'self'"]);
+  });
+
+  // The map's tiles come from the Worker the app points at, and nowhere else
+  // outside: filling in its address is tiles.ts and this policy together.
+  it("reaches the map's tiles Worker", () => {
+    expect(directive('connect-src')).toContain(`${TILES_ORIGIN}/`);
+    expect(directive('connect-src').filter((s) => s.includes('workers.dev'))).toEqual([
+      `${TILES_ORIGIN}/`,
+    ]);
   });
 
   // Only to copy a member's Google photo when they choose it (2026-10-22).
@@ -153,7 +163,7 @@ describe("the store app's Content-Security-Policy", () => {
     }
   });
 
-  it('reaches Supabase, the geocoder and Google photos, and nothing else of Google', () => {
+  it('reaches Supabase, the geocoder, Google photos and the map tiles, nothing else of Google', () => {
     expect(appDirective('connect-src')).toEqual([
       "'self'",
       'capacitor://localhost',
@@ -161,6 +171,7 @@ describe("the store app's Content-Security-Policy", () => {
       'wss://erijdvqnxavwezsbbojv.supabase.co',
       'https://nominatim.openstreetmap.org',
       'https://lh3.googleusercontent.com',
+      `${TILES_ORIGIN}/`,
     ]);
     expect(app).not.toContain('google.com');
     expect(appDirective('object-src')).toEqual(["'none'"]);

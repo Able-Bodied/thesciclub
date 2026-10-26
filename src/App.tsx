@@ -10,6 +10,7 @@ import { RequireMember } from '@/components/require-member';
 import { AccessibilityProvider, useForceLight } from '@/lib/accessibility';
 import { AnnounceProvider } from '@/lib/announce';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
+import { prefetchMap } from '@/lib/map';
 import { FollowNotification } from '@/lib/push/follow-notification';
 import DevLoginPage from '@/routes/dev-login/page';
 import HomePage from '@/routes/home/page';
@@ -96,21 +97,36 @@ export function preloadScreen(pathname: string): void {
   if (load) void load().catch(() => undefined);
 }
 
-function prefetchTabs(): () => void {
-  const fetchAll = () => {
-    for (const load of [loadPeers, loadChat, loadEvents, loadMe])
-      void load().catch(() => undefined);
-  };
+/** Runs `task` when the page is idle; returns a cancel. */
+function whenIdle(task: () => void): () => void {
   // Safari before 26 has no requestIdleCallback.
   if (typeof (window.requestIdleCallback as unknown) === 'function') {
-    const id = window.requestIdleCallback(fetchAll, { timeout: 4000 });
+    const id = window.requestIdleCallback(task, { timeout: 4000 });
     return () => {
       window.cancelIdleCallback(id);
     };
   }
-  const id = window.setTimeout(fetchAll, 2000);
+  const id = window.setTimeout(task, 2000);
   return () => {
     window.clearTimeout(id);
+  };
+}
+
+// Then the map (the owner, 2026-10-25), in an idle moment of its own once the
+// tabs are in, so it never competes with them; prefetchMap says when it skips.
+function prefetchTabs(): () => void {
+  let cancelled = false;
+  let cancelNext: (() => void) | undefined;
+  const cancelFirst = whenIdle(() => {
+    const tabs = [loadPeers, loadChat, loadEvents, loadMe].map((load) => load());
+    void Promise.allSettled(tabs).then(() => {
+      if (!cancelled) cancelNext = whenIdle(prefetchMap);
+    });
+  });
+  return () => {
+    cancelled = true;
+    cancelFirst();
+    cancelNext?.();
   };
 }
 

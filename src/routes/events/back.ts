@@ -21,17 +21,24 @@ export function backToEvents(location: Location): string {
   // Opened from a card on Home, which is where back should go.
   const home = backToHome(location.state);
   if (home) return home;
-  const state = location.state as { segment?: unknown } | null;
+  const state = location.state as { segment?: unknown; view?: unknown; from?: unknown } | null;
+  // Opened from the map on Peers.
+  if (state?.from === 'peers-map') return '/peers?view=map';
+  const map = state?.view === 'map';
   const segment = state?.segment;
-  if (typeof segment !== 'string') return '/events';
-  if (!EVENTS_SEGMENTS.includes(segment as EventsSegment)) return '/events';
+  const known = typeof segment === 'string' && EVENTS_SEGMENTS.includes(segment as EventsSegment);
   // `upcoming` is the default and carries no parameter, so the URL stays clean
   // for the common case.
-  return segment === 'upcoming' ? '/events' : `/events?segment=${segment}`;
+  const params = [
+    ...(known && segment !== 'upcoming' ? [`segment=${segment}`] : []),
+    ...(map ? ['view=map'] : []),
+  ];
+  return params.length ? `/events?${params.join('&')}` : '/events';
 }
 
 /** What the arrow should say, given where it will land. */
 export function backLabel(location: Location): string {
   if (backToHome(location.state)) return 'Home';
+  if ((location.state as { from?: unknown } | null)?.from === 'peers-map') return 'Peers';
   return backToEvents(location).includes('segment=orgs') ? 'Organizations' : 'Events';
 }

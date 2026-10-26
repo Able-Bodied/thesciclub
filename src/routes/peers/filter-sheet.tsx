@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
-import { toggleFilter } from '@/routes/peers/filters';
+import { AGE_BANDS, toggleFilter } from '@/routes/peers/filters';
 import type { InjuryRegion, MemberFilters } from '@/types/domain';
 
 /**
@@ -35,6 +35,8 @@ export interface FilterSheetProps {
   /** Somebody in the deck has a spinal cord condition: offer its chip. */
   conditions: boolean;
   cities: string[];
+  /** Age groups somebody in the deck is in (ageBandsIn). */
+  ages: string[];
   /** Every topic, most common first. The sheet decides how many to draw. */
   topics: string[];
   filters: MemberFilters;
@@ -50,6 +52,7 @@ export function FilterSheet({
   regions,
   conditions,
   cities,
+  ages,
   topics,
   filters,
   matchCount,
@@ -105,6 +108,21 @@ export function FilterSheet({
               }}
             />
           ) : null}
+        </FilterGroup>
+      ) : null}
+
+      {ages.length > 0 ? (
+        <FilterGroup title="Age">
+          {AGE_BANDS.filter((band) => ages.includes(band.id)).map((band) => (
+            <FilterChip
+              key={band.id}
+              label={band.label}
+              on={filters.ages.includes(band.id)}
+              onClick={() => {
+                onChange(toggleFilter(filters, 'ages', band.id));
+              }}
+            />
+          ))}
         </FilterGroup>
       ) : null}
 

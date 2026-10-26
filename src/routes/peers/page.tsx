@@ -5,9 +5,12 @@ import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
 import { useBrowseMembers } from '@/lib/members';
 import { useSession } from '@/lib/session';
+import { type MapProblem, MapProblemNote, MapView } from '@/routes/map/map-view';
+import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
 import { FilterSheet } from '@/routes/peers/filter-sheet';
 import {
   activeFilterCount,
+  ageBandsIn,
   citiesIn,
   filterMembers,
   hasConditions,
@@ -49,6 +52,12 @@ export default function PeersPage() {
   const [segment, setSegment] = useState<PeersSegment>('everyone');
   const [filters, setFilters] = useState<MemberFilters>(EMPTY_MEMBER_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
+  // The map, once opened, stays mounted and is hidden for the list.
+  const [view, setView] = useListOrMap('/peers');
+  const [mapOpened, setMapOpened] = useState(view === 'map');
+  if (view === 'map' && !mapOpened) setMapOpened(true);
+  const [mapProblem, setMapProblem] = useState<MapProblem | null>(null);
+  const showingMap = view === 'map' && !mapProblem;
 
   const deckRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ x: number; y: number; target: Element | null } | null>(null);
@@ -99,8 +108,11 @@ export default function PeersPage() {
             Peers
           </h1>
           <span className="flex items-center gap-2">
+            <ViewSwitch view={view} onChange={setView} />
+            {/* On the map, its own chip opens the same sheet. */}
             <button
               type="button"
+              hidden={showingMap}
               onClick={() => {
                 setSheetOpen(true);
               }}
@@ -182,12 +194,35 @@ export default function PeersPage() {
         />
       </header>
 
+      {mapOpened ? (
+        <MapView
+          hidden={!showingMap}
+          onProblem={setMapProblem}
+          focus="peers"
+          members={visible}
+          filters={{
+            label: 'Filter peers',
+            count: filterCount,
+            onOpen: () => {
+              setSheetOpen(true);
+            },
+          }}
+          backState={{ from: 'peers-map' }}
+        />
+      ) : null}
+
       <div
         ref={deckRef}
+        hidden={showingMap}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6"
       >
+        {view === 'map' && mapProblem ? (
+          <div className="mx-auto w-full max-w-[1100px]">
+            <MapProblemNote problem={mapProblem} />
+          </div>
+        ) : null}
         {loading ? (
           <LoadingCards label="Loading members…" count={2} height={360} />
         ) : signedOut ? (
@@ -256,6 +291,7 @@ export default function PeersPage() {
           regions={regionsIn(members)}
           conditions={hasConditions(members)}
           cities={citiesIn(members)}
+          ages={ageBandsIn(members)}
           // Frequency-ordered. The sheet draws the common ones and keeps the
           // long tail of one-person topics behind "Show all", where it cannot
           // bury the ones that narrow a deck and is still reachable.

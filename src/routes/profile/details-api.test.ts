@@ -6,20 +6,23 @@ import {
   type MemberDetails,
   missingDetails,
   saveDetails,
+  setShowOnMap,
 } from '@/routes/profile/details-api';
 
 /** Only `@/lib/supabase` is stubbed, for loading and saving. */
 const db = vi.hoisted(() => ({
   row: null as Record<string, unknown> | null,
   updates: [] as Record<string, unknown>[],
+  selected: '',
 }));
 
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     from: () => ({
-      select: () => ({
-        maybeSingle: () => Promise.resolve({ data: db.row, error: null }),
-      }),
+      select: (columns: string) => {
+        db.selected = columns;
+        return { maybeSingle: () => Promise.resolve({ data: db.row, error: null }) };
+      },
       update: (values: Record<string, unknown>) => {
         db.updates.push(values);
         return { eq: () => Promise.resolve({ error: null }) };
@@ -31,6 +34,7 @@ vi.mock('@/lib/supabase', () => ({
 beforeEach(() => {
   db.row = null;
   db.updates = [];
+  db.selected = '';
 });
 
 const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
@@ -47,6 +51,7 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   photoPath: 'u1/profile.jpg',
   photoAlt: null,
   showInBrowse: true,
+  showOnMap: true,
   declined: [],
   ...o,
 });
@@ -193,5 +198,24 @@ describe('the spinal cord answer, loaded and saved', () => {
         details({ exactLevel: null, injuryType: 'condition', conditionName: 'Spina bifida' }),
       ),
     ).not.toContain('your injury or condition');
+  });
+});
+
+describe('show me on the map', () => {
+  it('is read with the details, and on unless turned off', async () => {
+    db.row = { display_name: 'Dana', state: 'CA', show_on_map: false };
+    const off = await loadDetails();
+    expect(db.selected).toContain('show_on_map');
+    expect(off.ok && off.details.showOnMap).toBe(false);
+    db.row = { display_name: 'Dana', state: 'CA' };
+    const unset = await loadDetails();
+    expect(unset.ok && unset.details.showOnMap).toBe(true);
+  });
+
+  it('is written on its own, and never by Save', async () => {
+    expect(await setShowOnMap('u1', false)).toEqual({ ok: true });
+    await saveDetails('u1', details({ showOnMap: true }), 'C5–C8');
+    expect(db.updates[0]).toEqual({ show_on_map: false });
+    expect(db.updates[1]).not.toHaveProperty('show_on_map');
   });
 });

@@ -586,6 +586,8 @@ export interface EventDraftPayload {
   format: EventFormat;
   location: string;
   city: string;
+  /** Two letters, or null to keep the saved one. */
+  state: string | null;
   url: string;
   registrationUrl: string;
 }
@@ -614,6 +616,7 @@ export async function saveEvent(
       city: draft.city,
       link: draft.url,
       registration: draft.registrationUrl,
+      state: draft.state,
     })) as { data: string | null; error: Failure | null };
     if (error || !data) {
       return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
@@ -661,6 +664,7 @@ export async function saveEventSeries(
       repeat_every: repeat.every,
       ends_on: repeat.endsOn,
       ends_after: repeat.endsAfter,
+      state: draft.state,
     })) as { data: string | null; error: Failure | null };
     if (error || !data) {
       return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };

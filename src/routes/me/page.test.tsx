@@ -17,6 +17,7 @@ const own = vi.hoisted(() => ({
 const rsvps = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const startTimes = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const wroteVisibility = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+const wroteMap = vi.hoisted(() => ({ calls: [] as unknown[][], fail: false }));
 
 /** An ISO start time `days` from now. Negative is in the past. */
 function daysFromNow(days: number): string {
@@ -39,6 +40,7 @@ const completeDetails: MemberDetails = {
   photoPath: 'u1/profile.jpg',
   photoAlt: null,
   showInBrowse: true,
+  showOnMap: true,
   declined: [],
 };
 const details = vi.hoisted(() => ({ current: null as unknown as MemberDetails }));
@@ -104,6 +106,9 @@ vi.mock('@/routes/profile/details-api', async (importOriginal) => ({
   loadDetails: () => Promise.resolve({ ok: true as const, details: details.current }),
   setShowInBrowse: (...args: unknown[]) =>
     wroteVisibility.calls.push(args) && Promise.resolve({ ok: true as const }),
+  setShowOnMap: (...args: unknown[]) =>
+    wroteMap.calls.push(args) &&
+    Promise.resolve(wroteMap.fail ? { ok: false, error: 'That was not changed.' } : { ok: true }),
 }));
 
 // The Notifications row reads the browser and the club; neither belongs in a
@@ -176,6 +181,8 @@ beforeEach(() => {
   rsvps.current = new Map();
   startTimes.current = new Map();
   wroteVisibility.calls = [];
+  wroteMap.calls = [];
+  wroteMap.fail = false;
   auth.signedOut = 0;
   auth.failWith = null;
   details.current = completeDetails;
@@ -519,6 +526,37 @@ describe('being findable', () => {
     await userEvent.click(toggle);
     expect(wroteVisibility.calls).toHaveLength(1);
     expect(wroteVisibility.calls[0]?.[1]).toBe(false);
+  });
+});
+
+describe('show me on the map', () => {
+  it('is on unless the member turned it off, and says what is shown', async () => {
+    renderMe();
+    const toggle = await screen.findByRole('switch', { name: 'Show me on the map' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText(/counted in your city on the map — never your address/)).toBeVisible();
+  });
+
+  it('writes at once, for this member', async () => {
+    renderMe();
+    await userEvent.click(await screen.findByRole('switch', { name: 'Show me on the map' }));
+    expect(wroteMap.calls).toEqual([['u1', false]]);
+    expect(screen.getByRole('switch', { name: 'Show me on the map' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    expect(screen.getByText(/You are not counted on the map/)).toBeVisible();
+  });
+
+  it('moves back, and says so, when the write fails', async () => {
+    wroteMap.fail = true;
+    details.current = { ...completeDetails, showOnMap: false };
+    renderMe();
+    const toggle = await screen.findByRole('switch', { name: 'Show me on the map' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(toggle);
+    expect(await screen.findByRole('alert')).toHaveTextContent('That was not changed.');
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
   });
 });
 

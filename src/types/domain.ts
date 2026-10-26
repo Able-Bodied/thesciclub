@@ -561,6 +561,20 @@ export interface Organization {
    * supabase/migrations/20260911260000_organization_logos_to_storage.sql.
    */
   logoPath: string | null;
+  /** Two letters, only as its own site gives it; none keeps it off the map. */
+  state?: string | null;
+  /** Where it is, main place first (20261025015000). */
+  places?: OrganizationPlace[];
+}
+
+/** One of an organization's places. `address` only for a public place. */
+export interface OrganizationPlace {
+  id: string;
+  position: number;
+  label: string | null;
+  address: string | null;
+  city: string;
+  state: string;
 }
 
 /* ------------------------------------------------------------------ browse */
@@ -578,6 +592,8 @@ export interface MemberFilters {
   condition: boolean;
   cities: string[];
   topics: string[];
+  /** Age groups (AGE_BANDS in peers/filters.ts); any one matches. */
+  ages: string[];
   search: string;
 }
 
@@ -586,6 +602,7 @@ export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   condition: false,
   cities: [],
   topics: [],
+  ages: [],
   search: '',
 };
 

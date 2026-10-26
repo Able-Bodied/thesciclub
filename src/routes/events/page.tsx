@@ -1,5 +1,5 @@
 import { Plus, SlidersHorizontal } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { LoadingCards } from '@/components/loading-cards';
@@ -28,15 +28,25 @@ import {
   organizationIdsIn,
   tagsIn,
 } from '@/routes/events/filters';
-import { OrganizationList } from '@/routes/events/organization-list';
+import { OrganizationFilterSheet } from '@/routes/events/organization-filter-sheet';
+import {
+  type DirectoryFilters,
+  directoryFilterCount,
+  NO_FILTERS,
+  OrganizationList,
+  useDirectory,
+} from '@/routes/events/organization-list';
 import { SeriesFooter } from '@/routes/events/series-card';
 import { groupBySeries } from '@/routes/events/series-groups';
+import { type MapProblem, MapProblemNote, MapView } from '@/routes/map/map-view';
+import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
 import {
   type ClubEvent,
   EMPTY_EVENT_FILTERS,
   EVENTS_SEGMENTS,
   type EventFilters,
   type EventsSegment,
+  type Organization,
   type RsvpStatus,
 } from '@/types/domain';
 
@@ -125,10 +135,28 @@ export default function EventsPage() {
     (next: EventsSegment) => {
       // Replace rather than push: the segment pills are a filter, and tapping
       // through four of them should not mean four presses of back to leave.
-      setSearchParams(next === 'upcoming' ? {} : { segment: next }, { replace: true });
+      setSearchParams(
+        (current) => {
+          const kept = new URLSearchParams();
+          if (next !== 'upcoming') kept.set('segment', next);
+          if (current.get('view') === 'map') kept.set('view', 'map');
+          return kept;
+        },
+        { replace: true },
+      );
     },
     [setSearchParams],
   );
+  // The map, once opened, stays mounted and is hidden for the list.
+  const [view, setView] = useListOrMap('/events');
+  const [mapOpened, setMapOpened] = useState(view === 'map');
+  if (view === 'map' && !mapOpened) setMapOpened(true);
+  const [mapProblem, setMapProblem] = useState<MapProblem | null>(null);
+  const showingMap = view === 'map' && !mapProblem;
+  // The directory's filters, held here so its list and the map agree.
+  const [directory, setDirectory] = useState<DirectoryFilters>(NO_FILTERS);
+  const [mapOrganizations, setMapOrganizations] = useState<Organization[] | null>(null);
+  const [directorySheetOpen, setDirectorySheetOpen] = useState(false);
   const [filters, setFilters] = useState<EventFilters>(EMPTY_EVENT_FILTERS);
   const dateRange = dateWindowRange(
     isRsvpSegment(segment) ? (segment === 'been-to' ? 'past' : 'any') : filters.when,
@@ -250,8 +278,28 @@ export default function EventsPage() {
   const rsvp = isRsvpSegment(segment) ? (segment as keyof typeof RSVP_LABELS) : null;
   const filterCount = activeFilterCount(filters) + (rsvp ? 1 : 0);
   const showingList = segment !== 'orgs';
-  // Reached from Me and nowhere else, so it gets its own title and a way back
-  // rather than an unlit chip row somebody cannot tell they are inside.
+
+  // An event in a sheet on the map, as the list draws it.
+  const mapCard = (event: ClubEvent) => (
+    <EventCard
+      event={event}
+      past={isPastEvent(event)}
+      status={viewer.rsvps.get(event.id) ?? null}
+      attendees={attendeesByEvent.get(event.id) ?? []}
+      organization={
+        event.organizationId ? (organizationsById.get(event.organizationId) ?? null) : null
+      }
+      onOpen={() => {
+        void navigate(`/events/${event.id}`, { state: { segment, view: 'map' } });
+      }}
+      onOpenOrganization={(id) => {
+        void navigate(`/events/organizations/${id}`, { state: { segment, view: 'map' } });
+      }}
+      onRsvp={(next) => {
+        onRsvp(event.id, next);
+      }}
+    />
+  );
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -261,6 +309,7 @@ export default function EventsPage() {
             Events
           </h1>
           <div className="flex items-center gap-2">
+            <ViewSwitch view={view} onChange={setView} />
             {canAdd ? (
               <Link
                 to="/events/new"
@@ -271,7 +320,8 @@ export default function EventsPage() {
                 Add an event
               </Link>
             ) : null}
-            {showingList ? (
+            {/* On the map, its own chip opens the same sheet. */}
+            {showingList && !showingMap ? (
               <button
                 type="button"
                 onClick={() => {
@@ -318,8 +368,53 @@ export default function EventsPage() {
         ) : null}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
+      {mapOpened ? (
+        <>
+          <DirectoryShown
+            organizations={organizations}
+            events={events}
+            following={follows.following}
+            filters={directory}
+            onShown={setMapOrganizations}
+          />
+          <MapView
+            hidden={!showingMap}
+            onProblem={setMapProblem}
+            focus={segment === 'orgs' ? 'organizations' : 'events'}
+            events={visible}
+            {...(mapOrganizations ? { organizations: mapOrganizations } : {})}
+            renderEvent={mapCard}
+            // The map holds what is still to come (map_events).
+            eventsNote={
+              segment === 'been-to' || (!rsvp && filters.when === 'past')
+                ? 'The map shows upcoming events only. Past ones are in the list.'
+                : undefined
+            }
+            filters={
+              segment === 'orgs'
+                ? {
+                    label: 'Filter organizations',
+                    count: directoryFilterCount(directory),
+                    onOpen: () => {
+                      setDirectorySheetOpen(true);
+                    },
+                  }
+                : {
+                    label: 'Filter events',
+                    count: filterCount,
+                    onOpen: () => {
+                      setSheetOpen(true);
+                    },
+                  }
+            }
+            backState={{ segment, view: 'map' }}
+          />
+        </>
+      ) : null}
+
+      <div hidden={showingMap} className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
+          {view === 'map' && mapProblem ? <MapProblemNote problem={mapProblem} /> : null}
           {writeError ? (
             <p className="mb-2.5 rounded-xl bg-danger-lt px-3.5 py-2.5 text-[0.7875rem] text-danger-ink">
               {writeError}
@@ -332,6 +427,8 @@ export default function EventsPage() {
               events={events}
               following={follows.following}
               onToggleFollow={follows.toggle}
+              filters={directory}
+              onFiltersChange={setDirectory}
               onOpen={(id) => {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
@@ -408,10 +505,23 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {sheetOpen && showingList ? (
+      {directorySheetOpen && showingMap ? (
+        <OrganizationFilterSheet
+          organizations={organizations}
+          events={events}
+          following={follows.following}
+          filters={directory}
+          onChange={setDirectory}
+          onClose={() => {
+            setDirectorySheetOpen(false);
+          }}
+        />
+      ) : null}
+      {sheetOpen && (showingList || showingMap) ? (
         <EventFilterSheet
           tags={tagsIn(inSegment)}
-          formats={formatsIn(inSegment)}
+          // Online-only events are never on the map.
+          formats={formatsIn(inSegment).filter((format) => !showingMap || format !== 'online')}
           cities={citiesIn(inSegment)}
           organizations={hostingOrganizations}
           following={follows.following}
@@ -436,6 +546,32 @@ export default function EventsPage() {
       {phoneSheet}
     </div>
   );
+}
+
+/** The directory as its filters leave it, for the map; read only once the map is opened. */
+function DirectoryShown({
+  organizations,
+  events,
+  following,
+  filters,
+  onShown,
+}: {
+  organizations: Organization[];
+  events: ClubEvent[];
+  following: ReadonlySet<string>;
+  filters: DirectoryFilters;
+  onShown: (shown: Organization[]) => void;
+}) {
+  const { shown } = useDirectory(organizations, events, following, filters);
+  // Only a different list: a new array of the same ones would draw the map again.
+  const key = shown.map((organization) => organization.id).join(',');
+  const latest = useRef(shown);
+  latest.current = shown;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for the list's contents.
+  useEffect(() => {
+    onShown(latest.current);
+  }, [key, onShown]);
+  return null;
 }
 
 /**

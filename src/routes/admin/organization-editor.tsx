@@ -5,9 +5,18 @@ import {
   type OrganizationDraft,
   saveOrganization,
   saveOrganizationLogo,
+  saveOrganizationPlaces,
 } from '@/lib/organization-management';
 import { usePhotoUrl } from '@/lib/photos';
 import { OrganizationGrantsEditor } from '@/routes/admin/organization-grants-editor';
+import {
+  newPlace,
+  OrganizationLocations,
+  type PlaceDraft,
+  placesToSave,
+  toDrafts,
+} from '@/routes/admin/organization-locations';
+import { placesOf } from '@/routes/events/organization-places';
 import type { Organization } from '@/types/domain';
 
 /** What Save does to the logo: leave it, replace it, or take it away. */
@@ -39,6 +48,10 @@ export function OrganizationEditor({
     },
   );
   const [tags, setTags] = useState(draft.tags.join(', '));
+  // Its confirmed places, main first.
+  const [places, setPlaces] = useState<PlaceDraft[]>(() =>
+    organization ? toDrafts(placesOf(organization)) : [newPlace()],
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [logo, setLogo] = useState<LogoChange>({ kind: 'keep' });
@@ -75,8 +88,15 @@ export function OrganizationEditor({
   }, [logo]);
 
   async function save() {
+    const toSave = placesToSave(places);
+    if (typeof toSave === 'string') {
+      setError(toSave);
+      return;
+    }
     const result = await saveOrganization(organization?.id ?? null, {
       ...draft,
+      // The directory's state is its main location's; none clears it.
+      state: toSave[0]?.state ?? '',
       tags: tags
         .split(',')
         .map((tag) => tag.trim())
@@ -84,6 +104,11 @@ export function OrganizationEditor({
     });
     if (!result.ok) {
       setError(result.error);
+      return;
+    }
+    const placed = await saveOrganizationPlaces(result.id, toSave);
+    if (!placed.ok) {
+      onSaved(`${draft.name.trim()} was saved, but its locations were not: ${placed.error}`);
       return;
     }
     // After the words, because a new organization has no folder to put a
@@ -229,6 +254,7 @@ export function OrganizationEditor({
               }}
             />
           </label>
+          <OrganizationLocations places={places} onChange={setPlaces} />
           <label className="text-ink">
             Description
             <textarea

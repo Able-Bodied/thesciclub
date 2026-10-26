@@ -10,6 +10,41 @@ export interface OrganizationDraft {
   description: string;
   tags: string[];
   canInvite: boolean;
+  /** '' clears it; null or absent keeps what is saved. */
+  state?: string | null;
+}
+
+/** A place as the editor sends it; `id` keeps an existing row and its pin. */
+export interface OrganizationPlaceDraft {
+  id?: string;
+  label: string | null;
+  address: string | null;
+  city: string;
+  state: string;
+}
+
+/** Replaces the organization's places, in order; the first is its main one. */
+export async function saveOrganizationPlaces(
+  organizationId: string,
+  places: OrganizationPlaceDraft[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const { error } = (await getSupabase().rpc('save_organization_places', {
+      p_organization: organizationId,
+      p_places: places.map((place) => ({
+        ...(place.id ? { id: place.id } : {}),
+        label: place.label,
+        address: place.address,
+        city: place.city,
+        state: place.state,
+      })),
+    })) as { error: Failure | null };
+    return error
+      ? { ok: false, error: describeError(error, 'The locations were not saved.') }
+      : { ok: true };
+  } catch (error) {
+    return { ok: false, error: describeThrown(error, 'The locations were not saved.') };
+  }
 }
 
 /** Returns the organization's id, which a new one only has once it is saved. */
@@ -26,6 +61,7 @@ export async function saveOrganization(
       description: draft.description,
       tags: draft.tags,
       can_invite: draft.canInvite,
+      state: draft.state ?? null,
     })) as { data: string | null; error: Failure | null };
     return error
       ? {

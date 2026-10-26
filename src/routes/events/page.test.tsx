@@ -1,10 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Events from '@/lib/events';
 import type * as Grants from '@/lib/grants';
+import type { MapData } from '@/lib/map-data';
 import type { NearHome } from '@/lib/near-home';
+import type { ClubMapProps } from '@/routes/map/club-map';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -61,12 +63,60 @@ vi.mock('@/lib/session', () => ({
   useSession: () => ({ status: 'signed-in', userId: 'me' }),
 }));
 
+// The map: its data, and a stand-in for the MapLibre screen.
+const map = vi.hoisted(
+  (): {
+    reads: number;
+    retry: () => void;
+    status: MapData['status'];
+    props: ClubMapProps | null;
+  } => ({ reads: 0, retry: () => undefined, status: 'ready', props: null }),
+);
+vi.mock('@/lib/map', () => ({ loadMapCanvas: () => Promise.resolve({ default: () => null }) }));
+vi.mock('@/lib/map-data', () => ({
+  useMapData: (): MapData => {
+    map.reads++;
+    return {
+      status: map.status,
+      retry: map.retry,
+      events: [],
+      peerCities: [],
+      organizations: [],
+      home: null,
+      contents: { events: [], peerCities: [], organizations: [], home: null },
+    };
+  },
+}));
+vi.mock('@/routes/map/club-map', () => ({
+  default: (props: ClubMapProps) => {
+    map.props = props;
+    return (
+      <div data-testid="club-map">
+        <p>On the map: {(props.events ?? []).map((event) => event.id).join(', ')}</p>
+        <p>Organizations on the map: {(props.organizations ?? []).map((o) => o.name).join(', ')}</p>
+        <button type="button" onClick={props.filters.onOpen}>
+          {props.filters.label}
+        </button>
+        <button type="button" onClick={props.onUnsupported}>
+          No WebGL2
+        </button>
+      </div>
+    );
+  },
+}));
+
 const { default: EventsPage } = await import('@/routes/events/page');
+
+function Address() {
+  const location = useLocation();
+  return <output data-testid="address">{location.search}</output>;
+}
 
 function renderPage(entry = '/events') {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <EventsPage />
+      <Address />
     </MemoryRouter>,
   );
 }
@@ -112,6 +162,10 @@ beforeEach(() => {
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
   state.near = { status: 'any', ids: null };
+  map.reads = 0;
+  map.retry = vi.fn();
+  map.status = 'ready';
+  map.props = null;
 });
 
 describe('EventsPage', () => {
@@ -379,5 +433,114 @@ describe('Your RSVP, in Filters', () => {
       'aria-pressed',
       'true',
     );
+  });
+});
+
+describe('List or Map', () => {
+  const address = () => screen.getByTestId('address').textContent;
+
+  it("never opens its map, kept and hidden, for the Peers tab's own ?view=map", () => {
+    renderPage('/peers?view=map');
+    expect(map.reads).toBe(0);
+    expect(screen.queryByTestId('club-map')).toBeNull();
+  });
+
+  it('reads nothing of the map until Map is chosen', () => {
+    renderPage();
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'true');
+    expect(map.reads).toBe(0);
+    expect(screen.queryByTestId('club-map')).toBeNull();
+  });
+
+  it('opens the map in the address, beside the segment, in place of the list', async () => {
+    renderPage('/events?segment=interested');
+    const empty = screen.getByText(/Nothing marked interested yet/);
+    await userEvent.click(screen.getByRole('button', { name: 'Map' }));
+    expect(address()).toBe('?segment=interested&view=map');
+    expect(await screen.findByTestId('club-map')).toBeVisible();
+    expect(empty).not.toBeVisible();
+    expect(map.props?.focus).toBe('events');
+  });
+
+  it('gives the map the filtered list, so the two agree', async () => {
+    renderPage('/events?view=map');
+    expect(await screen.findByText('On the map: rugby, coffee, zoom')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Filter events' }));
+    await userEvent.click(screen.getByRole('button', { name: 'peer-support' }));
+    expect(screen.getByText('On the map: coffee')).toBeInTheDocument();
+  });
+
+  it('opens the same filter sheet from the map, without Online, which is never on it', async () => {
+    state.events = state.events.map((event) =>
+      event.id === 'coffee' ? { ...event, format: 'hybrid' } : event,
+    );
+    renderPage('/events?view=map');
+    expect(screen.queryByRole('button', { name: /^Filters/ })).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: 'Filter events' }));
+    expect(screen.getByRole('dialog', { name: 'Filter events' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'In person' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Online' })).toBeNull();
+  });
+
+  it('keeps the map mounted, hidden, once it has been opened', async () => {
+    renderPage('/events?view=map');
+    const opened = await screen.findByTestId('club-map');
+    await userEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(address()).toBe('');
+    expect(screen.getByTestId('club-map')).toBe(opened);
+    expect(opened).not.toBeVisible();
+    expect(screen.getByText('Wheelchair rugby')).toBeVisible();
+  });
+
+  it('keeps the map when a segment pill changes', async () => {
+    renderPage('/events?view=map');
+    await userEvent.click(screen.getByRole('button', { name: 'Organizations' }));
+    expect(address()).toBe('?segment=orgs&view=map');
+    expect(map.props?.focus).toBe('organizations');
+  });
+
+  it('shows the list with a note where the map cannot be drawn', async () => {
+    renderPage('/events?view=map');
+    await userEvent.click(await screen.findByRole('button', { name: 'No WebGL2' }));
+    expect(screen.getByText(/can’t draw the map, so here is the list/)).toBeVisible();
+    expect(screen.getByText('Wheelchair rugby')).toBeVisible();
+    expect(screen.getByTestId('club-map')).not.toBeVisible();
+  });
+
+  it('shows the list when the map will not load, with a way to try again', async () => {
+    map.status = 'error';
+    renderPage('/events?view=map');
+    expect(await screen.findByText(/The map didn’t load/)).toBeVisible();
+    expect(screen.getByText('Wheelchair rugby')).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Try the map again' }));
+    expect(map.retry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/The map didn’t load/)).toBeNull();
+  });
+
+  it('says the map holds upcoming events only when the list is of past ones', async () => {
+    renderPage('/events?view=map');
+    expect(map.props?.eventsNote).toBeUndefined();
+    await userEvent.click(await screen.findByRole('button', { name: 'Filter events' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Past events' }));
+    expect(map.props?.eventsNote).toMatch(/upcoming events only/);
+  });
+
+  it("draws the directory's organizations as its filters leave them, from the right sheet", async () => {
+    state.organizations = [
+      makeOrganization({ id: 'ncs', name: 'NorCal SCI', city: 'Sacramento' }),
+      makeOrganization({ id: 'borp', name: 'BORP', city: 'Berkeley' }),
+    ];
+    renderPage('/events?segment=orgs&view=map');
+    expect(
+      await screen.findByText('Organizations on the map: BORP, NorCal SCI'),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Filter organizations' }));
+    const sheet = screen.getByRole('dialog', { name: 'Filter organizations' });
+    await userEvent.type(within(sheet).getByRole('searchbox'), 'berkeley');
+    expect(screen.getByText('Organizations on the map: BORP')).toBeInTheDocument();
+    // The list on the same segment agrees.
+    await userEvent.click(within(sheet).getByRole('button', { name: 'Show 1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(screen.getByRole('searchbox', { name: 'Search organizations' })).toHaveValue('berkeley');
   });
 });

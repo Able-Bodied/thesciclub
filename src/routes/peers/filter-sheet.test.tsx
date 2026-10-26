@@ -11,6 +11,7 @@ function renderSheet(overrides: Partial<FilterSheetProps> = {}) {
     regions: [],
     conditions: false,
     cities: [],
+    ages: [],
     topics: topics(30),
     filters: EMPTY_MEMBER_FILTERS,
     matchCount: 5,
@@ -73,5 +74,26 @@ describe('the spinal cord condition chip', () => {
   it('is drawn even when nobody has a level to group', () => {
     renderSheet({ regions: [], conditions: true });
     expect(screen.getByRole('button', { name: 'Other disability' })).toBeInTheDocument();
+  });
+});
+
+describe('the age group chips', () => {
+  it('draws only the groups offered, in words', () => {
+    renderSheet({ ages: ['under-30', '40s'] });
+    expect(screen.getByText('Age')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Under 30' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '40 to 49' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '30 to 39' })).toBeNull();
+  });
+
+  it('ticks a group', async () => {
+    const props = renderSheet({ ages: ['40s'] });
+    await userEvent.click(screen.getByRole('button', { name: '40 to 49' }));
+    expect(props.onChange).toHaveBeenCalledWith({ ...EMPTY_MEMBER_FILTERS, ages: ['40s'] });
+  });
+
+  it('is not drawn when nobody gave an age', () => {
+    renderSheet({ ages: [] });
+    expect(screen.queryByText('Age')).toBeNull();
   });
 });

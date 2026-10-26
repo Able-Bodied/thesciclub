@@ -1,9 +1,10 @@
 import { Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { FilterChip } from '@/components/filter-sheet-shell';
 import { californiaToday, type Grant, grantStatus, useGrantsByOrganization } from '@/lib/grants';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { placesOf } from '@/routes/events/organization-places';
 import type { ClubEvent, Organization } from '@/types/domain';
 
 /**
@@ -110,7 +111,7 @@ export function byCalendarActivity(
  * opened the organization instead. The opening control is now the badge, the
  * name and the line under it, which is everything somebody aims at anyway.
  */
-function OrganizationRow({
+export function OrganizationRow({
   organization,
   eventCount,
   grants,
@@ -118,6 +119,7 @@ function OrganizationRow({
   following,
   onToggleFollow,
   onOpen,
+  locations = placesOf(organization).length,
 }: {
   organization: Organization;
   eventCount: number;
@@ -126,6 +128,8 @@ function OrganizationRow({
   following: boolean;
   onToggleFollow: (id: string) => void;
   onOpen: (id: string) => void;
+  /** Its places, when more than one is worth saying. */
+  locations?: number;
 }) {
   return (
     <div className="mb-[11px] w-full rounded-[17px] border border-line bg-paper p-3.5">
@@ -147,7 +151,11 @@ function OrganizationRow({
               {organization.name}
             </span>
             <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
-              {[organization.city, eventCount > 0 ? `${eventCount} on the calendar` : null]
+              {[
+                organization.city,
+                locations > 1 ? `${locations} locations` : null,
+                eventCount > 0 ? `${eventCount} on the calendar` : null,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </span>
@@ -183,12 +191,61 @@ function OrganizationRow({
   );
 }
 
+/** How many of the directory's filters are on, for a chip's count. */
+export function directoryFilterCount(filters: DirectoryFilters): number {
+  return (
+    (filters.query.trim() ? 1 : 0) +
+    [filters.hasGrants, filters.grantsOpen, filters.onCalendar, filters.following].filter(Boolean)
+      .length
+  );
+}
+
+/** Counts each organization's events, for "N on the calendar" and the order. */
+export function eventCounts(events: ClubEvent[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    if (!event.organizationId) continue;
+    counts.set(event.organizationId, (counts.get(event.organizationId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** The directory as its filters leave it, busiest first: the list and the map read the same. */
+export function useDirectory(
+  organizations: Organization[],
+  events: ClubEvent[],
+  following: ReadonlySet<string>,
+  filters: DirectoryFilters,
+) {
+  // One read of every grant, shared by the list, its sheet and the map.
+  const grants = useGrantsByOrganization();
+  const today = californiaToday();
+  const counts = useMemo(() => eventCounts(events), [events]);
+  const shown = useMemo(
+    () =>
+      [...organizations]
+        .filter((organization) =>
+          matchesDirectory(organization, filters, {
+            grants: grants.get(organization.id),
+            eventCount: counts.get(organization.id) ?? 0,
+            following: following.has(organization.id),
+            today,
+          }),
+        )
+        .sort(byCalendarActivity(counts)),
+    [organizations, filters, grants, counts, following, today],
+  );
+  return { shown, grants, counts, today };
+}
+
 export function OrganizationList({
   organizations,
   events,
   following,
   onToggleFollow,
   onOpen,
+  filters: given,
+  onFiltersChange,
 }: {
   organizations: Organization[];
   /** Used only to count what each organization is running. */
@@ -196,31 +253,19 @@ export function OrganizationList({
   following: Set<string>;
   onToggleFollow: (id: string) => void;
   onOpen: (id: string) => void;
+  /** Held by the screen, so its map shows what the list does; else its own. */
+  filters?: DirectoryFilters;
+  onFiltersChange?: (next: DirectoryFilters) => void;
 }) {
-  const [filters, setFilters] = useState<DirectoryFilters>(NO_FILTERS);
-  const grants = useGrantsByOrganization();
-  const today = californiaToday();
-  const counts = new Map<string, number>();
-  for (const event of events) {
-    if (!event.organizationId) continue;
-    counts.set(event.organizationId, (counts.get(event.organizationId) ?? 0) + 1);
-  }
-  const shown = [...organizations]
-    .filter((organization) =>
-      matchesDirectory(organization, filters, {
-        grants: grants.get(organization.id),
-        eventCount: counts.get(organization.id) ?? 0,
-        following: following.has(organization.id),
-        today,
-      }),
-    )
-    .sort(byCalendarActivity(counts));
-  const filtered =
-    filters.query.trim() !== '' ||
-    filters.hasGrants ||
-    filters.grantsOpen ||
-    filters.onCalendar ||
-    filters.following;
+  const [own, setOwn] = useState<DirectoryFilters>(NO_FILTERS);
+  const filters = given ?? own;
+  const setFilters = (change: (current: DirectoryFilters) => DirectoryFilters) => {
+    const next = change(filters);
+    if (onFiltersChange) onFiltersChange(next);
+    else setOwn(next);
+  };
+  const { shown, grants, counts, today } = useDirectory(organizations, events, following, filters);
+  const filtered = directoryFilterCount(filters) > 0;
   const toggle = (key: Exclude<keyof DirectoryFilters, 'query'>) => {
     setFilters((f) => ({ ...f, [key]: !f[key] }));
   };
@@ -296,7 +341,7 @@ export function OrganizationList({
           <button
             type="button"
             onClick={() => {
-              setFilters(NO_FILTERS);
+              setFilters(() => NO_FILTERS);
             }}
             className="min-h-[36px] font-semibold text-emphasis underline underline-offset-2"
             data-target="small"

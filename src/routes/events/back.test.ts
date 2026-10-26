@@ -64,3 +64,19 @@ describe('backLabel', () => {
     expect(backLabel(location(null))).toBe('Events');
   });
 });
+
+describe('a detail page opened from the map', () => {
+  it('goes back to the map, and its segment', () => {
+    expect(backToEvents(location({ segment: 'upcoming', view: 'map' }))).toBe('/events?view=map');
+    expect(backToEvents(location({ segment: 'orgs', view: 'map' }))).toBe(
+      '/events?segment=orgs&view=map',
+    );
+    expect(backToEvents(location({ view: 'list' }))).toBe('/events');
+  });
+
+  it("goes back to Peers' map when opened there", () => {
+    const fromPeers = location({ from: 'peers-map' });
+    expect(backToEvents(fromPeers)).toBe('/peers?view=map');
+    expect(backLabel(fromPeers)).toBe('Peers');
+  });
+});

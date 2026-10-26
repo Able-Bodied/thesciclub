@@ -72,6 +72,7 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   photoPath: null,
   photoAlt: null,
   showInBrowse: true,
+  showOnMap: true,
   declined: [],
   ...o,
 });

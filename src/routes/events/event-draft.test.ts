@@ -160,11 +160,23 @@ describe('readDraft', () => {
         format: 'in_person',
         location: 'Lake Merritt',
         city: '',
+        state: null,
         url: 'https://norcalsci.org',
         registrationUrl: '',
       },
       repeat: null,
     });
+  });
+
+  it("sends the event's own state, so an address away from its host's can be found", () => {
+    const reading = readDraft(draft({ city: 'Reno', state: 'NV' }), { isNew: true, now: NOW });
+    expect(reading.ok && reading.payload.state).toBe('NV');
+  });
+
+  it("starts from the host's state, and an event's own when changing it", () => {
+    expect(emptyDraft('org-1', 'CA').state).toBe('CA');
+    expect(emptyDraft(null).state).toBe('');
+    expect(draftFromEvent(makeEvent({ state: 'OR' })).state).toBe('OR');
   });
 
   it('carries an end earlier on the clock into the next morning', () => {

@@ -11,6 +11,7 @@ import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OrganizationGrants } from '@/routes/events/organization-grants';
+import { placesOf } from '@/routes/events/organization-places';
 import { EventDescription } from '@/routes/events/rich-text';
 import { injuryLabel } from '@/types/domain';
 
@@ -90,7 +91,14 @@ export default function OrganizationDetailPage() {
                 {organization.name}
               </span>
               <span className="mt-[3px] block text-[#B9CADF] text-[0.8125rem]">
-                {organization.city}
+                {[
+                  organization.city,
+                  placesOf(organization).length > 1
+                    ? `${placesOf(organization).length} locations`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
               </span>
             </span>
           </div>

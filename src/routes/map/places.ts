@@ -1,0 +1,228 @@
+import type { MapContents, MapOrganization, MapPoint } from '@/lib/map-data';
+import type { BrowseMember, ClubEvent, Organization } from '@/types/domain';
+
+/**
+ * What the map draws, from what the list already shows: the map's places
+ * (lib/map-data.ts) kept only for the events and members the list's filters
+ * kept, so the two always agree. Pure, for tests.
+ */
+
+export type Layer = 'events' | 'peers' | 'organizations';
+export const LAYERS: readonly Layer[] = ['events', 'peers', 'organizations'];
+
+/** Events at one point: one venue, or the middle of one city. */
+export interface EventSpot extends MapPoint {
+  key: string;
+  /** False: at its city's middle, not its address. */
+  exact: boolean;
+  events: ClubEvent[];
+}
+
+export interface PeerCity extends MapPoint {
+  key: string;
+  city: string;
+  state: string;
+  members: BrowseMember[];
+}
+
+/** Organizations' places at one point; a place is exact only at a public address. */
+export interface OrganizationSpot extends MapPoint {
+  key: string;
+  exact: boolean;
+  organizations: Organization[];
+  places: MapOrganization[];
+}
+
+const at = (point: MapPoint) => `${point.latitude},${point.longitude}`;
+
+/** The list's events that have a place, grouped by point; list order kept within each. */
+export function eventSpots(placed: MapContents['events'], shown: ClubEvent[]): EventSpot[] {
+  const where = new Map(placed.map((event) => [event.id, event]));
+  const spots = new Map<string, EventSpot>();
+  for (const event of shown) {
+    const place = where.get(event.id);
+    if (!place) continue;
+    const key = `${at(place)}|${place.exact ? 'exact' : 'city'}`;
+    const spot = spots.get(key);
+    if (spot) spot.events.push(event);
+    else
+      spots.set(key, {
+        key,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        exact: place.exact,
+        events: [event],
+      });
+  }
+  return [...spots.values()];
+}
+
+/** Each city's count is of the members the list shows, so the Peers filters count too. */
+export function peerCities(cities: MapContents['peerCities'], shown: BrowseMember[]): PeerCity[] {
+  const byId = new Map(shown.map((member) => [member.id, member]));
+  return cities.flatMap((city) => {
+    const members = city.memberIds.flatMap((id) => {
+      const member = byId.get(id);
+      return member ? [member] : [];
+    });
+    return members.length > 0
+      ? [
+          {
+            key: `${city.city}|${city.state}`,
+            city: city.city,
+            state: city.state,
+            latitude: city.latitude,
+            longitude: city.longitude,
+            members,
+          },
+        ]
+      : [];
+  });
+}
+
+/**
+ * Each place of the organizations shown, one diamond per point, and those with
+ * no place the map can draw, by name: never a guessed place.
+ */
+export function organizationSpots(
+  placed: MapContents['organizations'],
+  organizations: Organization[],
+): { spots: OrganizationSpot[]; unplaced: Organization[] } {
+  const byId = new Map(organizations.map((organization) => [organization.id, organization]));
+  const spots = new Map<string, OrganizationSpot>();
+  const onMap = new Set<string>();
+  for (const place of placed) {
+    const organization = byId.get(place.id);
+    if (!organization) continue;
+    onMap.add(organization.id);
+    const key = `${at(place)}|${place.exact ? 'exact' : 'city'}`;
+    const spot = spots.get(key);
+    if (spot) {
+      spot.places.push(place);
+      if (!spot.organizations.includes(organization)) spot.organizations.push(organization);
+    } else
+      spots.set(key, {
+        key,
+        latitude: place.latitude,
+        longitude: place.longitude,
+        exact: place.exact,
+        organizations: [organization],
+        places: [place],
+      });
+  }
+  const unplaced = organizations.filter((organization) => !onMap.has(organization.id));
+  return {
+    spots: [...spots.values()],
+    unplaced: unplaced.sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
+/* ------------------------------------------------------------------ GeoJSON */
+
+interface Feature {
+  type: 'Feature';
+  geometry: { type: 'Point'; coordinates: [number, number] };
+  properties: { key: string; count: number; exact?: boolean; orgs?: string };
+}
+
+export interface Features {
+  type: 'FeatureCollection';
+  features: Feature[];
+}
+
+function feature(point: MapPoint, key: string, count: number, exact?: boolean): Feature {
+  return {
+    type: 'Feature',
+    geometry: { type: 'Point', coordinates: [point.longitude, point.latitude] },
+    properties: exact === undefined ? { key, count } : { key, count, exact },
+  };
+}
+
+export function eventFeatures(spots: EventSpot[]): Features {
+  return {
+    type: 'FeatureCollection',
+    features: spots.map((spot) => feature(spot, spot.key, spot.events.length, spot.exact)),
+  };
+}
+
+export function peerFeatures(cities: PeerCity[]): Features {
+  return {
+    type: 'FeatureCollection',
+    features: cities.map((city) => feature(city, city.key, city.members.length)),
+  };
+}
+
+/** `orgs` lets a layer pick out one organization's places while its sheet is open. */
+export function organizationFeatures(spots: OrganizationSpot[]): Features {
+  return {
+    type: 'FeatureCollection',
+    features: spots.map((spot) => {
+      const point = feature(spot, spot.key, spot.organizations.length, spot.exact);
+      point.properties.orgs = `,${spot.organizations.map((o) => o.id).join(',')},`;
+      return point;
+    }),
+  };
+}
+
+/** The other places of these organizations, for "Also in" and their rings. */
+export function otherPlaces(
+  placed: MapContents['organizations'],
+  organizationIds: ReadonlySet<string>,
+  here: ReadonlySet<string>,
+): MapOrganization[] {
+  return placed.filter((place) => organizationIds.has(place.id) && !here.has(place.placeId));
+}
+
+/** Members the list shows that no city bubble counts: the map is off for them, or their city is not placed. */
+export function notOnMap(cities: MapContents['peerCities'], shown: BrowseMember[]): number {
+  const counted = new Set(cities.flatMap((city) => city.memberIds));
+  return shown.filter((member) => !counted.has(member.id)).length;
+}
+
+/* ------------------------------------------------------------------ in view */
+
+/** [west, south, east, north]. */
+export type Box = [number, number, number, number];
+
+export function inBox(point: MapPoint, [west, south, east, north]: Box): boolean {
+  return (
+    point.longitude >= west &&
+    point.longitude <= east &&
+    point.latitude >= south &&
+    point.latitude <= north
+  );
+}
+
+/** What a set of places holds, as one sheet lists it. */
+export interface PlaceContents {
+  events: { event: ClubEvent; exact: boolean }[];
+  members: BrowseMember[];
+  organizations: Organization[];
+}
+
+export function contentsOf(
+  spots: EventSpot[],
+  cities: PeerCity[],
+  organizations: OrganizationSpot[],
+): PlaceContents {
+  return {
+    events: spots
+      .flatMap((spot) => spot.events.map((event) => ({ event, exact: spot.exact })))
+      .sort((a, b) => a.event.startTime.localeCompare(b.event.startTime)),
+    members: cities.flatMap((city) => city.members),
+    organizations: organizations
+      .flatMap((spot) => spot.organizations)
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+
+/** "3 events, 6 members", for the sheet's title and the in-view button. */
+export function countWords(contents: PlaceContents, layers: ReadonlySet<Layer>): string {
+  const parts: string[] = [];
+  const say = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  if (layers.has('events')) parts.push(say(contents.events.length, 'event', 'events'));
+  if (layers.has('peers')) parts.push(say(contents.members.length, 'member', 'members'));
+  if (layers.has('organizations'))
+    parts.push(say(contents.organizations.length, 'organization', 'organizations'));
+  return parts.join(', ');
+}

@@ -28,6 +28,8 @@ export interface EventDraft {
   format: EventFormat | null;
   location: string;
   city: string;
+  /** Two letters; '' keeps what is saved. The host's own by default. */
+  state: string;
   url: string;
   registrationUrl: string;
   /** Only offered when adding an event; a date already made is changed alone. */
@@ -91,7 +93,7 @@ export function hostOptions(
  * otherwise nothing is, so an administrator never posts for NorCal SCI by
  * leaving a default alone.
  */
-export function emptyDraft(onlyHost: string | null): EventDraft {
+export function emptyDraft(onlyHost: string | null, hostState = ''): EventDraft {
   return {
     host: onlyHost ?? '',
     hostName: '',
@@ -103,6 +105,7 @@ export function emptyDraft(onlyHost: string | null): EventDraft {
     format: null,
     location: '',
     city: '',
+    state: hostState,
     url: '',
     registrationUrl: '',
     ...NO_REPEAT,
@@ -137,6 +140,7 @@ export function draftFromEvent(event: ClubEvent): EventDraft {
     format: event.format,
     location: event.location,
     city: event.city ?? '',
+    state: event.state ?? '',
     url: event.url ?? '',
     registrationUrl: event.registrationUrl ?? '',
     ...NO_REPEAT,
@@ -486,6 +490,8 @@ export function readDraft(
       format: draft.format,
       location: draft.location.trim(),
       city: draft.city.trim(),
+      // Its own state, so an address elsewhere than the host's can be found.
+      state: draft.state || null,
       url: url.url,
       registrationUrl: registration.url,
     },

@@ -126,3 +126,54 @@ describe('searching and filtering the directory', () => {
     expect(screen.getByRole('status')).toHaveTextContent('No organizations match.');
   });
 });
+
+describe('an organization in several places', () => {
+  it('says how many, and nothing for one', () => {
+    const several = {
+      ...org('borp', 'BORP'),
+      places: [
+        { label: null, address: null, city: 'Berkeley', state: 'CA' },
+        { label: null, address: null, city: 'Oakland', state: 'CA' },
+        { label: null, address: null, city: 'Fremont', state: 'CA' },
+      ],
+    } as Organization;
+    render(
+      <OrganizationList
+        organizations={[several, org('ncs', 'NorCal SCI')]}
+        events={[] as ClubEvent[]}
+        following={new Set()}
+        onToggleFollow={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('San Jose · 3 locations')).toBeInTheDocument();
+    expect(screen.queryAllByText(/1 location/)).toEqual([]);
+  });
+});
+
+describe("the directory's filters held by the screen", () => {
+  it('shows what the screen asks, so its map can agree', async () => {
+    const changed = vi.fn();
+    render(
+      <OrganizationList
+        organizations={organizations}
+        events={[] as ClubEvent[]}
+        following={new Set()}
+        onToggleFollow={vi.fn()}
+        onOpen={vi.fn()}
+        filters={{
+          query: 'norcal',
+          hasGrants: false,
+          grantsOpen: false,
+          onCalendar: false,
+          following: false,
+        }}
+        onFiltersChange={changed}
+      />,
+    );
+    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.queryByText('Adaptive Rec Hub')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Following' }));
+    expect(changed).toHaveBeenCalledWith(expect.objectContaining({ following: true }));
+  });
+});

@@ -1,0 +1,307 @@
+import { act, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { type ReactNode, useEffect } from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { MapContents } from '@/lib/map-data';
+import { makeEvent, makeMember, makeOrganization } from '@/test/factory';
+import type { ClubEvent, Organization } from '@/types/domain';
+
+type Handler = (event: unknown) => void;
+
+/** Enough of MapLibre's map for the screen: it records what is asked of it. */
+function fakeMap() {
+  const handlers = new Map<string, Set<Handler>>();
+  const sources = new Map<string, { setData: ReturnType<typeof vi.fn> }>();
+  return {
+    handlers,
+    sources,
+    addSource: (id: string) => {
+      sources.set(id, { setData: vi.fn(() => Promise.resolve()) });
+    },
+    getSource: (id: string) => sources.get(id),
+    addLayer: vi.fn(),
+    getLayer: () => true,
+    setLayoutProperty: vi.fn(),
+    setPaintProperty: vi.fn(),
+    hasImage: () => true,
+    addImage: vi.fn(),
+    on: (type: string, handler: Handler) => {
+      if (!handlers.has(type)) handlers.set(type, new Set());
+      handlers.get(type)?.add(handler);
+    },
+    off: (type: string, handler: Handler) => {
+      handlers.get(type)?.delete(handler);
+    },
+    fire(type: string, event: unknown = {}) {
+      for (const handler of handlers.get(type) ?? []) handler(event);
+    },
+    getBounds: () => ({
+      getWest: () => -123,
+      getSouth: () => 37,
+      getEast: () => -121,
+      getNorth: () => 38.5,
+    }),
+    queryRenderedFeatures: vi.fn((): unknown[] => []),
+    getCanvas: () => ({ style: {} as Record<string, string> }),
+    easeTo: vi.fn(),
+    getZoom: () => 10,
+  };
+}
+
+const the = vi.hoisted(() => ({ map: null as ReturnType<typeof fakeMap> | null }));
+
+vi.mock('@/lib/map', () => ({
+  MAP_FONT: 'Noto Sans Regular',
+  loadMapCanvas: () =>
+    Promise.resolve({
+      default: function FakeCanvas({
+        onReady,
+        controls,
+      }: {
+        onReady: (map: unknown) => void;
+        controls?: ReactNode;
+      }) {
+        useEffect(() => {
+          if (the.map) onReady(the.map);
+        }, [onReady]);
+        return <div>{controls}</div>;
+      },
+    }),
+}));
+
+const directory = vi.hoisted(() => ({ organizations: [] as Organization[] }));
+vi.mock('@/lib/organizations', () => ({
+  useOrganizations: () => ({
+    organizations: directory.organizations,
+    byId: new Map(),
+    loading: false,
+    error: null,
+  }),
+}));
+vi.mock('@/lib/organization-follows', () => ({
+  useOrganizationFollows: () => ({
+    following: new Set(),
+    loading: false,
+    error: null,
+    toggle: vi.fn(),
+  }),
+}));
+vi.mock('@/lib/grants', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useGrantsByOrganization: () => new Map(),
+}));
+vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+
+const { default: ClubMap } = await import('@/routes/map/club-map');
+
+const borp = makeOrganization({ id: 'borp', name: 'BORP', city: 'Berkeley' });
+const contents: MapContents = {
+  events: [{ id: 'e1', latitude: 37.87, longitude: -122.27, exact: true }],
+  peerCities: [
+    { city: 'Oakland', state: 'CA', latitude: 37.8, longitude: -122.27, memberIds: ['a'] },
+  ],
+  organizations: [
+    {
+      placeId: 'p1',
+      id: 'borp',
+      label: 'Adaptive sports center',
+      city: 'Berkeley',
+      state: 'CA',
+      latitude: 37.85,
+      longitude: -122.27,
+      exact: true,
+    },
+    {
+      placeId: 'p2',
+      id: 'borp',
+      label: null,
+      city: 'Fremont',
+      state: 'CA',
+      latitude: 37.55,
+      longitude: -121.98,
+      exact: false,
+    },
+  ],
+  home: null,
+};
+const events: ClubEvent[] = [makeEvent({ id: 'e1' })];
+const members = [makeMember({ id: 'a' }), makeMember({ id: 'b' }), makeMember({ id: 'c' })];
+
+function Screen({
+  bare = false,
+  ...props
+}: Partial<Parameters<typeof ClubMap>[0]> & { bare?: boolean }) {
+  return (
+    <MemoryRouter>
+      <ClubMap
+        contents={contents}
+        focus="events"
+        events={events}
+        {...(bare ? {} : { members })}
+        filters={{ label: 'Filter events', count: 0, onOpen: () => undefined }}
+        backState={{}}
+        onUnsupported={() => undefined}
+        {...props}
+      />
+    </MemoryRouter>
+  );
+}
+
+/** Once the screen has taken the map and bound its handlers. */
+async function ready() {
+  await waitFor(() => {
+    expect(the.map?.handlers.get('moveend')?.size).toBe(1);
+  });
+}
+
+const sentTo = (source: string) => the.map?.sources.get(source)?.setData.mock.calls.length ?? 0;
+
+beforeEach(() => {
+  the.map = fakeMap();
+  directory.organizations = [borp];
+});
+
+describe('the map keeps still while its screen re-renders', () => {
+  it('sends each source its data once, not on every render', async () => {
+    const { rerender } = render(<Screen />);
+    await ready();
+    for (let i = 0; i < 3; i++) rerender(<Screen />);
+    expect(sentTo('club-events')).toBe(1);
+    expect(sentTo('club-peers')).toBe(1);
+    expect(sentTo('club-organizations')).toBe(1);
+  });
+
+  it('sends once even when the screen gives it no list of its own', async () => {
+    const { rerender } = render(<Screen bare />);
+    await ready();
+    for (let i = 0; i < 3; i++) rerender(<Screen bare />);
+    expect(sentTo('club-peers')).toBe(1);
+  });
+
+  it('sends nothing while the list is showing, and catches up when shown', async () => {
+    const { rerender } = render(<Screen hidden />);
+    await ready();
+    rerender(<Screen hidden events={[...events, makeEvent({ id: 'e2' })]} />);
+    expect(sentTo('club-events')).toBe(0);
+    rerender(<Screen hidden={false} />);
+    expect(sentTo('club-events')).toBe(1);
+  });
+
+  it('looks for its first pins when the map settles, not on every frame', async () => {
+    render(<Screen />);
+    await ready();
+    expect(the.map?.handlers.get('render')?.size ?? 0).toBe(0);
+    expect(the.map?.handlers.get('idle')?.size).toBe(1);
+  });
+
+  it('asks what is under the pointer at most once a frame', async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.push(callback);
+      return frames.length;
+    });
+    try {
+      render(<Screen />);
+      await ready();
+      const query = the.map?.queryRenderedFeatures;
+      query?.mockClear();
+      for (let i = 0; i < 5; i++) the.map?.fire('mousemove', { point: { x: i, y: i } });
+      expect(query).not.toHaveBeenCalled();
+      frames.shift()?.(0);
+      expect(query).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('what the map says', () => {
+  it('says past events are not on it, in place of "zoom out"', async () => {
+    render(<Screen eventsNote="The map shows upcoming events only. Past ones are in the list." />);
+    expect(await screen.findByText(/upcoming events only/)).toBeVisible();
+    expect(screen.queryByText(/Zoom out, or change the filters/)).toBeNull();
+  });
+
+  it('counts the peers in the list it cannot show, in Layers', async () => {
+    render(<Screen focus="peers" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Layers' }));
+    expect(screen.getByText(/2 peers in the list aren’t on the map/)).toBeVisible();
+  });
+
+  it('hangs Layers under the whole row of chips, however they wrap', async () => {
+    render(<Screen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Layers' }));
+    const panel = screen.getByRole('checkbox', { name: /Events/ }).closest('div[id]');
+    expect(panel?.className).toContain('top-full');
+    expect(panel?.className).not.toContain('top-[52px]');
+  });
+
+  it("sizes counts and badges to the page's text size", async () => {
+    document.documentElement.style.fontSize = '24px';
+    try {
+      render(<Screen />);
+      await ready();
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-peers', 'text-size', 21);
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-peers', 'icon-size', 1.5);
+    } finally {
+      document.documentElement.style.fontSize = '';
+    }
+  });
+});
+
+describe("an organization's places", () => {
+  async function openBerkeley() {
+    render(<Screen focus="organizations" />);
+    await ready();
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      { source: 'club-organizations', properties: { key: '37.85,-122.27|exact' } },
+    ]);
+    await act(async () => {
+      the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.85 } });
+      await Promise.resolve();
+    });
+    return screen.findByRole('dialog');
+  }
+
+  it('rings its other places and fades every other pin while its sheet is open', async () => {
+    await openBerkeley();
+    const rings = the.map?.sources
+      .get('club-organization-focus')
+      ?.setData.mock.calls.at(-1)?.[0] as {
+      features: { geometry: { coordinates: number[] } }[];
+    };
+    expect(rings.features.map((f) => f.geometry.coordinates)).toEqual([[-121.98, 37.55]]);
+    expect(the.map?.setPaintProperty).toHaveBeenCalledWith('club-peers', 'icon-opacity', 0.3);
+  });
+
+  it('says how many places it has and moves the map to another', async () => {
+    await openBerkeley();
+    expect(screen.getByText(/2 locations/)).toBeVisible();
+    await userEvent.click(screen.getByRole('button', { name: 'Show BORP in Fremont on the map' }));
+    expect(the.map?.easeTo).toHaveBeenCalledWith(
+      expect.objectContaining({ center: [-121.98, 37.55] }),
+    );
+  });
+
+  it('lets the pins back when its sheet closes', async () => {
+    await openBerkeley();
+    await userEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
+    );
+    expect(the.map?.setPaintProperty).toHaveBeenLastCalledWith(
+      'club-organizations',
+      'text-opacity',
+      1,
+    );
+  });
+
+  it('draws only the organizations the directory shows', async () => {
+    render(<Screen focus="organizations" organizations={[]} />);
+    await ready();
+    const sent = the.map?.sources.get('club-organizations')?.setData.mock.calls.at(-1)?.[0] as {
+      features: unknown[];
+    };
+    expect(sent.features).toEqual([]);
+  });
+});

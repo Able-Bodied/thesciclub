@@ -26,8 +26,37 @@ export function activeFilterCount(filters: MemberFilters): number {
     filters.regions.length +
     (filters.condition ? 1 : 0) +
     filters.cities.length +
-    filters.topics.length
+    filters.topics.length +
+    filters.ages.length
   );
+}
+
+/** The age groups, by decade (the owner, 2026-10-25). In words, as a screen reader says them. */
+export const AGE_BANDS: readonly { id: string; label: string; from: number; to: number }[] = [
+  { id: 'under-30', label: 'Under 30', from: 0, to: 29 },
+  { id: '30s', label: '30 to 39', from: 30, to: 39 },
+  { id: '40s', label: '40 to 49', from: 40, to: 49 },
+  { id: '50s', label: '50 to 59', from: 50, to: 59 },
+  { id: '60s', label: '60 to 69', from: 60, to: 69 },
+  { id: '70-plus', label: '70 and over', from: 70, to: Number.POSITIVE_INFINITY },
+];
+
+function bandOf(age: number | null): string | null {
+  if (age === null) return null;
+  return AGE_BANDS.find((band) => age >= band.from && age <= band.to)?.id ?? null;
+}
+
+/** An age group ticked keeps those in it; a member who gave no age is then left out. */
+function matchesAge(member: BrowseMember, filters: MemberFilters): boolean {
+  if (!filters.ages.length) return true;
+  const band = bandOf(member.age);
+  return band !== null && filters.ages.includes(band);
+}
+
+/** The groups somebody in the deck is in, youngest first. */
+export function ageBandsIn(members: BrowseMember[]): string[] {
+  const present = new Set(members.map((member) => bandOf(member.age)));
+  return AGE_BANDS.filter((band) => present.has(band.id)).map((band) => band.id);
 }
 
 /**
@@ -44,7 +73,7 @@ function matchesLevel(member: BrowseMember, filters: MemberFilters): boolean {
 }
 
 /** Toggle a value in one of the list-shaped filters. */
-export function toggleFilter<K extends 'regions' | 'cities' | 'topics'>(
+export function toggleFilter<K extends 'regions' | 'cities' | 'topics' | 'ages'>(
   filters: MemberFilters,
   key: K,
   value: MemberFilters[K][number],
@@ -85,6 +114,7 @@ export function filterMembers(
   const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
     if (!matchesLevel(member, filters)) return false;
+    if (!matchesAge(member, filters)) return false;
     if (filters.cities.length && (!member.city || !filters.cities.includes(member.city))) {
       return false;
     }

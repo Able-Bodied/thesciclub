@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -23,6 +23,28 @@ function nativeCspPlugin(): Plugin {
   };
 }
 
+// The map's modules (src/lib/map/ but its index.ts, which the app imports) and
+// files: big, for two screens, so cached when used (src/sw.ts), not installed.
+const MAP_MODULES =
+  /[\\/]node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?(?:maplibre-gl|pmtiles|@protomaps[\\/]basemaps|fflate)[\\/]|[\\/]src[\\/]lib[\\/]map[\\/](?!index\.ts$)/;
+// assets/maplibre-* is the group below and MapLibre's worker.
+const MAP_FILES = ['assets/maplibre-*', 'map/**', 'tiles/**'];
+
+/** public/tiles/ is for `pnpm dev`; builds read the tiles Worker (src/lib/map/tiles.ts). */
+function noTilesInBuild(): Plugin {
+  let outDir = '';
+  return {
+    name: 'no-tiles-in-build',
+    apply: 'build',
+    configResolved(config) {
+      outDir = path.resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      rmSync(path.join(outDir, 'tiles'), { recursive: true, force: true });
+    },
+  };
+}
+
 // https://vite.dev/config/
 // `--mode native` builds the store app's copy (capacitor.config.ts): no
 // service worker, its own folder, and the policy native-csp.ts writes.
@@ -30,6 +52,7 @@ export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     tailwindcss(),
+    noTilesInBuild(),
     ...(mode === 'native' ? [nativeCspPlugin()] : []),
     VitePWA({
       disable: mode === 'native',
@@ -72,6 +95,7 @@ export default defineConfig(({ mode }) => ({
           'sw.js',
           '351f1d05184f1216b6844862231b8fbc.html',
           'embed/**',
+          ...MAP_FILES,
         ],
       },
       manifest: {
@@ -170,12 +194,23 @@ export default defineConfig(({ mode }) => ({
     ...(mode === 'native' ? { outDir: 'dist-native' } : {}),
     rolldownOptions: {
       output: {
+        // MapLibre's worker ships as .mjs, a type the iPhone app's file
+        // server may not call JavaScript; a module worker needs it to.
+        assetFileNames: (asset) =>
+          asset.names[0]?.endsWith('.mjs')
+            ? 'assets/[name]-[hash].js'
+            : 'assets/[name]-[hash][extname]',
         codeSplitting: {
           // Everything the first screen needs in one file. Left to itself the
           // bundler split the code the lazy screens share with it into a dozen
           // files of a few hundred bytes, each a request before first paint
           // (2026-10-14: first paint 2.3 s to 2.5 s on a slow phone).
-          groups: [{ name: 'app', tags: ['$initial'] }],
+          groups: [
+            { name: 'app', tags: ['$initial'] },
+            // MapLibre and its kin, out of the precache (MAP_FILES) and fetched
+            // when a map first opens or idles in (src/lib/map/index.ts).
+            { name: 'maplibre', test: MAP_MODULES },
+          ],
           // And no slivers among the screens' own shared code either.
           minSize: 20_000,
         },

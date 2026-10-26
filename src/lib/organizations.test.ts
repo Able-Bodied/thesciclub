@@ -58,3 +58,40 @@ describe('finding the organization behind an affiliation', () => {
     );
   });
 });
+
+describe('an organization’s places', () => {
+  it('come main place first, with the row’s own fields only', async () => {
+    const { toOrganization } = await import('@/lib/organizations');
+    const read = toOrganization({
+      id: 'o1',
+      short_code: 'BORP',
+      name: 'BORP',
+      city: 'Berkeley',
+      description: '',
+      tags: null,
+      can_invite: false,
+      logo_path: null,
+      state: 'CA',
+      organization_places: [
+        { id: 'p2', position: 1, label: 'Gym', address: null, city: 'Oakland', state: 'CA' },
+        {
+          id: 'p1',
+          position: 0,
+          label: null,
+          address: '3075 Adeline St',
+          city: 'Berkeley',
+          state: 'CA',
+        },
+      ],
+    });
+    expect(read.places?.map((p) => p.id)).toEqual(['p1', 'p2']);
+    expect(read.places?.[0]).toEqual({
+      id: 'p1',
+      position: 0,
+      label: null,
+      address: '3075 Adeline St',
+      city: 'Berkeley',
+      state: 'CA',
+    });
+  });
+});

@@ -45,6 +45,8 @@ export interface MemberDetails {
    */
   photoAlt: string | null;
   showInBrowse: boolean;
+  /** Counted on the map at their city's middle (20261025020000). */
+  showOnMap: boolean;
   /**
    * Things this member has said they would rather not give — see
    * 20260917030000. Shared with the survey, which writes the same column, so
@@ -87,7 +89,7 @@ export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean 
 }
 
 const COLUMNS =
-  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, city, state, photo_path, photo_alt, show_in_browse, declined';
+  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, city, state, photo_path, photo_alt, show_in_browse, show_on_map, declined';
 
 /* The client types individually selected columns as `any`, so each one is
  * narrowed on the way out rather than cast wholesale. A column that comes back
@@ -174,6 +176,7 @@ export async function loadDetails(): Promise<
       photoPath: asNullableText(row.photo_path),
       photoAlt: asNullableText(row.photo_alt),
       showInBrowse: row.show_in_browse !== false,
+      showOnMap: row.show_on_map !== false,
       declined: Array.isArray(row.declined)
         ? row.declined.filter((v): v is string => typeof v === 'string')
         : [],
@@ -268,6 +271,18 @@ export async function setShowInBrowse(
   const { error } = await getSupabase()
     .from('members')
     .update({ show_in_browse: showInBrowse })
+    .eq('id', userId);
+  return error ? { ok: false, error: describeError(error, 'That was not changed.') } : { ok: true };
+}
+
+/** "Show me on the map" in Me: writes only this column, as `setShowInBrowse`. */
+export async function setShowOnMap(
+  userId: string,
+  showOnMap: boolean,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase()
+    .from('members')
+    .update({ show_on_map: showOnMap })
     .eq('id', userId);
   return error ? { ok: false, error: describeError(error, 'That was not changed.') } : { ok: true };
 }

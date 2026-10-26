@@ -8,7 +8,8 @@
 /** The page's origin on an iPhone; Android's is https://localhost, which 'self' covers. */
 export const IOS_APP_ORIGIN = 'capacitor://localhost';
 
-// A <meta> policy ignores frame-ancestors; the app has no manifest or worker.
+// A <meta> policy ignores frame-ancestors; the app has no manifest. Without
+// worker-src, the map's worker falls back to script-src, the app's own files.
 const DROPPED = new Set(['frame-ancestors', 'manifest-src', 'worker-src']);
 
 // Not in the app: Google's widget, until native sign-in.

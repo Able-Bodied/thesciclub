@@ -133,6 +133,46 @@ describe('organization management', () => {
       );
     });
   });
+  it("saves its main location's state as its own, and none once no location is left", async () => {
+    db.organizations = [
+      {
+        ...organization(),
+        state: 'CA',
+        places: [
+          { id: 'p1', position: 0, label: null, address: null, city: 'Test city', state: 'CA' },
+        ],
+      },
+    ];
+    render(<OrganizationsSection />);
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Organization org' }));
+    const state = await screen.findByLabelText(/^State/);
+    expect(state).toHaveValue('CA');
+    await userEvent.selectOptions(state, 'Connecticut');
+    await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
+    await waitFor(() => {
+      expect(db.rpc).toHaveBeenCalledWith(
+        'save_organization',
+        expect.objectContaining({ organization: 'org', state: 'CT' }),
+      );
+    });
+    expect(db.rpc).toHaveBeenCalledWith(
+      'save_organization_places',
+      expect.objectContaining({
+        p_organization: 'org',
+        p_places: [expect.objectContaining({ state: 'CT' })],
+      }),
+    );
+    db.rpc.mockClear();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Organization org' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Remove location 1' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
+    await waitFor(() => {
+      expect(db.rpc).toHaveBeenCalledWith(
+        'save_organization',
+        expect.objectContaining({ organization: 'org', state: '' }),
+      );
+    });
+  });
   it('requires a concrete remove confirmation, then refreshes links and directory', async () => {
     const changed = vi.fn();
     render(<OrganizationsSection onChange={changed} />);
