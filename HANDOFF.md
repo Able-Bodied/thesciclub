@@ -108,10 +108,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   order: `db push` (`20261025010000`), then push the client (it reads the
   new column, so a client first breaks conversations), then deploy
   `push-notify` ("Shared a post." on the lock screen; until then a share
-  with no words pushes an empty line). Owner's call: a blocked member sees
-  "isn't available" on a post by the member who blocked them, and the
-  Share refusal says the same, so they can infer the block, as "You can't
-  message this member" already lets them.
+  with no words pushes an empty line). Kept by the owner (2026-10-25): a
+  blocked member sees "isn't available" on a post by the member who blocked
+  them, and the Share refusal says the same, so they can infer the block, as
+  "You can't message this member" already lets them.
 - **Events from calendar invitations** (live 2026-10-23): invite
   `invites@events.thesciclub.com` (or `invites+<short code>@`) to an event in
   Google, Outlook or Apple Calendar and it is added, changed and cancelled in
