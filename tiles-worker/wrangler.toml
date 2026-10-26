@@ -1,0 +1,28 @@
+# The map's tiles (src/index.ts). Deployed by the owner, never by CI:
+#   pnpm tiles-worker:deploy
+name = "sciclub-tiles"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+workers_dev = true
+# No preview URLs: the one address is the one the app's CSP names.
+preview_urls = false
+
+[[r2_buckets]]
+binding = "TILES"
+bucket_name = "sciclub-tiles"
+
+# Per address, per Cloudflare location, approximate. A busy desktop session
+# measured 100 requests over several minutes; 300 a minute leaves room for a
+# few members behind one carrier address, and keeps one scraper from spending
+# the free 100,000 a day in minutes. Over it: 429 (src/index.ts).
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 300
+  period = 60
+
+# For a local test only (wrangler dev), never deployed:
+# [vars]
+# DEV_ORIGIN = "http://localhost:5173"

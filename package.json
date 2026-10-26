@@ -25,7 +25,9 @@
     "logos": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/logos.mjs",
     "reprocess-photos": "LD_LIBRARY_PATH=\"$HOME/.cache/thesciclub-browser-libs/root/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH\" node scripts/reprocess-photos.mjs",
     "check-photo-policy": "node scripts/check-photo-policy.mjs",
-    "check-chat-photo-policy": "node scripts/check-chat-photo-policy.mjs"
+    "check-chat-photo-policy": "node scripts/check-chat-photo-policy.mjs",
+    "map-tiles": "node scripts/map-tiles.mjs",
+    "tiles-worker:deploy": "pnpm dlx --allow-build=esbuild --allow-build=workerd wrangler@4.149.0 deploy --config tiles-worker/wrangler.toml"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
@@ -39,9 +41,12 @@
     "@capacitor/text-zoom": "8.0.1",
     "@capawesome/capacitor-badge": "8.0.4",
     "@capgo/capacitor-social-login": "8.5.13",
+    "@protomaps/basemaps": "5.7.2",
     "@supabase/supabase-js": "^2.112.3",
     "clsx": "^2.1.1",
     "lucide-react": "^1.31.0",
+    "maplibre-gl": "6.14.0",
+    "pmtiles": "4.5.0",
     "qrcode-generator": "2.0.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -62,6 +67,7 @@
     "@vitejs/plugin-react": "^6.0.5",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.1",
+    "fake-indexeddb": "6.2.5",
     "globals": "^17.11.0",
     "jsdom": "^30.0.1",
     "netlify-cli": "^27.10.0",

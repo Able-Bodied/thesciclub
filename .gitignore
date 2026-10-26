@@ -24,6 +24,10 @@ dist-ssr
 *.p12
 *.mobileprovision
 
+# The map's tiles (pnpm map-tiles), far too big for git; hosted on R2.
+public/tiles/
+map-tiles-out/
+
 # Test / coverage
 coverage
 *.tsbuildinfo
@@ -50,3 +54,6 @@ sci-club-logo/
 
 # The owner's own audit notes, kept out of the repository (2026-10-07).
 AUDIT.md
+
+# Wrangler state from deploying the tiles Worker
+.wrangler/

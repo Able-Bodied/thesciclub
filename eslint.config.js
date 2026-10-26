@@ -14,6 +14,8 @@ export default tseslint.config(
       'android',
       'coverage',
       'node_modules',
+      'public',
+      'map-tiles-out',
       'src/components/ui/**',
       '.claude/worktrees/**',
     ],
