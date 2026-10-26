@@ -10,6 +10,8 @@ import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { mapsUrl, placeLine } from '@/routes/events/place';
+import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 
 /**
@@ -45,7 +47,7 @@ export default function PublicEventPage() {
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
   const over = event ? new Date(event.endTime ?? event.startTime).getTime() < Date.now() : false;
-  const place = event ? [event.location, event.city].filter(Boolean).join(' · ') : '';
+  const place = event ? placeLine(event) : null;
   const registerHref = safeHref(event?.registrationUrl ?? null);
   const pageHref = safeHref(event?.url ?? null);
   const meeting = event ? eventMeetingLink(event) : null;
@@ -103,9 +105,12 @@ export default function PublicEventPage() {
             {event.title}
           </h1>
           <p className="mt-1.5 text-[0.875rem] text-ink2 leading-[1.45]">
-            {[timeRange(event.startTime, event.endTime, timezone, event.allDay), place]
-              .filter(Boolean)
-              .join(' · ')}
+            {timeRange(event.startTime, event.endTime, timezone, event.allDay)}
+            <Place
+              line={place}
+              href={mapsUrl(event)}
+              className="underline decoration-ink2/50 underline-offset-2 hover:text-emphasis"
+            />
           </p>
 
           {meeting && !over ? (
@@ -145,7 +150,8 @@ export default function PublicEventPage() {
           <EventDescription
             html={event.descriptionHtml}
             text={event.description}
-            className="mt-5 text-[0.9375rem] text-ink leading-[1.55] [&>*+*]:mt-3"
+            // Links as on the members' page: underlined, so they read as links.
+            className="mt-5 text-[0.9375rem] text-ink leading-[1.55] [&>*+*]:mt-3 [&_a]:text-emphasis [&_a]:underline [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc"
           />
 
           {moreHref || registerHref ? (
@@ -173,6 +179,30 @@ export default function PublicEventPage() {
             </p>
           ) : null}
 
+          {/* A stronger ask to join, set apart (the owner, 2026-10-24): what
+              the club adds to an event is the people and the chat. Both
+              buttons go to the same door, which asks which of the two. */}
+          <section
+            aria-label="Join the club"
+            className="mt-6 rounded-[16px] bg-plate px-4 pt-4 pb-3 text-white"
+          >
+            <p className="font-extrabold font-head text-[1.0625rem] leading-[1.35]">
+              Join the club to see who's coming and join the group chat.
+            </p>
+            <Link
+              to={signInTo(id)}
+              className="mt-3 flex min-h-[48px] items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
+            >
+              Join the club
+            </Link>
+            <p className="mt-2 text-center text-[#B9CADF] text-[0.8125rem]">
+              Already a member?{' '}
+              <Link to={signInTo(id)} className="inline-block py-2 font-bold text-white underline">
+                Sign in
+              </Link>
+            </p>
+          </section>
+
           {event.organization ? (
             <>
               <h2 className="mt-6 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
@@ -186,14 +216,6 @@ export default function PublicEventPage() {
               </div>
             </>
           ) : null}
-
-          <p className="mt-6 text-center text-[0.84375rem] text-ink2">
-            In the club?{' '}
-            <Link to={signInTo(id)} className="font-bold text-emphasis underline">
-              Sign in
-            </Link>{' '}
-            to see who's going.
-          </p>
         </article>
       ) : null}
     </main>

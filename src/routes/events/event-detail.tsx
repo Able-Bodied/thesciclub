@@ -31,7 +31,8 @@ import { longWhen, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
-import { placeLine } from '@/routes/events/place';
+import { mapsUrl, placeLine } from '@/routes/events/place';
+import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { type EventAttendee, injuryLabel, type RsvpStatus } from '@/types/domain';
 
@@ -178,12 +179,12 @@ export default function EventDetailPage() {
             </h1>
 
             <p className="mt-1.5 text-[#B9CADF] text-[0.8125rem] leading-[1.42]">
-              {[
-                timeRange(event.startTime, event.endTime, event.timezone, event.allDay),
-                placeLine(event),
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              {timeRange(event.startTime, event.endTime, event.timezone, event.allDay)}
+              <Place
+                line={placeLine(event)}
+                href={mapsUrl(event)}
+                className="underline decoration-[#B9CADF]/50 underline-offset-2 hover:text-white"
+              />
             </p>
             <OutOfStateMark state={event.state} onNavy className="mt-2" />
 

@@ -6,32 +6,21 @@ const noop = () => undefined;
 
 describe('the welcome screen after registering for an event', () => {
   // The same words for everybody who registered: the page must never say
-  // whether an address is a member's. A registration is not an invite
-  // (20261022230000), so it does not promise a way in.
-  it('says who has the details, and that joining needs an invite', () => {
+  // whether an address is a member's. Kept simple (the owner, 2026-10-24):
+  // on the list, and why to join.
+  it('says they are on the list, and why to join', () => {
     render(
       <WelcomeScreen onJoin={noop} onSignIn={noop} registered={{ organizer: 'NorCal SCI' }} />,
     );
     expect(screen.getByRole('status')).toHaveTextContent(
-      "You're registered.NorCal SCI has your details. Members can sign in to see who is going. Joining the club needs an invite.",
+      "You're on our list. Join the club to see who's coming and join the group chat.",
     );
+    expect(screen.getByRole('button', { name: 'Join the club' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'I already have an account' })).toBeInTheDocument();
-  });
-
-  it('names the organizer generically when no organization hosts it', () => {
-    render(<WelcomeScreen onJoin={noop} onSignIn={noop} registered={{}} />);
-    expect(screen.getByRole('status')).toHaveTextContent(
-      "You're registered.The event's organizer has your details.",
-    );
-  });
-
-  it('says nothing of invites while joining is open', () => {
-    render(<WelcomeScreen onJoin={noop} onSignIn={noop} registered={{}} joiningOpen />);
-    expect(screen.getByRole('status')).not.toHaveTextContent(/invite/);
   });
 
   it('says nothing of it otherwise', () => {
     render(<WelcomeScreen onJoin={noop} onSignIn={noop} />);
-    expect(screen.queryByText(/You're registered/)).toBeNull();
+    expect(screen.queryByText(/on our list/)).toBeNull();
   });
 });

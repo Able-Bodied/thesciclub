@@ -95,7 +95,10 @@ export function cityInLocation(raw: string | null | undefined): string | null {
 }
 
 /** What a card or a detail hero prints for "where", or null for nothing. */
-export function placeLine(event: Pick<ClubEvent, 'location' | 'city' | 'format'>): string | null {
+export function placeLine(
+  // The public page's event carries its format as plain text, so any string.
+  event: Pick<ClubEvent, 'location' | 'city'> & { format: string | null },
+): string | null {
   const head = venueName(event.location) ?? tidyLocation(event.location);
   const city = event.city?.trim() ? event.city : cityInLocation(event.location);
 
@@ -115,4 +118,29 @@ export function placeLine(event: Pick<ClubEvent, 'location' | 'city' | 'format'>
     return `${head}, ${city}`;
   }
   return head;
+}
+
+/**
+ * Google Maps for the event's place, so the place line can be tapped for
+ * directions (the owner, 2026-10-24); null when there is nothing to find.
+ *
+ * The feed's whole string, not the trimmed line: a plus code or a postcode is
+ * exactly what pins the right spot. The geocoded city and state go on the end
+ * when the string lacks the city, so a bare street does not land in another
+ * state. Most imported events have no address at all, only the city the page
+ * shows, and that is still worth a tap. A link in the field is an online
+ * event's, not a place.
+ */
+export function mapsUrl(event: Pick<ClubEvent, 'location' | 'city' | 'state'>): string | null {
+  let location = event.location.replace(/\s+/g, ' ').trim();
+  if (/^(https?:\/\/|www\.)/i.test(location)) location = '';
+  const city = event.city?.trim() ?? '';
+  // A state alone is no place to search for.
+  const area = city ? [city, event.state?.trim() ?? ''].filter(Boolean).join(', ') : '';
+  const query =
+    location && city && !location.toLowerCase().includes(city.toLowerCase())
+      ? `${location}, ${area}`
+      : location || area;
+  if (!query) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }

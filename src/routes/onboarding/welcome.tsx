@@ -61,9 +61,10 @@ export function WelcomeScreen({
           role="status"
           className="mx-[18px] mt-[max(14px,env(safe-area-inset-top))] flex-none rounded-[13px] border-gold border-l-4 bg-gold-lt px-3.5 py-3 text-[0.875rem] text-ink leading-[1.45]"
         >
-          <b className="block font-extrabold font-head">You're registered.</b>
-          {registered.organizer ?? "The event's organizer"} has your details. Members can sign in to
-          see who is going.{joiningOpen ? '' : ' Joining the club needs an invite.'}
+          {/* Kept simple (the owner, 2026-10-24): the form already said the
+              host's own registration may be needed. */}
+          <b className="font-extrabold font-head">You're on our list.</b> Join the club to see who's
+          coming and join the group chat.
         </div>
       ) : null}
       <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">

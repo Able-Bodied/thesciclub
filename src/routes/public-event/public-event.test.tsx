@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -84,16 +84,26 @@ describe('the public event page', () => {
   it('shows the event and its host, and nothing about who is going', async () => {
     renderAt('/e/picnic');
     expect(await screen.findByRole('heading', { name: 'Friday Happy Hour' })).toBeInTheDocument();
-    expect(screen.getByText(/Lakeside Park · Oakland/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /in Google Maps/ })).toHaveTextContent(
+      'Lakeside Park, Oakland',
+    );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.getByText('Everyone is welcome.')).toBeInTheDocument();
-    // No counts and no attendees: the only "going" is the button, and the
-    // line saying members see who is.
+    // No counts and no attendees: the only "going" is the button.
     expect(screen.queryByText(/\d+ (going|interested)/i)).toBeNull();
-    expect(screen.getAllByText(/going/i).map((el) => el.textContent)).toEqual([
-      'Going',
-      expect.stringContaining("see who's going"),
-    ]);
+    expect(screen.getAllByText(/going/i).map((el) => el.textContent)).toEqual(['Going']);
+  });
+
+  // The owner, 2026-10-24: a stronger ask to join, set apart.
+  it('asks the reader to join the club, to see who is coming and the chat', async () => {
+    renderAt('/e/picnic');
+    const ask = await screen.findByRole('region', { name: 'Join the club' });
+    expect(ask).toHaveTextContent("Join the club to see who's coming and join the group chat.");
+    expect(within(ask).getByRole('link', { name: 'Join the club' })).toHaveAttribute(
+      'href',
+      '/join?next=%2Fevents%2Fpicnic',
+    );
+    expect(within(ask).getByRole('link', { name: 'Sign in' })).toBeInTheDocument();
   });
 
   it('says "Join online" for a meeting link, to anybody with the page', async () => {
@@ -139,9 +149,30 @@ describe('the public event page', () => {
     renderAt('/e/picnic');
     await userEvent.click(await screen.findByRole('button', { name: 'Going' }));
     expect(
-      await screen.findByRole('heading', { name: 'Register for this event' }),
+      await screen.findByRole('heading', { name: 'Get added to our list' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: 'Going' })).toBeChecked();
+  });
+
+  // The owner, 2026-10-24: the form is the club's list, not the host's own
+  // sign-up (many hosts are not in the club), and says so, pointing to theirs.
+  it('says the form is not the host’s own sign-up, and links theirs', async () => {
+    api.event = { ...EVENT, registrationUrl: 'https://norcalsci.org/rsvp' };
+    renderAt('/e/picnic/register');
+    expect(await screen.findByText(/adds you to The SCI Club's list/)).toHaveTextContent(
+      "This adds you to The SCI Club's list for this event. It doesn't register you with NorCal SCI: you may need to do that too, with their sign-up.",
+    );
+    expect(screen.getByRole('link', { name: 'their sign-up' })).toHaveAttribute(
+      'href',
+      'https://norcalsci.org/rsvp',
+    );
+  });
+
+  it('underlines the links in the description', async () => {
+    api.event = { ...EVENT, description: 'Details at [our site](https://norcalsci.org).' };
+    renderAt('/e/picnic');
+    const link = await screen.findByRole('link', { name: 'our site' });
+    expect(link.closest('[class*="[&_a]:underline"]')).not.toBeNull();
   });
 
   it('says so for an event with no public page', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cityInLocation, placeLine, tidyLocation, venueName } from '@/routes/events/place';
+import { cityInLocation, mapsUrl, placeLine, tidyLocation, venueName } from '@/routes/events/place';
 
 /**
  * Every `location` string in here is a real one from the ingested feeds, not an
@@ -141,5 +141,43 @@ describe('cityInLocation', () => {
       cityInLocation("Gino's Pizza 1761 Monterey Street San Luis Obispo, CA, 93401 United States"),
     ).toBeNull();
     expect(cityInLocation('')).toBeNull();
+  });
+});
+
+describe('mapsUrl', () => {
+  const query = (url: string | null) => (url ? new URL(url).searchParams.get('query') : null);
+
+  it('searches Google Maps for the whole address, as the feed wrote it', () => {
+    const url = mapsUrl({
+      location: 'Archer Bicycle 431 13th Street Oakland, California, 94607 United States',
+      city: 'Oakland',
+      state: 'CA',
+    });
+    expect(url?.startsWith('https://www.google.com/maps/search/?api=1&query=')).toBe(true);
+    expect(query(url)).toBe(
+      'Archer Bicycle 431 13th Street Oakland, California, 94607 United States',
+    );
+  });
+
+  it('adds the city and state when the address lacks them', () => {
+    expect(query(mapsUrl({ location: '141 Brookwood Dr', city: 'Santa Cruz', state: 'CA' }))).toBe(
+      '141 Brookwood Dr, Santa Cruz, CA',
+    );
+    expect(query(mapsUrl({ location: '141 Brookwood Dr', city: null, state: 'CA' }))).toBe(
+      '141 Brookwood Dr',
+    );
+  });
+
+  // Most imported events: no address, only the city the page shows.
+  it('finds the city when there is no address', () => {
+    expect(query(mapsUrl({ location: '', city: 'Oakland', state: 'CA' }))).toBe('Oakland, CA');
+    expect(
+      query(mapsUrl({ location: 'https://zoom.us/j/123', city: 'Oakland', state: null })),
+    ).toBe('Oakland');
+  });
+
+  it('has nothing to find with no address and no city', () => {
+    expect(mapsUrl({ location: '   ', city: null, state: null })).toBeNull();
+    expect(mapsUrl({ location: 'https://zoom.us/j/123', city: null, state: 'CA' })).toBeNull();
   });
 });

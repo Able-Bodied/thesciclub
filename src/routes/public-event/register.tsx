@@ -11,6 +11,7 @@ import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { formatPhoneInput } from '@/lib/phone';
 import { shortDate, timeOfDay } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { safeHref } from '@/routes/events/rich-text';
 import type { RsvpStatus } from '@/types/domain';
 
 /**
@@ -78,6 +79,7 @@ export default function RegisterForEventPage() {
   }
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
+  const signUp = safeHref(event?.registrationUrl ?? null);
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-[480px] bg-canvas px-[18px] pt-[max(16px,env(safe-area-inset-top))] pb-[max(28px,env(safe-area-inset-bottom))]">
@@ -85,12 +87,12 @@ export default function RegisterForEventPage() {
         ← Back to the event
       </Link>
       <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink leading-tight">
-        Register for this event
+        Get added to our list
       </h1>
 
       {event === null ? (
         <p role="alert" className="mt-4 text-[0.875rem] text-ink2">
-          This event is not taking registrations.
+          This event's page is not public.
         </p>
       ) : null}
 
@@ -114,6 +116,34 @@ export default function RegisterForEventPage() {
               </span>
             </span>
           </div>
+
+          {/* Not a sign-up with the host (the owner, 2026-10-24): many
+              organizations are not in the club and never see this list, so
+              it says plainly that their own registration may still be needed. */}
+          <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            This adds you to The SCI Club's list for this event.
+            {event.organization ? (
+              <>
+                {` It doesn't register you with ${event.organization.name}: you may need to do that too`}
+                {signUp ? (
+                  <>
+                    {', with '}
+                    <a
+                      href={signUp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-emphasis underline"
+                    >
+                      their sign-up
+                    </a>
+                    .
+                  </>
+                ) : (
+                  ', so check the event details.'
+                )}
+              </>
+            ) : null}
+          </p>
 
           <fieldset className="mt-4">
             <legend className="sr-only">Your answer</legend>
