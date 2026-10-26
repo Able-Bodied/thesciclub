@@ -14,6 +14,10 @@ function fakeSupabase(batches) {
       if (name === 'geocodes_enqueue_stale') return Promise.resolve({ data: 3, error: null });
       if (name === 'geocodes_claim_for_import')
         return Promise.resolve({ data: batches.shift() ?? [], error: null });
+      if (name === 'geocode_release') {
+        calls.push(`release ${args.p_target}`);
+        return Promise.resolve({ data: null, error: null });
+      }
       done.push(args);
       return Promise.resolve({ data: true, error: null });
     },
@@ -56,6 +60,7 @@ describe('placeStaleEvents', () => {
       const supabase = fakeSupabase([[row('e1', 'A'), row('e2', 'B')]]);
       await placeStaleEvents(supabase, { dryRun: false }, () => Promise.reject(error), 0);
       expect(supabase.done.map((d) => [d.p_target, d.p_error])).toEqual([['e1', error.message]]);
+      expect(supabase.calls).toContain('release e2');
     }
   });
 

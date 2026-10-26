@@ -433,9 +433,10 @@ All live. Migration headers and the files named say how and why.
   Events and Peers (`src/routes/map/`, `src/lib/map/`). Peers are a count at
   a confirmed city middle (`city_places.settlement`), never finer; "Show me
   on the map" in Me. Events and organization places get an exact pin only
-  when the geocoded address matches the current one; the `geocode-event`
-  function places a saved address within a minute, under daily caps
-  (`private.geocode_claim`). Tiles: Cloudflare R2 behind the
+  when the geocoded address matches the current one; a save starts the
+  Geocode workflow (`.github/workflows/geocode.yml`, `20261026000000`;
+  Nominatim refuses Supabase's servers), which places it in a couple of
+  minutes under daily caps (`private.geocode_claim`). Tiles: Cloudflare R2 behind the
   `tiles-worker/` Worker at sciclub-tiles.thesciclub.workers.dev (owner's
   account; `pnpm tiles-worker:deploy`, `pnpm map-tiles --upload`; a new
   build's files go up before the deploy that names them). Organization

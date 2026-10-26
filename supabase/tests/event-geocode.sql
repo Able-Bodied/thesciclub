@@ -1,15 +1,16 @@
 -- ============================================================================
--- A pin follows its address (20261025030000)
+-- A pin follows its address (20261025030000, 20261026000000)
 -- ============================================================================
--- A changed place is queued and geocode-event asked once a transaction; an
--- unrelated edit, the import's own write and an online event are not. Only
--- the service role, holding the vault's secret, works the queue, and a pin is
+-- A changed place is queued and the Geocode workflow started on GitHub once
+-- a transaction; an unrelated edit, the import's own write and an online
+-- event are not. Only the service role works the queue, and a pin is
 -- written only while the address is still the one asked about.
 --
 -- The superuser writes the events with a member's or the import's claims, as
 -- save_event and the import do; the queue's functions are called as the real
--- roles. "sent" counts calls waiting in pg_net for the probe's URL, and
--- club.geocode_sent is cleared before each step that expects one.
+-- roles. "sent" counts workflow starts waiting in pg_net for the probe's
+-- repository, and club.geocode_sent is cleared before each step that
+-- expects one.
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -23,15 +24,16 @@
 
 begin;
 
-delete from vault.secrets where name = 'geocode_event_url';
-select vault.create_secret('http://127.0.0.1:9/probe-geocode-event', 'geocode_event_url') is not null as ok;
-select decrypted_secret as secret from vault.decrypted_secrets where name = 'geocode_event_secret' \gset
+delete from vault.secrets where name in ('geocode_github_repo', 'geocode_github_token');
+select vault.create_secret('probe-owner/probe-repo', 'geocode_github_repo') is not null as ok;
+select vault.create_secret('github_pat_probe', 'geocode_github_token') is not null as ok;
 
 -- Only the probe's rows are claimed below.
 delete from private.geocode_queue;
 
 create temporary view probe_sent as
-select count(*) as sent from net.http_request_queue where url = 'http://127.0.0.1:9/probe-geocode-event';
+select count(*) as sent from net.http_request_queue
+ where url = 'https://api.github.com/repos/probe-owner/probe-repo/actions/workflows/geocode.yml/dispatches';
 
 \echo ''
 \echo '== 1. the key, as geocodeKey in geocode.test.js (expect each t) =='
@@ -52,7 +54,7 @@ select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-0c0c-0000-0000-000000000001","role":"authenticated"}', true) is not null as ok;
 
 \echo ''
-\echo '== 2. a hand-added event is queued and the function asked (expect 1 | 0 | 1) =='
+\echo '== 2. a hand-added event is queued and the Geocode workflow started (expect 1 | 0 | 1) =='
 select set_config('club.geocode_sent', '', true) is not null as ok;
 insert into public.events (id, title, start_time, location, city, state, event_format, host_name)
 values ('eeeeeeee-0c0c-0000-0000-000000000001', 'Hand-added', now() + interval '1 day',
@@ -62,6 +64,30 @@ select (select count(*) from private.geocode_queue
        (select attempts from private.geocode_queue
          where target_id = 'eeeeeeee-0c0c-0000-0000-000000000001') as attempts,
        (select sent from probe_sent) as sent;
+
+\echo ''
+\echo '== 2b. the start: POST, the token, GitHub''s headers, main (expect POST | Bearer github_pat_probe |'
+\echo '   application/vnd.github+json | 2022-11-28 | thesciclub-geocode | {"ref": "main"})'
+select r.method, r.headers ->> 'Authorization' as authorization, r.headers ->> 'Accept' as accept,
+       r.headers ->> 'X-GitHub-Api-Version' as version, r.headers ->> 'User-Agent' as agent,
+       convert_from(r.body, 'utf8')::jsonb as body
+  from net.http_request_queue r
+ where r.url = 'https://api.github.com/repos/probe-owner/probe-repo/actions/workflows/geocode.yml/dispatches';
+
+\echo ''
+\echo '== 2c. with no token, or no repository, nothing is sent; the queue still fills (expect 1 | 1 | 1 | 1) =='
+delete from vault.secrets where name = 'geocode_github_token';
+select set_config('club.geocode_sent', '', true) is not null as ok;
+update public.events set location = '1 Main Street' where id = 'eeeeeeee-0c0c-0000-0000-000000000001';
+select (select sent from probe_sent) as no_token,
+       (select count(*) from private.geocode_queue where target_id = 'eeeeeeee-0c0c-0000-0000-000000000001') as queued;
+select vault.create_secret('github_pat_probe', 'geocode_github_token') is not null as ok;
+delete from vault.secrets where name = 'geocode_github_repo';
+select set_config('club.geocode_sent', '', true) is not null as ok;
+update public.events set location = '1 Main St' where id = 'eeeeeeee-0c0c-0000-0000-000000000001';
+select (select sent from probe_sent) as no_repo,
+       (select count(*) from private.geocode_queue where target_id = 'eeeeeeee-0c0c-0000-0000-000000000001') as queued;
+select vault.create_secret('probe-owner/probe-repo', 'geocode_github_repo') is not null as ok;
 
 \echo ''
 \echo '== 3. a new title is not a new place (expect 1) =='
@@ -121,11 +147,11 @@ select (select count(*) from private.geocode_queue
 
 \echo ''
 \echo '== 9. members and strangers cannot work the queue, read the place or ask (expect 14 ERRORs) =='
-\echo '   anon then authenticated: geocodes_due, geocode_done, geocodes_claim_for_import, geocodes_enqueue_stale,'
+\echo '   anon then authenticated: geocode_release, geocode_done, geocodes_claim_for_import, geocodes_enqueue_stale,'
 \echo '   geocode_key, geocoded_location (permission denied for table), the send (schema private)'
 select set_config('request.jwt.claims', '{"role":"anon"}', true) is not null as ok;
 set local role anon;
-savepoint a1; select * from public.geocodes_due(:'secret'); rollback to savepoint a1;
+savepoint a1; select public.geocode_release('event', 'eeeeeeee-0c0c-0000-0000-000000000001'); rollback to savepoint a1;
 savepoint a2; select public.geocode_done('event', 'eeeeeeee-0c0c-0000-0000-000000000001', 'x', 1, 1, 'exact', null); rollback to savepoint a2;
 savepoint a3; select * from public.geocodes_claim_for_import(); rollback to savepoint a3;
 savepoint a7; select public.geocodes_enqueue_stale(); rollback to savepoint a7;
@@ -136,7 +162,7 @@ reset role;
 select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-0c0c-0000-0000-000000000001","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
-savepoint m1; select * from public.geocodes_due(:'secret'); rollback to savepoint m1;
+savepoint m1; select public.geocode_release('event', 'eeeeeeee-0c0c-0000-0000-000000000001'); rollback to savepoint m1;
 savepoint m2; select public.geocode_done('event', 'eeeeeeee-0c0c-0000-0000-000000000001', 'x', 1, 1, 'exact', null); rollback to savepoint m2;
 savepoint m3; select * from public.geocodes_claim_for_import(); rollback to savepoint m3;
 savepoint m7; select public.geocodes_enqueue_stale(); rollback to savepoint m7;
@@ -149,30 +175,39 @@ select set_config('request.jwt.claims', '{"role":"service_role"}', true) is not 
 set local role service_role;
 
 \echo ''
-\echo '== 10. the service role without the secret (expect ERROR: Not the database.) =='
-savepoint wrong_secret;
-select * from public.geocodes_due('guess');
-rollback to savepoint wrong_secret;
+\echo '== 10. the retired function''s door is gone (expect ERROR: function public.geocodes_due(unknown) does not exist) =='
+savepoint gone;
+select * from public.geocodes_due('anything');
+rollback to savepoint gone;
 
 \echo ''
-\echo '== 11. with it, the probe events are claimed with what to ask =='
+\echo '== 11. the service role claims the probe events, with what to ask =='
 \echo '   expect: Hand-added, renamed | 2 Main St, Probeburg, CA | CA'
 \echo '           Imported            | 9 New St, Probetown, CA  | CA'
 select t.title, d.query, d.state
-  from public.geocodes_due(:'secret') d
+  from public.geocodes_claim_for_import() d
   join public.events t on t.id = d.target_id
  where d.target_id::text like 'eeeeeeee-0c0c-%'
  order by t.title;
 
 \echo ''
 \echo '== 12. a second caller meanwhile gets nothing (expect 0) =='
-select count(*) as claimed from public.geocodes_due(:'secret');
+select count(*) as claimed from public.geocodes_claim_for_import();
 
 \echo ''
-\echo '== 12b. the claim outlives the function''s longest run, two minutes (expect t) =='
+\echo '== 12b. the claim outlives a runner''s longest batch (expect t) =='
 reset role;
 select bool_and(q.claimed_until > now() + interval '3 minutes') as outlives
   from private.geocode_queue q where q.target_id::text like 'eeeeeeee-0c0c-%';
+set local role service_role;
+
+\echo ''
+\echo '== 12c. a row a runner never reached goes back without counting as a lookup (expect null | 0) =='
+set local role service_role;
+select public.geocode_release('event', 'eeeeeeee-0c0c-0000-0000-000000000002');
+reset role;
+select q.claimed_until, (select count(*) from private.geocode_lookups) as lookups
+  from private.geocode_queue q where q.target_id = 'eeeeeeee-0c0c-0000-0000-000000000002';
 set local role service_role;
 
 \echo ''
@@ -295,7 +330,7 @@ select latitude, location_precision, geocoded_location = public.geocode_key(addr
   from public.organization_places where id = 'cccccccc-0c0c-0000-0000-000000000001';
 
 \echo ''
-\echo '== 22. the day''s caps and the spacing, for the function and the night alike =='
+\echo '== 22. the day''s caps and the spacing, for every runner =='
 \echo '   each line: the Stale event | the Reno place (60 Center St), claimed or not'
 \echo '   expect: 0 | 1 (5 for one event), 0 | 1 (3 for one address), 1 | 0 (20 for the organization),'
 \echo '   0 | 0 (500 for the club), 0 | 0 (a lookup just now), 1 | 1 (2 seconds ago),'
@@ -321,21 +356,21 @@ select pg_temp.probe_old(5, 'event', 'eeeeeeee-0c0c-0000-0000-000000000005', 'ol
 set local role service_role;
 select count(*) filter (where target_id = 'eeeeeeee-0c0c-0000-0000-000000000005') as stale,
        count(*) filter (where target_id = 'cccccccc-0c0c-0000-0000-000000000003') as reno
-  from public.geocodes_due(:'secret');
+  from public.geocodes_claim_for_import();
 reset role;
 select pg_temp.probe_reset();
 select pg_temp.probe_old(3, 'event', gen_random_uuid(), '7 Old Rd, Probetown, CA', null);
 set local role service_role;
 select count(*) filter (where target_id = 'eeeeeeee-0c0c-0000-0000-000000000005') as stale,
        count(*) filter (where target_id = 'cccccccc-0c0c-0000-0000-000000000003') as reno
-  from public.geocodes_due(:'secret');
+  from public.geocodes_claim_for_import();
 reset role;
 select pg_temp.probe_reset();
 select pg_temp.probe_old(20, 'place', gen_random_uuid(), 'elsewhere', 'bbbbbbbb-0c0c-0000-0000-000000000001');
 set local role service_role;
 select count(*) filter (where target_id = 'eeeeeeee-0c0c-0000-0000-000000000005') as stale,
        count(*) filter (where target_id = 'cccccccc-0c0c-0000-0000-000000000003') as reno
-  from public.geocodes_due(:'secret');
+  from public.geocodes_claim_for_import();
 reset role;
 select pg_temp.probe_reset();
 insert into private.geocode_lookups (kind, target_id, query, owner_id, asked_at)
@@ -343,20 +378,20 @@ select 'event', gen_random_uuid(), 'q' || i, gen_random_uuid(), now() - interval
 set local role service_role;
 select count(*) filter (where target_id = 'eeeeeeee-0c0c-0000-0000-000000000005') as stale,
        count(*) filter (where target_id = 'cccccccc-0c0c-0000-0000-000000000003') as reno
-  from public.geocodes_due(:'secret');
+  from public.geocodes_claim_for_import();
 reset role;
 select pg_temp.probe_reset();
 insert into private.geocode_lookups (kind, target_id, query) values ('event', gen_random_uuid(), 'just now');
 set local role service_role;
 select count(*) filter (where target_id = 'eeeeeeee-0c0c-0000-0000-000000000005') as stale,
        count(*) filter (where target_id = 'cccccccc-0c0c-0000-0000-000000000003') as reno
-  from public.geocodes_due(:'secret');
+  from public.geocodes_claim_for_import();
 reset role;
 update private.geocode_lookups set asked_at = clock_timestamp() - interval '2 seconds';
 set local role service_role;
 select count(*) filter (where target_id = 'eeeeeeee-0c0c-0000-0000-000000000005') as stale,
        count(*) filter (where target_id = 'cccccccc-0c0c-0000-0000-000000000003') as reno
-  from public.geocodes_due(:'secret');
+  from public.geocodes_claim_for_import();
 reset role;
 select pg_temp.probe_reset();
 select pg_temp.probe_old(20, 'place', gen_random_uuid(), 'elsewhere', 'bbbbbbbb-0c0c-0000-0000-000000000001');
@@ -406,7 +441,7 @@ select 'Weekly at the pool', now() + (i || ' weeks')::interval, '5 Pool Rd', 'Pr
   from generate_series(1, 52) i;
 set local role service_role;
 create temporary table probe_series_claim on commit drop as
-select * from public.geocodes_due(:'secret');
+select * from public.geocodes_claim_for_import();
 select count(*) as claimed from probe_series_claim;
 select public.geocode_done(c.kind, c.target_id, c.query, 38.55, -121.73, 'exact', null) as written
   from probe_series_claim c;
@@ -423,7 +458,7 @@ select (select count(*) from public.events where title = 'Weekly at the pool'
          where e.title = 'Weekly at the pool') as queued;
 update private.geocode_lookups set asked_at = clock_timestamp() - interval '2 seconds';
 set local role service_role;
-select count(*) as claimed_again from public.geocodes_due(:'secret');
+select count(*) as claimed_again from public.geocodes_claim_for_import();
 reset role;
 
 rollback;

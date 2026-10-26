@@ -1,0 +1,54 @@
+# Places an address someone just saved: an event's, or an organization's.
+#
+# The database starts it (private.geocode_send, 20261026000000) through the
+# workflow_dispatch API whenever an address changes, because Nominatim
+# refuses Supabase's servers and answers GitHub's. It works the same queue as
+# the nightly import, under the same caps and one lookup a second, for at
+# most five minutes. Hourly too, in case a start was missed.
+#
+# Needs the same two repository secrets as Event ingest: SUPABASE_URL and
+# SUPABASE_SERVICE_ROLE_KEY. Runs in Alfredx48/TheSciClub only.
+
+name: Geocode
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 * * * *'
+
+# A burst of saves becomes at most one waiting run. Its own group: sharing
+# Event ingest's would let a save cancel a waiting nightly import. Queue
+# lookups are spaced against the import's by the claim; the import's own feed
+# and city lookups are not, so the two may briefly overlap after 04:10 UTC.
+concurrency:
+  group: geocode
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  geocode:
+    if: github.repository == 'Alfredx48/TheSciClub'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Place saved addresses
+        working-directory: jobs/event-ingest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node geocode-now.js
