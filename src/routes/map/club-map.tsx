@@ -13,6 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { useAnnounce } from '@/lib/announce';
+import { canLocate, deviceLocation } from '@/lib/device-location';
 import { rsvpSaved, setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { californiaToday, useGrantsByOrganization } from '@/lib/grants';
 import {
@@ -498,31 +499,30 @@ export default function ClubMap({
 
   const locate = () => {
     setNotice(null);
-    if (!('geolocation' in navigator)) {
+    if (!canLocate()) {
       setNotice('This browser can’t share a location. You can still move the map by hand.');
       return;
     }
     setLocating(true);
     // Kept on this device, in this screen only: never sent, never stored.
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+    // A browser is asked for approximate only; the iPhone app asks its own way.
+    void deviceLocation({ enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }).then(
+      (result) => {
         setLocating(false);
-        const at: [number, number] = [position.coords.longitude, position.coords.latitude];
+        if (!result.ok) {
+          setNotice(
+            result.failure === 'denied'
+              ? 'Location is off for the club. You can turn it on in your settings, or move the map by hand.'
+              : 'Couldn’t find where you are just now. You can move the map by hand.',
+          );
+          return;
+        }
+        const at: [number, number] = [result.position.longitude, result.position.latitude];
         setHere(at);
         const now = live.current;
         now?.easeTo({ center: at, zoom: Math.max(now.getZoom(), 12) });
         setNotice('Showing where you are. It stays on this device.');
       },
-      (error) => {
-        setLocating(false);
-        setNotice(
-          error.code === error.PERMISSION_DENIED
-            ? 'Location is off for the club. You can turn it on in your settings, or move the map by hand.'
-            : 'Couldn’t find where you are just now. You can move the map by hand.',
-        );
-      },
-      // Approximate is enough to find the map; never the GPS.
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
     );
   };
 

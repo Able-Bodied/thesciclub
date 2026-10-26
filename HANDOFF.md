@@ -84,8 +84,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`lib/standalone.ts`) keeps out of the app everything browser-only:
   worker and reload, web push, install nudge and steps, the Home Screen
   hand-off, passkeys. Notifications on an iPhone come through APNs instead
-  (`lib/push/app-push.ts`; Open, Native push). Apple and Google sign in natively
-  (`lib/native-sign-in.ts`, `@capgo/capacitor-social-login` with Facebook's
+  (`lib/push/app-push.ts`; Open, Native push). Location on an iPhone goes
+  through `@capacitor/geolocation` (`lib/device-location.ts`), as WKWebView's
+  own asked twice; Android keeps the web view's, coarse only. Apple and
+  Google sign in natively (`lib/native-sign-in.ts`,
+  `@capgo/capacitor-social-login` with Facebook's
   SDK left out: `scripts/check-native-build.mjs`), iPhone only. Links made
   for others use `siteOrigin()`; the rest of the shell (splash, status bar,
   back, outside links, links that open the app, iPhone Text Size) is

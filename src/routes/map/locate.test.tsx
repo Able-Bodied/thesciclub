@@ -1,3 +1,4 @@
+import { Capacitor } from '@capacitor/core';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
@@ -14,6 +15,14 @@ vi.mock('@/lib/organizations', () => ({
   useOrganizations: () => ({ organizations: [], byId: new Map(), loading: false, error: null }),
 }));
 
+// The iPhone app's way (lib/device-location.ts).
+const plugin = vi.hoisted(() => ({
+  checkPermissions: vi.fn(),
+  requestPermissions: vi.fn(),
+  getCurrentPosition: vi.fn(),
+}));
+vi.mock('@capacitor/geolocation', () => ({ Geolocation: plugin }));
+
 const { default: ClubMap } = await import('@/routes/map/club-map');
 
 const getCurrentPosition = vi.fn();
@@ -24,6 +33,7 @@ Object.defineProperty(navigator, 'geolocation', {
 
 afterEach(() => {
   getCurrentPosition.mockReset();
+  vi.restoreAllMocks();
 });
 
 function renderMap() {
@@ -59,5 +69,35 @@ describe('Use my location', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Use my location' }));
     expect(screen.getByText(/Location is off for the club/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Use my location' })).toBeEnabled();
+  });
+});
+
+describe('Use my location in the iPhone app', () => {
+  function onIphone(answer: 'granted' | 'denied') {
+    vi.spyOn(Capacitor, 'isNativePlatform').mockReturnValue(true);
+    vi.spyOn(Capacitor, 'getPlatform').mockReturnValue('ios');
+    plugin.checkPermissions.mockResolvedValue({ location: 'prompt' });
+    plugin.requestPermissions.mockResolvedValue({ location: answer });
+    plugin.getCurrentPosition.mockResolvedValue({
+      timestamp: 0,
+      coords: { latitude: 37.33, longitude: -121.89, accuracy: 10 },
+    });
+  }
+
+  it('asks through iOS alone, so WebKit never asks a second time', async () => {
+    onIphone('granted');
+    renderMap();
+    await userEvent.click(await screen.findByRole('button', { name: 'Use my location' }));
+    expect(await screen.findByText(/Showing where you are/)).toBeInTheDocument();
+    expect(plugin.getCurrentPosition).toHaveBeenCalledTimes(1);
+    expect(getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it('says so, kindly, when location is refused', async () => {
+    onIphone('denied');
+    renderMap();
+    await userEvent.click(await screen.findByRole('button', { name: 'Use my location' }));
+    expect(await screen.findByText(/Location is off for the club/)).toBeInTheDocument();
+    expect(getCurrentPosition).not.toHaveBeenCalled();
   });
 });

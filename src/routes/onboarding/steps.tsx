@@ -4,6 +4,7 @@ import { BIRTHDAY_ORDER, DateFields } from '@/components/date-fields';
 import { GooglePhotoOffer } from '@/components/google-photo-offer';
 import { useAnnounce } from '@/lib/announce';
 import { type DateParts, readDate } from '@/lib/date-parts';
+import { canLocate, deviceLocation } from '@/lib/device-location';
 import { geocodeZip, reverseGeocode } from '@/lib/geocode';
 import { useGooglePhoto } from '@/lib/google-photo';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
@@ -445,28 +446,27 @@ export function CityStep({ data, set }: StepProps) {
 
   function useMyLocation() {
     setLocationError(null);
-    if (!('geolocation' in navigator)) {
+    if (!canLocate()) {
       setLocationError('This browser cannot share a location — choose it below.');
       return;
     }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        void reverseGeocode(position.coords.latitude, position.coords.longitude)
-          .then((place) => {
-            if (place) set({ city: place.city, state: place.state });
-            else setLocationError("Couldn't match that to a city — choose it below.");
-          })
-          .finally(() => {
-            setLocating(false);
-          });
-      },
-      () => {
+    // Sent once, to Nominatim, to find the city; the club keeps only the city.
+    void deviceLocation({ timeout: 10000 }).then((result) => {
+      if (!result.ok) {
         setLocationError('Location permission denied — choose it below.');
         setLocating(false);
-      },
-      { timeout: 10000 },
-    );
+        return;
+      }
+      void reverseGeocode(result.position.latitude, result.position.longitude)
+        .then((place) => {
+          if (place) set({ city: place.city, state: place.state });
+          else setLocationError("Couldn't match that to a city — choose it below.");
+        })
+        .finally(() => {
+          setLocating(false);
+        });
+    });
   }
 
   function onZipChange(value: string) {

@@ -34,6 +34,7 @@
     "@capacitor/app": "8.1.2",
     "@capacitor/browser": "8.0.5",
     "@capacitor/core": "8.5.3",
+    "@capacitor/geolocation": "8.2.4",
     "@capacitor/ios": "8.5.3",
     "@capacitor/keyboard": "8.0.6",
     "@capacitor/push-notifications": "8.1.3",
