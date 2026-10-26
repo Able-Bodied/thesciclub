@@ -25,10 +25,6 @@ export default function PrivacyPage() {
       <Note title="What changed on October 25, 2026">
         <List>
           <li>
-            <b>Who runs the club.</b> The SCI Club is now operated by Alfred Shaheen, no longer by
-            Able Bodied Inc. Questions go to <ContactEmail />.
-          </li>
-          <li>
             <b>Added:</b> the iPhone app, link previews, YouTube videos, your Google photo, Sign in
             with Apple, looking up where you live, photographs, notifications, public event pages
             and their guest lists, adding events by calendar invitation, blocking, reporting a
