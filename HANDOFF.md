@@ -99,6 +99,15 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **App Store: 1.0.5 (build 6) submitted 2026-10-25, waiting for review**,
+  manual release. Reviewer signs in as `review@thesciclub.com`; `peer@` and
+  `deleteme@` are in the review notes (all Zoho aliases; passwords only in
+  App Store Connect and the owner's password manager). Don't use the demo
+  accounts during review; after release run `scripts/demo-reviewers.mjs
+  --live --reset`, and keep them for every update. A rejection arrives in
+  App Store Connect → App Review. Owner-side sheet: `app-store-submission.md`
+  (untracked).
+
 - **Share a post into a chat, not live** (the owner, 2026-10-25): Share
   beside React and Reply on every post and Home card sends it to a
   conversation or a member, with an optional line. The message holds only
