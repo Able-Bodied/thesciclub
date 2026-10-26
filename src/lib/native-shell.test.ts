@@ -104,6 +104,14 @@ describe('where a link goes in the store app', () => {
     expect(linkTarget('https://www.thesciclub.com/chat', app)).toEqual({ inside: '/chat' });
   });
 
+  it('opens one of its own pages meant for a new tab from the website, in the in-app browser', () => {
+    expect(linkTarget('/terms', app, true)).toEqual({ outside: 'https://thesciclub.com/terms' });
+    expect(linkTarget('capacitor://localhost/privacy#photos', app, true)).toEqual({
+      outside: 'https://thesciclub.com/privacy#photos',
+    });
+    expect(linkTarget('mailto:hello@thesciclub.com', app, true)).toBeNull();
+  });
+
   it('opens any other site in the in-app browser', () => {
     expect(linkTarget('https://norcalsci.org/events', app)).toEqual({
       outside: 'https://norcalsci.org/events',
@@ -219,6 +227,14 @@ describe('starting the shell', () => {
     link?.dispatchEvent(click);
     expect(click.defaultPrevented).toBe(true);
     expect(native.calls).toContain('browser https://norcalsci.org/');
+  });
+
+  it('opens the Terms from a step of joining in the in-app browser, not nowhere', () => {
+    document.body.innerHTML = '<a href="/terms" target="_blank">Terms of Service</a>';
+    const click = new MouseEvent('click', { bubbles: true, cancelable: true });
+    document.querySelector('a')?.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
+    expect(native.calls).toContain('browser https://thesciclub.com/terms');
   });
 
   it('follows a thesciclub.com link inside the app', () => {

@@ -22,15 +22,20 @@ const CLUB_ORIGINS = new Set([SITE_ORIGIN, 'https://www.thesciclub.com']);
  * other site opens in the in-app browser, never in place of the club. Null
  * leaves it to the page: the app's own links, mailto: and tel:.
  */
-export function linkTarget(href: string, appOrigin: string): LinkTarget {
+export function linkTarget(href: string, appOrigin: string, newTab = false): LinkTarget {
   let url: URL;
   try {
     url = new URL(href, appOrigin);
   } catch {
     return null;
   }
+  // The app has no tabs, so a page of its own meant for a new tab (the Terms
+  // from a step of joining) opens from the website, leaving the step as it was.
+  // By scheme and host: a URL's origin is "null" for capacitor:, outside WebKit.
+  if (`${url.protocol}//${url.host}` === appOrigin) {
+    return newTab ? { outside: `${SITE_ORIGIN}${url.pathname}${url.search}${url.hash}` } : null;
+  }
   if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
-  if (url.origin === appOrigin) return null;
   if (CLUB_ORIGINS.has(url.origin)) return { inside: `${url.pathname}${url.search}${url.hash}` };
   return { outside: url.href };
 }
@@ -141,7 +146,7 @@ export function startNativeShell(navigate: (to: string | number) => void): () =>
     if (event.defaultPrevented || event.button !== 0) return;
     const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
     if (!(anchor instanceof HTMLAnchorElement)) return;
-    const target = linkTarget(anchor.href, window.location.origin);
+    const target = linkTarget(anchor.href, window.location.origin, anchor.target === '_blank');
     if (!target) return;
     event.preventDefault();
     if ('inside' in target) navigate(target.inside);
