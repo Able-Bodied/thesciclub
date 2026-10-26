@@ -179,6 +179,18 @@ describe('sharing a post into a conversation', () => {
     expect(await screen.findByText('Shared with Sam.')).toBeInTheDocument();
   });
 
+  it('keeps a chosen member while filtering, and lets go of them when the list is hidden', async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.click(screen.getByRole('button', { name: 'Someone else' }));
+    await user.click(screen.getByRole('radio', { name: /Sam/ }));
+    await user.type(screen.getByRole('textbox', { name: 'Narrow the list by name' }), 'zz');
+    expect(screen.getByRole('radio', { name: /Sam/ })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Hide the members' }));
+    expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+  });
+
   it('says why when the database refuses, and keeps the choice', async () => {
     const user = userEvent.setup();
     db.failure = "You can't message this member.";

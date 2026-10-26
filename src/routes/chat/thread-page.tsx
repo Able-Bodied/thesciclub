@@ -108,8 +108,10 @@ export default function ThreadPage() {
     account.userId,
   );
   const reads = useThreadReadReceipts(threadId);
+  // Read again with every reload: a block or a removal changes what a card may show.
   const shared = useSharedPosts(
     messages.filter((m) => m.sharedPostId && !m.pending && m.removedAt === null).map((m) => m.id),
+    messages,
   );
 
   // Live. The reload also re-marks the thread read, which is right: the reader

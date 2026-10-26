@@ -72,13 +72,15 @@ export interface SharedPostsState {
 const NOTHING: SharedPostsState = { cards: new Map(), answered: new Set() };
 
 /**
- * The cards for these messages, read again whenever the list changes, so a
- * post removed meanwhile turns into "isn't available" on the next message.
+ * The cards for these messages, read again whenever `again` changes (the
+ * conversation's reload), so a post removed or a member blocked meanwhile
+ * turns into "isn't available". The cards on screen stay until then.
  */
-export function useSharedPosts(messageIds: readonly string[]): SharedPostsState {
+export function useSharedPosts(messageIds: readonly string[], again?: unknown): SharedPostsState {
   const key = [...new Set(messageIds)].sort().join(',');
   const [state, setState] = useState<SharedPostsState>(NOTHING);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `again` is only a trigger to read again.
   useEffect(() => {
     if (!key) {
       setState(NOTHING);
@@ -105,7 +107,7 @@ export function useSharedPosts(messageIds: readonly string[]): SharedPostsState 
     return () => {
       controller.abort();
     };
-  }, [key]);
+  }, [key, again]);
 
   return state;
 }
