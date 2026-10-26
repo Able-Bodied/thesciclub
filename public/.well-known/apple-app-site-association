@@ -1,0 +1,24 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["3RZ3A2CJ9N.com.thesciclub.app"],
+        "components": [
+          { "/": "/join", "?": { "invite": "?*" }, "comment": "An emailed invite" },
+          { "/": "/join", "?": { "qr": "?*" }, "comment": "An administrator's QR code" },
+          {
+            "/": "/auth/confirm.html",
+            "?": { "token_hash": "?*" },
+            "comment": "Every emailed link; its token_hash signs in wherever it opens"
+          },
+          { "/": "/home", "comment": "Links members pass on" },
+          { "/": "/events" },
+          { "/": "/events/*" },
+          { "/": "/peers/*" },
+          { "/": "/chat/*" },
+          { "/": "/notifications" }
+        ]
+      }
+    ]
+  }
+}

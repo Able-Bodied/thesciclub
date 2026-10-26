@@ -11,7 +11,8 @@ import shell from '../../../index.html?raw';
 const privacy = STATIC_PAGES.find((p) => p.file === 'privacy.html');
 const terms = STATIC_PAGES.find((p) => p.file === 'terms.html');
 const join = STATIC_PAGES.find((p) => p.file === 'join.html');
-if (!privacy || !terms || !join) throw new Error('a static page is missing');
+const deletion = STATIC_PAGES.find((p) => p.file === 'delete-account.html');
+if (!privacy || !terms || !join || !deletion) throw new Error('a static page is missing');
 
 describe('the static Privacy Policy', () => {
   const html = withPage(shell, privacy.title, privacy.Page);
@@ -25,14 +26,13 @@ describe('the static Privacy Policy', () => {
     expect(html).toContain(
       'We do not sell or share your email address or phone number with third parties for marketing or promotional purposes.',
     );
-    expect(html).toContain('Able Bodied Inc.');
+    expect(html).toContain('operated by Alfred Shaheen');
+    expect(html).not.toContain('run by Able Bodied');
   });
 
-  it("carries the carriers' text-message wording in the HTML itself", () => {
-    expect(html).toContain(
-      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
-    );
-    expect(html).toContain('Message and data rates may apply.');
+  it('carries what changed, and no text-message sign-in, in the HTML itself', () => {
+    expect(html).toContain('What changed on');
+    expect(html).not.toContain('Message and data rates may apply.');
   });
 
   it('is not marked noindex, and still starts the app', () => {
@@ -49,6 +49,19 @@ describe('the static Terms of Service', () => {
     expect(html).not.toContain('Carriers are not liable');
     expect(html).not.toContain('Text STOP');
     expect(html).toContain('What the club emails you.');
+  });
+});
+
+// Google Play reads it from the Data safety form, without the app.
+describe('the static account-deletion page', () => {
+  const html = withPage(shell, deletion.title, deletion.Page, deletion.indexed);
+
+  it('is titled, indexed, and carries the steps and the email route in the HTML itself', () => {
+    expect(html).toContain('<title>Deleting your account · The Sci Club</title>');
+    expect(html).not.toContain('name="robots"');
+    expect(html).toContain('Open The SCI Club and sign in.');
+    expect(html).toContain('Delete my account');
+    expect(html).toContain('mailto:hello@thesciclub.com?subject=Delete%20my%20account');
   });
 });
 

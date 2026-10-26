@@ -1,6 +1,7 @@
 /**
- * After `vite build`: write dist/privacy.html, dist/terms.html and
- * dist/join.html, the pages with their words in the HTML. Why, in
+ * After `vite build`: write dist/privacy.html, dist/terms.html,
+ * dist/delete-account.html and dist/join.html, the pages with their words in
+ * the HTML. Why, in
  * src/routes/legal/static.tsx.
  *
  * Loaded through Vite so the page components resolve exactly as the app's

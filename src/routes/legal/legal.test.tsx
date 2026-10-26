@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -30,27 +30,173 @@ describe('the Privacy Policy', () => {
     expect(screen.queryByRole('heading', { name: 'Join' })).toBeNull();
   });
 
-  it('names who runs the club', () => {
+  // The owner, 2026-10-22: the club is no longer run by Able Bodied Inc.
+  it('names who runs the club, and no nonprofit', () => {
     open('/privacy');
-    expect(screen.getAllByText(/Able Bodied Inc\./).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/operated by Alfred Shaheen/).length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/run by Able Bodied|nonprofit/);
   });
 
-  // Twilio error 30908: the carriers' sentences, word for word.
-  it('carries the text-message wording carriers ask for', () => {
+  it('says up top who runs the club now and what changed', () => {
     open('/privacy');
-    const section = screen.getByRole('heading', { name: 'Text messages (SMS)' }).parentElement;
+    const note = screen.getByRole('heading', { name: /What changed on/ }).parentElement;
+    if (!note) throw new Error('no note');
+    expect(note).toHaveTextContent(
+      /now operated by Alfred Shaheen, no longer by Able Bodied Inc\./,
+    );
+    expect(note).toHaveTextContent(/Removed: signing in by text message/);
+  });
+
+  // Phone sign-in went 2026-10-10; the text-message section went 2026-10-21.
+  it('has no text-message sign-in', () => {
+    open('/privacy');
+    expect(screen.queryByRole('heading', { name: /Text messages/ })).toBeNull();
+    const page = document.body.textContent;
+    for (const gone of [/sign-in code/i, /code by text/, /Message and data rates/, /STOP/]) {
+      expect(page).not.toMatch(gone);
+    }
+  });
+
+  it('says it sells nothing, shows no ads and tracks nobody across apps', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(
+        'We do not sell your information. There is no advertising in the club, and we do not track you across other apps or websites.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says what the camera, photos and location are used for, and that OpenStreetMap gets a ZIP or position', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', {
+      name: /camera, photos and location/,
+    }).parentElement;
     if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/only when you choose to add a photograph/);
+    expect(section).toHaveTextContent(/only if you ask for it, while joining/);
     expect(section).toHaveTextContent(
-      'We do not share, sell, or provide your mobile phone number or messaging consent data to third parties or affiliates for marketing or promotional purposes.',
+      /send the ZIP code, or your device’s position, to OpenStreetMap/,
     );
+    expect(section).toHaveTextContent(/Neither the ZIP code nor the position is kept/);
+  });
+
+  it('says links are fetched by the club, and YouTube hears of a video only on play', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Links and videos' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/the club’s own server visits that page once/);
+    expect(section).toHaveTextContent(/your phone contacts nobody when you read it/);
+    expect(section).toHaveTextContent(/YouTube receives anything only when you press play/);
+  });
+
+  it('names Apple and Google as notification services', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Apple’s on an iPhone/);
+    expect(section).toHaveTextContent(/Google’s on Android/);
+  });
+
+  // APNs payloads are not end-to-end encrypted, unlike web push (HANDOFF).
+  it('says the iPhone app’s notifications go through Apple, who could read them, and badge the icon', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/through Apple Push Notification service/);
+    expect(section).toHaveTextContent(/a token for your iPhone/);
+    expect(section).toHaveTextContent(/so Apple\s+could read them on the way/);
+    expect(section).toHaveTextContent(/how many of\s+your conversations have unread messages/);
+  });
+
+  // public/embed/youtube.html: YouTube refuses to play inside the app.
+  it('says the iPhone app plays YouTube through the club’s embed page', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Links and videos' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/thesciclub\.com\/embed\//);
+  });
+
+  // lib/google-photo.ts: copied only on a tap.
+  it('says the Google photo is copied only if the member chooses it', () => {
+    open('/privacy');
+    const item = screen.getByText(/Your Google photo, only if you choose it/).closest('li');
+    expect(item).toHaveTextContent(/copied to the club only if you press Use my Google photo/);
+  });
+
+  // 20261022160000 and 20261022170000.
+  it('says why Apple’s token is kept, and that Apple tells the club about the account', () => {
+    open('/privacy');
+    const item = screen.getByText('If you sign in with Apple:').closest('li');
+    expect(item).toHaveTextContent(/kept only so we can ask Apple to\s+end/);
+    expect(item).toHaveTextContent(/deleted your\s+Apple Account/);
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!deleting) throw new Error('no section');
+    expect(deleting).toHaveTextContent(/we also ask Apple to end the club’s Sign in with Apple/);
+  });
+
+  // 20261022190000: event_guest_list, and what stays after deletion.
+  it('says who sees a public event’s list, that it is not the host’s sign-up, and that it outlives an account', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Event hosts' }).parentElement;
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!section || !deleting) throw new Error('no section');
     expect(section).toHaveTextContent(
-      'No mobile information will be shared with third parties or affiliates for marketing or promotional purposes.',
+      /administrators and anybody in the club who manages that event/,
     );
-    expect(section).toHaveTextContent(
-      'Text messaging opt-in data and consent will not be shared with any third parties.',
+    expect(section).toHaveTextContent(/It\s+does not register you with the host/);
+    expect(section).toHaveTextContent(/whether the address\s+belongs to a member/);
+    expect(deleting).toHaveTextContent(/stays until 90 days after the event/);
+  });
+
+  // 20261022220000: the sender and the event are kept; the other guests never.
+  it('says what a calendar invitation keeps', () => {
+    open('/privacy');
+    const item = screen.getByText('If you add an event by calendar invitation').closest('li');
+    expect(item).toHaveTextContent(/the address it came from/);
+    expect(item).toHaveTextContent(/Its other guests are never kept/);
+  });
+
+  // The owner, 2026-10-16 and 2026-10-20: Stats may name members.
+  it('says what administrators see, Stats included', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', {
+      name: 'What administrators can see',
+    }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/blocks: who blocked whom/);
+    expect(section).toHaveTextContent(/who has read each post and when/);
+    expect(section).toHaveTextContent(/on a phone or\s+tablet, or a computer/);
+  });
+
+  // Google Play requires a way to ask for deletion without the app.
+  it('says how to delete an account in the app and by email, and how long things are kept', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Me → Account → Delete my account/);
+    expect(section).toHaveTextContent(/email hello@thesciclub\.com to ask us to delete/);
+    const kept = screen.getByRole('heading', { name: 'How long we keep it' }).parentElement;
+    if (!kept) throw new Error('no section');
+    expect(kept).toHaveTextContent(/after 90 days/);
+    expect(kept).toHaveTextContent(/Your notifications list: 30 days/);
+  });
+
+  // The owner, 2026-10-22: a deleted member's profile report keeps only the words.
+  it('says a profile report keeps the words, and not the name or photograph, after deletion', () => {
+    open('/privacy');
+    const admins = screen.getByRole('heading', {
+      name: 'What administrators can see',
+    }).parentElement;
+    const kept = screen.getByRole('heading', { name: 'How long we keep it' }).parentElement;
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    if (!admins || !kept || !deleting) throw new Error('no section');
+    expect(admins).toHaveTextContent(/a copy of a reported profile as it was then/);
+    expect(kept).toHaveTextContent(
+      /a report of their profile keeps only what they wrote: their name, @username and photograph go/,
     );
-    expect(section).toHaveTextContent('Message and data rates may apply.');
-    expect(section).toHaveTextContent(/Text HELP for help and STOP/);
+    expect(deleting).toHaveTextContent(
+      /A report of your profile keeps what you wrote on it, but your name, @username and photograph go from it/,
+    );
   });
 
   it('says email and phone number are not sold or shared for marketing', () => {
@@ -70,23 +216,22 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/do not send newsletters or promotions/);
   });
 
-  it('says a phone number is optional, for event hosts and sign-in codes', () => {
+  it('says a phone number is optional, for event hosts, and never signs anybody in', () => {
     open('/privacy');
-    expect(screen.getByText(/A phone number, only if you add one/)).toBeInTheDocument();
-    expect(document.body.textContent).not.toContain('It is never used to sign you in.');
+    const item = screen.getByText(/A phone number, only if you add one/).closest('li');
+    expect(item).toHaveTextContent(/It is never used to sign you in\./);
   });
 
-  // Kinds of provider, which is what the law asks for, and not which companies
-  // (the owner, 2026-10-03).
-  it('says what kinds of provider receive information, without naming companies', () => {
+  // Kinds of infrastructure provider, not which companies (the owner,
+  // 2026-10-03); the ones a member meets in the app are named.
+  it('says what kinds of provider receive information, naming only those a member meets', () => {
     open('/privacy');
-    expect(
-      screen.getByText(
-        /hosting, our database and sign-in, email delivery, text-message delivery, location lookup/,
-      ),
-    ).toBeInTheDocument();
+    const section = screen.getByRole('heading', { name: 'Service providers' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/hosting, our database, file storage and sign-in/);
+    expect(section).toHaveTextContent(/location lookup \(OpenStreetMap\)/);
     const page = document.body.textContent;
-    for (const company of ['Supabase', 'Twilio', 'Netlify', 'OpenStreetMap']) {
+    for (const company of ['Supabase', 'Twilio', 'Netlify', 'Resend', 'GitHub']) {
       expect(page).not.toContain(company);
     }
   });
@@ -101,8 +246,39 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/for that event only/);
     expect(section).toHaveTextContent(/Choosing Interested shares nothing/);
     expect(section).toHaveTextContent(/not to use your details for marketing/);
-    expect(section).toHaveTextContent(/opt-in data and consent are never shared with hosts/);
     expect(screen.queryByText(/It is never shared outside the club/)).toBeNull();
+  });
+
+  // The owner, 2026-10-22: joining offers Relative/Spouse.
+  it('says the club is for family members too, on both pages', () => {
+    for (const path of ['/privacy', '/terms']) {
+      open(path);
+      expect(document.body.textContent).toMatch(
+        /adults living with spinal cord\s+injury and their family members/,
+      );
+      cleanup();
+    }
+  });
+
+  // The owner, 2026-10-22: the club lists grants and helps with none.
+  it('says the club lists grants, shares nothing with grant-makers, and helps with no application', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Grants' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/We do not help with applications/);
+    expect(section).toHaveTextContent(/we share nothing about you with grant-makers/);
+    expect(document.body.textContent).not.toMatch(/If you ask us to help/);
+  });
+
+  // 20261022100000 and supabase/tests/sign-in-log-forgotten.sql.
+  it('says deleting erases sign-in records, and invites last until used or withdrawn', () => {
+    open('/privacy');
+    const deleting = screen.getByRole('heading', { name: 'Deleting your account' }).parentElement;
+    const kept = screen.getByRole('heading', { name: 'How long we keep it' }).parentElement;
+    if (!deleting || !kept) throw new Error('no section');
+    expect(deleting).toHaveTextContent(/your\s+sign-in records with their email and IP addresses/);
+    expect(kept).toHaveTextContent(/invites do not expire/);
+    expect(kept).toHaveTextContent(/withdrawn by whoever sent it or an administrator/);
   });
 
   it('links to the Terms of Service', () => {
@@ -120,6 +296,12 @@ describe('the Terms of Service', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
   });
 
+  it('names who runs the club, and no nonprofit', () => {
+    open('/terms');
+    expect(screen.getAllByText(/operated by\s+Alfred Shaheen/).length).toBeGreaterThan(0);
+    expect(document.body.textContent).not.toMatch(/Able Bodied|nonprofit/);
+  });
+
   it('lists the four things that end a membership', () => {
     open('/terms');
     const section = screen.getByRole('heading', { name: 'Losing your membership' }).parentElement;
@@ -132,6 +314,45 @@ describe('the Terms of Service', () => {
     ]) {
       expect(within(section).getByText(rule)).toBeInTheDocument();
     }
+  });
+
+  // Apple 1.2 and Google Play's UGC policy.
+  it('defines objectionable content, with zero tolerance and a 24-hour review', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'What is not allowed' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Objectionable content is anything that/);
+    expect(section).toHaveTextContent(/threatens, harasses, bullies/);
+    expect(section).toHaveTextContent(
+      'The club has zero tolerance for objectionable content and for abusive members.',
+    );
+    expect(
+      screen.getByText('We review every report within 24 hours and act on it.'),
+    ).toBeInTheDocument();
+  });
+
+  it('says how to report and how to block, and that content and membership can go', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'Reporting and blocking' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/To report a message, a post or a reply, press the •••/);
+    expect(section).toHaveTextContent(/To report a member’s profile, press the ••• on it/);
+    expect(section).not.toHaveTextContent(/such as a member’s profile, email/);
+    expect(section).toHaveTextContent(/To block a member, press the •••/);
+    expect(section).toHaveTextContent(/Me → Settings → Blocked members/);
+    expect(screen.getByText(/We may remove anything that breaks these terms/)).toHaveTextContent(
+      /pause a membership, or end it/,
+    );
+  });
+
+  // Apple 1.4.1 and Google Play's health apps policy.
+  it('says nothing in the club is medical advice, and to call 911 in an emergency', () => {
+    open('/terms');
+    const section = screen.getByRole('heading', { name: 'Not medical advice' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/nothing here is medical advice/);
+    expect(section).toHaveTextContent(/check with your own doctor or care team/);
+    expect(section).toHaveTextContent('In an emergency, call 911.');
   });
 
   it('asks for an email address on the list, not a phone number', () => {
@@ -151,10 +372,67 @@ describe('the Terms of Service', () => {
     if (!section) throw new Error('no section');
     const s = within(section);
     expect(s.getByText('What the club emails you.').tagName).toBe('B');
-    expect(s.getByRole('link', { name: 'info@ablebodied.org' })).toHaveAttribute(
+    expect(s.getByRole('link', { name: 'hello@thesciclub.com' })).toHaveAttribute(
       'href',
-      'mailto:info@ablebodied.org',
+      'mailto:hello@thesciclub.com',
     );
     expect(s.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+  });
+});
+
+// Google Play: a public page, naming the app, that asks for deletion without it.
+describe('Deleting your account', () => {
+  it('opens with no account and names the app', () => {
+    open('/delete-account');
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Deleting your account' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Join' })).toBeNull();
+    expect(screen.getByText(/in The SCI Club, and what that erases/)).toBeInTheDocument();
+  });
+
+  it('gives the steps in the app', () => {
+    open('/delete-account');
+    const section = screen.getByRole('heading', { name: 'In the app' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/Go to Me, then the Account tab/);
+    expect(section).toHaveTextContent(/Press Delete my account/);
+  });
+
+  it('gives an email route for somebody who cannot sign in', () => {
+    open('/delete-account');
+    const section = screen.getByRole('heading', { name: 'By email' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/If you cannot sign in, or no longer have the app/);
+    expect(within(section).getByRole('link', { name: 'hello@thesciclub.com' })).toHaveAttribute(
+      'href',
+      'mailto:hello@thesciclub.com?subject=Delete%20my%20account',
+    );
+  });
+
+  it('says what is erased and what stays', () => {
+    open('/delete-account');
+    const erased = screen.getByRole('heading', { name: 'What is erased' }).parentElement;
+    const stays = screen.getByRole('heading', { name: 'What stays' }).parentElement;
+    if (!erased || !stays) throw new Error('no section');
+    expect(erased).toHaveTextContent(/email address, phone number, photograph and birthday/);
+    expect(erased).toHaveTextContent(/Your sign-in records, with the email and IP addresses/);
+    expect(stays).toHaveTextContent(/“Deleted member” instead of your name/);
+    expect(stays).toHaveTextContent(
+      /A report of your profile keeps what you wrote on it; your name, @username and photograph go from it/,
+    );
+    expect(stays).toHaveTextContent(/A registration on an event’s public page, until 90 days/);
+    expect(erased).toHaveTextContent(/we also ask Apple to end the club’s\s+Sign in with Apple/);
+  });
+
+  it('is linked from the Privacy Policy and the Terms', () => {
+    for (const path of ['/privacy', '/terms']) {
+      open(path);
+      expect(screen.getByRole('link', { name: 'Deleting your account' })).toHaveAttribute(
+        'href',
+        '/delete-account',
+      );
+      cleanup();
+    }
   });
 });
