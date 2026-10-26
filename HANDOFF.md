@@ -23,7 +23,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Alfredx48/TheSciClub (remote `mine`) at once, fetching from Able-Bodied
   only: pull before pushing, or the two diverge.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261023030000` is live (2026-10-24). Edge functions:
+  `20261026000000` is live (2026-10-26, the map). Address lookups run in
+  the Geocode workflow, started through vault `geocode_github_repo` and
+  `geocode_github_token` (a fine-grained token, Actions write on
+  Alfredx48/TheSciClub only, renew by ~2027-10-26). Edge functions:
   `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
   too; the icon badge needs a redeploy once 1.0.4 is installed),
   `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`,
