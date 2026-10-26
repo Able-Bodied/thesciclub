@@ -4,8 +4,10 @@
   The SCI Club's privacy manifest. Matches src/routes/legal/privacy.tsx: no
   tracking, no advertising; everything collected is linked to the member's
   account and used to run the club (and, for what members do, the
-  administrators' counts on Admin → Stats). Change both together, and the
-  App Privacy answers in App Store Connect with them.
+  administrators' counts on Admin → Stats; Peers ranks members by injury,
+  place and shared interests, hence Product Personalization). The device ID
+  is the push token and the IP address in sign-in records. Change both
+  together, and the App Privacy answers in App Store Connect with them.
   UserDefaults: Capacitor keeps its own settings there, the sign-in plugin
   the name Apple gave and its ID token, and the badge plugin the icon's
   number (CA92.1). Google Sign-In's packages bring their own manifests.
@@ -75,6 +77,7 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
 			</array>
 		</dict>
 		<dict>
@@ -87,6 +90,7 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
 			</array>
 		</dict>
 		<dict>
@@ -99,6 +103,7 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
 			</array>
 		</dict>
 		<dict>
@@ -135,11 +140,24 @@
 			<key>NSPrivacyCollectedDataTypePurposes</key>
 			<array>
 				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+				<string>NSPrivacyCollectedDataTypePurposeProductPersonalization</string>
 			</array>
 		</dict>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeDeviceID</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
 			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
