@@ -40,7 +40,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>So you can take a photo for your profile, a post or a message.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>So the club can find your city when you tap Use my location. Your exact position is not kept.</string>
+	<string>To show where you are on the map, and to find your city when you tap Use my location. The club never stores your exact location.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>So you can save a photo from the club to your photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
