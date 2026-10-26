@@ -81,6 +81,12 @@ describe('compose', () => {
     expect(compose(owed({ body: '', photo_count: 3 }))?.body).toBe('Sent 3 photographs.');
   });
 
+  it('says a post was shared, without quoting it, when there is nothing else', () => {
+    expect(compose(owed({ body: '', photo_count: 0 }))?.body).toBe('Shared a post.');
+    expect(compose(owed({ kind: 'group', body: '', photo_count: 0 }))?.body).toBe('Shared a post.');
+    expect(compose(owed({ body: 'Thought of you', photo_count: 0 }))?.body).toBe('Thought of you');
+  });
+
   it('prefers the words when there are both', () => {
     expect(compose(owed({ body: 'Look at this', photo_count: 2 }))?.body).toBe('Look at this');
   });

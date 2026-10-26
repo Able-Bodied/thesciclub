@@ -147,10 +147,20 @@ export function compose(owed: Owed): PushMessage | null {
   const subject = shorten(owed.subject ?? '', 60);
 
   switch (owed.kind) {
+    // A message with neither words nor photographs is a shared post
+    // (20261025010000), which is never quoted.
     case 'direct':
-      return { title: `Direct message from ${name}`, body: words(owed), ...where };
+      return {
+        title: `Direct message from ${name}`,
+        body: words(owed) || 'Shared a post.',
+        ...where,
+      };
     case 'group':
-      return { title: `Group message from ${name}`, body: words(owed), ...where };
+      return {
+        title: `Group message from ${name}`,
+        body: words(owed) || 'Shared a post.',
+        ...where,
+      };
     // A reply with neither words nor photographs cannot be posted, but an
     // older `push_owed` sends no body at all: then it says what it used to.
     case 'reply':
