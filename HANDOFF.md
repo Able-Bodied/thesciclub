@@ -250,8 +250,13 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   `BadDeviceToken` is the wrong environment; `skipped` is missing secrets.
   Known and accepted: anybody once signed in on a phone can read its token and
   take it over, as with web push; APNs payloads are readable by Apple, unlike
-  web push's (a sentence in Privacy, for the owner to word). No badge: the app
-  cannot clear one yet.
+  web push's (a sentence in Privacy, for the owner to word).
+  **Icon badge, built, not yet on a device**: a message push carries the
+  member's unread count as `aps.badge` (0 clears it), as web push does; while
+  open the app sets it itself (`@capawesome/capacitor-badge` 8.0.4, only once
+  notifications are allowed), and signing out clears it. To ship: redeploy
+  `push-notify` (step 3) and a new TestFlight build; then read it on the icon,
+  open the conversation, and check the number drops.
 - **Store app, still to build**: Android (Google needs a client
   made with the Play signing SHA-1, Apple there is a web flow, and App
   Links need `public/.well-known/assetlinks.json` with the Play signing
