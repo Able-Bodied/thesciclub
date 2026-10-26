@@ -123,6 +123,8 @@ export interface ComposerEditing {
   noun: 'message' | 'post';
   /** How many photographs it has. An edit keeps them. */
   photos: number;
+  /** It shares a post, which an edit keeps, so its words may go. */
+  shared?: boolean;
   /** The item's element id: its ••• takes focus afterwards. */
   anchor: string;
   /** Resolves to null once saved, or to the sentence to show. */
@@ -244,7 +246,7 @@ export function Composer({
   const body = draft.trim();
   const empty = body === '' && files.length === 0;
   // Blank words with no photographs: Remove is the way to take it back.
-  const blank = editing !== null && body === '' && editing.photos === 0;
+  const blank = editing !== null && body === '' && editing.photos === 0 && !editing.shared;
   const cannotSend = sending || (editing ? blank : empty);
 
   function finishEdit(current: ComposerEditing, message: string) {
@@ -362,6 +364,7 @@ export function Composer({
               : `Its ${editing.photos} photographs stay as they are.`}
           </p>
         ) : null}
+        {editing.shared ? <p>The shared post stays.</p> : null}
         <p aria-live="polite">
           {blank ? `A ${editing.noun} needs words. To delete it, use Remove.` : ''}
         </p>

@@ -85,6 +85,7 @@ describe('quoteText', () => {
     replyTo: null,
     notice: null,
     linkPreview: null,
+    sharedPostId: null,
     ...o,
   });
 
@@ -113,6 +114,11 @@ describe('quoteText', () => {
     expect(quoteText(message({ body: '', attachments: ['threads/th1/a.webp'] }))).toBe(
       'Photograph',
     );
+  });
+
+  it('says Shared post for one that shared a post and said nothing', () => {
+    expect(quoteText(message({ body: '', sharedPostId: 'p1' }))).toBe('Shared post');
+    expect(quoteText(message({ body: 'Look', sharedPostId: 'p1' }))).toBe('Look');
   });
 
   it('says Earlier message for one that is not in the list', () => {

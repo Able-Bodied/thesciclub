@@ -9,6 +9,8 @@ import type * as Attachments from '@/lib/chat/attachments';
 import type * as Reactions from '@/lib/chat/reactions';
 import type * as ReadReceipts from '@/lib/chat/read-receipts';
 import type * as Reports from '@/lib/chat/reports';
+import type * as SharedPosts from '@/lib/chat/shared-posts';
+import type { SharedPost } from '@/lib/chat/shared-posts';
 import type * as Threads from '@/lib/chat/threads';
 import type { ChatAuthor, ChatMessage, ChatThread } from '@/lib/chat/types';
 import ThreadPage from '@/routes/chat/thread-page';
@@ -43,6 +45,15 @@ const db = vi.hoisted(() => ({
   urls: new Map<string, string>(),
   deletedConversations: [] as string[],
   deleteFailure: null as string | null,
+  /** Shared posts' cards by message, and the messages the read answered for. */
+  cards: new Map<string, SharedPost>(),
+  answered: new Set<string>(),
+}));
+
+// A read under the reader's token; its own test is shared-posts.test.ts.
+vi.mock('@/lib/chat/shared-posts', async (importOriginal) => ({
+  ...(await importOriginal<typeof SharedPosts>()),
+  useSharedPosts: () => ({ cards: db.cards, answered: db.answered }),
 }));
 
 // The viewer's blocks, and the write: network calls. blockExplainer stays real.
@@ -188,6 +199,7 @@ const message = (o: Partial<ChatMessage> & { id: string }): ChatMessage => ({
   replyTo: null,
   notice: null,
   linkPreview: null,
+  sharedPostId: null,
   ...o,
 });
 
@@ -251,6 +263,8 @@ beforeEach(() => {
   db.urls = new Map();
   db.deletedConversations = [];
   db.deleteFailure = null;
+  db.cards = new Map();
+  db.answered = new Set();
 });
 
 describe('a conversation', () => {
@@ -594,6 +608,61 @@ describe('blocking from a message', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Block Jan' }));
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('They were not blocked.');
     expect(screen.getByText('From Jan.')).toBeInTheDocument();
+  });
+});
+
+describe('a shared post', () => {
+  const card: SharedPost = {
+    postId: 'p1',
+    topicId: 't1',
+    roomId: 'kit',
+    roomName: 'Kit',
+    topicTitle: 'Which cushion?',
+    opening: true,
+    authorId: 'jan',
+    body: 'Air cells.',
+    photoPath: null,
+    createdAt: '2026-10-24T10:00:00Z',
+  };
+
+  it('is a card under the words, or says it is not available, and nothing more', () => {
+    db.messages = [
+      message({ id: 'm1', body: 'Look', sharedPostId: 'p1' }),
+      message({ id: 'm2', body: '', sharedPostId: 'p2' }),
+      message({ id: 'm3', body: '', sharedPostId: 'p3' }),
+    ];
+    db.cards = new Map([['m1', card]]);
+    db.answered = new Set(['m1', 'm2']);
+    renderThread();
+    expect(screen.getByRole('link', { name: /^Shared post:\s*Kit/ })).toHaveAttribute(
+      'href',
+      '/chat/rooms/kit/topics/t1',
+    );
+    expect(screen.getByText("This post isn't available.")).toBeInTheDocument();
+    // m3 has not been read yet: not unavailable, only waiting.
+    expect(screen.getByText('Shared post…')).toBeInTheDocument();
+  });
+
+  it('can be reacted to and reported like any message', () => {
+    db.messages = [message({ id: 'm2', body: '', sharedPostId: 'p2' })];
+    db.answered = new Set(['m2']);
+    renderThread();
+    expect(screen.getByRole('button', { name: 'React to this shared post' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: "Report Jan's message" })).toBeInTheDocument();
+  });
+
+  it('keeps the post when the sender clears their words', async () => {
+    db.messages = [message({ id: 'm2', authorId: 'me', body: 'Look', sharedPostId: 'p1' })];
+    db.cards = new Map([['m2', card]]);
+    db.answered = new Set(['m2']);
+    renderThread();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your message' }));
+    expect(screen.getByText('The shared post stays.')).toBeInTheDocument();
+    await userEvent.clear(screen.getByLabelText('Edit your message'));
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(db.edited).toEqual([['m2', '']]);
+    });
   });
 });
 

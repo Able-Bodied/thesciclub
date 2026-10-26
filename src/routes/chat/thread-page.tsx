@@ -16,6 +16,7 @@ import { useReactions } from '@/lib/chat/reactions';
 import { readReceipt, useThreadReadReceipts } from '@/lib/chat/read-receipts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { reportMessage, useMyReports } from '@/lib/chat/reports';
+import { useSharedPosts } from '@/lib/chat/shared-posts';
 import { quoteText, shouldFollowScroll, threadTitle, useThreadMessages } from '@/lib/chat/threads';
 import type { ChatMessage } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
@@ -107,6 +108,9 @@ export default function ThreadPage() {
     account.userId,
   );
   const reads = useThreadReadReceipts(threadId);
+  const shared = useSharedPosts(
+    messages.filter((m) => m.sharedPostId && !m.pending && m.removedAt === null).map((m) => m.id),
+  );
 
   // Live. The reload also re-marks the thread read, which is right: the reader
   // is looking at it. Removal arrives here as an UPDATE, so a message taken
@@ -460,7 +464,10 @@ export default function ThreadPage() {
                   reactions={
                     <ReactionBar
                       target={message.id}
-                      what={message.body || 'this photograph'}
+                      what={
+                        message.body ||
+                        (message.sharedPostId ? 'this shared post' : 'this photograph')
+                      }
                       quoted={Boolean(message.body)}
                       state={reactions}
                       readerId={account.userId}
@@ -468,6 +475,10 @@ export default function ThreadPage() {
                   }
                   author={message.authorId ? (authors.get(message.authorId) ?? null) : null}
                   mine={message.authorId === account.userId}
+                  sharedPost={
+                    shared.cards.get(message.id) ??
+                    (shared.answered.has(message.id) ? null : undefined)
+                  }
                   receipt={readReceipt(message, thread.kind, reads)}
                   quote={quoteOf(message)}
                   onQuoteTap={showQuoted}
@@ -550,6 +561,7 @@ export default function ThreadPage() {
                   initial: edited.body,
                   noun: 'message',
                   photos: edited.attachments.length,
+                  shared: edited.sharedPostId !== null,
                   anchor: `message-${edited.id}`,
                   onSave: (body) => edit(edited.id, body),
                   onClose: () => {

@@ -122,10 +122,11 @@ interface MessageRow {
   reply_to: string | null;
   notice: string | null;
   link_preview: unknown;
+  shared_post_id: string | null;
 }
 
 const MESSAGE_COLUMNS =
-  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice, link_preview';
+  'id, thread_id, author_id, body, attachments, created_at, removed_at, removed_by_admin, edited_at, reply_to, notice, link_preview, shared_post_id';
 
 function toMessage(row: MessageRow): ChatMessage {
   return {
@@ -141,6 +142,7 @@ function toMessage(row: MessageRow): ChatMessage {
     replyTo: row.reply_to,
     notice: toNotice(row.notice),
     linkPreview: toLinkPreview(row.link_preview),
+    sharedPostId: row.shared_post_id ?? null,
   };
 }
 
@@ -193,7 +195,8 @@ export const QUOTE_LENGTH = 80;
  * that has been taken back reads "Removed message" — the quote stays, since
  * the reply still answers something, and a gap with a reason reads better
  * than a quote that silently disappears; a message that was a photograph
- * alone reads "Photograph"; and one not in the list at all, which a read
+ * alone reads "Photograph", and a shared post alone "Shared post"; and one
+ * not in the list at all, which a read
  * that is mid-flight can produce, reads "Earlier message" rather than
  * nothing. The cut is by characters and not words, since a message that is
  * one long word is still a message.
@@ -202,7 +205,10 @@ export function quoteText(message: ChatMessage | undefined): string {
   if (!message) return 'Earlier message';
   if (message.removedAt !== null) return 'Removed message';
   const words = message.body.trim().replace(/\s+/g, ' ');
-  if (words === '') return message.attachments.length > 0 ? 'Photograph' : 'Earlier message';
+  if (words === '') {
+    if (message.attachments.length > 0) return 'Photograph';
+    return message.sharedPostId ? 'Shared post' : 'Earlier message';
+  }
   if (words.length <= QUOTE_LENGTH) return words;
   return `${words.slice(0, QUOTE_LENGTH).trimEnd()}…`;
 }
@@ -436,6 +442,7 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           replyTo,
           notice: null,
           linkPreview: null,
+          sharedPostId: null,
           pending: true,
         },
       ]);
@@ -548,6 +555,8 @@ export async function sendMessage(
   attachments: string[] = [],
   /** The message this one answers, drawn as a quote, or null. */
   replyTo: string | null = null,
+  /** A post from a room to share, drawn as a card (shared-posts.ts). */
+  sharedPostId: string | null = null,
 ): Promise<ChatWriteResult<ChatMessage>> {
   const { data, error } = (await getSupabase()
     .from('chat_messages')
@@ -562,6 +571,7 @@ export async function sendMessage(
       body,
       attachments,
       ...(replyTo ? { reply_to: replyTo } : {}),
+      ...(sharedPostId ? { shared_post_id: sharedPostId } : {}),
     })
     .select(MESSAGE_COLUMNS)
     .single()) as Result<MessageRow>;

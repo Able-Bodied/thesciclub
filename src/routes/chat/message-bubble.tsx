@@ -2,12 +2,14 @@ import { cloneElement, type ReactElement } from 'react';
 import { Link } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import type { SharedPost } from '@/lib/chat/shared-posts';
 import { chatTimeLong, messageTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatMessage } from '@/lib/chat/types';
 import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
 import type { ReactionBarProps } from '@/routes/chat/reaction-bar';
 import { ReportControl } from '@/routes/chat/report-control';
+import { SharedPostCard } from '@/routes/chat/shared-post-card';
 
 /**
  * One message, from the mock's `msgBubble()`.
@@ -70,6 +72,9 @@ import { ReportControl } from '@/routes/chat/report-control';
  * Block, after Report, names the member (the owner, 2026-10-22).
  * Visible controls, not a long-press and not a swipe. Members here drive with
  * limited hand function, a mouth stick or a head pointer.
+ *
+ * A shared post is a card under the words (shared-post-card.tsx), read with
+ * the reader's own rights: it may say the post isn't available.
  */
 export interface Quote {
   /** The quoted message's id, for the scroll. */
@@ -84,6 +89,7 @@ export function MessageBubble({
   message,
   author,
   mine,
+  sharedPost,
   receipt = null,
   reactions,
   quote,
@@ -106,6 +112,8 @@ export function MessageBubble({
   /** Null for a removed member, and also while the name is still loading. */
   author: ChatAuthor | null;
   mine: boolean;
+  /** The card for `message.sharedPostId`: undefined while read, null if not this reader's to see. */
+  sharedPost?: SharedPost | null | undefined;
   /** A saved outgoing message read by another member, or no receipt yet. */
   receipt?: string | null;
   reactions?: ReactElement<ReactionBarProps>;
@@ -188,6 +196,7 @@ export function MessageBubble({
           <LinkedText text={message.body} />
         </span>
       ) : null}
+      {message.sharedPostId ? <SharedPostCard post={sharedPost} /> : null}
       {message.attachments.length > 0 ? (
         <AttachmentGrid paths={message.attachments} from={mine ? 'you' : name} />
       ) : null}
