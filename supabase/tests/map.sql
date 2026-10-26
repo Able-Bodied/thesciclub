@@ -77,7 +77,7 @@ insert into public.events (id, title, start_time, end_time, location, city, stat
                            location_precision, organization_id, event_format, audience, host_name)
 values
   ('eeeeeeee-25a0-0000-0000-000000000001', 'Exact', now() + interval '1 day', null,
-   '1 Main St', 'Probetown', 'CA', 38.1234567, -121.7654321, 'exact', null, 'in_person', 'club', 'Probe host'),
+   '1 Main St', 'Probetown', 'CA', 38.9123456, -121.5012345, 'exact', null, 'in_person', 'club', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-000000000002', 'Approximate', now() + interval '1 day', null,
    'Somewhere in town', 'Probetown', 'CA', 38.2222222, -121.2222222, 'approximate', null, 'in_person', 'public', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-000000000003', 'Exact, no location shown', now() + interval '1 day', null,
@@ -85,9 +85,9 @@ values
   ('eeeeeeee-25a0-0000-0000-000000000004', 'Online', now() + interval '1 day', null,
    'Zoom', 'Probetown', 'CA', null, null, null, null, 'online', 'club', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-000000000005', 'Groups only', now() + interval '1 day', null,
-   '1 Main St', 'Probetown', 'CA', 38.1234567, -121.7654321, 'exact', null, 'in_person', 'groups', 'Probe host'),
+   '1 Main St', 'Probetown', 'CA', 38.9123456, -121.5012345, 'exact', null, 'in_person', 'groups', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-000000000006', 'Over', now() - interval '2 days', now() - interval '1 day',
-   '1 Main St', 'Probetown', 'CA', 38.1234567, -121.7654321, 'exact', null, 'in_person', 'club', 'Probe host'),
+   '1 Main St', 'Probetown', 'CA', 38.9123456, -121.5012345, 'exact', null, 'in_person', 'club', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-000000000007', 'Hybrid, exact', now() + interval '1 day', null,
    '2 Main St', 'Probetown', 'CA', 38.4444444, -121.4444444, 'exact', null, 'hybrid', 'club', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-000000000008', 'No city, org in Probetown', now() + interval '1 day', null,
@@ -118,6 +118,20 @@ values
    'A gym', 'CA', 'bbbbbbbb-25a0-0000-0000-000000000005', 'in_person', 'club', 'Probe host'),
   ('eeeeeeee-25a0-0000-0000-00000000000f', 'No city, CA, org with no place', now() + interval '1 day',
    'A gym', 'CA', 'bbbbbbbb-25a0-0000-0000-000000000006', 'in_person', 'club', 'Probe host');
+
+-- "Exact", but 450 miles from Probetown's middle (a rewrite's wrong building),
+-- and "exact" in a city with no known middle (20261026010000).
+insert into public.events (id, title, start_time, location, city, state, latitude, longitude,
+                           location_precision, event_format, audience, host_name)
+values
+  ('eeeeeeee-25a0-0000-0000-000000000011', 'Exact, 450 miles off', now() + interval '1 day',
+   '9 Far St', 'Probetown', 'CA', 32.7157, -117.1611, 'exact', 'in_person', 'club', 'Probe host'),
+  ('eeeeeeee-25a0-0000-0000-000000000012', 'Exact, no city middle', now() + interval '1 day',
+   '9 Lone St', 'Probe Nowhere', 'NV', 39.5, -119.8, 'exact', 'in_person', 'club', 'Probe host');
+insert into public.organization_places (organization_id, position, label, address, city, state,
+                                        latitude, longitude, location_precision, geocoded_location)
+values ('bbbbbbbb-25a0-0000-0000-000000000002', 1, 'Far', '9 Far St', 'Probetown', 'CA',
+        32.7157, -117.1611, 'exact', '9 Far St, Probetown, CA');
 
 -- Ended yesterday in Viewer's city: off the map, but in range for Past.
 insert into public.events (id, title, start_time, end_time, location, city, state, event_format, audience, host_name)
@@ -190,13 +204,15 @@ select c.city, c.state, c.latitude, c.longitude,
 \echo ''
 \echo '== 5. events, as Viewer =='
 \echo '   expect, in order:'
-\echo '   Exact                     | 38.12346 | -121.76543 | t'
+\echo '   Exact                     | 38.91235 | -121.50123 | t'
 \echo '   Approximate               | 38.58157 | -121.4944  | f   (city middle)'
 \echo '   Exact, no location shown  | 38.58157 | -121.4944  | f   (city middle)'
 \echo '   Hybrid, exact             | 38.44444 | -121.44444 | t'
 \echo '   No city, org in Probetown | 38.58157 | -121.4944  | f   (org city in CA)'
 \echo '   Moved, pin for the old address | 38.58157 | -121.4944  | f   (see 5b)'
 \echo '   Moved, pin for the new address | 38.66667 | -121.66667 | t'
+\echo '   Exact, 450 miles off           | 38.58157 | -121.4944  | f   (city middle, 20261026010000)'
+\echo '   Exact, no city middle          | 39.5     | -119.8     | t   (its own pin)'
 \echo '   (not Online, Groups only, Over, Own city not placed, No city, TX, org in Probetown CA,'
 \echo '   Exact, no state, No city, CA, org with no state, or No city, CA, org with no place)'
 select t.name as title, m.latitude, m.longitude, m.exact
@@ -223,6 +239,7 @@ select t.name as title, m.latitude, m.longitude, m.exact
 \echo '   Probe Map Probetown | Gym    | Probeburg | CA | 38.55123 | -121.73123 | t   (its address, found)'
 \echo '   Probe Map Probetown | Pool   | Probeburg | CA | 38.54491 | -121.74052 | f   (address changed: city middle)'
 \echo '   Probe Map Twinville | (main) | Twinville | TX | 31.1     | -97.1      | f   (Twinville, TX, not CA)'
+\echo '   Probe Map Twinville | Far    | Probetown | CA | 38.58157 | -121.4944  | f   (450 miles off: city middle, 6h)'
 \echo '   (not Removed; not Nowhere, not placed; not No State, which has no place)'
 select t.name, coalesce(m.label, '(main)') as label, m.city, m.state, m.latitude, m.longitude, m.exact
   from public.map_organizations() m
@@ -241,8 +258,9 @@ select count(*) as cities from public.map_peer_cities() c
 \echo '   Exact, no location shown; Exact, no state (not placed, no state: any distance);'
 \echo '   Hybrid, exact; Moved, pin for the new address; Moved, pin for the old address;'
 \echo '   No city, CA, org with no place and No city, CA, org with no state (not placed, home state);'
-\echo '   No city, org in Probetown; Ended yesterday (finished, for Past)'
-\echo '   (not Exact, ~34 miles; nor Groups only, Online, Own city not placed, the Texas one)'
+\echo '   No city, org in Probetown; Ended yesterday (finished, for Past); Exact, 450 miles off'
+\echo '   (measured at its city middle); not Exact, no city middle (its own pin, in Nevada)'
+\echo '   (not Exact, ~23 miles; nor Groups only, Online, Own city not placed, the Texas one)'
 select t.name
   from unnest(public.events_within_miles(20)) w(id)
   join probe_names t on t.id = w.id
@@ -283,6 +301,17 @@ select 'eeeeeeee-25a0-0000-0000-000000000001'::uuid = any (w.ids) as exact,
 \echo '== 6g. an event that ended yesterday in Viewer''s city: in range, not on the map (expect t | f) =='
 select 'eeeeeeee-25a0-0000-0000-000000000010'::uuid = any (public.events_within_miles(20)) as in_range,
        exists (select 1 from public.map_events() m where m.id = 'eeeeeeee-25a0-0000-0000-000000000010') as on_map;
+
+\echo ''
+\echo '== 6h. an exact pin 450 miles from its city''s known middle is at the middle, not exact; one whose'
+\echo '   city has no known middle keeps its own pin (expect 38.58157 | -121.4944 | f, then'
+\echo '   39.5 | -119.8 | t, then t, then Far | 38.58157 | -121.4944 | f)'
+select m.latitude, m.longitude, m.exact from public.map_events() m
+ where m.id = 'eeeeeeee-25a0-0000-0000-000000000011';
+select m.latitude, m.longitude, m.exact from public.map_events() m
+ where m.id = 'eeeeeeee-25a0-0000-0000-000000000012';
+select 'eeeeeeee-25a0-0000-0000-000000000011'::uuid = any (public.events_within_miles(20)) as measured_at_middle;
+select m.label, m.latitude, m.longitude, m.exact from public.map_organizations() m where m.label = 'Far';
 
 \echo ''
 \echo '== 7. no coordinate anywhere is finer than 5 decimals (expect 0 | 0 | 0 | 0) =='

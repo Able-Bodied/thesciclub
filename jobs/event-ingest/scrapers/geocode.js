@@ -43,6 +43,7 @@ const EXACT_TYPES = new Set([
   'building',
   'residential',
   'amenity',
+  'healthcare',
   'shop',
   'tourism',
   'leisure',
@@ -221,7 +222,8 @@ export async function lookUpPlace(query) {
     try {
       const result = await searchNominatim(attempts[i]);
       answered = true;
-      if (result) return result;
+      // A rewrite's hit ("Unit A, Pomona, CA") may be any building: never exact.
+      if (result) return i === 0 ? result : { ...result, precision: 'approximate' };
     } catch (error) {
       if (error instanceof RateLimited) throw error;
       // Try the next rewrite rather than giving up on the first network hiccup.

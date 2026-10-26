@@ -461,4 +461,21 @@ set local role service_role;
 select count(*) as claimed_again from public.geocodes_claim_for_import();
 reset role;
 
+\echo ''
+\echo '== 25. an exact answer far from its own city is stored approximate; near, exact (expect approximate | exact) =='
+insert into public.city_places (city_key, state, latitude, longitude, settlement)
+values ('probe pool town', 'CA', 38.55, -121.73, true)
+on conflict (city_key, state) do update set latitude = excluded.latitude, longitude = excluded.longitude;
+insert into public.events (id, title, start_time, location, city, state, event_format, host_name) values
+  ('eeeeeeee-0c0c-0000-0000-000000000021', 'Far answer', now() + interval '1 day', '1 Far Rd', 'Probe Pool Town', 'CA', 'in_person', 'Probe host'),
+  ('eeeeeeee-0c0c-0000-0000-000000000022', 'Near answer', now() + interval '1 day', '2 Near Rd', 'Probe Pool Town', 'CA', 'in_person', 'Probe host');
+set local role service_role;
+select public.geocode_done('event', 'eeeeeeee-0c0c-0000-0000-000000000021', '1 Far Rd, Probe Pool Town, CA',
+                           32.7157, -117.1611, 'exact', null) is not null as ok;
+select public.geocode_done('event', 'eeeeeeee-0c0c-0000-0000-000000000022', '2 Near Rd, Probe Pool Town, CA',
+                           38.56, -121.74, 'exact', null) is not null as ok;
+reset role;
+select (select location_precision from public.events where id = 'eeeeeeee-0c0c-0000-0000-000000000021') as far,
+       (select location_precision from public.events where id = 'eeeeeeee-0c0c-0000-0000-000000000022') as near;
+
 rollback;

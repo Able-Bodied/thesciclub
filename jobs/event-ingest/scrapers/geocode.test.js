@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   geocodeEvents,
   geocodeKey,
+  lookUpPlace,
   lookUpSettlement,
   RateLimited,
   Unreachable,
@@ -132,5 +133,52 @@ describe('lookUpSettlement', () => {
       answer(hit(type));
       expect(await lookUpSettlement('UC Davis Medical Center, CA')).toBeNull();
     }
+  });
+});
+
+describe('lookUpPlace and how exact a hit is', () => {
+  const hit = (type, category = 'place') => [
+    {
+      type,
+      category,
+      lat: '34.05',
+      lon: '-117.75',
+      address: { city: 'Pomona', 'ISO3166-2-lvl4': 'US-CA' },
+    },
+  ];
+  /** Answers in order: the full query first, then each rewrite. */
+  const answers = (list) => {
+    let n = 0;
+    vi.stubGlobal('fetch', () => {
+      const next = list[Math.min(n, list.length - 1)];
+      n += 1;
+      return Promise.resolve(new Response(JSON.stringify(next), { status: 200 }));
+    });
+  };
+  const ask = async (query) => {
+    vi.useFakeTimers();
+    const running = lookUpPlace(query);
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+    return running;
+  };
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('is exact for a building found by the address as given', async () => {
+    answers([hit('house')]);
+    expect((await ask('764 Indigo Court, Unit A, Pomona, CA'))?.precision).toBe('exact');
+  });
+
+  it('is never exact when only a rewrite found it', async () => {
+    answers([[], hit('house')]);
+    expect((await ask('764 Indigo Court, Unit A, Pomona, CA'))?.precision).toBe('approximate');
+  });
+
+  it('counts a healthcare place as exact', async () => {
+    answers([hit('doctors', 'healthcare')]);
+    expect((await ask('636 Morris Turnpike, Short Hills, NJ'))?.precision).toBe('exact');
   });
 });
