@@ -243,7 +243,7 @@ describe('EventDetailPage', () => {
       expect(screen.getByText('nothing').compareDocumentPosition(going)).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
-      expect(screen.queryByText(/host gets your email/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/share your email/)).not.toBeInTheDocument();
     });
 
     // The owner, 2026-10-27: Register stands for Going when the host has a
@@ -323,7 +323,7 @@ describe('EventDetailPage', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Going' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
       const sheet = await screen.findByRole('dialog', { name: 'You’re going' });
-      expect(sheet).toHaveTextContent('The host gets your email');
+      expect(sheet).toHaveTextContent('We share your email with the host');
       expect(screen.getByRole('link', { name: /Google Calendar/ })).toBeInTheDocument();
     });
 

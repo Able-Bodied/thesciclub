@@ -45,12 +45,39 @@ describe('EventCard', () => {
     expect(screen.getByText('SEP')).toBeInTheDocument();
   });
 
+  // The owner, 2026-10-27: as on the event's page.
+  describe('with a sign-up of the host’s own', () => {
+    const event = makeEvent({ registrationUrl: 'https://norcalsci.org/register/swim' });
+
+    it('offers Register for Going, which marks them going and opens the sign-up', async () => {
+      const props = renderCard({ event, status: null });
+      expect(screen.queryByRole('button', { name: 'Going' })).not.toBeInTheDocument();
+      const register = screen.getByRole('link', { name: /^Register/ });
+      expect(register).toHaveAttribute('href', 'https://norcalsci.org/register/swim');
+      expect(register).toHaveAttribute('target', '_blank');
+      await userEvent.click(register);
+      expect(props.onRsvp).toHaveBeenCalledWith('going');
+    });
+
+    it('keeps Going ✓ once going, to take it back', async () => {
+      const props = renderCard({ event, status: 'going' });
+      expect(screen.queryByRole('link', { name: /^Register/ })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Going ✓' }));
+      expect(props.onRsvp).toHaveBeenCalledWith(null);
+    });
+
+    it('ignores a sign-up that is not a web address', () => {
+      renderCard({ event: makeEvent({ registrationUrl: 'javascript:alert(1)' }) });
+      expect(screen.getByRole('button', { name: 'Going' })).toBeInTheDocument();
+    });
+  });
+
   describe('the two-button row', () => {
     // The owner, 2026-10-27: what Going shares is said in the sheet that
     // opens once it is pressed (rsvp-sheet.tsx), not under every card.
     it('carries no line about what Going shares', () => {
       renderCard({ status: null });
-      expect(screen.queryByText(/host gets your email/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/share your email/)).not.toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Going' })).not.toHaveAttribute('aria-describedby');
     });
 

@@ -83,7 +83,7 @@ describe('the RSVP sheet', () => {
     const sheet = await screen.findByRole('dialog', { name: 'You’re going' });
     expect(sheet).toHaveTextContent('Friday swim');
     expect(sheet).toHaveTextContent(
-      'The host gets your email, and your phone number if you’ve added one, for this event only.',
+      'We share your email with the host, and your phone number if you’ve added one, for this event only.',
     );
     await userEvent.click(screen.getByRole('button', { name: /Change to Interested/ }));
     expect(changed).toEqual(['interested']);

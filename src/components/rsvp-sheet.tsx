@@ -34,7 +34,7 @@ import type { ClubEvent, RsvpStatus } from '@/types/domain';
  * same at length; keep the two in step.
  */
 export const GOING_SHARES_CONTACT =
-  'The host gets your email, and your phone number if you’ve added one, for this event only.';
+  'We share your email with the host, and your phone number if you’ve added one, for this event only.';
 
 /** The event as the sheet needs it: for the calendar, and the host's own sign-up. */
 export type SheetEvent = CalendarEvent & Pick<ClubEvent, 'registrationUrl'>;
@@ -139,7 +139,13 @@ export function RsvpSheet({
           </h2>
           <p className="mt-0.5 font-bold text-[0.875rem] text-ink2 leading-[1.4]">{event.title}</p>
 
-          <p className="mt-3 text-[0.84375rem] text-ink2 leading-[1.55]">
+          {/* Said plainly and first (the owner, 2026-10-27). */}
+          <p
+            className={cn(
+              'mt-3 rounded-[11px] px-3 py-2.5 text-[0.875rem] leading-[1.5]',
+              going ? 'bg-tint font-semibold text-ink' : 'text-ink2',
+            )}
+          >
             {going ? GOING_SHARES_CONTACT : 'Interested shares nothing with the host.'}
           </p>
           {going ? (

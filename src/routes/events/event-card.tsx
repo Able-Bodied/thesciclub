@@ -1,3 +1,4 @@
+import { ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
@@ -7,7 +8,7 @@ import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
-import { descriptionPreview } from '@/routes/events/rich-text';
+import { descriptionPreview, safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -141,6 +142,7 @@ export function EventCard({
   const metaLine = organization?.name ?? event.hostName;
   const whenLine = timeRange(event.startTime, event.endTime, event.timezone, event.allDay);
   const whereLine = placeLine(event);
+  const registerHref = safeHref(event.registrationUrl);
   const preview = useMemo(
     () => descriptionPreview(event.descriptionHtml, event.description),
     [event.descriptionHtml, event.description],
@@ -335,16 +337,35 @@ export function EventCard({
         >
           {interested ? 'Interested ✓' : 'Interested'}
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            onRsvp(going ? null : 'going');
-          }}
-          aria-pressed={going}
-          className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
-        >
-          {going ? 'Going ✓' : 'Going'}
-        </button>
+        {/* As on the event's page (the owner, 2026-10-27): with a sign-up of
+            the host's own, Register stands for Going, marks them going and
+            opens it. Once going, Going ✓ takes it back. */}
+        {registerHref && !going ? (
+          <a
+            href={registerHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => {
+              onRsvp('going');
+            }}
+            className={cn(RSVP_BUTTON, RSVP_OPEN, 'gap-1.5')}
+          >
+            Register
+            <span className="sr-only">, opens the host’s sign-up and marks you as going</span>
+            <ExternalLink className="h-[14px] w-[14px] flex-none" aria-hidden="true" />
+          </a>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              onRsvp(going ? null : 'going');
+            }}
+            aria-pressed={going}
+            className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
+          >
+            {going ? 'Going ✓' : 'Going'}
+          </button>
+        )}
       </div>
       {/* Beside the card's own button, never inside it. */}
       {mapHref ? <ViewOnMap title={event.title} to={mapHref} className="mt-2.5" /> : null}
