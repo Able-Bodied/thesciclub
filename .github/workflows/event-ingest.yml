@@ -70,6 +70,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+          # The runner's cached 24.x lags security releases.
+          check-latest: true
           cache: pnpm
 
       # The job needs cheerio and supabase-js; nothing here builds the app.
