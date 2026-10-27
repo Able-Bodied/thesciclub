@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
@@ -64,6 +64,7 @@ export default function EventDetailPage() {
   const account = useAccount();
   const mine = useMyOrganizations(memberId);
   const [writeError, setWriteError] = useState<string | null>(null);
+  const registerNote = useId();
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
 
@@ -143,8 +144,7 @@ export default function EventDetailPage() {
   const hasDetails =
     event.descriptionHtml.trim() !== '' ||
     event.description.trim() !== '' ||
-    registerHref !== null ||
-    moreHref !== null;
+    (moreHref !== null && moreHref !== registerHref);
   const goingList = attendees.filter((a) => a.status === 'going');
   const interestedList = attendees.filter((a) => a.status === 'interested');
   const organization = event.organizationId
@@ -230,45 +230,24 @@ export default function EventDetailPage() {
                 text={event.description}
                 className="text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
               />
-              {/* The host's own sign-up is separate from Going here (the
-                owner, 2026-10-27), so it says so, and both of the host's
-                links show when there are two. */}
-              {registerHref ? (
-                <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-                  {`Going here doesn't sign you up with ${host ?? 'the host'}. Register on their site too.`}
-                </p>
-              ) : null}
-              {registerHref || moreHref ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {registerHref ? (
-                    <a
-                      href={registerHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[13px] bg-action px-4 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
-                    >
-                      Register on their site
-                      <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
-                    </a>
-                  ) : null}
-                  {moreHref && moreHref !== registerHref ? (
-                    <a
-                      href={moreHref}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis px-4 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint"
-                    >
-                      Details on their site
-                      <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
-                    </a>
-                  ) : null}
-                </div>
+              {/* The host's own page, as the details' last line (the owner,
+                2026-10-27): text, not one more button. */}
+              {moreHref && moreHref !== registerHref ? (
+                <a
+                  href={moreHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex min-h-11 items-center gap-1.5 font-extrabold font-head text-[0.9375rem] text-emphasis underline underline-offset-[3px]"
+                >
+                  More details at {siteName(moreHref)}
+                  <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
+                </a>
               ) : null}
             </>
           ) : null}
 
           {/* Below the details, so they are read first (the owner,
-            2026-10-27), and only as wide as their words. What Going shares
+            2026-10-27), two halves of the width, Join online under them. What Going shares
             is said in the sheet that opens once it is pressed (rsvp-sheet.tsx).
 
             No RSVP on an event that is over. The list stopped offering it when
@@ -284,22 +263,41 @@ export default function EventDetailPage() {
                   : 'This has already happened.'}
             </p>
           ) : (
-            <div className="mt-5 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onRsvp(going ? null : 'going');
-                }}
-                aria-pressed={going}
-                className={cn(
-                  'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
-                  going
-                    ? 'bg-tint text-emphasis hover:bg-line'
-                    : 'bg-action text-white hover:bg-action-hi',
-                )}
-              >
-                {going ? 'Going ✓' : 'Going'}
-              </button>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {/* With a sign-up of the host's own, Register stands for Going
+                (the owner, 2026-10-27): it marks them going here and opens
+                the host's page, in one press. Taking it back is Going ✓. */}
+              {registerHref && !going ? (
+                <a
+                  href={registerHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => {
+                    onRsvp('going');
+                  }}
+                  aria-describedby={registerNote}
+                  className="flex min-h-11 items-center justify-center gap-1.5 rounded-[13px] bg-action px-5 font-bold font-head text-[0.875rem] text-white transition-colors hover:bg-action-hi"
+                >
+                  Register
+                  <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRsvp(going ? null : 'going');
+                  }}
+                  aria-pressed={going}
+                  className={cn(
+                    'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
+                    going
+                      ? 'bg-tint text-emphasis hover:bg-line'
+                      : 'bg-action text-white hover:bg-action-hi',
+                  )}
+                >
+                  {going ? 'Going ✓' : 'Going'}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -320,8 +318,30 @@ export default function EventDetailPage() {
                   href={meeting.href}
                   service={meeting.service}
                   tone="page"
-                  className="px-4 text-[0.875rem]"
+                  className="col-span-2 text-[0.875rem]"
                 />
+              ) : null}
+              {registerHref ? (
+                <p
+                  id={registerNote}
+                  className="col-span-2 text-[0.78125rem] text-ink2 leading-[1.45]"
+                >
+                  {going ? (
+                    <>
+                      {'Not signed up with them yet? '}
+                      <a
+                        href={registerHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-emphasis underline underline-offset-2"
+                      >
+                        {`Register with ${host ?? 'the host'}`}
+                      </a>
+                    </>
+                  ) : (
+                    `Register opens ${host ?? 'the host'}'s own sign-up and marks you as going here.`
+                  )}
+                </p>
               ) : null}
             </div>
           )}
@@ -423,6 +443,15 @@ export default function EventDetailPage() {
       {rsvpSheet}
     </>
   );
+}
+
+/** "norcalsci.org" from its address, for "More details at". */
+export function siteName(href: string): string {
+  try {
+    return new URL(href).hostname.replace(/^www\./, '');
+  } catch {
+    return 'their site';
+  }
 }
 
 /**

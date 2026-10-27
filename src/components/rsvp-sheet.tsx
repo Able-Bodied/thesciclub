@@ -159,7 +159,7 @@ export function RsvpSheet({
             <div className="mt-3 rounded-[14px] border border-gold/60 bg-gold-lt p-3">
               <p className="text-[0.84375rem] text-ink leading-[1.5]">
                 <b className="font-extrabold font-head">The host has its own sign-up.</b> This
-                doesn't register you with them. If you're going, register on their site too.
+                doesn't register you with them, so finish on their site if you haven't.
               </p>
               <a
                 href={register}

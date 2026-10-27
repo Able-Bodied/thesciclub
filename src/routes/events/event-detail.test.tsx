@@ -246,7 +246,9 @@ describe('EventDetailPage', () => {
       expect(screen.queryByText(/host gets your email/)).not.toBeInTheDocument();
     });
 
-    it('shows the host’s sign-up and page both, and says to register there too', () => {
+    // The owner, 2026-10-27: Register stands for Going when the host has a
+    // sign-up of its own, and the host's page is the details' last line.
+    it('offers Register instead of Going, which marks them going and opens the sign-up', async () => {
       state.events = [
         makeEvent({
           id: 'rugby',
@@ -256,16 +258,33 @@ describe('EventDetailPage', () => {
         }),
       ];
       renderDetail();
-      expect(
-        screen.getByText(/doesn't sign you up with .*Register on their site too\./),
-      ).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: 'Register on their site' })).toHaveAttribute(
-        'href',
-        'https://norcalsci.org/register/rugby',
-      );
-      expect(screen.getByRole('link', { name: 'Details on their site' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /More details at norcalsci\.org/ })).toHaveAttribute(
         'href',
         'https://norcalsci.org/events/rugby',
+      );
+      expect(screen.queryByRole('button', { name: 'Going' })).not.toBeInTheDocument();
+      const register = screen.getByRole('link', { name: 'Register' });
+      expect(register).toHaveAttribute('href', 'https://norcalsci.org/register/rugby');
+      expect(register).toHaveAttribute('target', '_blank');
+      expect(register).toHaveAccessibleDescription(/own sign-up and marks you as going here/);
+      await userEvent.click(register);
+      expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
+    });
+
+    it('once going, keeps Going ✓ to take it back, and the sign-up as a link', () => {
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(21),
+          registrationUrl: 'https://norcalsci.org/register/rugby',
+        }),
+      ];
+      state.rsvps = new Map([['rugby', 'going']]);
+      renderDetail();
+      expect(screen.getByRole('button', { name: 'Going ✓' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /^Register with / })).toHaveAttribute(
+        'href',
+        'https://norcalsci.org/register/rugby',
       );
     });
 
@@ -468,7 +487,13 @@ describe('EventDetailPage', () => {
 
   describe('links out', () => {
     it('says Register when there is a registration link', () => {
-      state.events = [makeEvent({ id: 'rugby', registrationUrl: 'https://example.org/signup' })];
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(3),
+          registrationUrl: 'https://example.org/signup',
+        }),
+      ];
       renderDetail();
       expect(screen.getByRole('link', { name: /Register/ })).toHaveAttribute(
         'href',
@@ -479,7 +504,9 @@ describe('EventDetailPage', () => {
     it('falls back to the event page when there is no registration link', () => {
       state.events = [makeEvent({ id: 'rugby', url: 'https://example.org/event' })];
       renderDetail();
-      expect(screen.getByRole('link', { name: /their site/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: /More details at example\.org/ }),
+      ).toBeInTheDocument();
     });
 
     it('drops a registration link that is not a web address, and uses the event page', () => {
@@ -492,7 +519,7 @@ describe('EventDetailPage', () => {
       ];
       renderDetail();
       expect(screen.queryByRole('link', { name: /Register/ })).not.toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /their site/ })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /More details at example\.org/ })).toHaveAttribute(
         'href',
         'https://example.org/event',
       );
@@ -503,11 +530,17 @@ describe('EventDetailPage', () => {
         makeEvent({ id: 'rugby', registrationUrl: 'data:text/html,hi', url: 'javascript:void 0' }),
       ];
       renderDetail();
-      expect(screen.queryByRole('link', { name: /Register|their site/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Register|More details/ })).not.toBeInTheDocument();
     });
 
     it('opens an outbound link safely', () => {
-      state.events = [makeEvent({ id: 'rugby', registrationUrl: 'https://example.org/signup' })];
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(3),
+          registrationUrl: 'https://example.org/signup',
+        }),
+      ];
       renderDetail();
       expect(screen.getByRole('link', { name: /Register/ })).toHaveAttribute(
         'rel',
@@ -531,22 +564,22 @@ describe('an event\u2019s link', () => {
     const join = screen.getByRole('link', { name: 'Join online, opens Google Meet' });
     expect(join).toHaveAttribute('href', 'https://meet.google.com/abc-defg-hij');
     expect(join).toHaveAttribute('target', '_blank');
-    expect(screen.queryByText('Details on their site')).toBeNull();
+    expect(screen.queryByText(/More details at/)).toBeNull();
   });
 
-  it('keeps "Details on their site" for any other address', () => {
+  it('says "More details at" the site for any other address', () => {
     state.events = [
       makeEvent({ id: 'page', url: 'https://norcalsci.org/happy-hour', startTime: aheadByDays(3) }),
     ];
     renderDetail('page');
-    expect(screen.getByRole('link', { name: /Details on their site/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /More details at norcalsci\.org/ })).toHaveAttribute(
       'href',
       'https://norcalsci.org/happy-hour',
     );
     expect(screen.queryByText('Join online')).toBeNull();
   });
 
-  it('offers Join online from the description, and Details on their site, for an ordinary link', () => {
+  it('offers Join online from the description, and More details at the site, for an ordinary link', () => {
     state.events = [
       makeEvent({
         id: 'norcal',
@@ -562,7 +595,7 @@ describe('an event\u2019s link', () => {
       'href',
       'https://us02web.zoom.us/j/86004299187',
     );
-    expect(screen.getByRole('link', { name: /Details on their site/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /More details at norcalsci\.org/ })).toHaveAttribute(
       'href',
       'https://norcalsci.org/happy-hour',
     );
