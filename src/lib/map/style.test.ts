@@ -9,28 +9,27 @@ import {
   glyphRequest,
   keepCallerLayers,
 } from './style';
-import { CA_MINZOOM, CALIFORNIA, TILES_BUILD } from './tiles';
+import { TILES_BUILD } from './tiles';
 
 describe('the basemap style', () => {
   const light = basemapStyle(false);
   const dark = basemapStyle(true);
 
-  it('reads both archives from the tiles folder, by build', () => {
-    expect(light.sources.us).toEqual({
-      type: 'vector',
-      url: `pmtiles://${window.location.origin}/tiles/us-${TILES_BUILD}.pmtiles`,
+  it('reads the one archive from the tiles folder, by build', () => {
+    expect(light.sources).toEqual({
+      usa: {
+        type: 'vector',
+        url: `pmtiles://${window.location.origin}/tiles/usa-${TILES_BUILD}.pmtiles`,
+      },
     });
-    // Asked for only inside California, and only where it has more than us.
-    expect(light.sources.ca).toMatchObject({ minzoom: CA_MINZOOM, bounds: CALIFORNIA });
   });
 
-  it('draws California over the country, with one background', () => {
+  it('draws each layer once, over one background', () => {
     const ids = light.layers.map((layer) => layer.id);
-    expect(ids[0]).toBe('us-background');
+    expect(ids[0]).toBe('usa-background');
     expect(ids.filter((id) => id.endsWith('background'))).toHaveLength(1);
-    expect(ids.findLastIndex((id) => id.startsWith('us-'))).toBeLessThan(
-      ids.findIndex((id) => id.startsWith('ca-')),
-    );
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.every((id) => id.startsWith('usa-'))).toBe(true);
     expect(ids.some((id) => /pois|buildings|address/.test(id))).toBe(false);
   });
 
@@ -90,7 +89,7 @@ describe('a theme change', () => {
     expect(next.sources.pins).toEqual(previous.sources.pins);
     expect(next.layers.at(-1)?.id).toBe('pins');
     expect(next.sprite).toBe(basemapStyle(true).sprite);
-    expect(next.layers.filter((layer) => layer.id === 'us-earth')).toHaveLength(1);
+    expect(next.layers.filter((layer) => layer.id === 'usa-earth')).toHaveLength(1);
   });
 });
 
@@ -127,7 +126,7 @@ describe('the dark basemap', () => {
   });
 
   it('is the flavor the dark style is drawn in', () => {
-    const roads = dark.layers.find((layer) => layer.id === 'us-roads_highway');
+    const roads = dark.layers.find((layer) => layer.id === 'usa-roads_highway');
     expect(JSON.stringify(roads?.paint)).toContain(DARK_FLAVOR.highway);
   });
 });

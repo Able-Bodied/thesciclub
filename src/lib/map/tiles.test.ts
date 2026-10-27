@@ -15,14 +15,14 @@ describe('where the tiles are', () => {
     vi.stubEnv('DEV', false);
     for (const mode of ['production', 'native']) {
       vi.stubEnv('MODE', mode);
-      expect(archiveUrl('ca')).toBe(`${TILES_ORIGIN}/ca-${TILES_BUILD}.pmtiles`);
+      expect(archiveUrl()).toBe(`${TILES_ORIGIN}/usa-${TILES_BUILD}.pmtiles`);
     }
   });
 
   it('is wherever VITE_MAP_TILES_BASE says, with or without a slash', () => {
     vi.stubEnv('DEV', false);
     vi.stubEnv('VITE_MAP_TILES_BASE', 'https://tiles.example/v');
-    expect(archiveUrl('us')).toBe(`https://tiles.example/v/us-${TILES_BUILD}.pmtiles`);
+    expect(archiveUrl()).toBe(`https://tiles.example/v/usa-${TILES_BUILD}.pmtiles`);
     vi.stubEnv('VITE_MAP_TILES_BASE', '');
     expect(tilesBase()).toBe(`${TILES_ORIGIN}/`);
   });

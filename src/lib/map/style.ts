@@ -6,12 +6,12 @@ import type {
   TransformStyleFunction,
 } from 'maplibre-gl';
 import { MAP_FONT } from './index';
-import { archiveUrl, CA_MINZOOM, CALIFORNIA } from './tiles';
+import { archiveUrl } from './tiles';
 
 /**
- * The basemap: Protomaps' light or dark style over two archives. `us` covers
- * the country to z7; `ca` adds street detail inside California, drawn over it.
- * Glyphs and sprites are the club's own copies (public/map/v1/).
+ * The basemap: Protomaps' light or dark style over one archive with street
+ * detail across the country. Glyphs and sprites are the club's own copies
+ * (public/map/v1/).
  */
 
 export const FONT = MAP_FONT;
@@ -59,11 +59,11 @@ export const DARK_FLAVOR: Flavor = {
   ocean_label: '#8f97a8',
 };
 
-function sourceLayers(source: 'us' | 'ca', dark: boolean): LayerSpecification[] {
-  return layers(source, dark ? DARK_FLAVOR : namedFlavor('light'), { lang: 'en' })
-    .filter((layer) => !LEFT_OUT.has(layer.id) && (source === 'us' || layer.type !== 'background'))
+function basemapLayers(dark: boolean): LayerSpecification[] {
+  return layers('usa', dark ? DARK_FLAVOR : namedFlavor('light'), { lang: 'en' })
+    .filter((layer) => !LEFT_OUT.has(layer.id))
     .map((layer) => {
-      const named = { ...layer, id: `${source}-${layer.id}` };
+      const named = { ...layer, id: `usa-${layer.id}` };
       // One face for every label, so one set of glyph files.
       if (named.type === 'symbol' && named.layout?.['text-font'] !== undefined) {
         return { ...named, layout: { ...named.layout, 'text-font': [FONT] } };
@@ -77,17 +77,8 @@ export function basemapStyle(dark: boolean): StyleSpecification {
     version: 8,
     glyphs: `${assets()}fonts/{fontstack}/{range}.pbf`,
     sprite: `${assets()}sprites/${dark ? 'dark' : 'light'}`,
-    sources: {
-      us: { type: 'vector', url: `pmtiles://${archiveUrl('us')}` },
-      // Bounds keep it from asking for tiles outside the state.
-      ca: {
-        type: 'vector',
-        url: `pmtiles://${archiveUrl('ca')}`,
-        minzoom: CA_MINZOOM,
-        bounds: CALIFORNIA,
-      },
-    },
-    layers: [...sourceLayers('us', dark), ...sourceLayers('ca', dark)],
+    sources: { usa: { type: 'vector', url: `pmtiles://${archiveUrl()}` } },
+    layers: basemapLayers(dark),
   };
 }
 

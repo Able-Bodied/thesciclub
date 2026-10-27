@@ -11,11 +11,8 @@ export const TILES_BUILD = '20261025';
  */
 export const TILES_ORIGIN = 'https://sciclub-tiles.thesciclub.workers.dev';
 
-/** California's box, [west, south, east, north]; scripts/map-tiles.mjs cuts the same. */
+/** California's box, [west, south, east, north]: where the map opens with no home city. */
 export const CALIFORNIA: [number, number, number, number] = [-124.5, 32.5, -114.1, 42.05];
-
-/** `ca` is drawn from here up; below it, `us` has the same tiles. */
-export const CA_MINZOOM = 8;
 
 /** Absolute, ending in a slash: the Worker in builds, public/tiles/ under `pnpm dev`. */
 export function tilesBase(): string {
@@ -29,6 +26,7 @@ export function tilesBase(): string {
   return new URL(base.endsWith('/') ? base : `${base}/`, window.location.href).href;
 }
 
-export function archiveUrl(name: 'us' | 'ca'): string {
-  return `${tilesBase()}${name}-${TILES_BUILD}.pmtiles`;
+/** The one archive: the states and Puerto Rico, streets everywhere (z14). */
+export function archiveUrl(): string {
+  return `${tilesBase()}usa-${TILES_BUILD}.pmtiles`;
 }

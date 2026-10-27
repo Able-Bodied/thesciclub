@@ -34,8 +34,11 @@ export interface Env {
   DEV_ORIGIN?: string;
 }
 
-/** Built archives only: us-20261025.pmtiles, ca-20261025.pmtiles. */
-const KEY = /^\/((?:us|ca)-\d{8}\.pmtiles)$/;
+/**
+ * Built archives only: usa-20261025.pmtiles. us- and ca- were the two-file
+ * builds before it, served until they leave the bucket.
+ */
+const KEY = /^\/((?:usa|us|ca)-\d{8}\.pmtiles)$/;
 const ORIGINS = new Set(['https://thesciclub.com', 'capacitor://localhost', 'https://localhost']);
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 /**

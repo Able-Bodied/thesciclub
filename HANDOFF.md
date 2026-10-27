@@ -442,7 +442,9 @@ All live. Migration headers and the files named say how and why.
   when the geocoded address matches the current one; a save starts the
   Geocode workflow (`.github/workflows/geocode.yml`, `20261026000000`;
   Nominatim refuses Supabase's servers), which places it in a couple of
-  minutes under daily caps (`private.geocode_claim`). Tiles: Cloudflare R2 behind the
+  minutes under daily caps (`private.geocode_claim`). Tiles: one archive,
+  `usa-<build>` (streets across the US, 9.6 GB; the two-file us/ca builds
+  before it come off R2 once no app asks), on Cloudflare R2 behind the
   `tiles-worker/` Worker at sciclub-tiles.thesciclub.workers.dev (owner's
   account; `pnpm tiles-worker:deploy`, `pnpm map-tiles --upload`; a new
   build's files go up before the deploy that names them). Organization

@@ -20,7 +20,11 @@ const byteAt = (i: number) => i % 251;
  * of the real ca one, whose bytes are made only when read.
  */
 function fakeBucket(): TilesBucket & { gets: number; read: number } {
-  const sizes: Record<string, number> = { 'ca-20261025.pmtiles': 100, 'us-20261025.pmtiles': BIG };
+  const sizes: Record<string, number> = {
+    'ca-20261025.pmtiles': 100,
+    'us-20261025.pmtiles': BIG,
+    'usa-20261025.pmtiles': 100,
+  };
   return {
     gets: 0,
     read: 0,
@@ -74,6 +78,13 @@ describe('the tiles Worker', () => {
     expect([...new Uint8Array(await response.arrayBuffer())]).toEqual(
       Array.from({ length: 10 }, (_, i) => i + 10),
     );
+  });
+
+  it('serves the whole-US archive as well as the two before it', async () => {
+    for (const path of ['/usa-20261025.pmtiles', '/us-20261025.pmtiles', '/ca-20261025.pmtiles']) {
+      const { response } = await ask(path, { headers: { ...fromClub, Range: 'bytes=0-1' } });
+      expect(response.status, path).toBe(206);
+    }
   });
 
   it('serves a suffix and an open range', async () => {

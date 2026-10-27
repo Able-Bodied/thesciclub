@@ -1,13 +1,13 @@
 /**
  * The map's tiles, cut from a Protomaps planet build, and its glyphs and sprites.
  *
- *   pnpm map-tiles            us (the states, z7) and ca (California, z14) into
- *                             map-tiles-out/, for R2
- *   pnpm map-tiles --dev      us, and a Bay Area ca to z13, into public/tiles/ for `pnpm dev`
+ *   pnpm map-tiles            usa (the states and Puerto Rico, streets: z14, 9.6 GB)
+ *                             into map-tiles-out/, for R2
+ *   pnpm map-tiles --dev      usa to z9 only (about 180 MB), into public/tiles/ for `pnpm dev`
  *   pnpm map-tiles --latest   the newest build instead of TILES_BUILD in
  *                             src/lib/map/tiles.ts, which it then updates
  *   pnpm map-tiles --assets   only re-download public/map/v1 (glyphs, sprites)
- *   pnpm map-tiles --upload   only upload map-tiles-out/'s us and ca for TILES_BUILD to
+ *   pnpm map-tiles --upload   only upload map-tiles-out/'s usa for TILES_BUILD to
  *                             R2 (scripts/r2-upload.mjs), skipping any already there.
  *                             Needs R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY;
  *                             R2_BUCKET if not sciclub-tiles
@@ -59,9 +59,6 @@ const BUILD_URL = (build) => `https://build.protomaps.com/${build}.pmtiles`;
 const BUILD_FILE = 'src/lib/map/tiles.ts';
 const BUILD_LINE = /TILES_BUILD = '(\d{8})'/;
 
-// [west, south, east, north]; CALIFORNIA matches style.ts.
-const CALIFORNIA = [-124.5, 32.5, -114.1, 42.05];
-const BAY_AREA = [-122.6, 37.1, -121.6, 38.0];
 // The states and Puerto Rico, not the whole of Canada and Mexico between them.
 const UNITED_STATES = [
   [-125.0, 24.4, -66.9, 49.4],
@@ -198,26 +195,24 @@ async function assets() {
 }
 
 async function uploadAll() {
-  if (dev) throw new Error('--dev tiles cover only the Bay Area: never upload them.');
+  if (dev) throw new Error('--dev tiles stop at z9: never upload them.');
   const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
   if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
     throw new Error('Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY.');
   }
   const build = BUILD_LINE.exec(await readFile(BUILD_FILE, 'utf8'))?.[1];
-  for (const name of ['us', 'ca']) {
-    const key = `${name}-${build}.pmtiles`;
-    console.log(`${key}: uploading`);
-    const result = await uploadFile({
-      endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-      bucket: process.env.R2_BUCKET || 'sciclub-tiles',
-      key,
-      file: path.join(out, key),
-      accessKeyId: R2_ACCESS_KEY_ID,
-      secretAccessKey: R2_SECRET_ACCESS_KEY,
-      log: console.log,
-    });
-    console.log(`${key}: ${result}`);
-  }
+  const key = `usa-${build}.pmtiles`;
+  console.log(`${key}: uploading`);
+  const result = await uploadFile({
+    endpoint: `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    bucket: process.env.R2_BUCKET || 'sciclub-tiles',
+    key,
+    file: path.join(out, key),
+    accessKeyId: R2_ACCESS_KEY_ID,
+    secretAccessKey: R2_SECRET_ACCESS_KEY,
+    log: console.log,
+  });
+  console.log(`${key}: ${result}`);
   console.log(
     `\nThe tiles must be on R2 before the deploy that sets TILES_BUILD = '${build}':\n` +
       'a member whose app asks for a file not there yet sees no map.',
@@ -232,7 +227,6 @@ if (assetsOnly) {
   const build = await chooseBuild();
   const binary = await pmtilesBinary();
   await mkdir(out, { recursive: true });
-  await extract(binary, build, 'us', UNITED_STATES, 0, 7);
-  // From z8: below that, us already has the same tiles (CA_MINZOOM in style.ts).
-  await extract(binary, build, 'ca', dev ? BAY_AREA : CALIFORNIA, 8, dev ? 13 : 14);
+  // Past its last zoom the map enlarges z14's tiles, which carry every street.
+  await extract(binary, build, 'usa', UNITED_STATES, 0, dev ? 9 : 14);
 }

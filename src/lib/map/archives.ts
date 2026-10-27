@@ -11,27 +11,25 @@ import { archiveUrl } from './tiles';
 /**
  * MapLibre's worker from our own origin (worker-src 'self', no blob:), and
  * pmtiles:// read by range requests, from the device's copy when it has one.
- * Both archives are registered up front so every read goes through it.
+ * The archive is registered up front so every read goes through it.
  */
 const store = openByteStore();
-const archives = (['us', 'ca'] as const).map(
-  (name) => new PMTiles(new CachedSource(archiveUrl(name), store), new RetryingCache()),
-);
+const archive = new PMTiles(new CachedSource(archiveUrl(), store), new RetryingCache());
 const protocol = new Protocol();
-for (const archive of archives) protocol.add(archive);
+protocol.add(archive);
 setWorkerUrl(workerUrl);
 addProtocol('pmtiles', shareTiles(protocol.tilev4));
 
 // Earlier builds' bytes, well after the map has had its turn.
 setTimeout(() => {
-  void store.keepOnly(archives.map((archive) => archive.source.getKey()));
+  void store.keepOnly([archive.source.getKey()]);
 }, 15_000);
 
 let warming: Promise<void> | undefined;
 
 /**
  * Fetches the worker script, the first glyphs (pin counts wait on them) and
- * both archives' header and root directory, which the protocol then reuses;
+ * the archive's header and root directory, which the protocol then reuses;
  * from the device after the first time. Never tiles. Silent on failure: the
  * map asks again when it opens.
  */
@@ -39,7 +37,7 @@ export function warmMap(): Promise<void> {
   warming ??= Promise.allSettled([
     fetch(workerUrl, { priority: 'low' }),
     fetch(firstGlyphsUrl(), { priority: 'low' }),
-    ...archives.map((archive) => archive.getHeader()),
+    archive.getHeader(),
   ]).then(() => undefined);
   return warming;
 }
