@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { EventCover } from '@/routes/events/event-cover';
@@ -7,6 +7,7 @@ import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
+import { descriptionPreview } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
 
@@ -90,15 +91,10 @@ export interface EventCardProps {
   past?: boolean;
 }
 
-/**
- * Said beside every Going button, before it is pressed (the owner, 2026-10-08,
- * and 2026-10-10 once the email address became the account): an event's host
- * receives the email address of the members going, and the phone number of
- * those who gave one, for that event only. The Privacy Policy's "Event hosts"
- * says the same at length; keep the two in step.
- */
-export const GOING_SHARES_CONTACT =
-  'Going shares your email, and your phone number if you’ve added one, with the host, for this event only.';
+const RSVP_BUTTON =
+  'flex min-h-11 items-center justify-center rounded-full px-4 font-bold font-head text-[0.8125rem] transition-colors';
+const RSVP_OPEN = 'border-[1.4px] border-line text-emphasis hover:border-emphasis hover:bg-tint';
+const RSVP_CHOSEN = 'border-[1.4px] border-emphasis bg-tint text-emphasis hover:bg-line';
 
 export function EventCard({
   event,
@@ -114,8 +110,6 @@ export function EventCard({
   occurrence = false,
   mapHref,
 }: EventCardProps) {
-  const goingNote = useId();
-
   // Inside the card's button, so it cannot be a link of its own. A pointer
   // that lands on the logo goes to the host (2026-10-20); a keyboard has the
   // host's link on the event's page.
@@ -147,6 +141,10 @@ export function EventCard({
   const metaLine = organization?.name ?? event.hostName;
   const whenLine = timeRange(event.startTime, event.endTime, event.timezone, event.allDay);
   const whereLine = placeLine(event);
+  const preview = useMemo(
+    () => descriptionPreview(event.descriptionHtml, event.description),
+    [event.descriptionHtml, event.description],
+  );
 
   const goingOnly = attendees.filter((a) => a.status === 'going');
 
@@ -305,6 +303,12 @@ export function EventCard({
           ) : null}
           <OutOfStateMark state={event.state} className="mt-1" />
 
+          {preview ? (
+            <span className="mt-1.5 line-clamp-3 block text-[0.8125rem] text-ink2 leading-[1.45]">
+              {preview}
+            </span>
+          ) : null}
+
           {rsvpLine ? (
             <span className="mt-2 block font-bold text-[0.8125rem] text-emphasis">{rsvpLine}</span>
           ) : null}
@@ -314,12 +318,11 @@ export function EventCard({
         <EventCover path={event.photoPath} alt={event.photoAlt} size="card" className="-mr-1" />
       </button>
 
-      {/* Capped and left-aligned rather than stretched across the card. On a
-          wide screen a half-card-wide button is a long way from the title
-          somebody just read, and every RSVP becomes a trip across the screen.
-          Full width on a phone, where the card is narrow and the thumb is
-          already there. */}
-      <div className="mt-3 grid max-w-[420px] grid-cols-2 gap-[9px]">
+      {/* Only as wide as their words, and quiet until chosen (the owner,
+          2026-10-27): the card is for reading what the event is. Still a
+          full 44px tall, for hands that need the room. What Going shares is
+          said once it is pressed (rsvp-sheet.tsx). */}
+      <div className="mt-2.5 flex flex-wrap gap-2">
         <button
           type="button"
           // Pressing the button you are already on takes the RSVP back, which
@@ -328,12 +331,7 @@ export function EventCard({
             onRsvp(interested ? null : 'interested');
           }}
           aria-pressed={interested}
-          className={cn(
-            'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
-            interested
-              ? 'bg-tint text-emphasis hover:bg-line'
-              : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
-          )}
+          className={cn(RSVP_BUTTON, interested ? RSVP_CHOSEN : RSVP_OPEN)}
         >
           {interested ? 'Interested ✓' : 'Interested'}
         </button>
@@ -343,20 +341,11 @@ export function EventCard({
             onRsvp(going ? null : 'going');
           }}
           aria-pressed={going}
-          aria-describedby={goingNote}
-          className={cn(
-            'flex min-h-11 items-center justify-center rounded-[13px] font-bold font-head text-[0.875rem] transition-colors',
-            going
-              ? 'bg-tint text-emphasis hover:bg-line'
-              : 'bg-action text-white hover:bg-action-hi',
-          )}
+          className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
         >
           {going ? 'Going ✓' : 'Going'}
         </button>
       </div>
-      <p id={goingNote} className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
-        {GOING_SHARES_CONTACT}
-      </p>
       {/* Beside the card's own button, never inside it. */}
       {mapHref ? <ViewOnMap title={event.title} to={mapHref} className="mt-2.5" /> : null}
 

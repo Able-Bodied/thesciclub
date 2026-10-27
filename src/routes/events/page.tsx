@@ -1,12 +1,11 @@
 import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { LoadingCards } from '@/components/loading-cards';
+import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
-import { useAnnounce } from '@/lib/announce';
-import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { useHome } from '@/lib/home-state';
 import { useNearHome } from '@/lib/near-home';
 import { useOrganizationFollows } from '@/lib/organization-follows';
@@ -107,7 +106,6 @@ const RSVP_LABELS: Record<'going' | 'interested' | 'been-to', string> = {
 export default function EventsPage() {
   const navigate = useNavigate();
   const session = useSession();
-  const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
   const { organizations, byId: organizationsById } = useOrganizations();
@@ -266,24 +264,24 @@ export default function EventsPage() {
     return organizations.filter((organization) => hosting.has(organization.id));
   }, [organizations, inSegment]);
 
-  const { askForPhone, sheet: phoneSheet } = useGoingPhoneSheet(memberId);
+  const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
-    (eventId: string, next: RsvpStatus | null) => {
+    (event: ClubEvent, next: RsvpStatus | null) => {
       if (!memberId) return;
       setWriteError(null);
-      // The RSVP goes through whatever is answered; the sheet only asks.
-      if (next === 'going') askForPhone();
-      void setRsvp(eventId, memberId, next).then((result) => {
+      void setRsvp(event.id, memberId, next).then((result) => {
         // Re-read rather than patching local state: the tallies on every card
         // come from the database, and a local edit would leave the number and
         // the button disagreeing until the next load.
         if (result.ok) {
           viewer.reload();
-          announce(rsvpSaved(next));
+          rsvpSheetFor(event, next, (again) => {
+            onRsvp(event, again);
+          });
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, announce, askForPhone],
+    [memberId, viewer, rsvpSheetFor],
   );
 
   // The RSVP choice lives in the URL (as the segment) but is one of the
@@ -320,7 +318,7 @@ export default function EventsPage() {
         void navigate(`/events/organizations/${id}`, { state: { segment, view: 'map' } });
       }}
       onRsvp={(next) => {
-        onRsvp(event.id, next);
+        onRsvp(event, next);
       }}
     />
   );
@@ -508,7 +506,7 @@ export default function EventsPage() {
                       void navigate(`/events/organizations/${id}`, { state: { segment } });
                     }}
                     onRsvp={(next) => {
-                      onRsvp(event.id, next);
+                      onRsvp(event, next);
                     }}
                   />
                 );
@@ -574,7 +572,7 @@ export default function EventsPage() {
           }}
         />
       ) : null}
-      {phoneSheet}
+      {rsvpSheet}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { ShieldCheck } from 'lucide-react';
 import { useOrganizations } from '@/lib/organizations';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { organizationTown } from '@/routes/events/organization-places';
 import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
 
 /**
@@ -102,7 +103,9 @@ export function BlockedScreen({
                   <span className="block font-extrabold font-head text-[0.875rem]">
                     {organization.name}
                   </span>
-                  <span className="mt-0.5 block text-[0.75rem] text-grey">{organization.city}</span>
+                  <span className="mt-0.5 block text-[0.75rem] text-grey">
+                    {organizationTown(organization)}
+                  </span>
                 </span>
               </div>
             ))}

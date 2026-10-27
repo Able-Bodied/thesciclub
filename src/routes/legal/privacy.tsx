@@ -21,7 +21,7 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 26, 2026">
+    <LegalPage title="Privacy Policy" updated="October 27, 2026">
       <Note title="What changed on October 26, 2026">
         <List>
           <li>
@@ -320,16 +320,16 @@ export default function PrivacyPage() {
       </Section>
 
       {/* The owner's practice, 2026-10-08 (email added 2026-10-10). Keep in
-          step with GOING_SHARES_CONTACT in events/event-card.tsx. */}
+          step with GOING_SHARES_CONTACT in components/rsvp-sheet.tsx. */}
       <Section title="Event hosts">
         <P>
           When you choose <b>Going</b> for an event, the organization hosting it receives your email
           address, and your phone number if you have added one, for that event only: to tell you
           about changes, to remind you, and to look after the people who come. Choosing Interested
           shares nothing. Hosts agree not to use your details for marketing, fundraising or
-          promotions, and not to pass them on. The Going button says this before you press it.
-          Anybody in the club who manages the event sees them on its guest list; for other hosts, an
-          administrator passes them on.
+          promotions, and not to pass them on. Choosing Going says this, and offers Interested
+          instead. Anybody in the club who manages the event sees them on its guest list; for other
+          hosts, an administrator passes them on.
         </P>
         {/* Public event pages and registrations, 2026-10-22 (20261022190000). */}
         <P>

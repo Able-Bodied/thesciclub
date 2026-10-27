@@ -4,7 +4,7 @@ import { FilterChip } from '@/components/filter-sheet-shell';
 import { californiaToday, type Grant, grantStatus, useGrantsByOrganization } from '@/lib/grants';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
-import { placesOf } from '@/routes/events/organization-places';
+import { organizationTown, placesOf } from '@/routes/events/organization-places';
 import type { ClubEvent, Organization } from '@/types/domain';
 
 /**
@@ -152,7 +152,7 @@ export function OrganizationRow({
             </span>
             <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
               {[
-                organization.city,
+                organizationTown(organization),
                 locations > 1 ? `${locations} locations` : null,
                 eventCount > 0 ? `${eventCount} on the calendar` : null,
               ]

@@ -112,7 +112,7 @@ export default function RegisterForEventPage() {
               <span className="block text-[0.8125rem] text-ink2">
                 {shortDate(event.startTime, timezone)}
                 {event.allDay ? '' : ` · ${timeOfDay(event.startTime, timezone)}`}
-                {event.city ? ` · ${event.city}` : ''}
+                {event.city ? ` · ${[event.city, event.state].filter(Boolean).join(', ')}` : ''}
               </span>
             </span>
           </div>

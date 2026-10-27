@@ -1,14 +1,13 @@
 import { CalendarDays, ChevronRight, ExternalLink } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
+import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import {
   deleteEvent,
   deleteEventAndLater,
   revertImportedEvent,
-  rsvpSaved,
   setRsvp,
   useAttendeesByEvent,
   useEvents,
@@ -21,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
-import { GOING_SHARES_CONTACT } from '@/routes/events/event-card';
 import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGroupCard } from '@/routes/events/event-group-card';
@@ -30,6 +28,7 @@ import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { organizationTown } from '@/routes/events/organization-places';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
@@ -65,25 +64,22 @@ export default function EventDetailPage() {
   const account = useAccount();
   const mine = useMyOrganizations(memberId);
   const [writeError, setWriteError] = useState<string | null>(null);
-  const goingNote = useId();
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
 
-  const { askForPhone, sheet: phoneSheet } = useGoingPhoneSheet(memberId);
+  const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
     (next: RsvpStatus | null) => {
-      if (!memberId || !id) return;
+      if (!memberId || !event) return;
       setWriteError(null);
-      // The RSVP goes through whatever is answered; the sheet only asks.
-      if (next === 'going') askForPhone();
-      void setRsvp(id, memberId, next).then((result) => {
+      void setRsvp(event.id, memberId, next).then((result) => {
         if (result.ok) {
           viewer.reload();
-          announce(rsvpSaved(next));
+          rsvpSheetFor(event, next, onRsvp);
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, id, viewer, announce, askForPhone],
+    [memberId, event, viewer, rsvpSheetFor],
   );
 
   if (loading) {
@@ -144,6 +140,11 @@ export default function EventDetailPage() {
   // one in its description.
   const meeting = eventMeetingLink(event);
   const moreHref = meeting?.inUrl ? null : pageHref;
+  const hasDetails =
+    event.descriptionHtml.trim() !== '' ||
+    event.description.trim() !== '' ||
+    registerHref !== null ||
+    moreHref !== null;
   const goingList = attendees.filter((a) => a.status === 'going');
   const interestedList = attendees.filter((a) => a.status === 'interested');
   const organization = event.organizationId
@@ -215,92 +216,96 @@ export default function EventDetailPage() {
                 ))}
               </div>
             ) : null}
-
-            {meeting && !isPastEvent(event) ? (
-              <MeetingLinkButton
-                href={meeting.href}
-                service={meeting.service}
-                tone="plate"
-                className="mt-3"
-              />
-            ) : null}
-
-            {/* No RSVP on an event that is over. The list stopped offering it when
-              past events became lines rather than cards; this screen kept
-              offering it, so the same finished evening answered two different
-              ways depending on how you arrived at it. What a member came here
-              for afterwards is the description and the link, and those are
-              below. */}
-            {isPastEvent(event) ? (
-              <p className="mt-[15px] text-[0.8125rem] text-[#9FB3CD] leading-[1.45]">
-                {going
-                  ? 'You said you were going to this.'
-                  : interested
-                    ? 'You were interested in this.'
-                    : 'This has already happened.'}
-              </p>
-            ) : (
-              <div className="mt-[15px] grid grid-cols-2 gap-[9px]">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onRsvp(going ? null : 'going');
-                  }}
-                  aria-pressed={going}
-                  aria-describedby={goingNote}
-                  className={cn(
-                    'flex min-h-[44px] items-center justify-center rounded-[13px] font-bold font-head text-[0.9375rem] transition-colors',
-                    going
-                      ? 'bg-tint text-emphasis hover:bg-line'
-                      : 'bg-gold text-on-gold hover:bg-gold-hi',
-                  )}
-                >
-                  {going ? 'Going ✓' : 'Going'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onRsvp(interested ? null : 'interested');
-                  }}
-                  aria-pressed={interested}
-                  className="flex min-h-[44px] items-center justify-center rounded-[13px] border-[1.6px] border-plate-edge font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-plate-hover"
-                >
-                  {interested ? 'Interested ✓' : 'Interested'}
-                </button>
-                <p
-                  id={goingNote}
-                  className="col-span-2 text-[0.78125rem] text-[#B9CADF] leading-[1.45]"
-                >
-                  {GOING_SHARES_CONTACT}
-                </p>
-              </div>
-            )}
           </div>
         </div>
 
         <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pb-5">
+          {hasDetails ? (
+            <>
+              <h2 className="mt-5 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+                Details
+              </h2>
+              <EventDescription
+                html={event.descriptionHtml}
+                text={event.description}
+                className="text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_p:first-child]:mt-0 [&_ul]:mt-2 [&_ul]:list-disc"
+              />
+              {registerHref || moreHref ? (
+                <a
+                  href={registerHref ?? moreHref ?? undefined}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex min-h-11 items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis px-4 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint"
+                >
+                  {registerHref ? 'Register' : 'Details on their site'}
+                  <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
+                </a>
+              ) : null}
+            </>
+          ) : null}
+
+          {/* Below the details, so they are read first (the owner,
+            2026-10-27), and only as wide as their words. What Going shares
+            is said in the sheet that opens once it is pressed (rsvp-sheet.tsx).
+
+            No RSVP on an event that is over. The list stopped offering it when
+            past events became lines rather than cards; this screen kept
+            offering it, so the same finished evening answered two different
+            ways depending on how you arrived at it. */}
+          {isPastEvent(event) ? (
+            <p className="mt-5 text-[0.8125rem] text-ink2 leading-[1.45]">
+              {going
+                ? 'You said you were going to this.'
+                : interested
+                  ? 'You were interested in this.'
+                  : 'This has already happened.'}
+            </p>
+          ) : (
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onRsvp(going ? null : 'going');
+                }}
+                aria-pressed={going}
+                className={cn(
+                  'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
+                  going
+                    ? 'bg-tint text-emphasis hover:bg-line'
+                    : 'bg-action text-white hover:bg-action-hi',
+                )}
+              >
+                {going ? 'Going ✓' : 'Going'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onRsvp(interested ? null : 'interested');
+                }}
+                aria-pressed={interested}
+                className={cn(
+                  'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
+                  interested
+                    ? 'bg-tint text-emphasis hover:bg-line'
+                    : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
+                )}
+              >
+                {interested ? 'Interested ✓' : 'Interested'}
+              </button>
+              {meeting ? (
+                <MeetingLinkButton
+                  href={meeting.href}
+                  service={meeting.service}
+                  tone="page"
+                  className="px-4 text-[0.875rem]"
+                />
+              ) : null}
+            </div>
+          )}
           {writeError ? (
             <p className="mt-3 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">
               {writeError}
             </p>
-          ) : null}
-
-          <EventDescription
-            html={event.descriptionHtml}
-            text={event.description}
-            className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:text-emphasis [&_a]:underline [&_h3]:mt-3.5 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[1rem] [&_li]:ml-5 [&_ol]:mt-2 [&_ol]:list-decimal [&_p]:mt-2.5 [&_ul]:mt-2 [&_ul]:list-disc"
-          />
-
-          {registerHref || moreHref ? (
-            <a
-              href={registerHref ?? moreHref ?? undefined}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3.5 flex min-h-[44px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint"
-            >
-              {registerHref ? 'Register' : 'Details on their site'}
-              <ExternalLink className="h-[15px] w-[15px]" aria-hidden="true" />
-            </a>
           ) : null}
 
           {/* Where the mock puts a group chat, and now what it puts there.
@@ -345,7 +350,9 @@ export default function EventDetailPage() {
                     <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
                       {organization.name}
                     </span>
-                    <span className="block text-[0.78125rem] text-grey">{organization.city}</span>
+                    <span className="block text-[0.78125rem] text-grey">
+                      {organizationTown(organization)}
+                    </span>
                   </span>
                   <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
                 </button>
@@ -390,7 +397,7 @@ export default function EventDetailPage() {
           ) : null}
         </div>
       </div>
-      {phoneSheet}
+      {rsvpSheet}
     </>
   );
 }

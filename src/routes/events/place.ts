@@ -97,10 +97,13 @@ export function cityInLocation(raw: string | null | undefined): string | null {
 /** What a card or a detail hero prints for "where", or null for nothing. */
 export function placeLine(
   // The public page's event carries its format as plain text, so any string.
-  event: Pick<ClubEvent, 'location' | 'city'> & { format: string | null },
+  event: Pick<ClubEvent, 'location' | 'city'> & { state?: string | null; format: string | null },
 ): string | null {
   const head = venueName(event.location) ?? tidyLocation(event.location);
   const city = event.city?.trim() ? event.city : cityInLocation(event.location);
+  // With its state, as an address is written (the owner, 2026-10-27).
+  const state = event.state?.trim() ?? '';
+  const area = city && state ? `${city}, ${state}` : city;
 
   if (!head) {
     // An online event has no venue and should not be made to look like it is
@@ -108,14 +111,18 @@ export function placeLine(
     // else with an empty field is a real gap, and hybrid belongs here too: it
     // has a physical leg and the feed did not say where.
     if (event.format === 'online') return null;
-    if (city) return city;
+    if (area) return area;
     return 'Location on the organizer’s page';
   }
 
   // The city is already inside most of these addresses. Appending the geocoded
-  // one as well printed it twice, a line apart, on every card.
+  // one as well printed it twice, a line apart, on every card. Its state is
+  // added when the address does not have it.
   if (city && !head.toLowerCase().includes(city.toLowerCase())) {
-    return `${head}, ${city}`;
+    return `${head}, ${area}`;
+  }
+  if (city && state && !new RegExp(`\\b${state}\\b`).test(head)) {
+    return `${head}, ${state}`;
   }
   return head;
 }

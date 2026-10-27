@@ -5,6 +5,7 @@ import { useOrganizations } from '@/lib/organizations';
 import { SmallButton } from '@/routes/admin/controls';
 import { OrganizationEditor } from '@/routes/admin/organization-editor';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { organizationTown } from '@/routes/events/organization-places';
 import type { Organization } from '@/types/domain';
 
 /** Administrators manage the directory. Organization accounts edit only their
@@ -86,7 +87,7 @@ export function OrganizationsSection({
                 <div className="min-w-0 flex-1 basis-[8rem]">
                   <h3 className="font-bold text-ink">{organization.name}</h3>
                   <p className="text-[0.8125rem] text-grey">
-                    {organization.shortCode} · {organization.city}
+                    {organization.shortCode} · {organizationTown(organization)}
                   </p>
                 </div>
                 {/* Together, so the badge does not push Remove onto a line of

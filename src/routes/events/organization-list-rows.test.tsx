@@ -146,7 +146,7 @@ describe('an organization in several places', () => {
         onOpen={vi.fn()}
       />,
     );
-    expect(screen.getByText('San Jose · 3 locations')).toBeInTheDocument();
+    expect(screen.getByText('Berkeley, CA · 3 locations')).toBeInTheDocument();
     expect(screen.queryAllByText(/1 location/)).toEqual([]);
   });
 });

@@ -11,10 +11,9 @@ import {
   useState,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
-import { useAnnounce } from '@/lib/announce';
+import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { canLocate, deviceLocation } from '@/lib/device-location';
-import { rsvpSaved, setRsvp, useEvents, useViewerEvents } from '@/lib/events';
+import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { californiaToday, useGrantsByOrganization } from '@/lib/grants';
 import {
   type GeoJSONSource,
@@ -77,6 +76,7 @@ import {
   type ClubEvent,
   EMPTY_EVENT_FILTERS,
   type Organization,
+  type RsvpStatus,
 } from '@/types/domain';
 
 /**
@@ -1039,12 +1039,22 @@ function OwnEventCards({
   backState: Record<string, string>;
 }) {
   const navigate = useNavigate();
-  const announce = useAnnounce();
   const session = useSession();
   const memberId = session.status === 'signed-in' ? session.userId : null;
   const viewer = useViewerEvents(memberId);
   const { byId } = useOrganizations();
-  const { askForPhone, sheet } = useGoingPhoneSheet(memberId);
+  const { saved, sheet } = useRsvpSheet(memberId);
+  function onRsvp(event: ClubEvent, next: RsvpStatus | null) {
+    if (!memberId) return;
+    void setRsvp(event.id, memberId, next).then((result) => {
+      if (result.ok) {
+        viewer.reload();
+        saved(event, next, (again) => {
+          onRsvp(event, again);
+        });
+      }
+    });
+  }
   return (
     <>
       {items.map(({ event, exact }) => (
@@ -1062,14 +1072,7 @@ function OwnEventCards({
               void navigate(`/events/organizations/${id}`, { state: backState });
             }}
             onRsvp={(next) => {
-              if (!memberId) return;
-              if (next === 'going') askForPhone();
-              void setRsvp(event.id, memberId, next).then((result) => {
-                if (result.ok) {
-                  viewer.reload();
-                  announce(rsvpSaved(next));
-                }
-              });
+              onRsvp(event, next);
             }}
           />
         </div>

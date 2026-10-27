@@ -11,7 +11,7 @@ import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OrganizationGrants } from '@/routes/events/organization-grants';
-import { placesOf } from '@/routes/events/organization-places';
+import { organizationTown, placesOf } from '@/routes/events/organization-places';
 import { EventDescription } from '@/routes/events/rich-text';
 import { injuryLabel } from '@/types/domain';
 
@@ -92,7 +92,7 @@ export default function OrganizationDetailPage() {
               </span>
               <span className="mt-[3px] block text-[#B9CADF] text-[0.8125rem]">
                 {[
-                  organization.city,
+                  organizationTown(organization),
                   placesOf(organization).length > 1
                     ? `${placesOf(organization).length} locations`
                     : null,
@@ -176,7 +176,9 @@ export default function OrganizationDetailPage() {
                     <span className="block font-extrabold font-head text-[0.90625rem] text-ink leading-[1.25]">
                       {event.title}
                     </span>
-                    <span className="block text-[0.78125rem] text-grey">{event.city}</span>
+                    <span className="block text-[0.78125rem] text-grey">
+                      {[event.city, event.city ? event.state : null].filter(Boolean).join(', ')}
+                    </span>
                   </span>
                   <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
                 </button>

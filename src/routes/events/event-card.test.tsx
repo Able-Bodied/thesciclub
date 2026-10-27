@@ -46,14 +46,12 @@ describe('EventCard', () => {
   });
 
   describe('the two-button row', () => {
-    // The owner, 2026-10-08: the host receives the numbers of members going,
-    // so the button says so before it is pressed, to the eye and to a screen
-    // reader alike.
-    it('says beside Going that the host gets your email, and your number if you gave one, and the button carries it', () => {
+    // The owner, 2026-10-27: what Going shares is said in the sheet that
+    // opens once it is pressed (rsvp-sheet.tsx), not under every card.
+    it('carries no line about what Going shares', () => {
       renderCard({ status: null });
-      expect(screen.getByRole('button', { name: 'Going' })).toHaveAccessibleDescription(
-        'Going shares your email, and your phone number if you’ve added one, with the host, for this event only.',
-      );
+      expect(screen.queryByText(/host gets your email/)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Going' })).not.toHaveAttribute('aria-describedby');
     });
 
     it('reports Interested when it was not set', async () => {

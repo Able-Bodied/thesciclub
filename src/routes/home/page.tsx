@@ -1,11 +1,10 @@
 import { SlidersHorizontal } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useGoingPhoneSheet } from '@/components/going-phone-sheet';
 import { LoadingCards } from '@/components/loading-cards';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
+import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { SegmentPills } from '@/components/segment-pills';
-import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
 import { useReactions } from '@/lib/chat/reactions';
@@ -13,7 +12,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
 import { usePostViews } from '@/lib/chat/views';
-import { rsvpSaved, setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
 import { useBrowseMembers } from '@/lib/members';
@@ -46,7 +45,7 @@ import {
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
-import { DEFAULT_WITHIN_MILES, type RsvpStatus } from '@/types/domain';
+import { type ClubEvent, DEFAULT_WITHIN_MILES, type RsvpStatus } from '@/types/domain';
 
 /**
  * Home: what the club is doing, in one list.
@@ -116,7 +115,6 @@ export default function HomePage() {
   const navigate = useNavigate();
   const wide = useWideLayout();
   const session = useSession();
-  const announce = useAnnounce();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
   // In the URL, for the reason Events and Chat keep theirs there: back from a
@@ -247,24 +245,24 @@ export default function HomePage() {
   );
   const filterCount = activeFilterCount(filters);
 
-  const { askForPhone, sheet: phoneSheet } = useGoingPhoneSheet(memberId);
+  const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
-    (eventId: string, next: RsvpStatus | null) => {
+    (event: ClubEvent, next: RsvpStatus | null) => {
       if (!memberId) return;
       setWriteError(null);
-      // The RSVP goes through whatever is answered; the sheet only asks.
-      if (next === 'going') askForPhone();
-      void setRsvp(eventId, memberId, next).then((result) => {
+      void setRsvp(event.id, memberId, next).then((result) => {
         // Re-read rather than patch, as Events does: the tallies come from
         // the database, and a local edit would leave the number and the
         // button disagreeing.
         if (result.ok) {
           viewer.reload();
-          announce(rsvpSaved(next));
+          rsvpSheetFor(event, next, (again) => {
+            onRsvp(event, again);
+          });
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, announce, askForPhone],
+    [memberId, viewer, rsvpSheetFor],
   );
 
   /** A standing opener keeps its Like visible while the real count loads. */
@@ -358,7 +356,7 @@ export default function HomePage() {
               void navigate(`/events/organizations/${id}`, { state: linkState });
             }}
             onRsvp={(next) => {
-              onRsvp(item.event.id, next);
+              onRsvp(item.event, next);
             }}
           />
         );
@@ -467,7 +465,7 @@ export default function HomePage() {
           }}
         />
       ) : null}
-      {phoneSheet}
+      {rsvpSheet}
     </div>
   );
 }

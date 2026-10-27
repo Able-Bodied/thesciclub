@@ -123,6 +123,38 @@ export function sanitizeHtml(html: string): string {
  * Falls back to the plain-text column when there is no HTML — an event from a
  * scraper that only produced text still has a description worth showing.
  */
+/** The description as plain text, paragraphs on lines of their own. */
+export function descriptionText(html: string, text: string): string {
+  const source = html.trim() || (text.trim() ? markdownToHtml(text) : '');
+  if (!source) return '';
+  const body = new DOMParser().parseFromString(sanitizeHtml(source), 'text/html').body;
+  for (const br of body.querySelectorAll('br')) br.replaceWith('\n');
+  for (const block of body.querySelectorAll('p, li, h3, div')) block.append('\n');
+  return body.textContent
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n\s*\n\s*/g, '\n\n')
+    .trim();
+}
+
+/**
+ * The first sentences of the description, for a card (the owner,
+ * 2026-10-27): enough to know what it is. Null when there is none.
+ */
+export function descriptionPreview(
+  html: string,
+  text: string,
+  sentences = 2,
+  max = 220,
+): string | null {
+  const flat = descriptionText(html, text).replace(/\s+/g, ' ').trim();
+  if (!flat) return null;
+  // A sentence ends at a stop followed by a space, so "example.com" is not two.
+  const parts = (flat.match(/.*?(?:[.!?]+["')\]]*(?=\s|$)|$)\s*/g) ?? []).filter(Boolean);
+  let preview = parts.slice(0, sentences).join('').trim();
+  if (preview.length > max) preview = `${preview.slice(0, max).replace(/\s+\S*$/, '')}…`;
+  return preview;
+}
+
 export function EventDescription({
   html,
   text,

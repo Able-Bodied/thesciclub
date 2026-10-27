@@ -181,3 +181,28 @@ describe('mapsUrl', () => {
     expect(mapsUrl({ location: 'https://zoom.us/j/123', city: null, state: 'CA' })).toBeNull();
   });
 });
+
+describe('placeLine with a state (the owner, 2026-10-27)', () => {
+  it('writes the city with its state', () => {
+    expect(
+      placeLine({ location: 'Independence Pool', city: 'San Jose', state: 'CA', format: null }),
+    ).toBe('Independence Pool, San Jose, CA');
+    expect(placeLine({ location: '', city: 'Oakland', state: 'CA', format: 'in_person' })).toBe(
+      'Oakland, CA',
+    );
+  });
+
+  it('adds only the state to an address that has the city but not the state', () => {
+    expect(
+      placeLine({ location: '1 Main St, San Jose', city: 'San Jose', state: 'CA', format: null }),
+    ).toBe('1 Main St, San Jose, CA');
+    expect(
+      placeLine({
+        location: '1 Main St, San Jose, CA 95112',
+        city: 'San Jose',
+        state: 'CA',
+        format: null,
+      }),
+    ).toBe('1 Main St, San Jose, CA');
+  });
+});
