@@ -65,7 +65,7 @@ export function DistanceFilter({
             : 'Add your city in Me, Your details, to see what is near you. Until then, every distance shows.'
           : status === 'error'
             ? 'Could not check distances just now, so every distance shows.'
-            : 'From the middle of your city. Online events show at any distance.'}
+            : 'From the middle of your city. Online events count from their host’s city.'}
       </p>
     </section>
   );

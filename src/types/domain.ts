@@ -793,7 +793,7 @@ export interface EventFilters {
   cities: string[];
   /** Organization ids. */
   organizations: string[];
-  /** Miles from home an in-person event may be; null for any distance. */
+  /** Miles from home an event may be (an online one: its host); null for any distance. */
   withinMiles: number | null;
 }
 

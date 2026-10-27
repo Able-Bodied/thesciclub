@@ -3,9 +3,9 @@
 -- ============================================================================
 -- 20261023010000, the owner's rule: an event's own coordinates or own city
 -- first; with no city, its organization's city; with neither on the map, it
--- shows at any distance. Online events show anywhere in the list already,
--- and since 20261025020000 are not returned; an organization's city counts
--- only with the organization's state.
+-- shows at any distance. An organization's city counts only with the
+-- organization's state. Since 20261027000000 an online event is measured
+-- from its organization's main place, and shows anywhere without one.
 --
 -- The member's home is Sacramento. Distances from it: Los Angeles ~360 miles,
 -- Menlo Park ~90. Asked as that signed-in member.
@@ -67,7 +67,13 @@ values
   ('eeeeeeee-d1d1-0000-0000-000000000007', 'A city not on the map', now() + interval '1 day',
    'Main St', 'Nowhere', 'CA', null, null, 'bbbbbbbb-d1d1-0000-0000-000000000002', 'in_person'),
   ('eeeeeeee-d1d1-0000-0000-000000000008', 'Online, org in Los Angeles', now() + interval '1 day',
-   '', null, null, null, null, 'bbbbbbbb-d1d1-0000-0000-000000000002', 'online');
+   '', null, null, null, null, 'bbbbbbbb-d1d1-0000-0000-000000000002', 'online'),
+  ('eeeeeeee-d1d1-0000-0000-000000000009', 'Online, org in Sacramento', now() + interval '1 day',
+   '', null, null, null, null, 'bbbbbbbb-d1d1-0000-0000-000000000001', 'online'),
+  ('eeeeeeee-d1d1-0000-0000-00000000000a', 'Online, org with no main place', now() + interval '1 day',
+   '', null, null, null, null, 'bbbbbbbb-d1d1-0000-0000-000000000003', 'online'),
+  ('eeeeeeee-d1d1-0000-0000-00000000000b', 'Online, no organization', now() + interval '1 day',
+   '', null, null, null, null, null, 'online');
 
 select set_config('request.jwt.claims',
   '{"sub":"aaaaaaaa-d1d1-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ok;
@@ -87,7 +93,10 @@ select current_user;
 \echo '   Menlo Park, org in Sacramento           | f | t | t   (its own city wins)'
 \echo '   Own coordinates in LA, org in Sacramento| f | f | t   (its own coordinates win)'
 \echo '   A city not on the map                   | t | t | t   (any distance)'
-\echo '   Online, org in Los Angeles              | f | f | f   (online: not asked; the list shows it)'
+\echo '   Online, org in Los Angeles              | f | f | t   (the organization''s main place)'
+\echo '   Online, org in Sacramento               | t | t | t   (the organization''s main place)'
+\echo '   Online, org with no main place          | t | t | t   (any distance)'
+\echo '   Online, no organization                 | t | t | t   (any distance)'
 select e.title,
        e.id = any (public.events_within_miles(20)) as at_20,
        e.id = any (public.events_within_miles(150)) as at_150,

@@ -322,9 +322,26 @@ describe('distance from home', () => {
   const nearby = new Set(['near']);
   const ids = (events: { id: string }[]) => events.map((e) => e.id);
 
-  it('keeps what is in range, and an online event wherever it is', () => {
+  it('keeps what is in range', () => {
     expect(
       ids(filterEvents([near, far, online], withFilters(), 'upcoming', viewer({ nearby }), NOW)),
+    ).toEqual(['near']);
+  });
+
+  // The owner, 2026-10-27: measured from the host's city by events_within_miles,
+  // which also answers one with no known place at any distance.
+  it('measures online and hybrid events like the rest', () => {
+    const hybrid = makeEvent({ id: 'hybrid', startTime: daysFromNow(4), format: 'hybrid' });
+    expect(
+      ids(
+        filterEvents(
+          [near, far, online, hybrid],
+          withFilters(),
+          'upcoming',
+          viewer({ nearby: new Set(['near', 'online']) }),
+          NOW,
+        ),
+      ),
     ).toEqual(['near', 'online']);
   });
 

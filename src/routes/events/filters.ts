@@ -199,13 +199,13 @@ export function filterEvents(
     // did not ask.
     if (!isRsvpSegment(segment) && !inDateWindow(event, filters.when, now)) return false;
     if (!matchesSegment(event, segment, viewer, now)) return false;
-    // Distance is for getting there: an online or hybrid event is in range
-    // anywhere, and a member's own RSVPs are theirs wherever they are.
+    // Every format is measured (the owner, 2026-10-27): an online event from
+    // its host's city, and one with no known place is in `nearby` already
+    // (events_within_miles). A member's own RSVPs are theirs wherever they are.
     if (
       filters.withinMiles !== null &&
       viewer.nearby &&
       !isRsvpSegment(segment) &&
-      !isOnline(event) &&
       !viewer.nearby.has(event.id)
     ) {
       return false;

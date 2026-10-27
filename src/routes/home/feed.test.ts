@@ -42,7 +42,7 @@ describe('pickEvents', () => {
     expect(picked.map((event) => event.id)).toEqual(['swim-1', 'talk']);
   });
 
-  it('keeps only nearby events, and online ones anywhere', () => {
+  it('keeps only nearby events, online ones by their host', () => {
     const picked = pickEvents(
       [
         makeEvent({ id: 'near', startTime: '2026-10-02T17:00:00Z' }),
@@ -51,9 +51,9 @@ describe('pickEvents', () => {
         makeEvent({ id: 'hybrid', format: 'hybrid', startTime: '2026-10-05T17:00:00Z' }),
       ],
       NOW,
-      new Set(['near']),
+      new Set(['near', 'online']),
     );
-    expect(picked.map((event) => event.id)).toEqual(['near', 'online', 'hybrid']);
+    expect(picked.map((event) => event.id)).toEqual(['near', 'online']);
   });
 });
 

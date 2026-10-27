@@ -188,8 +188,9 @@ describe('EventsPage', () => {
 
   // The owner, 2026-10-20: within 20 miles unless widened in Filters.
   describe('distance from home', () => {
-    it('lists what is within 20 miles, and online events, until widened to any distance', async () => {
-      state.near = { status: 'ready', ids: new Set(['rugby']) };
+    // events_within_miles answers an online event by its host's city.
+    it('lists what is within 20 miles, online events included, until widened to any distance', async () => {
+      state.near = { status: 'ready', ids: new Set(['rugby', 'zoom']) };
       const user = userEvent.setup();
       renderPage();
       expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
