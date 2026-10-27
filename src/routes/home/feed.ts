@@ -172,6 +172,12 @@ export function inSegment(segment: HomeSegment, sources: FeedSources): FeedItem[
   switch (segment) {
     case 'everything':
       return buildFeed(sources);
+    case 'questions':
+      // With or without a photograph: a question with one is still a question.
+      return sources.topics
+        .filter((topic) => topic.isQuestion)
+        .slice(0, SEGMENT_TOPICS)
+        .map(topicItem);
     case 'topics':
       return sources.topics
         .filter((topic) => !topic.photo)
