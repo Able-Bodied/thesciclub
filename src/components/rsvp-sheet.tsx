@@ -1,4 +1,4 @@
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, ExternalLink } from 'lucide-react';
 import { useCallback, useId, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
@@ -13,7 +13,8 @@ import {
   downloadIcs,
   googleCalendarUrl,
 } from '@/routes/events/add-to-calendar';
-import type { RsvpStatus } from '@/types/domain';
+import { safeHref } from '@/routes/events/rich-text';
+import type { ClubEvent, RsvpStatus } from '@/types/domain';
 
 /**
  * The sheet that opens once Going or Interested is saved (the owner,
@@ -34,6 +35,9 @@ import type { RsvpStatus } from '@/types/domain';
  */
 export const GOING_SHARES_CONTACT =
   'The host gets your email, and your phone number if you’ve added one, for this event only.';
+
+/** The event as the sheet needs it: for the calendar, and the host's own sign-up. */
+export type SheetEvent = CalendarEvent & Pick<ClubEvent, 'registrationUrl'>;
 
 const SKIPPED_KEY = 'sciclub.goingPhoneSkipped';
 
@@ -64,7 +68,7 @@ export function RsvpSheet({
   onSavePhone,
   onClose,
 }: {
-  event: CalendarEvent;
+  event: SheetEvent;
   status: RsvpStatus;
   /** Going, and the club has no number for them. */
   askPhone: boolean;
@@ -83,6 +87,7 @@ export function RsvpSheet({
   const heading = useRef<HTMLHeadingElement | null>(null);
   useDialogFocus(dialog, heading, onClose);
   const going = status === 'going';
+  const register = safeHref(event.registrationUrl);
 
   function save() {
     if (saving || !isCompletePhone(typed)) return;
@@ -147,6 +152,28 @@ export function RsvpSheet({
             >
               Change to Interested, which shares nothing
             </button>
+          ) : null}
+
+          {/* The host's own sign-up is separate (the owner, 2026-10-27). */}
+          {register ? (
+            <div className="mt-3 rounded-[14px] border border-gold/60 bg-gold-lt p-3">
+              <p className="text-[0.84375rem] text-ink leading-[1.5]">
+                <b className="font-extrabold font-head">The host has its own sign-up.</b> This
+                doesn't register you with them. If you're going, register on their site too.
+              </p>
+              <a
+                href={register}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  SMALL_BUTTON,
+                  'mt-2 inline-flex bg-action text-white hover:bg-action-hi',
+                )}
+              >
+                Register on their site
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
           ) : null}
 
           {going && askPhone ? (
@@ -242,7 +269,7 @@ export function RsvpSheet({
 }
 
 interface Open {
-  event: CalendarEvent;
+  event: SheetEvent;
   status: RsvpStatus;
   askPhone: boolean;
   onChange: (next: RsvpStatus) => void;
@@ -259,7 +286,7 @@ export function useRsvpSheet(userId: string | null) {
   const [open, setOpen] = useState<Open | null>(null);
 
   const saved = useCallback(
-    (event: CalendarEvent, status: RsvpStatus | null, change: (next: RsvpStatus) => void) => {
+    (event: SheetEvent, status: RsvpStatus | null, change: (next: RsvpStatus) => void) => {
       if (status === null) {
         setOpen(null);
         announce(rsvpSaved(null));

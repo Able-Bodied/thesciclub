@@ -246,6 +246,43 @@ describe('EventDetailPage', () => {
       expect(screen.queryByText(/host gets your email/)).not.toBeInTheDocument();
     });
 
+    it('shows the host’s sign-up and page both, and says to register there too', () => {
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(21),
+          url: 'https://norcalsci.org/events/rugby',
+          registrationUrl: 'https://norcalsci.org/register/rugby',
+        }),
+      ];
+      renderDetail();
+      expect(
+        screen.getByText(/doesn't sign you up with .*Register on their site too\./),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Register on their site' })).toHaveAttribute(
+        'href',
+        'https://norcalsci.org/register/rugby',
+      );
+      expect(screen.getByRole('link', { name: 'Details on their site' })).toHaveAttribute(
+        'href',
+        'https://norcalsci.org/events/rugby',
+      );
+    });
+
+    it('reminds about the host’s sign-up in the sheet', async () => {
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(21),
+          registrationUrl: 'https://norcalsci.org/register/rugby',
+        }),
+      ];
+      renderDetail();
+      await userEvent.click(screen.getByRole('button', { name: 'Interested' }));
+      const sheet = await screen.findByRole('dialog');
+      expect(sheet).toHaveTextContent('The host has its own sign-up.');
+    });
+
     it('offers Join online beside Going for an online event', () => {
       state.events = [
         makeEvent({
