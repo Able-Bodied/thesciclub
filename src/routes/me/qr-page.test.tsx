@@ -170,7 +170,7 @@ describe('who may make a code', () => {
 });
 
 // The owner, 2026-10-28: an org admin's code lets their people in until it
-// expires, 72 hours unless they choose; no event; an optional note.
+// expires, a day unless they choose; no event; an optional note.
 describe("an org admin's code", () => {
   it('is for their organization, with no event and no email to show', async () => {
     asOrgAdmin();
@@ -183,7 +183,7 @@ describe("an org admin's code", () => {
     ).toBeInTheDocument();
   });
 
-  it('expires after 72 hours unless they choose otherwise, and keeps the note', async () => {
+  it('expires after a day unless they choose otherwise, and keeps the note', async () => {
     asOrgAdmin();
     renderPage();
     expect(await screen.findByRole('checkbox', { name: 'Expires' })).toBeChecked();
@@ -196,7 +196,7 @@ describe("an org admin's code", () => {
       contactEmail: null,
       notes: 'Monday group',
     });
-    expect(hoursLeft(state.created[0])).toBe(72);
+    expect(hoursLeft(state.created[0])).toBe(24);
     const shown = await screen.findByRole('dialog', { name: 'NorCal SCI' });
     expect(within(shown).getByText(/Made .* · expires /)).toBeInTheDocument();
   });
@@ -279,7 +279,7 @@ describe("an administrator's code", () => {
     spy.mockRestore();
   });
 
-  it('makes one with no event by default, expiring in 72 hours', async () => {
+  it('makes one with no event by default, expiring in a day', async () => {
     renderPage();
     await emailFilledIn();
     await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
@@ -289,7 +289,7 @@ describe("an administrator's code", () => {
       contactEmail: 'alfred@example.com',
       notes: null,
     });
-    expect(hoursLeft(state.created[0])).toBe(72);
+    expect(hoursLeft(state.created[0])).toBe(24);
     expect(await screen.findByRole('dialog', { name: 'The SCI Club' })).toBeInTheDocument();
   });
 
