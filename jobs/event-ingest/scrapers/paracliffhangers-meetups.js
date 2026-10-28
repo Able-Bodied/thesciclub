@@ -312,17 +312,15 @@ function realDay(year, month, day) {
 
 /**
  * The days from `today` (YYYY-MM-DD) through `days` later that a rule
- * falls on. A date with no year is its next one from today, never past.
+ * falls on. A date with no year is the one nearest today; once that has
+ * passed it is a stale line, not next year's date.
  */
 export function ruleDays(rule, today, days = DAYS) {
   const last = addDays(today, days);
   if (rule.kind === 'date') {
-    const year = Number(today.slice(0, 4));
-    for (const y of [year, year + 1]) {
-      const day = realDay(y, rule.month, rule.day);
-      if (day && day >= today) return day <= last ? [day] : [];
-    }
-    return [];
+    const year = nearestYear(rule, new Date(`${today}T00:00:00Z`));
+    const day = realDay(year, rule.month, rule.day);
+    return day && day >= today && day <= last ? [day] : [];
   }
   const out = [];
   for (let i = 0; i <= days; i++) {

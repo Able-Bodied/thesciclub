@@ -205,14 +205,17 @@ describe('meetupEvents', () => {
     ).toEqual(['2026-11-28T19:00:00.000Z', '2026-12-26T19:00:00.000Z']);
   });
 
-  it('gives explicit dates their next year, never a past one', () => {
+  it('takes an explicit date in the year nearest today, and drops a passed one', () => {
     expect(of('Fairfield').map((e) => [e.start_time, e.end_time])).toEqual([
       ['2026-11-14T22:00:00.000Z', '2026-11-15T00:00:00.000Z'],
     ]);
     const rule = { kind: 'date', month: 10, day: 3, start: 1020, end: 1140 };
-    expect(ruleDays(rule, '2026-10-27', 400)).toEqual(['2027-10-03']);
-    expect(ruleDays(rule, '2026-10-27')).toEqual([]);
+    // A stale line is never carried into next year.
+    expect(ruleDays(rule, '2026-10-27', 400)).toEqual([]);
     expect(ruleDays(rule, '2026-10-03')).toEqual(['2026-10-03']);
+    // Early January read in late December is the coming one.
+    const january = { kind: 'date', month: 1, day: 9, start: 1020, end: 1140 };
+    expect(ruleDays(january, '2026-12-20')).toEqual(['2027-01-09']);
   });
 
   it('titles, places, links and describes each in the page’s own words', () => {
