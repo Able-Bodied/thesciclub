@@ -153,7 +153,15 @@ describe('organization management', () => {
         ...organization(),
         state: 'CA',
         places: [
-          { id: 'p1', position: 0, label: null, address: null, city: 'Test city', state: 'CA' },
+          {
+            id: 'p1',
+            position: 0,
+            label: null,
+            address: null,
+            city: 'Test city',
+            state: 'CA',
+            postalCode: null,
+          },
         ],
       },
     ];
@@ -206,6 +214,51 @@ describe('organization management', () => {
     expect(screen.queryByRole('button', { name: /^Remove / })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Edit Organization org' }));
     expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+  it('saves the ZIP code an organization account types, and says what is wrong with a bad one', async () => {
+    db.organizations = [
+      {
+        ...organization(),
+        state: 'CA',
+        places: [
+          {
+            id: 'p1',
+            position: 0,
+            label: null,
+            address: '800 Potter St',
+            city: 'Berkeley',
+            state: 'CA',
+            postalCode: null,
+          },
+        ],
+      },
+    ];
+    render(<OrganizationsSection administrator={false} ids={new Set(['org'])} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Organization org' }));
+    const zip = await screen.findByRole('textbox', { name: /ZIP code/ });
+    await userEvent.type(zip, '9471');
+    await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
+    expect(
+      await screen.findByText('A ZIP code is five digits, or five, a dash and four.'),
+    ).toBeVisible();
+    expect(db.rpc).not.toHaveBeenCalledWith('save_organization_places', expect.anything());
+    await userEvent.type(zip, '0');
+    await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
+    await waitFor(() => {
+      expect(db.rpc).toHaveBeenCalledWith('save_organization_places', {
+        p_organization: 'org',
+        p_places: [
+          {
+            id: 'p1',
+            label: null,
+            address: '800 Potter St',
+            city: 'Berkeley',
+            state: 'CA',
+            postal_code: '94710',
+          },
+        ],
+      });
+    });
   });
   it('retains the draft when the database refuses a changed role', async () => {
     db.failure = 'You cannot change this organization.';

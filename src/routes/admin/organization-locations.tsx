@@ -15,28 +15,42 @@ export interface PlaceDraft extends OrganizationPlace {
 let made = 0;
 export function newPlace(): PlaceDraft {
   made += 1;
-  return { key: `new-${made}`, label: null, address: null, city: '', state: '' };
+  return { key: `new-${made}`, label: null, address: null, city: '', state: '', postalCode: null };
 }
 
 export function toDrafts(places: OrganizationPlace[]): PlaceDraft[] {
   return places.map((place) => ({ ...place, key: place.id ?? newPlace().key }));
 }
 
+/** As the database's check (20261028700000). */
+const ZIP = /^\d{5}(-\d{4})?$/;
+
 /** Each kept place has a city and a state; an empty row is dropped. */
 export function placesToSave(places: PlaceDraft[]): OrganizationPlace[] | string {
   const filled = (text: string | null) => (text ?? '').trim() !== '';
   const kept = places.filter(
-    (p) => filled(p.city) || filled(p.state) || filled(p.address) || filled(p.label),
+    (p) =>
+      filled(p.city) ||
+      filled(p.state) ||
+      filled(p.address) ||
+      filled(p.label) ||
+      filled(p.postalCode),
   );
   if (kept.some((p) => !filled(p.city) || !filled(p.state))) {
     return 'Each location needs a city and a state.';
   }
-  return kept.map(({ key: _, ...place }) => place);
+  if (kept.some((p) => filled(p.postalCode) && !ZIP.test((p.postalCode ?? '').trim()))) {
+    return 'A ZIP code is five digits, or five, a dash and four.';
+  }
+  return kept.map(({ key: _, ...place }) => ({
+    ...place,
+    postalCode: filled(place.postalCode) ? (place.postalCode ?? '').trim() : null,
+  }));
 }
 
 /**
  * Where an organization is, main place first (the contract of 2026-10-25):
- * label, street address, city, state. Facts from its own website only; a
+ * label, street address, city, state, ZIP code. Facts from its own website only; a
  * published street address gets an exact pin (the owner, 2026-10-26).
  */
 export function OrganizationLocations({
@@ -131,6 +145,19 @@ export function OrganizationLocations({
                         </option>
                       ))}
                     </select>
+                  </label>
+                  <label className="text-ink">
+                    ZIP code <span className="text-grey">(optional)</span>
+                    <input
+                      className={field}
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      maxLength={10}
+                      value={place.postalCode ?? ''}
+                      onChange={(e) => {
+                        set(index, { postalCode: e.target.value });
+                      }}
+                    />
                   </label>
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">

@@ -21,11 +21,18 @@ beforeEach(() => {
 });
 
 describe('saveOrganizationPlaces', () => {
-  it('sends the places in order, keeping the id of one already saved', async () => {
+  it('sends the places in order, keeping the id of one already saved, with their ZIP codes', async () => {
     expect(
       await saveOrganizationPlaces('org', [
-        { id: 'p1', label: null, address: '3075 Adeline St', city: 'Berkeley', state: 'CA' },
-        { label: 'Pool', address: null, city: 'Oakland', state: 'CA' },
+        {
+          id: 'p1',
+          label: null,
+          address: '3075 Adeline St',
+          city: 'Berkeley',
+          state: 'CA',
+          postalCode: '94703',
+        },
+        { label: 'Pool', address: null, city: 'Oakland', state: 'CA', postalCode: null },
       ]),
     ).toEqual({ ok: true });
     expect(rpc.calls).toEqual([
@@ -34,8 +41,15 @@ describe('saveOrganizationPlaces', () => {
         {
           p_organization: 'org',
           p_places: [
-            { id: 'p1', label: null, address: '3075 Adeline St', city: 'Berkeley', state: 'CA' },
-            { label: 'Pool', address: null, city: 'Oakland', state: 'CA' },
+            {
+              id: 'p1',
+              label: null,
+              address: '3075 Adeline St',
+              city: 'Berkeley',
+              state: 'CA',
+              postal_code: '94703',
+            },
+            { label: 'Pool', address: null, city: 'Oakland', state: 'CA', postal_code: null },
           ],
         },
       ],

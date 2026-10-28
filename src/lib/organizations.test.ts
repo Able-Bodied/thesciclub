@@ -1,6 +1,63 @@
-import { describe, expect, it } from 'vitest';
-import { organizationByName } from '@/lib/organizations';
+import { renderHook, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { organizationByName, useOrganizations } from '@/lib/organizations';
 import type { Organization } from '@/types/domain';
+
+const directory = vi.hoisted(() => ({ asked: [] as string[] }));
+vi.mock('@/lib/supabase', () => ({
+  getSupabase: () => ({
+    from: () => {
+      let columns = '';
+      const query = {
+        select: (wanted: string) => {
+          columns = wanted;
+          directory.asked.push(wanted);
+          return query;
+        },
+        is: () => query,
+        order: () => query,
+        range: () =>
+          Promise.resolve(
+            columns.includes('postal_code')
+              ? {
+                  data: null,
+                  error: {
+                    code: '42703',
+                    message: 'column organization_places_1.postal_code does not exist',
+                  },
+                }
+              : {
+                  data: [
+                    {
+                      id: 'o1',
+                      short_code: 'BORP',
+                      name: 'BORP',
+                      city: 'Berkeley',
+                      description: '',
+                      tags: null,
+                      can_invite: false,
+                      logo_path: null,
+                      state: 'CA',
+                      organization_places: [
+                        {
+                          id: 'p1',
+                          position: 0,
+                          label: null,
+                          address: null,
+                          city: 'Berkeley',
+                          state: 'CA',
+                        },
+                      ],
+                    },
+                  ],
+                  error: null,
+                },
+          ),
+      };
+      return query;
+    },
+  }),
+}));
 
 const org = (o: Partial<Organization> = {}): Organization => ({
   id: 'o1',
@@ -81,6 +138,7 @@ describe('an organization’s places', () => {
           address: '3075 Adeline St',
           city: 'Berkeley',
           state: 'CA',
+          postal_code: '94703',
         },
       ],
     });
@@ -92,7 +150,10 @@ describe('an organization’s places', () => {
       address: '3075 Adeline St',
       city: 'Berkeley',
       state: 'CA',
+      postalCode: '94703',
     });
+    // Read before 20261028700000, or none given.
+    expect(read.places?.[1]?.postalCode).toBeNull();
   });
 });
 
@@ -112,5 +173,21 @@ describe('an organization whose site names no place', () => {
     });
     expect(read.city).toBe('');
     expect(read.places).toEqual([]);
+  });
+});
+
+// Until 20261028700000 is live, asking for the ZIP fails the whole read.
+describe('the directory before ZIP codes are in the database', () => {
+  it('is read again without them', async () => {
+    const { result } = renderHook(() => useOrganizations());
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.organizations[0]?.places?.[0]?.postalCode).toBeNull();
+    expect(directory.asked.map((columns) => columns.includes('postal_code'))).toEqual([
+      true,
+      false,
+    ]);
   });
 });

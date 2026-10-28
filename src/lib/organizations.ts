@@ -27,19 +27,22 @@ interface PlaceRow {
   address: string | null;
   city: string;
   state: string;
+  /** Absent before 20261028700000. */
+  postal_code?: string | null;
 }
 
 /** Main place first. */
 export function toOrganizationPlaces(rows: PlaceRow[] | null | undefined): OrganizationPlace[] {
   return [...(rows ?? [])]
     .sort((a, b) => a.position - b.position)
-    .map(({ id, position, label, address, city, state }) => ({
+    .map(({ id, position, label, address, city, state, postal_code }) => ({
       id,
       position,
       label,
       address,
       city,
       state,
+      postalCode: postal_code ?? null,
     }));
 }
 
@@ -120,21 +123,31 @@ onForgetSharedReads(() => {
   inFlight = null;
 });
 
+const DIRECTORY =
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state, postal_code)';
+/** Before 20261028700000: no ZIP codes. */
+const DIRECTORY_WITHOUT_ZIP =
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)';
+
+function readDirectory(columns: typeof DIRECTORY | typeof DIRECTORY_WITHOUT_ZIP) {
+  return readPages<OrganizationRow>((from, to) =>
+    getSupabase()
+      .from('organizations')
+      .select(columns)
+      .is('removed_at', null)
+      .order('name')
+      .order('id')
+      .range(from, to),
+  );
+}
+
 function readOrganizations(): Promise<OrganizationsRead> {
   if (inFlight) return inFlight;
   const read = (async (): Promise<OrganizationsRead> => {
     try {
-      const { data, error } = await readPages<OrganizationRow>((from, to) =>
-        getSupabase()
-          .from('organizations')
-          .select(
-            'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)',
-          )
-          .is('removed_at', null)
-          .order('name')
-          .order('id')
-          .range(from, to),
-      );
+      let { data, error } = await readDirectory(DIRECTORY);
+      // Until 20261028700000 is live, the directory is read without ZIP codes.
+      if (error?.code === '42703') ({ data, error } = await readDirectory(DIRECTORY_WITHOUT_ZIP));
       if (error) {
         return {
           organizations: [],
