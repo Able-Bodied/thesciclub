@@ -1,4 +1,4 @@
-import { Loader2, X } from 'lucide-react';
+import { Link as LinkIcon, Loader2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
@@ -19,7 +19,7 @@ import {
   qrJoinUrl,
   turnOffQrCode,
 } from '@/lib/qr-codes';
-import { shareLink } from '@/lib/share-link';
+import { copyWhenReady, shareLink } from '@/lib/share-link';
 import { cn } from '@/lib/utils';
 
 /**
@@ -78,6 +78,12 @@ export default function QrCodePage() {
   const [showing, setShowing] = useState<MyQrCode | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The link just made with Make a link, and whether it reached the clipboard.
+  const [linkNote, setLinkNote] = useState<{
+    url: string;
+    copied: boolean;
+    expiresAt: string | null;
+  } | null>(null);
 
   const isAdmin = account.status === 'member' && account.isAdmin;
   // The organizations this member is an org admin of, by name.
@@ -124,17 +130,22 @@ export default function QrCodePage() {
       ? (byId.get(code.organizationId)?.name ?? 'Your organization')
       : (code.eventName ?? 'No event');
 
-  async function make() {
-    if (!ready || busy) return;
-    setBusy('new');
-    setError(null);
-    const result = await createQrCode({
+  function made() {
+    return createQrCode({
       organizationId: forOrganization,
       eventName: event || null,
       contactEmail: needsEmail ? email.trim() : null,
       expiresAt: expires ? new Date(Date.now() + hours * 3_600_000) : null,
       notes: notes.trim() || null,
     });
+  }
+
+  async function make() {
+    if (!ready || busy) return;
+    setBusy('new');
+    setError(null);
+    setLinkNote(null);
+    const result = await made();
     setBusy(null);
     if (!result.ok) {
       setError(result.error);
@@ -143,6 +154,33 @@ export default function QrCodePage() {
     setNotes('');
     setShowing(result.code);
     void load();
+  }
+
+  // The same code as a link, made and copied in one press (the owner,
+  // 2026-10-28). Started inside the tap, so Safari lets it copy.
+  function makeLink() {
+    if (!ready || busy) return;
+    setBusy('link');
+    setError(null);
+    setLinkNote(null);
+    const making = made();
+    void copyWhenReady(making.then((result) => (result.ok ? qrJoinUrl(result.code.code) : null)))
+      .then(async (copied) => {
+        const result = await making;
+        setBusy(null);
+        if (!result.ok || !copied) {
+          setError(result.ok ? 'The link was not made.' : result.error);
+          return;
+        }
+        setNotes('');
+        setLinkNote({ ...copied, expiresAt: result.code.expiresAt });
+        announce(copied.copied ? 'Link copied.' : 'Link made. Copy it below.');
+        void load();
+      })
+      .catch(() => {
+        setBusy(null);
+        setError('The link was not made.');
+      });
   }
 
   async function turnOff(code: MyQrCode) {
@@ -387,13 +425,42 @@ export default function QrCodePage() {
             </p>
           ) : null}
 
-          <button
-            type="submit"
-            disabled={!ready || busy !== null}
-            className="mt-3.5 flex min-h-[48px] w-full items-center justify-center rounded-[11px] bg-action font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
-          >
-            {busy === 'new' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Make the QR code'}
-          </button>
+          <div className="mt-3.5 grid grid-cols-2 gap-2">
+            <button
+              type="submit"
+              disabled={!ready || busy !== null}
+              className="flex min-h-[48px] items-center justify-center rounded-[11px] bg-action px-2 font-bold font-head text-[0.9375rem] text-white disabled:opacity-40"
+            >
+              {busy === 'new' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Make the QR code'}
+            </button>
+            <button
+              type="button"
+              disabled={!ready || busy !== null}
+              onClick={makeLink}
+              className="flex min-h-[48px] items-center justify-center gap-1.5 rounded-[11px] border-[1.6px] border-emphasis px-2 font-bold font-head text-[0.9375rem] text-emphasis disabled:opacity-40"
+            >
+              {busy === 'link' ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <LinkIcon className="h-4 w-4" aria-hidden="true" />
+                  Make a link
+                </>
+              )}
+            </button>
+          </div>
+          {linkNote ? (
+            <div
+              role="status"
+              className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink leading-[1.45]"
+            >
+              <p className="font-bold">
+                {linkNote.copied ? 'Link copied.' : 'Link made. Copy it to share it:'}
+                {linkNote.expiresAt ? ` It works until ${when(linkNote.expiresAt)}.` : ''}
+              </p>
+              <p className="mt-1 select-all break-all text-ink2">{linkNote.url}</p>
+            </div>
+          ) : null}
         </form>
 
         <h2 className="mt-6 mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">

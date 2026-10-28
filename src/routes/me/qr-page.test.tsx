@@ -18,6 +18,8 @@ const state = vi.hoisted(() => ({
   shared: [] as { url: string; title: string; text: string }[],
   shareOutcome: 'shared',
   createError: null as string | null,
+  copied: [] as string[],
+  copyWorks: true,
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => state.account }));
@@ -75,6 +77,12 @@ vi.mock('@/lib/share-link', () => ({
     state.shared.push(link);
     return Promise.resolve(state.shareOutcome);
   },
+  copyWhenReady: async (link: Promise<string | null>) => {
+    const url = await link;
+    if (url === null) return null;
+    state.copied.push(url);
+    return { url, copied: state.copyWorks };
+  },
 }));
 
 const { default: QrCodePage } = await import('@/routes/me/qr-page');
@@ -126,6 +134,8 @@ beforeEach(() => {
   state.shared = [];
   state.shareOutcome = 'shared';
   state.createError = null;
+  state.copied = [];
+  state.copyWorks = true;
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   confirmSpy.mockClear();
 });
@@ -200,6 +210,37 @@ describe("an org admin's code", () => {
     expect(screen.getByText('It works until you turn it off.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
     expect(state.created[1]?.expiresAt).toBeNull();
+  });
+
+  // The owner, 2026-10-28: a link, made and copied in one press.
+  it('makes a link and copies it, saying until when it works', async () => {
+    asOrgAdmin();
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make a link' }));
+    expect(state.created[0]?.organizationId).toBe('ncs');
+    expect(state.copied).toEqual([`${window.location.origin}/join?from=fresh0code`]);
+    const note = await screen.findByText(/^Link copied\. It works until /);
+    expect(note).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/join?from=fresh0code`)).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('shows the link to copy by hand where the clipboard refuses', async () => {
+    asOrgAdmin();
+    state.copyWorks = false;
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make a link' }));
+    expect(await screen.findByText(/^Link made\. Copy it to share it:/)).toBeInTheDocument();
+    expect(screen.getByText(`${window.location.origin}/join?from=fresh0code`)).toBeInTheDocument();
+  });
+
+  it('says why no link was made', async () => {
+    asOrgAdmin();
+    state.createError = 'Only that organization’s admins can make its codes.';
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make a link' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Only that organization');
+    expect(state.copied).toEqual([]);
   });
 
   it('warns of nothing while the club is invite only: it lets them in', async () => {

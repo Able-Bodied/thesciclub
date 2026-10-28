@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { shareLink } from '@/lib/share-link';
+import { copyWhenReady, shareLink } from '@/lib/share-link';
 
 const LINK = { url: 'https://thesciclub.com/join?from=abc', title: 'The SCI Club', text: 'Hi' };
 
@@ -40,5 +40,34 @@ describe('sharing a link', () => {
   it('says so when it can neither share nor copy', async () => {
     stubNavigator(undefined, () => Promise.reject(new Error('denied')));
     expect(await shareLink(LINK)).toBe('failed');
+  });
+});
+
+describe('copyWhenReady (the owner, 2026-10-28)', () => {
+  it('writes the link once it is made, where the clipboard takes only text', async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    expect(await copyWhenReady(Promise.resolve('https://x/join?from=a'))).toEqual({
+      url: 'https://x/join?from=a',
+      copied: true,
+    });
+    expect(writeText).toHaveBeenCalledWith('https://x/join?from=a');
+  });
+
+  it('copies nothing when no link was made, and says when the clipboard refuses', async () => {
+    const writeText = vi.fn(() => Promise.reject(new Error('denied')));
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    expect(await copyWhenReady(Promise.resolve(null))).toBeNull();
+    expect(writeText).not.toHaveBeenCalled();
+    expect(await copyWhenReady(Promise.resolve('https://x/join?from=b'))).toEqual({
+      url: 'https://x/join?from=b',
+      copied: false,
+    });
   });
 });
