@@ -232,7 +232,13 @@ export async function lookUpPlace(query) {
   const trimmed = (query || '').trim();
   if (!trimmed) return null;
 
-  const attempts = [{ query: trimmed }, ...fallbackQueries(trimmed)];
+  // The full address twice: Nominatim now and then answers nothing for one it
+  // knows, and a rewrite's hit is never exact.
+  const attempts = [
+    { query: trimmed },
+    { query: trimmed, again: true },
+    ...fallbackQueries(trimmed),
+  ];
   let answered = false;
   for (let i = 0; i < attempts.length; i++) {
     if (i > 0) await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS));
@@ -241,7 +247,7 @@ export async function lookUpPlace(query) {
       const result = await searchNominatim(attempt.query);
       answered = true;
       if (!result) continue;
-      if (i === 0) return result;
+      if (i === 0 || attempt.again) return result;
       // A rewrite's hit ("Unit A, Pomona, CA") may be any building: exact only
       // when it is the very street address the venue's name stood before.
       const same = attempt.venueDropped && sameStreetAddress(attempt.query, result);

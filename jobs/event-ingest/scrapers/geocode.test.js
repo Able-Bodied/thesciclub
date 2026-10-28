@@ -172,8 +172,13 @@ describe('lookUpPlace and how exact a hit is', () => {
     expect((await ask('764 Indigo Court, Unit A, Pomona, CA'))?.precision).toBe('exact');
   });
 
-  it('is never exact when only a rewrite found it', async () => {
+  it('asks the full address again when the first answer is empty, and is exact then', async () => {
     answers([[], hit('house')]);
+    expect((await ask('55 Chicago St, Buffalo, NY'))?.precision).toBe('exact');
+  });
+
+  it('is never exact when only a rewrite found it', async () => {
+    answers([[], [], hit('house')]);
     expect((await ask('764 Indigo Court, Unit A, Pomona, CA'))?.precision).toBe('approximate');
   });
 
@@ -184,25 +189,25 @@ describe('lookUpPlace and how exact a hit is', () => {
         address: { ...hit('house')[0].address, house_number: number, postcode },
       },
     ];
-    answers([[], at('2140', '94607')]);
+    answers([[], [], at('2140', '94607')]);
     expect((await ask('Pacific Pipe, 2140 Mandela Pkwy, Oakland, CA 94607'))?.precision).toBe(
       'exact',
     );
     // Another number, another ZIP, or no ZIP asked for: not proof enough.
-    answers([[], at('2141', '94607')]);
+    answers([[], [], at('2141', '94607')]);
     expect((await ask('Pacific Pipe, 2140 Mandela Pkwy, Oakland, CA 94607'))?.precision).toBe(
       'approximate',
     );
-    answers([[], at('608', '76004')]);
+    answers([[], [], at('608', '76004')]);
     expect((await ask('Dyno-Rock, 608 E Front St, Arlington, TX 76011'))?.precision).toBe(
       'approximate',
     );
-    answers([[], at('2140', '94607')]);
+    answers([[], [], at('2140', '94607')]);
     expect((await ask('Pacific Pipe, 2140 Mandela Pkwy, Oakland, CA'))?.precision).toBe(
       'approximate',
     );
     // A number that is a building's, not the street's.
-    answers([[], at('7', '94304')]);
+    answers([[], [], at('7', '94304')]);
     expect((await ask('Building 7, 3801 Miranda Ave, Palo Alto, CA 94304'))?.precision).toBe(
       'approximate',
     );
