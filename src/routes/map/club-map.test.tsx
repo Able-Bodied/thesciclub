@@ -46,6 +46,7 @@ function fakeMap() {
     queryRenderedFeatures: vi.fn((): unknown[] => []),
     getCanvas: () => ({ style: {} as Record<string, string> }),
     easeTo: vi.fn(),
+    fitBounds: vi.fn(),
     getZoom: () => 10,
     doubleClickZoom: { disable: vi.fn() },
   };
@@ -517,6 +518,35 @@ describe('a double on a pin', () => {
     expect(source.getClusterExpansionZoom).toHaveBeenCalledWith(7);
   });
 
+  // The owner, 2026-10-28: a bubble of places apart opens around them.
+  it('fits a bubble of places apart, on a double too', async () => {
+    render(<Screen />);
+    await ready();
+    const source = the.map?.sources.get('club-peers') as unknown as Record<string, unknown>;
+    source.getClusterExpansionZoom = vi.fn(() => Promise.resolve(9));
+    source.getClusterLeaves = vi.fn(() =>
+      Promise.resolve([
+        { geometry: at([-122.27, 37.8]), properties: { key: 'Oakland|CA' } },
+        { geometry: at([-121.89, 37.34]), properties: { key: 'San Jose|CA' } },
+      ]),
+    );
+    twice({
+      source: 'club-peers',
+      geometry: at([-122.1, 37.6]),
+      properties: { cluster_id: 3, point_count: 2, count: 3 },
+    });
+    await waitFor(() => {
+      expect(the.map?.fitBounds).toHaveBeenCalledWith(
+        [
+          [-122.27, 37.34],
+          [-121.89, 37.8],
+        ],
+        { padding: 64, maxZoom: 14 },
+      );
+    });
+    expect(the.map?.easeTo).not.toHaveBeenCalled();
+  });
+
   it('steps in as MapLibre would on empty map', async () => {
     render(<Screen />);
     await ready();
@@ -538,6 +568,69 @@ describe('a single tap', () => {
       the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.87 } });
     });
   };
+
+  // The owner, 2026-10-28: a bubble of three peers in three cities zooms in
+  // around them, so they come apart, rather than listing them.
+  it('zooms in around a bubble of places apart, instead of opening the sheet', async () => {
+    render(<Screen />);
+    await ready();
+    const source = the.map?.sources.get('club-peers') as unknown as Record<string, unknown>;
+    source.getClusterExpansionZoom = vi.fn(() => Promise.resolve(9));
+    source.getClusterLeaves = vi.fn(() =>
+      Promise.resolve([
+        { geometry: { type: 'Point', coordinates: [-122.27, 37.8] }, properties: { key: 'a' } },
+        { geometry: { type: 'Point', coordinates: [-121.89, 37.34] }, properties: { key: 'b' } },
+        { geometry: { type: 'Point', coordinates: [-122.42, 37.77] }, properties: { key: 'c' } },
+      ]),
+    );
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      {
+        source: 'club-peers',
+        geometry: { type: 'Point', coordinates: [-122.2, 37.6] },
+        properties: { cluster_id: 3, point_count: 3, count: 3 },
+      },
+    ]);
+    tap(false);
+    await waitFor(() => {
+      expect(the.map?.fitBounds).toHaveBeenCalledWith(
+        [
+          [-122.42, 37.34],
+          [-121.89, 37.8],
+        ],
+        { padding: 64, maxZoom: 14 },
+      );
+    });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('opens the sheet for a bubble whose places are all at one point', async () => {
+    render(<Screen />);
+    await ready();
+    const source = the.map?.sources.get('club-events') as unknown as Record<string, unknown>;
+    source.getClusterExpansionZoom = vi.fn(() => Promise.resolve(15));
+    source.getClusterLeaves = vi.fn(() =>
+      Promise.resolve([
+        {
+          geometry: { type: 'Point', coordinates: [-122.27, 37.87] },
+          properties: { key: hit.properties.key },
+        },
+        {
+          geometry: { type: 'Point', coordinates: [-122.27, 37.87] },
+          properties: { key: hit.properties.key },
+        },
+      ]),
+    );
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      {
+        source: 'club-events',
+        geometry: { type: 'Point', coordinates: [-122.27, 37.87] },
+        properties: { cluster_id: 4, point_count: 2, count: 2 },
+      },
+    ]);
+    tap(false);
+    expect(await screen.findByRole('dialog', {}, { timeout: 200 })).toBeVisible();
+    expect(the.map?.fitBounds).not.toHaveBeenCalled();
+  });
 
   it('opens the sheet at once with a mouse', async () => {
     render(<Screen />);

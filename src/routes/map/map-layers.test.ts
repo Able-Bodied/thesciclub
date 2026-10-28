@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/map', () => ({ MAP_FONT: 'Noto Sans Regular' }));
 
-const { addIcon, addLayers, setHome } = await import('@/routes/map/map-layers');
+const { addIcon, addLayers, setHome, spreadOf } = await import('@/routes/map/map-layers');
 
 /** A 2D context as iOS 15's Safari has it: no roundRect. */
 function oldSafariPen() {
@@ -185,5 +185,29 @@ describe('one look for every pin', () => {
     // The sheet says "Approximate location"; the pin does not change for it.
     expect(drawn).not.toContain('exact');
     expect(drawn).not.toContain('club-organization-ring');
+  });
+});
+
+describe('spreadOf (the owner, 2026-10-28)', () => {
+  it('is the bounds of places apart', () => {
+    expect(
+      spreadOf([
+        [-122.27, 37.8],
+        [-121.89, 37.34],
+      ]),
+    ).toEqual([
+      [-122.27, 37.34],
+      [-121.89, 37.8],
+    ]);
+  });
+
+  it('is null for one place, or several at one point', () => {
+    expect(spreadOf([[-122.27, 37.8]])).toBeNull();
+    expect(
+      spreadOf([
+        [-122.27, 37.8],
+        [-122.27, 37.8],
+      ]),
+    ).toBeNull();
   });
 });

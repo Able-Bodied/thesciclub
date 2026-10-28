@@ -408,6 +408,43 @@ export interface Picked {
   keys: Record<Layer, Set<string>>;
   /** A cluster's middle and the zoom that splits it. */
   zoomTo: { center: [number, number]; zoom: number } | null;
+  /**
+   * West-south and east-north of every place under the tap, when a cluster
+   * is among them and they are not all at one point (the owner,
+   * 2026-10-28): a tap zooms to fit them, so they come apart.
+   */
+  spread: [[number, number], [number, number]] | null;
+}
+
+/** How close fitting a bubble's places goes: a few streets, never one. */
+export const SPREAD_MAX_ZOOM = 14;
+/** Room around them, in pixels, so no pin sits on the edge. */
+export const SPREAD_PADDING = 64;
+
+/** The point of a GeoJSON feature, or null. */
+function pointOf(feature: unknown): [number, number] | null {
+  const geometry = (feature as { geometry?: { type?: string; coordinates?: unknown } } | null)
+    ?.geometry;
+  if (geometry?.type !== 'Point' || !Array.isArray(geometry.coordinates)) return null;
+  const [lng, lat] = geometry.coordinates as unknown[];
+  return typeof lng === 'number' && typeof lat === 'number' ? [lng, lat] : null;
+}
+
+/** The bounds of these points, or null when they are all at one place. */
+export function spreadOf(points: [number, number][]): Picked['spread'] {
+  if (points.length < 2) return null;
+  const lngs = points.map((point) => point[0]);
+  const lats = points.map((point) => point[1]);
+  const west = Math.min(...lngs);
+  const east = Math.max(...lngs);
+  const south = Math.min(...lats);
+  const north = Math.max(...lats);
+  // Five decimals is about a metre: closer than that is one place.
+  if (east - west < 1e-5 && north - south < 1e-5) return null;
+  return [
+    [west, south],
+    [east, north],
+  ];
 }
 
 export async function pick(
@@ -421,6 +458,8 @@ export async function pick(
     organizations: new Set(),
   };
   let zoomTo: Picked['zoomTo'] = null;
+  const points: [number, number][] = [];
+  let clustered = false;
   for (const hit of hits) {
     const layer = LAYERS.find((name) => SOURCES[name] === hit.source);
     if (!layer) continue;
@@ -431,8 +470,11 @@ export async function pick(
     };
     if (typeof properties.cluster_id !== 'number') {
       if (properties.key) keys[layer].add(properties.key);
+      const point = pointOf(hit);
+      if (point) points.push(point);
       continue;
     }
+    clustered = true;
     const source = map.getSource<GeoJSONSource>(SOURCES[layer]);
     if (!source) continue;
     const leaves: unknown[] = await source.getClusterLeaves(
@@ -443,13 +485,15 @@ export async function pick(
     for (const leaf of leaves) {
       const key = (leaf as { properties?: { key?: unknown } | null }).properties?.key;
       if (typeof key === 'string') keys[layer].add(key);
+      const point = pointOf(leaf);
+      if (point) points.push(point);
     }
     if (!zoomTo) {
       const zoom = await source.getClusterExpansionZoom(properties.cluster_id);
       zoomTo = { center: tapped, zoom };
     }
   }
-  return { keys, zoomTo };
+  return { keys, zoomTo, spread: clustered ? spreadOf(points) : null };
 }
 
 export const boxOf = (map: MapLibreMap): Box => {
@@ -486,4 +530,9 @@ export async function closeUpOf(map: MapLibreMap, hit: MapGeoJSONFeature): Promi
   // Already closer than a city: centred, not zoomed out.
   if (layer === 'peers') return { center, zoom: Math.max(map.getZoom(), PEER_CITY_ZOOM) };
   return { center, zoom: properties.exact === true ? STREET_ZOOM : CITY_CLOSE_ZOOM };
+}
+
+/** Zooms to fit a bubble's places, never closer than a few streets. */
+export function fitSpread(map: MapLibreMap, spread: NonNullable<Picked['spread']>): void {
+  map.fitBounds(spread, { padding: SPREAD_PADDING, maxZoom: SPREAD_MAX_ZOOM });
 }

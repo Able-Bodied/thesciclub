@@ -40,6 +40,7 @@ import {
   CITY_CLOSE_ZOOM,
   type CloseUp,
   closeUpOf,
+  fitSpread,
   LAYER_IDS,
   PEER_CITY_ZOOM,
   type Picked,
@@ -399,8 +400,15 @@ export default function ClubMap({
           map.easeTo({ zoom: map.getZoom() + (shift ? -1 : 1), around: event.lngLat });
           return;
         }
-        closeUpOf(map, hit)
-          .then((target) => {
+        // A bubble of places apart: around all of them, as a single tap.
+        pick(map, [hit], [event.lngLat.lng, event.lngLat.lat])
+          .then(async ({ spread }) => {
+            if (live.current !== map) return;
+            if (spread) {
+              fitSpread(map, spread);
+              return;
+            }
+            const target = await closeUpOf(map, hit);
             if (target && live.current === map) map.easeTo(target);
           })
           .catch(() => undefined);
@@ -412,8 +420,13 @@ export default function ClubMap({
       const open = () => {
         // The map can be removed before a cluster answers; then the tap is moot.
         pick(map, hits, [event.lngLat.lng, event.lngLat.lat])
-          .then(({ keys, zoomTo }) => {
-            if (live.current === map) setSheet({ kind: 'place', keys, zoomTo });
+          .then(({ keys, zoomTo, spread }) => {
+            if (live.current !== map) return;
+            // A bubble of places apart zooms in around them so they come
+            // apart (the owner, 2026-10-28); one place, or a bubble that is
+            // all one place, opens the sheet.
+            if (spread) fitSpread(map, spread);
+            else setSheet({ kind: 'place', keys, zoomTo });
           })
           .catch(() => undefined);
       };
