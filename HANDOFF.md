@@ -106,6 +106,18 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **Reactions notify, and the icon counts kinds (built 2026-10-27, not
+  live)**: a reaction to a message or post notifies its author like a like
+  (`reaction`, switch "Reactions to my posts and messages" on Me; never self,
+  never between a blocked pair either way). The icon's number is the kinds
+  among what the bell has not shown (Messages, Replies, Likes, Reactions,
+  Events, Grants, Reminders, Invites, Reports; a kind switched off is not
+  counted) and only opening the bell clears it. Reading a conversation still
+  marks its rows read but no longer seen, so the bell's own number stays too
+  (my call; the owner may want it back). To ship, in order: `db push`
+  (`20261028000000`, `20261028010000`), then `functions deploy push-notify
+  --no-verify-jwt`, then the client (`main`, a TestFlight build). Probes:
+  `reaction-notifications.sql`, `icon-badge-kinds.sql`.
 - **App Store: 1.0.5 (build 6) submitted 2026-10-25, waiting for review**,
   manual release. Reviewer signs in as `review@thesciclub.com`; `peer@` and
   `deleteme@` are in the review notes (all Zoho aliases; passwords only in
@@ -288,12 +300,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Known and accepted: anybody once signed in on a phone can read its token and
   take it over, as with web push; APNs payloads are readable by Apple, unlike
   web push's (a sentence in Privacy, for the owner to word).
-  **Icon badge, built, not yet on a device**: a message push carries the
-  member's unread count as `aps.badge` (0 clears it), as web push does; while
-  open the app sets it itself (`@capawesome/capacitor-badge` 8.0.4, only once
-  notifications are allowed), and signing out clears it. To ship: redeploy
-  `push-notify` (step 3) and a new TestFlight build; then read it on the icon,
-  open the conversation, and check the number drops.
+  **Icon badge, built, not yet on a device**: every push carries
+  `aps.badge` (0 clears it), as web push does; while open the app sets it
+  itself (`lib/icon-badge.ts`, `@capawesome/capacitor-badge` 8.0.4, only once
+  notifications are allowed), and signing out clears it. The number is how
+  many kinds the bell has not shown (see Open, Reactions and the icon).
 - **Store app, still to build**: Android (Google needs a client
   made with the Play signing SHA-1, Apple there is a web flow, and App
   Links need `public/.well-known/assetlinks.json` with the Play signing

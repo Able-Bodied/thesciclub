@@ -101,9 +101,9 @@ export function notificationsOffered(): boolean {
 const loadApp = () => import('@/lib/push/app-push');
 
 /**
- * The unread count on the app icon, where there is one: the iPhone app's
+ * The number on the app icon, where there is one: the iPhone app's
  * (app-push.ts), or a Home Screen app on iOS 16.4+ or installed Chrome. A push
- * sets it while the app is closed; src/lib/chat/unread.ts keeps it true while
+ * sets it while the app is closed; src/lib/icon-badge.ts keeps it true while
  * open. 0 clears it. Never fails.
  */
 export function showOnAppIcon(count: number): Promise<void> {

@@ -71,7 +71,7 @@ export interface Owed {
   detail: string | null;
   url: string;
   tag: string;
-  /** The recipient's unread conversations, on message pushes only. */
+  /** Kinds of notification the recipient's bell has not shown (20261028010000). */
   badge: number | null;
 }
 

@@ -84,7 +84,7 @@ export function appToken(): Promise<string> {
 let badge: Promise<void> = Promise.resolve();
 
 /**
- * The unread count on the app's icon; 0 clears it. One at a time, so the last
+ * The number on the app's icon (icon-badge.ts); 0 clears it. One at a time, so the last
  * count wins. Only once notifications are allowed: the badge plugin's `set`
  * asks iOS itself, and the club never asks on its own.
  */
