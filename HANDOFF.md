@@ -343,6 +343,26 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
   Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until
   members have the store app (Open, Home Screen pairing).
+- **Codex review of 2026-10-27**: the Peers directory now reads every page
+  (`members-pagination.test.ts`); the Check workflow runs `pnpm check` and
+  `pnpm test` on pushes to `main` and pull requests, and only reports (the
+  owner: no gate on Netlify; check locally before pushing). Still open:
+  - **A conversation reloads its whole history** on every realtime change
+    (`useThreadMessages`, `threads.ts`; no debounce in `useRealtimeRows`).
+    Load the recent messages, older ones on demand. Not felt at today's sizes.
+  - **Most probes need a person**: 83 of 94 in `supabase/tests` print expect
+    lines; make the outcomes `raise exception` asserts so CI can run them
+    (also needs a local Supabase in CI).
+  - **Link-preview DNS rebinding** (`resolvesPublicly`, `extract.ts`): Supabase
+    ticket filed 2026-10-27 asking whether Edge Functions can reach private
+    addresses. Blocked: note it there and close. Not: the owner picks accepting
+    it (members only; only a title and picture come back) or an outbound
+    proxy. Never probe internal addresses from a function to find out.
+- **`PERFORMANCE-PLAN.md`, then `CHAT-SECURITY-PLAN.md`: neither started**
+  (2026-10-27: no planned indexes, no link-preview cache header,
+  `tw-animate-css` still in, no chat rule rewrites). The migration names in
+  both are now taken by others; give them new ones. Order: performance steps
+  1 to 4, then chat security Phase A, then B.
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
