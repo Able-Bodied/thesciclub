@@ -230,10 +230,17 @@ describe('the how-to video', () => {
     expect(video).toHaveAttribute('playsinline');
   });
 
-  it('is not offered with any other browser’s steps', async () => {
+  it('is offered with Safari’s steps too, much the same as Chrome’s', async () => {
     browserIs(IPHONE_SAFARI);
     renderAfterWait();
     await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    expect(screen.getByRole('button', { name: 'Watch how' })).toBeInTheDocument();
+  });
+
+  it('is not offered on Android, whose steps differ', async () => {
+    browserIs(ANDROID);
+    render(<InstallSettings />);
+    await userEvent.setup().click(screen.getByRole('button', { name: /Show me how|Install/ }));
     expect(screen.queryByRole('button', { name: 'Watch how' })).toBeNull();
   });
 });
