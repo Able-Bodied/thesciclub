@@ -46,5 +46,11 @@ jobs:
       - name: Lint and types
         run: pnpm check
 
+      # Placeholders for what .env.local gives a laptop: some screens' tests
+      # build the client without mocking it, and throw if these are unset.
+      # Nothing here reaches a real project.
       - name: Unit tests
+        env:
+          VITE_SUPABASE_URL: http://127.0.0.1:54321
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
         run: pnpm test
