@@ -359,11 +359,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   in the email box. Off again: remove the variable and deploy.
 - **Owner's calls, pending**: thesciclub.org (Netlify alias, `@` and `www` A records to
   `75.2.60.5` at Spaceship).
+- **Tried by the owner 2026-10-27**: a notification tapped from the lock
+  screen opens it; joining on a computer and confirming on a phone.
 - **Never tried for real**: an hour of VoiceOver; the date boxes with Voice
-  Control and autofill; a notification end to end and its tap from the lock
-  screen, cold and warm; signed photos on a phone; pinch zoom in the
+  Control and autofill; signed photos on a phone; pinch zoom in the
   installed app and the photo viewer; Hide My Email through an invite link;
-  joining on a computer and confirming on a phone; Google from the Home
+  Google from the Home
   Screen app on an iPhone (`googlechromes://`, `x-safari-https://`,
   `OPEN_WAIT_MS` 800); the first nightly import after an administrator
   changed an imported event; repeating events on a Supabase stack.
