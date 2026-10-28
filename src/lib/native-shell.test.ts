@@ -150,6 +150,10 @@ describe('a tapped notification', () => {
     expect(notificationPath({ url: '/admin?tab=reports#blocks' }, app)).toBe(
       '/admin?tab=reports#blocks',
     );
+    // The tag push-notify adds, for the app to clear that one (20261028900000).
+    expect(notificationPath({ url: '/events/e1?n=event%3Ae1' }, app)).toBe(
+      '/events/e1?n=event%3Ae1',
+    );
   });
 
   it('opens nothing that is not the club’s', () => {

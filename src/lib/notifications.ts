@@ -106,6 +106,18 @@ export async function markNotificationsSeen(): Promise<void> {
   await getSupabase().rpc('notifications_mark_seen');
 }
 
+/**
+ * A pressed push: its tag came back in the address as `n`
+ * (20261028900000), and clears that one thing only.
+ */
+export async function markNotificationsReadByTag(tag: string): Promise<void> {
+  try {
+    await getSupabase().rpc('notifications_mark_read_by_tag', { notification_tag: tag });
+  } catch {
+    // The next open of what it is about, or of the bell, clears it.
+  }
+}
+
 /** One notification, or every one (no id). */
 export async function markNotificationsRead(id?: string): Promise<{ ok: boolean; error?: string }> {
   try {

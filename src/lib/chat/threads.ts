@@ -5,6 +5,7 @@ import { toLinkPreview } from '@/lib/chat/link-preview';
 import { CHAT_NOTICES, type ChatMessage, type ChatNotice, type ChatThread } from '@/lib/chat/types';
 import { unreadChanged } from '@/lib/chat/unread';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import { announceNotificationsChanged } from '@/lib/notifications';
 import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
@@ -388,6 +389,8 @@ export function useThreadMessages(threadId: string | undefined): ThreadMessagesS
           .rpc('chat_mark_thread_read_through', { thread: threadId, message: through })
           .then(() => {
             unreadChanged();
+            // Its notifications are seen now, so the icon drops by them.
+            announceNotificationsChanged();
           });
       }
     } catch (e) {

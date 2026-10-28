@@ -9,7 +9,8 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * The number on the app icon while the app is open: how many kinds of
  * notification the bell has not shown yet (20261028010000), the number every
- * push carries. Opening the bell clears it; reading a conversation does not.
+ * push carries. The bell's list clears it all; opening one conversation, topic
+ * or pressed push clears that one (20261028900000).
  * Mounted once, in the tab bar, which is on every screen.
  */
 export function useIconBadge(): void {

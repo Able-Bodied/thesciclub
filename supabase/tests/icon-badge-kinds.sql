@@ -118,15 +118,18 @@ select pg_temp.check_true(pg_temp.ana_push_badge(:'secret', 'reaction',
   '{"target":"message","id":"28110000-0000-0000-0000-000000000021","member_id":"cccccccc-2811-0000-0000-00000000000c"}') = 4,
   'a reaction push says 4');
 
-\echo '== 4. reading the conversation in Chat leaves it =='
+\echo '== 4. reading the conversation in Chat clears it alone (since 20261028900000) =='
+savepoint read_chat;
 set local role authenticated;
 select pg_temp.as_member('aaaaaaaa-2811-0000-0000-00000000000a');
 select public.chat_mark_thread_read_through('28110000-0000-0000-0000-000000000020', '28110000-0000-0000-0000-000000000023');
-select pg_temp.check_true((select bool_and(n.read and not n.seen) from public.my_notifications() n
+select pg_temp.check_true((select bool_and(n.read and n.seen) from public.my_notifications() n
                             where n.kind in ('group', 'reaction') and n.url like '/chat/t/%'),
-  'its rows are read, and not seen');
+  'its rows are read and seen');
 reset role;
-select pg_temp.check_true(pg_temp.ana_icon() = 4, 'still 4');
+-- Replies, Likes, and the reaction to her post.
+select pg_temp.check_true(pg_temp.ana_icon() = 3, 'the message and its reaction gone: 3');
+rollback to savepoint read_chat;
 
 \echo '== 5. a kind switched off on Me does not count =='
 set local role authenticated;

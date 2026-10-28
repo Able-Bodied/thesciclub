@@ -106,18 +106,25 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
-- **Reactions notify, and the icon counts kinds (built 2026-10-27, not
-  live)**: a reaction to a message or post notifies its author like a like
-  (`reaction`, switch "Reactions to my posts and messages" on Me; never self,
-  never between a blocked pair either way). The icon's number is the kinds
-  among what the bell has not shown (Messages, Replies, Likes, Reactions,
-  Events, Grants, Reminders, Invites, Reports; a kind switched off is not
-  counted) and only opening the bell clears it. Reading a conversation still
-  marks its rows read but no longer seen, so the bell's own number stays too
-  (my call; the owner may want it back). To ship, in order: `db push`
-  (`20261028000000`, `20261028010000`), then `functions deploy push-notify
-  --no-verify-jwt`, then the client (`main`, a TestFlight build). Probes:
-  `reaction-notifications.sql`, `icon-badge-kinds.sql`.
+- **Reactions notify, and the icon counts kinds**: a reaction to a message
+  or post notifies its author like a like (`reaction`, switch "Reactions to
+  my posts and messages" on Me; never self, never between a blocked pair
+  either way). The icon's number is the kinds among what the bell has not
+  shown (Messages, Replies, Likes, Reactions, Events, Grants, Reminders,
+  Invites, Reports; a kind switched off is not counted). `20261028000000` and
+  `20261028010000` are live. The owner, 2026-10-28, "clear only 1 of 2"
+  (`20261028900000`, not live): opening one conversation or topic, one row
+  in the bell, or one pressed push clears that thing only; the bell's list
+  clears all. A push's address carries its tag as `?n=`
+  (`compose.ts` `withTag`), which `OpenedNotification` hands to
+  `notifications_mark_read_by_tag`. Swiping a notification away clears
+  nothing: iOS reports it only for a registered category with
+  customDismissAction, which `@capacitor/push-notifications` cannot register,
+  and the web's `notificationclose` has no session to call with. To ship, in
+  order: `db push` (`20261028900000`), `functions deploy push-notify
+  --no-verify-jwt`, the client (`main`), a TestFlight build. Probes:
+  `reaction-notifications.sql`, `icon-badge-kinds.sql`,
+  `a-notification-clears-where-it-is-opened.sql`.
 - **Location ZIP codes and address suggestions (built 2026-10-28, not
   live)**: each organization location has an optional ZIP (`postal_code`,
   five digits or ZIP+4; never in `geocode_key`, so no pin goes stale). The

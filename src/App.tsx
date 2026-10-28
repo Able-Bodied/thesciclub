@@ -12,6 +12,7 @@ import { AnnounceProvider } from '@/lib/announce';
 import { LeaveHomeScreenHandoff } from '@/lib/home-screen-handoff';
 import { prefetchMap } from '@/lib/map';
 import { FollowNotification } from '@/lib/push/follow-notification';
+import { OpenedNotification } from '@/lib/push/opened-notification';
 import DevLoginPage from '@/routes/dev-login/page';
 import HomePage from '@/routes/home/page';
 import DeleteAccountPage from '@/routes/legal/delete-account';
@@ -216,6 +217,8 @@ function ShellContent() {
         Display settings
       </button>
       <AppNav />
+      {/* A pressed notification clears itself (opened-notification.tsx). */}
+      <OpenedNotification />
       {/* The one main landmark, so a screen reader can jump past the nav to
           the screen ("main" in the rotor). A flex column the size of the slot
           the routes already filled, so nothing about the layout moves.

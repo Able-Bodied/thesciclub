@@ -82,8 +82,8 @@ export function useUnreadThreads(): UnreadState {
         return;
       }
       setCount(data ?? 0);
-      // Not on the app icon: that counts kinds of notification until the bell
-      // is opened (src/lib/icon-badge.ts).
+      // Not on the app icon: that counts kinds of notification
+      // (src/lib/icon-badge.ts).
     } catch {
       setCount(0);
     }

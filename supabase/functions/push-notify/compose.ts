@@ -138,6 +138,19 @@ function words(owed: Owed, post = false): string {
   return owed.photo_count > 0 ? photographs(owed.photo_count) : '';
 }
 
+/**
+ * The address with the notification's tag as `n`, before any `#`: the app
+ * hands it back when the push is pressed, so that one clears from the icon
+ * (20261028900000).
+ */
+export function withTag(url: string, tag: string): string {
+  if (tag === '') return url;
+  const cut = url.indexOf('#');
+  const base = cut < 0 ? url : url.slice(0, cut);
+  const hash = cut < 0 ? '' : url.slice(cut);
+  return `${base}${base.includes('?') ? '&' : '?'}n=${encodeURIComponent(tag)}${hash}`;
+}
+
 /** Null for a kind this file does not know, which is then not sent at all. */
 export function compose(owed: Owed): PushMessage | null {
   // The author can be gone by the time this runs; the name is not.
@@ -145,7 +158,7 @@ export function compose(owed: Owed): PushMessage | null {
   const given = (owed.actor_name ?? '').trim();
   const name = given === '' ? 'A member' : given;
   const where = {
-    url: owed.url,
+    url: withTag(owed.url, owed.tag),
     tag: owed.tag,
     ...(typeof owed.badge === 'number' ? { badge: owed.badge } : {}),
   };
