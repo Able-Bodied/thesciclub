@@ -508,7 +508,10 @@ All live. Migration headers and the files named say how and why.
   when the geocoded address matches the current one; a save starts the
   Geocode workflow (`.github/workflows/geocode.yml`, `20261026000000`;
   Nominatim refuses Supabase's servers), which places it in a couple of
-  minutes under daily caps (`private.geocode_claim`). Tiles: one archive,
+  minutes under daily caps (`private.geocode_claim`). An organization's
+  place is its logo in a purple ring, else its short code on gold
+  (`organization-badges.ts`): drawn when MapLibre 6's missing-image resolver
+  asks, fetched once, kept across theme changes. Tiles: one archive,
   `usa-<build>` (streets across the US, 9.6 GB; the two-file us/ca builds
   before it come off R2 once no app asks), on Cloudflare R2 behind the
   `tiles-worker/` Worker at sciclub-tiles.thesciclub.workers.dev (owner's
