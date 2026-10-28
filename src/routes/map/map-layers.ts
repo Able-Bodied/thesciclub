@@ -37,6 +37,8 @@ export const LAYER_IDS: Record<Layer, string[]> = {
   organizations: ['club-organizations', 'club-organizations-count'],
 };
 const FOCUS = 'club-organization-focus';
+/** The zoom from which organizations' places are drawn one by one. */
+const ORGANIZATIONS_APART_FROM = 10;
 const PEER_ICON = 'club-peer';
 /** Several organizations' places run together, before they split. */
 const ORGANIZATION_ICON = 'club-organization';
@@ -138,7 +140,8 @@ export function addLayers(map: MapLibreMap): void {
       cluster: true,
       clusterRadius: layer === 'events' ? 40 : 46,
       // Organizations' places are few: apart from city zoom on.
-      clusterMaxZoom: layer === 'events' ? 14 : layer === 'peers' ? 11 : 9,
+      clusterMaxZoom:
+        layer === 'events' ? 14 : layer === 'peers' ? 11 : ORGANIZATIONS_APART_FROM - 1,
       // A cluster's count is its places' counts added up.
       clusterProperties: { count: ['+', ['get', 'count']] },
     });
@@ -158,13 +161,15 @@ export function addLayers(map: MapLibreMap): void {
       },
       paint: { 'icon-translate': [0, 18] },
     },
-    // An open organization's other places: a white then navy circle round each.
+    // An open organization's other places: a white then navy circle round each
+    // badge, only once places are no longer folded into clusters.
     {
       id: `${FOCUS}-outer`,
       type: 'circle',
       source: FOCUS,
+      minzoom: ORGANIZATIONS_APART_FROM,
       paint: {
-        'circle-radius': 25,
+        'circle-radius': 22,
         'circle-color': 'rgba(0,0,0,0)',
         'circle-stroke-color': WHITE,
         'circle-stroke-width': 3,
@@ -175,8 +180,9 @@ export function addLayers(map: MapLibreMap): void {
       id: `${FOCUS}-inner`,
       type: 'circle',
       source: FOCUS,
+      minzoom: ORGANIZATIONS_APART_FROM,
       paint: {
-        'circle-radius': 22,
+        'circle-radius': 19,
         'circle-color': 'rgba(0,0,0,0)',
         'circle-stroke-color': NAVY,
         'circle-stroke-width': 3,
@@ -337,8 +343,8 @@ export function applyTextScale(map: MapLibreMap, scale: number): void {
     at(20),
   ]);
   for (const [id, r] of [
-    [`${FOCUS}-outer`, 25],
-    [`${FOCUS}-inner`, 22],
+    [`${FOCUS}-outer`, 22],
+    [`${FOCUS}-inner`, 19],
   ] as const) {
     map.setPaintProperty(id, 'circle-radius', at(r));
     map.setPaintProperty(id, 'circle-translate', [at(15), at(-15)]);

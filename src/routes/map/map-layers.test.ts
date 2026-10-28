@@ -89,6 +89,14 @@ describe("organizations' places", () => {
     ]);
   });
 
+  it('ring an organization’s other places only once places stop running together', () => {
+    const { added, map } = layersOf();
+    const rings = added.filter((layer) => layer.id.startsWith('club-organization-focus'));
+    expect(rings.map((layer) => (layer as { minzoom?: number }).minzoom)).toEqual([10, 10]);
+    const source = map.addSource.mock.calls.find(([id]) => id === 'club-organizations');
+    expect(source?.[1]).toMatchObject({ clusterMaxZoom: 9 });
+  });
+
   it('count several organizations at one point on a chip, above their badge', () => {
     const { added } = layersOf();
     const ids = added.map((layer) => layer.id);

@@ -277,6 +277,39 @@ describe("an organization's places", () => {
     expect(the.map?.setPaintProperty).toHaveBeenCalledWith('club-peers', 'icon-opacity', 0.3);
   });
 
+  it('rings no places when several organizations share the open point', async () => {
+    directory.organizations = [
+      borp,
+      makeOrganization({ id: 'cil', name: 'CIL', city: 'Berkeley' }),
+    ];
+    const shared = contents.organizations[0];
+    if (!shared) throw new Error('no place');
+    render(
+      <Screen
+        focus="organizations"
+        contents={{
+          ...contents,
+          organizations: [...contents.organizations, { ...shared, placeId: 'p3', id: 'cil' }],
+        }}
+      />,
+    );
+    await ready();
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      { source: 'club-organizations', properties: { key: '37.85,-122.27|exact' } },
+    ]);
+    await act(async () => {
+      the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.85 } });
+      await Promise.resolve();
+    });
+    await screen.findByRole('dialog');
+    const rings = the.map?.sources
+      .get('club-organization-focus')
+      ?.setData.mock.calls.at(-1)?.[0] as { features: unknown[] };
+    expect(rings.features).toEqual([]);
+    // Still faded to the two of them.
+    expect(the.map?.setPaintProperty).toHaveBeenCalledWith('club-peers', 'icon-opacity', 0.3);
+  });
+
   it('says how many places it has and moves the map to another', async () => {
     await openBerkeley();
     expect(screen.getByText(/2 locations/)).toBeVisible();

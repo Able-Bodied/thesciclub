@@ -459,18 +459,21 @@ export default function ClubMap({
       placedOrganizations.spots.filter((spot) => keys.organizations.has(spot.key)),
     );
 
-  // An organization's sheet: its other places ringed, the rest faded.
+  // An organization's sheet: its other places ringed, the rest faded. A group
+  // of several is faded to them, not ringed: rings for all would fill the map.
   const focusIds = sheet?.kind === 'place' ? sheetSpots.flatMap((s) => s.organizations) : [];
   const focusKey = focusIds.map((o) => o.id).join(',');
   const herePlaces = new Set(sheetSpots.flatMap((spot) => spot.places.map((p) => p.placeId)));
   const hereKey = [...herePlaces].join(',');
   const rings = useMemo(
     () =>
-      otherPlaces(
-        contents.organizations,
-        new Set(focusKey ? focusKey.split(',') : []),
-        new Set(hereKey ? hereKey.split(',') : []),
-      ),
+      focusKey !== '' && !focusKey.includes(',')
+        ? otherPlaces(
+            contents.organizations,
+            new Set(focusKey.split(',')),
+            new Set(hereKey ? hereKey.split(',') : []),
+          )
+        : [],
     [contents.organizations, focusKey, hereKey],
   );
   useEffect(() => {
