@@ -20,7 +20,7 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
-import { MentorControls } from '@/routes/peers/mentor-controls';
+import { mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
 import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
 import type { BeforeAfter, BrowseMember, RepresentedOrganization } from '@/types/domain';
@@ -361,6 +361,14 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [reporting, setReporting] = useState(false);
   const reports = useMyReports();
   const announce = useAnnounce();
+  const mentoring = useMentorActions({
+    memberId: member?.id ?? null,
+    displayName: member?.displayName ?? '',
+    mentorOf: member?.mentorOrganizations ?? [],
+    onChange: (organizations) => {
+      if (member) setMentorOf({ memberId: member.id, organizations });
+    },
+  });
   // Focus goes back here on close: Safari does not focus a button it clicks.
   const photoButton = useRef<HTMLButtonElement | null>(null);
   // The ••• that opened the report sheet. The menu closes under it, so the
@@ -457,6 +465,17 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 buttonClassName={ACTIONS_BUTTON}
                 buttonRef={menuButton}
               >
+                {mentoring.actions.map((action) => (
+                  <button
+                    key={action.organization.id}
+                    type="button"
+                    onClick={() => {
+                      mentoring.run(action);
+                    }}
+                  >
+                    {mentorActionLabel(action)}
+                  </button>
+                ))}
                 {reports.memberIds.has(member.id) ? (
                   <p className="flex min-h-11 items-center px-3 text-grey text-sm">
                     You reported {member.displayName}
@@ -665,14 +684,11 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 }
               />
             ) : null}
-            <MentorControls
-              memberId={member.id}
-              displayName={member.displayName}
-              mentorOf={member.mentorOrganizations}
-              onChange={(organizations) => {
-                setMentorOf({ memberId: member.id, organizations });
-              }}
-            />
+            {mentoring.error ? (
+              <p role="alert" className="mt-3 text-[0.8125rem] text-destructive leading-[1.45]">
+                {mentoring.error}
+              </p>
+            ) : null}
             {/* The owner's order, 2026-10-10: who they are in their own words,
                 then how it happened, then what they will talk about and do,
                 then the flatter details card. "Bio" because that is what the
