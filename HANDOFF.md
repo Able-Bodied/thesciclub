@@ -366,7 +366,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 - **Passkeys**: built, off; website only (the store app's page is not
   thesciclub.com). Welcome back offers a saved passkey in the email box's
   suggestions (conditional mediation, the owner's choice 2026-10-27); the
-  button shows only where a browser can't. A Netlify preview can't test them:
+  button shows only where a browser can't, and only if a passkey was added or
+  used in that browser (`club:passkey-here`; a site cannot ask). A Netlify preview can't test them:
   an origin must be the relying party's domain. To turn on: Supabase →
   Authentication → Passkeys: on, name `The SCI Club`, RP ID `thesciclub.com`
   (never change it: every passkey dies), origin `https://thesciclub.com`;

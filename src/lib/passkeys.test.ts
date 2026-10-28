@@ -6,6 +6,7 @@ const auth = vi.hoisted(() => ({
   error: null as { name?: string; message: string } | null,
   verified: [] as unknown[],
   expiresAt: 0,
+  none: false,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -42,10 +43,12 @@ vi.mock('@/lib/supabase', () => ({
         },
         list: () =>
           Promise.resolve({
-            data: [
-              { id: 'p1', friendly_name: 'iPhone', created_at: '2026-10-10T00:00:00Z' },
-              { id: 'p2', created_at: '2026-10-11T00:00:00Z' },
-            ],
+            data: auth.none
+              ? []
+              : [
+                  { id: 'p1', friendly_name: 'iPhone', created_at: '2026-10-10T00:00:00Z' },
+                  { id: 'p2', created_at: '2026-10-11T00:00:00Z' },
+                ],
             error: null,
           }),
         delete: ({ passkeyId }: { passkeyId: string }) => {
@@ -60,6 +63,7 @@ vi.mock('@/lib/supabase', () => ({
 const {
   deletePasskey,
   listPasskeys,
+  passkeyRemembered,
   passkeyAutofill,
   passkeyAutofillAvailable,
   passkeysAvailable,
@@ -76,9 +80,11 @@ function withWebAuthn() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   auth.calls = [];
   auth.error = null;
   auth.verified = [];
+  auth.none = false;
   auth.expiresAt = Date.now() / 1000 + 300;
 });
 
@@ -130,6 +136,17 @@ describe('signing in with a passkey', () => {
     vi.stubEnv('VITE_PASSKEYS', '1');
     withWebAuthn();
     expect(await signInWithPasskey()).toEqual({ ok: true });
+  });
+
+  it('is remembered in this browser once one works, and not when one fails', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    withWebAuthn();
+    auth.error = { message: 'refused' };
+    await signInWithPasskey();
+    expect(passkeyRemembered()).toBe(false);
+    auth.error = null;
+    await signInWithPasskey();
+    expect(passkeyRemembered()).toBe(true);
   });
 
   it('is quiet when the browser’s own sheet is cancelled', async () => {
@@ -267,6 +284,15 @@ describe('managing passkeys', () => {
         { id: 'p2', name: 'Passkey', createdAt: '2026-10-11T00:00:00Z' },
       ],
     });
+  });
+
+  it('forgets this browser’s passkey when the account has none left', async () => {
+    localStorage.setItem('club:passkey-here', '1');
+    await listPasskeys();
+    expect(passkeyRemembered()).toBe(true);
+    auth.none = true;
+    await listPasskeys();
+    expect(passkeyRemembered()).toBe(false);
   });
 
   it('removes one by id', async () => {

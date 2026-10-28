@@ -30,6 +30,29 @@ export function passkeysAvailable(): boolean {
   return passkeysEnabled() && typeof window !== 'undefined' && 'PublicKeyCredential' in window;
 }
 
+/**
+ * Set once a passkey is added or used in this browser. A site cannot ask
+ * whether one exists, so the passkey button shows only where one was.
+ */
+const REMEMBERED_KEY = 'club:passkey-here';
+
+export function passkeyRemembered(): boolean {
+  try {
+    return localStorage.getItem(REMEMBERED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function rememberPasskey(here: boolean): void {
+  try {
+    if (here) localStorage.setItem(REMEMBERED_KEY, '1');
+    else localStorage.removeItem(REMEMBERED_KEY);
+  } catch {
+    // Private browsing: the email box still offers it where it can.
+  }
+}
+
 /** Cancelling the browser's own sheet is a choice, not a failure worth a sentence. */
 function cancelled(error: { name?: string }): boolean {
   return error.name === 'NotAllowedError' || error.name === 'AbortError';
@@ -38,7 +61,10 @@ function cancelled(error: { name?: string }): boolean {
 export async function signInWithPasskey(): Promise<Result> {
   if (!passkeysAvailable()) return { ok: false, error: 'This browser cannot use a passkey.' };
   const { error } = await getSupabase().auth.signInWithPasskey();
-  if (!error) return { ok: true };
+  if (!error) {
+    rememberPasskey(true);
+    return { ok: true };
+  }
   return {
     ok: false,
     error: cancelled(error) ? '' : describeError(error, 'That passkey did not sign you in.'),
@@ -170,6 +196,7 @@ export async function passkeyAutofill(signal: AbortSignal): Promise<Result> {
         error: describeError(verified.error, 'That passkey did not sign you in.'),
       };
     }
+    rememberPasskey(true);
     return { ok: true };
   }
   return { ok: true };
@@ -178,7 +205,10 @@ export async function passkeyAutofill(signal: AbortSignal): Promise<Result> {
 export async function registerPasskey(): Promise<Result> {
   if (!passkeysAvailable()) return { ok: false, error: 'This browser cannot use a passkey.' };
   const { error } = await getSupabase().auth.registerPasskey();
-  if (!error) return { ok: true };
+  if (!error) {
+    rememberPasskey(true);
+    return { ok: true };
+  }
   return {
     ok: false,
     error: cancelled(error) ? '' : describeError(error, 'The passkey was not added.'),
@@ -195,6 +225,8 @@ export async function listPasskeys(): Promise<
 > {
   const { data, error } = await getSupabase().auth.passkey.list();
   if (error) return { ok: false, error: describeError(error, 'Could not load your passkeys.') };
+  // None left on the account: none to offer here either.
+  if (data.length === 0) rememberPasskey(false);
   return {
     ok: true,
     passkeys: data.map((p) => ({

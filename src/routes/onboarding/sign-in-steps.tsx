@@ -8,7 +8,7 @@ import { looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import type { NativeWaysIn } from '@/lib/native-sign-in';
-import { passkeysAvailable } from '@/lib/passkeys';
+import { passkeyRemembered, passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
 import { isNative } from '@/lib/standalone';
 import { cn } from '@/lib/utils';
@@ -193,7 +193,7 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
 
   return (
     <>
-      {mode === 'signin' && passkeysAvailable() && !ways.passkeyAutofill ? (
+      {mode === 'signin' && passkeysAvailable() && !ways.passkeyAutofill && passkeyRemembered() ? (
         <button
           type="button"
           disabled={ways.busy}

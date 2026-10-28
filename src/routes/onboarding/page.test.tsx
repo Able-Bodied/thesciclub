@@ -1537,8 +1537,20 @@ describe('Google, Apple and passkeys', () => {
       expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
     });
 
-    it('sign in with one tap when both are there', async () => {
+    it('show no button where no passkey was ever used, as a site cannot ask', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
+    });
+
+    it('sign in with one tap where one was used before', async () => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      window.localStorage.setItem('club:passkey-here', '1');
       Object.defineProperty(window, 'PublicKeyCredential', {
         value: () => undefined,
         configurable: true,
@@ -1582,6 +1594,7 @@ describe('Google, Apple and passkeys', () => {
 
     it('say nothing when the browser’s own sheet is cancelled', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
+      window.localStorage.setItem('club:passkey-here', '1');
       Object.defineProperty(window, 'PublicKeyCredential', {
         value: () => undefined,
         configurable: true,
