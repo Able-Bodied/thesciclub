@@ -101,7 +101,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 3,957 tests in 292 files on 2026-10-27; `pnpm check` (alone),
+- **Checks**: 4,017 tests in 295 files on 2026-10-27; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -137,6 +137,21 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   every dated item (until then Apple's only; never twice). Then enter the
   Apple Developer membership and domain dates, and check the distribution
   certificate's (seeded as about 2027-10-21). Probe: `renewals.sql`.
+- **ParaCliffHangers, Wheel With Me, Active Fund, not live** (the owner,
+  2026-10-27). `20261028300000`: ParaCliffHangers' Indoor page is its own feed
+  (`scrapers/paracliffhangers-meetups.js`): each chapter's schedule made into
+  dates 92 days ahead in its state's zone, nothing for one it cannot read
+  (Durham's "various Saturdays" is logged nightly), and a date the page stops
+  giving is deleted (`complete`, `vanishedEvents`); Adaptive Rec Hub skips
+  ParaCliffHangers and its three upcoming copies go; nineteen gyms on the map
+  by name (paused Brick and Flemington left off). `20261028310000`: an
+  organization's city may be empty; Wheel With Me's is. `20261028320000`: the
+  Active Fund's next dates are not announced. Order: the job's code on `main`
+  first (else the nightly run fails on the new feed type and Rec Hub adds the
+  copies back), then `db push`. Saving ParaCliffHangers in Admin copies
+  Berkeley (its main place) into the directory's "Bay Area", as for any
+  organization with places. Probes: `paracliffhangers-meetups.sql`,
+  `wheel-with-me-has-no-place.sql`, `active-fund-dates-not-announced.sql`.
 
 - **Share a post into a chat, live** (the owner, 2026-10-25; website and
   1.0.4+ on 2026-10-26, with editing in the composer): Share
