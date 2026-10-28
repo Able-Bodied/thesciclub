@@ -268,8 +268,11 @@ export function addLayers(map: MapLibreMap): void {
       },
       paint: {
         'text-color': NAVY,
-        'text-halo-color': WHITE,
-        'text-halo-width': 1.6,
+        // A soft glow, not an outline (the owner, 2026-10-28): enough to read
+        // on the dark basemap without the letters looking bold.
+        'text-halo-color': 'rgba(255,255,255,0.85)',
+        'text-halo-width': 1,
+        'text-halo-blur': 1,
         'text-translate': [15, 4],
       },
     },
@@ -287,8 +290,11 @@ export function addLayers(map: MapLibreMap): void {
       },
       paint: {
         'text-color': NAVY,
-        'text-halo-color': WHITE,
-        'text-halo-width': 1.6,
+        // A soft glow, not an outline (the owner, 2026-10-28): enough to read
+        // on the dark basemap without the letters looking bold.
+        'text-halo-color': 'rgba(255,255,255,0.85)',
+        'text-halo-width': 1,
+        'text-halo-blur': 1,
         'text-translate': [-17, 3],
       },
     },
