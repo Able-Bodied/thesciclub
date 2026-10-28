@@ -211,3 +211,29 @@ describe('in the store app', () => {
     expect(screen.queryByText('Home Screen')).toBeNull();
   });
 });
+
+// The owner, 2026-10-28: Able Bodied's clip, filmed in Chrome on an iPhone.
+describe('the how-to video', () => {
+  const IPHONE_CHROME =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1';
+
+  it('plays the clip from the site, only once Watch how is tapped, in Chrome on an iPhone', async () => {
+    browserIs(IPHONE_CHROME);
+    renderAfterWait();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Show me how' }));
+    expect(document.querySelector('video')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Watch how' }));
+    const video = document.querySelector('video');
+    expect(video).toHaveAttribute('src', '/video/how-to-add-to-home-screen.mp4');
+    expect(video).toHaveAttribute('poster', '/video/how-to-add-to-home-screen.jpg');
+    expect(video).toHaveAttribute('playsinline');
+  });
+
+  it('is not offered with any other browser’s steps', async () => {
+    browserIs(IPHONE_SAFARI);
+    renderAfterWait();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    expect(screen.queryByRole('button', { name: 'Watch how' })).toBeNull();
+  });
+});

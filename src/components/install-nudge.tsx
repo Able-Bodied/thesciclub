@@ -1,4 +1,4 @@
-import { Download, X } from 'lucide-react';
+import { Download, Play, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -138,6 +138,51 @@ function BrowserInstallNudge() {
   );
 }
 
+/**
+ * Able Bodied's own clip of adding the club to an iPhone's Home Screen in
+ * Chrome (the owner, 2026-10-28): shown with Chrome's steps, which it
+ * follows, and no other browser's. Served from the site, not YouTube: no
+ * player to load first and nothing sent to Google. HEVC, which every iPhone
+ * browser plays, at 2.8 MB, fetched only once Watch how is tapped; not in the
+ * service worker's precache (vite.config.ts), which takes no video. Muted so
+ * it starts at once; its controls unmute it.
+ */
+export const HOW_TO_VIDEO = '/video/how-to-add-to-home-screen.mp4';
+export const HOW_TO_POSTER = '/video/how-to-add-to-home-screen.jpg';
+
+function HowToVideo() {
+  const [playing, setPlaying] = useState(false);
+  if (!playing) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setPlaying(true);
+        }}
+        className="mt-3 flex min-h-[44px] items-center gap-2 rounded-[13px] bg-tint px-4 font-bold font-head text-[0.9375rem] text-emphasis hover:bg-line"
+      >
+        <Play className="h-4 w-4" aria-hidden="true" />
+        Watch how
+      </button>
+    );
+  }
+  return (
+    <div className="mx-auto mt-3 aspect-[882/1920] max-h-[60dvh] w-auto overflow-hidden rounded-[14px] bg-black">
+      <video
+        src={HOW_TO_VIDEO}
+        poster={HOW_TO_POSTER}
+        aria-label="Video: adding the club to your Home Screen in Chrome"
+        className="block h-full w-full"
+        autoPlay
+        muted
+        playsInline
+        controls
+        preload="auto"
+      />
+    </div>
+  );
+}
+
 /** The steps for this browser, as a sheet over the screen. */
 export function InstallSheet({
   platform,
@@ -178,6 +223,7 @@ export function InstallSheet({
           {isHandheld(platform) ? 'Add the club to your Home Screen' : 'Install the club'}
         </h2>
         {intro ? <p className="mt-1.5 text-[0.875rem] text-ink2 leading-[1.5]">{intro}</p> : null}
+        {platform === 'ios-chrome' ? <HowToVideo /> : null}
         <ol className="mt-4 space-y-3.5">
           {steps.map((step, index) => (
             <li key={step} className="flex items-start gap-3">
