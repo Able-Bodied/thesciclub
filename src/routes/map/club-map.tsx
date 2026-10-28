@@ -209,6 +209,9 @@ export default function ClubMap({
   const [box, setBox] = useState<Box | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  // Read by the map's own handlers, which are bound once.
+  const panelOpenRef = useRef(panelOpen);
+  panelOpenRef.current = panelOpen;
   const [drawn, setDrawn] = useState(false);
   const [here, setHere] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
@@ -370,7 +373,16 @@ export default function ClubMap({
     const onTouch = () => {
       lastTouch = performance.now();
     };
+    // Touching the map with Layers open closes Layers, as outside any panel.
+    const closePanel = () => {
+      if (panelOpenRef.current) setPanelOpen(false);
+    };
     const onClick = (event: MapMouseEvent) => {
+      if (panelOpenRef.current) {
+        closePanel();
+        last = null;
+        return;
+      }
       const at = performance.now();
       const touch = at - lastTouch < TOUCH_CLICK_MS;
       const { x, y } = event.point;
@@ -421,6 +433,7 @@ export default function ClubMap({
     map.on('moveend', onMoved);
     map.on('movestart', onMoving);
     map.on('click', onClick);
+    map.on('dragstart', closePanel);
     map.on('touchstart', onTouch);
     map.on('mousemove', onPointer);
     return () => {
@@ -430,6 +443,7 @@ export default function ClubMap({
       map.off('moveend', onMoved);
       map.off('movestart', onMoving);
       map.off('click', onClick);
+      map.off('dragstart', closePanel);
       map.off('mousemove', onPointer);
     };
   }, [map]);

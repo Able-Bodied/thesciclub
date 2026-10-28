@@ -239,6 +239,28 @@ describe('what the map says', () => {
     expect(panel?.className).not.toContain('top-[52px]');
   });
 
+  it('closes Layers on a tap on the map, without opening what was under it', async () => {
+    render(<Screen focus="organizations" />);
+    await ready();
+    await userEvent.click(await screen.findByRole('button', { name: 'Layers' }));
+    expect(screen.getByRole('checkbox', { name: /Events/ })).toBeVisible();
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      { source: 'club-organizations', properties: { key: '37.85,-122.27|exact' } },
+    ]);
+    await act(async () => {
+      the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.85 } });
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('checkbox', { name: /Events/ })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Dragging the map closes it too.
+    await userEvent.click(screen.getByRole('button', { name: 'Layers' }));
+    act(() => {
+      the.map?.fire('dragstart');
+    });
+    expect(screen.queryByRole('checkbox', { name: /Events/ })).toBeNull();
+  });
+
   it("sizes counts and badges to the page's text size", async () => {
     document.documentElement.style.fontSize = '24px';
     try {
