@@ -25,6 +25,7 @@ function fakeMap() {
     setLayoutProperty: vi.fn(),
     setPaintProperty: vi.fn(),
     hasImage: () => true,
+    setMissingStyleImageResolver: vi.fn(),
     addImage: vi.fn(),
     on: (type: string, handler: Handler) => {
       if (!handlers.has(type)) handlers.set(type, new Set());
@@ -92,7 +93,7 @@ vi.mock('@/lib/grants', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useGrantsByOrganization: () => new Map(),
 }));
-vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
 
 const { default: ClubMap } = await import('@/routes/map/club-map');
 
@@ -290,11 +291,14 @@ describe("an organization's places", () => {
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
     );
-    expect(the.map?.setPaintProperty).toHaveBeenLastCalledWith(
-      'club-organizations',
-      'text-opacity',
-      1,
-    );
+    // The badges and their count chips, both.
+    const last = the.map?.setPaintProperty.mock.calls.slice(-4);
+    expect(last).toEqual([
+      ['club-organizations', 'icon-opacity', 1],
+      ['club-organizations', 'text-opacity', 1],
+      ['club-organizations-count', 'icon-opacity', 1],
+      ['club-organizations-count', 'text-opacity', 1],
+    ]);
   });
 
   it('draws only the organizations the directory shows', async () => {

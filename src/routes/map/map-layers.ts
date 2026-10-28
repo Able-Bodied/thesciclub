@@ -6,6 +6,14 @@ import {
   type MapLibreMap,
 } from '@/lib/map';
 import type { MapOrganization } from '@/lib/map-data';
+import {
+  addBadge,
+  BADGE_PREFIX,
+  BADGE_SIZE,
+  isBadge,
+  PLUM,
+  setBadgeScale,
+} from '@/routes/map/organization-badges';
 import { type Box, LAYERS, type Layer } from '@/routes/map/places';
 
 /**
@@ -17,7 +25,6 @@ import { type Box, LAYERS, type Layer } from '@/routes/map/places';
 export const NAVY = '#102a4c';
 export const WHITE = '#ffffff';
 const GOLD = '#d4a83a';
-const PLUM = '#5b3d8f';
 
 export const SOURCES: Record<Layer, string> = {
   events: 'club-events',
@@ -27,18 +34,26 @@ export const SOURCES: Record<Layer, string> = {
 export const LAYER_IDS: Record<Layer, string[]> = {
   events: ['club-events-one', 'club-events-many', 'club-events-count'],
   peers: ['club-peers'],
-  organizations: ['club-organizations'],
+  organizations: ['club-organizations', 'club-organizations-count'],
 };
 const FOCUS = 'club-organization-focus';
 const PEER_ICON = 'club-peer';
+/** Several organizations' places run together, before they split. */
 const ORGANIZATION_ICON = 'club-organization';
+/** How many organizations share one point, on the first one's badge. */
+const COUNT_CHIP = 'club-organization-chip';
 /** The member's own city: a house, drawn on the map like the pins. */
 const HOME = 'club-home';
-const ICONS = [PEER_ICON, ORGANIZATION_ICON, HOME];
+const ICONS = [PEER_ICON, ORGANIZATION_ICON, COUNT_CHIP, HOME];
+
+const CHIP_SIZE = 19;
+/** The chip sits on the badge's upper right. */
+const CHIP_AT = 26;
 
 /** Badges drawn by path, not roundRect, which iOS 15's Safari lacks. */
 function drawIcon(id: string): ImageData | null {
-  const size = id === PEER_ICON ? 34 : id === HOME ? 28 : 30;
+  const size =
+    id === PEER_ICON ? 34 : id === HOME ? 28 : id === COUNT_CHIP ? CHIP_SIZE : BADGE_SIZE;
   const canvas = document.createElement('canvas');
   canvas.width = size * 2;
   canvas.height = size * 2;
@@ -83,15 +98,16 @@ function drawIcon(id: string): ImageData | null {
     pen.fillStyle = GOLD;
     pen.strokeStyle = NAVY;
   } else {
+    // Purple in a white edge, the size of a badge or its chip.
     const middle = size / 2;
-    pen.moveTo(middle, 2);
-    pen.lineTo(size - 2, middle);
-    pen.lineTo(middle, size - 2);
-    pen.lineTo(2, middle);
-    pen.closePath();
-    pen.lineWidth = 2.5;
+    pen.arc(middle, middle, middle, 0, Math.PI * 2);
+    pen.fillStyle = WHITE;
+    pen.fill();
+    pen.beginPath();
+    pen.arc(middle, middle, middle - 1.25, 0, Math.PI * 2);
     pen.fillStyle = PLUM;
-    pen.strokeStyle = WHITE;
+    pen.fill();
+    return pen.getImageData(0, 0, canvas.width, canvas.height);
   }
   pen.fill();
   pen.stroke();
@@ -108,9 +124,11 @@ const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 
 export function addLayers(map: MapLibreMap): void {
   for (const id of ICONS) addIcon(map, id);
-  // A theme change brings a new sprite and can drop our badges.
-  map.on('styleimagemissing', (event: { id: string }) => {
-    addIcon(map, event.id);
+  // A theme change can drop our badges, and logos are drawn when first
+  // needed. MapLibre 6 asks this, not a styleimagemissing listener, which comes too late.
+  map.setMissingStyleImageResolver((id) => {
+    if (isBadge(id)) addBadge(map, id);
+    else addIcon(map, id);
   });
   for (const layer of LAYERS) {
     if (map.getSource(SOURCES[layer])) continue;
@@ -170,10 +188,16 @@ export function addLayers(map: MapLibreMap): void {
       type: 'symbol',
       source: SOURCES.organizations,
       layout: {
-        'icon-image': ORGANIZATION_ICON,
+        // Its own logo, fetched only once MapLibre asks (organization-badges.ts).
+        'icon-image': [
+          'case',
+          ['has', 'point_count'],
+          ORGANIZATION_ICON,
+          ['concat', BADGE_PREFIX, ['get', 'organizationId']],
+        ],
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
-        'text-field': ['case', ['>', ['get', 'count'], 1], ['to-string', ['get', 'count']], ''],
+        'text-field': ['case', ['has', 'point_count'], ['to-string', ['get', 'count']], ''],
         'text-font': [MAP_FONT],
         'text-size': 12,
         'text-allow-overlap': true,
@@ -184,6 +208,27 @@ export function addLayers(map: MapLibreMap): void {
         'text-color': WHITE,
         'icon-translate': [15, -15],
         'text-translate': [15, -15],
+      },
+    },
+    {
+      id: 'club-organizations-count',
+      type: 'symbol',
+      source: SOURCES.organizations,
+      filter: ['all', ['!', ['has', 'point_count']], ['>', ['get', 'count'], 1]],
+      layout: {
+        'icon-image': COUNT_CHIP,
+        'icon-allow-overlap': true,
+        'icon-ignore-placement': true,
+        'text-field': ['to-string', ['get', 'count']],
+        'text-font': [MAP_FONT],
+        'text-size': 11,
+        'text-allow-overlap': true,
+        'text-ignore-placement': true,
+      },
+      paint: {
+        'text-color': WHITE,
+        'icon-translate': [CHIP_AT, -CHIP_AT],
+        'text-translate': [CHIP_AT, -CHIP_AT],
       },
     },
     {
@@ -265,12 +310,17 @@ export function pageTextScale(): number {
 /** Counts and badges grow with the text, so a count still fits its pin. */
 export function applyTextScale(map: MapLibreMap, scale: number): void {
   const at = (n: number) => n * scale;
+  setBadgeScale(scale);
   map.setLayoutProperty(HOME, 'icon-size', scale);
   map.setPaintProperty(HOME, 'icon-translate', [0, at(18)]);
   map.setLayoutProperty('club-organizations', 'text-size', at(12));
   map.setLayoutProperty('club-organizations', 'icon-size', scale);
   map.setPaintProperty('club-organizations', 'icon-translate', [at(15), at(-15)]);
   map.setPaintProperty('club-organizations', 'text-translate', [at(15), at(-15)]);
+  map.setLayoutProperty('club-organizations-count', 'text-size', at(11));
+  map.setLayoutProperty('club-organizations-count', 'icon-size', scale);
+  map.setPaintProperty('club-organizations-count', 'icon-translate', [at(CHIP_AT), at(-CHIP_AT)]);
+  map.setPaintProperty('club-organizations-count', 'text-translate', [at(CHIP_AT), at(-CHIP_AT)]);
   map.setLayoutProperty('club-peers', 'text-size', at(14));
   map.setLayoutProperty('club-peers', 'icon-size', scale);
   map.setPaintProperty('club-peers', 'icon-translate', [at(-17), at(-17)]);
@@ -341,8 +391,10 @@ export function applyFocus(
         ]
       : 1
   ) as never;
-  map.setPaintProperty('club-organizations', 'icon-opacity', theirs);
-  map.setPaintProperty('club-organizations', 'text-opacity', theirs);
+  for (const id of LAYER_IDS.organizations) {
+    map.setPaintProperty(id, 'icon-opacity', theirs);
+    map.setPaintProperty(id, 'text-opacity', theirs);
+  }
 }
 
 /** The places under a tap, clusters opened up. */

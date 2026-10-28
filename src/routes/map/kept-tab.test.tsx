@@ -33,6 +33,7 @@ function fakeMap() {
     setLayoutProperty: alive(undefined),
     setPaintProperty: alive(undefined),
     hasImage: () => true,
+    setMissingStyleImageResolver: vi.fn(),
     addImage: alive(undefined),
     on: (type: string, handler: Handler) => {
       if (!handlers.has(type)) handlers.set(type, new Set());
@@ -89,7 +90,7 @@ vi.mock('@/lib/map', () => ({
 vi.mock('@/lib/organizations', () => ({
   useOrganizations: () => ({ organizations: [], byId: new Map(), loading: false, error: null }),
 }));
-vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
 
 const { default: ClubMap } = await import('@/routes/map/club-map');
 

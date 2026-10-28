@@ -26,6 +26,7 @@ import type { MapContents, MapOrganization } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
+import { usePhotoUrls } from '@/lib/photos';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { EventCard } from '@/routes/events/event-card';
@@ -51,6 +52,7 @@ import {
 import { MapSheet } from '@/routes/map/map-sheet';
 import { MapPlaceholder } from '@/routes/map/map-view';
 import { MemberRow } from '@/routes/map/member-row';
+import { type BadgeSource, setOrganizationBadges } from '@/routes/map/organization-badges';
 import {
   type Box,
   contentsOf,
@@ -274,6 +276,31 @@ export default function ClubMap({
     () => organizationFeatures(placedOrganizations.spots),
     [placedOrganizations],
   );
+  // Logos signed only while their layer is on; each fetched once its badge is drawn.
+  const badged = useMemo(
+    () => [...new Set(placedOrganizations.spots.flatMap((spot) => spot.organizations))],
+    [placedOrganizations],
+  );
+  const logoUrls = usePhotoUrls(
+    layers.has('organizations') ? badged.map((organization) => organization.logoPath) : [],
+  );
+  const badgeSources = useMemo(
+    () =>
+      new Map<string, BadgeSource>(
+        badged.map((organization) => [
+          organization.id,
+          {
+            shortCode: organization.shortCode,
+            logoPath: organization.logoPath,
+            logoUrl: organization.logoPath ? (logoUrls.get(organization.logoPath) ?? null) : null,
+          },
+        ]),
+      ),
+    [badged, logoUrls],
+  );
+  useEffect(() => {
+    if (map) setOrganizationBadges(map, badgeSources);
+  }, [map, badgeSources]);
   useSourceData(map, SOURCES.events, eventData, hidden);
   useSourceData(map, SOURCES.peers, peerData, hidden);
   useSourceData(map, SOURCES.organizations, organizationData, hidden);
@@ -869,10 +896,11 @@ function LayerKey({ layer }: { layer: Layer }) {
       </span>
     );
   }
+  // The map shows each organization's own logo in this ring.
   return (
     <span
       aria-hidden="true"
-      className="h-[16px] w-[16px] flex-none rotate-45 border-2 border-white bg-[#5b3d8f] shadow-[0_0_0_1px_#5b3d8f]"
+      className="h-[20px] w-[20px] flex-none rounded-full border-[3px] border-[#5b3d8f] bg-white shadow-[0_0_0_1px_#ffffff]"
     />
   );
 }
