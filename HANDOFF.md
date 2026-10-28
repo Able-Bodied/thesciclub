@@ -384,7 +384,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
 - **Passkeys**: on (seen 2026-10-27: Supabase on, RP ID `thesciclub.com`,
-  origin `https://thesciclub.com`, display name `thesciclub`; the live build
+  origin `https://thesciclub.com`, display name `The SCI Club`; the live build
   has `VITE_PASSKEYS`); website only (the store app's page is not
   thesciclub.com). Welcome back offers a saved passkey in the email box's
   suggestions (conditional mediation, the owner's choice 2026-10-27); the
