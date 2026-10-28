@@ -20,8 +20,10 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
+import { MentorControls } from '@/routes/peers/mentor-controls';
 import { RepresentationTags } from '@/routes/peers/representation-tags';
-import type { BeforeAfter, BrowseMember } from '@/types/domain';
+import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
+import type { BeforeAfter, BrowseMember, RepresentedOrganization } from '@/types/domain';
 
 /**
  * One member's full profile — where a tapped card lands.
@@ -313,11 +315,35 @@ function BlockedProfile({
   );
 }
 
+/**
+ * The member as it now stands after an org admin's change here: a peer with a
+ * mentor organization is a mentor, and a mentor with none is a peer again,
+ * as grant_mentor and revoke_mentor leave the row.
+ */
+function withMentorOf(member: BrowseMember, mentorOf: RepresentedOrganization[]): BrowseMember {
+  const type =
+    member.type === 'organization' || member.isAdmin
+      ? member.type
+      : mentorOf.length > 0
+        ? 'mentor'
+        : 'peer';
+  return { ...member, mentorOrganizations: mentorOf, type };
+}
+
 function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { member, loading, error, signedOut, notFound } = useBrowseMember(id);
+  const { member: loaded, loading, error, signedOut, notFound } = useBrowseMember(id);
+  // Changed here by an org admin (mentor-controls.tsx), ahead of the next read.
+  const [mentorOf, setMentorOf] = useState<{
+    memberId: string;
+    organizations: RepresentedOrganization[];
+  } | null>(null);
+  const member =
+    loaded && mentorOf?.memberId === loaded.id
+      ? withMentorOf(loaded, mentorOf.organizations)
+      : loaded;
   // Before the early returns: hooks cannot run conditionally, and every
   // branch below this either renders the profile or does not need the list.
   const { organizations } = useOrganizations();
@@ -386,22 +412,22 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               beside Peer mentor (the owner, 2026-10-01); it was the club's
               "official account" page until administrators were people. */}
           <span className="flex items-center gap-1.5">
-            {member.type !== 'peer' || member.isAdmin ? (
+            {isMentor(member) || isAdminOfAny(member) || member.type === 'organization' ? (
               <span className="flex flex-wrap justify-end gap-1.5">
-                {member.type === 'mentor' ? (
-                  <span className="inline-flex items-center rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase tracking-[0.08em]">
-                    Peer mentor
-                  </span>
+                {isMentor(member) ? (
+                  <RolePill kind="mentor" organizations={member.mentorOrganizations} />
                 ) : null}
                 {member.type === 'organization' ? (
                   <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
-                    Organization
+                    Organization account
                   </span>
                 ) : null}
-                {member.isAdmin ? (
-                  <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase tracking-[0.08em] lg:bg-action lg:text-white">
-                    Admin
-                  </span>
+                {isAdminOfAny(member) ? (
+                  <RolePill
+                    kind="admin"
+                    organizations={member.representedOrganizations}
+                    className="lg:bg-action lg:text-white"
+                  />
                 ) : null}
               </span>
             ) : null}
@@ -609,7 +635,18 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               of their own they would all sit beside it or all below it, which
               is the grid this replaced. */}
           <div className="min-w-0 px-4 lg:contents">
-            <RepresentationTags organizations={member.representedOrganizations} />
+            <RepresentationTags
+              organizations={member.representedOrganizations}
+              mentorOf={member.mentorOrganizations}
+            />
+            <MentorControls
+              memberId={member.id}
+              displayName={member.displayName}
+              mentorOf={member.mentorOrganizations}
+              onChange={(organizations) => {
+                setMentorOf({ memberId: member.id, organizations });
+              }}
+            />
             {/* The owner's order, 2026-10-10: who they are in their own words,
                 then how it happened, then what they will talk about and do,
                 then the flatter details card. "Bio" because that is what the

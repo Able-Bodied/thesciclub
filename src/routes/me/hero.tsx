@@ -1,7 +1,9 @@
 import { DisplayButton } from '@/components/display-sheet';
 import type { OwnMember } from '@/lib/members';
+import { useMyMentorOrganizations } from '@/lib/organization-mentors';
 import { usePhotoUrl } from '@/lib/photos';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
+import { RolePill } from '@/routes/peers/role-pill';
 import { injuryLabel } from '@/types/domain';
 
 /**
@@ -42,6 +44,8 @@ export function MeHero({ member }: { member: OwnMember }) {
   const photo = usePhotoUrl(member.photoPath, 'thumb');
   const [from, to] = gradientFor(member.id);
   const age = ageFrom(member.birthDate);
+  // Which organizations made them a mentor, with each one's logo (20261028000000).
+  const mentorOf = useMyMentorOrganizations(member.id);
 
   const summary = [injuryLabel(member), age, member.city].filter(Boolean).join(' · ');
 
@@ -75,11 +79,10 @@ export function MeHero({ member }: { member: OwnMember }) {
           {summary ? <p className="mt-[3px] text-[#B9CADF] text-[0.8125rem]">{summary}</p> : null}
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Chip>Member since {memberSince(member.createdAt)}</Chip>
-            {member.type === 'mentor' ? (
-              <Chip>Mentor</Chip>
-            ) : member.type === 'organization' ? (
-              <Chip>Organization</Chip>
+            {member.type === 'mentor' || mentorOf.length > 0 ? (
+              <RolePill kind="mentor" organizations={mentorOf} />
             ) : null}
+            {member.type === 'organization' ? <Chip>Organization account</Chip> : null}
             {/* Not decoration: this app is tested by switching between
                 accounts, and the club's own account looks like any other
                 member until something says otherwise. */}

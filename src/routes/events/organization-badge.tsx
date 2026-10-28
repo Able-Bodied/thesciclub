@@ -31,6 +31,8 @@ export interface OrganizationBadgeProps {
   /** The feed's own name for the host, used when there is no organization. */
   hostName?: string | null;
   size?: 'sm' | 'lg';
+  /** Less padding around the logo, for a badge inside a pill (role-pill.tsx). */
+  tight?: boolean;
   className?: string;
 }
 
@@ -38,6 +40,7 @@ export function OrganizationBadge({
   organization,
   hostName,
   size = 'sm',
+  tight = false,
   className,
 }: OrganizationBadgeProps) {
   const [logoFailed, setLogoFailed] = useState(false);
@@ -103,7 +106,10 @@ export function OrganizationBadge({
           }}
           // White ground and padding because these are logos drawn for a white
           // page — several are dark marks that would vanish on the gold tile.
-          className="absolute inset-0 h-full w-full bg-white object-contain p-1"
+          className={cn(
+            'absolute inset-0 h-full w-full bg-white object-contain',
+            tight ? 'p-[1px]' : 'p-1',
+          )}
         />
       ) : null}
     </span>

@@ -112,8 +112,10 @@ Use these words exactly. Do not invent synonyms.
 
 - **Member** — anybody in the club. Everybody is one.
 - **Mentor** — a member who has agreed to be one, and appears first to newly injured members. An
-  attribute of a member, not a separate kind of person.
-- **Organization** — a hospital, foundation or programme that can vouch for people and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09). Administrator-linked accounts show “Represents” tags on their member profiles, linking to the organizations they speak for; self-described affiliations remain separate.
+  attribute of a member, not a separate kind of person. A mentor is an organization's: its org
+  admins make its mentors, and the badge carries its logo (2026-10-28, 20261028000000). Today's
+  mentors became The SCI Club's, which is an organization of its own.
+- **Organization** — a hospital, foundation or programme that can vouch for people and run events. An administrator can designate an organization account and link accounts that speak for it. Organization accounts manage the details and events of their linked organizations; this grants no club administrator powers (2026-10-09). Accounts linked to speak for an organization are its **org admins** (2026-10-28): they show “Org admin” tags on their profiles and an Admin badge with its logo, and make its mentors. Making org admins stays with club administrators; self-described affiliations remain separate.
 - **Invite** — one email address, placed on the list by an organization or a mentor, and emailed
   a one-time link. Whoever opens the link while signed in takes the invite, whatever address they
   signed up with; signing up at the exact invited address, once confirmed, also matches (2026-10-10).
@@ -170,8 +172,10 @@ which reads as unfinished; a control that does nothing reads as broken.
 Real, wanted, and explicitly not now. If a task seems to need one of these, say so rather than
 quietly scoping it in.
 
-- **Mentor badging** (e.g. "Craig-certified").
 - **Coordinator tooling**, classifieds, equipment exchange, AI-assisted matching.
+
+**Mentor badging was on this list until 2026-10-28**, when the owner asked for mentors to be badged
+by the organization that made them one.
 
 **The Home feed was on this list until 2026-09-29**, when the owner asked for it. What kept it here
 was that it needed four content types and a moderation story. It was answered by adding no content

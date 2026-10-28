@@ -781,7 +781,7 @@ function Row({
           {!member.isAdmin ? (
             <span className="ml-2 text-[0.75rem] text-grey">
               {member.type === 'organization'
-                ? 'Organization'
+                ? 'Organization account'
                 : member.type === 'mentor'
                   ? 'Mentor'
                   : 'Peer'}
@@ -886,7 +886,7 @@ function Row({
                 {member.type === 'peer' ? 'Make mentor' : 'Make peer'}
               </SmallButton>
               {member.type !== 'organization' && !member.isSeed ? (
-                <SmallButton onClick={onMakeOrganization}>Make organization</SmallButton>
+                <SmallButton onClick={onMakeOrganization}>Make organization account</SmallButton>
               ) : null}
             </div>
           </fieldset>

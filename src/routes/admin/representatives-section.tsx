@@ -85,12 +85,13 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
   return (
     <>
       <h2 className="mt-4 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-        Who speaks for an organization
+        Org admins
       </h2>
       <p className="mt-1 mb-2 text-[0.75rem] text-grey leading-[1.45]">
-        A member linked to an organization can add events for it from Events, and change or delete
-        the ones added in the club, and invite people without a limit. Organization accounts can
-        also edit their linked organizations. Unlinking leaves existing events and invites intact.
+        An org admin can add events for their organization from Events, change or delete the ones
+        added in the club, make members its mentors from their profiles, and invite people without a
+        limit. Organization accounts can also edit their organizations' details. Removing an org
+        admin leaves existing events, mentors and invites as they are.
       </p>
 
       {error ? (
@@ -148,7 +149,7 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
           </div>
         </div>
         {alreadyLinked ? (
-          <p className="mt-2 text-[0.75rem] text-grey">They already speak for it.</p>
+          <p className="mt-2 text-[0.75rem] text-grey">They are already its org admin.</p>
         ) : null}
         <button
           type="button"
@@ -158,7 +159,7 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
           }}
           className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] bg-action font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
         >
-          {busy === 'add' ? 'Linking…' : 'Link them'}
+          {busy === 'add' ? 'Adding…' : 'Make org admin'}
         </button>
       </div>
 
@@ -167,7 +168,7 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
           <p className="py-6 text-center text-[0.8125rem] text-grey">Loading…</p>
         ) : byOrganization.length === 0 ? (
           <p className="px-3 py-6 text-center text-[0.8125rem] text-grey leading-[1.45]">
-            Nobody speaks for an organization yet. Administrators can add events for any of them.
+            No org admins yet. Administrators can add events for any organization.
           </p>
         ) : (
           byOrganization.map(({ organization, people }) => (
@@ -194,14 +195,14 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
                       ) : (
                         <SmallButton
                           destructive
-                          aria-label={`Unlink ${person.displayName} from ${organization.name}`}
+                          aria-label={`Remove ${person.displayName} as an org admin of ${organization.name}`}
                           onClick={() => {
                             run(key, () =>
                               removeRepresentative(person.organizationId, person.memberId),
                             );
                           }}
                         >
-                          Unlink
+                          Remove
                         </SmallButton>
                       )}
                     </li>

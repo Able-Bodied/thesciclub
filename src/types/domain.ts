@@ -501,8 +501,10 @@ export interface BrowseMember {
   grants: string | null;
 
   affiliations: string[];
-  /** Set by administrators; distinct from self-described affiliations. */
+  /** Org admin of these ("Org admin" in the app); distinct from self-described affiliations. */
   representedOrganizations: RepresentedOrganization[];
+  /** The organizations that made this member a mentor (20261028000000), the club's last. */
+  mentorOrganizations: RepresentedOrganization[];
   /** Null until the survey asks. Not the same as a no. */
   wantsToMentor: boolean | null;
   /** Seeded from the NorCal SCI directory rather than entered by the member. */

@@ -3,6 +3,7 @@ import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
+import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
 import { asksCompleteness, type BrowseMember, injuryLabel } from '@/types/domain';
 
 /**
@@ -78,15 +79,6 @@ export function shortCodeFor(organizationName: string): string {
     .toUpperCase();
 }
 
-/** The star on the mentor flag. Inline so the flag is one element, not two. */
-function MentorStar() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-[11px] w-[11px] fill-current">
-      <path d="m12 2 2.1 5.6L20 9.7l-5.1 3 .8 6.1-3.7-3-3.7 3 .8-6.1-5.1-3 5.9-2.1L12 2Z" />
-    </svg>
-  );
-}
-
 export interface MemberCardProps {
   member: BrowseMember;
   onOpen: () => void;
@@ -113,6 +105,8 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
   const [loaded, setLoaded] = useState<string | null>(null);
   const [from, to] = gradientFor(member.id);
   const chips = member.topics.slice(0, 3);
+  const mentor = isMentor(member);
+  const admin = isAdminOfAny(member);
   // Every affiliation, as a mark. It was `affiliations[0]` with its name
   // spelled out beside it, which read as one organization per member and, in
   // the live directory, as *the same* organization on every card: NorCal SCI is
@@ -180,23 +174,29 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
       {/* Stacked, not side by side: the name keeps the same room beside one
           flag or two. Admin is white on the photograph so it is not read as a
           second Mentor. */}
-      {member.type !== 'peer' || member.isAdmin ? (
+      {/* Mentor and Admin carry the logos of the organizations they are for
+          (the owner, 2026-10-28). Admin is white so it is not read as a
+          second Mentor. */}
+      {mentor || admin || member.type === 'organization' ? (
         <span className="absolute top-[18px] right-[18px] z-10 flex flex-col items-end gap-1.5">
-          {member.type === 'mentor' ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-gold px-2.5 py-[5px] font-extrabold font-head text-on-gold text-[0.6875rem] uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
-              <MentorStar />
-              Mentor
-            </span>
+          {mentor ? (
+            <RolePill
+              kind="mentor"
+              organizations={member.mentorOrganizations}
+              className="shadow-[0_2px_8px_rgba(10,20,35,.35)]"
+            />
           ) : null}
           {member.type === 'organization' ? (
             <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
-              Organization
+              Organization account
             </span>
           ) : null}
-          {member.isAdmin ? (
-            <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-extrabold font-head text-[0.6875rem] text-navy uppercase leading-none tracking-[0.08em] shadow-[0_2px_8px_rgba(10,20,35,.35)]">
-              Admin
-            </span>
+          {admin ? (
+            <RolePill
+              kind="admin"
+              organizations={member.representedOrganizations}
+              className="shadow-[0_2px_8px_rgba(10,20,35,.35)]"
+            />
           ) : null}
         </span>
       ) : null}

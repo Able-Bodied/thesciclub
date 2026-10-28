@@ -1423,7 +1423,7 @@ describe('organization account roles', () => {
     api.members = [member({ id: 'organization-account', displayName: 'Organization account' })];
     renderAdmin();
     await manage();
-    await userEvent.click(await screen.findByRole('button', { name: 'Make organization' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Make organization account' }));
     await waitFor(() => {
       expect(api.typeCalls).toContainEqual(['organization-account', 'organization']);
     });

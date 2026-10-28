@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
-import type { BrowseMember, InjuryType, MemberType } from '@/types/domain';
+import type { BrowseMember, InjuryType, MemberType, RepresentedOrganization } from '@/types/domain';
 import { memberType } from '@/types/domain';
 
 /**
@@ -66,10 +66,23 @@ export interface BrowseMemberRow {
         logo_path: string | null;
       }[]
     | null;
+  mentor_organizations?: OrganizationRow[] | null;
   wants_to_mentor: boolean | null;
   is_seed: boolean;
   is_admin: boolean;
   created_at: string;
+}
+
+/** An organization as a member's badge carries it: browse_members' jsonb. */
+interface OrganizationRow {
+  id: string;
+  name: string;
+  short_code: string;
+  logo_path: string | null;
+}
+
+export function toOrganizationMark(row: OrganizationRow): RepresentedOrganization {
+  return { id: row.id, name: row.name, shortCode: row.short_code, logoPath: row.logo_path };
 }
 
 /** The one row -> domain mapping. Exported so nothing writes a second one. */
@@ -80,7 +93,7 @@ export interface BrowseMemberRow {
  * bytes of Peers and Home (2026-10-14). Search, filters and cards use none.
  */
 const LIST_COLUMNS =
-  'id, type, display_name, username, photo_path, photo_alt, avatar_color, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, region, age, gender, languages, independence, employment, field_of_work, education, education_when, marital_status, has_children, children_when, interests, topics, self_care, affiliations, wants_to_mentor, is_seed, is_admin, created_at, represented_organizations';
+  'id, type, display_name, username, photo_path, photo_alt, avatar_color, city, state, level_range, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, region, age, gender, languages, independence, employment, field_of_work, education, education_when, marital_status, has_children, children_when, interests, topics, self_care, affiliations, wants_to_mentor, is_seed, is_admin, created_at, represented_organizations, mentor_organizations';
 
 export function toMember(row: BrowseMemberRow): BrowseMember {
   return {
@@ -121,12 +134,8 @@ export function toMember(row: BrowseMemberRow): BrowseMember {
     sportsEquipment: row.sports_equipment ?? null,
     grants: row.grants ?? null,
     affiliations: row.affiliations ?? [],
-    representedOrganizations: (row.represented_organizations ?? []).map((organization) => ({
-      id: organization.id,
-      name: organization.name,
-      shortCode: organization.short_code,
-      logoPath: organization.logo_path,
-    })),
+    representedOrganizations: (row.represented_organizations ?? []).map(toOrganizationMark),
+    mentorOrganizations: (row.mentor_organizations ?? []).map(toOrganizationMark),
     wantsToMentor: row.wants_to_mentor,
     isSeed: row.is_seed,
     isAdmin: row.is_admin,

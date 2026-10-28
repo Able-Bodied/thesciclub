@@ -327,7 +327,23 @@ describe('MemberDetailPage', () => {
   it('flags a mentor', () => {
     state.current = ok(makeMember({ type: 'mentor' }));
     renderDetail();
-    expect(screen.getByText('Peer mentor')).toBeInTheDocument();
+    expect(screen.getByText('Mentor')).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-28: badged by the organization that made them one.
+  it('says which organization a mentor is a mentor of', () => {
+    state.current = ok(
+      makeMember({
+        type: 'mentor',
+        mentorOrganizations: [{ id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null }],
+      }),
+    );
+    renderDetail();
+    expect(screen.getByText(', NorCal SCI')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Mentor, NorCal SCI' })).toHaveAttribute(
+      'href',
+      '/events/organizations/ncs',
+    );
   });
 
   it('omits a section entirely when there is nothing in it', () => {
@@ -519,10 +535,10 @@ describe('an administrator’s profile', () => {
     expect(screen.queryByText('What this account is')).not.toBeInTheDocument();
   });
 
-  it('carries an Admin chip beside Peer mentor', () => {
+  it('carries an Admin chip beside Mentor', () => {
     state.current = ok(makeMember({ isAdmin: true, type: 'mentor' }));
     renderDetail();
-    expect(screen.getByText('Peer mentor')).toBeInTheDocument();
+    expect(screen.getByText('Mentor')).toBeInTheDocument();
     expect(screen.getByText('Admin')).toBeInTheDocument();
   });
 
@@ -606,11 +622,11 @@ describe('administrator-linked organizations', () => {
       }),
     );
     renderDetail();
-    expect(screen.getByRole('link', { name: 'Represents Able Bodied' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Org admin, Able Bodied' })).toHaveAttribute(
       'href',
       '/events/organizations/able-bodied',
     );
-    expect(screen.getByRole('link', { name: 'Represents Example Organization' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Org admin, Example Organization' })).toHaveAttribute(
       'href',
       '/events/organizations/other-org',
     );
@@ -620,7 +636,7 @@ describe('administrator-linked organizations', () => {
     state.current = ok(makeMember({ affiliations: ['Able Bodied'], representedOrganizations: [] }));
     renderDetail();
     expect(screen.getByText('Able Bodied')).toBeInTheDocument();
-    expect(screen.queryByText('Represents Able Bodied')).toBeNull();
+    expect(screen.queryByText('Org admin, Able Bodied')).toBeNull();
   });
 });
 
