@@ -22,6 +22,64 @@ import { zonedPartsToUtc } from './timezone.js';
 import { stateCode, zoneOfPlace } from './us-zones.js';
 
 export const PAGE_URL = 'https://www.paracliffhangers.org/indoor';
+
+/**
+ * Each gym's street, by the page's city and gym name: from ParaCliffHangers'
+ * own map links or the gym's own site, checked by the owner (2026-10-28),
+ * spelled as OpenStreetMap finds it ("373 US 46"). A gym not here is placed
+ * by its name and city, as before.
+ */
+const GYMS = new Map(
+  [
+    ['Berkeley', 'Berkeley Ironworks', 'Berkeley Ironworks', '800 Potter St', '94710'],
+    ['Concord', 'Diablo Rock Gym', 'Diablo Rock Gym', '1220 Diamond Way', '94520'],
+    ['Oakland', 'Pacific Pipe', 'Pacific Pipe', '2140 Mandela Pkwy', '94607'],
+    ['San Francisco', 'Movement San Francisco', 'Movement San Francisco', '924 Mason St', '94129'],
+    ['Sunnyvale', 'Movement Sunnyvale', 'Movement Sunnyvale', '815 Stewart Dr', '94085'],
+    ['Pasadena', 'The Post', 'The Post', '1100 N Fair Oaks Ave', '91103'],
+    [
+      'San Diego',
+      'Mesa Rim Mission Valley',
+      'Mesa Rim Mission Valley',
+      '405 Camino del Rio S',
+      '92108',
+    ],
+    ['San Marcos', 'Mesa Rim North City', 'Mesa Rim North City', '285 Industrial St', '92078'],
+    ['Tampa', 'Central Rock Gym Tampa', 'Central Rock Gym Tampa', '4479 W Gandy Blvd', '33611'],
+    ['St. Petersburg', 'Vertical Ventures', 'Vertical Ventures', '116 18th St S', '33712'],
+    ['DeLand', 'DynoClimb', 'DynoClimb', '528 S Woodland Blvd', '32720'],
+    ['Fairfield', 'NJ Rock Gym', 'NJ Rock Gym', '373 US 46', '07004'],
+    ['Brooklyn', 'Movement Gowanus', 'Movement Gowanus', '242 Butler St', '11217'],
+    ['Long Island City', 'Movement LIC', 'Movement LIC', '11-11 44th Dr', '11101'],
+    [
+      'Manhattan',
+      'Central Rock Gym Manhattan',
+      'Central Rock Gym Manhattan',
+      '21 West End Ave',
+      '10069',
+    ],
+    ['Buffalo', 'Central Rock Gym - Buffalo', 'Central Rock Gym Buffalo', '55 Chicago St', '14204'],
+    [
+      'Durham',
+      'Triangle Rock Club Durham',
+      'Triangle Rock Club Durham',
+      '1010 Martin Luther King Jr Pkwy',
+      '27713',
+    ],
+    ['Pittsburgh', 'Ascend', 'ASCEND Point Breeze', '7443 Thomas Blvd', '15208'],
+    ['Arlington', 'Dyno Gym', 'Dyno-Rock', '608 E Front St', '76011'],
+  ].map(([city, gym, name, street, zip]) => [
+    `${city}|${gym}`.toLowerCase(),
+    { name, street, zip },
+  ]),
+);
+
+/** Where a meetup is: its gym's name and street when known, else its name. */
+export function meetupPlace(gym, city, state) {
+  const known = gym ? GYMS.get(`${city}|${gym}`.toLowerCase()) : undefined;
+  if (!known) return joinPlace(gym, city, state);
+  return joinPlace(known.name, known.street, city, `${state} ${known.zip}`);
+}
 const DAYS = 92;
 
 const WEEKDAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
@@ -443,7 +501,7 @@ export function meetupEvents(meetups, { now = new Date(), days = DAYS } = {}) {
           title,
           description: description.text,
           description_html: description.html,
-          location: joinPlace(meetup.gym, meetup.city, meetup.state),
+          location: meetupPlace(meetup.gym, meetup.city, meetup.state),
           stated_city: meetup.city,
           start_time: at(rule.start),
           end_time: at(rule.end),

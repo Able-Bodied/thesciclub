@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { classifyFormat, classifyTags } from '../classify.js';
 import {
   meetupEvents,
+  meetupPlace,
   PAGE_URL,
   ParaCliffHangersMeetupsScraper,
   parseScheduleLine,
@@ -218,12 +219,24 @@ describe('meetupEvents', () => {
     expect(ruleDays(january, '2026-12-20')).toEqual(['2027-01-09']);
   });
 
+  it('places a meetup at its gym’s street, by the gym’s own name, and a new gym by the page’s', () => {
+    expect(meetupPlace('Ascend', 'Pittsburgh', 'PA')).toBe(
+      'ASCEND Point Breeze, 7443 Thomas Blvd, Pittsburgh, PA 15208',
+    );
+    expect(meetupPlace('NJ Rock Gym', 'Fairfield', 'NJ')).toBe(
+      'NJ Rock Gym, 373 US 46, Fairfield, NJ 07004',
+    );
+    expect(meetupPlace('Brand New Gym', 'Reno', 'NV')).toBe('Brand New Gym, Reno, NV');
+    // Every meetup the page has now is at a known street.
+    expect(events.every((e) => /, [A-Z]{2} \d{5}$/.test(e.location))).toBe(true);
+  });
+
   it('titles, places, links and describes each in the page’s own words', () => {
     const youth = of('San Diego').find((e) => e.title.endsWith('youth'));
     expect(youth).toMatchObject({
       external_id: 'pch:san-diego-ca-youth:2026-11-29',
       title: 'ParaCliffHangers climbing meetup in San Diego — youth',
-      location: 'Mesa Rim Mission Valley, San Diego, CA',
+      location: 'Mesa Rim Mission Valley, 405 Camino del Rio S, San Diego, CA 92108',
       stated_city: 'San Diego',
       url: 'https://account.mesarim.com/missionvalley/programs/paracliffhangers-youth-meetup',
       registration_url:
