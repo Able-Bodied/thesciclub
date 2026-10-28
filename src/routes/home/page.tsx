@@ -94,6 +94,7 @@ import { type ClubEvent, DEFAULT_WITHIN_MILES, type RsvpStatus } from '@/types/d
 
 const SEGMENTS: [HomeSegment, string][] = [
   ['everything', 'Everything'],
+  ['questions', 'Questions'],
   ['topics', 'Topics'],
   ['photos', 'Photos'],
   ['events', 'Events'],
@@ -105,6 +106,7 @@ type Source = 'topics' | 'events' | 'people';
 /** Which sources each pill draws from, and so waits for. */
 const SOURCES: Record<HomeSegment, Source[]> = {
   everything: ['topics', 'events', 'people'],
+  questions: ['topics'],
   topics: ['topics'],
   photos: ['topics'],
   events: ['events'],
@@ -490,6 +492,7 @@ const LINK_CLASS =
 /** Where the rest of a single-kind list lives. Everything has no "rest". */
 function SeeMore({ segment }: { segment: HomeSegment }) {
   const more: Partial<Record<HomeSegment, [string, string]>> = {
+    questions: ['/chat?segment=rooms', 'See the rooms'],
     topics: ['/chat?segment=rooms', 'See the rooms'],
     photos: ['/chat?segment=rooms', 'See the rooms'],
     events: ['/events', 'See the whole calendar'],
@@ -516,6 +519,10 @@ function SeeMore({ segment }: { segment: HomeSegment }) {
 function EmptyList({ segment }: { segment: HomeSegment }) {
   const empty: Record<HomeSegment, [string, [string, string] | null]> = {
     everything: ['Nothing here yet.', null],
+    questions: [
+      'No questions yet. Ask one above: no question is too basic.',
+      ['/chat?segment=rooms', 'See the rooms'],
+    ],
     topics: [
       'No topics yet. Rooms open a few at a time, and anybody can start one.',
       ['/chat?segment=rooms', 'See the rooms'],

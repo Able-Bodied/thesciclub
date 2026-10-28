@@ -409,6 +409,22 @@ describe('Home', () => {
       expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
     });
 
+    it('list only questions under Questions, under the box to ask one', () => {
+      const { unmount } = renderPage('/home?segment=questions');
+      expect(screen.getByText(/^No questions yet\./)).toBeInTheDocument();
+      unmount();
+
+      db.topics = db.topics.map((topic) =>
+        topic.id === 'plain' ? { ...topic, isQuestion: true } : topic,
+      );
+      renderPage('/home?segment=questions');
+      expect(feed()).toHaveLength(1);
+      expect(
+        screen.getByRole('link', { name: /^Question ?Morning or evening routine\?$/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
+    });
+
     it('read the pill from the URL', () => {
       renderPage('/home?segment=photos');
       expect(screen.getByRole('button', { name: 'Photos' })).toHaveAttribute(

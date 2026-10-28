@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   eventChanged,
+  eventCity,
   keepPriorPlace,
   matchOrganization,
   placeIsOverridden,
+  vanishedEvents,
   withAdminOverride,
   withGeocodedLocation,
   withOneRetry,
@@ -303,5 +305,35 @@ describe('what the coordinates were found for', () => {
     expect(
       withGeocodedLocation(payload, { geocode_tried: false }, false).geocoded_location,
     ).toBeNull();
+  });
+});
+
+describe('dates a complete reader stops giving', () => {
+  const now = new Date('2026-10-27T20:00:00Z');
+  const rows = [
+    {
+      id: 'kept',
+      external_id: 'pch:berkeley-ca:2026-10-30',
+      start_time: '2026-10-31T01:00:00+00:00',
+    },
+    { id: 'gone', external_id: 'pch:brick-nj:2026-11-03', start_time: '2026-11-03T23:00:00+00:00' },
+    { id: 'past', external_id: 'pch:brick-nj:2026-10-20', start_time: '2026-10-20T23:00:00+00:00' },
+  ];
+
+  it('are the later ones no longer given; one that has started stays', () => {
+    expect(vanishedEvents(rows, new Set(['pch:berkeley-ca:2026-10-30']), now)).toEqual(['gone']);
+  });
+
+  it('are none while every date is still given', () => {
+    expect(vanishedEvents(rows, new Set(rows.map((r) => r.external_id)), now)).toEqual([]);
+  });
+});
+
+describe('an event’s city', () => {
+  it('is the reader’s own over the map’s, unless an administrator moved it', () => {
+    const event = { stated_city: 'Long Island City', city: 'New York' };
+    expect(eventCity(event, false, null)).toBe('Long Island City');
+    expect(eventCity(event, true, null)).toBe('New York');
+    expect(eventCity({ city: null }, false, { city: 'Davis' })).toBe('Davis');
   });
 });

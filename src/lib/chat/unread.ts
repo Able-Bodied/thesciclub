@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
-import { showOnAppIcon } from '@/lib/push/notifications';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -83,9 +82,8 @@ export function useUnreadThreads(): UnreadState {
         return;
       }
       setCount(data ?? 0);
-      // The same number on the app icon, so reading a conversation takes it
-      // down. A push sets it while the app is closed (src/sw.ts, push-notify).
-      void showOnAppIcon(data ?? 0);
+      // Not on the app icon: that counts kinds of notification
+      // (src/lib/icon-badge.ts).
     } catch {
       setCount(0);
     }

@@ -43,7 +43,8 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(/Added: the map/);
+    expect(notes[0]).toMatch(/Added: address suggestions/);
+    expect(notes[1]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });
@@ -106,7 +107,14 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/through Apple Push Notification service/);
     expect(section).toHaveTextContent(/a token for your iPhone/);
     expect(section).toHaveTextContent(/so Apple\s+could read them on the way/);
-    expect(section).toHaveTextContent(/how many of\s+your conversations have unread messages/);
+    expect(section).toHaveTextContent(/how many kinds of\s+notification you have not opened yet/);
+  });
+
+  it('says a like or a reaction tells the author who', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(/reacting to a post or a message tells its author who you are/),
+    ).toBeInTheDocument();
   });
 
   // public/embed/youtube.html: YouTube refuses to play inside the app.
@@ -235,6 +243,17 @@ describe('the Privacy Policy', () => {
     for (const company of ['Supabase', 'Twilio', 'Netlify', 'Resend', 'GitHub']) {
       expect(page).not.toContain(company);
     }
+  });
+
+  // 2026-10-28: only administrators and organization accounts type addresses.
+  it('says what goes to Photon for address suggestions, and that members’ information never does', () => {
+    open('/privacy');
+    const section = screen.getByRole('heading', { name: 'Service providers' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(
+      /address suggestions \(Komoot’s Photon service, which searches OpenStreetMap\): when an administrator or an organization account types a location’s street address, what they type is sent to Photon/,
+    );
+    expect(section).toHaveTextContent(/Members’ information is never sent to it/);
   });
 
   // The owner, 2026-10-08: an event's host receives the phone numbers of the

@@ -70,6 +70,8 @@ const calls = vi.hoisted(() => {
     promptAsked: false,
     idTokenError: null as string | null,
     passkeyError: null as { name?: string; message: string } | null,
+    /** The signed-in account's passkeys, as passkey.list() reads them. */
+    passkeys: [] as { id: string; created_at: string }[],
     setStatus(next: string) {
       calls.status = next;
       for (const listener of calls.listeners) listener();
@@ -253,6 +255,34 @@ vi.mock('@/lib/supabase', () => ({
         calls.order.push('registerPasskey');
         return Promise.resolve({ error: calls.passkeyError });
       },
+      passkey: {
+        list: () => {
+          calls.order.push('passkey.list');
+          return Promise.resolve({ data: calls.passkeys, error: null });
+        },
+        startRegistration: () => {
+          calls.order.push('passkey.startRegistration');
+          return Promise.resolve({
+            data: {
+              challenge_id: 'reg',
+              options: { challenge: 'aGk', user: { id: 'dXNlcg', name: 'sam' } },
+              expires_at: 0,
+            },
+            error: null,
+          });
+        },
+        verifyRegistration: () => {
+          calls.order.push('passkey.verifyRegistration');
+          return Promise.resolve({ data: {}, error: null });
+        },
+        startAuthentication: () => {
+          calls.order.push('startAuthentication');
+          return Promise.resolve({
+            data: { challenge_id: 'ch', options: { challenge: 'aGk' }, expires_at: 0 },
+            error: null,
+          });
+        },
+      },
     },
     // rpc() is awaited as it is, and `.single()` is chained on the one that
     // returns a row; both are the same answer here.
@@ -411,6 +441,7 @@ beforeEach(() => {
   calls.promptAsked = false;
   calls.idTokenError = null;
   calls.passkeyError = null;
+  calls.passkeys = [];
   nativeSheets.answer = { ok: true, name: null };
 });
 
@@ -1128,6 +1159,82 @@ describe('signing in with email', () => {
     expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'username webauthn');
   });
 
+  describe('a passkey suggested after a password', () => {
+    const offer = 'Sign in faster next time?';
+    const bytes = new Uint8Array([1]).buffer;
+
+    beforeEach(() => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      calls.afterPassword = 'member';
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, 'credentials');
+    });
+
+    async function signIn() {
+      await openSignIn();
+      await fillDoor('sam@example.com', 'a long password');
+      await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    }
+
+    it('offers one to an account with none, and Not now holds for 30 days', async () => {
+      await signIn();
+      expect(await screen.findByRole('heading', { name: offer })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      expect(Number(window.localStorage.getItem('club:passkey-offer-snoozed'))).toBeGreaterThan(0);
+    });
+
+    it('lets an account that has one straight in', async () => {
+      calls.passkeys = [{ id: 'p1', created_at: '2026-10-27T00:00:00Z' }];
+      await signIn();
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: offer })).toBeNull();
+    });
+
+    it('does not ask again while Not now holds', async () => {
+      window.localStorage.setItem('club:passkey-offer-snoozed', String(Date.now()));
+      await signIn();
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      expect(calls.order).not.toContain('passkey.list');
+    });
+
+    it('lets the browser save one quietly where it can, with no screen', async () => {
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: Object.assign(() => undefined, {
+          getClientCapabilities: () => Promise.resolve({ conditionalCreate: true }),
+        }),
+        configurable: true,
+      });
+      const asked: CredentialCreationOptions[] = [];
+      Object.defineProperty(navigator, 'credentials', {
+        value: {
+          create: (options: CredentialCreationOptions) => {
+            asked.push(options);
+            return Promise.resolve({
+              id: 'new',
+              rawId: bytes,
+              type: 'public-key',
+              getClientExtensionResults: () => ({}),
+              response: { clientDataJSON: bytes, attestationObject: bytes },
+            });
+          },
+        },
+        configurable: true,
+      });
+      await signIn();
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: offer })).toBeNull();
+      expect((asked[0] as { mediation?: string } | undefined)?.mediation).toBe('conditional');
+      expect(calls.order).toContain('passkey.verifyRegistration');
+    });
+  });
+
   it('lets a member straight to Home', async () => {
     calls.afterPassword = 'member';
     await openSignIn();
@@ -1528,8 +1635,20 @@ describe('Google, Apple and passkeys', () => {
       expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
     });
 
-    it('sign in with one tap when both are there', async () => {
+    it('show no button where no passkey was ever used, as a site cannot ask', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: () => undefined,
+        configurable: true,
+      });
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
+    });
+
+    it('sign in with one tap where one was used before', async () => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      window.localStorage.setItem('club:passkey-here', '1');
       Object.defineProperty(window, 'PublicKeyCredential', {
         value: () => undefined,
         configurable: true,
@@ -1540,8 +1659,40 @@ describe('Google, Apple and passkeys', () => {
       expect(calls.order).toEqual(['signInWithPasskey']);
     });
 
+    it('are offered in the email box instead of a button, where the browser can', async () => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: Object.assign(() => undefined, {
+          isConditionalMediationAvailable: () => Promise.resolve(true),
+        }),
+        configurable: true,
+      });
+      const asked: CredentialRequestOptions[] = [];
+      Object.defineProperty(navigator, 'credentials', {
+        value: {
+          get: (options: CredentialRequestOptions) => {
+            asked.push(options);
+            return new Promise(() => undefined);
+          },
+        },
+        configurable: true,
+      });
+      const { unmount } = renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await waitFor(() => {
+        expect(asked).toHaveLength(1);
+      });
+      expect(asked[0]?.mediation).toBe('conditional');
+      expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
+      // Leaving the screen stops the quiet request.
+      unmount();
+      expect(asked[0]?.signal?.aborted).toBe(true);
+      Reflect.deleteProperty(navigator, 'credentials');
+    });
+
     it('say nothing when the browser’s own sheet is cancelled', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
+      window.localStorage.setItem('club:passkey-here', '1');
       Object.defineProperty(window, 'PublicKeyCredential', {
         value: () => undefined,
         configurable: true,

@@ -30,6 +30,11 @@
  *   Like             "Bo liked your post"         + the start of that post, quoted
  *                    ("your topic" for a topic's opening post)
  *
+ * And reactions, 2026-10-27 (20261028000000):
+ *
+ *   Reaction         "Bo reacted 👍 to your message" + the start of it, quoted
+ *                    ("your post", or "your topic" for a topic's opening post)
+ *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
  * who replied. Nothing here names a room, a topic or a group — those are
@@ -66,7 +71,7 @@ export interface Owed {
   detail: string | null;
   url: string;
   tag: string;
-  /** The recipient's unread conversations, on message pushes only. */
+  /** Kinds of notification the recipient's bell has not shown (20261028010000). */
   badge: number | null;
 }
 
@@ -133,6 +138,19 @@ function words(owed: Owed, post = false): string {
   return owed.photo_count > 0 ? photographs(owed.photo_count) : '';
 }
 
+/**
+ * The address with the notification's tag as `n`, before any `#`: the app
+ * hands it back when the push is pressed, so that one clears from the icon
+ * (20261028900000).
+ */
+export function withTag(url: string, tag: string): string {
+  if (tag === '') return url;
+  const cut = url.indexOf('#');
+  const base = cut < 0 ? url : url.slice(0, cut);
+  const hash = cut < 0 ? '' : url.slice(cut);
+  return `${base}${base.includes('?') ? '&' : '?'}n=${encodeURIComponent(tag)}${hash}`;
+}
+
 /** Null for a kind this file does not know, which is then not sent at all. */
 export function compose(owed: Owed): PushMessage | null {
   // The author can be gone by the time this runs; the name is not.
@@ -140,7 +158,7 @@ export function compose(owed: Owed): PushMessage | null {
   const given = (owed.actor_name ?? '').trim();
   const name = given === '' ? 'A member' : given;
   const where = {
-    url: owed.url,
+    url: withTag(owed.url, owed.tag),
     tag: owed.tag,
     ...(typeof owed.badge === 'number' ? { badge: owed.badge } : {}),
   };
@@ -187,6 +205,26 @@ export function compose(owed: Owed): PushMessage | null {
             : owed.photo_count > 0
               ? 'Your photograph.'
               : `${name} liked your ${what}.`,
+        ...where,
+      };
+    }
+    // detail is 'message:👍', 'post:👍' or 'topic:👍' (20261028000000).
+    case 'reaction': {
+      const [target, ...rest] = (owed.detail ?? '').split(':');
+      const what = target === 'message' || target === 'topic' ? target : 'post';
+      const emoji = rest.join(':').trim();
+      const reacted =
+        emoji === ''
+          ? `${name} reacted to your ${what}`
+          : `${name} reacted ${emoji} to your ${what}`;
+      // A message is not formatted; a post is.
+      const own = shorten(
+        what === 'message' ? (owed.body ?? '') : plainPost(owed.body ?? ''),
+        LIKED_LENGTH,
+      );
+      return {
+        title: reacted,
+        body: own !== '' ? `“${own}”` : owed.photo_count > 0 ? 'Your photograph.' : `${reacted}.`,
         ...where,
       };
     }

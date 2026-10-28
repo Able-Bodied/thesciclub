@@ -46,7 +46,8 @@ export type NotificationKind =
   | 'org_events'
   | 'grant_open'
   | 'profile_reminder'
-  | 'blocks_weekly';
+  | 'blocks_weekly'
+  | 'reaction';
 
 interface Row {
   id: string;
@@ -103,6 +104,18 @@ export async function loadNotifications(
 /** The bell stops counting what is already listed. */
 export async function markNotificationsSeen(): Promise<void> {
   await getSupabase().rpc('notifications_mark_seen');
+}
+
+/**
+ * A pressed push: its tag came back in the address as `n`
+ * (20261028900000), and clears that one thing only.
+ */
+export async function markNotificationsReadByTag(tag: string): Promise<void> {
+  try {
+    await getSupabase().rpc('notifications_mark_read_by_tag', { notification_tag: tag });
+  } catch {
+    // The next open of what it is about, or of the bell, clears it.
+  }
 }
 
 /** One notification, or every one (no id). */
@@ -214,6 +227,18 @@ export function notificationSentence(n: AppNotification): string {
       return more > 0
         ? `${name} and ${more} ${more === 1 ? 'other' : 'others'} liked your post in ${quoted(n.place)}`
         : `${name} liked your post in ${quoted(n.place)}`;
+    // detail is 'message:👍' or 'post:👍' (20261028000000).
+    case 'reaction': {
+      const [target, ...rest] = (n.detail ?? '').split(':');
+      const emoji = rest.join(':').trim();
+      const what =
+        target === 'message'
+          ? `your message${n.place ? ` in ${n.place}` : ''}`
+          : `your post in ${quoted(n.place)}`;
+      if (more > 0)
+        return `${name} and ${more} ${more === 1 ? 'other' : 'others'} reacted to ${what}`;
+      return emoji ? `${name} reacted ${emoji} to ${what}` : `${name} reacted to ${what}`;
+    }
     case 'group_add':
       return `${name} added you to ${n.place ?? 'a group'}`;
     case 'report':

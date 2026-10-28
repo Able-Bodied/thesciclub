@@ -25,6 +25,7 @@ function fakeMap() {
     setLayoutProperty: vi.fn(),
     setPaintProperty: vi.fn(),
     hasImage: () => true,
+    setMissingStyleImageResolver: vi.fn(),
     addImage: vi.fn(),
     on: (type: string, handler: Handler) => {
       if (!handlers.has(type)) handlers.set(type, new Set());
@@ -92,7 +93,7 @@ vi.mock('@/lib/grants', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useGrantsByOrganization: () => new Map(),
 }));
-vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
 
 const { default: ClubMap } = await import('@/routes/map/club-map');
 
@@ -238,6 +239,28 @@ describe('what the map says', () => {
     expect(panel?.className).not.toContain('top-[52px]');
   });
 
+  it('closes Layers on a tap on the map, without opening what was under it', async () => {
+    render(<Screen focus="organizations" />);
+    await ready();
+    await userEvent.click(await screen.findByRole('button', { name: 'Layers' }));
+    expect(screen.getByRole('checkbox', { name: /Events/ })).toBeVisible();
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      { source: 'club-organizations', properties: { key: '37.85,-122.27|exact' } },
+    ]);
+    await act(async () => {
+      the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.85 } });
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole('checkbox', { name: /Events/ })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // Dragging the map closes it too.
+    await userEvent.click(screen.getByRole('button', { name: 'Layers' }));
+    act(() => {
+      the.map?.fire('dragstart');
+    });
+    expect(screen.queryByRole('checkbox', { name: /Events/ })).toBeNull();
+  });
+
   it("sizes counts and badges to the page's text size", async () => {
     document.documentElement.style.fontSize = '24px';
     try {
@@ -276,6 +299,39 @@ describe("an organization's places", () => {
     expect(the.map?.setPaintProperty).toHaveBeenCalledWith('club-peers', 'icon-opacity', 0.3);
   });
 
+  it('rings no places when several organizations share the open point', async () => {
+    directory.organizations = [
+      borp,
+      makeOrganization({ id: 'cil', name: 'CIL', city: 'Berkeley' }),
+    ];
+    const shared = contents.organizations[0];
+    if (!shared) throw new Error('no place');
+    render(
+      <Screen
+        focus="organizations"
+        contents={{
+          ...contents,
+          organizations: [...contents.organizations, { ...shared, placeId: 'p3', id: 'cil' }],
+        }}
+      />,
+    );
+    await ready();
+    the.map?.queryRenderedFeatures.mockReturnValue([
+      { source: 'club-organizations', properties: { key: '37.85,-122.27|exact' } },
+    ]);
+    await act(async () => {
+      the.map?.fire('click', { point: { x: 10, y: 10 }, lngLat: { lng: -122.27, lat: 37.85 } });
+      await Promise.resolve();
+    });
+    await screen.findByRole('dialog');
+    const rings = the.map?.sources
+      .get('club-organization-focus')
+      ?.setData.mock.calls.at(-1)?.[0] as { features: unknown[] };
+    expect(rings.features).toEqual([]);
+    // Still faded to the two of them.
+    expect(the.map?.setPaintProperty).toHaveBeenCalledWith('club-peers', 'icon-opacity', 0.3);
+  });
+
   it('says how many places it has and moves the map to another', async () => {
     await openBerkeley();
     expect(screen.getByText(/2 locations/)).toBeVisible();
@@ -290,11 +346,14 @@ describe("an organization's places", () => {
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
     );
-    expect(the.map?.setPaintProperty).toHaveBeenLastCalledWith(
-      'club-organizations',
-      'text-opacity',
-      1,
-    );
+    // The badges and their count chips, both.
+    const last = the.map?.setPaintProperty.mock.calls.slice(-4);
+    expect(last).toEqual([
+      ['club-organizations', 'icon-opacity', 1],
+      ['club-organizations', 'text-opacity', 1],
+      ['club-organizations-count', 'icon-opacity', 1],
+      ['club-organizations-count', 'text-opacity', 1],
+    ]);
   });
 
   it('draws only the organizations the directory shows', async () => {

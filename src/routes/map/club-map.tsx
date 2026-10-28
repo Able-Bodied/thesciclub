@@ -26,6 +26,7 @@ import type { MapContents, MapOrganization } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
+import { usePhotoUrls } from '@/lib/photos';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { EventCard } from '@/routes/events/event-card';
@@ -51,6 +52,7 @@ import {
 import { MapSheet } from '@/routes/map/map-sheet';
 import { MapPlaceholder } from '@/routes/map/map-view';
 import { MemberRow } from '@/routes/map/member-row';
+import { type BadgeSource, setOrganizationBadges } from '@/routes/map/organization-badges';
 import {
   type Box,
   contentsOf,
@@ -207,6 +209,9 @@ export default function ClubMap({
   const [box, setBox] = useState<Box | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  // Read by the map's own handlers, which are bound once.
+  const panelOpenRef = useRef(panelOpen);
+  panelOpenRef.current = panelOpen;
   const [drawn, setDrawn] = useState(false);
   const [here, setHere] = useState<[number, number] | null>(null);
   const [locating, setLocating] = useState(false);
@@ -274,6 +279,31 @@ export default function ClubMap({
     () => organizationFeatures(placedOrganizations.spots),
     [placedOrganizations],
   );
+  // Logos signed only while their layer is on; each fetched once its badge is drawn.
+  const badged = useMemo(
+    () => [...new Set(placedOrganizations.spots.flatMap((spot) => spot.organizations))],
+    [placedOrganizations],
+  );
+  const logoUrls = usePhotoUrls(
+    layers.has('organizations') ? badged.map((organization) => organization.logoPath) : [],
+  );
+  const badgeSources = useMemo(
+    () =>
+      new Map<string, BadgeSource>(
+        badged.map((organization) => [
+          organization.id,
+          {
+            shortCode: organization.shortCode,
+            logoPath: organization.logoPath,
+            logoUrl: organization.logoPath ? (logoUrls.get(organization.logoPath) ?? null) : null,
+          },
+        ]),
+      ),
+    [badged, logoUrls],
+  );
+  useEffect(() => {
+    if (map) setOrganizationBadges(map, badgeSources);
+  }, [map, badgeSources]);
   useSourceData(map, SOURCES.events, eventData, hidden);
   useSourceData(map, SOURCES.peers, peerData, hidden);
   useSourceData(map, SOURCES.organizations, organizationData, hidden);
@@ -343,7 +373,16 @@ export default function ClubMap({
     const onTouch = () => {
       lastTouch = performance.now();
     };
+    // Touching the map with Layers open closes Layers, as outside any panel.
+    const closePanel = () => {
+      if (panelOpenRef.current) setPanelOpen(false);
+    };
     const onClick = (event: MapMouseEvent) => {
+      if (panelOpenRef.current) {
+        closePanel();
+        last = null;
+        return;
+      }
       const at = performance.now();
       const touch = at - lastTouch < TOUCH_CLICK_MS;
       const { x, y } = event.point;
@@ -394,6 +433,7 @@ export default function ClubMap({
     map.on('moveend', onMoved);
     map.on('movestart', onMoving);
     map.on('click', onClick);
+    map.on('dragstart', closePanel);
     map.on('touchstart', onTouch);
     map.on('mousemove', onPointer);
     return () => {
@@ -403,6 +443,7 @@ export default function ClubMap({
       map.off('moveend', onMoved);
       map.off('movestart', onMoving);
       map.off('click', onClick);
+      map.off('dragstart', closePanel);
       map.off('mousemove', onPointer);
     };
   }, [map]);
@@ -432,18 +473,21 @@ export default function ClubMap({
       placedOrganizations.spots.filter((spot) => keys.organizations.has(spot.key)),
     );
 
-  // An organization's sheet: its other places ringed, the rest faded.
+  // An organization's sheet: its other places ringed, the rest faded. A group
+  // of several is faded to them, not ringed: rings for all would fill the map.
   const focusIds = sheet?.kind === 'place' ? sheetSpots.flatMap((s) => s.organizations) : [];
   const focusKey = focusIds.map((o) => o.id).join(',');
   const herePlaces = new Set(sheetSpots.flatMap((spot) => spot.places.map((p) => p.placeId)));
   const hereKey = [...herePlaces].join(',');
   const rings = useMemo(
     () =>
-      otherPlaces(
-        contents.organizations,
-        new Set(focusKey ? focusKey.split(',') : []),
-        new Set(hereKey ? hereKey.split(',') : []),
-      ),
+      focusKey !== '' && !focusKey.includes(',')
+        ? otherPlaces(
+            contents.organizations,
+            new Set(focusKey.split(',')),
+            new Set(hereKey ? hereKey.split(',') : []),
+          )
+        : [],
     [contents.organizations, focusKey, hereKey],
   );
   useEffect(() => {
@@ -869,10 +913,11 @@ function LayerKey({ layer }: { layer: Layer }) {
       </span>
     );
   }
+  // The map shows each organization's own logo in this ring.
   return (
     <span
       aria-hidden="true"
-      className="h-[16px] w-[16px] flex-none rotate-45 border-2 border-white bg-[#5b3d8f] shadow-[0_0_0_1px_#5b3d8f]"
+      className="h-[20px] w-[20px] flex-none rounded-full border-[3px] border-[#5b3d8f] bg-white shadow-[0_0_0_1px_#ffffff]"
     />
   );
 }

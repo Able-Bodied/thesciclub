@@ -21,7 +21,21 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 27, 2026">
+    <LegalPage title="Privacy Policy" updated="October 28, 2026">
+      <Note title="What changed on October 28, 2026">
+        <List>
+          <li>
+            <b>Added:</b> address suggestions. When an administrator or an organization account
+            types a location’s street address, what they type goes to Komoot’s Photon service to
+            suggest matching addresses. Members’ information is never sent.
+          </li>
+          <li>
+            <b>Changed:</b> a reaction to your post or message now tells you who reacted, in a
+            notification, as a like already did. The app’s icon shows how many kinds of notification
+            you have not opened yet, instead of unread conversations.
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on October 26, 2026">
         <List>
           <li>
@@ -223,8 +237,9 @@ export default function PrivacyPage() {
           In the iPhone app, notifications go through Apple Push Notification service, and the
           address we keep is a token for your iPhone. On the website, a notification’s words are
           encrypted so that only your device can read them; in the app they are not, so Apple could
-          read them on the way. Once notifications are on, the app’s icon shows how many of your
-          conversations have unread messages.
+          read them on the way. Once notifications are on, the app’s icon shows how many kinds of
+          notification you have not opened yet, such as messages or replies; opening one, or your
+          notifications list, clears it.
         </P>
       </Section>
 
@@ -266,8 +281,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
-            an event, and, in a conversation you are in, that you have read a message. A post shows
-            how many people have read it, never who.
+            an event, and, in a conversation you are in, that you have read a message. Liking or
+            reacting to a post or a message tells its author who you are, in a notification. A post
+            shows how many people have read it, never who.
           </li>
           <li>
             <b>Members who speak for organizations</b>, such as hospitals and peer support programs,
@@ -389,6 +405,12 @@ export default function PrivacyPage() {
           <li>sending email, and receiving calendar invitations and the email you send us;</li>
           <li>running the nightly job that imports events;</li>
           <li>location lookup (OpenStreetMap);</li>
+          <li>
+            address suggestions (Komoot’s Photon service, which searches OpenStreetMap): when an
+            administrator or an organization account types a location’s street address, what they
+            type is sent to Photon to suggest matching addresses. Members’ information is never sent
+            to it;
+          </li>
           <li>
             map pictures (Cloudflare, which stores and serves the club’s own copy of OpenStreetMap’s
             map; like any web host, it sees your device’s internet address and which parts of the

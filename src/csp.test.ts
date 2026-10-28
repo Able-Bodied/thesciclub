@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PHOTON_ORIGIN } from '@/lib/address-suggestions';
 import { appYoutubeEmbedUrl } from '@/lib/chat/link-preview';
 import { TILES_ORIGIN } from '@/lib/map/tiles';
 import SHELL from '../index.html?raw';
@@ -84,6 +85,11 @@ describe('the Content-Security-Policy', () => {
     ]);
   });
 
+  // Address suggestions ask the origin the code names (2026-10-28).
+  it('reaches Photon for address suggestions', () => {
+    expect(directive('connect-src')).toContain(PHOTON_ORIGIN);
+  });
+
   // Only to copy a member's Google photo when they choose it (2026-10-22).
   it("fetches from Google's photo host and no other of Google's", () => {
     const google = directive('connect-src').filter((s) => s.includes('google'));
@@ -163,13 +169,14 @@ describe("the store app's Content-Security-Policy", () => {
     }
   });
 
-  it('reaches Supabase, the geocoder, Google photos and the map tiles, nothing else of Google', () => {
+  it('reaches Supabase, the geocoder, address suggestions, Google photos and the map tiles, nothing else of Google', () => {
     expect(appDirective('connect-src')).toEqual([
       "'self'",
       'capacitor://localhost',
       'https://erijdvqnxavwezsbbojv.supabase.co',
       'wss://erijdvqnxavwezsbbojv.supabase.co',
       'https://nominatim.openstreetmap.org',
+      'https://photon.komoot.io',
       'https://lh3.googleusercontent.com',
       `${TILES_ORIGIN}/`,
     ]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FeedItem } from '@/lib/home/types';
+import { type FeedItem, HOME_SEGMENTS } from '@/lib/home/types';
 import { buildFeed, inSegment, pickEvents, suggestPeople } from '@/routes/home/feed';
 import { makeEvent, makeHomeTopic, makeMember } from '@/test/factory';
 
@@ -211,17 +211,27 @@ describe('inSegment', () => {
       makeHomeTopic({ id: 'plain' }),
       makeHomeTopic({ id: 'photo', photo: true }),
       makeHomeTopic({ id: 'plain-2' }),
+      makeHomeTopic({ id: 'asked', isQuestion: true }),
+      makeHomeTopic({ id: 'asked-photo', isQuestion: true, photo: true }),
     ],
     events: Array.from({ length: 10 }, (_, index) => makeEvent({ id: `e${index}` })),
     people: Array.from({ length: 6 }, (_, index) => makeMember({ id: `p${index}` })),
   };
 
-  it('lists only plain topics under Topics', () => {
-    expect(keys(inSegment('topics', sources))).toEqual(['topic:plain', 'topic:plain-2']);
+  it('lists only questions under Questions, with a photograph or without', () => {
+    expect(keys(inSegment('questions', sources))).toEqual(['topic:asked', 'topic:asked-photo']);
+  });
+
+  it('lists every topic without a photograph under Topics, questions too', () => {
+    expect(keys(inSegment('topics', sources))).toEqual([
+      'topic:plain',
+      'topic:plain-2',
+      'topic:asked',
+    ]);
   });
 
   it('lists only photo topics under Photos', () => {
-    expect(keys(inSegment('photos', sources))).toEqual(['topic:photo']);
+    expect(keys(inSegment('photos', sources))).toEqual(['topic:photo', 'topic:asked-photo']);
   });
 
   it('lists up to eight events and six people', () => {
@@ -237,7 +247,7 @@ describe('inSegment', () => {
 
   it('is empty for every pill when there is nothing', () => {
     const none = { topics: [], events: [], people: [] };
-    for (const segment of ['everything', 'topics', 'photos', 'events', 'people'] as const) {
+    for (const segment of HOME_SEGMENTS) {
       expect(inSegment(segment, none)).toEqual([]);
     }
   });

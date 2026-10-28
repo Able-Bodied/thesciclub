@@ -117,9 +117,10 @@ async function signToken(keys: ApnsKeys, iat: number): Promise<string> {
 }
 
 /**
- * The alert: the same title, words and badge as web push. The badge is the
- * member's unread count, on message pushes only; 0 clears the icon, and none
- * leaves it as it is. The app keeps it true while open (src/lib/chat/unread.ts).
+ * The alert: the same title, words and badge as web push. The badge is how
+ * many kinds of notification the bell has not shown (20261028010000); 0
+ * clears the icon, and none leaves it as it is. The app keeps it true while
+ * open (src/lib/icon-badge.ts).
  */
 export function apnsPayload(message: PushMessage): string | null {
   const { badge } = message;

@@ -5,7 +5,7 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * What Apple has told the club about members' Apple accounts (Sign in with
  * Apple's server-to-server notices, 20261022170000), for an administrator on
- * the Sign-in tab. Nothing in the club changes by itself: these say who may
+ * Keys & renewals. Nothing in the club changes by itself: these say who may
  * need another way in, or no longer gets the club's emails. First, when
  * revoking deleted accounts' Apple sign-ins was given up (20261022160000).
  */

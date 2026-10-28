@@ -14,11 +14,19 @@ import type { BrowseMember, ClubEvent } from '@/types/domain';
 /**
  * The pills across the top of Home, in the order they are drawn.
  *
- * Not the mock's "Questions" and "Posts": a topic is not always a question,
- * and "post" already means a reply in a topic. `everything` is first and is
- * the default, so it carries no parameter in the URL.
+ * Not the mock's "Posts": "post" already means a reply in a topic. Questions
+ * are the topics asked as one (the owner, 2026-10-27); Topics still lists
+ * them too. `everything` is first and is the default, so it carries no
+ * parameter in the URL.
  */
-export const HOME_SEGMENTS = ['everything', 'topics', 'photos', 'events', 'people'] as const;
+export const HOME_SEGMENTS = [
+  'everything',
+  'questions',
+  'topics',
+  'photos',
+  'events',
+  'people',
+] as const;
 export type HomeSegment = (typeof HOME_SEGMENTS)[number];
 
 /**

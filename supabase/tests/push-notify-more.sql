@@ -7,7 +7,7 @@
 -- current_user.
 --
 -- Step 3 (a report reaches administrators and says nothing about itself) and
--- step 6 (the badge agrees with chat_unread_count) are the ones that matter.
+-- step 6 (the badge agrees with what the member's app reads) are the ones that matter.
 --
 --   docker run --rm -i --network host -e PGPASSWORD=postgres postgres:17-alpine \
 --     psql -h 127.0.0.1 -p 54322 -U postgres -d postgres \
@@ -151,7 +151,8 @@ select public.push_daily();
 select count(*) as runs_today from public.push_daily_runs where day = (now() at time zone 'America/Los_Angeles')::date;
 
 \echo ''
-\echo '== 6. THE BADGE: push_unread_count agrees with chat_unread_count as the member (expect the same number twice, 1) =='
+\echo '== 6. THE BADGE: the push carries the kinds Bo''s bell has not shown, as his app reads them (expect for_bo 1, on_the_push 3, then authenticated | 1 | 3) =='
+\echo '   Since 20261028010000 the badge counts kinds of notification, not unread conversations.'
 insert into public.chat_threads (id, kind, direct_key) values ('11111111-6666-0000-0000-000000000002', 'direct', 'probe-ana-bo');
 insert into public.chat_thread_members (thread_id, member_id) values
   ('11111111-6666-0000-0000-000000000002', 'aaaaaaaa-6666-0000-0000-00000000000a'),
@@ -163,7 +164,7 @@ select badge as on_the_push from public.push_owed(:'secret', 'message', '{"id":"
 select set_config('request.jwt.claims',
   '{"sub":"bbbbbbbb-6666-0000-0000-00000000000b","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
-select current_user, public.chat_unread_count() as as_bo_sees_it;
+select current_user, public.chat_unread_count() as unread, public.my_unseen_notification_kinds() as as_bo_sees_it;
 
 \echo ''
 \echo '== 7. a member cannot call the badge function (expect ERROR) =='

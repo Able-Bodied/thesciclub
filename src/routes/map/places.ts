@@ -85,7 +85,7 @@ export function peerCities(cities: MapContents['peerCities'], shown: BrowseMembe
 }
 
 /**
- * Each place of the organizations shown, one diamond per point, and those with
+ * Each place of the organizations shown, one badge per point, and those with
  * no place the map can draw, by name: never a guessed place.
  */
 export function organizationSpots(
@@ -126,7 +126,13 @@ export function organizationSpots(
 interface Feature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] };
-  properties: { key: string; count: number; exact?: boolean; orgs?: string };
+  properties: {
+    key: string;
+    count: number;
+    exact?: boolean;
+    orgs?: string;
+    organizationId?: string;
+  };
 }
 
 export interface Features {
@@ -156,13 +162,19 @@ export function peerFeatures(cities: PeerCity[]): Features {
   };
 }
 
-/** `orgs` lets a layer pick out one organization's places while its sheet is open. */
+/**
+ * `orgs` lets a layer pick out one organization's places while its sheet is
+ * open; `organizationId` is whose logo the point shows, the first by name, as
+ * the sheet lists them.
+ */
 export function organizationFeatures(spots: OrganizationSpot[]): Features {
   return {
     type: 'FeatureCollection',
     features: spots.map((spot) => {
       const point = feature(spot, spot.key, spot.organizations.length, spot.exact);
       point.properties.orgs = `,${spot.organizations.map((o) => o.id).join(',')},`;
+      const [first] = [...spot.organizations].sort((a, b) => a.name.localeCompare(b.name));
+      if (first) point.properties.organizationId = first.id;
       return point;
     }),
   };

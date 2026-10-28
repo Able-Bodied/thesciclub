@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// The count goes on the app icon as well as the Chat tab (notifications.ts).
+// The app icon counts kinds of notification now (icon-badge.ts), not this.
 const db = vi.hoisted(() => ({ count: 3, icon: [] as number[] }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => ({ status: 'member' }) }));
@@ -22,7 +22,7 @@ beforeEach(() => {
 });
 
 describe('useUnreadThreads', () => {
-  it('puts the count on the app icon, and takes it down when it changes', async () => {
+  it('counts conversations for the Chat tab, and leaves the app icon alone', async () => {
     const { result } = renderHook(() => useUnreadThreads());
     await vi.waitFor(() => {
       expect(result.current.count).toBe(3);
@@ -32,6 +32,6 @@ describe('useUnreadThreads', () => {
     await vi.waitFor(() => {
       expect(result.current.count).toBe(0);
     });
-    expect(db.icon).toEqual([3, 0]);
+    expect(db.icon).toEqual([]);
   });
 });

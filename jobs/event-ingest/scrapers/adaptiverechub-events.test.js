@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   AdaptiveRecHubEventsScraper,
   needsDetailFetch,
@@ -247,5 +247,39 @@ describe('AdaptiveRecHubEventsScraper.normalizeEvent', () => {
     expect(() => scraper.parseListHtml('<div><article>changed</article></div>', 'feed-1')).toThrow(
       /no parseable event cards/,
     );
+  });
+});
+
+describe('AdaptiveRecHubEventsScraper excludeHost', () => {
+  const cardFor = (slug, program) => `<div class="event-card card-item">
+    <h4 class="title"><a href="https://adaptiverechub.org/events/${slug}/">Climbing Meetup</a></h4>
+    <div class="date"><p><span>11/10/26 5:00 PM</span></p></div>
+    <div class="location"><p><span>Diablo Rock Gym, Concord, CA</span></p></div>
+    <div class="program"><p>${program}</p></div>
+  </div>`;
+
+  it('drops a host whose own calendar the club reads, before any page is fetched', async () => {
+    const scraper = new AdaptiveRecHubEventsScraper({
+      crawlDelayMs: 0,
+      excludeHost: '^paracliffhangers',
+    });
+    const asked = [];
+    scraper.fetchListHtml = async () =>
+      `<div>${cardFor('a', 'ParaCliffHangers – Diablo Rock Gym')}${cardFor('b', 'BORP Adaptive Sports')}</div>`;
+    scraper.fetchEventLastModified = async (urls) => {
+      asked.push(...urls);
+      return new Map();
+    };
+    scraper.politeFetch = async () => ({ ok: false, status: 404 });
+    const quiet = [vi.spyOn(console, 'log'), vi.spyOn(console, 'warn')].map((spy) =>
+      spy.mockImplementation(() => {}),
+    );
+    try {
+      const events = await scraper.scrape('feed-1');
+      expect(events.map((event) => event.host_name)).toEqual(['BORP Adaptive Sports']);
+      expect(asked).toEqual(['https://adaptiverechub.org/events/b/']);
+    } finally {
+      for (const spy of quiet) spy.mockRestore();
+    }
   });
 });

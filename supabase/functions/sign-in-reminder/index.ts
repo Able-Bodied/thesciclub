@@ -1,11 +1,12 @@
 /**
- * sign-in-reminder: emails the owner before Apple sign-in's secret runs out.
+ * sign-in-reminder: emails the owner before anything the club renews runs
+ * out: Apple sign-in's secret and every dated item on Admin → Keys & renewals.
  *
  * Called each morning through pg_net by `sign_in_secret_remind`
  * (20261011080000) with the vault's `sign_in_reminder_secret`. It asks
- * `sign_in_secret_due`, which checks that secret, what is due today, and
- * emails each one through Resend. Most days nothing is due and nothing is
- * sent.
+ * `renewals_due` (20261028200000), which checks that secret, what is due
+ * today, and emails each one through Resend. Most days nothing is due and
+ * nothing is sent.
  *
  * Deployed with `verify_jwt = false`, like push-notify: the caller is the
  * database, not a member. Anybody can call the public URL; without the secret
@@ -49,7 +50,7 @@ Deno.serve(async (request) => {
     'Content-Type': 'application/json',
   };
   if (!SERVICE_KEY.startsWith('sb_')) headers.Authorization = `Bearer ${SERVICE_KEY}`;
-  const dueResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/sign_in_secret_due`, {
+  const dueResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/renewals_due`, {
     method: 'POST',
     headers,
     body: JSON.stringify({ p_secret: request.headers.get('x-reminder-secret') ?? '' }),
@@ -58,7 +59,7 @@ Deno.serve(async (request) => {
     if (dueResponse.status === 401 || dueResponse.status === 403) {
       return reply(401, { error: 'not the reminder' });
     }
-    console.error('sign-in-reminder: sign_in_secret_due failed', dueResponse.status);
+    console.error('sign-in-reminder: renewals_due failed', dueResponse.status);
     return reply(502, { error: 'could not read what is due' });
   }
   const due = (await dueResponse.json()) as DueSecret[];

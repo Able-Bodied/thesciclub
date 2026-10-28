@@ -7,6 +7,7 @@ import {
   Heart,
   type LucideIcon,
   MessageCircle,
+  SmilePlus,
   UserPen,
   UserPlus,
   Users,
@@ -55,6 +56,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   grant_open: HandCoins,
   profile_reminder: UserPen,
   blocks_weekly: Ban,
+  reaction: SmilePlus,
 };
 
 export default function NotificationsPage() {

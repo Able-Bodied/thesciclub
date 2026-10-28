@@ -3,6 +3,7 @@ import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
+import { useIconBadge } from '@/lib/icon-badge';
 import { cn } from '@/lib/utils';
 import { backToHome } from '@/routes/home/back';
 
@@ -57,6 +58,8 @@ export function AppNav() {
   // hook listens for `unreadChanged()` rather than this refetching on every
   // navigation. See src/lib/chat/unread.ts.
   const { count, reload } = useUnreadThreads();
+  // The bar is on every screen, so the app icon's number is kept here.
+  useIconBadge();
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);

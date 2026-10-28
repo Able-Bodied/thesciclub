@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const auth = vi.hoisted(() => ({
   calls: [] as string[],
   error: null as { name?: string; message: string } | null,
+  verified: [] as unknown[],
+  expiresAt: 0,
+  none: false,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -18,12 +21,34 @@ vi.mock('@/lib/supabase', () => ({
         return Promise.resolve({ error: auth.error });
       },
       passkey: {
+        startAuthentication: () => {
+          auth.calls.push('startAuthentication');
+          return Promise.resolve({
+            data: {
+              challenge_id: 'ch1',
+              // "hello" and "abc" in base64url.
+              options: {
+                challenge: 'aGVsbG8',
+                allowCredentials: [],
+                userVerification: 'preferred',
+              },
+              expires_at: auth.expiresAt,
+            },
+            error: null,
+          });
+        },
+        verifyAuthentication: (params: unknown) => {
+          auth.verified.push(params);
+          return Promise.resolve({ data: {}, error: auth.error });
+        },
         list: () =>
           Promise.resolve({
-            data: [
-              { id: 'p1', friendly_name: 'iPhone', created_at: '2026-10-10T00:00:00Z' },
-              { id: 'p2', created_at: '2026-10-11T00:00:00Z' },
-            ],
+            data: auth.none
+              ? []
+              : [
+                  { id: 'p1', friendly_name: 'iPhone', created_at: '2026-10-10T00:00:00Z' },
+                  { id: 'p2', created_at: '2026-10-11T00:00:00Z' },
+                ],
             error: null,
           }),
         delete: ({ passkeyId }: { passkeyId: string }) => {
@@ -35,8 +60,18 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
-const { deletePasskey, listPasskeys, passkeysAvailable, passkeysEnabled, signInWithPasskey } =
-  await import('@/lib/passkeys');
+const {
+  deletePasskey,
+  listPasskeys,
+  passkeyOfferSnoozed,
+  passkeyRemembered,
+  passkeyAutofill,
+  passkeyAutofillAvailable,
+  passkeysAvailable,
+  passkeysEnabled,
+  signInWithPasskey,
+  snoozePasskeyOffer,
+} = await import('@/lib/passkeys');
 const { appleSignInEnabled } = await import('@/lib/apple-sign-in');
 
 function withWebAuthn() {
@@ -47,8 +82,12 @@ function withWebAuthn() {
 }
 
 beforeEach(() => {
+  localStorage.clear();
   auth.calls = [];
   auth.error = null;
+  auth.verified = [];
+  auth.none = false;
+  auth.expiresAt = Date.now() / 1000 + 300;
 });
 
 afterEach(() => {
@@ -101,11 +140,150 @@ describe('signing in with a passkey', () => {
     expect(await signInWithPasskey()).toEqual({ ok: true });
   });
 
+  it('is remembered in this browser once one works, and not when one fails', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    withWebAuthn();
+    auth.error = { message: 'refused' };
+    await signInWithPasskey();
+    expect(passkeyRemembered()).toBe(false);
+    auth.error = null;
+    await signInWithPasskey();
+    expect(passkeyRemembered()).toBe(true);
+  });
+
   it('is quiet when the browser’s own sheet is cancelled', async () => {
     vi.stubEnv('VITE_PASSKEYS', '1');
     withWebAuthn();
     auth.error = { name: 'NotAllowedError', message: 'cancelled' };
     expect(await signInWithPasskey()).toEqual({ ok: false, error: '' });
+  });
+});
+
+const bytes = (text: string) => Uint8Array.from(text, (c) => c.charCodeAt(0)).buffer;
+
+function withAutofill(get: (options: CredentialRequestOptions) => Promise<Credential | null>) {
+  Object.defineProperty(window, 'PublicKeyCredential', {
+    value: Object.assign(() => undefined, {
+      isConditionalMediationAvailable: () => Promise.resolve(true),
+    }),
+    configurable: true,
+  });
+  Object.defineProperty(navigator, 'credentials', { value: { get }, configurable: true });
+}
+
+const picked = {
+  id: 'cred',
+  rawId: bytes('abc'),
+  type: 'public-key',
+  authenticatorAttachment: 'platform',
+  getClientExtensionResults: () => ({}),
+  response: {
+    clientDataJSON: bytes('abc'),
+    authenticatorData: bytes('abc'),
+    signature: bytes('abc'),
+    userHandle: bytes('abc'),
+  },
+} as unknown as Credential;
+
+describe('a passkey offered in the email box', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'credentials');
+  });
+
+  it('is offered only where the browser can, and the switch is on', async () => {
+    withAutofill(() => Promise.resolve(null));
+    expect(await passkeyAutofillAvailable()).toBe(false);
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    expect(await passkeyAutofillAvailable()).toBe(true);
+    withWebAuthn();
+    expect(await passkeyAutofillAvailable()).toBe(false);
+  });
+
+  it('asks quietly, then signs in with the one picked', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    const asked: CredentialRequestOptions[] = [];
+    withAutofill((options) => {
+      asked.push(options);
+      return Promise.resolve(picked);
+    });
+    expect(await passkeyAutofill(new AbortController().signal)).toEqual({ ok: true });
+    expect(asked[0]?.mediation).toBe('conditional');
+    expect(new Uint8Array(asked[0]?.publicKey?.challenge as ArrayBuffer)).toEqual(
+      new Uint8Array(bytes('hello')),
+    );
+    expect(auth.verified).toEqual([
+      {
+        challengeId: 'ch1',
+        credential: {
+          id: 'cred',
+          rawId: 'YWJj',
+          type: 'public-key',
+          response: {
+            clientDataJSON: 'YWJj',
+            authenticatorData: 'YWJj',
+            signature: 'YWJj',
+            userHandle: 'YWJj',
+          },
+          clientExtensionResults: {},
+          authenticatorAttachment: 'platform',
+        },
+      },
+    ]);
+  });
+
+  it('stops without a word when the sign-in screen goes', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    const controller = new AbortController();
+    withAutofill(
+      (options) =>
+        new Promise((_, reject) => {
+          options.signal?.addEventListener('abort', () => {
+            reject(new DOMException('gone', 'AbortError'));
+          });
+          controller.abort();
+        }),
+    );
+    expect(await passkeyAutofill(controller.signal)).toEqual({ ok: true });
+    expect(auth.verified).toEqual([]);
+  });
+
+  it('asks again before the challenge runs out', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    auth.expiresAt = Date.now() / 1000 + 60;
+    let round = 0;
+    withAutofill((options) => {
+      round++;
+      if (round === 2) return Promise.resolve(picked);
+      return new Promise((_, reject) => {
+        options.signal?.addEventListener('abort', () => {
+          reject(new DOMException('stale', 'AbortError'));
+        });
+      });
+    });
+    const done = passkeyAutofill(new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(46_000);
+    expect(await done).toEqual({ ok: true });
+    expect(auth.calls.filter((c) => c === 'startAuthentication')).toHaveLength(2);
+    vi.useRealTimers();
+  });
+
+  it('says so when the passkey is refused', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    withAutofill(() => Promise.resolve(picked));
+    auth.error = { message: 'webauthn_verification_failed' };
+    const result = await passkeyAutofill(new AbortController().signal);
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe('Not now on the passkey offer', () => {
+  it('holds for 30 days in this browser', () => {
+    const day = 86_400_000;
+    expect(passkeyOfferSnoozed(0)).toBe(false);
+    snoozePasskeyOffer(1_000 * day);
+    expect(passkeyOfferSnoozed(1_029 * day)).toBe(true);
+    expect(passkeyOfferSnoozed(1_031 * day)).toBe(false);
   });
 });
 
@@ -118,6 +296,15 @@ describe('managing passkeys', () => {
         { id: 'p2', name: 'Passkey', createdAt: '2026-10-11T00:00:00Z' },
       ],
     });
+  });
+
+  it('forgets this browser’s passkey when the account has none left', async () => {
+    localStorage.setItem('club:passkey-here', '1');
+    await listPasskeys();
+    expect(passkeyRemembered()).toBe(true);
+    auth.none = true;
+    await listPasskeys();
+    expect(passkeyRemembered()).toBe(false);
   });
 
   it('removes one by id', async () => {

@@ -577,6 +577,8 @@ export interface OrganizationPlace {
   address: string | null;
   city: string;
   state: string;
+  /** 12345 or 12345-6789; null when not given (20261028700000). */
+  postalCode: string | null;
 }
 
 /* ------------------------------------------------------------------ browse */

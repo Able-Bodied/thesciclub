@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { compose, LIKED_LENGTH, type Owed, PREVIEW_LENGTH, plainPost, shorten } from './compose.ts';
+import {
+  compose,
+  LIKED_LENGTH,
+  type Owed,
+  PREVIEW_LENGTH,
+  plainPost,
+  shorten,
+  withTag,
+} from './compose.ts';
 
 const owed = (over: Partial<Owed>): Owed => ({
   endpoint: 'https://web.push.apple.com/x',
@@ -22,7 +30,7 @@ describe('compose', () => {
     expect(compose(owed({}))).toEqual({
       title: 'Direct message from Bo',
       body: 'See you Friday',
-      url: '/chat/t/abc',
+      url: '/chat/t/abc?n=thread%3Aabc',
       tag: 'thread:abc',
     });
   });
@@ -47,7 +55,7 @@ describe('compose', () => {
     expect(reply).toEqual({
       title: 'Bo replied to your topic',
       body: 'Try it after breakfast',
-      url: '/chat/rooms/r/topics/t',
+      url: '/chat/rooms/r/topics/t?n=topic%3At',
       tag: 'topic:t',
     });
   });
@@ -96,9 +104,11 @@ describe('compose', () => {
     expect(compose(owed({ actor_name: '  ' }))?.title).toBe('Direct message from A member');
   });
 
-  it('carries the unread count to the app badge when it has one', () => {
+  it('carries the badge to the app icon when it has one, whatever the kind', () => {
     expect(compose(owed({ badge: 3 }))?.badge).toBe(3);
     expect(compose(owed({ badge: 0 }))?.badge).toBe(0);
+    expect(compose(owed({ kind: 'like', badge: 2 }))?.badge).toBe(2);
+    expect(compose(owed({ kind: 'reaction', detail: 'post:👍', badge: 4 }))?.badge).toBe(4);
     expect(compose(owed({}))).not.toHaveProperty('badge');
   });
 
@@ -142,6 +152,45 @@ describe('compose', () => {
     expect(compose(owed({ kind: 'like', body: '', photo_count: 1 }))?.body).toBe(
       'Your photograph.',
     );
+  });
+
+  // The owner, 2026-10-27: a reaction notifies the author, as a like does.
+  it('says who reacted with what, and quotes the message', () => {
+    expect(
+      compose(
+        owed({
+          kind: 'reaction',
+          body: 'See you *Friday*',
+          detail: 'message:👍',
+          url: '/chat/t/t1?message=m1',
+          tag: 'reaction:m1',
+        }),
+      ),
+    ).toMatchObject({
+      title: 'Bo reacted 👍 to your message',
+      // A message is not formatted, so its asterisks stay.
+      body: '“See you *Friday*”',
+      url: '/chat/t/t1?message=m1&n=reaction%3Am1',
+      tag: 'reaction:m1',
+    });
+  });
+
+  it('says post or topic for a reaction in a room, without the formatting', () => {
+    expect(
+      compose(owed({ kind: 'reaction', body: '**Bring water**', detail: 'post:❤️' })),
+    ).toMatchObject({ title: 'Bo reacted ❤️ to your post', body: '“Bring water”' });
+    expect(compose(owed({ kind: 'reaction', body: 'Morning?', detail: 'topic:🎉' }))?.title).toBe(
+      'Bo reacted 🎉 to your topic',
+    );
+  });
+
+  it('still says something for a reaction with no words or emoji', () => {
+    expect(compose(owed({ kind: 'reaction', body: '', detail: 'message:' }))?.body).toBe(
+      'Bo reacted to your message.',
+    );
+    expect(
+      compose(owed({ kind: 'reaction', body: '', photo_count: 2, detail: 'post:😮' }))?.body,
+    ).toBe('Your photograph.');
   });
 
   it('says who added the member to a group, and not which group', () => {
@@ -212,11 +261,25 @@ describe('compose', () => {
 
   it('reminds a member of the step left, and opens it', () => {
     expect(
-      compose(owed({ kind: 'profile_reminder', detail: 'details', url: '/profile/details' })),
-    ).toMatchObject({ title: 'Finish Your details', url: '/profile/details' });
+      compose(
+        owed({
+          kind: 'profile_reminder',
+          detail: 'details',
+          url: '/profile/details',
+          tag: 'profile:details',
+        }),
+      ),
+    ).toMatchObject({ title: 'Finish Your details', url: '/profile/details?n=profile%3Adetails' });
     expect(
-      compose(owed({ kind: 'profile_reminder', detail: 'profile', url: '/profile?resume' })),
-    ).toMatchObject({ title: 'Finish your profile', url: '/profile?resume' });
+      compose(
+        owed({
+          kind: 'profile_reminder',
+          detail: 'profile',
+          url: '/profile?resume',
+          tag: 'profile:profile',
+        }),
+      ),
+    ).toMatchObject({ title: 'Finish your profile', url: '/profile?resume&n=profile%3Aprofile' });
   });
 
   it('counts the week’s blocks for an administrator, naming nobody', () => {
@@ -231,7 +294,8 @@ describe('compose', () => {
     expect(compose(weekly)).toEqual({
       title: 'Blocks this week',
       body: '3 members were blocked this week. Open Admin to see the list.',
-      url: '/admin?tab=reports#blocks',
+      // The tag goes before the fragment, which the Reports tab reads.
+      url: '/admin?tab=reports&n=blocks%3A2026-10-26#blocks',
       tag: 'blocks:2026-10-26',
     });
     expect(compose({ ...weekly, detail: '1' })?.body).toBe(
@@ -239,6 +303,18 @@ describe('compose', () => {
     );
     expect(compose({ ...weekly, detail: '0' })).toBeNull();
     expect(compose({ ...weekly, detail: null })).toBeNull();
+  });
+
+  // The owner, 2026-10-28: pressing one clears that one (20261028900000).
+  it('puts the tag in the address, for the app to hand back when pressed', () => {
+    expect(withTag('/events/e1', 'event:e1')).toBe('/events/e1?n=event%3Ae1');
+    expect(withTag('/chat/t/t1?message=m1', 'thread:t1')).toBe(
+      '/chat/t/t1?message=m1&n=thread%3At1',
+    );
+    expect(withTag('/admin?tab=reports#blocks', 'blocks:d')).toBe(
+      '/admin?tab=reports&n=blocks%3Ad#blocks',
+    );
+    expect(withTag('/invites', '')).toBe('/invites');
   });
 
   it('sends nothing for a kind it does not know', () => {

@@ -139,7 +139,7 @@ describe('organizations on the map', () => {
     place('p4', 'borp', 'Fremont', 37.55),
   ];
 
-  it('draws one diamond per place, organizations sharing a city middle together', () => {
+  it('draws one badge per place, organizations sharing a city middle together', () => {
     const { spots } = organizationSpots(placed, organizations);
     expect(spots.map((spot) => [spot.organizations.map((o) => o.id), spot.exact])).toEqual([
       [['borp', 'cil'], false],
@@ -155,8 +155,19 @@ describe('organizations on the map', () => {
       count: 2,
       exact: false,
       orgs: ',borp,cil,',
+      organizationId: 'borp',
     });
     expect(features[1]?.properties.exact).toBe(true);
+  });
+
+  it("shows the first organization by name's logo where several share a point", () => {
+    const together = [place('p5', 'cil', 'Albany', 37.88), place('p6', 'borp', 'Albany', 37.88)];
+    const [point] = organizationFeatures(organizationSpots(together, organizations).spots).features;
+    expect(point?.properties).toMatchObject({
+      count: 2,
+      orgs: ',cil,borp,',
+      organizationId: 'borp',
+    });
   });
 
   it("finds an organization's other places, for Also in", () => {

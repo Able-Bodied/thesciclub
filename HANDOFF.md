@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-23. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-28. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
 definition and wins over this file. Older handoffs, by `git show
 <sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
@@ -51,7 +51,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     other devices and emails the member. No way in at all:
     `scripts/set-member-email.mjs`, then Forgot password.
   - **Apple**: Services ID `com.thesciclub.web`; the secret expires
-    **2027-04-09** (`scripts/apple-secret.mjs` makes the next). The store
+    **2027-04-09** (`scripts/apple-secret.mjs` makes the next; every date
+    the club renews is on Admin → Keys & renewals). The store
     app signs in natively as `com.thesciclub.app`. Each Apple sign-in hands
     a refresh token to `apple-token` (native: the authorization code; web:
     the `provider_refresh_token` after the redirect), kept in
@@ -59,10 +60,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     Unlink, queues it for `apple-revoke` (5.1.1(v); `20261022160000`), which
     only the database may call (vault `apple_revoke_secret`, as
     `push_notify_secret`). Revocations given up after seven tries show on
-    Admin → Sign-in; once the cause is fixed, `update
+    Admin → Keys & renewals; once the cause is fixed, `update
     private.apple_revocations set attempts = 0 where attempts >= 7;`.
-    Apple's notices go to `apple-notifications`, shown on Admin → Sign-in
-    (`20261022170000`). Before this, web Apple sign-ins kept no token: those
+    Apple's notices go to `apple-notifications`, shown on Admin → Keys &
+    renewals (`20261022170000`). Before this, web Apple sign-ins kept no token: those
     members are revoked only if they sign in with Apple again first.
   - **Google**: its own widget (`lib/google-identity.ts`); the OAuth client
     allows only `https://thesciclub.com`, so not locally. The iPhone Home
@@ -100,11 +101,41 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 3,644 tests in 257 files on 2026-10-25; `pnpm check` (alone),
+- **Checks**: 4,052 tests in 298 files on 2026-10-28; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
 
+- **Reactions notify, and the icon counts kinds**: a reaction to a message
+  or post notifies its author like a like (`reaction`, switch "Reactions to
+  my posts and messages" on Me; never self, never between a blocked pair
+  either way). The icon's number is the kinds among what the bell has not
+  shown (Messages, Replies, Likes, Reactions, Events, Grants, Reminders,
+  Invites, Reports; a kind switched off is not counted). `20261028000000` and
+  `20261028010000` are live. The owner, 2026-10-28, "clear only 1 of 2"
+  (`20261028900000`, not live): opening one conversation or topic, one row
+  in the bell, or one pressed push clears that thing only; the bell's list
+  clears all. A push's address carries its tag as `?n=`
+  (`compose.ts` `withTag`), which `OpenedNotification` hands to
+  `notifications_mark_read_by_tag`. Swiping a notification away clears
+  nothing: iOS reports it only for a registered category with
+  customDismissAction, which `@capacitor/push-notifications` cannot register,
+  and the web's `notificationclose` has no session to call with. To ship, in
+  order: `db push` (`20261028900000`), `functions deploy push-notify
+  --no-verify-jwt`, the client (`main`), a TestFlight build. Probes:
+  `reaction-notifications.sql`, `icon-badge-kinds.sql`,
+  `a-notification-clears-where-it-is-opened.sql`.
+- **Location ZIP codes and address suggestions (built 2026-10-28, not
+  live)**: each organization location has an optional ZIP (`postal_code`,
+  five digits or ZIP+4; never in `geocode_key`, so no pin goes stale). The
+  Street address box suggests addresses from Komoot's Photon as an
+  administrator or organization account types (`lib/address-suggestions.ts`,
+  `admin/address-field.tsx`; never Nominatim, whose policy forbids
+  type-ahead); a pick fills street, city, state and ZIP, never the label.
+  Privacy Policy names Photon (wording for the owner to approve). To ship:
+  `db push` (`20261028700000`), then the client (`main`; the CSP gains
+  photon.komoot.io; a TestFlight build for the app). Until the push the
+  directory is read without ZIPs. Probe: `organization-place-zip.sql`.
 - **App Store: 1.0.5 (build 6) submitted 2026-10-25, waiting for review**,
   manual release. Reviewer signs in as `review@thesciclub.com`; `peer@` and
   `deleteme@` are in the review notes (all Zoho aliases; passwords only in
@@ -113,6 +144,32 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   --live --reset`, and keep them for every update. A rejection arrives in
   App Store Connect → App Review. Owner-side sheet: `app-store-submission.md`
   (untracked).
+
+- **Keys & renewals, not live** (the owner, 2026-10-27): Admin's Sign-in
+  tab is renamed (`?tab=sign-in` still opens it) and lists everything the
+  club renews, soonest first, with its steps; an administrator saves a new
+  date or adds an item (`renewals`, `20261028200000`; the Apple secret's
+  date stays in `sign_in_secrets`). To ship: `pnpm exec supabase db push`
+  (lists `20261028200000`), then `pnpm exec supabase functions deploy
+  sign-in-reminder --no-verify-jwt`, which makes the 30-day emails cover
+  every dated item (until then Apple's only; never twice). Then enter the
+  Apple Developer membership and domain dates, and check the distribution
+  certificate's (seeded as about 2027-10-21). Probe: `renewals.sql`.
+- **ParaCliffHangers, Wheel With Me, Active Fund, not live** (the owner,
+  2026-10-27). `20261028300000`: ParaCliffHangers' Indoor page is its own feed
+  (`scrapers/paracliffhangers-meetups.js`): each chapter's schedule made into
+  dates 92 days ahead in its state's zone, nothing for one it cannot read
+  (Durham's "various Saturdays" is logged nightly), and a date the page stops
+  giving is deleted (`complete`, `vanishedEvents`); Adaptive Rec Hub skips
+  ParaCliffHangers and its three upcoming copies go; nineteen gyms on the map
+  by name (paused Brick and Flemington left off). `20261028310000`: an
+  organization's city may be empty; Wheel With Me's is. `20261028320000`: the
+  Active Fund's next dates are not announced. Order: the job's code on `main`
+  first (else the nightly run fails on the new feed type and Rec Hub adds the
+  copies back), then `db push`. Saving ParaCliffHangers in Admin copies
+  Berkeley (its main place) into the directory's "Bay Area", as for any
+  organization with places. Probes: `paracliffhangers-meetups.sql`,
+  `wheel-with-me-has-no-place.sql`, `active-fund-dates-not-announced.sql`.
 
 - **Share a post into a chat, live** (the owner, 2026-10-25; website and
   1.0.4+ on 2026-10-26, with editing in the composer): Share
@@ -276,12 +333,11 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Known and accepted: anybody once signed in on a phone can read its token and
   take it over, as with web push; APNs payloads are readable by Apple, unlike
   web push's (a sentence in Privacy, for the owner to word).
-  **Icon badge, built, not yet on a device**: a message push carries the
-  member's unread count as `aps.badge` (0 clears it), as web push does; while
-  open the app sets it itself (`@capawesome/capacitor-badge` 8.0.4, only once
-  notifications are allowed), and signing out clears it. To ship: redeploy
-  `push-notify` (step 3) and a new TestFlight build; then read it on the icon,
-  open the conversation, and check the number drops.
+  **Icon badge, built, not yet on a device**: every push carries
+  `aps.badge` (0 clears it), as web push does; while open the app sets it
+  itself (`lib/icon-badge.ts`, `@capawesome/capacitor-badge` 8.0.4, only once
+  notifications are allowed), and signing out clears it. The number is how
+  many kinds the bell has not shown (see Open, Reactions and the icon).
 - **Store app, still to build**: Android (Google needs a client
   made with the Play signing SHA-1, Apple there is a web flow, and App
   Links need `public/.well-known/assetlinks.json` with the Play signing
@@ -305,6 +361,26 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 - **Security scan of 2026-10-17**: fixes live; each commit names its probe.
   Left open on purpose: the Home Screen pairing hand-off (F6 to F9), until
   members have the store app (Open, Home Screen pairing).
+- **Codex review of 2026-10-27**: the Peers directory now reads every page
+  (`members-pagination.test.ts`); the Check workflow runs `pnpm check` and
+  `pnpm test` on pushes to `main` and pull requests, and only reports (the
+  owner: no gate on Netlify; check locally before pushing). Still open:
+  - **A conversation reloads its whole history** on every realtime change
+    (`useThreadMessages`, `threads.ts`; no debounce in `useRealtimeRows`).
+    Load the recent messages, older ones on demand. Not felt at today's sizes.
+  - **Most probes need a person**: 83 of 94 in `supabase/tests` print expect
+    lines; make the outcomes `raise exception` asserts so CI can run them
+    (also needs a local Supabase in CI).
+  - **Link-preview DNS rebinding** (`resolvesPublicly`, `extract.ts`): Supabase
+    ticket filed 2026-10-27 asking whether Edge Functions can reach private
+    addresses. Blocked: note it there and close. Not: the owner picks accepting
+    it (members only; only a title and picture come back) or an outbound
+    proxy. Never probe internal addresses from a function to find out.
+- **`PERFORMANCE-PLAN.md`, then `CHAT-SECURITY-PLAN.md`: neither started**
+  (2026-10-27: no planned indexes, no link-preview cache header,
+  `tw-animate-css` still in, no chat rule rewrites). The migration names in
+  both are now taken by others; give them new ones. Order: performance steps
+  1 to 4, then chat security Phase A, then B.
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
@@ -325,18 +401,26 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Until then faces fall back to the whole photograph, as before.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
-- **Passkeys**: built, off. To turn on: a Netlify preview with
-  `VITE_PASSKEYS=1`, add one on Me and sign in with it on an iPhone (Safari
-  and installed) and Android Chrome; Supabase → Passkeys relying party
-  `thesciclub.com`, name `The SCI Club`; then set it on Netlify and rebuild.
-- **Owner's calls, pending**: Google's branding review ("The SCI Club" on
-  Google's page); deleting leftover test accounts and the `Test` member; thesciclub.org (Netlify alias, `@` and `www` A records to
+- **Passkeys**: on (seen 2026-10-27: Supabase on, RP ID `thesciclub.com`,
+  origin `https://thesciclub.com`, display name `The SCI Club`; the live build
+  has `VITE_PASSKEYS`); website only (the store app's page is not
+  thesciclub.com). Welcome back offers a saved passkey in the email box's
+  suggestions (conditional mediation, the owner's choice 2026-10-27); the
+  button shows only where a browser can't, and only if a passkey was added or
+  used in that browser (`club:passkey-here`; a site cannot ask). After an
+  email-and-password sign-in, an account with no passkey gets one suggested:
+  the browser saves one quietly where it can (conditional create), else "Sign
+  in faster next time?"; Not now holds 30 days (`club:passkey-offer-snoozed`). A Netlify preview can't test them:
+  an origin must be the relying party's domain. Never change the RP ID: every
+  passkey dies. Off: remove the Netlify variable and deploy.
+- **Owner's calls, pending**: thesciclub.org (Netlify alias, `@` and `www` A records to
   `75.2.60.5` at Spaceship).
+- **Tried by the owner 2026-10-27**: a notification tapped from the lock
+  screen opens it; joining on a computer and confirming on a phone.
 - **Never tried for real**: an hour of VoiceOver; the date boxes with Voice
-  Control and autofill; a notification end to end and its tap from the lock
-  screen, cold and warm; signed photos on a phone; pinch zoom in the
+  Control and autofill; signed photos on a phone; pinch zoom in the
   installed app and the photo viewer; Hide My Email through an invite link;
-  joining on a computer and confirming on a phone; Google from the Home
+  Google from the Home
   Screen app on an iPhone (`googlechromes://`, `x-safari-https://`,
   `OPEN_WAIT_MS` 800); the first nightly import after an administrator
   changed an imported event; repeating events on a Supabase stack.
@@ -442,7 +526,10 @@ All live. Migration headers and the files named say how and why.
   when the geocoded address matches the current one; a save starts the
   Geocode workflow (`.github/workflows/geocode.yml`, `20261026000000`;
   Nominatim refuses Supabase's servers), which places it in a couple of
-  minutes under daily caps (`private.geocode_claim`). Tiles: one archive,
+  minutes under daily caps (`private.geocode_claim`). An organization's
+  place is its logo in a purple ring, else its short code on gold
+  (`organization-badges.ts`): drawn when MapLibre 6's missing-image resolver
+  asks, fetched once, kept across theme changes. Tiles: one archive,
   `usa-<build>` (streets across the US, 9.6 GB; the two-file us/ca builds
   before it come off R2 once no app asks), on Cloudflare R2 behind the
   `tiles-worker/` Worker at sciclub-tiles.thesciclub.workers.dev (owner's

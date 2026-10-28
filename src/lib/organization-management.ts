@@ -21,6 +21,7 @@ export interface OrganizationPlaceDraft {
   address: string | null;
   city: string;
   state: string;
+  postalCode: string | null;
 }
 
 /** Replaces the organization's places, in order; the first is its main one. */
@@ -37,6 +38,7 @@ export async function saveOrganizationPlaces(
         address: place.address,
         city: place.city,
         state: place.state,
+        postal_code: place.postalCode,
       })),
     })) as { error: Failure | null };
     return error

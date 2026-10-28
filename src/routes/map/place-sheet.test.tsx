@@ -6,7 +6,7 @@ import { makeMember } from '@/test/factory';
 import type { BrowseMember } from '@/types/domain';
 
 vi.mock('@/lib/map', () => ({ loadMapCanvas: () => Promise.resolve({ default: () => null }) }));
-vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
 
 const { PlaceSheet } = await import('@/routes/map/club-map');
 

@@ -49,10 +49,11 @@ import {
   withdrawStrike,
 } from '@/routes/admin/members-admin';
 import { OrganizationsSection } from '@/routes/admin/organizations-section';
+import { renewalsDue, useRenewals } from '@/routes/admin/renewals';
 import { ReportsSection } from '@/routes/admin/reports-section';
 import { RepresentativesSection } from '@/routes/admin/representatives-section';
 import { RoomsSection } from '@/routes/admin/rooms-section';
-import { useAppleHealth } from '@/routes/admin/sign-in-health';
+import { todayIso, useAppleHealth } from '@/routes/admin/sign-in-health';
 import { SignInSection } from '@/routes/admin/sign-in-section';
 import { StatsSection } from '@/routes/admin/stats-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
@@ -96,11 +97,19 @@ export default function AdminPage() {
   const [organizationRevision, setOrganizationRevision] = useState(0);
   const [inviters, setInviters] = useState<InvitingOrganization[]>([]);
   const [tab, setTab] = useTabParam(ADMIN_TAB_VALUES, 'members');
-  // Read here, not in the panel, so the tab itself can say when Apple needs
-  // renewing: the reminder an administrator sees without opening it.
+  // Read here, not in the panel, so the tab itself can say what needs
+  // renewing: the reminder an administrator sees without opening it. Apple
+  // switched off counts too; its date is in the list.
   const apple = useAppleHealth();
-  const appleNeedsAttention =
-    apple.health?.state === 'inactive' || apple.health?.state === 'renew-soon';
+  const renewals = useRenewals();
+  const toRenew =
+    renewalsDue(renewals.renewals, todayIso()) + (apple.health?.enabled === false ? 1 : 0);
+  const reloadApple = apple.reload;
+  const reloadRenewals = renewals.reload;
+  const onRenewed = useCallback(() => {
+    reloadApple();
+    reloadRenewals();
+  }, [reloadApple, reloadRenewals]);
   const [filter, setFilter] = useState<MemberFilter>('all');
   // One row open at a time. Every row carrying all seven of its controls made
   // the roster six phone screens long, to find one person; closed, each is a
@@ -298,10 +307,11 @@ export default function AdminPage() {
           { value: 'organizations', label: 'Organizations' },
           { value: 'rooms', label: 'Rooms' },
           {
+            // The value stays: old ?tab=sign-in links still land here.
             value: 'sign-in',
-            label: 'Sign-in',
-            count: appleNeedsAttention ? 1 : 0,
-            countLabel: 'needs renewing',
+            label: 'Keys & renewals',
+            count: toRenew,
+            countLabel: 'to renew',
           },
           { value: 'stats', label: 'Stats' },
         ]}
@@ -383,7 +393,7 @@ export default function AdminPage() {
             {tab === 'rooms' ? <RoomsSection /> : null}
             {tab === 'stats' ? <StatsSection /> : null}
             {tab === 'sign-in' ? (
-              <SignInSection health={apple.health} onRenewed={apple.reload} />
+              <SignInSection health={apple.health} renewals={renewals} onRenewed={onRenewed} />
             ) : null}
 
             {tab === 'organizations' ? (

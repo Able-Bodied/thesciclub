@@ -171,6 +171,21 @@ describe('NotificationSettings', () => {
       expect(kinds.toggled).toEqual(['group_add']);
     });
 
+    // The owner, 2026-10-27: reactions notify, with their own switch beside Likes.
+    it('offer reactions as a switch of their own, next to likes', async () => {
+      hook.state = 'on';
+      kinds.muted = new Set(['reaction']);
+      render(<NotificationSettings userId="u1" />);
+      await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
+      const likes = screen.getByRole('button', { name: /Likes on my posts/ });
+      const reactions = screen.getByRole('button', { name: /Reactions to my posts and messages/ });
+      expect(likes).toHaveAttribute('aria-pressed', 'true');
+      expect(reactions).toHaveAttribute('aria-pressed', 'false');
+      expect(likes.closest('li')?.nextElementSibling).toBe(reactions.closest('li'));
+      await userEvent.click(reactions);
+      expect(kinds.toggled).toEqual(['reaction']);
+    });
+
     // Do not spend a switch on something that cannot happen to this member.
     it('show invites to mentors only and reports to administrators only', async () => {
       hook.state = 'on';

@@ -11,6 +11,7 @@ vi.mock('@/lib/notifications', async (importOriginal) => ({
 }));
 vi.mock('@/lib/chat/unread', () => ({ useUnreadThreads: () => ({ count: 0, reload: vi.fn() }) }));
 vi.mock('@/lib/chat/realtime', () => ({ useRealtimeRows: vi.fn() }));
+vi.mock('@/lib/icon-badge', () => ({ useIconBadge: vi.fn() }));
 
 describe('litTab', () => {
   it('lights a tab on its own path and beneath it', () => {

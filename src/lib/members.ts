@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { readPages } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 import type { BrowseMember, InjuryType, MemberType, RepresentedOrganization } from '@/types/domain';
 import { memberType } from '@/types/domain';
@@ -189,11 +190,17 @@ export function useBrowseMembers(): MembersState {
           return;
         }
 
-        const { data, error } = await supabase
-          .from('browse_members')
-          .select(LIST_COLUMNS)
-          .order('display_name')
-          .abortSignal(signal);
+        // Every page: the API stops at 1,000 rows without saying so. `id`
+        // breaks ties so two members with one name are not skipped or doubled.
+        const { data, error } = await readPages<BrowseMemberRow>((from, to) =>
+          supabase
+            .from('browse_members')
+            .select(LIST_COLUMNS)
+            .order('display_name')
+            .order('id')
+            .range(from, to)
+            .abortSignal(signal),
+        );
         if (aborted()) return;
         if (error) {
           setState({
@@ -205,7 +212,7 @@ export function useBrowseMembers(): MembersState {
           return;
         }
         setState({
-          members: (data as BrowseMemberRow[]).map(toMember),
+          members: (data ?? []).map(toMember),
           loading: false,
           error: null,
           signedOut: false,

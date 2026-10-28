@@ -12,8 +12,24 @@ describe('placesOf', () => {
 
   it('keeps the confirmed places in order', () => {
     const places = [
-      { id: 'p1', position: 0, label: null, address: '1 Main St', city: 'Oakland', state: 'CA' },
-      { id: 'p2', position: 1, label: 'Center', address: null, city: 'Fremont', state: 'CA' },
+      {
+        id: 'p1',
+        position: 0,
+        label: null,
+        address: '1 Main St',
+        city: 'Oakland',
+        state: 'CA',
+        postalCode: '94607',
+      },
+      {
+        id: 'p2',
+        position: 1,
+        label: 'Center',
+        address: null,
+        city: 'Fremont',
+        state: 'CA',
+        postalCode: null,
+      },
     ];
     expect(placesOf({ ...base, places })).toEqual(places);
   });
