@@ -120,6 +120,20 @@ describe('organization management', () => {
     });
     expect(db.reload).toHaveBeenCalled();
   });
+  it('saves an organization with no city, as one whose site names no place', async () => {
+    render(<OrganizationsSection />);
+    await userEvent.click(screen.getByRole('button', { name: 'Add organization' }));
+    await userEvent.type(screen.getByLabelText('Organization name'), 'No place');
+    await userEvent.type(screen.getByLabelText(/Short code/), 'nop');
+    expect(screen.getByLabelText('City or region')).not.toBeRequired();
+    await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
+    await waitFor(() => {
+      expect(db.rpc).toHaveBeenCalledWith(
+        'save_organization',
+        expect.objectContaining({ organization: null, short_code: 'NOP', city: '' }),
+      );
+    });
+  });
   it('edits the selected organization and preserves its identity', async () => {
     render(<OrganizationsSection />);
     await userEvent.click(screen.getByRole('button', { name: 'Edit Organization org' }));

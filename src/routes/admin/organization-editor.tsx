@@ -246,7 +246,7 @@ export function OrganizationEditor({
             City or region
             <input
               className={field}
-              required
+              aria-describedby="organization-city-hint"
               maxLength={160}
               value={draft.city}
               onChange={(event) => {
@@ -254,6 +254,9 @@ export function OrganizationEditor({
               }}
             />
           </label>
+          <p id="organization-city-hint" className="-mt-2 text-[0.75rem] text-grey">
+            Empty when its own site names no place.
+          </p>
           <OrganizationLocations places={places} onChange={setPlaces} />
           <label className="text-ink">
             Description

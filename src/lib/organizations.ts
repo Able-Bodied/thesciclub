@@ -10,7 +10,8 @@ interface OrganizationRow {
   id: string;
   short_code: string;
   name: string;
-  city: string;
+  /** Null when its own site names no place (20261028310000). */
+  city: string | null;
   description: string;
   tags: string[] | null;
   can_invite: boolean;
@@ -47,7 +48,7 @@ export function toOrganization(row: OrganizationRow): Organization {
     id: row.id,
     shortCode: row.short_code,
     name: row.name,
-    city: row.city,
+    city: row.city ?? '',
     description: row.description,
     tags: row.tags ?? [],
     canInvite: row.can_invite,

@@ -95,3 +95,22 @@ describe('an organization’s places', () => {
     });
   });
 });
+
+describe('an organization whose site names no place', () => {
+  it('reads as an empty city', async () => {
+    const { toOrganization } = await import('@/lib/organizations');
+    const read = toOrganization({
+      id: 'o1',
+      short_code: 'WWM',
+      name: 'Wheel with Me Foundation',
+      city: null,
+      description: '',
+      tags: null,
+      can_invite: false,
+      logo_path: null,
+      state: null,
+    });
+    expect(read.city).toBe('');
+    expect(read.places).toEqual([]);
+  });
+});
