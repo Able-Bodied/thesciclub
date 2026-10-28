@@ -39,6 +39,7 @@ export function PhotoPicker({
   onChange,
   disabled = false,
   compact = false,
+  addLabel = 'Add a photograph',
   ref,
 }: {
   files: File[];
@@ -46,6 +47,8 @@ export function PhotoPicker({
   disabled?: boolean;
   /** The composer's row: the button only, with the strip drawn above by the caller. */
   compact?: boolean;
+  /** What the button says: "Add a screenshot" for app feedback. */
+  addLabel?: string;
   /** For pictures pasted into the text beside it. */
   ref?: Ref<PhotoTarget>;
 }) {
@@ -90,8 +93,8 @@ export function PhotoPicker({
         onClick={() => {
           input.current?.click();
         }}
-        aria-label={full ? `${MAX_ATTACHMENTS} photographs is the most` : 'Add a photograph'}
-        title={full ? `${MAX_ATTACHMENTS} photographs is the most` : 'Add a photograph'}
+        aria-label={full ? `${MAX_ATTACHMENTS} photographs is the most` : addLabel}
+        title={full ? `${MAX_ATTACHMENTS} photographs is the most` : addLabel}
         className={
           compact
             ? 'grid h-11 w-11 flex-none place-items-center rounded-full bg-tint text-emphasis transition-colors hover:bg-line disabled:opacity-35'
@@ -99,7 +102,7 @@ export function PhotoPicker({
         }
       >
         <ImagePlus className="h-[19px] w-[19px]" aria-hidden="true" />
-        {compact ? null : full ? 'Four is the most' : 'Add a photograph'}
+        {compact ? null : full ? 'Four is the most' : addLabel}
       </button>
       {problem ? (
         <p className="mt-1.5 text-[0.78125rem] text-destructive leading-[1.45]" role="alert">

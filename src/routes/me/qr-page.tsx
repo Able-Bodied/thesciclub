@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
  * too, or none: a code with none only gives credit, as before, and shows an
  * email to ask while joining is closed. Only administrators name an event.
  *
- * Every code expires after 72 hours unless its maker chooses otherwise, and
+ * Every code expires after a day unless its maker chooses otherwise, and
  * may carry a note only its maker sees. Every code made is listed below with
  * when it was made, when it expires, and a way to turn it off.
  */
@@ -46,14 +46,14 @@ const WHEN: Intl.DateTimeFormatOptions = {
 };
 const when = (iso: string) => new Date(iso).toLocaleString('en-US', WHEN);
 
-/** How long a code lasts, in hours; 72 unless chosen otherwise (the owner). */
+/** How long a code lasts, in hours; a day unless chosen otherwise (the owner, 2026-10-28). */
 export const EXPIRY_CHOICES = [
-  { hours: 24, label: '24 hours' },
-  { hours: 72, label: '72 hours' },
+  { hours: 24, label: '1 day' },
+  { hours: 72, label: '3 days' },
   { hours: 24 * 7, label: '7 days' },
   { hours: 24 * 30, label: '30 days' },
 ] as const;
-export const DEFAULT_EXPIRY_HOURS = 72;
+export const DEFAULT_EXPIRY_HOURS = 24;
 const NO_ORGANIZATION = '';
 
 const FIELD =
