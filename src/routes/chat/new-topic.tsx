@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
+import { roomPrompt } from '@/lib/chat/room-prompts';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
@@ -88,6 +89,8 @@ export default function NewTopicPage() {
   // The App Feedback room's form reads as feedback (the owner, 2026-10-28);
   // every other room's is as it was.
   const feedback = room !== null && appFeedbackRoom([room]) !== null;
+  // Examples in the room's own terms (room-prompts.ts).
+  const prompt = roomPrompt(room);
   const problem = topicProblem(title, body, files.length, sharing);
   const ready = problem === null;
 
@@ -230,13 +233,7 @@ export default function NewTopicPage() {
           onChange={(event) => {
             setTitle(event.target.value);
           }}
-          placeholder={
-            sharing
-              ? 'The cushion that finally worked'
-              : feedback
-                ? 'The map is hard to zoom on my phone'
-                : 'Travelling with a bowel programme'
-          }
+          placeholder={sharing ? 'The cushion that finally worked' : prompt.title}
           className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
         <p className="mt-1 text-[0.71875rem] text-grey">
@@ -263,11 +260,7 @@ export default function NewTopicPage() {
           value={body}
           maxLength={4000}
           onChange={setBody}
-          placeholder={
-            feedback
-              ? 'What happened, what you expected, or what you’d like the app to do. A screenshot helps.'
-              : 'A question, something that worked for you, or what happened — whatever you want the room to have.'
-          }
+          placeholder={prompt.body}
           hintClassName="mt-1 text-[0.71875rem] text-grey leading-[1.45]"
           onPaste={(event) => {
             pastePhotos(event, photoTarget.current);
