@@ -14,6 +14,7 @@ import {
   PLUM,
   setBadgeScale,
 } from '@/routes/map/organization-badges';
+import { addPhotoBox, isPhotoBox, PHOTO_PREFIX } from '@/routes/map/peer-photos';
 import { type Box, LAYERS, type Layer } from '@/routes/map/places';
 
 /**
@@ -130,6 +131,7 @@ export function addLayers(map: MapLibreMap): void {
   // needed. MapLibre 6 asks this, not a styleimagemissing listener, which comes too late.
   map.setMissingStyleImageResolver((id) => {
     if (isBadge(id)) addBadge(map, id);
+    else if (isPhotoBox(id)) addPhotoBox(map, id);
     else addIcon(map, id);
   });
   for (const layer of LAYERS) {
@@ -242,10 +244,21 @@ export function addLayers(map: MapLibreMap): void {
       type: 'symbol',
       source: SOURCES.peers,
       layout: {
-        'icon-image': PEER_ICON,
+        // One member with a photograph: it, in the box (peer-photos.ts).
+        'icon-image': [
+          'case',
+          ['all', ['!', ['has', 'point_count']], ['has', 'photo']],
+          ['concat', PHOTO_PREFIX, ['get', 'photo']],
+          PEER_ICON,
+        ],
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,
-        'text-field': ['to-string', ['get', 'count']],
+        'text-field': [
+          'case',
+          ['all', ['!', ['has', 'point_count']], ['has', 'photo']],
+          '',
+          ['to-string', ['get', 'count']],
+        ],
         'text-font': [MAP_FONT],
         'text-size': 14,
         'text-allow-overlap': true,

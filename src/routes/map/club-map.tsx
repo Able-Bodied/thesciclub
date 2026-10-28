@@ -54,6 +54,7 @@ import { MapSheet } from '@/routes/map/map-sheet';
 import { MapPlaceholder } from '@/routes/map/map-view';
 import { MemberRow } from '@/routes/map/member-row';
 import { type BadgeSource, setOrganizationBadges } from '@/routes/map/organization-badges';
+import { type PhotoSource, setPhotoBoxes } from '@/routes/map/peer-photos';
 import {
   type Box,
   contentsOf,
@@ -64,6 +65,7 @@ import {
   inBox,
   LAYERS,
   type Layer,
+  lonePeers,
   notOnMap,
   organizationFeatures,
   organizationSpots,
@@ -305,6 +307,31 @@ export default function ClubMap({
   useEffect(() => {
     if (map) setOrganizationBadges(map, badgeSources);
   }, [map, badgeSources]);
+  // A city's one member shows their photograph (the owner, 2026-10-28).
+  const lone = useMemo(() => lonePeers(cities), [cities]);
+  const lonePhotos = usePhotoUrls(
+    layers.has('peers') ? lone.map((member) => member.photoPath) : [],
+    'thumb',
+  );
+  const photoSources = useMemo(
+    () =>
+      new Map<string, PhotoSource>(
+        lone.flatMap((member) =>
+          member.photoPath
+            ? [
+                [
+                  member.id,
+                  { photoPath: member.photoPath, url: lonePhotos.get(member.photoPath) ?? null },
+                ],
+              ]
+            : [],
+        ),
+      ),
+    [lone, lonePhotos],
+  );
+  useEffect(() => {
+    if (map) setPhotoBoxes(map, photoSources);
+  }, [map, photoSources]);
   useSourceData(map, SOURCES.events, eventData, hidden);
   useSourceData(map, SOURCES.peers, peerData, hidden);
   useSourceData(map, SOURCES.organizations, organizationData, hidden);

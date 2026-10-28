@@ -132,6 +132,8 @@ interface Feature {
     exact?: boolean;
     orgs?: string;
     organizationId?: string;
+    /** The one member of a city, whose photograph its box shows (peer-photos.ts). */
+    photo?: string;
   };
 }
 
@@ -158,8 +160,20 @@ export function eventFeatures(spots: EventSpot[]): Features {
 export function peerFeatures(cities: PeerCity[]): Features {
   return {
     type: 'FeatureCollection',
-    features: cities.map((city) => feature(city, city.key, city.members.length)),
+    features: cities.map((city) => {
+      const point = feature(city, city.key, city.members.length);
+      const [only] = city.members;
+      if (city.members.length === 1 && only?.photoPath) point.properties.photo = only.id;
+      return point;
+    }),
   };
+}
+
+/** The members alone in their city with a photograph, whose boxes show it. */
+export function lonePeers(cities: PeerCity[]): BrowseMember[] {
+  return cities.flatMap((city) =>
+    city.members.length === 1 && city.members[0]?.photoPath ? [city.members[0]] : [],
+  );
 }
 
 /**

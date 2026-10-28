@@ -6,6 +6,7 @@ import {
   eventFeatures,
   eventSpots,
   inBox,
+  lonePeers,
   notOnMap,
   organizationFeatures,
   organizationSpots,
@@ -212,5 +213,33 @@ describe('what is in view', () => {
     };
     expect(countWords(contents, new Set(['events', 'peers']))).toBe('1 event, 2 members');
     expect(countWords(contents, new Set(['organizations']))).toBe('0 organizations');
+  });
+});
+
+// The owner, 2026-10-28: a city's one member shows their photograph, not "1".
+describe('a city with one member', () => {
+  const city = (name: string, memberIds: string[]) => ({
+    city: name,
+    state: 'CA',
+    latitude: 37.8,
+    longitude: -122.27,
+    memberIds,
+  });
+
+  it('carries the member whose photograph its box shows', () => {
+    const members = [
+      makeMember({ id: 'sam', photoPath: 'sam/photo.webp' }),
+      makeMember({ id: 'jo', photoPath: null }),
+      makeMember({ id: 'ana', photoPath: 'ana/photo.webp' }),
+      makeMember({ id: 'lee', photoPath: 'lee/photo.webp' }),
+    ];
+    const cities = peerCities(
+      [city('Oakland', ['sam']), city('Fremont', ['jo']), city('San Jose', ['ana', 'lee'])],
+      members,
+    );
+    const photos = peerFeatures(cities).features.map((feature) => feature.properties.photo);
+    // Fremont's one member has no photograph; San Jose has two.
+    expect(photos).toEqual(['sam', undefined, undefined]);
+    expect(lonePeers(cities).map((member) => member.id)).toEqual(['sam']);
   });
 });

@@ -46,7 +46,7 @@ export function setBadgeScale(scale: number): void {
   textScale = scale;
 }
 
-const pixelRatio = () =>
+export const pixelRatio = () =>
   Math.min(4, Math.max(2, Math.ceil((globalThis.devicePixelRatio || 1) * textScale)));
 
 /** Paths, not roundRect, which iOS 15's Safari lacks. */
@@ -162,8 +162,8 @@ function load(path: string, url: string): Promise<Badge | null> {
   return pending;
 }
 
-/** A removed map throws on every call: nothing to draw on then. */
-function put(map: MapLibreMap, id: string, badge: Badge | null): void {
+/** A removed map throws on every call: nothing to draw on then. Shared with peer-photos.ts. */
+export function put(map: MapLibreMap, id: string, badge: Badge | null): void {
   if (!badge) return;
   try {
     const given = shown.get(map) ?? new Map<string, Badge>();
