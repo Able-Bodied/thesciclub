@@ -78,7 +78,10 @@
     #                from Supabase storage.
     #   connect-src  Supabase (REST, auth, storage, and realtime over wss) and
     #                the geocoder the location step asks for a ZIP or a place,
-    #                and Google's sign-in, which checks the browser's accounts.
+    #                Photon, which suggests a location's street address to an
+    #                administrator or organization account as they type
+    #                (src/lib/address-suggestions.ts), and Google's sign-in,
+    #                which checks the browser's accounts.
     #                And the map's tiles, from the club's Worker on R2
     #                (TILES_ORIGIN in src/lib/map/tiles.ts; change both).
     #   frame-src    YouTube's privacy-enhanced player: a video under a link
@@ -93,7 +96,7 @@
     #                browsers that predate frame-ancestors.
     # A deploy preview talks to the same Supabase project, so this holds there
     # too. `pnpm dev` does not read this file.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-Xy2xEANIw9pW886w6DVJgHrrPL/27Q6sFs2Uuu/pmKE=' 'sha256-n2STVZqH8GraCglqUjF3hPzj2VYdFF0SX66U5zowe3M=' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' blob: https://erijdvqnxavwezsbbojv.supabase.co; font-src 'self'; connect-src 'self' https://erijdvqnxavwezsbbojv.supabase.co wss://erijdvqnxavwezsbbojv.supabase.co https://nominatim.openstreetmap.org https://lh3.googleusercontent.com https://accounts.google.com/gsi/ https://sciclub-tiles.thesciclub.workers.dev/; frame-src https://www.youtube-nocookie.com https://accounts.google.com/gsi/; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'sha256-Xy2xEANIw9pW886w6DVJgHrrPL/27Q6sFs2Uuu/pmKE=' 'sha256-n2STVZqH8GraCglqUjF3hPzj2VYdFF0SX66U5zowe3M=' https://accounts.google.com/gsi/client; style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; img-src 'self' blob: https://erijdvqnxavwezsbbojv.supabase.co; font-src 'self'; connect-src 'self' https://erijdvqnxavwezsbbojv.supabase.co wss://erijdvqnxavwezsbbojv.supabase.co https://nominatim.openstreetmap.org https://photon.komoot.io https://lh3.googleusercontent.com https://accounts.google.com/gsi/ https://sciclub-tiles.thesciclub.workers.dev/; frame-src https://www.youtube-nocookie.com https://accounts.google.com/gsi/; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     X-Frame-Options = "DENY"
 
 # Which links open the store app (Universal Links). Apple fetches it from

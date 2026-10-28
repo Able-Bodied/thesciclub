@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import type { OrganizationPlaceDraft as OrganizationPlace } from '@/lib/organization-management';
+import { AddressField } from '@/routes/admin/address-field';
 import { US_STATES } from '@/types/domain';
 
 const field =
@@ -78,7 +79,8 @@ export function OrganizationLocations({
       <p id="organization-locations-hint" className="text-[0.8125rem] text-grey leading-[1.45]">
         Only as its own website shows them. A street address it publishes gets an exact pin. A P.O.
         box or a mailbox at a shipping store is not a street address: leave it blank, and the
-        location shows at its city’s middle. Without a state it is not on the map.
+        location shows at its city’s middle. Without a state it is not on the map. Addresses are
+        suggested as you type; keep only what its website shows.
       </p>
       {places.length === 0 ? (
         <p className="text-[0.875rem] text-ink2">No locations yet: it is not on the map.</p>
@@ -106,18 +108,29 @@ export function OrganizationLocations({
                       }}
                     />
                   </label>
-                  <label className="text-ink">
-                    Street address <span className="text-grey">(as its website shows it)</span>
-                    <input
-                      className={field}
-                      maxLength={200}
-                      aria-describedby="organization-locations-hint"
-                      value={place.address ?? ''}
-                      onChange={(e) => {
-                        set(index, { address: e.target.value });
-                      }}
-                    />
-                  </label>
+                  <AddressField
+                    label={
+                      <>
+                        Street address <span className="text-grey">(as its website shows it)</span>
+                      </>
+                    }
+                    className={field}
+                    maxLength={200}
+                    describedBy="organization-locations-hint"
+                    value={place.address ?? ''}
+                    onChange={(address) => {
+                      set(index, { address });
+                    }}
+                    onPick={(found) => {
+                      // The label is the editor's own words; a pick fills the rest.
+                      set(index, {
+                        address: found.street.slice(0, 200),
+                        city: found.city,
+                        state: found.state,
+                        postalCode: found.postalCode || null,
+                      });
+                    }}
+                  />
                   <label className="text-ink">
                     City
                     <input

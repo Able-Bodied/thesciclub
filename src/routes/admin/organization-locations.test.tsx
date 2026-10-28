@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   OrganizationLocations,
   type PlaceDraft,
@@ -101,4 +101,49 @@ describe("an organization's locations in its editor", () => {
     await userEvent.type(zip, '94710');
     expect(latest[0]?.postalCode).toBe('94710');
   });
+
+  it('fills in street, city, state and ZIP from a picked suggestion, keeping the label', async () => {
+    const asked: string[] = [];
+    vi.stubGlobal('fetch', (url: string) => {
+      asked.push(url);
+      return Promise.resolve(
+        Response.json({
+          features: [
+            {
+              type: 'Feature',
+              properties: {
+                countrycode: 'US',
+                osm_key: 'leisure',
+                name: 'Berkeley Ironworks',
+                housenumber: '800',
+                street: 'Potter Street',
+                city: 'Berkeley',
+                state: 'California',
+                postcode: '94710',
+              },
+            },
+          ],
+        }),
+      );
+    });
+    render(<Editor />);
+    const first = screen.getByRole('group', { name: 'Location 1 (main)' });
+    const street = within(first).getByRole('combobox', { name: /Street address/ });
+    await userEvent.clear(street);
+    await userEvent.type(street, '800 Potter');
+    await userEvent.click(await screen.findByRole('option', { name: /Berkeley Ironworks/ }));
+    expect(asked.every((url) => url.startsWith('https://photon.komoot.io/api/?'))).toBe(true);
+    expect(latest[0]).toMatchObject({
+      label: 'Main office',
+      address: '800 Potter Street',
+      city: 'Berkeley',
+      state: 'CA',
+      postalCode: '94710',
+    });
+    expect(street).toHaveValue('800 Potter Street');
+  });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });

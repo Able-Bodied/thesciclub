@@ -1,0 +1,102 @@
+import { stateCodeForName } from '@/types/domain';
+
+/**
+ * Street addresses suggested as an administrator or an organization account
+ * types a location (the owner, 2026-10-28). Photon is Komoot's OpenStreetMap
+ * search, built for type-ahead and keyless; Nominatim's usage policy forbids
+ * type-ahead, so never point this at Nominatim. Members never reach it.
+ */
+export const PHOTON_ORIGIN = 'https://photon.komoot.io';
+
+/** Characters typed before asking, and the pause after the last one. */
+export const SUGGEST_AFTER = 3;
+export const SUGGEST_DELAY_MS = 300;
+export const SUGGESTIONS_SHOWN = 5;
+
+export interface AddressSuggestion {
+  key: string;
+  /** A place's own name, such as a gym's; null for a bare address. */
+  name: string | null;
+  /** "800 Potter Street", or the street alone when it has no number. */
+  street: string;
+  city: string;
+  /** Two letters. */
+  state: string;
+  /** 12345 or 12345-6789, or ''. */
+  postalCode: string;
+  /** The whole address as one line. */
+  line: string;
+}
+
+const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/** US only; ten asked, as some come back with no street to fill in. */
+export function photonUrl(query: string): string {
+  const params = new URLSearchParams({
+    q: query.trim(),
+    limit: '10',
+    lang: 'en',
+    countrycode: 'US',
+  });
+  return `${PHOTON_ORIGIN}/api/?${params.toString()}`;
+}
+
+/** Photon's GeoJSON as suggestions: US streets only, numbered ones first. */
+export function toSuggestions(body: unknown): AddressSuggestion[] {
+  const features = isRecord(body) && Array.isArray(body.features) ? body.features : [];
+  const found: (AddressSuggestion & { numbered: boolean })[] = [];
+  const seen = new Set<string>();
+  features.forEach((feature: unknown, index) => {
+    const p = isRecord(feature) && isRecord(feature.properties) ? feature.properties : null;
+    if (!p || text(p.countrycode).toUpperCase() !== 'US') return;
+    const state = stateCodeForName(text(p.state));
+    // A street's own feature has its name and no street.
+    const road = text(p.street) || (p.osm_key === 'highway' ? text(p.name) : '');
+    if (!state || !road) return;
+    const number = text(p.housenumber);
+    const street = number ? `${number} ${road}` : road;
+    const name = text(p.name) && text(p.name) !== road ? text(p.name) : null;
+    const city = text(p.city);
+    const postalCode = /^\d{5}(-\d{4})?/.exec(text(p.postcode))?.[0] ?? '';
+    const line = [street, city, [state, postalCode].filter(Boolean).join(' ')]
+      .filter(Boolean)
+      .join(', ');
+    const said = `${name ?? ''}|${line}`;
+    if (seen.has(said)) return;
+    seen.add(said);
+    const osm = `${text(p.osm_type)}${typeof p.osm_id === 'number' ? p.osm_id : ''}`;
+    found.push({
+      key: osm || `${index}`,
+      name,
+      street,
+      city,
+      state,
+      postalCode,
+      line,
+      numbered: number !== '',
+    });
+  });
+  return found
+    .sort((a, b) => Number(b.numbered) - Number(a.numbered))
+    .slice(0, SUGGESTIONS_SHOWN)
+    .map(({ numbered: _, ...suggestion }) => suggestion);
+}
+
+/** Null when Photon is slow, down, blocked or the ask was dropped: the box stays as it is. */
+export async function suggestAddresses(
+  query: string,
+  signal: AbortSignal,
+): Promise<AddressSuggestion[] | null> {
+  try {
+    const answer = await fetch(photonUrl(query), {
+      signal,
+      headers: { Accept: 'application/json' },
+    });
+    if (!answer.ok) return null;
+    return toSuggestions(await answer.json());
+  } catch {
+    return null;
+  }
+}
