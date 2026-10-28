@@ -135,6 +135,14 @@ vi.mock('@/lib/blocks', () => ({
   unblockMember: vi.fn(),
 }));
 
+const chatRooms = vi.hoisted(() => ({
+  rooms: [] as { id: string; name: string; openedAt: string | null }[],
+}));
+vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useChatRooms: () => ({ rooms: chatRooms.rooms, loading: false, error: null }),
+}));
+
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
   signOut: () => {
@@ -660,5 +668,26 @@ describe('no longer being asked for an invite by number', () => {
     renderMe();
     expect(screen.queryByRole('checkbox', { name: /have my number/ })).toBeNull();
     expect(screen.queryByText(/ask me for an invite/i)).toBeNull();
+  });
+});
+
+// The owner, 2026-10-28: feedback goes to the App Feedback room.
+describe('sending app feedback', () => {
+  it('opens a new topic in the App Feedback room, coming back to Me', async () => {
+    chatRooms.rooms = [
+      { id: 'general', name: 'General', openedAt: '2026-09-01T00:00:00Z' },
+      { id: 'app-feedback-7960', name: 'App Feedback', openedAt: '2026-09-01T00:00:00Z' },
+    ];
+    renderMe();
+    const link = await screen.findByRole('link', { name: /Send app feedback/ });
+    expect(link).toHaveAttribute('href', '/chat/rooms/app-feedback-7960/new');
+  });
+
+  it('is not offered while there is no open App Feedback room', async () => {
+    chatRooms.rooms = [{ id: 'app-feedback-7960', name: 'App Feedback', openedAt: null }];
+    renderMe();
+    await screen.findByText('Standing');
+    expect(screen.queryByRole('link', { name: /Send app feedback/ })).toBeNull();
+    chatRooms.rooms = [];
   });
 });

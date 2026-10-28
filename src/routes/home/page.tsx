@@ -1,5 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { LoadingCards } from '@/components/loading-cards';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
@@ -32,6 +32,7 @@ import {
   SEGMENT_PEOPLE,
   suggestPeople,
 } from '@/routes/home/feed';
+import { FeedbackCard } from '@/routes/home/feedback-card';
 import { HomeFilterSheet } from '@/routes/home/filter-sheet';
 import {
   activeFilterCount,
@@ -427,12 +428,21 @@ export default function HomePage() {
               {shown.length > 0 ? (
                 <>
                   <ul className="arrive">
-                    {shown.map((item) => (
+                    {shown.map((item, index) => (
                       // An event card carries its own bottom margin; the
                       // others are given the same one here.
-                      <li key={item.key} className={item.kind === 'event' ? '' : 'mb-[11px]'}>
-                        {draw(item)}
-                      </li>
+                      <Fragment key={item.key}>
+                        <li className={item.kind === 'event' ? '' : 'mb-[11px]'}>{draw(item)}</li>
+                        {/* Below the first card (the owner, 2026-10-28): what
+                            members think of the app. Not on the Events pill. */}
+                        {index === 0 && segment !== 'events' ? (
+                          <FeedbackCard
+                            rooms={rooms.rooms}
+                            linkState={linkState}
+                            className="mb-[11px]"
+                          />
+                        ) : null}
+                      </Fragment>
                     ))}
                   </ul>
                   <SeeMore segment={segment} />

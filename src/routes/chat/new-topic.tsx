@@ -65,6 +65,8 @@ export default function NewTopicPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const home = fromHome(location.state);
+  // Opened from Me's Send app feedback (the owner, 2026-10-28): back is Me.
+  const fromMe = (location.state as { from?: unknown } | null)?.from === 'me';
   const sharing = home?.kind === 'share';
   const { rooms, loading } = useChatRooms();
   // Carried from the quick box on Home or a room ("Add details or a photo"),
@@ -175,6 +177,8 @@ export default function NewTopicPage() {
       <div className="mx-auto w-full max-w-[720px]">
         {home ? (
           <BackLink to={home.back} label="Home" />
+        ) : fromMe ? (
+          <BackLink to="/me" label="Me" />
         ) : (
           <BackLink to={`/chat/rooms/${room.id}`} label={room.name} />
         )}

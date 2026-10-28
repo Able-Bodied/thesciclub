@@ -7,6 +7,7 @@ import { type PageTab, PageTabs, TabPanel, useTabParam } from '@/components/page
 import { signOut, useAccount } from '@/lib/account';
 import { EMAIL_RETURN_PARAM, useSignInDetails } from '@/lib/account-email';
 import { APPLE_RETURN_PARAM } from '@/lib/apple-sign-in';
+import { useChatRooms } from '@/lib/chat/rooms';
 import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
@@ -15,6 +16,7 @@ import { useOwnMember } from '@/lib/members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { isNative } from '@/lib/standalone';
 import { isPastStartTime } from '@/routes/events/filters';
+import { appFeedbackRoom } from '@/routes/home/feedback-card';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
@@ -230,6 +232,7 @@ export default function MePage() {
     });
   }, [userId]);
 
+  const feedbackRoom = appFeedbackRoom(useChatRooms().rooms);
   // An org admin makes QR codes for their organization (20261028960000).
   const orgAdmin = useMyOrganizations(userId).ids.size > 0;
   const hasClubTools =
@@ -380,6 +383,18 @@ export default function MePage() {
                         </div>
                       ) : null}
                     </div>
+                  </section>
+                ) : null}
+                {/* The App Feedback room (the owner, 2026-10-28; feedback-card.tsx). */}
+                {feedbackRoom ? (
+                  <section aria-labelledby="me-feedback-heading">
+                    <SectionHeading id="me-feedback-heading">Feedback</SectionHeading>
+                    <ProfileLink
+                      to={`/chat/rooms/${feedbackRoom.id}/new`}
+                      state={{ from: 'me' }}
+                      title="Send app feedback"
+                      description="What works, what doesn't, what you'd like. It's posted in the App Feedback room, with a screenshot if you add one."
+                    />
                   </section>
                 ) : null}
                 <section aria-labelledby="me-standing-heading">
