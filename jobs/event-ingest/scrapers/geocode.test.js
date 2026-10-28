@@ -177,6 +177,37 @@ describe('lookUpPlace and how exact a hit is', () => {
     expect((await ask('764 Indigo Court, Unit A, Pomona, CA'))?.precision).toBe('approximate');
   });
 
+  it('is exact when only a venue name was dropped and the very address was found', async () => {
+    const at = (number, postcode) => [
+      {
+        ...hit('house')[0],
+        address: { ...hit('house')[0].address, house_number: number, postcode },
+      },
+    ];
+    answers([[], at('2140', '94607')]);
+    expect((await ask('Pacific Pipe, 2140 Mandela Pkwy, Oakland, CA 94607'))?.precision).toBe(
+      'exact',
+    );
+    // Another number, another ZIP, or no ZIP asked for: not proof enough.
+    answers([[], at('2141', '94607')]);
+    expect((await ask('Pacific Pipe, 2140 Mandela Pkwy, Oakland, CA 94607'))?.precision).toBe(
+      'approximate',
+    );
+    answers([[], at('608', '76004')]);
+    expect((await ask('Dyno-Rock, 608 E Front St, Arlington, TX 76011'))?.precision).toBe(
+      'approximate',
+    );
+    answers([[], at('2140', '94607')]);
+    expect((await ask('Pacific Pipe, 2140 Mandela Pkwy, Oakland, CA'))?.precision).toBe(
+      'approximate',
+    );
+    // A number that is a building's, not the street's.
+    answers([[], at('7', '94304')]);
+    expect((await ask('Building 7, 3801 Miranda Ave, Palo Alto, CA 94304'))?.precision).toBe(
+      'approximate',
+    );
+  });
+
   it('counts a healthcare place as exact', async () => {
     answers([hit('doctors', 'healthcare')]);
     expect((await ask('636 Morris Turnpike, Short Hills, NJ'))?.precision).toBe('exact');

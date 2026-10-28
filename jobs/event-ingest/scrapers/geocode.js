@@ -82,15 +82,31 @@ function fallbackQueries(trimmed) {
   const candidates = [];
 
   const digitIndex = trimmed.search(/[0-9]/);
-  if (digitIndex > 0) candidates.push(trimmed.slice(digitIndex).trim());
+  if (digitIndex > 0)
+    candidates.push({ query: trimmed.slice(digitIndex).trim(), venueDropped: true });
 
   const firstComma = trimmed.indexOf(',');
-  if (firstComma > 0) candidates.push(trimmed.slice(firstComma + 1).trim());
+  if (firstComma > 0) candidates.push({ query: trimmed.slice(firstComma + 1).trim() });
 
   const lastComma = trimmed.lastIndexOf(',');
-  if (lastComma > 0) candidates.push(trimmed.slice(0, lastComma).trim());
+  if (lastComma > 0) candidates.push({ query: trimmed.slice(0, lastComma).trim() });
 
   return candidates;
+}
+
+/**
+ * A venue's name dropped from before a whole street address ("Pacific Pipe,
+ * 2140 Mandela Pkwy, Oakland, CA 94607") still finds that address exactly
+ * when the building found has the same house number and ZIP code.
+ */
+export function sameStreetAddress(query, result) {
+  const number = /^(\d[\w-]*)\s/.exec(query)?.[1];
+  const zip = /\b(\d{5})(?:-\d{4})?\s*$/.exec(query)?.[1];
+  if (!number || !zip || !result.houseNumber || !result.postalCode) return false;
+  return (
+    result.houseNumber.toLowerCase() === number.toLowerCase() &&
+    result.postalCode.slice(0, 5) === zip
+  );
 }
 
 /** Nominatim said "too many requests": asking again only makes it longer. */
@@ -125,6 +141,7 @@ async function searchNominatim(query) {
     // "US-CA" → "CA".
     state: /^US-([A-Z]{2})$/.exec(address['ISO3166-2-lvl4'] ?? '')?.[1] ?? null,
     postalCode: address.postcode || null,
+    houseNumber: address.house_number || null,
     latitude: Number(top.lat),
     longitude: Number(top.lon),
     precision: precisionOf(top),
@@ -215,15 +232,20 @@ export async function lookUpPlace(query) {
   const trimmed = (query || '').trim();
   if (!trimmed) return null;
 
-  const attempts = [trimmed, ...fallbackQueries(trimmed)];
+  const attempts = [{ query: trimmed }, ...fallbackQueries(trimmed)];
   let answered = false;
   for (let i = 0; i < attempts.length; i++) {
     if (i > 0) await new Promise((resolve) => setTimeout(resolve, MIN_REQUEST_INTERVAL_MS));
+    const attempt = attempts[i];
     try {
-      const result = await searchNominatim(attempts[i]);
+      const result = await searchNominatim(attempt.query);
       answered = true;
-      // A rewrite's hit ("Unit A, Pomona, CA") may be any building: never exact.
-      if (result) return i === 0 ? result : { ...result, precision: 'approximate' };
+      if (!result) continue;
+      if (i === 0) return result;
+      // A rewrite's hit ("Unit A, Pomona, CA") may be any building: exact only
+      // when it is the very street address the venue's name stood before.
+      const same = attempt.venueDropped && sameStreetAddress(attempt.query, result);
+      return same ? result : { ...result, precision: 'approximate' };
     } catch (error) {
       if (error instanceof RateLimited) throw error;
       // Try the next rewrite rather than giving up on the first network hiccup.
