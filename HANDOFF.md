@@ -37,8 +37,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   - **Invites**: the hook `signup_needs_an_invite` refuses an uninvited
     sign-up before any email (the owner's choice, knowing it reveals whether
     an address is invited). Admin → Invites → "Anybody can join" opens joining
-    for events (`club_joining`); a blocked address stays out. Each
-    administrator's QR code (Me → Your QR code) is credit only, never entry.
+    for events (`club_joining`); a blocked address stays out. A club
+    administrator's QR code with no organization is credit only, never entry.
+    An org admin's code or link for their organization lets in whoever scans
+    it, invite or not, until it expires (72 hours by default) or is turned off
+    (`20261028960000`). The owner, 2026-10-28: kept on purpose to help the club
+    grow; if strangers get in, remove them and make codes credit only again.
   - **Email**: links in mail open `thesciclub.com/auth/confirm.html`
     (`lib/email-link.ts`, `supabase/templates/`), not supabase.co, which put
     mail in spam. Hosted templates go through the Management API, only after
