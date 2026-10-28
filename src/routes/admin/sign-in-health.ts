@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { describeError } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Whether Apple sign-in works, for the Sign-in tab on Admin.
+ * Whether Apple sign-in works, for Admin → Keys & renewals.
  *
  * Two facts, read separately because they live in different places:
  *
@@ -94,18 +93,6 @@ async function appleExpiry(): Promise<string | null> {
   return row && typeof row === 'object' && 'expires_on' in row && typeof row.expires_on === 'string'
     ? row.expires_on
     : null;
-}
-
-export async function renewAppleSecret(
-  expiresOn: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await getSupabase().rpc('admin_renew_sign_in_secret', {
-    p_provider: 'apple',
-    p_expires_on: expiresOn,
-  });
-  return error
-    ? { ok: false, error: describeError(error, 'The date was not saved.') }
-    : { ok: true };
 }
 
 export function useAppleHealth(): { health: AppleHealth | null; reload: () => void } {

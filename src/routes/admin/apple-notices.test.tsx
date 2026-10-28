@@ -24,7 +24,7 @@ beforeEach(() => {
   answer.asked = [];
 });
 
-describe('Apple’s notices on the Sign-in tab', () => {
+describe('Apple’s notices on Keys & renewals', () => {
   it('says what Apple told the club, newest first as the club keeps them', async () => {
     answer.data = [
       {

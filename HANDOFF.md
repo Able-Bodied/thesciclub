@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-23. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-27. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
 definition and wins over this file. Older handoffs, by `git show
 <sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
@@ -51,7 +51,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     other devices and emails the member. No way in at all:
     `scripts/set-member-email.mjs`, then Forgot password.
   - **Apple**: Services ID `com.thesciclub.web`; the secret expires
-    **2027-04-09** (`scripts/apple-secret.mjs` makes the next). The store
+    **2027-04-09** (`scripts/apple-secret.mjs` makes the next; every date
+    the club renews is on Admin → Keys & renewals). The store
     app signs in natively as `com.thesciclub.app`. Each Apple sign-in hands
     a refresh token to `apple-token` (native: the authorization code; web:
     the `provider_refresh_token` after the redirect), kept in
@@ -59,10 +60,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     Unlink, queues it for `apple-revoke` (5.1.1(v); `20261022160000`), which
     only the database may call (vault `apple_revoke_secret`, as
     `push_notify_secret`). Revocations given up after seven tries show on
-    Admin → Sign-in; once the cause is fixed, `update
+    Admin → Keys & renewals; once the cause is fixed, `update
     private.apple_revocations set attempts = 0 where attempts >= 7;`.
-    Apple's notices go to `apple-notifications`, shown on Admin → Sign-in
-    (`20261022170000`). Before this, web Apple sign-ins kept no token: those
+    Apple's notices go to `apple-notifications`, shown on Admin → Keys &
+    renewals (`20261022170000`). Before this, web Apple sign-ins kept no token: those
     members are revoked only if they sign in with Apple again first.
   - **Google**: its own widget (`lib/google-identity.ts`); the OAuth client
     allows only `https://thesciclub.com`, so not locally. The iPhone Home
@@ -100,7 +101,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 3,644 tests in 257 files on 2026-10-25; `pnpm check` (alone),
+- **Checks**: 3,957 tests in 292 files on 2026-10-27; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -113,6 +114,17 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   --live --reset`, and keep them for every update. A rejection arrives in
   App Store Connect → App Review. Owner-side sheet: `app-store-submission.md`
   (untracked).
+
+- **Keys & renewals, not live** (the owner, 2026-10-27): Admin's Sign-in
+  tab is renamed (`?tab=sign-in` still opens it) and lists everything the
+  club renews, soonest first, with its steps; an administrator saves a new
+  date or adds an item (`renewals`, `20261028200000`; the Apple secret's
+  date stays in `sign_in_secrets`). To ship: `pnpm exec supabase db push`
+  (lists `20261028200000`), then `pnpm exec supabase functions deploy
+  sign-in-reminder --no-verify-jwt`, which makes the 30-day emails cover
+  every dated item (until then Apple's only; never twice). Then enter the
+  Apple Developer membership and domain dates, and check the distribution
+  certificate's (seeded as about 2027-10-21). Probe: `renewals.sql`.
 
 - **Share a post into a chat, live** (the owner, 2026-10-25; website and
   1.0.4+ on 2026-10-26, with editing in the composer): Share

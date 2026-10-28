@@ -14,6 +14,7 @@ import {
   vouchedBy,
   withdrawnInvites,
 } from '@/routes/admin/members-admin';
+import type { Renewal } from '@/routes/admin/renewals';
 
 const account = vi.hoisted(() => ({ current: null as Account | null }));
 let confirmSpy: MockInstance<typeof window.confirm>;
@@ -168,6 +169,13 @@ vi.mock('@/lib/joining', async (importOriginal) => ({
   }),
 }));
 
+// Read on every render for the tab's count; renewals-section.test.tsx tests the list.
+const renewals = vi.hoisted(() => ({ list: [] as Renewal[] }));
+vi.mock('@/routes/admin/renewals', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useRenewals: () => ({ renewals: renewals.list, error: null, reload: () => undefined }),
+}));
+
 // The Going tab reads events and who is going; neither is what this file tests
 // (event-contacts-section.test.tsx does), but the page imports the section.
 vi.mock('@/routes/admin/event-contacts-section', () => ({
@@ -238,6 +246,7 @@ beforeEach(() => {
   api.failWith = null;
   api.openReports = 0;
   joining.open = false;
+  renewals.list = [];
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   // vi.spyOn on an already-spied method hands back the *existing* spy, so
   // without this the call history survives from one test to the next and
@@ -1571,8 +1580,41 @@ describe('the tabs', () => {
       'Going',
       'Organizations',
       'Rooms',
-      'Sign-in',
+      'Keys & renewals',
       'Stats',
     ]);
+  });
+
+  it('still opens Keys & renewals from an old ?tab=sign-in link', async () => {
+    renderAdmin('/admin?tab=sign-in');
+    expect(await screen.findByRole('tab', { name: 'Keys & renewals' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('heading', { level: 2, name: 'Renewals' })).toBeInTheDocument();
+  });
+
+  it('counts on the tab what wants renewing', async () => {
+    const inDays = (days: number) =>
+      new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+    const renewal = (id: string, expiresOn: string | null): Renewal => ({
+      id,
+      name: id,
+      purpose: '',
+      steps: [],
+      expires: true,
+      expiresOn,
+      signInProvider: null,
+    });
+    renewals.list = [
+      renewal('soon', inDays(10)),
+      renewal('gone', inDays(-3)),
+      renewal('later', inDays(200)),
+      renewal('undated', null),
+    ];
+    renderAdmin();
+    expect(
+      await screen.findByRole('tab', { name: 'Keys & renewals, 2 to renew' }),
+    ).toBeInTheDocument();
   });
 });
