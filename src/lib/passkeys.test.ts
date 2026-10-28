@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const auth = vi.hoisted(() => ({
   calls: [] as string[],
   error: null as { name?: string; message: string } | null,
+  verified: [] as unknown[],
+  expiresAt: 0,
 }));
 
 vi.mock('@/lib/supabase', () => ({
@@ -18,6 +20,26 @@ vi.mock('@/lib/supabase', () => ({
         return Promise.resolve({ error: auth.error });
       },
       passkey: {
+        startAuthentication: () => {
+          auth.calls.push('startAuthentication');
+          return Promise.resolve({
+            data: {
+              challenge_id: 'ch1',
+              // "hello" and "abc" in base64url.
+              options: {
+                challenge: 'aGVsbG8',
+                allowCredentials: [],
+                userVerification: 'preferred',
+              },
+              expires_at: auth.expiresAt,
+            },
+            error: null,
+          });
+        },
+        verifyAuthentication: (params: unknown) => {
+          auth.verified.push(params);
+          return Promise.resolve({ data: {}, error: auth.error });
+        },
         list: () =>
           Promise.resolve({
             data: [
@@ -35,8 +57,15 @@ vi.mock('@/lib/supabase', () => ({
   }),
 }));
 
-const { deletePasskey, listPasskeys, passkeysAvailable, passkeysEnabled, signInWithPasskey } =
-  await import('@/lib/passkeys');
+const {
+  deletePasskey,
+  listPasskeys,
+  passkeyAutofill,
+  passkeyAutofillAvailable,
+  passkeysAvailable,
+  passkeysEnabled,
+  signInWithPasskey,
+} = await import('@/lib/passkeys');
 const { appleSignInEnabled } = await import('@/lib/apple-sign-in');
 
 function withWebAuthn() {
@@ -49,6 +78,8 @@ function withWebAuthn() {
 beforeEach(() => {
   auth.calls = [];
   auth.error = null;
+  auth.verified = [];
+  auth.expiresAt = Date.now() / 1000 + 300;
 });
 
 afterEach(() => {
@@ -106,6 +137,124 @@ describe('signing in with a passkey', () => {
     withWebAuthn();
     auth.error = { name: 'NotAllowedError', message: 'cancelled' };
     expect(await signInWithPasskey()).toEqual({ ok: false, error: '' });
+  });
+});
+
+const bytes = (text: string) => Uint8Array.from(text, (c) => c.charCodeAt(0)).buffer;
+
+function withAutofill(get: (options: CredentialRequestOptions) => Promise<Credential | null>) {
+  Object.defineProperty(window, 'PublicKeyCredential', {
+    value: Object.assign(() => undefined, {
+      isConditionalMediationAvailable: () => Promise.resolve(true),
+    }),
+    configurable: true,
+  });
+  Object.defineProperty(navigator, 'credentials', { value: { get }, configurable: true });
+}
+
+const picked = {
+  id: 'cred',
+  rawId: bytes('abc'),
+  type: 'public-key',
+  authenticatorAttachment: 'platform',
+  getClientExtensionResults: () => ({}),
+  response: {
+    clientDataJSON: bytes('abc'),
+    authenticatorData: bytes('abc'),
+    signature: bytes('abc'),
+    userHandle: bytes('abc'),
+  },
+} as unknown as Credential;
+
+describe('a passkey offered in the email box', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'credentials');
+  });
+
+  it('is offered only where the browser can, and the switch is on', async () => {
+    withAutofill(() => Promise.resolve(null));
+    expect(await passkeyAutofillAvailable()).toBe(false);
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    expect(await passkeyAutofillAvailable()).toBe(true);
+    withWebAuthn();
+    expect(await passkeyAutofillAvailable()).toBe(false);
+  });
+
+  it('asks quietly, then signs in with the one picked', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    const asked: CredentialRequestOptions[] = [];
+    withAutofill((options) => {
+      asked.push(options);
+      return Promise.resolve(picked);
+    });
+    expect(await passkeyAutofill(new AbortController().signal)).toEqual({ ok: true });
+    expect(asked[0]?.mediation).toBe('conditional');
+    expect(new Uint8Array(asked[0]?.publicKey?.challenge as ArrayBuffer)).toEqual(
+      new Uint8Array(bytes('hello')),
+    );
+    expect(auth.verified).toEqual([
+      {
+        challengeId: 'ch1',
+        credential: {
+          id: 'cred',
+          rawId: 'YWJj',
+          type: 'public-key',
+          response: {
+            clientDataJSON: 'YWJj',
+            authenticatorData: 'YWJj',
+            signature: 'YWJj',
+            userHandle: 'YWJj',
+          },
+          clientExtensionResults: {},
+          authenticatorAttachment: 'platform',
+        },
+      },
+    ]);
+  });
+
+  it('stops without a word when the sign-in screen goes', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    const controller = new AbortController();
+    withAutofill(
+      (options) =>
+        new Promise((_, reject) => {
+          options.signal?.addEventListener('abort', () => {
+            reject(new DOMException('gone', 'AbortError'));
+          });
+          controller.abort();
+        }),
+    );
+    expect(await passkeyAutofill(controller.signal)).toEqual({ ok: true });
+    expect(auth.verified).toEqual([]);
+  });
+
+  it('asks again before the challenge runs out', async () => {
+    vi.useFakeTimers();
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    auth.expiresAt = Date.now() / 1000 + 60;
+    let round = 0;
+    withAutofill((options) => {
+      round++;
+      if (round === 2) return Promise.resolve(picked);
+      return new Promise((_, reject) => {
+        options.signal?.addEventListener('abort', () => {
+          reject(new DOMException('stale', 'AbortError'));
+        });
+      });
+    });
+    const done = passkeyAutofill(new AbortController().signal);
+    await vi.advanceTimersByTimeAsync(46_000);
+    expect(await done).toEqual({ ok: true });
+    expect(auth.calls.filter((c) => c === 'startAuthentication')).toHaveLength(2);
+    vi.useRealTimers();
+  });
+
+  it('says so when the passkey is refused', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    withAutofill(() => Promise.resolve(picked));
+    auth.error = { message: 'webauthn_verification_failed' };
+    const result = await passkeyAutofill(new AbortController().signal);
+    expect(result.ok).toBe(false);
   });
 });
 

@@ -50,6 +50,8 @@ interface WaysIn {
   /** Taps that have left for Apple, for the button's circle. */
   appleTaps: number;
   onPasskey: () => void;
+  /** A saved passkey is offered in the email box, so no button for it. */
+  passkeyAutofill: boolean;
 }
 
 const SOCIAL_BUTTON =
@@ -191,7 +193,7 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
 
   return (
     <>
-      {mode === 'signin' && passkeysAvailable() ? (
+      {mode === 'signin' && passkeysAvailable() && !ways.passkeyAutofill ? (
         <button
           type="button"
           disabled={ways.busy}

@@ -348,12 +348,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Until then faces fall back to the whole photograph, as before.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
-- **Passkeys**: built, off. To turn on: a Netlify preview with
-  `VITE_PASSKEYS=1`, add one on Me and sign in with it on an iPhone (Safari
-  and installed) and Android Chrome; Supabase → Passkeys relying party
-  `thesciclub.com`, name `The SCI Club`; then set it on Netlify and rebuild.
-- **Owner's calls, pending**: Google's branding review ("The SCI Club" on
-  Google's page); deleting leftover test accounts and the `Test` member; thesciclub.org (Netlify alias, `@` and `www` A records to
+- **Passkeys**: built, off; website only (the store app's page is not
+  thesciclub.com). Welcome back offers a saved passkey in the email box's
+  suggestions (conditional mediation, the owner's choice 2026-10-27); the
+  button shows only where a browser can't. A Netlify preview can't test them:
+  an origin must be the relying party's domain. To turn on: Supabase →
+  Authentication → Passkeys: on, name `The SCI Club`, RP ID `thesciclub.com`
+  (never change it: every passkey dies), origin `https://thesciclub.com`;
+  Netlify `VITE_PASSKEYS=1` and a new deploy; add one on Me, sign out, pick it
+  in the email box. Off again: remove the variable and deploy.
+- **Owner's calls, pending**: thesciclub.org (Netlify alias, `@` and `www` A records to
   `75.2.60.5` at Spaceship).
 - **Never tried for real**: an hour of VoiceOver; the date boxes with Voice
   Control and autofill; a notification end to end and its tap from the lock

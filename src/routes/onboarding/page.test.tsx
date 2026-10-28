@@ -253,6 +253,15 @@ vi.mock('@/lib/supabase', () => ({
         calls.order.push('registerPasskey');
         return Promise.resolve({ error: calls.passkeyError });
       },
+      passkey: {
+        startAuthentication: () => {
+          calls.order.push('startAuthentication');
+          return Promise.resolve({
+            data: { challenge_id: 'ch', options: { challenge: 'aGk' }, expires_at: 0 },
+            error: null,
+          });
+        },
+      },
     },
     // rpc() is awaited as it is, and `.single()` is chained on the one that
     // returns a row; both are the same answer here.
@@ -1538,6 +1547,37 @@ describe('Google, Apple and passkeys', () => {
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
       await userEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
       expect(calls.order).toEqual(['signInWithPasskey']);
+    });
+
+    it('are offered in the email box instead of a button, where the browser can', async () => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: Object.assign(() => undefined, {
+          isConditionalMediationAvailable: () => Promise.resolve(true),
+        }),
+        configurable: true,
+      });
+      const asked: CredentialRequestOptions[] = [];
+      Object.defineProperty(navigator, 'credentials', {
+        value: {
+          get: (options: CredentialRequestOptions) => {
+            asked.push(options);
+            return new Promise(() => undefined);
+          },
+        },
+        configurable: true,
+      });
+      const { unmount } = renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      await waitFor(() => {
+        expect(asked).toHaveLength(1);
+      });
+      expect(asked[0]?.mediation).toBe('conditional');
+      expect(screen.queryByRole('button', { name: /passkey/i })).toBeNull();
+      // Leaving the screen stops the quiet request.
+      unmount();
+      expect(asked[0]?.signal?.aborted).toBe(true);
+      Reflect.deleteProperty(navigator, 'credentials');
     });
 
     it('say nothing when the browser’s own sheet is cancelled', async () => {

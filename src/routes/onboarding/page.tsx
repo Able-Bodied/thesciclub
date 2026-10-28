@@ -40,7 +40,13 @@ import {
   signInWithAppleNatively,
   signInWithGoogleNatively,
 } from '@/lib/native-sign-in';
-import { passkeysAvailable, registerPasskey, signInWithPasskey } from '@/lib/passkeys';
+import {
+  passkeyAutofill,
+  passkeyAutofillAvailable,
+  passkeysAvailable,
+  registerPasskey,
+  signInWithPasskey,
+} from '@/lib/passkeys';
 import { formatPhoneInput } from '@/lib/phone';
 import {
   captureQrCode,
@@ -437,6 +443,24 @@ export default function OnboardingPage() {
     if (name) setData((d) => (d.displayName.trim() ? d : { ...d, displayName: name }));
   }
 
+  // While Welcome back is open, a saved passkey is offered in the email box's
+  // suggestions; where the browser cannot, the button stands in.
+  const [passkeyAutofillOn, setPasskeyAutofillOn] = useState(false);
+  useEffect(() => {
+    if (step !== 'signin') return;
+    const controller = new AbortController();
+    const gone = () => controller.signal.aborted;
+    void passkeyAutofillAvailable().then(async (available) => {
+      if (!available || gone()) return;
+      setPasskeyAutofillOn(true);
+      const result = await passkeyAutofill(controller.signal);
+      if (!gone() && !result.ok && result.error) setError(result.error);
+    });
+    return () => {
+      controller.abort();
+    };
+  }, [step]);
+
   async function continueWithPasskey() {
     setBusy(true);
     setError(null);
@@ -471,6 +495,7 @@ export default function OnboardingPage() {
     onPasskey: () => {
       void continueWithPasskey();
     },
+    passkeyAutofill: passkeyAutofillOn,
   };
 
   async function submitSignIn() {
