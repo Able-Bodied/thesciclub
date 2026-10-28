@@ -107,7 +107,14 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(/through Apple Push Notification service/);
     expect(section).toHaveTextContent(/a token for your iPhone/);
     expect(section).toHaveTextContent(/so Apple\s+could read them on the way/);
-    expect(section).toHaveTextContent(/how many of\s+your conversations have unread messages/);
+    expect(section).toHaveTextContent(/how many kinds of\s+notification you have not opened yet/);
+  });
+
+  it('says a like or a reaction tells the author who', () => {
+    open('/privacy');
+    expect(
+      screen.getByText(/reacting to a post or a message tells its author who you are/),
+    ).toBeInTheDocument();
   });
 
   // public/embed/youtube.html: YouTube refuses to play inside the app.

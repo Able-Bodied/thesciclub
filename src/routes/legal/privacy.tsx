@@ -29,6 +29,11 @@ export default function PrivacyPage() {
             types a location’s street address, what they type goes to Komoot’s Photon service to
             suggest matching addresses. Members’ information is never sent.
           </li>
+          <li>
+            <b>Changed:</b> a reaction to your post or message now tells you who reacted, in a
+            notification, as a like already did. The app’s icon shows how many kinds of notification
+            you have not opened yet, instead of unread conversations.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 26, 2026">
@@ -232,8 +237,9 @@ export default function PrivacyPage() {
           In the iPhone app, notifications go through Apple Push Notification service, and the
           address we keep is a token for your iPhone. On the website, a notification’s words are
           encrypted so that only your device can read them; in the app they are not, so Apple could
-          read them on the way. Once notifications are on, the app’s icon shows how many of your
-          conversations have unread messages.
+          read them on the way. Once notifications are on, the app’s icon shows how many kinds of
+          notification you have not opened yet, such as messages or replies; opening one, or your
+          notifications list, clears it.
         </P>
       </Section>
 
@@ -275,8 +281,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
-            an event, and, in a conversation you are in, that you have read a message. A post shows
-            how many people have read it, never who.
+            an event, and, in a conversation you are in, that you have read a message. Liking or
+            reacting to a post or a message tells its author who you are, in a notification. A post
+            shows how many people have read it, never who.
           </li>
           <li>
             <b>Members who speak for organizations</b>, such as hospitals and peer support programs,
