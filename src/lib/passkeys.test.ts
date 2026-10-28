@@ -63,12 +63,14 @@ vi.mock('@/lib/supabase', () => ({
 const {
   deletePasskey,
   listPasskeys,
+  passkeyOfferSnoozed,
   passkeyRemembered,
   passkeyAutofill,
   passkeyAutofillAvailable,
   passkeysAvailable,
   passkeysEnabled,
   signInWithPasskey,
+  snoozePasskeyOffer,
 } = await import('@/lib/passkeys');
 const { appleSignInEnabled } = await import('@/lib/apple-sign-in');
 
@@ -272,6 +274,16 @@ describe('a passkey offered in the email box', () => {
     auth.error = { message: 'webauthn_verification_failed' };
     const result = await passkeyAutofill(new AbortController().signal);
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('Not now on the passkey offer', () => {
+  it('holds for 30 days in this browser', () => {
+    const day = 86_400_000;
+    expect(passkeyOfferSnoozed(0)).toBe(false);
+    snoozePasskeyOffer(1_000 * day);
+    expect(passkeyOfferSnoozed(1_029 * day)).toBe(true);
+    expect(passkeyOfferSnoozed(1_031 * day)).toBe(false);
   });
 });
 

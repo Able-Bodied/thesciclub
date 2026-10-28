@@ -202,6 +202,108 @@ export async function passkeyAutofill(signal: AbortSignal): Promise<Result> {
   return { ok: true };
 }
 
+interface CreationOptionsJson {
+  challenge: string;
+  user: { id: string; [key: string]: unknown };
+  excludeCredentials?: { id: string; type: string; transports?: string[] }[];
+  [key: string]: unknown;
+}
+
+function creationOptions(json: CreationOptionsJson): PublicKeyCredentialCreationOptions {
+  return {
+    ...(json as unknown as PublicKeyCredentialCreationOptions),
+    challenge: fromBase64url(json.challenge),
+    user: {
+      ...(json.user as unknown as PublicKeyCredentialUserEntity),
+      id: fromBase64url(json.user.id),
+    },
+    ...(json.excludeCredentials
+      ? {
+          excludeCredentials: json.excludeCredentials.map((c) => ({
+            ...(c as unknown as PublicKeyCredentialDescriptor),
+            id: fromBase64url(c.id),
+          })),
+        }
+      : {}),
+  };
+}
+
+function creationJson(credential: PublicKeyCredential) {
+  const response = credential.response as AuthenticatorAttestationResponse;
+  return {
+    id: credential.id,
+    rawId: toBase64url(credential.rawId),
+    type: 'public-key' as const,
+    response: {
+      clientDataJSON: toBase64url(response.clientDataJSON),
+      attestationObject: toBase64url(response.attestationObject),
+    },
+    clientExtensionResults: credential.getClientExtensionResults(),
+    ...(credential.authenticatorAttachment
+      ? { authenticatorAttachment: credential.authenticatorAttachment }
+      : {}),
+  };
+}
+
+/** Whether the signed-in account has a passkey; null when it could not be read. */
+export async function hasPasskey(): Promise<boolean | null> {
+  const result = await listPasskeys();
+  return result.ok ? result.passkeys.length > 0 : null;
+}
+
+/**
+ * Lets the browser save a passkey on its own, right after a password its
+ * password manager filled (Chrome and Safari's "conditional create"), with
+ * only its own small notice. False where it cannot, or did not.
+ */
+export async function upgradeToPasskeyQuietly(): Promise<boolean> {
+  if (!passkeysAvailable()) return false;
+  try {
+    // Missing in older browsers, whatever the types say.
+    if (!('getClientCapabilities' in PublicKeyCredential)) return false;
+    const capabilities = await PublicKeyCredential.getClientCapabilities();
+    if (capabilities.conditionalCreate !== true) return false;
+    const passkey = getSupabase().auth.passkey;
+    const { data, error } = await passkey.startRegistration();
+    if (error) return false;
+    const credential = await navigator.credentials.create({
+      publicKey: creationOptions(data.options as unknown as CreationOptionsJson),
+      mediation: 'conditional',
+    } as CredentialCreationOptions);
+    if (!credential) return false;
+    const verified = await passkey.verifyRegistration({
+      challengeId: data.challenge_id,
+      credential: creationJson(credential as PublicKeyCredential),
+    });
+    if (verified.error) return false;
+    rememberPasskey(true);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** "Not now" on the offer holds for this long, in this browser. */
+export const PASSKEY_OFFER_SNOOZE_DAYS = 30;
+const OFFER_SNOOZE_KEY = 'club:passkey-offer-snoozed';
+
+export function passkeyOfferSnoozed(now = Date.now()): boolean {
+  try {
+    const at = Number(localStorage.getItem(OFFER_SNOOZE_KEY));
+    return Number.isFinite(at) && at > 0 && now - at < PASSKEY_OFFER_SNOOZE_DAYS * 86_400_000;
+  } catch {
+    return false;
+  }
+}
+
+export function snoozePasskeyOffer(now = Date.now()): void {
+  try {
+    localStorage.setItem(OFFER_SNOOZE_KEY, String(now));
+  } catch {
+    // Private browsing: asked again next time, which is no harm.
+  }
+}
+
 export async function registerPasskey(): Promise<Result> {
   if (!passkeysAvailable()) return { ok: false, error: 'This browser cannot use a passkey.' };
   const { error } = await getSupabase().auth.registerPasskey();

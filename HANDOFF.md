@@ -367,7 +367,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   thesciclub.com). Welcome back offers a saved passkey in the email box's
   suggestions (conditional mediation, the owner's choice 2026-10-27); the
   button shows only where a browser can't, and only if a passkey was added or
-  used in that browser (`club:passkey-here`; a site cannot ask). A Netlify preview can't test them:
+  used in that browser (`club:passkey-here`; a site cannot ask). After an
+  email-and-password sign-in, an account with no passkey gets one suggested:
+  the browser saves one quietly where it can (conditional create), else "Sign
+  in faster next time?"; Not now holds 30 days (`club:passkey-offer-snoozed`). A Netlify preview can't test them:
   an origin must be the relying party's domain. To turn on: Supabase →
   Authentication → Passkeys: on, name `The SCI Club`, RP ID `thesciclub.com`
   (never change it: every passkey dies), origin `https://thesciclub.com`;

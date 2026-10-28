@@ -41,11 +41,15 @@ import {
   signInWithGoogleNatively,
 } from '@/lib/native-sign-in';
 import {
+  hasPasskey,
   passkeyAutofill,
   passkeyAutofillAvailable,
+  passkeyOfferSnoozed,
   passkeysAvailable,
   registerPasskey,
   signInWithPasskey,
+  snoozePasskeyOffer,
+  upgradeToPasskeyQuietly,
 } from '@/lib/passkeys';
 import { formatPhoneInput } from '@/lib/phone';
 import {
@@ -125,7 +129,7 @@ import { WelcomeScreen } from '@/routes/onboarding/welcome';
  */
 
 /** `passkey` is after the profile is saved, before Home. */
-type Phase = 'wizard' | 'blocked' | 'submitting' | 'passkey';
+type Phase = 'wizard' | 'blocked' | 'submitting' | 'passkey-check' | 'passkey';
 
 /** Where the invite check is run from: the doors, before anybody is through. */
 const DOORS: Step[] = ['welcome', 'signin', 'forgot', 'join', 'check-email'];
@@ -501,12 +505,18 @@ export default function OnboardingPage() {
   async function submitSignIn() {
     setBusy(true);
     setError(null);
+    // Signed in is announced before this resolves; held so the member
+    // check below waits for the passkey question.
+    const suggest = passkeysAvailable() && !passkeyOfferSnoozed();
+    if (suggest) setPasskeyHold(true);
     const result = await signInWithEmail(data.email, data.password);
     setBusy(false);
     if (result.ok) {
       set({ password: '', passwordAgain: '' });
+      if (suggest) void suggestPasskeyAfterPassword();
       return;
     }
+    setPasskeyHold(false);
     if (result.unconfirmed) {
       setAwaiting({ email: data.email, password: data.password });
       rememberAwaiting(data.email);
@@ -567,6 +577,28 @@ export default function OnboardingPage() {
     setNotice('Sent again. Look in spam if it does not arrive.');
   }
 
+  /**
+   * After a password, an account with no passkey gets one suggested: the
+   * browser saves one quietly where it can, else "Sign in faster next
+   * time?", not again for 30 days after Not now (the owner, 2026-10-27).
+   */
+  const [offerAfterSignIn, setOfferAfterSignIn] = useState(false);
+  const [passkeyHold, setPasskeyHold] = useState(false);
+  async function suggestPasskeyAfterPassword() {
+    setPhase('passkey-check');
+    try {
+      if ((await hasPasskey()) !== false) return;
+      if (await upgradeToPasskeyQuietly()) return;
+      setOfferAfterSignIn(true);
+      setPhase('passkey');
+    } catch {
+      // Not worth stopping a sign-in over: on to the club.
+    } finally {
+      setPhase((now) => (now === 'passkey-check' ? 'wizard' : now));
+      setPasskeyHold(false);
+    }
+  }
+
   function leaveToPasskeyOrHome() {
     if (passkeysAvailable()) {
       setPhase('passkey');
@@ -612,7 +644,20 @@ export default function OnboardingPage() {
 
   // Before the check below: the row now exists, and should the account be
   // read again meanwhile, this screen must not vanish under a tap.
+  if (phase === 'passkey-check') {
+    return (
+      <main className="grid h-dvh place-items-center bg-canvas">
+        <Loader2 className="h-6 w-6 animate-spin text-grey" aria-label="Signing in…" />
+      </main>
+    );
+  }
   if (phase === 'passkey') {
+    // After a sign-in the account may not have finished joining, so the
+    // usual checks below decide where to go; after joining, home.
+    const leave = () => {
+      if (offerAfterSignIn) setPhase('wizard');
+      else void navigate(destination, { replace: true });
+    };
     return (
       <PasskeyOffer
         busy={busy}
@@ -622,12 +667,13 @@ export default function OnboardingPage() {
           setError(null);
           void registerPasskey().then((result) => {
             setBusy(false);
-            if (result.ok) void navigate(destination, { replace: true });
+            if (result.ok) leave();
             else if (result.error) setError(result.error);
           });
         }}
         onSkip={() => {
-          void navigate(destination, { replace: true });
+          snoozePasskeyOffer();
+          leave();
         }}
       />
     );
@@ -640,7 +686,7 @@ export default function OnboardingPage() {
   // already in. Sending them into the shell lands them on the screen that
   // explains the pause.
   if (account.status === 'suspended') return <Navigate to="/home" replace />;
-  if (account.status === 'member') {
+  if (account.status === 'member' && !passkeyHold) {
     return <Navigate to={destination} replace />;
   }
 
