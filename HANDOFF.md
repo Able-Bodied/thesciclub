@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated 2026-10-27. What is true now, the rules, the traps; nothing else.
+Last updated 2026-10-28. What is true now, the rules, the traps; nothing else.
 Why: `git log`, migration headers, code comments. `CONTEXT.md` is the product
 definition and wins over this file. Older handoffs, by `git show
 <sha>:HANDOFF.md`: `b04b003` (releases to 2026-10-11), `4b1673b` (what comments
@@ -101,7 +101,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`public/embed/youtube.html`, its own headers in `netlify.toml`), since
   YouTube refused capacitor://localhost on 1.0.1; an "Open in YouTube" link
   sits under it. Needs the page live on `main` before the next TestFlight.
-- **Checks**: 4,017 tests in 295 files on 2026-10-27; `pnpm check` (alone),
+- **Checks**: 4,052 tests in 298 files on 2026-10-28; `pnpm check` (alone),
   `pnpm test` and `pnpm build` gate every push.
 
 ## Open
@@ -118,6 +118,17 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   (`20261028000000`, `20261028010000`), then `functions deploy push-notify
   --no-verify-jwt`, then the client (`main`, a TestFlight build). Probes:
   `reaction-notifications.sql`, `icon-badge-kinds.sql`.
+- **Location ZIP codes and address suggestions (built 2026-10-28, not
+  live)**: each organization location has an optional ZIP (`postal_code`,
+  five digits or ZIP+4; never in `geocode_key`, so no pin goes stale). The
+  Street address box suggests addresses from Komoot's Photon as an
+  administrator or organization account types (`lib/address-suggestions.ts`,
+  `admin/address-field.tsx`; never Nominatim, whose policy forbids
+  type-ahead); a pick fills street, city, state and ZIP, never the label.
+  Privacy Policy names Photon (wording for the owner to approve). To ship:
+  `db push` (`20261028700000`), then the client (`main`; the CSP gains
+  photon.komoot.io; a TestFlight build for the app). Until the push the
+  directory is read without ZIPs. Probe: `organization-place-zip.sql`.
 - **App Store: 1.0.5 (build 6) submitted 2026-10-25, waiting for review**,
   manual release. Reviewer signs in as `review@thesciclub.com`; `peer@` and
   `deleteme@` are in the review notes (all Zoho aliases; passwords only in
