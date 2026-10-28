@@ -163,7 +163,9 @@ describe('who may make a code', () => {
   it('lets an org admin in', async () => {
     asOrgAdmin();
     renderPage();
-    expect(await screen.findByRole('heading', { name: 'Your QR code' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { name: 'Create QR code or invite link' }),
+    ).toBeInTheDocument();
   });
 });
 

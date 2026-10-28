@@ -339,7 +339,7 @@ export default function MePage() {
                       {isAdmin || orgAdmin ? (
                         <ProfileLink
                           to="/me/qr"
-                          title="Your QR code"
+                          title="Create QR code or invite link"
                           description={
                             isAdmin
                               ? 'A code or link: people who scan it and join are invited by you.'
