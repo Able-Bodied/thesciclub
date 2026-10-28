@@ -1,0 +1,50 @@
+# Check: lint, types and the unit tests on every push and pull request.
+#
+# Netlify's build runs only `pnpm build`, which type-checks but skips Biome,
+# ESLint and Vitest. This is the run that catches those, where everybody who
+# pushes can see it go red, not only whoever remembered `pnpm check`.
+#
+# The database probes in supabase/tests are not here: most print what they
+# expect for a person to read, and they need a local Supabase.
+
+name: Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A newer push makes an older run's answer moot.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          # The runner's cached 24.x lags security releases.
+          check-latest: true
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint and types
+        run: pnpm check
+
+      - name: Unit tests
+        run: pnpm test
