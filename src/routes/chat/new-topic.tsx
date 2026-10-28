@@ -10,6 +10,7 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { DescriptionEditor } from '@/routes/events/description-editor';
 import { backToHome } from '@/routes/home/back';
+import { appFeedbackRoom } from '@/routes/home/feedback-card';
 
 /**
  * Starting a topic: a title and the first post itself.
@@ -84,6 +85,9 @@ export default function NewTopicPage() {
   const [failure, setFailure] = useState<string | null>(null);
 
   const room = rooms.find((r) => r.id === roomId) ?? null;
+  // The App Feedback room's form reads as feedback (the owner, 2026-10-28);
+  // every other room's is as it was.
+  const feedback = room !== null && appFeedbackRoom([room]) !== null;
   const problem = topicProblem(title, body, files.length, sharing);
   const ready = problem === null;
 
@@ -128,7 +132,7 @@ export default function NewTopicPage() {
         // the topic page draws once.
         body.trim() || (paths.length > 0 ? '' : title.trim()),
         paths,
-        !sharing && isQuestion,
+        !sharing && !feedback && isQuestion,
       );
       if (!result.ok) void deleteAttachments(paths);
       return result;
@@ -168,7 +172,13 @@ export default function NewTopicPage() {
           setFiles((current) => current.filter((_, i) => i !== index));
         }}
       />
-      <PhotoPicker ref={photoTarget} files={files} onChange={setFiles} disabled={saving} />
+      <PhotoPicker
+        ref={photoTarget}
+        files={files}
+        onChange={setFiles}
+        disabled={saving}
+        addLabel={feedback ? 'Add a screenshot' : 'Add a photograph'}
+      />
     </div>
   );
 
@@ -184,11 +194,12 @@ export default function NewTopicPage() {
         )}
 
         <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
-          {sharing ? 'Share a photograph' : 'New topic'}
+          {sharing ? 'Share a photograph' : feedback ? 'New app feedback' : 'New topic'}
         </h1>
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-          In {room.name}. Every member can read this, including members who join later. Nothing here
-          is public.
+          {feedback
+            ? 'Tell us what works, what doesn’t, or what you’d like. It’s posted in the App Feedback room, where the team reads it. Every member can read it too, and nothing here is public.'
+            : `In ${room.name}. Every member can read this, including members who join later. Nothing here is public.`}
         </p>
 
         {failure ? (
@@ -206,7 +217,11 @@ export default function NewTopicPage() {
           htmlFor="topic-title"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          {sharing ? 'Say something about it' : 'What is it about?'}
+          {sharing
+            ? 'Say something about it'
+            : feedback
+              ? 'In a few words, what is it about?'
+              : 'What is it about?'}
         </label>
         <input
           id="topic-title"
@@ -216,7 +231,11 @@ export default function NewTopicPage() {
             setTitle(event.target.value);
           }}
           placeholder={
-            sharing ? 'The cushion that finally worked' : 'Travelling with a bowel programme'
+            sharing
+              ? 'The cushion that finally worked'
+              : feedback
+                ? 'The map is hard to zoom on my phone'
+                : 'Travelling with a bowel programme'
           }
           className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
         />
@@ -228,7 +247,7 @@ export default function NewTopicPage() {
           htmlFor="topic-body"
           className="mt-4 block font-bold font-head text-[0.8125rem] text-ink"
         >
-          The first post{' '}
+          {feedback ? 'Tell us more' : 'The first post'}{' '}
           {sharing ? null : <span className="font-normal text-grey">(optional)</span>}
         </label>
         {sharing ? (
@@ -244,14 +263,21 @@ export default function NewTopicPage() {
           value={body}
           maxLength={4000}
           onChange={setBody}
-          placeholder="A question, something that worked for you, or what happened — whatever you want the room to have."
+          placeholder={
+            feedback
+              ? 'What happened, what you expected, or what you’d like the app to do. A screenshot helps.'
+              : 'A question, something that worked for you, or what happened — whatever you want the room to have.'
+          }
           hintClassName="mt-1 text-[0.71875rem] text-grey leading-[1.45]"
           onPaste={(event) => {
             pastePhotos(event, photoTarget.current);
           }}
         />
 
-        {sharing ? null : <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />}
+        {/* Feedback is not asked as a question of the club. */}
+        {sharing || feedback ? null : (
+          <QuestionSwitch checked={isQuestion} onChange={setIsQuestion} />
+        )}
 
         {sharing ? null : photos}
 
@@ -261,7 +287,7 @@ export default function NewTopicPage() {
           disabled={!ready || saving}
           className="mt-3 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
         >
-          {saving ? 'Posting…' : 'Post it'}
+          {saving ? (feedback ? 'Sending…' : 'Posting…') : feedback ? 'Send feedback' : 'Post it'}
         </button>
         {/* Sharing, the rule is "a title, and words or a photograph", which is
             not what a disabled button says on its own. Asking, both fields

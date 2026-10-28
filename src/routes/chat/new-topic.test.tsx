@@ -287,3 +287,37 @@ describe('asking whether it is a question', () => {
     expect(screen.queryByRole('checkbox', { name: /This is a question/ })).toBeNull();
   });
 });
+
+// The owner, 2026-10-28: the App Feedback room's form reads as feedback.
+describe('app feedback', () => {
+  beforeEach(() => {
+    db.rooms = [makeRoom({ id: 'equip', name: 'App Feedback', category: 'Kit' })];
+  });
+
+  it('says it is feedback, asks for it, and sends it, coming back to Me', async () => {
+    const user = userEvent.setup();
+    renderPage({ from: 'me' });
+    expect(screen.getByRole('heading', { level: 1, name: 'New app feedback' })).toBeInTheDocument();
+    expect(screen.getByLabelText('In a few words, what is it about?')).toHaveAttribute(
+      'placeholder',
+      'The map is hard to zoom on my phone',
+    );
+    expect(screen.getByRole('button', { name: 'Add a screenshot' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /This is a question/ })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Me' })).toHaveAttribute('href', '/me');
+    await user.type(screen.getByLabelText('In a few words, what is it about?'), 'Map zoom');
+    await user.click(screen.getByRole('button', { name: 'Send feedback' }));
+    await waitFor(() => {
+      expect(db.created).toEqual([['equip', 'Map zoom', 'Map zoom', []]]);
+    });
+    expect(db.questions).toEqual([false]);
+  });
+
+  it('leaves every other room as it was', () => {
+    db.rooms = [makeRoom({ id: 'equip', name: 'Equipment & assistive tech', category: 'Kit' })];
+    renderPage();
+    expect(screen.getByRole('heading', { level: 1, name: 'New topic' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add a photograph' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Post it' })).toBeInTheDocument();
+  });
+});
