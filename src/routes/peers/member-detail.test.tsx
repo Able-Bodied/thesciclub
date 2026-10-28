@@ -4,8 +4,14 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
 import type * as Reports from '@/lib/chat/reports';
+import type * as ClubOrganization from '@/lib/club-organization';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
+
+vi.mock('@/lib/club-organization', async (original) => ({
+  ...(await original<typeof ClubOrganization>()),
+  useClubOrganizationId: () => 'the-club',
+}));
 
 const state = vi.hoisted(() => ({ current: null as MemberState | null }));
 vi.mock('@/lib/members', () => ({
@@ -331,7 +337,8 @@ describe('MemberDetailPage', () => {
   });
 
   // The owner, 2026-10-28: badged by the organization that made them one.
-  it('says which organization a mentor is a mentor of', () => {
+  it('says which organization a mentor is a mentor of, from one pill', async () => {
+    const user = userEvent.setup();
     state.current = ok(
       makeMember({
         type: 'mentor',
@@ -339,11 +346,33 @@ describe('MemberDetailPage', () => {
       }),
     );
     renderDetail();
-    expect(screen.getByText(', NorCal SCI')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Mentor, NorCal SCI' })).toHaveAttribute(
+    const pill = screen.getByRole('button', { name: 'Mentor, NorCal SCI' });
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('region', { name: 'Mentor for' })).toBeNull();
+    await user.click(pill);
+    expect(pill).toHaveAttribute('aria-expanded', 'true');
+    const list = screen.getByRole('region', { name: 'Mentor for' });
+    expect(within(list).getByRole('link', { name: 'NorCal SCI' })).toHaveAttribute(
       'href',
       '/events/organizations/ncs',
     );
+    await user.click(pill);
+    expect(screen.queryByRole('region', { name: 'Mentor for' })).toBeNull();
+  });
+
+  it('shows a mentor of the club alone as plainly a mentor, with nothing to open', () => {
+    state.current = ok(
+      makeMember({
+        type: 'mentor',
+        mentorOrganizations: [
+          { id: 'the-club', name: 'The SCI Club', shortCode: 'TSC', logoPath: null },
+        ],
+      }),
+    );
+    renderDetail();
+    expect(screen.getByText('Mentor')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Mentor/ })).toBeNull();
+    expect(screen.queryByText(/The SCI Club/)).toBeNull();
   });
 
   it('omits a section entirely when there is nothing in it', () => {
@@ -611,7 +640,8 @@ describe('the rooms a member’s topics already live in', () => {
 });
 
 describe('administrator-linked organizations', () => {
-  it('shows every organization represented as a tag linking to its profile', () => {
+  it('lists every organization they are org admin of, from one pill', async () => {
+    const user = userEvent.setup();
     state.current = ok(
       makeMember({
         representedOrganizations: [
@@ -622,11 +652,17 @@ describe('administrator-linked organizations', () => {
       }),
     );
     renderDetail();
-    expect(screen.getByRole('link', { name: 'Org admin, Able Bodied' })).toHaveAttribute(
+    // One pill, not a chip per organization.
+    expect(screen.queryByRole('link', { name: /Org admin, / })).toBeNull();
+    await user.click(
+      screen.getByRole('button', { name: 'Admin, Able Bodied and Example Organization' }),
+    );
+    const list = screen.getByRole('region', { name: 'Org admin of' });
+    expect(within(list).getByRole('link', { name: 'Able Bodied' })).toHaveAttribute(
       'href',
       '/events/organizations/able-bodied',
     );
-    expect(screen.getByRole('link', { name: 'Org admin, Example Organization' })).toHaveAttribute(
+    expect(within(list).getByRole('link', { name: 'Example Organization' })).toHaveAttribute(
       'href',
       '/events/organizations/other-org',
     );

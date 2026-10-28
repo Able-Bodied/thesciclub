@@ -1,3 +1,4 @@
+import { useClubOrganizationId, withoutTheClub } from '@/lib/club-organization';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { BrowseMember, RepresentedOrganization } from '@/types/domain';
@@ -28,29 +29,38 @@ export function namesOf(organizations: RepresentedOrganization[]): string {
 /**
  * "Mentor" or "Admin", with the logo of each organization it is for (the
  * owner, 2026-10-28): a mentor is badged by the organization that made them
- * one. With none, a mentor keeps the star.
+ * one. The club's own is never shown, so a mentor of the club alone keeps the
+ * star. With `onToggle` it is a button that opens the list of them.
  */
 export function RolePill({
   kind,
   organizations,
   className,
+  expanded,
+  controls,
+  onToggle,
 }: {
   kind: 'mentor' | 'admin';
   organizations: RepresentedOrganization[];
   className?: string;
+  expanded?: boolean;
+  /** The id of the list it opens. */
+  controls?: string;
+  onToggle?: () => void;
 }) {
-  const shown = organizations.slice(0, MAX_LOGOS);
-  const more = organizations.length - shown.length;
+  const clubId = useClubOrganizationId(organizations.length > 0);
+  const theirs = withoutTheClub(organizations, clubId);
+  const shown = theirs.slice(0, MAX_LOGOS);
+  const more = theirs.length - shown.length;
   const label = kind === 'mentor' ? 'Mentor' : 'Admin';
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full py-[4px] pr-2.5 font-extrabold font-head text-[0.6875rem] uppercase leading-none tracking-[0.08em]',
-        shown.length > 0 ? 'pl-[4px]' : 'pl-2.5',
-        kind === 'mentor' ? 'bg-gold text-on-gold' : 'bg-white text-navy',
-        className,
-      )}
-    >
+  const classes = cn(
+    'inline-flex items-center gap-1.5 rounded-full py-[4px] pr-2.5 font-extrabold font-head text-[0.6875rem] uppercase leading-none tracking-[0.08em]',
+    shown.length > 0 ? 'pl-[4px]' : 'pl-2.5',
+    kind === 'mentor' ? 'bg-gold text-on-gold' : 'bg-white text-navy',
+    className,
+  );
+  const inside = (
+    <>
       {shown.length > 0 ? (
         <span className="flex -space-x-1" aria-hidden="true">
           {shown.map((organization) => (
@@ -67,11 +77,25 @@ export function RolePill({
       ) : null}
       {label}
       {more > 0 ? <span aria-hidden="true">+{more}</span> : null}
-      {organizations.length > 0 ? (
-        <span className="sr-only">{`, ${namesOf(organizations)}`}</span>
-      ) : null}
-    </span>
+      {theirs.length > 0 ? <span className="sr-only">{`, ${namesOf(theirs)}`}</span> : null}
+    </>
   );
+  // Only worth a tap when there is something to list.
+  if (onToggle && theirs.length > 0) {
+    return (
+      <button
+        type="button"
+        aria-expanded={expanded === true}
+        aria-controls={controls}
+        onClick={onToggle}
+        className={cn(classes, 'min-h-[36px] cursor-pointer')}
+        data-target="small"
+      >
+        {inside}
+      </button>
+    );
+  }
+  return <span className={classes}>{inside}</span>;
 }
 
 /** A mentor of any organization, or of none yet (an administrator, or from before 20261028000000). */
