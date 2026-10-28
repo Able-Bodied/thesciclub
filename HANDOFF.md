@@ -383,7 +383,9 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Until then faces fall back to the whole photograph, as before.
 - **Supabase free plan**: pauses after a quiet week, **no backups**. Move to
   the paid tier and test a restore.
-- **Passkeys**: built, off; website only (the store app's page is not
+- **Passkeys**: on (seen 2026-10-27: Supabase on, RP ID `thesciclub.com`,
+  origin `https://thesciclub.com`, display name `thesciclub`; the live build
+  has `VITE_PASSKEYS`); website only (the store app's page is not
   thesciclub.com). Welcome back offers a saved passkey in the email box's
   suggestions (conditional mediation, the owner's choice 2026-10-27); the
   button shows only where a browser can't, and only if a passkey was added or
@@ -391,11 +393,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   email-and-password sign-in, an account with no passkey gets one suggested:
   the browser saves one quietly where it can (conditional create), else "Sign
   in faster next time?"; Not now holds 30 days (`club:passkey-offer-snoozed`). A Netlify preview can't test them:
-  an origin must be the relying party's domain. To turn on: Supabase →
-  Authentication → Passkeys: on, name `The SCI Club`, RP ID `thesciclub.com`
-  (never change it: every passkey dies), origin `https://thesciclub.com`;
-  Netlify `VITE_PASSKEYS=1` and a new deploy; add one on Me, sign out, pick it
-  in the email box. Off again: remove the variable and deploy.
+  an origin must be the relying party's domain. Never change the RP ID: every
+  passkey dies. Off: remove the Netlify variable and deploy.
 - **Owner's calls, pending**: thesciclub.org (Netlify alias, `@` and `www` A records to
   `75.2.60.5` at Spaceship).
 - **Tried by the owner 2026-10-27**: a notification tapped from the lock
