@@ -12,6 +12,7 @@ import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
 import { useInvitePermissions } from '@/lib/invite-permissions';
 import { useOwnMember } from '@/lib/members';
+import { useMyOrganizations } from '@/lib/organization-representatives';
 import { isNative } from '@/lib/standalone';
 import { isPastStartTime } from '@/routes/events/filters';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
@@ -229,8 +230,11 @@ export default function MePage() {
     });
   }, [userId]);
 
+  // An org admin makes QR codes for their organization (20261028960000).
+  const orgAdmin = useMyOrganizations(userId).ids.size > 0;
   const hasClubTools =
     isAdmin ||
+    orgAdmin ||
     member?.type === 'organization' ||
     invitePermissions.canInvite ||
     Boolean(invitePermissions.error);
@@ -332,11 +336,15 @@ export default function MePage() {
                           description="Members, invites, organizations and moderation."
                         />
                       ) : null}
-                      {isAdmin ? (
+                      {isAdmin || orgAdmin ? (
                         <ProfileLink
                           to="/me/qr"
                           title="Your QR code"
-                          description="For events: people who scan it and join are invited by you."
+                          description={
+                            isAdmin
+                              ? 'A code or link: people who scan it and join are invited by you.'
+                              : 'A code or link your people can join with, until it expires.'
+                          }
                         />
                       ) : null}
                       {member?.type === 'organization' ? (

@@ -352,8 +352,9 @@ export function JoinStep({
       <Sub>
         {invited ? (
           'You have an invitation. Join with any email or account, and it will be waiting.'
-        ) : fromCode?.joiningOpen ? (
-          `${fromCode.inviterName} invited you to The SCI Club. Join with any email or account.`
+        ) : fromCode && (fromCode.joiningOpen || fromCode.admits) ? (
+          // An org admin's code lets them in while it is live (20261028960000).
+          `${fromCode.inviterName}${fromCode.organizationName ? ` from ${fromCode.organizationName}` : ''} invited you to The SCI Club. Join with any email or account.`
         ) : fromCode ? (
           <AskForInvite who={fromCode} />
         ) : joiningOpen ? (

@@ -9,9 +9,12 @@ import { useAnnounce } from '@/lib/announce';
 import { looksLikeEmail } from '@/lib/auth-email';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { fetchJoiningIsOpen } from '@/lib/joining';
+import { useMyOrganizations } from '@/lib/organization-representatives';
+import { useOrganizations } from '@/lib/organizations';
 import {
   createQrCode,
   fetchMyQrCodes,
+  isLive,
   type MyQrCode,
   qrJoinUrl,
   turnOffQrCode,
@@ -20,19 +23,38 @@ import { shareLink } from '@/lib/share-link';
 import { cn } from '@/lib/utils';
 
 /**
- * An administrator's QR code, for conventions (20261014020000). The owner,
- * 2026-10-14: each administrator names the event they are at (or none),
- * checks the email shown while joining is closed (their account's, unless
- * they type another), and shows the code. Whoever joins from it while anybody
- * can join is recorded as invited by them; while joining is closed it lets
- * nobody in, and says so here before it is shown.
+ * Your QR code: an administrator's for conventions (20261014020000), and an
+ * org admin's for their people (20261028960000, the owner, 2026-10-28).
  *
- * Every code made is listed below, with a way to turn it off: an old code
- * keeps showing its email whenever joining is closed until it is.
+ * An org admin's code is for their organization: whoever scans it, or opens
+ * its link, before it expires can join, as invited by them, even while the
+ * club is invite only. An administrator chooses one of their organizations
+ * too, or none: a code with none only gives credit, as before, and shows an
+ * email to ask while joining is closed. Only administrators name an event.
+ *
+ * Every code expires after 72 hours unless its maker chooses otherwise, and
+ * may carry a note only its maker sees. Every code made is listed below with
+ * when it was made, when it expires, and a way to turn it off.
  */
 
-const SHORT_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
-const shortDate = (iso: string) => new Date(iso).toLocaleDateString('en-US', SHORT_DATE);
+const WHEN: Intl.DateTimeFormatOptions = {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+};
+const when = (iso: string) => new Date(iso).toLocaleString('en-US', WHEN);
+
+/** How long a code lasts, in hours; 72 unless chosen otherwise (the owner). */
+export const EXPIRY_CHOICES = [
+  { hours: 24, label: '24 hours' },
+  { hours: 72, label: '72 hours' },
+  { hours: 24 * 7, label: '7 days' },
+  { hours: 24 * 30, label: '30 days' },
+] as const;
+export const DEFAULT_EXPIRY_HOURS = 72;
+const NO_ORGANIZATION = '';
 
 const FIELD =
   'mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis';
@@ -40,10 +62,17 @@ const FIELD =
 export default function QrCodePage() {
   const account = useAccount();
   const announce = useAnnounce();
-  const [atEvent, setAtEvent] = useState(true);
+  const memberId = account.status === 'member' ? account.userId : null;
+  const mine = useMyOrganizations(memberId);
+  const { byId } = useOrganizations();
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  const [atEvent, setAtEvent] = useState(false);
   const [eventName, setEventName] = useState('');
   const [email, setEmail] = useState('');
   const emailTouched = useRef(false);
+  const [expires, setExpires] = useState(true);
+  const [hours, setHours] = useState<number>(DEFAULT_EXPIRY_HOURS);
+  const [notes, setNotes] = useState('');
   const [joiningOpen, setJoiningOpen] = useState<boolean | null>(null);
   const [codes, setCodes] = useState<MyQrCode[] | null>(null);
   const [showing, setShowing] = useState<MyQrCode | null>(null);
@@ -51,6 +80,16 @@ export default function QrCodePage() {
   const [error, setError] = useState<string | null>(null);
 
   const isAdmin = account.status === 'member' && account.isAdmin;
+  // The organizations this member is an org admin of, by name.
+  const organizations = [...mine.ids]
+    .map((id) => byId.get(id))
+    .filter((organization) => organization !== undefined)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const mayMake = isAdmin || organizations.length > 0;
+  // The first of theirs until they choose; an administrator with none makes
+  // a code with no organization.
+  const forOrganization =
+    organizationId === null ? (organizations[0]?.id ?? null) : organizationId || null;
 
   const load = useCallback(async () => {
     const result = await fetchMyQrCodes();
@@ -59,7 +98,7 @@ export default function QrCodePage() {
   }, []);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!mayMake) return;
     void load();
     void fetchJoiningIsOpen().then(setJoiningOpen);
     // The account's address, into an empty box only.
@@ -68,34 +107,49 @@ export default function QrCodePage() {
         setEmail(result.details.email);
       }
     });
-  }, [isAdmin, load]);
+  }, [mayMake, load]);
 
-  if (account.status === 'loading') return <div className="min-h-dvh bg-canvas" />;
+  if (account.status === 'loading' || (account.status === 'member' && mine.loading)) {
+    return <div className="min-h-dvh bg-canvas" />;
+  }
   if (account.status !== 'member') return <Navigate to="/join" replace />;
-  if (!account.isAdmin) return <Navigate to="/me" replace />;
+  if (!mayMake) return <Navigate to="/me" replace />;
 
-  const event = atEvent ? eventName.trim() : '';
-  const ready = (!atEvent || event !== '') && looksLikeEmail(email);
+  const event = isAdmin && atEvent ? eventName.trim() : '';
+  // A code with no organization shows an email while joining is closed.
+  const needsEmail = forOrganization === null;
+  const ready = (!(isAdmin && atEvent) || event !== '') && (!needsEmail || looksLikeEmail(email));
+  const nameOf = (code: MyQrCode) =>
+    code.organizationId
+      ? (byId.get(code.organizationId)?.name ?? 'Your organization')
+      : (code.eventName ?? 'No event');
 
   async function make() {
     if (!ready || busy) return;
     setBusy('new');
     setError(null);
-    const result = await createQrCode(atEvent ? event : null, email.trim());
+    const result = await createQrCode({
+      organizationId: forOrganization,
+      eventName: event || null,
+      contactEmail: needsEmail ? email.trim() : null,
+      expiresAt: expires ? new Date(Date.now() + hours * 3_600_000) : null,
+      notes: notes.trim() || null,
+    });
     setBusy(null);
     if (!result.ok) {
       setError(result.error);
       return;
     }
+    setNotes('');
     setShowing(result.code);
     void load();
   }
 
   async function turnOff(code: MyQrCode) {
-    const name = code.eventName ?? 'your code with no event';
+    const name = nameOf(code);
     if (
       !window.confirm(
-        `Turn off ${name}?\n\nScanning it will no longer say who invited them or show your email. People who already joined from it keep their credit.`,
+        `Turn off the code for ${name}?\n\nScanning it will no longer let anyone in or say who invited them. People who already joined from it stay.`,
       )
     ) {
       return;
@@ -108,7 +162,7 @@ export default function QrCodePage() {
       setError(result.error);
       return;
     }
-    announce(`${code.eventName ?? 'The code with no event'} is turned off.`);
+    announce(`The code for ${name} is turned off.`);
     void load();
   }
 
@@ -121,22 +175,23 @@ export default function QrCodePage() {
             Your QR code
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-            While anybody can join, people who join from your code are recorded as invited by you,
-            and you are told when they do.
+            {forOrganization
+              ? 'Anyone who scans your code or opens its link before it expires can join the club, as invited by you. You are told when they do.'
+              : 'While anybody can join, people who join from your code are recorded as invited by you, and you are told when they do.'}
           </p>
         </div>
       </header>
 
       <div className="mx-auto w-full max-w-[560px] flex-none px-4 pt-4 pb-8">
-        {joiningOpen === false ? (
+        {joiningOpen === false && !forOrganization ? (
           <div
             role="status"
             className="mb-4 rounded-[14px] border border-gold-dp bg-gold-lt p-3.5 text-[0.875rem] text-ink leading-[1.5]"
           >
             <p className="font-bold">Joining is invite only right now.</p>
             <p className="mt-1">
-              This code won't let anyone in. They'll see your email so they can ask you for an
-              invite.
+              A code with no organization won't let anyone in. They'll see your email so they can
+              ask you for an invite.
             </p>
             <Link
               to="/admin?tab=invites"
@@ -154,78 +209,176 @@ export default function QrCodePage() {
             void make();
           }}
         >
-          <fieldset>
-            <legend className="font-bold text-[0.875rem] text-ink">Where will you show it?</legend>
-            <div className="mt-1.5 flex flex-col gap-1">
-              <label className="flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
-                <input
-                  type="radio"
-                  name="qr-event"
-                  checked={atEvent}
-                  onChange={() => {
-                    setAtEvent(true);
-                  }}
-                  className="h-5 w-5 accent-[var(--color-action)]"
-                />
-                At an event
+          {organizations.length > 1 || (isAdmin && organizations.length > 0) ? (
+            <div>
+              <label
+                htmlFor="qr-organization"
+                className="block font-bold text-[0.8125rem] text-ink"
+              >
+                Who it's for
               </label>
-              <label className="flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
-                <input
-                  type="radio"
-                  name="qr-event"
-                  checked={!atEvent}
-                  onChange={() => {
-                    setAtEvent(false);
-                  }}
-                  className="h-5 w-5 accent-[var(--color-action)]"
-                />
-                No event
-              </label>
+              <select
+                id="qr-organization"
+                value={forOrganization ?? NO_ORGANIZATION}
+                onChange={(e) => {
+                  setOrganizationId(e.target.value);
+                }}
+                className={FIELD}
+              >
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))}
+                {isAdmin ? (
+                  <option value={NO_ORGANIZATION}>No organization (credit only)</option>
+                ) : null}
+              </select>
             </div>
-          </fieldset>
+          ) : forOrganization ? (
+            <p className="text-[0.875rem] text-ink">
+              For <b>{byId.get(forOrganization)?.name}</b>
+            </p>
+          ) : null}
 
-          {atEvent ? (
-            <div className="mt-2">
-              <label htmlFor="qr-event-name" className="block font-bold text-[0.8125rem] text-ink">
-                Event name
+          {/* Events are for administrators' codes only (the owner, 2026-10-28). */}
+          {isAdmin ? (
+            <fieldset className="mt-3">
+              <legend className="font-bold text-[0.875rem] text-ink">
+                Where will you show it?
+              </legend>
+              <div className="mt-1.5 flex flex-col gap-1">
+                <label className="flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
+                  <input
+                    type="radio"
+                    name="qr-event"
+                    checked={!atEvent}
+                    onChange={() => {
+                      setAtEvent(false);
+                    }}
+                    className="h-5 w-5 accent-[var(--color-action)]"
+                  />
+                  No event
+                </label>
+                <label className="flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
+                  <input
+                    type="radio"
+                    name="qr-event"
+                    checked={atEvent}
+                    onChange={() => {
+                      setAtEvent(true);
+                    }}
+                    className="h-5 w-5 accent-[var(--color-action)]"
+                  />
+                  At an event
+                </label>
+              </div>
+              {atEvent ? (
+                <div className="mt-2">
+                  <label
+                    htmlFor="qr-event-name"
+                    className="block font-bold text-[0.8125rem] text-ink"
+                  >
+                    Event name
+                  </label>
+                  <input
+                    id="qr-event-name"
+                    value={eventName}
+                    maxLength={80}
+                    placeholder="Abilities Expo LA"
+                    onChange={(e) => {
+                      setEventName(e.target.value);
+                    }}
+                    className={FIELD}
+                  />
+                  <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+                    Admin counts who joined by this name, so type it the same way each time.
+                  </p>
+                </div>
+              ) : null}
+            </fieldset>
+          ) : null}
+
+          {needsEmail ? (
+            <div className="mt-3.5">
+              <label htmlFor="qr-email" className="block font-bold text-[0.8125rem] text-ink">
+                Email shown while joining is closed
               </label>
               <input
-                id="qr-event-name"
-                value={eventName}
-                maxLength={80}
-                placeholder="Abilities Expo LA"
+                id="qr-email"
+                type="email"
+                inputMode="email"
+                autoCapitalize="none"
+                autoComplete="email"
+                value={email}
                 onChange={(e) => {
-                  setEventName(e.target.value);
+                  emailTouched.current = true;
+                  setEmail(e.target.value);
                 }}
                 className={FIELD}
               />
               <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
-                Admin counts who joined by this name, so type it the same way each time.
+                Anybody who scans the code while the club is invite only sees it, so they can ask
+                you for an invite. Your account's address unless you change it.
               </p>
             </div>
           ) : null}
 
           <div className="mt-3.5">
-            <label htmlFor="qr-email" className="block font-bold text-[0.8125rem] text-ink">
-              Email shown while joining is closed
+            <label className="flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
+              <input
+                type="checkbox"
+                checked={expires}
+                onChange={(e) => {
+                  setExpires(e.target.checked);
+                }}
+                className="h-5 w-5 accent-[var(--color-action)]"
+              />
+              Expires
             </label>
-            <input
-              id="qr-email"
-              type="email"
-              inputMode="email"
-              autoCapitalize="none"
-              autoComplete="email"
-              value={email}
+            {expires ? (
+              <>
+                <label htmlFor="qr-expiry" className="sr-only">
+                  Expires after
+                </label>
+                <select
+                  id="qr-expiry"
+                  value={hours}
+                  onChange={(e) => {
+                    setHours(Number(e.target.value));
+                  }}
+                  className={FIELD}
+                >
+                  {EXPIRY_CHOICES.map((choice) => (
+                    <option key={choice.hours} value={choice.hours}>
+                      After {choice.label}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : (
+              <p className="text-[0.75rem] text-grey leading-[1.45]">
+                It works until you turn it off.
+              </p>
+            )}
+          </div>
+
+          <div className="mt-3.5">
+            <label htmlFor="qr-notes" className="block font-bold text-[0.8125rem] text-ink">
+              Notes (optional)
+            </label>
+            <textarea
+              id="qr-notes"
+              value={notes}
+              maxLength={300}
+              rows={2}
+              placeholder="Who it's for, or where you shared it"
               onChange={(e) => {
-                emailTouched.current = true;
-                setEmail(e.target.value);
+                setNotes(e.target.value);
               }}
-              className={FIELD}
+              className={cn(FIELD, 'resize-none')}
             />
-            <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
-              Anybody who scans the code while the club is invite only sees it, so they can ask you
-              for an invite. Your account's address unless you change it.
-            </p>
+            <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">Only you see these.</p>
           </div>
 
           {error ? (
@@ -254,55 +407,61 @@ export default function QrCodePage() {
           </p>
         ) : (
           <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
-            {codes.map((code) => (
-              <li
-                key={code.id}
-                className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
-              >
-                <span className="min-w-0 flex-1 basis-[13rem]">
-                  <span
-                    className={cn(
-                      'block break-words font-extrabold font-head text-[0.90625rem]',
-                      code.turnedOffAt ? 'text-grey' : 'text-ink',
-                    )}
-                  >
-                    {code.eventName ?? 'No event'}
-                  </span>
-                  <span className="mt-0.5 block break-words text-[0.75rem] text-grey leading-[1.45]">
-                    Made {shortDate(code.createdAt)} ·{' '}
-                    {code.turnedOffAt
-                      ? `turned off ${shortDate(code.turnedOffAt)}`
-                      : `shows ${code.contactEmail} while closed`}
-                  </span>
-                </span>
-                {code.turnedOffAt ? null : busy === code.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-grey" />
-                ) : (
-                  <span className="flex gap-1.5">
-                    <button
-                      type="button"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        setShowing(code);
-                      }}
-                      className="min-h-[44px] rounded-[10px] bg-tint px-3 font-semibold text-[0.8125rem] text-emphasis disabled:opacity-40"
+            {codes.map((code) => {
+              const live = isLive(code);
+              return (
+                <li
+                  key={code.id}
+                  className="flex flex-wrap items-center gap-2 border-line border-b p-3 last:border-b-0"
+                >
+                  <span className="min-w-0 flex-1 basis-[13rem]">
+                    <span
+                      className={cn(
+                        'block break-words font-extrabold font-head text-[0.90625rem]',
+                        live ? 'text-ink' : 'text-grey',
+                      )}
                     >
-                      Show
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy !== null}
-                      onClick={() => {
-                        void turnOff(code);
-                      }}
-                      className="min-h-[44px] rounded-[10px] bg-destructive/10 px-3 font-semibold text-[0.8125rem] text-destructive disabled:opacity-40"
-                    >
-                      Turn off
-                    </button>
+                      {nameOf(code)}
+                      {code.organizationId && code.eventName ? ` · ${code.eventName}` : ''}
+                    </span>
+                    <span className="mt-0.5 block break-words text-[0.75rem] text-grey leading-[1.45]">
+                      Made {when(code.createdAt)} · {statusOf(code)}
+                    </span>
+                    {code.notes ? (
+                      <span className="mt-0.5 block break-words text-[0.8125rem] text-ink2 leading-[1.45]">
+                        {code.notes}
+                      </span>
+                    ) : null}
                   </span>
-                )}
-              </li>
-            ))}
+                  {!live ? null : busy === code.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-grey" />
+                  ) : (
+                    <span className="flex gap-1.5">
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          setShowing(code);
+                        }}
+                        className="min-h-[44px] rounded-[10px] bg-tint px-3 font-semibold text-[0.8125rem] text-emphasis disabled:opacity-40"
+                      >
+                        Show
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          void turnOff(code);
+                        }}
+                        className="min-h-[44px] rounded-[10px] bg-destructive/10 px-3 font-semibold text-[0.8125rem] text-destructive disabled:opacity-40"
+                      >
+                        Turn off
+                      </button>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -310,6 +469,7 @@ export default function QrCodePage() {
       {showing ? (
         <ShowingCode
           code={showing}
+          title={nameOf(showing)}
           inviterName={account.displayName}
           joiningOpen={joiningOpen}
           onClose={() => {
@@ -321,17 +481,30 @@ export default function QrCodePage() {
   );
 }
 
+/** "expires Oct 31, 2026, 3:15 PM", "expired …", "turned off …", or what a code with no end does. */
+function statusOf(code: MyQrCode): string {
+  if (code.turnedOffAt) return `turned off ${when(code.turnedOffAt)}`;
+  if (code.expiresAt) {
+    return `${Date.parse(code.expiresAt) > Date.now() ? 'expires' : 'expired'} ${when(code.expiresAt)}`;
+  }
+  if (code.organizationId) return 'no expiry';
+  return `shows ${code.contactEmail ?? 'your email'} while closed`;
+}
+
 /**
  * The code, as large as the screen allows, over everything including the tab
  * bar: it is held up across a table. White whatever the theme, for the camera.
  */
 function ShowingCode({
   code,
+  title: heading,
   inviterName,
   joiningOpen,
   onClose,
 }: {
   code: MyQrCode;
+  /** The organization it is for, or the event. */
+  title: string;
   inviterName: string | null;
   joiningOpen: boolean | null;
   onClose: () => void;
@@ -384,15 +557,19 @@ function ShowingCode({
           tabIndex={-1}
           className="text-center font-extrabold font-display text-[1.5rem] leading-tight outline-none"
         >
-          {code.eventName ?? 'The SCI Club'}
+          {code.organizationId || code.eventName ? heading : 'The SCI Club'}
         </h2>
         <p className="mt-1 text-center text-[1rem]">
           Scan to join The SCI Club{inviterName ? ` · invited by ${inviterName}` : ''}
         </p>
+        <p className="mt-1 text-center text-[0.875rem] text-[#444444]">
+          Made {when(code.createdAt)}
+          {code.expiresAt ? ` · expires ${when(code.expiresAt)}` : ''}
+        </p>
         <div className="mt-4 w-full max-w-[min(100%,62dvh)]">
           <QrCode text={url} label="QR code that opens the club's join page" />
         </div>
-        {joiningOpen === false ? (
+        {joiningOpen === false && !code.organizationId ? (
           <p className="mt-3 text-center font-bold text-[0.9375rem] text-[#7a4b00]">
             Joining is invite only right now: this code lets nobody in.
           </p>

@@ -4,14 +4,16 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import { AnnounceProvider } from '@/lib/announce';
-import type { MyQrCode } from '@/lib/qr-codes';
+import type { MyQrCode, NewQrCode } from '@/lib/qr-codes';
 
 const state = vi.hoisted(() => ({
   account: null as Account | null,
   accountEmail: 'alfred@example.com',
   joiningOpen: true,
+  /** Organizations the member is an org admin of. */
+  mine: new Set<string>(),
   codes: [] as MyQrCode[],
-  created: [] as [string | null, string][],
+  created: [] as NewQrCode[],
   turnedOff: [] as string[],
   shared: [] as { url: string; title: string; text: string }[],
   shareOutcome: 'shared',
@@ -25,18 +27,36 @@ vi.mock('@/lib/account-email', () => ({
 vi.mock('@/lib/joining', () => ({
   fetchJoiningIsOpen: () => Promise.resolve(state.joiningOpen),
 }));
+vi.mock('@/lib/organization-representatives', () => ({
+  useMyOrganizations: () => ({ ids: state.mine, loading: false }),
+}));
+vi.mock('@/lib/organizations', () => {
+  const ncs = { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null };
+  return {
+    useOrganizations: () => ({
+      organizations: [ncs],
+      byId: new Map([['ncs', ncs]]),
+      loading: false,
+      error: null,
+      reload: () => undefined,
+    }),
+  };
+});
 vi.mock('@/lib/qr-codes', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchMyQrCodes: () => Promise.resolve({ ok: true, codes: state.codes }),
-  createQrCode: (eventName: string | null, email: string) => {
-    state.created.push([eventName, email]);
+  createQrCode: (made: NewQrCode) => {
+    state.created.push(made);
     if (state.createError) return Promise.resolve({ ok: false, error: state.createError });
     const code: MyQrCode = {
       id: `new-${state.created.length}`,
       code: 'fresh0code',
-      eventName,
-      contactEmail: email,
-      createdAt: '2026-10-14T17:00:00Z',
+      organizationId: made.organizationId,
+      eventName: made.eventName,
+      contactEmail: made.contactEmail,
+      createdAt: '2026-10-28T17:00:00Z',
+      expiresAt: made.expiresAt ? made.expiresAt.toISOString() : null,
+      notes: made.notes,
       turnedOffAt: null,
     };
     state.codes = [code, ...state.codes];
@@ -45,7 +65,7 @@ vi.mock('@/lib/qr-codes', async (importOriginal) => ({
   turnOffQrCode: (id: string) => {
     state.turnedOff.push(id);
     state.codes = state.codes.map((c) =>
-      c.id === id ? { ...c, turnedOffAt: '2026-10-15T18:00:00Z' } : c,
+      c.id === id ? { ...c, turnedOffAt: '2026-10-29T18:00:00Z' } : c,
     );
     return Promise.resolve({ ok: true });
   },
@@ -61,15 +81,25 @@ const { default: QrCodePage } = await import('@/routes/me/qr-page');
 
 let confirmSpy: MockInstance<typeof window.confirm>;
 
+const HOUR = 3_600_000;
+const FAR = new Date(Date.now() + 48 * HOUR).toISOString();
+
 const code = (o: Partial<MyQrCode> = {}): MyQrCode => ({
   id: 'q1',
   code: 'abc123',
+  organizationId: null,
   eventName: 'Abilities Expo LA',
   contactEmail: 'alfred@example.com',
-  createdAt: '2026-10-14T17:00:00Z',
+  createdAt: '2026-10-28T17:00:00Z',
+  expiresAt: FAR,
+  notes: null,
   turnedOffAt: null,
   ...o,
 });
+
+/** Hours from now to when it expires, to the nearest hour. */
+const hoursLeft = (made: NewQrCode | undefined) =>
+  made?.expiresAt ? Math.round((made.expiresAt.getTime() - Date.now()) / HOUR) : null;
 
 function renderPage() {
   return render(
@@ -89,6 +119,7 @@ beforeEach(() => {
   state.account = { status: 'member', userId: 'me', isAdmin: true, displayName: 'Alfred' };
   state.accountEmail = 'alfred@example.com';
   state.joiningOpen = true;
+  state.mine = new Set();
   state.codes = [];
   state.created = [];
   state.turnedOff = [];
@@ -99,21 +130,92 @@ beforeEach(() => {
   confirmSpy.mockClear();
 });
 
+const asOrgAdmin = () => {
+  state.account = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Sam' };
+  state.mine = new Set(['ncs']);
+};
+
+async function emailFilledIn() {
+  await waitFor(() => {
+    expect(screen.getByLabelText('Email shown while joining is closed')).toHaveValue(
+      'alfred@example.com',
+    );
+  });
+}
+
 describe('who may make a code', () => {
-  it('sends a member who is not an administrator back to Me', async () => {
+  it('sends a member who is neither an administrator nor an org admin back to Me', async () => {
     state.account = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Sam' };
     renderPage();
     expect(await screen.findByRole('heading', { name: 'Me' })).toBeInTheDocument();
   });
+
+  it('lets an org admin in', async () => {
+    asOrgAdmin();
+    renderPage();
+    expect(await screen.findByRole('heading', { name: 'Your QR code' })).toBeInTheDocument();
+  });
 });
 
-describe('making a code', () => {
+// The owner, 2026-10-28: an org admin's code lets their people in until it
+// expires, 72 hours unless they choose; no event; an optional note.
+describe("an org admin's code", () => {
+  it('is for their organization, with no event and no email to show', async () => {
+    asOrgAdmin();
+    renderPage();
+    expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'At an event' })).toBeNull();
+    expect(screen.queryByLabelText('Email shown while joining is closed')).toBeNull();
+    expect(
+      screen.getByText(/before it expires can join the club, as invited by you/),
+    ).toBeInTheDocument();
+  });
+
+  it('expires after 72 hours unless they choose otherwise, and keeps the note', async () => {
+    asOrgAdmin();
+    renderPage();
+    expect(await screen.findByRole('checkbox', { name: 'Expires' })).toBeChecked();
+    await userEvent.type(screen.getByLabelText('Notes (optional)'), '  Monday group  ');
+    await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
+    expect(state.created).toHaveLength(1);
+    expect(state.created[0]).toMatchObject({
+      organizationId: 'ncs',
+      eventName: null,
+      contactEmail: null,
+      notes: 'Monday group',
+    });
+    expect(hoursLeft(state.created[0])).toBe(72);
+    const shown = await screen.findByRole('dialog', { name: 'NorCal SCI' });
+    expect(within(shown).getByText(/Made .* · expires /)).toBeInTheDocument();
+  });
+
+  it('can last 7 days, or until it is turned off', async () => {
+    asOrgAdmin();
+    renderPage();
+    await userEvent.selectOptions(await screen.findByLabelText('Expires after'), 'After 7 days');
+    await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
+    expect(hoursLeft(state.created[0])).toBe(168);
+    await userEvent.click(await screen.findByRole('button', { name: 'Done' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Expires' }));
+    expect(screen.getByText('It works until you turn it off.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
+    expect(state.created[1]?.expiresAt).toBeNull();
+  });
+
+  it('warns of nothing while the club is invite only: it lets them in', async () => {
+    asOrgAdmin();
+    state.joiningOpen = false;
+    renderPage();
+    await screen.findByText('You have not made a code yet.');
+    expect(screen.queryByText('Joining is invite only right now.')).toBeNull();
+  });
+});
+
+describe("an administrator's code", () => {
   it('fills in the account email, and lets it be changed', async () => {
     renderPage();
     const email = screen.getByLabelText('Email shown while joining is closed');
-    await waitFor(() => {
-      expect(email).toHaveValue('alfred@example.com');
-    });
+    await emailFilledIn();
     await userEvent.clear(email);
     await userEvent.type(email, 'hello@thesciclub.com');
     expect(email).toHaveValue('hello@thesciclub.com');
@@ -134,30 +236,29 @@ describe('making a code', () => {
     spy.mockRestore();
   });
 
-  it('wants an event name, unless No event is chosen', async () => {
+  it('makes one with no event by default, expiring in 72 hours', async () => {
     renderPage();
-    const make = screen.getByRole('button', { name: 'Make the QR code' });
-    await waitFor(() => {
-      expect(screen.getByLabelText('Email shown while joining is closed')).toHaveValue(
-        'alfred@example.com',
-      );
+    await emailFilledIn();
+    await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
+    expect(state.created[0]).toMatchObject({
+      organizationId: null,
+      eventName: null,
+      contactEmail: 'alfred@example.com',
+      notes: null,
     });
-    expect(make).toBeDisabled();
-    await userEvent.click(screen.getByRole('radio', { name: 'No event' }));
-    expect(screen.queryByLabelText('Event name')).toBeNull();
-    expect(make).toBeEnabled();
+    expect(hoursLeft(state.created[0])).toBe(72);
+    expect(await screen.findByRole('dialog', { name: 'The SCI Club' })).toBeInTheDocument();
   });
 
-  it('makes it with the event and email, and shows it', async () => {
+  it('wants an event name when At an event is chosen, and shows it', async () => {
     renderPage();
-    await waitFor(() => {
-      expect(screen.getByLabelText('Email shown while joining is closed')).toHaveValue(
-        'alfred@example.com',
-      );
-    });
+    await emailFilledIn();
+    await userEvent.click(screen.getByRole('radio', { name: 'At an event' }));
+    const make = screen.getByRole('button', { name: 'Make the QR code' });
+    expect(make).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Event name'), '  Abilities Expo LA ');
-    await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
-    expect(state.created).toEqual([['Abilities Expo LA', 'alfred@example.com']]);
+    await userEvent.click(make);
+    expect(state.created[0]?.eventName).toBe('Abilities Expo LA');
     const shown = await screen.findByRole('dialog', { name: 'Abilities Expo LA' });
     expect(
       within(shown).getByRole('img', { name: "QR code that opens the club's join page" }),
@@ -165,24 +266,21 @@ describe('making a code', () => {
     expect(within(shown).getByText(/invited by Alfred/)).toBeInTheDocument();
   });
 
-  it('makes one with no event', async () => {
+  it('chooses an organization of theirs, or none', async () => {
+    state.mine = new Set(['ncs']);
     renderPage();
-    await userEvent.click(screen.getByRole('radio', { name: 'No event' }));
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Make the QR code' })).toBeEnabled();
-    });
+    const which = await screen.findByLabelText("Who it's for");
+    expect(which).toHaveValue('ncs');
+    await userEvent.selectOptions(which, 'No organization (credit only)');
+    await emailFilledIn();
     await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
-    expect(state.created).toEqual([[null, 'alfred@example.com']]);
-    expect(await screen.findByRole('dialog', { name: 'The SCI Club' })).toBeInTheDocument();
+    expect(state.created[0]?.organizationId).toBeNull();
   });
 
   it('says why the database refused it', async () => {
     state.createError = 'Enter an email address people can write to.';
     renderPage();
-    await userEvent.click(screen.getByRole('radio', { name: 'No event' }));
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Make the QR code' })).toBeEnabled();
-    });
+    await emailFilledIn();
     await userEvent.click(screen.getByRole('button', { name: 'Make the QR code' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Enter an email address');
     expect(screen.queryByRole('dialog')).toBeNull();
@@ -190,7 +288,7 @@ describe('making a code', () => {
 });
 
 describe('while joining is invite only', () => {
-  it('warns first that the code lets nobody in, and points to the switch', async () => {
+  it('warns that a code with no organization lets nobody in, and points to the switch', async () => {
     state.joiningOpen = false;
     renderPage();
     expect(await screen.findByText('Joining is invite only right now.')).toBeInTheDocument();
@@ -240,19 +338,29 @@ describe('sharing it', () => {
 });
 
 describe('the list of codes', () => {
-  it('lists each code, and turns one off after asking', async () => {
-    state.codes = [code(), code({ id: 'q2', eventName: null, code: 'def456' })];
+  it('lists each with when it was made, when it expires and its note, and turns one off after asking', async () => {
+    state.codes = [
+      code({ notes: 'Monday group' }),
+      code({
+        id: 'q2',
+        eventName: null,
+        code: 'def456',
+        organizationId: 'ncs',
+        contactEmail: null,
+      }),
+    ];
     renderPage();
     const list = await screen.findByRole('list');
     expect(within(list).getByText('Abilities Expo LA')).toBeInTheDocument();
-    expect(within(list).getByText('No event')).toBeInTheDocument();
-    expect(screen.getAllByText(/shows alfred@example.com while closed/)).toHaveLength(2);
+    expect(within(list).getByText('NorCal SCI')).toBeInTheDocument();
+    expect(within(list).getByText('Monday group')).toBeInTheDocument();
+    expect(within(list).getAllByText(/^Made Oct 28, 2026, .* · expires /)).toHaveLength(2);
     const [first] = screen.getAllByRole('button', { name: 'Turn off' });
     if (!first) throw new Error('no Turn off');
     await userEvent.click(first);
     expect(confirmSpy).toHaveBeenCalledOnce();
     expect(state.turnedOff).toEqual(['q1']);
-    expect(await screen.findByText(/turned off Oct 15/)).toBeInTheDocument();
+    expect(await screen.findByText(/turned off Oct 29/)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Turn off' })).toHaveLength(1);
   });
 
@@ -264,10 +372,14 @@ describe('the list of codes', () => {
     expect(state.turnedOff).toEqual([]);
   });
 
-  it('offers nothing on a code already turned off', async () => {
-    state.codes = [code({ turnedOffAt: '2026-10-15T18:00:00Z' })];
+  it('offers nothing on a code turned off or expired', async () => {
+    state.codes = [
+      code({ turnedOffAt: '2026-10-29T18:00:00Z' }),
+      code({ id: 'q2', expiresAt: '2026-10-20T18:00:00Z' }),
+    ];
     renderPage();
-    expect(await screen.findByText(/turned off Oct 15/)).toBeInTheDocument();
+    expect(await screen.findByText(/turned off Oct 29/)).toBeInTheDocument();
+    expect(screen.getByText(/expired Oct 20/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Turn off' })).toBeNull();
   });

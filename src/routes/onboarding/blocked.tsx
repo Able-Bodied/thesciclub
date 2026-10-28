@@ -70,7 +70,7 @@ export function BlockedScreen({
         </p>
         {/* Only while joining is closed: open, the code would have let them
             in, so whatever refused them is not something to ask about. */}
-        {fromCode && !fromCode.joiningOpen ? (
+        {fromCode && !fromCode.joiningOpen && !fromCode.admits ? (
           <p className="mt-3 rounded-[14px] border border-line bg-paper p-3.5 text-[0.9375rem] text-ink leading-[1.52]">
             <AskForInvite who={fromCode} />
           </p>
@@ -115,10 +115,10 @@ export function BlockedScreen({
         {/* No consultation call here for now (the owner, 2026-10-25); it may
             come back, with CONSULTATION_URL as on the welcome screen. */}
 
-        {fromCode && !fromCode.joiningOpen ? null : (
+        {fromCode && !fromCode.joiningOpen && !fromCode.admits ? null : (
           <p className="mt-4 text-[0.78125rem] text-grey leading-[1.5]">
-            If a member gave you a QR code, it gets you the app — it does not get you in. Someone
-            still has to invite your email address.
+            An organization's QR code or link lets you in only until it expires or is turned off.
+            Otherwise someone has to invite your email address.
           </p>
         )}
       </div>

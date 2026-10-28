@@ -102,8 +102,30 @@ describe('what a code says', () => {
       eventName: 'Abilities Expo LA',
       joiningOpen: false,
       contactEmail: 'alfred@example.com',
+      organizationName: null,
+      admits: false,
     });
     expect(db.calls).toEqual([['qr_code_details', { p_code: 'abc123' }]]);
+  });
+
+  // 20261028960000: an org admin's code lets them in while it is live.
+  it("reads an organization's code as letting them in", async () => {
+    db.data = {
+      inviter_name: 'Sam',
+      event_name: null,
+      joining_open: false,
+      contact_email: null,
+      organization_name: 'NorCal SCI',
+      admits: true,
+    };
+    expect(await fetchQrCodeDetails('abc123')).toEqual({
+      inviterName: 'Sam',
+      eventName: null,
+      joiningOpen: false,
+      contactEmail: null,
+      organizationName: 'NorCal SCI',
+      admits: true,
+    });
   });
 
   it('is nothing for a code that says nothing, a refusal, or no connection', async () => {
@@ -169,23 +191,59 @@ describe("an administrator's codes", () => {
     });
   });
 
-  it('makes one, with an event or with none', async () => {
+  it('makes one, with what it is for, when it expires and its note', async () => {
     db.data = row;
-    const made = await createQrCode('Abilities Expo LA', 'alfred@example.com');
+    const expiresAt = new Date('2026-10-31T17:00:00Z');
+    const made = await createQrCode({
+      organizationId: 'ncs',
+      eventName: null,
+      contactEmail: null,
+      expiresAt,
+      notes: 'Monday group',
+    });
     expect(made.ok && made.code.code).toBe('abc123');
-    await createQrCode(null, 'alfred@example.com');
+    await createQrCode({
+      organizationId: null,
+      eventName: 'Abilities Expo LA',
+      contactEmail: 'alfred@example.com',
+      expiresAt: null,
+      notes: null,
+    });
     expect(db.calls).toEqual([
       [
-        'admin_create_qr_code',
-        { p_event_name: 'Abilities Expo LA', p_contact_email: 'alfred@example.com' },
+        'create_qr_code',
+        {
+          p_organization: 'ncs',
+          p_event_name: null,
+          p_contact_email: null,
+          p_expires_at: '2026-10-31T17:00:00.000Z',
+          p_notes: 'Monday group',
+        },
       ],
-      ['admin_create_qr_code', { p_event_name: null, p_contact_email: 'alfred@example.com' }],
+      [
+        'create_qr_code',
+        {
+          p_organization: null,
+          p_event_name: 'Abilities Expo LA',
+          p_contact_email: 'alfred@example.com',
+          p_expires_at: null,
+          p_notes: null,
+        },
+      ],
     ]);
   });
 
   it("passes on the database's refusal", async () => {
     db.error = { message: 'Enter an email address people can write to.' };
-    expect(await createQrCode(null, 'x')).toEqual({
+    expect(
+      await createQrCode({
+        organizationId: null,
+        eventName: null,
+        contactEmail: 'x',
+        expiresAt: null,
+        notes: null,
+      }),
+    ).toEqual({
       ok: false,
       error: 'Enter an email address people can write to.',
     });
@@ -193,7 +251,7 @@ describe("an administrator's codes", () => {
 
   it('turns one off', async () => {
     expect(await turnOffQrCode('q1')).toEqual({ ok: true });
-    expect(db.calls).toEqual([['admin_turn_off_qr_code', { p_code_id: 'q1' }]]);
+    expect(db.calls).toEqual([['turn_off_qr_code', { p_code_id: 'q1' }]]);
     db.error = { message: 'No such code.' };
     expect(await turnOffQrCode('q1')).toEqual({ ok: false, error: 'No such code.' });
   });

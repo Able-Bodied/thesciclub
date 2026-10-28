@@ -53,8 +53,12 @@ export interface QrCodeDetails {
   inviterName: string;
   eventName: string | null;
   joiningOpen: boolean;
-  /** Only while joining is closed: who to ask. */
+  /** Only while joining is closed, for a code that does not let them in: who to ask. */
   contactEmail: string | null;
+  /** The organization an org admin's code is for (20261028960000). */
+  organizationName: string | null;
+  /** An organization's live code: it lets them in even while joining is closed. */
+  admits: boolean;
 }
 
 /** Null for a code that is unknown, turned off, or whose maker is no longer an administrator. */
@@ -72,6 +76,8 @@ export async function fetchQrCodeDetails(code: string): Promise<QrCodeDetails | 
       eventName: typeof r.event_name === 'string' ? r.event_name : null,
       joiningOpen: r.joining_open === true,
       contactEmail: typeof r.contact_email === 'string' ? r.contact_email : null,
+      organizationName: typeof r.organization_name === 'string' ? r.organization_name : null,
+      admits: r.admits === true,
     };
   } catch {
     return null;
@@ -99,18 +105,27 @@ export async function claimHeldQrCode(): Promise<void> {
 export interface MyQrCode {
   id: string;
   code: string;
+  /** For an org admin's code: the organization it lets people into the club for. */
+  organizationId: string | null;
   eventName: string | null;
-  contactEmail: string;
+  /** Null for an organization's code, which needs none. */
+  contactEmail: string | null;
   createdAt: string;
+  /** Null: until turned off. */
+  expiresAt: string | null;
+  notes: string | null;
   turnedOffAt: string | null;
 }
 
 interface MyQrCodeRow {
   id: string;
   code: string;
+  organization_id: string | null;
   event_name: string | null;
-  contact_email: string;
+  contact_email: string | null;
   created_at: string;
+  expires_at: string | null;
+  notes: string | null;
   turned_off_at: string | null;
 }
 
@@ -118,9 +133,12 @@ function fromRow(row: MyQrCodeRow): MyQrCode {
   return {
     id: row.id,
     code: row.code,
+    organizationId: row.organization_id,
     eventName: row.event_name,
     contactEmail: row.contact_email,
     createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    notes: row.notes,
     turnedOffAt: row.turned_off_at,
   };
 }
@@ -132,7 +150,9 @@ export async function fetchMyQrCodes(): Promise<
   try {
     const { data, error } = await getSupabase()
       .from('qr_codes')
-      .select('id, code, event_name, contact_email, created_at, turned_off_at')
+      .select(
+        'id, code, organization_id, event_name, contact_email, created_at, expires_at, notes, turned_off_at',
+      )
       .order('created_at', { ascending: false });
     if (error) return { ok: false, error: describeError(error, 'Could not load your codes.') };
     return { ok: true, codes: (data as MyQrCodeRow[]).map(fromRow) };
@@ -141,13 +161,37 @@ export async function fetchMyQrCodes(): Promise<
   }
 }
 
+/** Whether a code still works: not turned off, and not past its expiry. */
+export function isLive(code: MyQrCode, now: Date = new Date()): boolean {
+  return (
+    code.turnedOffAt === null &&
+    (code.expiresAt === null || Date.parse(code.expiresAt) > now.getTime())
+  );
+}
+
+export interface NewQrCode {
+  /** An org admin's organization: the code lets people in. Null: an administrator's, credit only. */
+  organizationId: string | null;
+  /** Administrators only. */
+  eventName: string | null;
+  /** Shown while joining is closed; needed only without an organization. */
+  contactEmail: string | null;
+  expiresAt: Date | null;
+  notes: string | null;
+}
+
 export async function createQrCode(
-  eventName: string | null,
-  contactEmail: string,
+  made: NewQrCode,
 ): Promise<{ ok: true; code: MyQrCode } | { ok: false; error: string }> {
   try {
     const { data, error } = await getSupabase()
-      .rpc('admin_create_qr_code', { p_event_name: eventName, p_contact_email: contactEmail })
+      .rpc('create_qr_code', {
+        p_organization: made.organizationId,
+        p_event_name: made.eventName,
+        p_contact_email: made.contactEmail,
+        p_expires_at: made.expiresAt ? made.expiresAt.toISOString() : null,
+        p_notes: made.notes,
+      })
       .single();
     if (error) return { ok: false, error: describeError(error, 'The code was not made.') };
     return { ok: true, code: fromRow(data as MyQrCodeRow) };
@@ -160,7 +204,7 @@ export async function turnOffQrCode(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    const { error } = await getSupabase().rpc('admin_turn_off_qr_code', { p_code_id: id });
+    const { error } = await getSupabase().rpc('turn_off_qr_code', { p_code_id: id });
     return error
       ? { ok: false, error: describeError(error, 'The code was not turned off.') }
       : { ok: true };

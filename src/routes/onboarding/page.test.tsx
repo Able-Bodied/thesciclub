@@ -513,6 +513,25 @@ describe("an administrator's QR code", () => {
     expect(window.localStorage.getItem('sciclub.qrCode')).toBe('abc123');
   });
 
+  // 20261028960000: an org admin's code lets them in while it is live.
+  it("says an org admin's code invites them, even while joining is closed", async () => {
+    calls.qrDetails = {
+      inviter_name: 'Sam',
+      event_name: null,
+      joining_open: false,
+      contact_email: null,
+      organization_name: 'NorCal SCI',
+      admits: true,
+    };
+    renderJoin('/join?from=abc123');
+    expect(
+      await screen.findByText(
+        'Sam from NorCal SCI invited you to The SCI Club. Join with any email or account.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Ask Sam for an invite/)).toBeNull();
+  });
+
   it('says who to ask, with their email, while joining is closed', async () => {
     calls.qrDetails = { ...ALFRED, joining_open: false, contact_email: 'alfred@example.com' };
     renderJoin('/join?from=abc123');
