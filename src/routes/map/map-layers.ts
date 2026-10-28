@@ -34,8 +34,8 @@ export const SOURCES: Record<Layer, string> = {
 };
 export const LAYER_IDS: Record<Layer, string[]> = {
   events: ['club-events-one', 'club-events-many', 'club-events-count'],
-  peers: ['club-peers'],
-  organizations: ['club-organizations', 'club-organizations-count'],
+  peers: ['club-peers', 'club-peers-name'],
+  organizations: ['club-organizations', 'club-organizations-count', 'club-organizations-name'],
 };
 const FOCUS = 'club-organization-focus';
 /** The zoom from which organizations' places are drawn one by one. */
@@ -252,6 +252,46 @@ export function addLayers(map: MapLibreMap): void {
         'text-translate': [CHIP_AT, -CHIP_AT],
       },
     },
+    // A name under each mark (the owner, 2026-10-28): a city's one member,
+    // an organization's. Dropped where it would run into another.
+    {
+      id: 'club-organizations-name',
+      type: 'symbol',
+      source: SOURCES.organizations,
+      filter: ['all', ['!', ['has', 'point_count']], ['has', 'label']],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': [MAP_FONT],
+        'text-size': 11,
+        'text-anchor': 'top',
+        'text-max-width': 9,
+      },
+      paint: {
+        'text-color': NAVY,
+        'text-halo-color': WHITE,
+        'text-halo-width': 1.6,
+        'text-translate': [15, 4],
+      },
+    },
+    {
+      id: 'club-peers-name',
+      type: 'symbol',
+      source: SOURCES.peers,
+      filter: ['all', ['!', ['has', 'point_count']], ['has', 'label']],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': [MAP_FONT],
+        'text-size': 11,
+        'text-anchor': 'top',
+        'text-max-width': 9,
+      },
+      paint: {
+        'text-color': NAVY,
+        'text-halo-color': WHITE,
+        'text-halo-width': 1.6,
+        'text-translate': [-17, 3],
+      },
+    },
     {
       id: 'club-peers',
       type: 'symbol',
@@ -357,6 +397,13 @@ export function applyTextScale(map: MapLibreMap, scale: number): void {
   map.setPaintProperty('club-organizations-count', 'icon-translate', [off(CHIP_AT), off(-CHIP_AT)]);
   map.setPaintProperty('club-organizations-count', 'text-translate', [off(CHIP_AT), off(-CHIP_AT)]);
   map.setLayoutProperty('club-peers', 'text-size', off(14));
+  for (const [id, x, y] of [
+    ['club-peers-name', -17, 3],
+    ['club-organizations-name', 15, 4],
+  ] as const) {
+    map.setLayoutProperty(id, 'text-size', at(11) * ICON_GROW ** 0.5);
+    map.setPaintProperty(id, 'text-translate', [off(x), off(y)]);
+  }
   map.setLayoutProperty('club-peers', 'icon-size', mark);
   map.setPaintProperty('club-peers', 'icon-translate', [off(-17), off(-17)]);
   map.setPaintProperty('club-peers', 'text-translate', [off(-17), off(-17)]);

@@ -134,6 +134,8 @@ interface Feature {
     organizationId?: string;
     /** The one member of a city, whose photograph its box shows (peer-photos.ts). */
     photo?: string;
+    /** The name under the mark: a city's one member, or the organization whose logo it is. */
+    label?: string;
   };
 }
 
@@ -150,6 +152,21 @@ function feature(point: MapPoint, key: string, count: number, exact?: boolean): 
   };
 }
 
+/** Longest name drawn under a mark, before it is cut with an ellipsis. */
+export const LABEL_MAX = 18;
+
+/**
+ * A name short enough to sit under its mark (the owner, 2026-10-28): cut at
+ * a word where it can, with an ellipsis.
+ */
+export function shortLabel(name: string, max = LABEL_MAX): string {
+  const clean = name.replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max - 1);
+  const atWord = cut.lastIndexOf(' ');
+  return `${(atWord >= max / 2 ? cut.slice(0, atWord) : cut).trimEnd()}…`;
+}
+
 export function eventFeatures(spots: EventSpot[]): Features {
   return {
     type: 'FeatureCollection',
@@ -163,7 +180,10 @@ export function peerFeatures(cities: PeerCity[]): Features {
     features: cities.map((city) => {
       const point = feature(city, city.key, city.members.length);
       const [only] = city.members;
-      if (city.members.length === 1 && only?.photoPath) point.properties.photo = only.id;
+      if (city.members.length === 1 && only) {
+        if (only.photoPath) point.properties.photo = only.id;
+        point.properties.label = shortLabel(only.displayName);
+      }
       return point;
     }),
   };
@@ -188,7 +208,10 @@ export function organizationFeatures(spots: OrganizationSpot[]): Features {
       const point = feature(spot, spot.key, spot.organizations.length, spot.exact);
       point.properties.orgs = `,${spot.organizations.map((o) => o.id).join(',')},`;
       const [first] = [...spot.organizations].sort((a, b) => a.name.localeCompare(b.name));
-      if (first) point.properties.organizationId = first.id;
+      if (first) {
+        point.properties.organizationId = first.id;
+        point.properties.label = shortLabel(first.name);
+      }
       return point;
     }),
   };

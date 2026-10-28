@@ -13,6 +13,7 @@ import {
   otherPlaces,
   peerCities,
   peerFeatures,
+  shortLabel,
 } from '@/routes/map/places';
 import { filterMembers } from '@/routes/peers/filters';
 import { makeEvent, makeMember, makeOrganization } from '@/test/factory';
@@ -157,6 +158,7 @@ describe('organizations on the map', () => {
       exact: false,
       orgs: ',borp,cil,',
       organizationId: 'borp',
+      label: 'BORP',
     });
     expect(features[1]?.properties.exact).toBe(true);
   });
@@ -241,5 +243,22 @@ describe('a city with one member', () => {
     // Fremont's one member has no photograph; San Jose has two.
     expect(photos).toEqual(['sam', undefined, undefined]);
     expect(lonePeers(cities).map((member) => member.id)).toEqual(['sam']);
+  });
+});
+
+// The owner, 2026-10-28: a name under each mark, cut when long.
+describe('the name under a mark', () => {
+  it('keeps a short name, and cuts a long one at a word', () => {
+    expect(shortLabel('NorCal SCI')).toBe('NorCal SCI');
+    expect(shortLabel('Bay Area Outreach and Recreation Program')).toBe('Bay Area Outreach…');
+    expect(shortLabel('Supercalifragilisticexpialidocious')).toBe('Supercalifragilis…');
+  });
+
+  it('names a city by its one member', () => {
+    const cities = peerCities(
+      [{ city: 'Oakland', state: 'CA', latitude: 37.8, longitude: -122.27, memberIds: ['sam'] }],
+      [makeMember({ id: 'sam', displayName: 'Sam Rivera', photoPath: null })],
+    );
+    expect(peerFeatures(cities).features[0]?.properties.label).toBe('Sam Rivera');
   });
 });
