@@ -21,6 +21,7 @@
       "!supabase/.temp",
       "!supabase/.branches",
       "!jobs/event-ingest/out",
+      "!jobs/event-ingest/scrapers/fixtures",
       "!.claude",
       "!.netlify",
       "!docs",

@@ -44,6 +44,7 @@ import { IcsEventsScraper } from './scrapers/ics-events.js';
 import { MyCalendarEventsScraper } from './scrapers/mycalendar-events.js';
 import { NatureTrackTraxScraper } from './scrapers/naturetrack-trax.js';
 import { NorCalSCIEventsJsonScraper } from './scrapers/norcalsci-events-json.js';
+import { ParaCliffHangersMeetupsScraper } from './scrapers/paracliffhangers-meetups.js';
 import { ReeveSupportGroupsScraper } from './scrapers/reeve-support-groups.js';
 import { SquarespaceEventsScraper } from './scrapers/squarespace-events.js';
 import { TribeEventsScraper } from './scrapers/tribe-events.js';
@@ -58,7 +59,8 @@ import { placeStaleEvents } from './stale-places.js';
 
 const SCRAPERS = {
   'norcalsci-events': () => new NorCalSCIEventsJsonScraper(),
-  'adaptiverechub-events': () => new AdaptiveRecHubEventsScraper(),
+  'adaptiverechub-events': (feed) =>
+    new AdaptiveRecHubEventsScraper({ excludeHost: feed.options?.exclude_host }),
   'naturetrack-trax': () => new NatureTrackTraxScraper(),
   'tribe-events': (feed) => new TribeEventsScraper(feed),
   'ics-events': (feed) => new IcsEventsScraper(feed),
@@ -71,6 +73,7 @@ const SCRAPERS = {
   'activenet-events': (feed) => new ActiveNetEventsScraper(feed),
   'unrecables-trips': (feed) => new UnrecablesTripsScraper(feed),
   'mycalendar-events': (feed) => new MyCalendarEventsScraper(feed),
+  'paracliffhangers-meetups': (feed) => new ParaCliffHangersMeetupsScraper(feed),
 };
 
 /** Columns read back for the diff. Never `*`: the browser roles cannot select the coordinates,
@@ -247,6 +250,11 @@ export function keepPriorPlace(event, prior) {
   event.geocoded_location = prior.geocoded_location ?? null;
 }
 
+/** The reader's own city for its place beats the map's; a moved event keeps its own. */
+export function eventCity(event, moved, ownWords) {
+  return (moved ? null : event.stated_city) ?? event.city ?? ownWords?.city ?? null;
+}
+
 /** What the coordinates were found for, read once overrides are applied. */
 export function withGeocodedLocation(payload, event, moved) {
   if (moved) return { ...payload, geocoded_location: event.geocoded_location ?? null };
@@ -254,6 +262,17 @@ export function withGeocodedLocation(payload, event, moved) {
     ? geocodeKey(payload.location, payload.city, payload.state)
     : null;
   return { ...payload, geocoded_location: key };
+}
+
+/**
+ * A reader that gives every date (`complete`): the ids of the feed's events
+ * still to come that this run no longer gives, to delete as a cancelled
+ * invitation's are. Started ones stay.
+ */
+export function vanishedEvents(priorRows, scrapedIds, now = new Date()) {
+  return priorRows
+    .filter((row) => !scrapedIds.has(row.external_id) && Date.parse(row.start_time) > now.getTime())
+    .map((row) => row.id);
 }
 
 export function eventChanged(prior, scraped) {
@@ -426,7 +445,7 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
         organization_id:
           matchOrganization(event.host_name, organizations) ?? feed.organization_id ?? null,
         event_format: classifyFormat(event),
-        city: event.city ?? ownWords.get(event)?.city ?? null,
+        city: eventCity(event, moved.has(event), ownWords.get(event)),
         postal_code: event.postal_code ?? null,
         latitude: event.latitude ?? null,
         longitude: event.longitude ?? null,
@@ -452,6 +471,23 @@ async function ingestFeed(supabase, feed, organizations, tagIdsBySlug, { dryRun 
     eventChanged(priorByExternalId.get(payload.external_id), payload),
   ).length;
   log(`  ${payloads.length} usable, ${changed} new or changed`);
+
+  const gone = scraper.complete
+    ? vanishedEvents(priorRows, new Set(scraped.map((event) => event.external_id)))
+    : [];
+  if (gone.length > 0) {
+    log(
+      `  ${gone.length} later dates no longer given${dryRun ? ', not removed on a dry run' : ''}`,
+    );
+    // A hundred at a time, to keep each request's address short.
+    for (let i = 0; !dryRun && i < gone.length; i += 100) {
+      const { error: goneError } = await supabase
+        .from('events')
+        .delete()
+        .in('id', gone.slice(i, i + 100));
+      if (goneError) throw new Error(`Could not remove dates: ${goneError.message}`);
+    }
+  }
 
   if (dryRun) {
     for (const payload of payloads.slice(0, 5)) {

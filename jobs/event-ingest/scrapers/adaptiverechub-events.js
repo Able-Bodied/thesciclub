@@ -182,7 +182,10 @@ export function parseDetailHtml(html, pageUrl) {
 }
 
 export class AdaptiveRecHubEventsScraper {
-  constructor({ latitude, longitude, radiusMiles, crawlDelayMs } = {}) {
+  /** `excludeHost`: a pattern for hosts whose own calendar the club reads instead. */
+  constructor({ latitude, longitude, radiusMiles, crawlDelayMs, excludeHost } = {}) {
+    this.excludeHost =
+      typeof excludeHost === 'string' && excludeHost ? new RegExp(excludeHost, 'i') : null;
     this.latitude = latitude ?? ORIGIN_LATITUDE;
     this.longitude = longitude ?? ORIGIN_LONGITUDE;
     this.radiusMiles = radiusMiles ?? RADIUS_MILES;
@@ -213,7 +216,9 @@ export class AdaptiveRecHubEventsScraper {
    *   with the thin one from the list card.
    */
   async scrape(feedId, { priorByExternalId = new Map() } = {}) {
-    const events = this.parseListHtml(await this.fetchListHtml(), feedId);
+    const events = this.parseListHtml(await this.fetchListHtml(), feedId).filter(
+      (event) => !this.excludeHost?.test(event.host_name ?? ''),
+    );
 
     const lastModifiedByUrl = await this.fetchEventLastModified(
       new Set(events.map((event) => event.url)),
