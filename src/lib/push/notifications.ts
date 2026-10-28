@@ -679,6 +679,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'profile_reminder', label: 'Reminders to finish my profile', who: 'all' },
   { kind: 'reply_participant', label: 'Replies in topics I have posted in', who: 'all' },
   { kind: 'like', label: 'Likes on my posts', who: 'all' },
+  { kind: 'reaction', label: 'Reactions to my posts and messages', who: 'all' },
   { kind: 'group_add', label: 'Being added to a group', who: 'all' },
   { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
   { kind: 'report', label: 'New reports, and the weekly count of blocks', who: 'admin' },

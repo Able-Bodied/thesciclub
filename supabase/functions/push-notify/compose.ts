@@ -30,6 +30,11 @@
  *   Like             "Bo liked your post"         + the start of that post, quoted
  *                    ("your topic" for a topic's opening post)
  *
+ * And reactions, 2026-10-27 (20261028000000):
+ *
+ *   Reaction         "Bo reacted 👍 to your message" + the start of it, quoted
+ *                    ("your post", or "your topic" for a topic's opening post)
+ *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
  * who replied. Nothing here names a room, a topic or a group — those are
@@ -187,6 +192,26 @@ export function compose(owed: Owed): PushMessage | null {
             : owed.photo_count > 0
               ? 'Your photograph.'
               : `${name} liked your ${what}.`,
+        ...where,
+      };
+    }
+    // detail is 'message:👍', 'post:👍' or 'topic:👍' (20261028000000).
+    case 'reaction': {
+      const [target, ...rest] = (owed.detail ?? '').split(':');
+      const what = target === 'message' || target === 'topic' ? target : 'post';
+      const emoji = rest.join(':').trim();
+      const reacted =
+        emoji === ''
+          ? `${name} reacted to your ${what}`
+          : `${name} reacted ${emoji} to your ${what}`;
+      // A message is not formatted; a post is.
+      const own = shorten(
+        what === 'message' ? (owed.body ?? '') : plainPost(owed.body ?? ''),
+        LIKED_LENGTH,
+      );
+      return {
+        title: reacted,
+        body: own !== '' ? `“${own}”` : owed.photo_count > 0 ? 'Your photograph.' : `${reacted}.`,
         ...where,
       };
     }

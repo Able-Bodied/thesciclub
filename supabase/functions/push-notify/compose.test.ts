@@ -96,9 +96,11 @@ describe('compose', () => {
     expect(compose(owed({ actor_name: '  ' }))?.title).toBe('Direct message from A member');
   });
 
-  it('carries the unread count to the app badge when it has one', () => {
+  it('carries the badge to the app icon when it has one, whatever the kind', () => {
     expect(compose(owed({ badge: 3 }))?.badge).toBe(3);
     expect(compose(owed({ badge: 0 }))?.badge).toBe(0);
+    expect(compose(owed({ kind: 'like', badge: 2 }))?.badge).toBe(2);
+    expect(compose(owed({ kind: 'reaction', detail: 'post:👍', badge: 4 }))?.badge).toBe(4);
     expect(compose(owed({}))).not.toHaveProperty('badge');
   });
 
@@ -142,6 +144,45 @@ describe('compose', () => {
     expect(compose(owed({ kind: 'like', body: '', photo_count: 1 }))?.body).toBe(
       'Your photograph.',
     );
+  });
+
+  // The owner, 2026-10-27: a reaction notifies the author, as a like does.
+  it('says who reacted with what, and quotes the message', () => {
+    expect(
+      compose(
+        owed({
+          kind: 'reaction',
+          body: 'See you *Friday*',
+          detail: 'message:👍',
+          url: '/chat/t/t1?message=m1',
+          tag: 'reaction:m1',
+        }),
+      ),
+    ).toMatchObject({
+      title: 'Bo reacted 👍 to your message',
+      // A message is not formatted, so its asterisks stay.
+      body: '“See you *Friday*”',
+      url: '/chat/t/t1?message=m1',
+      tag: 'reaction:m1',
+    });
+  });
+
+  it('says post or topic for a reaction in a room, without the formatting', () => {
+    expect(
+      compose(owed({ kind: 'reaction', body: '**Bring water**', detail: 'post:❤️' })),
+    ).toMatchObject({ title: 'Bo reacted ❤️ to your post', body: '“Bring water”' });
+    expect(compose(owed({ kind: 'reaction', body: 'Morning?', detail: 'topic:🎉' }))?.title).toBe(
+      'Bo reacted 🎉 to your topic',
+    );
+  });
+
+  it('still says something for a reaction with no words or emoji', () => {
+    expect(compose(owed({ kind: 'reaction', body: '', detail: 'message:' }))?.body).toBe(
+      'Bo reacted to your message.',
+    );
+    expect(
+      compose(owed({ kind: 'reaction', body: '', photo_count: 2, detail: 'post:😮' }))?.body,
+    ).toBe('Your photograph.');
   });
 
   it('says who added the member to a group, and not which group', () => {

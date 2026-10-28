@@ -42,6 +42,25 @@ describe('what a notification says', () => {
     );
   });
 
+  it('says who reacted with what, to a message or a post', () => {
+    expect(notificationSentence(n({ kind: 'reaction', detail: 'message:👍' }))).toBe(
+      'Jan reacted 👍 to your message',
+    );
+    expect(
+      notificationSentence(n({ kind: 'reaction', detail: 'message:❤️', place: 'Swimmers' })),
+    ).toBe('Jan reacted ❤️ to your message in Swimmers');
+    expect(notificationSentence(n({ kind: 'reaction', detail: 'post:🎉', place: 'Ramps' }))).toBe(
+      'Jan reacted 🎉 to your post in “Ramps”',
+    );
+    // Folded, the others may have chosen another emoji.
+    expect(
+      notificationSentence(n({ kind: 'reaction', count: 3, detail: 'post:🎉', place: 'Ramps' })),
+    ).toBe('Jan and 2 others reacted to your post in “Ramps”');
+    expect(notificationSentence(n({ kind: 'reaction', detail: null, place: 'Ramps' }))).toBe(
+      'Jan reacted to your post in “Ramps”',
+    );
+  });
+
   it('says "A member" for a name that is missing, rather than nothing', () => {
     expect(notificationSentence(n({ actorName: null }))).toBe('Message from A member');
   });

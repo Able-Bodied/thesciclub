@@ -26,6 +26,7 @@
 
 import { apnsDevice, apnsGone, apnsKeys, sendApns } from './apns.ts';
 import { compose, type Owed, type PushMessage } from './compose.ts';
+import { EVENTS } from './events.ts';
 import { sendPush } from './webpush.ts';
 
 declare const Deno: {
@@ -43,20 +44,6 @@ const VAPID = {
 // somebody's inbox.
 const SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://thesciclub.netlify.app';
 const APNS = apnsKeys((name) => Deno.env.get(name));
-
-const EVENTS = new Set([
-  'message',
-  'post',
-  'like',
-  'group_add',
-  'report',
-  'member_joined',
-  'daily',
-  // Sent since 20261021010000 and 20261022040000, and refused here until now.
-  'grant_open',
-  'profile_reminder',
-  'blocks_weekly',
-]);
 
 function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {

@@ -46,7 +46,8 @@ export type NotificationKind =
   | 'org_events'
   | 'grant_open'
   | 'profile_reminder'
-  | 'blocks_weekly';
+  | 'blocks_weekly'
+  | 'reaction';
 
 interface Row {
   id: string;
@@ -214,6 +215,18 @@ export function notificationSentence(n: AppNotification): string {
       return more > 0
         ? `${name} and ${more} ${more === 1 ? 'other' : 'others'} liked your post in ${quoted(n.place)}`
         : `${name} liked your post in ${quoted(n.place)}`;
+    // detail is 'message:👍' or 'post:👍' (20261028000000).
+    case 'reaction': {
+      const [target, ...rest] = (n.detail ?? '').split(':');
+      const emoji = rest.join(':').trim();
+      const what =
+        target === 'message'
+          ? `your message${n.place ? ` in ${n.place}` : ''}`
+          : `your post in ${quoted(n.place)}`;
+      if (more > 0)
+        return `${name} and ${more} ${more === 1 ? 'other' : 'others'} reacted to ${what}`;
+      return emoji ? `${name} reacted ${emoji} to ${what}` : `${name} reacted to ${what}`;
+    }
     case 'group_add':
       return `${name} added you to ${n.place ?? 'a group'}`;
     case 'report':
