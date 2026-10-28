@@ -53,16 +53,28 @@ const CHIP_SIZE = 19;
 /** The chip sits on the badge's upper right. */
 const CHIP_AT = 26;
 
+/**
+ * How much bigger than drawn every place's mark shows (the owner,
+ * 2026-10-28): logos and photographs were too small to make out, and every
+ * kind of mark is one size. Text-size scaling goes
+ * on top. Badges are drawn this much sharper too (setBadgeScale).
+ */
+export const ICON_GROW = 1.35;
+/** Pixels drawn for each one shown, so a grown mark stays sharp on a 3x screen. */
+const ICON_RATIO = 4;
+/** An event's dot, as wide as an organization's badge (BADGE_SIZE 32). */
+const EVENT_DOT = 16;
+
 /** Badges drawn by path, not roundRect, which iOS 15's Safari lacks. */
 function drawIcon(id: string): ImageData | null {
   const size =
     id === PEER_ICON ? 34 : id === HOME ? 28 : id === COUNT_CHIP ? CHIP_SIZE : BADGE_SIZE;
   const canvas = document.createElement('canvas');
-  canvas.width = size * 2;
-  canvas.height = size * 2;
+  canvas.width = size * ICON_RATIO;
+  canvas.height = size * ICON_RATIO;
   const pen = canvas.getContext('2d');
   if (!pen) return null;
-  pen.scale(2, 2);
+  pen.scale(ICON_RATIO, ICON_RATIO);
   pen.beginPath();
   if (id === HOME) {
     pen.arc(14, 14, 12.5, 0, Math.PI * 2);
@@ -120,7 +132,7 @@ function drawIcon(id: string): ImageData | null {
 export function addIcon(map: MapLibreMap, id: string): void {
   if (!ICONS.includes(id) || map.hasImage(id)) return;
   const image = drawIcon(id);
-  if (image) map.addImage(id, image, { pixelRatio: 2 });
+  if (image) map.addImage(id, image, { pixelRatio: ICON_RATIO });
 }
 
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
@@ -140,7 +152,8 @@ export function addLayers(map: MapLibreMap): void {
       type: 'geojson',
       data: EMPTY,
       cluster: true,
-      clusterRadius: layer === 'events' ? 40 : 46,
+      // The marks are grown (ICON_GROW): more room apart.
+      clusterRadius: 54,
       // Organizations' places are few: apart from city zoom on.
       clusterMaxZoom:
         layer === 'events' ? 14 : layer === 'peers' ? 11 : ORGANIZATIONS_APART_FROM - 1,
@@ -329,38 +342,43 @@ export function pageTextScale(): number {
 /** Counts and badges grow with the text, so a count still fits its pin. */
 export function applyTextScale(map: MapLibreMap, scale: number): void {
   const at = (n: number) => n * scale;
-  setBadgeScale(scale);
+  // Every place's mark, and where it sits off its point, grows; Home does not.
+  const mark = scale * ICON_GROW;
+  const off = (n: number) => n * mark;
+  setBadgeScale(mark);
   map.setLayoutProperty(HOME, 'icon-size', scale);
   map.setPaintProperty(HOME, 'icon-translate', [0, at(18)]);
-  map.setLayoutProperty('club-organizations', 'text-size', at(12));
-  map.setLayoutProperty('club-organizations', 'icon-size', scale);
-  map.setPaintProperty('club-organizations', 'icon-translate', [at(15), at(-15)]);
-  map.setPaintProperty('club-organizations', 'text-translate', [at(15), at(-15)]);
-  map.setLayoutProperty('club-organizations-count', 'text-size', at(11));
-  map.setLayoutProperty('club-organizations-count', 'icon-size', scale);
-  map.setPaintProperty('club-organizations-count', 'icon-translate', [at(CHIP_AT), at(-CHIP_AT)]);
-  map.setPaintProperty('club-organizations-count', 'text-translate', [at(CHIP_AT), at(-CHIP_AT)]);
-  map.setLayoutProperty('club-peers', 'text-size', at(14));
-  map.setLayoutProperty('club-peers', 'icon-size', scale);
-  map.setPaintProperty('club-peers', 'icon-translate', [at(-17), at(-17)]);
-  map.setPaintProperty('club-peers', 'text-translate', [at(-17), at(-17)]);
-  map.setLayoutProperty('club-events-count', 'text-size', at(13));
-  map.setPaintProperty('club-events-one', 'circle-radius', at(9));
+  map.setLayoutProperty('club-organizations', 'text-size', off(12));
+  map.setLayoutProperty('club-organizations', 'icon-size', mark);
+  map.setPaintProperty('club-organizations', 'icon-translate', [off(15), off(-15)]);
+  map.setPaintProperty('club-organizations', 'text-translate', [off(15), off(-15)]);
+  map.setLayoutProperty('club-organizations-count', 'text-size', off(11));
+  map.setLayoutProperty('club-organizations-count', 'icon-size', mark);
+  map.setPaintProperty('club-organizations-count', 'icon-translate', [off(CHIP_AT), off(-CHIP_AT)]);
+  map.setPaintProperty('club-organizations-count', 'text-translate', [off(CHIP_AT), off(-CHIP_AT)]);
+  map.setLayoutProperty('club-peers', 'text-size', off(14));
+  map.setLayoutProperty('club-peers', 'icon-size', mark);
+  map.setPaintProperty('club-peers', 'icon-translate', [off(-17), off(-17)]);
+  map.setPaintProperty('club-peers', 'text-translate', [off(-17), off(-17)]);
+  // Events' dots as big as the other marks (the owner, 2026-10-28): every
+  // place on the map one size, a bubble of many a little bigger.
+  map.setLayoutProperty('club-events-count', 'text-size', off(13));
+  map.setPaintProperty('club-events-one', 'circle-radius', off(EVENT_DOT));
   map.setPaintProperty('club-events-many', 'circle-radius', [
     'step',
     ['get', 'count'],
-    at(14),
+    off(EVENT_DOT),
     10,
-    at(17),
+    off(EVENT_DOT + 2),
     100,
-    at(20),
+    off(EVENT_DOT + 4),
   ]);
   for (const [id, r] of [
     [`${FOCUS}-outer`, 22],
     [`${FOCUS}-inner`, 19],
   ] as const) {
-    map.setPaintProperty(id, 'circle-radius', at(r));
-    map.setPaintProperty(id, 'circle-translate', [at(15), at(-15)]);
+    map.setPaintProperty(id, 'circle-radius', off(r));
+    map.setPaintProperty(id, 'circle-translate', [off(15), off(-15)]);
   }
 }
 

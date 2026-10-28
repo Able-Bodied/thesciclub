@@ -97,6 +97,7 @@ vi.mock('@/lib/grants', async (importOriginal) => ({
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null, usePhotoUrls: () => new Map() }));
 
 const { default: ClubMap } = await import('@/routes/map/club-map');
+const { ICON_GROW } = await import('@/routes/map/map-layers');
 
 const borp = makeOrganization({ id: 'borp', name: 'BORP', city: 'Berkeley' });
 const contents: MapContents = {
@@ -267,8 +268,23 @@ describe('what the map says', () => {
     try {
       render(<Screen />);
       await ready();
-      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-peers', 'text-size', 21);
-      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-peers', 'icon-size', 1.5);
+      // 1.5 for the text size, then every place's mark a third bigger (ICON_GROW).
+      const mark = 1.5 * ICON_GROW;
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-peers', 'text-size', 14 * mark);
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-peers', 'icon-size', mark);
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith(
+        'club-organizations',
+        'icon-size',
+        mark,
+      );
+      // Events' dots as wide as a badge: 16 across the middle, grown alike.
+      expect(the.map?.setPaintProperty).toHaveBeenCalledWith(
+        'club-events-one',
+        'circle-radius',
+        16 * mark,
+      );
+      // Home keeps its size.
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-home', 'icon-size', 1.5);
     } finally {
       document.documentElement.style.fontSize = '';
     }
