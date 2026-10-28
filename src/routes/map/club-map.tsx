@@ -908,7 +908,7 @@ function LayerPanel({
             The house is your city, as your profile gives it.
           </p>
           <p className="px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
-            Members are only ever counted by city.
+            Members are only ever placed by city, never closer.
           </p>
           {missingPeers > 0 ? (
             <p className="px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">

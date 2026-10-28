@@ -34,6 +34,10 @@ export default function PrivacyPage() {
             notification, as a like already did. The app’s icon shows how many kinds of notification
             you have not opened yet, instead of unread conversations.
           </li>
+          <li>
+            <b>Changed:</b> on the map, a city with one member shows that member’s photograph and
+            name, as Peers does. Nobody is placed closer than the middle of their city.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 26, 2026">
@@ -275,9 +279,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>On the map</b>, other members see how many members live in each city, shown at the
-            middle of the city, never your address or anything closer. Turn off{' '}
-            <b>Show me on the map</b>, on Me, to be left out; hiding yourself from Peers leaves you
-            off the map too.
+            middle of the city, never your address or anything closer. A city with one member shows
+            that member’s photograph and name, as Peers does. Turn off <b>Show me on the map</b>, on
+            Me, to be left out; hiding yourself from Peers leaves you off the map too.
           </li>
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to

@@ -40,7 +40,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     for events (`club_joining`); a blocked address stays out. A club
     administrator's QR code with no organization is credit only, never entry.
     An org admin's code or link for their organization lets in whoever scans
-    it, invite or not, until it expires (72 hours by default) or is turned off
+    it, invite or not, until it expires (a day by default) or is turned off
     (`20261028960000`). The owner, 2026-10-28: kept on purpose to help the club
     grow; if strangers get in, remove them and make codes credit only again.
   - **Email**: links in mail open `thesciclub.com/auth/confirm.html`
