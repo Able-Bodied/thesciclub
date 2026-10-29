@@ -48,7 +48,7 @@ export function SharePostButton({
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={`Share ${what} in a conversation`}
+        aria-label={`Share ${what}`}
         onClick={() => {
           setOpen(true);
         }}

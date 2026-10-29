@@ -516,6 +516,19 @@ export default function TopicPage() {
               on {chatTimeLong(topic.createdAt)}
             </span>
           </p>
+          {/* The topic itself, not one post in it (the owner, 2026-10-28): a
+              question hides its opening post, and with it that post's Share.
+              In a conversation it arrives as the opening post; outside, the
+              link opens the topic from the top. */}
+          {opening && !closed ? (
+            <div className="mt-1 -ml-3">
+              <SharePostButton
+                postId={opening.id}
+                words={topic.title}
+                link={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
+              />
+            </div>
+          ) : null}
           {/* An administrator seeding a room reaches this screen with a
               working composer and no other sign that nobody can read what
               they are writing. The room page says the same thing; forgetting

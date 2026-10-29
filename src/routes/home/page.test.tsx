@@ -293,11 +293,9 @@ describe('likes on Home', () => {
   it('offers Share on a topic and a photograph, named for each', () => {
     renderPage();
     expect(
-      screen.getByRole('button', { name: 'Share “Morning or evening routine?” in a conversation' }),
+      screen.getByRole('button', { name: 'Share “Morning or evening routine?”' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Share “Wheel covers I made” in a conversation' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Share “Wheel covers I made”' })).toBeInTheDocument();
   });
 
   it('asks for the likes of every opening post on Home, and nothing else', () => {

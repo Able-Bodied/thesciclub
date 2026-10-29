@@ -143,7 +143,7 @@ describe('sharing a post into a conversation', () => {
     renderButton();
     await user.click(
       screen.getByRole('button', {
-        name: 'Share “Which cushion do you use?” in a conversation',
+        name: 'Share “Which cushion do you use?”',
       }),
     );
     const sheet = screen.getByRole('dialog', { name: 'Share post' });
