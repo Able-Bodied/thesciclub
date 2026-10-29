@@ -11,14 +11,16 @@
 -- Each street is spelled as OpenStreetMap finds it, so a suite rides in the
 -- center's name instead ("6735 Sierra Ct, Suite E" is not found; "6735 Sierra
 -- Ct" is, exactly). Looked up 2026-10-28 as the map will ask: Dublin,
--- Sacramento, Petaluma and Chandler exact; OpenStreetMap has no house number
--- on Salida's street, so its pin is approximate.
+-- Sacramento, Petaluma and Chandler exact.
 --
--- Nor on Fresno's, so its pin is placed here instead: the owner's map of the
--- address puts it on E Shields Ave a little past halfway from Clovis to
--- Fowler, at the business park's drive, which is where OpenStreetMap's own
--- roads put this point. With geocoded_location already its key, it is never
--- queued, so no lookup moves it back to the street's middle.
+-- OpenStreetMap has no house number for Fresno or Salida, so those two are
+-- pinned here, on the building, from the owner's screenshots of the address
+-- on a map, measured against OpenStreetMap's own roads and buildings. Fresno:
+-- Suite 115 is the east end of the strip on E Shields Ave, one building west
+-- of N Miami Ave (that neighbour matches its OpenStreetMap outline). Salida:
+-- 5666 Pirrone Rd is the long building about 45 m northeast of the road, by
+-- Toomes Rd. With geocoded_location already its key, neither is queued, so
+-- no lookup moves it back to the street's middle.
 --
 -- No logo yet: an administrator adds its round site icon from Admin. Phones
 -- and emails have nowhere to go. Each street is queued for its pin by the
@@ -43,9 +45,9 @@ select o.id, v.position, v.label, v.address, v.city, v.state, v.postal_code,
   from (values
   (0, 'Dublin, Suite E', '6735 Sierra Ct', 'Dublin', 'CA', '94568', null::float8, null::float8, null),
   (1, 'Sacramento', '2404 Del Paso Road', 'Sacramento', 'CA', '95835', null, null, null),
-  (2, 'Fresno, Suite 115', '5816 E Shields Ave', 'Fresno', 'CA', '93727', 36.77900, -119.69030, 'exact'),
+  (2, 'Fresno, Suite 115', '5816 E Shields Ave', 'Fresno', 'CA', '93727', 36.77905, -119.69035, 'exact'),
   (3, 'Petaluma', '5330 Old Redwood Hwy', 'Petaluma', 'CA', '94954', null, null, null),
-  (4, 'Modesto', '5666 Pirrone Rd', 'Salida', 'CA', '95368', null, null, null),
+  (4, 'Modesto', '5666 Pirrone Rd', 'Salida', 'CA', '95368', 37.72000, -121.09605, 'exact'),
   (5, 'Arizona, Suite 124', '2160 N Alma School Rd', 'Chandler', 'AZ', '85224', null, null, null)
   ) as v(position, label, address, city, state, postal_code, latitude, longitude, precision)
   join public.organizations o on o.short_code = 'SCIF'
