@@ -44,6 +44,7 @@ export type NotificationKind =
   | 'invite_joined'
   | 'event_reminder'
   | 'event_starting'
+  | 'invite_request'
   | 'org_events'
   | 'grant_open'
   | 'profile_reminder'
@@ -265,6 +266,11 @@ export function notificationSentence(n: AppNotification): string {
       return n.detail
         ? `Starting at ${n.detail}: ${n.place ?? 'an event you are going to'}`
         : `Starting soon: ${n.place ?? 'an event you are going to'}`;
+    // place is the organization, detail who asked (20261029030000).
+    case 'invite_request':
+      return n.count > 1
+        ? `${n.count} people asked for an invite${n.place ? ` through ${n.place}` : ''}`
+        : `${n.detail ?? 'Somebody'} asked you for an invite${n.place ? ` through ${n.place}` : ''}`;
     case 'org_events': {
       const added = Number(n.detail);
       const what = Number.isInteger(added) && added > 1 ? `${added} new events` : 'a new event';

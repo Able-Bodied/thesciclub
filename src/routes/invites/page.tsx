@@ -7,6 +7,11 @@ import { looksLikeEmail } from '@/lib/auth-email';
 import { describeThrown } from '@/lib/describe-error';
 import { useInvitePermissions } from '@/lib/invite-permissions';
 import {
+  answerInviteRequest,
+  fetchMyInviteRequests,
+  type ReceivedInviteRequest,
+} from '@/lib/invite-requests';
+import {
   canWithdraw,
   createMyInvite,
   fetchMyInvites,
@@ -29,6 +34,10 @@ import {
  * policies do, and supabase/tests/mentor-invites.sql runs them as a real
  * mentor session. What this screen owes a member is that the database's
  * answer arrives as a sentence rather than as a constraint name.
+ *
+ * An org admin also sees the requests people sent from /request-invite
+ * (20261029030000) above the form: Send invite is the same invite as the form
+ * makes, then the request is marked answered; Dismiss only marks it.
  */
 
 /** Formatted the way the club writes numbers back to people: +1 (408) 555-0112. */
@@ -43,6 +52,7 @@ export default function InvitesPage() {
   const userId = account.status === 'member' ? account.userId : null;
   const permissions = useInvitePermissions(userId);
   const [invites, setInvites] = useState<MentorInvite[]>([]);
+  const [requests, setRequests] = useState<ReceivedInviteRequest[]>([]);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
@@ -51,9 +61,11 @@ export default function InvitesPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const result = await fetchMyInvites();
+    const [result, asked] = await Promise.all([fetchMyInvites(), fetchMyInviteRequests()]);
     if (result.ok) setInvites(result.invites);
     else setError(result.error);
+    // A failure here leaves the list empty: the invites are what this page is for.
+    if (asked.ok) setRequests(asked.value);
     setLoading(false);
   }, []);
 
@@ -132,6 +144,20 @@ export default function InvitesPage() {
     });
   }
 
+  function sendRequested(request: ReceivedInviteRequest) {
+    act(request.id, async () => {
+      const result = await createMyInvite({
+        email: request.email,
+        note: `${request.name} (asked for an invite)`,
+        ...(permissions.unlimited ? { unlimited: true } : {}),
+      });
+      if (!result.ok) return result;
+      const answered = await answerInviteRequest(request.id, 'invited');
+      setNotice(result.sendError ?? `The link is on its way to ${request.email}.`);
+      return answered;
+    });
+  }
+
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
@@ -171,6 +197,57 @@ export default function InvitesPage() {
             >
               {notice}
             </p>
+          ) : null}
+
+          {requests.length > 0 ? (
+            <section id="requests" className="mb-5">
+              <h2 className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+                Asking for an invite
+              </h2>
+              <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
+                {requests.map((request) => (
+                  <li key={request.id} className="border-line border-b p-3.5 last:border-b-0">
+                    <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
+                      {request.name}
+                    </span>
+                    <span className="mt-0.5 block break-all text-[0.8125rem] text-ink2">
+                      {request.email}
+                    </span>
+                    <span className="mt-0.5 block text-[0.75rem] text-grey">
+                      {request.organizationName}
+                      {request.asked ? ` · asked ${request.asked}` : ''}
+                    </span>
+                    {request.note ? (
+                      <p className="mt-1.5 whitespace-pre-line text-[0.8125rem] text-ink leading-[1.45]">
+                        {request.note}
+                      </p>
+                    ) : null}
+                    <div className="mt-2.5 flex gap-2">
+                      <button
+                        type="button"
+                        disabled={busyId !== null || left === 0}
+                        onClick={() => {
+                          sendRequested(request);
+                        }}
+                        className="min-h-[40px] flex-1 rounded-full bg-action px-3.5 font-bold font-head text-[0.8125rem] text-white disabled:opacity-40"
+                      >
+                        {busyId === request.id ? 'Sending…' : 'Send invite'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={busyId !== null}
+                        onClick={() => {
+                          act(request.id, () => answerInviteRequest(request.id, 'dismissed'));
+                        }}
+                        className="min-h-[40px] flex-none rounded-full bg-tint px-3.5 font-bold font-head text-[0.8125rem] text-ink2 disabled:opacity-40"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           ) : null}
 
           {/* Stated before the form, not after a refusal. */}

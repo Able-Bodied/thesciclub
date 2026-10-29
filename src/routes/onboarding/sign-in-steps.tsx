@@ -1,5 +1,6 @@
 import { ChevronDown, KeyRound } from 'lucide-react';
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { OpeningIcon } from '@/components/opening-icon';
@@ -360,7 +361,7 @@ export function JoinStep({
         ) : joiningOpen ? (
           'Anybody can join right now. Join with any email or account.'
         ) : (
-          'Joining is by invitation. Use the email address you were invited at, or open the link in your invitation.'
+          <InvitationOnly />
         )}
       </Sub>
       {/* Above every way in, so it is read before any of them (the owner,
@@ -563,6 +564,28 @@ export function PasskeyOffer({
         </button>
       </footer>
     </main>
+  );
+}
+
+/**
+ * While joining is closed (the owner, 2026-10-28): said plainly and in bold,
+ * with a way to ask for an invite (/request-invite, 20261029030000).
+ */
+export function InvitationOnly({ invitedLine = true }: { invitedLine?: boolean }) {
+  return (
+    <>
+      <b className="text-ink">Joining is by invitation only.</b>
+      {invitedLine
+        ? ' Use the email address you were invited at, or open the link in your invitation.'
+        : null}{' '}
+      <b className="text-ink">
+        If you have not received an invitation you can{' '}
+        <Link to="/request-invite" className="text-emphasis underline">
+          request one
+        </Link>
+        .
+      </b>
+    </>
   );
 }
 
