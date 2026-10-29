@@ -20,7 +20,9 @@ let titles: Promise<PartnerTitles> | null = null;
 /** Read once and shared; `forgetPartnerTitles` after a change. */
 export function fetchPartnerTitles(): Promise<PartnerTitles> {
   titles ??= (async () => {
-    const { data, error } = (await getSupabase().from('club_partners').select('member_id, title')) as {
+    const { data, error } = (await getSupabase()
+      .from('club_partners')
+      .select('member_id, title')) as {
       data: { member_id: string; title: string }[] | null;
       error: Failure | null;
     };
