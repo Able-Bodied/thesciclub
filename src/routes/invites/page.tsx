@@ -36,7 +36,7 @@ import {
  * answer arrives as a sentence rather than as a constraint name.
  *
  * An org admin also sees the requests people sent from /request-invite
- * (20261029010000) above the form: Send invite is the same invite as the form
+ * (20261029030000) above the form: Send invite is the same invite as the form
  * makes, then the request is marked answered; Dismiss only marks it.
  */
 

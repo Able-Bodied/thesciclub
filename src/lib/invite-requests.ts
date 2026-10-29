@@ -2,7 +2,7 @@ import { describeError, describeThrown } from '@/lib/describe-error';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Asking an org admin for an invite (the owner, 2026-10-28; 20261029010000).
+ * Asking an org admin for an invite (the owner, 2026-10-28; 20261029030000).
  *
  * Signed out, somebody picks an organization's org admin from
  * invite_request_choices() and sends request_invite(). The org admins of that

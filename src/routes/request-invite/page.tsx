@@ -8,7 +8,7 @@ import {
 import { InviteChoiceList } from '@/routes/request-invite/choice-list';
 
 /**
- * Asking for an invite, signed out (the owner, 2026-10-28; 20261029010000).
+ * Asking for an invite, signed out (the owner, 2026-10-28; 20261029030000).
  *
  * Every organization that can invite, each with its org admins by first name
  * only, since anybody can open this page. Tapping one opens a short form:

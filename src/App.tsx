@@ -436,7 +436,7 @@ function AppRoutes() {
             </InLight>
           }
         />
-        {/* Asking an org admin for an invite, signed out (20261029010000).
+        {/* Asking an org admin for an invite, signed out (20261029030000).
           Outside the shell, always light, like /join. */}
         <Route
           path="/request-invite"

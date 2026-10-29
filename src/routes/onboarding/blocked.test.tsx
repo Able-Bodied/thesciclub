@@ -15,7 +15,7 @@ vi.mock('@/lib/photos', () => ({
 }));
 
 // invite_request_choices() decides which organizations can invite
-// (20261029010000); the screen only shows its answer.
+// (20261029030000); the screen only shows its answer.
 vi.mock('@/lib/invite-requests', () => ({
   fetchInviteRequestChoices: () => Promise.resolve({ ok: true, value: orgs.list }),
 }));

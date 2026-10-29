@@ -52,7 +52,7 @@ create unique index if not exists invite_requests_open_idx
 create index if not exists invite_requests_email_day_idx on public.invite_requests (email, created_at);
 
 comment on table public.invite_requests is
-  'Somebody asking an org admin for an invite. Read and answered through my_invite_requests and answer_invite_request. See 20261029010000.';
+  'Somebody asking an org admin for an invite. Read and answered through my_invite_requests and answer_invite_request. See 20261029030000.';
 
 alter table public.invite_requests enable row level security;
 revoke all on public.invite_requests from public, anon, authenticated;
@@ -657,7 +657,7 @@ begin
          );
 
   elsif p_event = 'invite_request' then
-    -- Somebody asked an org admin for an invite (20261029010000).
+    -- Somebody asked an org admin for an invite (20261029030000).
     return query
       select s.endpoint, s.p256dh, s.auth,
              'invite_request'::text, null::text, null::text, 0,

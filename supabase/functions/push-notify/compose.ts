@@ -239,7 +239,7 @@ export function compose(owed: Owed): PushMessage | null {
       };
     case 'invite_joined':
       return { title: 'Somebody you invited joined', body: `${name} joined the club.`, ...where };
-    // Somebody asked for an invite (20261029010000): subject is the
+    // Somebody asked for an invite (20261029030000): subject is the
     // organization, detail their name. Only the org admin's own devices.
     case 'invite_request': {
       const who = shorten(owed.detail ?? '', 60) || 'Somebody';

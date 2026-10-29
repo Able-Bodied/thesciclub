@@ -266,7 +266,7 @@ export function notificationSentence(n: AppNotification): string {
       return n.detail
         ? `Starting at ${n.detail}: ${n.place ?? 'an event you are going to'}`
         : `Starting soon: ${n.place ?? 'an event you are going to'}`;
-    // place is the organization, detail who asked (20261029010000).
+    // place is the organization, detail who asked (20261029030000).
     case 'invite_request':
       return n.count > 1
         ? `${n.count} people asked for an invite${n.place ? ` through ${n.place}` : ''}`

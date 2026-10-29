@@ -29,7 +29,7 @@ import type { PickedAdmin } from '@/routes/request-invite/page';
  * worst possible moment to be sent to the wrong place.
  *
  * `can_invite` is the one fact that decides who belongs here, so the screen
- * asks the database for it: invite_request_choices() (20261029010000), which
+ * asks the database for it: invite_request_choices() (20261029030000), which
  * also gives each organization's org admins by first name. Tapping one opens
  * the request form on /request-invite with them chosen (the owner, 2026-10-28).
  *

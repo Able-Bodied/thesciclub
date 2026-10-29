@@ -569,7 +569,7 @@ export function PasskeyOffer({
 
 /**
  * While joining is closed (the owner, 2026-10-28): said plainly and in bold,
- * with a way to ask for an invite (/request-invite, 20261029010000).
+ * with a way to ask for an invite (/request-invite, 20261029030000).
  */
 export function InvitationOnly({ invitedLine = true }: { invitedLine?: boolean }) {
   return (

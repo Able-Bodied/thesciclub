@@ -291,7 +291,7 @@ vi.mock('@/lib/supabase', () => ({
       // the order the other tests read.
       if (name === 'joining_is_open')
         return Promise.resolve({ data: calls.joiningOpen, error: null });
-      // The blocked screen's list (20261029010000), kept out of the order too.
+      // The blocked screen's list (20261029030000), kept out of the order too.
       if (name === 'invite_request_choices')
         return Promise.resolve({
           data: [
