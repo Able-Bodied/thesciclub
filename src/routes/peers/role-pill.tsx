@@ -1,4 +1,3 @@
-import { useClubOrganizationId, withoutTheClub } from '@/lib/club-organization';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { BrowseMember, RepresentedOrganization } from '@/types/domain';
@@ -29,8 +28,8 @@ export function namesOf(organizations: RepresentedOrganization[]): string {
 /**
  * "Mentor" or "Admin", with the logo of each organization it is for (the
  * owner, 2026-10-28): a mentor is badged by the organization that made them
- * one. The club's own is never shown, so a mentor of the club alone keeps the
- * star. With `onToggle` it is a button that opens the list of them.
+ * one, The SCI Club included. With `onToggle` it is a button that opens the
+ * list of them.
  */
 export function RolePill({
   kind,
@@ -48,10 +47,8 @@ export function RolePill({
   controls?: string;
   onToggle?: () => void;
 }) {
-  const clubId = useClubOrganizationId(organizations.length > 0);
-  const theirs = withoutTheClub(organizations, clubId);
-  const shown = theirs.slice(0, MAX_LOGOS);
-  const more = theirs.length - shown.length;
+  const shown = organizations.slice(0, MAX_LOGOS);
+  const more = organizations.length - shown.length;
   const label = kind === 'mentor' ? 'Mentor' : 'Admin';
   const classes = cn(
     'inline-flex items-center gap-1.5 rounded-full py-[4px] pr-2.5 font-extrabold font-head text-[0.6875rem] uppercase leading-none tracking-[0.08em]',
@@ -77,11 +74,13 @@ export function RolePill({
       ) : null}
       {label}
       {more > 0 ? <span aria-hidden="true">+{more}</span> : null}
-      {theirs.length > 0 ? <span className="sr-only">{`, ${namesOf(theirs)}`}</span> : null}
+      {organizations.length > 0 ? (
+        <span className="sr-only">{`, ${namesOf(organizations)}`}</span>
+      ) : null}
     </>
   );
   // Only worth a tap when there is something to list.
-  if (onToggle && theirs.length > 0) {
+  if (onToggle && organizations.length > 0) {
     return (
       <button
         type="button"
