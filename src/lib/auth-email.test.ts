@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase', () => ({
           (_target, fn: string) =>
           (...args: unknown[]) => {
             auth.calls.push({ fn, args });
-            return Promise.resolve({ error: auth.error });
+            return Promise.resolve({ data: { user: null }, error: auth.error });
           },
       },
     ),

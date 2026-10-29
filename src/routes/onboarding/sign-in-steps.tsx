@@ -5,7 +5,7 @@ import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { OpeningIcon } from '@/components/opening-icon';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
-import { looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
+import { CODE_LENGTH, CONFIRMATION_FROM, looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
 import type { NativeWaysIn } from '@/lib/native-sign-in';
@@ -483,6 +483,7 @@ export function CheckEmailStep({
   busy,
   onResend,
   onChangeAddress,
+  onCode,
 }: {
   email: string;
   secondsLeft: number;
@@ -490,15 +491,38 @@ export function CheckEmailStep({
   busy: boolean;
   onResend: () => void;
   onChangeAddress: () => void;
+  /** A whole code typed (the owner, 2026-10-28): checked at once. */
+  onCode: (code: string) => void;
 }) {
+  const [code, setCode] = useState('');
+  const codeRef = useAutoFocus();
   return (
     <>
       <Question>Check your email</Question>
       <Sub>
-        We sent a link to <b className="text-ink">{email}</b>. Open it to confirm the address and
-        you will come straight back here. Look in spam if it does not arrive in a minute.
+        We sent a {CODE_LENGTH}-digit code to <b className="text-ink">{email}</b>, from{' '}
+        <b className="text-ink">{CONFIRMATION_FROM}</b>. Type it here to carry on. Look in spam if
+        it does not arrive in a minute.
       </Sub>
-      <Sub>Opening it on your phone? This screen goes on by itself once you have.</Sub>
+      <label htmlFor="signup-code" className="mt-5 block font-bold text-[0.8125rem] text-ink">
+        Code from the email
+      </label>
+      <input
+        ref={codeRef}
+        id="signup-code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={CODE_LENGTH}
+        value={code}
+        disabled={busy}
+        onChange={(e) => {
+          const next = e.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH);
+          setCode(next);
+          if (next.length === CODE_LENGTH) onCode(next);
+        }}
+        className="mt-1.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-center font-bold font-head text-[1.5rem] text-ink tracking-[0.4em] outline-none focus:border-emphasis disabled:opacity-60"
+      />
+      <Sub>Or open the link in the email: this screen goes on by itself once you have.</Sub>
       <button
         type="button"
         disabled={busy || secondsLeft > 0}

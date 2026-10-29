@@ -35,6 +35,9 @@ export type Result =
       notInvited?: boolean;
     };
 
+export const ALREADY_JOINED_MESSAGE =
+  'This email already has an account. Sign in instead, with Google or Apple if you used one before. No password yet? Use Forgot password to set one.';
+
 /** What signup_needs_an_invite answers, word for word (20261012040000). */
 export const NOT_INVITED_MESSAGE = 'This email is not on the invite list.';
 
@@ -50,7 +53,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [CONFIRMED_PARAM]: '1', next });
   const token = heldInviteToken();
-  const { error } = await getSupabase().auth.signUp({
+  const { data, error } = await getSupabase().auth.signUp({
     email: cleanEmail(email),
     password,
     options: {
@@ -58,11 +61,48 @@ export async function signUpWithEmail(email: string, password: string): Promise<
       ...(token ? { data: { invite_token: token } } : {}),
     },
   });
+  // An address with an account already, made with Google or Apple or a
+  // password: Supabase answers as though it signed up, with no identities,
+  // and sends nothing (the owner waited for an email that never came,
+  // 2026-10-28). Said here instead.
+  if (!error && data.user?.identities?.length === 0) {
+    return { ok: false, error: ALREADY_JOINED_MESSAGE };
+  }
   if (!error) return { ok: true };
   if (error.status === 403 && error.message === NOT_INVITED_MESSAGE) {
     return { ok: false, error: NOT_INVITED_MESSAGE, notInvited: true };
   }
   return { ok: false, error: describeError(error, 'Could not sign you up.') };
+}
+
+/** Where the confirmation email comes from, so people know what to look for. */
+export const CONFIRMATION_FROM = 'hello@thesciclub.com';
+
+/** The code's length: Supabase sends 6 to 10 digits, never fewer. */
+export const CODE_LENGTH = 6;
+
+/**
+ * The code in the confirmation email, typed on this screen (the owner,
+ * 2026-10-28): no link to open, so no trip through another browser. The same
+ * proof the link is that the address is theirs, and a session follows.
+ */
+export async function verifySignUpCode(email: string, code: string): Promise<Result> {
+  const token = code.replace(/\D/g, '');
+  if (token.length !== CODE_LENGTH)
+    return { ok: false, error: `Enter the ${CODE_LENGTH}-digit code from the email.` };
+  const { error } = await getSupabase().auth.verifyOtp({
+    email: cleanEmail(email),
+    token,
+    type: 'email',
+  });
+  if (!error) return { ok: true };
+  return {
+    ok: false,
+    error:
+      error.code === 'otp_expired'
+        ? 'That code has expired or is not right. Check it, or send a new one.'
+        : describeError(error, 'That code did not work.'),
+  };
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<Result> {

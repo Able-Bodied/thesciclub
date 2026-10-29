@@ -1,11 +1,7 @@
 import { ShieldCheck } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { fetchInviteRequestChoices, type InviteRequestChoice } from '@/lib/invite-requests';
 import type { QrCodeDetails } from '@/lib/qr-codes';
-import { AskForInvite, InvitationOnly } from '@/routes/onboarding/sign-in-steps';
-import { InviteChoiceList } from '@/routes/request-invite/choice-list';
-import type { PickedAdmin } from '@/routes/request-invite/page';
+import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
+import { InviteRequestPanel } from '@/routes/request-invite/request-panel';
 
 /**
  * The address is not on the list: refused at sign-up, before any email
@@ -31,7 +27,8 @@ import type { PickedAdmin } from '@/routes/request-invite/page';
  * `can_invite` is the one fact that decides who belongs here, so the screen
  * asks the database for it: invite_request_choices() (20261029030000), which
  * also gives each organization's org admins by first name. Tapping one opens
- * the request form on /request-invite with them chosen (the owner, 2026-10-28).
+ * the request form right here, with the refused address filled in (the
+ * owner, 2026-10-28: "save them a click").
  *
  * When the query fails there is no fallback list, deliberately. The sentence
  * above it still says a member organization or a mentor has to invite the address,
@@ -54,18 +51,6 @@ export function BlockedScreen({
   /** An administrator's QR code they came by (20261014020000): who to ask. */
   fromCode?: QrCodeDetails | null;
 }) {
-  const navigate = useNavigate();
-  const [choices, setChoices] = useState<InviteRequestChoice[] | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    void fetchInviteRequestChoices().then((result) => {
-      if (!cancelled) setChoices(result.ok ? result.value : []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="flex-1 overflow-y-auto px-[18px] pt-12">
@@ -76,8 +61,7 @@ export function BlockedScreen({
           This email isn't on the list
         </h1>
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
-          {email ? <b className="text-ink">{email}</b> : 'This account'} has not been invited.{' '}
-          <InvitationOnly invitedLine={false} />
+          {email ? <b className="text-ink">{email}</b> : 'This account'} has not been invited.
         </p>
         {/* Only while joining is closed: open, the code would have let them
             in, so whatever refused them is not something to ask about. */}
@@ -86,33 +70,7 @@ export function BlockedScreen({
             <AskForInvite who={fromCode} />
           </p>
         ) : null}
-        <p className="mt-3 text-[0.8875rem] text-ink2 leading-[1.52]">
-          {signedIn
-            ? 'You may have joined with another email. If you were invited, open the link in your invitation while signed in, or sign in with the address it was sent to.'
-            : 'If you were invited, use the address your invitation was sent to, or open the link in your invitation and join from there.'}
-        </p>
-
-        {choices === null || choices.length > 0 ? (
-          <>
-            <p className="mt-4 font-bold text-[0.8875rem] text-ink leading-[1.52]">
-              These organizations can invite you. Tap a name to request an invite.
-            </p>
-            {choices === null ? (
-              <div className="mt-4 min-h-[60px] rounded-[17px] border border-line bg-paper" />
-            ) : (
-              <InviteChoiceList
-                choices={choices}
-                onPick={(organization, admin) => {
-                  const picked: PickedAdmin = {
-                    organizationId: organization.organizationId,
-                    adminId: admin.id,
-                  };
-                  void navigate('/request-invite', { state: { picked } });
-                }}
-              />
-            )}
-          </>
-        ) : null}
+        <InviteRequestPanel initialEmail={email ?? ''} />
 
         {/* No consultation call here for now (the owner, 2026-10-25); it may
             come back, with CONSULTATION_URL as on the welcome screen. */}
@@ -126,6 +84,12 @@ export function BlockedScreen({
       </div>
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
+        {/* Above the way out, which is what they say to do (the owner, 2026-10-28). */}
+        <p className="mb-3 text-[0.8125rem] text-ink2 leading-[1.5]">
+          {signedIn
+            ? 'You may have joined with another email. If you were invited, open the link in your invitation while signed in, or sign in with the address it was sent to.'
+            : 'If you were invited, use the address your invitation was sent to, or open the link in your invitation and join from there.'}
+        </p>
         <button
           type="button"
           onClick={onTryAnother}

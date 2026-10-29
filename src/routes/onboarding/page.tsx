@@ -14,6 +14,7 @@ import {
   sendPasswordReset,
   signInWithEmail,
   signUpWithEmail,
+  verifySignUpCode,
 } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
 import { pendingRegistration } from '@/lib/event-audience';
@@ -566,6 +567,21 @@ export default function OnboardingPage() {
     setStep('check-email');
   }
 
+  /** The emailed code: a session follows, and the gate takes over as after the link. */
+  async function submitCode(code: string) {
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    const result = await verifySignUpCode(data.email, code);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    setAwaiting(null);
+    forgetAwaiting();
+  }
+
   async function submitForgot() {
     setBusy(true);
     setError(null);
@@ -1038,6 +1054,9 @@ export default function OnboardingPage() {
             setAwaiting(null);
             forgetAwaiting();
             setStep('join');
+          }}
+          onCode={(code) => {
+            void submitCode(code);
           }}
         />
       ) : null}
