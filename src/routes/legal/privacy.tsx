@@ -248,8 +248,8 @@ export default function PrivacyPage() {
         {/* 20261028980000. */}
         <P>
           For an event you said you are going to, we also email you the day before: its name, when
-          and where it is, and a link to it. The email goes to your account’s address through
-          Resend, our email provider. You can switch these emails off on Me → Settings.
+          and where it is, and a link to it. The email goes to your account’s address through our
+          email provider. You can switch these emails off on Me → Settings.
         </P>
       </Section>
 
