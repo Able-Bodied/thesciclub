@@ -4,11 +4,16 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
 import type * as Reports from '@/lib/chat/reports';
+import type * as ClubPartners from '@/lib/club-partners';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
 
 const state = vi.hoisted(() => ({ current: null as MemberState | null, partner: false }));
-vi.mock('@/lib/club-partners', () => ({ useIAmPartner: () => state.partner }));
+vi.mock('@/lib/club-partners', async (importOriginal) => ({
+  ...(await importOriginal<typeof ClubPartners>()),
+  useIAmPartner: () => state.partner,
+  usePartnerTitles: () => null,
+}));
 vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
 }));
