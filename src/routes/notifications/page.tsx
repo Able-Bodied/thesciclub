@@ -59,6 +59,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   profile_reminder: UserPen,
   blocks_weekly: Ban,
   reaction: SmilePlus,
+  mention: AtSign,
 };
 
 export default function NotificationsPage() {

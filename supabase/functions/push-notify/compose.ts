@@ -35,6 +35,11 @@
  *   Reaction         "Bo reacted 👍 to your message" + the start of it, quoted
  *                    ("your post", or "your topic" for a topic's opening post)
  *
+ * And mentions, 2026-10-28 (20261029070000):
+ *
+ *   Mention          "Bo mentioned you in a post" + the words, cut short
+ *                    ("in a topic" for a topic's opening post)
+ *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
  * who replied. Nothing here names a room, a topic or a group — those are
@@ -225,6 +230,15 @@ export function compose(owed: Owed): PushMessage | null {
       return {
         title: reacted,
         body: own !== '' ? `“${own}”` : owed.photo_count > 0 ? 'Your photograph.' : `${reacted}.`,
+        ...where,
+      };
+    }
+    // detail is 'topic' for a topic's opening post, as a like's.
+    case 'mention': {
+      const what = owed.detail === 'topic' ? 'topic' : 'post';
+      return {
+        title: `${name} mentioned you in a ${what}`,
+        body: words(owed, true) || `${name} mentioned you in a ${what}.`,
         ...where,
       };
     }
