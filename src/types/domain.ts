@@ -111,6 +111,8 @@ export function rangeForExact(level: ExactLevel): LevelRange {
  *   condition                   "Other spinal cord condition": typed, with
  *                               suggestions, and a level if it has one
  *   family                      a relative or spouse: a member with no level
+ *   professional                works with people with SCI/D (20261029100000):
+ *                               no level either; it grants nothing
  *
  * 'para' and 'central_cord' are what the question offered before. Members who
  * gave them keep them, and they read and filter as they did, but they are no
@@ -123,6 +125,7 @@ export const INJURY_TYPES = [
   'low_para',
   'condition',
   'family',
+  'professional',
   'para',
   'central_cord',
 ] as const;
@@ -135,6 +138,7 @@ export const OFFERED_INJURY_TYPES = [
   'low_para',
   'condition',
   'family',
+  'professional',
 ] as const satisfies readonly InjuryType[];
 
 export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
@@ -143,6 +147,7 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
   low_para: { title: 'Low para (T9+)' },
   condition: { title: 'Other spinal cord condition' },
   family: { title: 'Relative/Spouse' },
+  professional: { title: 'Professional / I work with people with SCI/D' },
   para: { title: 'Paraplegia' },
   central_cord: { title: 'Central cord syndrome' },
 };
@@ -213,9 +218,14 @@ export function levelsForType(type: InjuryType | null): ExactLevel[] {
   return [...chosen, 'Do not know'];
 }
 
-/** Whether the level is asked: of anybody but a relative. A condition's is optional. */
+/** A relative or a professional: a member with no injury of their own to describe. */
+export function hasNoInjury(type: InjuryType | null): boolean {
+  return type === 'family' || type === 'professional';
+}
+
+/** Whether the level is asked: of anybody with an injury. A condition's is optional. */
 export function asksLevel(type: InjuryType | null): boolean {
-  return type !== null && type !== 'family';
+  return type !== null && !hasNoInjury(type);
 }
 
 /** Central cord syndrome, typed or chosen, is in the neck and always incomplete. */
@@ -236,7 +246,7 @@ export function levelsForCondition(conditionName: string): ExactLevel[] {
 
 /**
  * How somebody's disability reads in a line: "T6", "C5 central cord",
- * "Transverse myelitis", "High para", "Family member". One function, so a
+ * "Transverse myelitis", "High para", "Family member", "Professional". One function, so a
  * card, a post and an event's list say the same thing about the same person.
  */
 export function injuryLabel(member: {
@@ -249,6 +259,8 @@ export function injuryLabel(member: {
   switch (member.injuryType) {
     case 'family':
       return 'Family member';
+    case 'professional':
+      return 'Professional';
     case 'condition': {
       const name = member.conditionName ?? 'Other disability';
       return level ? `${name} · ${level}` : name;
@@ -282,10 +294,10 @@ export function typeForLevel(level: ExactLevel | null): InjuryType | null {
 /**
  * Whether "complete or incomplete" belongs to this answer: an injury with a
  * level. Not another disability, a central cord (incomplete by definition) or
- * a relative.
+ * a relative or a professional.
  */
 export function asksCompleteness(type: InjuryType | null): boolean {
-  return type !== 'condition' && type !== 'central_cord' && type !== 'family';
+  return type !== 'condition' && type !== 'central_cord' && !hasNoInjury(type);
 }
 
 export const COMPLETENESS = ['Complete', 'Incomplete', 'Do not know'] as const;

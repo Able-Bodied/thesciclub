@@ -2674,6 +2674,18 @@ describe('the injury date boxes', () => {
     expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
   });
 
+  it('asks a professional no date and no level, and goes on', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    await screen.findByText('Your spinal cord');
+    await userEvent.click(screen.getByRole('radio', { name: /Professional/ }));
+    expect(screen.queryByText(DATE_LINE)).toBeNull();
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('Where do you live?')).toBeInTheDocument();
+  });
+
   it('takes a spinal cord condition typed, and "Since birth" for its date', async () => {
     await reachBirthday('Dana');
     await enterBirthday('1990-04-02');

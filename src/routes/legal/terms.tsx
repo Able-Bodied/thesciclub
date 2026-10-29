@@ -44,6 +44,13 @@ export default function TermsPage() {
             <b>Usernames.</b> We may change a username that is offensive, misleading, or someone
             else’s name, and tell you why.
           </li>
+          <li>
+            <b>Club partners.</b> We may make a professional who works with people with spinal cord
+            injuries a club partner, shown with their title. A partner can invite without a limit,
+            make QR codes and links that let people in until they expire, and introduce two members
+            to each other, who each choose whether to meet. A partner’s word is not medical advice
+            either, and we may end the role at any time.
+          </li>
         </List>
       </Section>
 

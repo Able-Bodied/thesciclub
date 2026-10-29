@@ -28,7 +28,7 @@ import {
   savePhoto,
 } from '@/routes/profile/details-api';
 import { saveDeclined } from '@/routes/profile/profile-api';
-import { rangeForExact, US_STATES } from '@/types/domain';
+import { hasNoInjury, rangeForExact, US_STATES } from '@/types/domain';
 
 /**
  * Correcting what onboarding asked.
@@ -418,7 +418,7 @@ export default function ProfileDetailsPage() {
                   />
                 </Field>
 
-                {details.injuryType === 'family' ? null : (
+                {hasNoInjury(details.injuryType) ? null : (
                   <Field
                     label={
                       details.injuryType === 'condition'

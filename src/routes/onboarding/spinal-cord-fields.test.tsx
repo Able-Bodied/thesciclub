@@ -35,7 +35,8 @@ const optionsOf = (label: string) =>
 
 describe('the spinal cord question', () => {
   // The owner, 2026-10-15.
-  it('offers quad, high para, low para, another spinal cord condition and relative, and nothing else yet', () => {
+  // And a professional (20261029100000).
+  it('offers quad, high para, low para, another spinal cord condition, relative and professional', () => {
     render(<Harness seen={[]} />);
     expect(screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent)).toEqual([
       'Quadriplegic (tetraplegic)',
@@ -43,7 +44,15 @@ describe('the spinal cord question', () => {
       'Low para (T9+)',
       'Other spinal cord condition',
       'Relative/Spouse',
+      'Professional / I work with people with SCI/D',
     ]);
+    expect(screen.queryByLabelText('Level of injury')).toBeNull();
+    expect(screen.queryByText('Complete or incomplete?')).toBeNull();
+  });
+
+  it('asks a professional nothing more', async () => {
+    render(<Harness seen={[]} />);
+    await userEvent.click(screen.getByRole('radio', { name: /Professional/ }));
     expect(screen.queryByLabelText('Level of injury')).toBeNull();
     expect(screen.queryByText('Complete or incomplete?')).toBeNull();
   });

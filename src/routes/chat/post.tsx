@@ -1,6 +1,7 @@
 import { cloneElement, type ReactElement, type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
+import { PartnerLabel } from '@/components/partner-label';
 import { chatTime } from '@/lib/chat/time';
 import type { ChatAuthor, ChatEdit, ChatPost } from '@/lib/chat/types';
 import { cn } from '@/lib/utils';
@@ -313,6 +314,7 @@ export function Post({
                 </span>
               ) : null}
             </span>
+            <PartnerLabel memberId={author?.id} />
             <span className="block text-[0.78125rem] text-grey">{chatTime(post.createdAt)}</span>
           </span>
 

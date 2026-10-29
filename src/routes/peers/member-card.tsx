@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PartnerLabel } from '@/components/partner-label';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
@@ -210,6 +211,7 @@ function PersonCard({ member, onOpen, priority = false }: MemberCardProps) {
             @{member.username}
           </span>
         ) : null}
+        <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
         <span className="mt-[7px] block text-[0.84375rem] text-white leading-[1.45] [text-shadow:0_1px_10px_rgba(0,0,0,.8)]">
           {summaryLine(member)}
         </span>

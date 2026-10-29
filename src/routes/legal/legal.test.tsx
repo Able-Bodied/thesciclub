@@ -514,3 +514,22 @@ describe('the Privacy Policy, on HIPAA, safety and rights', () => {
     expect(rights).toHaveTextContent(/nothing to opt out of/);
   });
 });
+
+// 20261029100000.
+describe('club partners', () => {
+  it('says who they are, what they see, and that a no is never passed on', () => {
+    open('/privacy');
+    const who = screen.getByRole('heading', { name: 'Who can see what' }).parentElement;
+    expect(who).toHaveTextContent(/Club partners are professionals/);
+    expect(who).toHaveTextContent(/cannot read conversations they are not in/);
+    expect(who).toHaveTextContent(/if\s+either says no, the one who said yes is not told/);
+    expect(who).toHaveTextContent(/except an address they\s+sent an invite to themselves/);
+    expect(document.body.textContent).toMatch(/that alone makes nobody a partner/);
+  });
+
+  it('are in the Terms, with what they can do', () => {
+    open('/terms');
+    expect(document.body.textContent).toMatch(/We may make a professional/);
+    expect(document.body.textContent).toMatch(/who each choose whether to meet/);
+  });
+});

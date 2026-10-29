@@ -20,15 +20,23 @@ let titles: Promise<PartnerTitles> | null = null;
 /** Read once and shared; `forgetPartnerTitles` after a change. */
 export function fetchPartnerTitles(): Promise<PartnerTitles> {
   titles ??= (async () => {
-    const { data, error } = (await getSupabase().from('club_partners').select('member_id, title')) as {
-      data: { member_id: string; title: string }[] | null;
-      error: Failure | null;
-    };
-    if (error) {
+    // A failure, or no client at all as in tests, draws no label until asked again.
+    const failed = () => {
       titles = null;
-      return new Map();
+      return new Map<string, string>();
+    };
+    try {
+      const { data, error } = (await getSupabase()
+        .from('club_partners')
+        .select('member_id, title')) as {
+        data: { member_id: string; title: string }[] | null;
+        error: Failure | null;
+      };
+      if (error) return failed();
+      return new Map((data ?? []).map((row) => [row.member_id, row.title]));
+    } catch {
+      return failed();
     }
-    return new Map((data ?? []).map((row) => [row.member_id, row.title]));
   })();
   return titles;
 }
