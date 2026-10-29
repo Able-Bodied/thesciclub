@@ -442,7 +442,7 @@ function InjuredAt({
 export function CityStep({ data, set }: StepProps) {
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [zipStatus, setZipStatus] = useState<'idle' | 'looking' | 'missed'>('idle');
+  const [zipStatus, setZipStatus] = useState<'idle' | 'looking' | 'missed' | 'located'>('idle');
 
   function useMyLocation() {
     setLocationError(null);
@@ -453,7 +453,7 @@ export function CityStep({ data, set }: StepProps) {
     setLocating(true);
     // Sent once, to Nominatim, to find the city and ZIP code; the club keeps
     // those, never the position.
-    void deviceLocation({ timeout: 10000 }).then((result) => {
+    void deviceLocation({ timeout: 10000, enableHighAccuracy: true }).then((result) => {
       if (!result.ok) {
         setLocationError('Location permission denied — choose it below.');
         setLocating(false);
@@ -461,9 +461,12 @@ export function CityStep({ data, set }: StepProps) {
       }
       void reverseGeocode(result.position.latitude, result.position.longitude)
         .then((place) => {
-          if (place)
+          // A laptop placed by Wi-Fi can land in the next ZIP over (the owner,
+          // 2026-10-28), so it says to check: they can correct it.
+          if (place) {
             set({ city: place.city, state: place.state, ...(place.zip ? { zip: place.zip } : {}) });
-          else setLocationError("Couldn't match that to a city — choose it below.");
+            if (place.zip) setZipStatus('located');
+          } else setLocationError("Couldn't match that to a city — choose it below.");
         })
         .finally(() => {
           setLocating(false);
@@ -534,7 +537,9 @@ export function CityStep({ data, set }: StepProps) {
           ? 'Looking that up…'
           : zipStatus === 'missed'
             ? "Couldn't find that ZIP — pick a state and city below."
-            : 'Fills in the city and state for you. The ZIP itself is not stored.'}
+            : zipStatus === 'located'
+              ? 'Found from your location. Check it is right: a computer’s location can be a mile or so off.'
+              : 'Fills in the city and state for you. Only you see it: the map counts you at its middle.'}
       </p>
 
       <label htmlFor="state" className="mt-4 block font-bold text-[0.8125rem] text-ink">
