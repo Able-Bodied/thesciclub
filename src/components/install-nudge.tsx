@@ -138,6 +138,48 @@ function BrowserInstallNudge() {
   );
 }
 
+/**
+ * Able Bodied's own clip of adding the club to an iPhone's Home Screen in
+ * Chrome (the owner, 2026-10-28), shown with Chrome's and Safari's steps:
+ * Safari's are much the same (the owner). Served from the site, not YouTube: no
+ * player to load first and nothing sent to Google. HEVC, which every iPhone
+ * browser plays, at 2.8 MB, fetched only once Watch how is tapped; not in the
+ * service worker's precache (vite.config.ts), which takes no video. Muted so
+ * it starts at once; its controls unmute it.
+ */
+export const HOW_TO_VIDEO = '/video/how-to-add-to-home-screen.mp4';
+export const HOW_TO_POSTER = '/video/how-to-add-to-home-screen.jpg';
+
+/**
+ * Plays by itself, muted and on repeat, as soon as the steps open (the owner,
+ * 2026-10-28), with its controls kept so it can be paused. Not by itself for
+ * somebody who has asked their phone to reduce motion: the still and a play
+ * button instead.
+ */
+function HowToVideo() {
+  const [still] = useState(
+    () =>
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+  return (
+    <div className="mx-auto mt-3 aspect-[882/1920] max-h-[60dvh] w-auto overflow-hidden rounded-[14px] bg-black">
+      <video
+        src={HOW_TO_VIDEO}
+        poster={HOW_TO_POSTER}
+        aria-label="Video: adding the club to your Home Screen on an iPhone"
+        className="block h-full w-full"
+        autoPlay={!still}
+        loop
+        muted
+        playsInline
+        controls
+        preload={still ? 'none' : 'auto'}
+      />
+    </div>
+  );
+}
+
 /** The steps for this browser, as a sheet over the screen. */
 export function InstallSheet({
   platform,
@@ -178,6 +220,7 @@ export function InstallSheet({
           {isHandheld(platform) ? 'Add the club to your Home Screen' : 'Install the club'}
         </h2>
         {intro ? <p className="mt-1.5 text-[0.875rem] text-ink2 leading-[1.5]">{intro}</p> : null}
+        {platform === 'ios-chrome' || platform === 'ios-safari' ? <HowToVideo /> : null}
         <ol className="mt-4 space-y-3.5">
           {steps.map((step, index) => (
             <li key={step} className="flex items-start gap-3">

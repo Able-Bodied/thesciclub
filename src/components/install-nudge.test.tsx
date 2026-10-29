@@ -211,3 +211,59 @@ describe('in the store app', () => {
     expect(screen.queryByText('Home Screen')).toBeNull();
   });
 });
+
+// The owner, 2026-10-28: Able Bodied's clip, filmed in Chrome on an iPhone.
+describe('the how-to video', () => {
+  const IPHONE_CHROME =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/129.0 Mobile/15E148 Safari/604.1';
+
+  // 2026-10-28: by itself, muted and on repeat, once the steps open.
+  it('plays the clip from the site by itself, on repeat, once the steps open in Chrome', async () => {
+    browserIs(IPHONE_CHROME);
+    renderAfterWait();
+    expect(document.querySelector('video')).toBeNull();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    const video = document.querySelector('video');
+    expect(video).toHaveAttribute('src', '/video/how-to-add-to-home-screen.mp4');
+    expect(video).toHaveAttribute('poster', '/video/how-to-add-to-home-screen.jpg');
+    expect(video).toHaveAttribute('playsinline');
+    expect(video).toHaveAttribute('loop');
+    expect(video).toHaveAttribute('autoplay');
+    expect(video).toHaveAttribute('controls');
+    expect(video?.muted).toBe(true);
+  });
+
+  it('waits for a tap where the phone asks for less motion', async () => {
+    browserIs(IPHONE_CHROME);
+    // jsdom has no matchMedia of its own.
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    try {
+      renderAfterWait();
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+      const video = document.querySelector('video');
+      expect(video).not.toHaveAttribute('autoplay');
+      expect(video).toHaveAttribute('preload', 'none');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('plays with Safari’s steps too, much the same as Chrome’s', async () => {
+    browserIs(IPHONE_SAFARI);
+    renderAfterWait();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Show me how' }));
+    expect(document.querySelector('video')).not.toBeNull();
+  });
+
+  it('is not shown on Android, whose steps differ', async () => {
+    browserIs(ANDROID);
+    render(<InstallSettings />);
+    await userEvent.setup().click(screen.getByRole('button', { name: /Show me how|Install/ }));
+    expect(document.querySelector('video')).toBeNull();
+  });
+});
