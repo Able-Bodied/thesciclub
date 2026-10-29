@@ -379,3 +379,52 @@ describe('an organization’s logo', () => {
     expect(db.reload).toHaveBeenCalled();
   });
 });
+
+// The owner, 2026-10-28: a search over the organizations in Admin.
+describe('finding an organization', () => {
+  beforeEach(() => {
+    db.organizations = [
+      { ...organization('scif'), name: 'SCI-FIT', shortCode: 'SCIF', city: 'Dublin', state: 'CA' },
+      {
+        ...organization('borp'),
+        name: 'BORP',
+        shortCode: 'BORP',
+        city: 'Berkeley',
+        state: 'CA',
+        places: [
+          {
+            id: 'p',
+            position: 0,
+            label: 'Ed Roberts Campus',
+            address: null,
+            city: 'Berkeley',
+            state: 'CA',
+            postalCode: null,
+          },
+        ],
+      },
+    ];
+  });
+
+  it('narrows the list by name, short code or city, every word', async () => {
+    render(<OrganizationsSection />);
+    const search = screen.getByRole('searchbox', { name: 'Find an organization' });
+    await userEvent.type(search, 'scif');
+    expect(screen.getByRole('heading', { name: 'SCI-FIT' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'BORP' })).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent('1 matching organization');
+    await userEvent.clear(search);
+    await userEvent.type(search, 'roberts berkeley');
+    expect(screen.getByRole('heading', { name: 'BORP' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'SCI-FIT' })).toBeNull();
+  });
+
+  it('says when nothing matches, and Clear search brings them all back', async () => {
+    render(<OrganizationsSection />);
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Find an organization' }), 'zzz');
+    expect(screen.getByText('No organization matches that search.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(screen.getByRole('heading', { name: 'SCI-FIT' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'BORP' })).toBeInTheDocument();
+  });
+});

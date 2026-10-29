@@ -49,6 +49,37 @@ export function setBadgeScale(scale: number): void {
 export const pixelRatio = () =>
   Math.min(4, Math.max(2, Math.ceil((globalThis.devicePixelRatio || 1) * textScale)));
 
+/** Across, in pixels, of the copy a logo's shape is read from. */
+const SAMPLE = 40;
+
+/**
+ * A square logo with nothing but white or clear outside its circle, so
+ * filling the disc cuts nothing off.
+ */
+function isRound(logo: Logo): boolean {
+  if (Math.abs(logo.width / logo.height - 1) > 0.05) return false;
+  const canvas = document.createElement('canvas');
+  canvas.width = SAMPLE;
+  canvas.height = SAMPLE;
+  const pen = canvas.getContext('2d', { willReadFrequently: true });
+  if (!pen) return false;
+  pen.drawImage(logo, 0, 0, SAMPLE, SAMPLE);
+  const { data } = pen.getImageData(0, 0, SAMPLE, SAMPLE);
+  if (data.length < SAMPLE * SAMPLE * 4) return false;
+  const middle = SAMPLE / 2;
+  // A pixel and a half of the circle's own soft edge is allowed past it.
+  for (let y = 0; y < SAMPLE; y++) {
+    for (let x = 0; x < SAMPLE; x++) {
+      if (Math.hypot(x + 0.5 - middle, y + 0.5 - middle) <= middle + 1.5) continue;
+      const i = (y * SAMPLE + x) * 4;
+      const clear = (data[i + 3] ?? 0) < 32;
+      const white = Math.min(data[i] ?? 0, data[i + 1] ?? 0, data[i + 2] ?? 0) > 235;
+      if (!clear && !white) return false;
+    }
+  }
+  return true;
+}
+
 /** Paths, not roundRect, which iOS 15's Safari lacks. */
 export function drawBadge(look: { logo: Logo } | { letters: string }): Badge | null {
   const ratio = pixelRatio();
@@ -71,10 +102,13 @@ export function drawBadge(look: { logo: Logo } | { letters: string }): Badge | n
     disc(INNER, WHITE);
     const { width, height } = look.logo;
     if (width > 0 && height > 0) {
-      // The largest box of the logo's shape inside the disc, a little in.
+      // The largest box of the logo's shape inside the disc, a little in; a
+      // round logo fills the disc instead (the owner, 2026-10-28: SCI-FIT's
+      // was a small circle in a white ring).
       const aspect = width / height;
-      const h = (2 * (INNER - 0.75)) / Math.sqrt(1 + aspect * aspect);
-      const w = aspect * h;
+      const round = isRound(look.logo);
+      const h = round ? 2 * INNER : (2 * (INNER - 0.75)) / Math.sqrt(1 + aspect * aspect);
+      const w = round ? h : aspect * h;
       pen.save();
       pen.clip();
       pen.drawImage(look.logo, MIDDLE - w / 2, MIDDLE - h / 2, w, h);

@@ -7,6 +7,17 @@ import {
   setOrganizationBadges,
 } from '@/routes/map/organization-badges';
 
+/** What getImageData reads back: by default a logo that fills its square. */
+let paint: (x: number, y: number, size: number) => [number, number, number, number] = () => [
+  0, 0, 0, 255,
+];
+function painted(width: number, height: number): Uint8ClampedArray {
+  const data = new Uint8ClampedArray(width * height * 4);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) data.set(paint(x, y, width), (y * width + x) * 4);
+  return data;
+}
+
 /** A 2D context that records what was drawn, without roundRect (iOS 15). */
 function fakePen() {
   const calls: { name: string; args: unknown[] }[] = [];
@@ -30,7 +41,7 @@ function fakePen() {
     getImageData: (_x: number, _y: number, width: number, height: number) => ({
       width,
       height,
-      data: new Uint8ClampedArray(4),
+      data: painted(width, height),
     }),
     font: '',
     fillStyle: '' as unknown,
@@ -61,6 +72,10 @@ const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 let calls: ReturnType<typeof fakePen>['calls'];
 let fetched: Mock<(url: string, init?: RequestInit) => Promise<unknown>>;
 const picture = { width: 200, height: 100, close: vi.fn() };
+const BLACK: [number, number, number, number] = [0, 0, 0, 255];
+/** A black circle on clear, as SCI-FIT's icon. */
+const circle = (x: number, y: number, size: number): [number, number, number, number] =>
+  Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) <= size / 2 ? BLACK : [0, 0, 0, 0];
 
 beforeEach(() => {
   const made = fakePen();
@@ -80,6 +95,9 @@ beforeEach(() => {
 
 afterEach(() => {
   forgetBadges();
+  paint = () => BLACK;
+  picture.width = 200;
+  picture.height = 100;
   setBadgeScale(1);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -87,6 +105,19 @@ afterEach(() => {
 
 const lettered = () => calls.filter((c) => c.name === 'fillText').map((c) => c.args[0]);
 const drewLogo = () => calls.some((c) => c.name === 'drawImage' && c.args[0] === picture);
+/** How wide the logo went into the badge (the last drawImage of it). */
+const logoWidth = () =>
+  calls.filter((c) => c.name === 'drawImage' && c.args[0] === picture).at(-1)?.args[3];
+
+async function drawnSquare() {
+  picture.width = 192;
+  picture.height = 192;
+  const map = fakeMap();
+  setOrganizationBadges(map as never, borp());
+  addBadge(map as never, 'org-logo-borp');
+  await settle();
+  return logoWidth();
+}
 
 describe("an organization's badge on the map", () => {
   it('shows the short code at once, then the logo when it arrives', async () => {
@@ -201,6 +232,16 @@ describe("an organization's badge on the map", () => {
       expect.objectContaining({ width: 32 * 3 }),
       { pixelRatio: 3 },
     );
+  });
+
+  // The owner, 2026-10-28: SCI-FIT's round logo was a small circle in a white ring.
+  it('lets a round logo fill the disc', async () => {
+    paint = circle;
+    expect(await drawnSquare()).toBe(25.5);
+  });
+
+  it('keeps a square logo whole inside the disc', async () => {
+    expect(await drawnSquare()).toBeCloseTo(24 / Math.SQRT2);
   });
 
   it('ignores images that are not badges', () => {
