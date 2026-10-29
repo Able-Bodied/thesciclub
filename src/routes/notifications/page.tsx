@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Flag,
   HandCoins,
+  Handshake,
   Heart,
   type LucideIcon,
   MessageCircle,
@@ -60,6 +61,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   blocks_weekly: Ban,
   reaction: SmilePlus,
   mention: AtSign,
+  introduction: Handshake,
 };
 
 export default function NotificationsPage() {

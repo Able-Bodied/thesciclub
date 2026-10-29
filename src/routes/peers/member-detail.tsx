@@ -9,6 +9,7 @@ import { unblockMember, useMyBlocks } from '@/lib/blocks';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { reportMember, useMyReports } from '@/lib/chat/reports';
 import { openDirect } from '@/lib/chat/threads';
+import { useIAmPartner } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
@@ -19,6 +20,7 @@ import { ItemActions } from '@/routes/chat/item-actions';
 import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
+import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
 import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
@@ -359,6 +361,8 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [photoOpen, setPhotoOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [introducing, setIntroducing] = useState(false);
+  const partner = useIAmPartner(account.userId);
   const reports = useMyReports();
   const announce = useAnnounce();
   const mentoring = useMentorActions({
@@ -379,6 +383,11 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
     if (wasReporting.current && !reporting) menuButton.current?.focus();
     wasReporting.current = reporting;
   }, [reporting]);
+  const wasIntroducing = useRef(false);
+  useEffect(() => {
+    if (wasIntroducing.current && !introducing) menuButton.current?.focus();
+    wasIntroducing.current = introducing;
+  }, [introducing]);
 
   if (loading) {
     return <Centered role="status">Loading…</Centered>;
@@ -476,6 +485,17 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     {mentorActionLabel(action)}
                   </button>
                 ))}
+                {/* A club partner's (20261029100000). */}
+                {partner ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIntroducing(true);
+                    }}
+                  >
+                    Introduce {member.displayName}…
+                  </button>
+                ) : null}
                 {reports.memberIds.has(member.id) ? (
                   <p className="flex min-h-11 items-center px-3 text-grey text-sm">
                     You reported {member.displayName}
@@ -517,6 +537,17 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               announce(`You reported ${member.displayName}. They have not been told.`);
               setReporting(false);
               return null;
+            }}
+          />
+        ) : null}
+        {introducing ? (
+          <IntroduceSheet
+            member={member}
+            onCancel={() => {
+              setIntroducing(false);
+            }}
+            onSent={() => {
+              setIntroducing(false);
             }}
           />
         ) : null}

@@ -54,6 +54,7 @@ const PublicEventPage = lazy(() => import('@/routes/public-event/page'));
 const RegisterForEventPage = lazy(() => import('@/routes/public-event/register'));
 const GuestListPage = lazy(() => import('@/routes/events/guest-list'));
 const HeldInvitesPage = lazy(() => import('@/routes/events/held-invites'));
+const IntroductionPage = lazy(() => import('@/routes/introductions/page'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
 const SavedPage = lazy(() => import('@/routes/me/saved-page'));
@@ -236,6 +237,7 @@ function ShellContent() {
             <Route path="/home/new" element={<HomeNewPage />} />
             <Route path="/peers" element={null} />
             <Route path="/peers/:id" element={<MemberDetailPage />} />
+            <Route path="/introductions/:id" element={<IntroductionPage />} />
             <Route path="/chat" element={null} />
             {/* A room's slug is in the URL — /chat/rooms/bowel — which is why
             chat_rooms.id is a slug and not a uuid. /new sits above :roomId for
