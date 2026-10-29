@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AccessibilityProvider } from '@/lib/accessibility';
-import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
+import { DisplayControls } from '@/routes/me/accessibility-settings';
 
 beforeEach(() => {
   localStorage.clear();
@@ -12,7 +12,7 @@ beforeEach(() => {
 function renderAll() {
   render(
     <AccessibilityProvider>
-      <AccessibilitySettings />
+      <DisplayControls />
     </AccessibilityProvider>,
   );
 }
@@ -20,7 +20,7 @@ function renderAll() {
 function renderSettings() {
   render(
     <AccessibilityProvider>
-      <AccessibilitySettings />
+      <DisplayControls />
     </AccessibilityProvider>,
   );
   return within(screen.getByRole('group', { name: 'Appearance' }));

@@ -543,7 +543,9 @@ describe('show me on the map', () => {
     renderMe();
     const toggle = await screen.findByRole('switch', { name: 'Show me on the map' });
     expect(toggle).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByText(/counted in your city on the map — never your address/)).toBeVisible();
+    expect(
+      screen.getByText(/counted at your ZIP code or city on the map — never your address/),
+    ).toBeVisible();
   });
 
   it('writes at once, for this member', async () => {
