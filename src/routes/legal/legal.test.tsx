@@ -79,7 +79,8 @@ describe('the Privacy Policy', () => {
     expect(section).toHaveTextContent(
       /send the ZIP code, or your device’s position, to OpenStreetMap/,
     );
-    expect(section).toHaveTextContent(/Neither the ZIP code nor the position is kept/);
+    expect(section).toHaveTextContent(/The position is not kept/);
+    expect(section).toHaveTextContent(/The ZIP code is kept, and only you can see it/);
   });
 
   it('says links are fetched by the club, and YouTube hears of a video only on play', () => {

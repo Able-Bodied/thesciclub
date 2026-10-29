@@ -36,7 +36,12 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Changed:</b> on the map, a city with one member shows that member’s photograph and
-            name, as Peers does. Nobody is placed closer than the middle of their city.
+            name, as Peers does.
+          </li>
+          <li>
+            <b>Changed:</b> the ZIP code you give is now kept, and only you can see it. On the map
+            you are counted at the middle of your ZIP code instead of your city’s; other members
+            never see the ZIP code itself.
           </li>
         </List>
       </Note>
@@ -88,7 +93,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>About you:</b> your name, your username (the <b>@name</b> others see), your birthday,
-            city and state, and a photograph with its description if you add one.
+            city and state, your ZIP code if you give one, and a photograph with its description if
+            you add one.
           </li>
           <li>
             <b>A phone number, only if you add one</b>, for the hosts of events you choose Going
@@ -183,8 +189,9 @@ export default function PrivacyPage() {
             <b>Location:</b> only if you ask for it, while joining, on the step that asks where you
             live. You can type a ZIP code, or press <b>Use my location</b>, which your device asks
             you to allow. We send the ZIP code, or your device’s position, to OpenStreetMap’s
-            Nominatim service, which answers with a city and state. Neither the ZIP code nor the
-            position is kept. Or skip both and choose your state and city yourself.
+            Nominatim service, which answers with a city and state. The position is not kept. The
+            ZIP code is kept, and only you can see it: the map counts you at its middle. Or skip
+            both and choose your state and city yourself.
           </li>
           <li>
             <b>On the map:</b> <b>Use my location</b> asks your device only when you press it, and
@@ -193,8 +200,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Events near you:</b> to show events within a distance of home, and to place members
-            on the map, a nightly job looks up the middle of each city members live in, also with
-            OpenStreetMap. It sends only the city and state, never who lives there.
+            on the map, a nightly job looks up the middle of each city and ZIP code members live in,
+            also with OpenStreetMap. It sends only the city and state, or the ZIP code, never who
+            lives there.
           </li>
           <li>
             <b>Event and organization addresses</b> are looked up with OpenStreetMap when they are
@@ -284,10 +292,11 @@ export default function PrivacyPage() {
             hide yourself from Peers, on Me.
           </li>
           <li>
-            <b>On the map</b>, other members see how many members live in each city, shown at the
-            middle of the city, never your address or anything closer. A city with one member shows
-            that member’s photograph and name, as Peers does. Turn off <b>Show me on the map</b>, on
-            Me, to be left out; hiding yourself from Peers leaves you off the map too.
+            <b>On the map</b>, other members see how many members live in each place, shown at the
+            middle of your ZIP code if you gave one, or of your city, never your address or anything
+            closer. A city with one member shows that member’s photograph and name, as Peers does.
+            Turn off <b>Show me on the map</b>, on Me, to be left out; hiding yourself from Peers
+            leaves you off the map too.
           </li>
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
@@ -466,7 +475,8 @@ export default function PrivacyPage() {
             its event came from, after the event too.
           </li>
           <li>
-            <b>A ZIP code or position</b> used to find your city: not kept at all.
+            <b>Your ZIP code:</b> until you change or remove it in Your details, or your account is
+            deleted. <b>A position</b> used to find your city: not kept at all.
           </li>
           <li>
             <b>What you write in Chat:</b> until it is deleted. After your account is deleted it

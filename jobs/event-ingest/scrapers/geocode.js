@@ -210,6 +210,43 @@ export async function lookUpSettlement(query) {
 }
 
 /**
+ * The middle of a US zip code (20261029040000): Nominatim's postcode search.
+ * Null when there is no such zip. Throws as lookUpSettlement.
+ */
+export async function lookUpZip(zip) {
+  if (!/^[0-9]{5}$/.test(zip ?? '')) return null;
+  const url = new URL(NOMINATIM_URL);
+  url.searchParams.set('postalcode', zip);
+  url.searchParams.set('country', 'us');
+  url.searchParams.set('format', 'jsonv2');
+  url.searchParams.set('addressdetails', '1');
+  url.searchParams.set('limit', '1');
+  let res;
+  let results;
+  try {
+    res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (res.ok) results = await res.json();
+  } catch (error) {
+    throw new Unreachable(
+      `No answer for ${zip}: ${error instanceof Error ? error.message : error}`,
+    );
+  }
+  if (res.status === 429 || res.status === 403)
+    throw new RateLimited(`Nominatim answered ${res.status}`);
+  if (!res.ok) throw new Unreachable(`Nominatim answered ${res.status}`);
+  const top = results?.[0];
+  if (!top) return null;
+  return {
+    state: /^US-([A-Z]{2})$/.exec(top.address?.['ISO3166-2-lvl4'] ?? '')?.[1] ?? null,
+    latitude: Number(top.lat),
+    longitude: Number(top.lon),
+  };
+}
+
+/**
  * Looks up one location string, retrying with the rewrites above when the
  * literal text has no match. Returns null (never throws) when the string is
  * empty, every attempt fails, or Nominatim has nothing for any of them — a

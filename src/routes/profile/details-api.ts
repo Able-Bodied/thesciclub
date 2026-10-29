@@ -36,6 +36,8 @@ export interface MemberDetails {
   injuryDatePrecision: DatePrecision | null;
   city: string | null;
   state: string;
+  /** Five digits or ''; kept so the map can count them at its middle (20261029040000). */
+  zip: string;
   photoPath: string | null;
   /**
    * What is in the photograph, in the member's words, for whoever hears it
@@ -45,7 +47,7 @@ export interface MemberDetails {
    */
   photoAlt: string | null;
   showInBrowse: boolean;
-  /** Counted on the map at their city's middle (20261025020000). */
+  /** Counted on the map at their zip's middle, or their city's (20261029040000). */
   showOnMap: boolean;
   /**
    * Things this member has said they would rather not give — see
@@ -89,7 +91,7 @@ export function detailIsFilled(details: MemberDetails, key: DetailKey): boolean 
 }
 
 const COLUMNS =
-  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, city, state, photo_path, photo_alt, show_in_browse, show_on_map, declined';
+  'display_name, birth_date, exact_level, injury_type, condition_name, completeness, injury_date, injury_date_precision, city, state, zip, photo_path, photo_alt, show_in_browse, show_on_map, declined';
 
 /* The client types individually selected columns as `any`, so each one is
  * narrowed on the way out rather than cast wholesale. A column that comes back
@@ -173,6 +175,7 @@ export async function loadDetails(): Promise<
       injuryDatePrecision: asNullableText(row.injury_date_precision) as DatePrecision | null,
       city: asNullableText(row.city),
       state: asText(row.state),
+      zip: asNullableText(row.zip) ?? '',
       photoPath: asNullableText(row.photo_path),
       photoAlt: asNullableText(row.photo_alt),
       showInBrowse: row.show_in_browse !== false,
@@ -238,6 +241,8 @@ export async function saveDetails(
       // said. Spelled out rather than leaning on `||`, which reads as a typo.
       city: trimmedOrNull(details.city),
       state: details.state,
+      // Five digits or nothing: the row refuses anything else.
+      zip: /^[0-9]{5}$/.test(details.zip) ? details.zip : null,
       // Only with a photograph to describe; blank is none, as the city.
       photo_alt: details.photoPath ? trimmedOrNull(details.photoAlt) : null,
       // `show_in_browse` is deliberately not written here. It is set from Me,

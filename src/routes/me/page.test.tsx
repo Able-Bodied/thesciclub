@@ -37,6 +37,7 @@ const completeDetails: MemberDetails = {
   injuryDatePrecision: 'year',
   city: 'San Jose',
   state: 'CA',
+  zip: '',
   photoPath: 'u1/profile.jpg',
   photoAlt: null,
   showInBrowse: true,

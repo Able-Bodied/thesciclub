@@ -72,7 +72,8 @@ export function peerCities(cities: MapContents['peerCities'], shown: BrowseMembe
     return members.length > 0
       ? [
           {
-            key: `${city.city}|${city.state}`,
+            // One city can now have several zip middles (20261029040000).
+            key: `${city.city}|${city.state}|${city.latitude},${city.longitude}`,
             city: city.city,
             state: city.state,
             latitude: city.latitude,

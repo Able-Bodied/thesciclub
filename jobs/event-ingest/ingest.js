@@ -35,7 +35,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { placeInOwnWords } from './address.js';
-import { placeMemberCities } from './city-places.js';
+import { placeMemberCities, placeMemberZips } from './city-places.js';
 import { classifyFormat, classifyTags, containsContactDetails } from './classify.js';
 import { ActiveNetEventsScraper } from './scrapers/activenet-events.js';
 import { AdaptiveRecHubEventsScraper } from './scrapers/adaptiverechub-events.js';
@@ -607,6 +607,12 @@ async function main() {
   if (!only) {
     try {
       await placeMemberCities(supabase, { dryRun });
+    } catch (error) {
+      failed++;
+      console.error(`  FAILED: ${error.message}`);
+    }
+    try {
+      await placeMemberZips(supabase, { dryRun });
     } catch (error) {
       failed++;
       console.error(`  FAILED: ${error.message}`);

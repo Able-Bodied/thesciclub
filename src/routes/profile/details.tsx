@@ -8,6 +8,7 @@ import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { type DateParts, EMPTY_DATE_PARTS, partsFromIso, readDate } from '@/lib/date-parts';
 import { describeThrown } from '@/lib/describe-error';
+import { geocodeZip } from '@/lib/geocode';
 import { googlePhotoUrl, useGooglePhoto } from '@/lib/google-photo';
 import { ageFrom, dateLabel, isAdult, MINIMUM_AGE } from '@/lib/injury';
 import { MEMBER_TEXT_MAX } from '@/lib/member-limits';
@@ -93,6 +94,20 @@ export default function ProfileDetailsPage() {
   function set(patch: Partial<MemberDetails>) {
     setDetails((d) => (d ? { ...d, ...patch } : d));
     liftDeclineFor(patch);
+  }
+
+  /**
+   * Kept for the map's zip middle (20261029040000). A complete one fills in
+   * the city and state too, as joining does; they can still be changed.
+   */
+  function setZip(value: string) {
+    const zip = value.replace(/\D/g, '').slice(0, 5);
+    set({ zip });
+    if (zip.length !== 5) return;
+    void geocodeZip(zip).then((place) => {
+      if (!place) return;
+      setDetails((d) => (d?.zip === zip ? { ...d, city: place.city, state: place.state } : d));
+    });
   }
 
   /**
@@ -486,6 +501,24 @@ export default function ProfileDetailsPage() {
                       set({ city: v });
                     }}
                   />
+                </Field>
+
+                <Field label="ZIP code" htmlFor="d-zip">
+                  <input
+                    id="d-zip"
+                    inputMode="numeric"
+                    autoComplete="postal-code"
+                    maxLength={5}
+                    aria-describedby="d-zip-hint"
+                    value={details.zip}
+                    onChange={(e) => {
+                      setZip(e.target.value);
+                    }}
+                    className={CONTROL}
+                  />
+                  <p id="d-zip-hint" className="mt-1.5 text-[0.75rem] text-grey">
+                    Only you see it. The map counts you at its middle, never closer.
+                  </p>
                 </Field>
 
                 <div className="h-4" />

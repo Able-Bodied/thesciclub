@@ -9,9 +9,10 @@ import { stateCodeForName } from '@/types/domain';
  * reverse, from a browser position when they tap Use my location; and forward,
  * from a zip code they type, which is faster than scrolling a state list.
  *
- * **The zip is never stored.** It resolves to a city and a state and is then
- * discarded — CONTEXT.md says a city, never a location, and a postcode is
- * a good deal narrower than a city. Neither is a set of coordinates ever kept.
+ * The zip is kept on the member's own row since 20261029040000 (the owner,
+ * 2026-10-28), so the map can count them at the middle of their zip code
+ * rather than their city's. Nobody else reads it, and no coordinates of
+ * theirs are ever kept: only each zip code's middle.
  *
  * Nominatim's usage policy asks for at most one request per second and a real
  * identifying User-Agent. A browser will not let us set User-Agent, so these

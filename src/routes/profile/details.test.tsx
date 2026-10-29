@@ -69,6 +69,7 @@ const details = (o: Partial<MemberDetails> = {}): MemberDetails => ({
   injuryDatePrecision: 'year',
   city: 'Santa Clara',
   state: 'CA',
+  zip: '',
   photoPath: null,
   photoAlt: null,
   showInBrowse: true,

@@ -4,6 +4,7 @@ import {
   eventCities,
   organizationCities,
   placeMemberCities,
+  zipsToPlace,
 } from './city-places.js';
 
 const NOW = new Date('2026-10-20T12:00:00Z');
@@ -270,5 +271,20 @@ describe('a check never wipes a place (20261025020000)', () => {
     expect(citiesToPlace(homes, [row('2026-10-19T00:00:00Z')], NOW)).toEqual([]);
     expect(citiesToPlace(homes, [row('2026-09-01T00:00:00Z')], NOW)).toHaveLength(1);
     expect(citiesToPlace(homes, [row(null)], NOW)).toHaveLength(1);
+  });
+});
+
+describe('zipsToPlace', () => {
+  it('asks once a zip, skips one placed or tried lately, and retries a month-old miss', () => {
+    const todo = zipsToPlace(
+      ['95112', '95112', '9511', null, '94040', '10001', '60601'],
+      [
+        { zip: '94040', latitude: 37.38, placed_at: '2026-01-01T00:00:00Z' },
+        { zip: '10001', latitude: null, placed_at: '2026-10-10T00:00:00Z' },
+        { zip: '60601', latitude: null, placed_at: '2026-09-01T00:00:00Z' },
+      ],
+      NOW,
+    );
+    expect(todo).toEqual(['95112', '60601']);
   });
 });

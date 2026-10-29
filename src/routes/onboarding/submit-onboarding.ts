@@ -112,6 +112,8 @@ export async function submitOnboarding(data: OnboardingData): Promise<SubmitResu
     // Null, not '': an empty string sorts and compares as though it were a
     // place, and two people who skipped it are not from the same one.
     state: data.state.trim() || null,
+    // Kept since 20261029040000, for the map's zip middle; only five digits.
+    zip: /^[0-9]{5}$/.test(data.zip) && data.city.trim() !== '' ? data.zip : null,
     photo_path: photoPath,
     // Carried from the wizard rather than written as it happened: the row does
     // not exist until this insert, so a decline collected on the injury step

@@ -54,10 +54,13 @@ describe('peers on the map', () => {
     expect(counted[0]?.members.map((member) => member.id)).toEqual(['bo', 'cy']);
   });
 
-  it("is a point at the city's middle with a count, and nothing finer", () => {
+  it("is a point at the place's middle with a count, and nothing finer", () => {
     const features = peerFeatures(peerCities(cities, members)).features;
     expect(features[0]?.geometry.coordinates).toEqual([SAN_JOSE.longitude, SAN_JOSE.latitude]);
-    expect(features[0]?.properties).toEqual({ key: 'San Jose|CA', count: 3 });
+    expect(features[0]?.properties).toEqual({
+      key: `San Jose|CA|${SAN_JOSE.latitude},${SAN_JOSE.longitude}`,
+      count: 3,
+    });
   });
 });
 

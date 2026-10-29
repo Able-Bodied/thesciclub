@@ -9,7 +9,7 @@
  * counts as a middle.
  */
 
-import { lookUpSettlement, RateLimited, Unreachable } from './scrapers/geocode.js';
+import { lookUpSettlement, lookUpZip, RateLimited, Unreachable } from './scrapers/geocode.js';
 
 const RETRY_AFTER_DAYS = 30;
 const MIN_REQUEST_INTERVAL_MS = 1100;
@@ -136,5 +136,69 @@ export async function placeMemberCities(supabase, { dryRun }, lookup = lookUpSet
     if (dryRun) continue;
     const { error: writeError } = await supabase.from('city_places').upsert(row);
     if (writeError) throw new Error(`Could not place ${city.query}: ${writeError.message}`);
+  }
+}
+
+/**
+ * The zip codes members live in not placed yet, or not found a month ago
+ * (20261029040000). Only the zips are read and kept, never who has them.
+ */
+export function zipsToPlace(zips, placed, now = new Date()) {
+  const known = new Map(placed.map((p) => [p.zip, p]));
+  const stale = now.getTime() - RETRY_AFTER_DAYS * 86400000;
+  const wanted = new Set();
+  for (const zip of zips) {
+    if (!/^[0-9]{5}$/.test(zip ?? '')) continue;
+    const prior = known.get(zip);
+    if (prior?.latitude != null) continue;
+    if (prior && Date.parse(prior.placed_at) > stale) continue;
+    wanted.add(zip);
+  }
+  return [...wanted];
+}
+
+export async function placeMemberZips(supabase, { dryRun }, lookup = lookUpZip) {
+  const { data: homes, error } = await supabase
+    .from('members')
+    .select('zip')
+    .not('zip', 'is', null);
+  if (error) throw new Error(`Could not read members' zips: ${error.message}`);
+  const { data: placed, error: placedError } = await supabase
+    .from('zip_places')
+    .select('zip, latitude, placed_at');
+  if (placedError) throw new Error(`Could not read zip_places: ${placedError.message}`);
+
+  const todo = zipsToPlace(
+    (homes ?? []).map((h) => h.zip),
+    placed ?? [],
+  );
+  console.log(`Members' zips: ${todo.length} to place`);
+  let lastRequestAt = 0;
+  for (const zip of todo) {
+    const wait = MIN_REQUEST_INTERVAL_MS - (Date.now() - lastRequestAt);
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastRequestAt = Date.now();
+    let found;
+    try {
+      found = await lookup(zip);
+    } catch (e) {
+      if (e instanceof Unreachable) continue;
+      if (!(e instanceof RateLimited)) throw e;
+      console.log(`  ! zip lookups paused for this run: ${e.message}`);
+      return;
+    }
+    const ok = found && found.state && Number.isFinite(found.latitude);
+    const row = ok
+      ? {
+          zip,
+          state: found.state,
+          latitude: found.latitude,
+          longitude: found.longitude,
+          placed_at: new Date().toISOString(),
+        }
+      : { zip, state: null, latitude: null, longitude: null, placed_at: new Date().toISOString() };
+    if (dryRun) continue;
+    const { error: writeError } = await supabase.from('zip_places').upsert(row);
+    if (writeError) throw new Error(`Could not place ${zip}: ${writeError.message}`);
   }
 }
