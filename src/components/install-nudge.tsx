@@ -1,4 +1,4 @@
-import { Download, Play, X } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -150,22 +150,18 @@ function BrowserInstallNudge() {
 export const HOW_TO_VIDEO = '/video/how-to-add-to-home-screen.mp4';
 export const HOW_TO_POSTER = '/video/how-to-add-to-home-screen.jpg';
 
+/**
+ * Plays by itself, muted and on repeat, as soon as the steps open (the owner,
+ * 2026-10-28), with its controls kept so it can be paused. Not by itself for
+ * somebody who has asked their phone to reduce motion: the still and a play
+ * button instead.
+ */
 function HowToVideo() {
-  const [playing, setPlaying] = useState(false);
-  if (!playing) {
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          setPlaying(true);
-        }}
-        className="mt-3 flex min-h-[44px] items-center gap-2 rounded-[13px] bg-tint px-4 font-bold font-head text-[0.9375rem] text-emphasis hover:bg-line"
-      >
-        <Play className="h-4 w-4" aria-hidden="true" />
-        Watch how
-      </button>
-    );
-  }
+  const [still] = useState(
+    () =>
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
   return (
     <div className="mx-auto mt-3 aspect-[882/1920] max-h-[60dvh] w-auto overflow-hidden rounded-[14px] bg-black">
       <video
@@ -173,11 +169,12 @@ function HowToVideo() {
         poster={HOW_TO_POSTER}
         aria-label="Video: adding the club to your Home Screen on an iPhone"
         className="block h-full w-full"
-        autoPlay
+        autoPlay={!still}
+        loop
         muted
         playsInline
         controls
-        preload="auto"
+        preload={still ? 'none' : 'auto'}
       />
     </div>
   );
