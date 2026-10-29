@@ -517,7 +517,8 @@ export default function ProfileDetailsPage() {
                     className={CONTROL}
                   />
                   <p id="d-zip-hint" className="mt-1.5 text-[0.75rem] text-grey">
-                    Only you see it. The map counts you at its middle, never closer.
+                    Only you see it. The map counts you at its middle, never closer; leave it empty
+                    to be counted by city.
                   </p>
                 </Field>
 

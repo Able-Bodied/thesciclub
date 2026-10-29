@@ -589,7 +589,7 @@ export const boxOf = (map: MapLibreMap): Box => {
 export const STREET_ZOOM = 17;
 /** A place known only by its city: closer would point at one street. */
 export const CITY_CLOSE_ZOOM = 12;
-/** Members are counted by city: never closer than this. */
+/** Members are counted by ZIP code or city: never closer than this. */
 export const PEER_CITY_ZOOM = 11;
 
 export interface CloseUp {
