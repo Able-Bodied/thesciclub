@@ -8,6 +8,24 @@ import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { organizationTown } from '@/routes/events/organization-places';
 import type { Organization } from '@/types/domain';
 
+/**
+ * Every word of the search somewhere in the name, short code or a place (the
+ * owner, 2026-10-28).
+ */
+export function matchesOrganizationSearch(organization: Organization, search: string): boolean {
+  const words = search.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const text = [
+    organization.name,
+    organization.shortCode,
+    organizationTown(organization),
+    ...(organization.places ?? []).flatMap((place) => [place.label ?? '', place.city, place.state]),
+  ]
+    .join(' ')
+    .toLocaleLowerCase();
+  return words.every((word) => text.includes(word));
+}
+
 /** Administrators manage the directory. Organization accounts edit only their
  * linked entries; the database checks the same scope independently. */
 export function OrganizationsSection({
@@ -24,10 +42,12 @@ export function OrganizationsSection({
   const [removing, setRemoving] = useState<Organization | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const announce = useAnnounce();
-  const visible = administrator
+  const theirs = administrator
     ? organizations
     : organizations.filter((organization) => ids?.has(organization.id));
+  const visible = theirs.filter((organization) => matchesOrganizationSearch(organization, search));
   function changed() {
     reload();
     onChange?.();
@@ -66,15 +86,53 @@ export function OrganizationsSection({
           }}
         />
       ) : null}
+      {!loading && theirs.length > 1 ? (
+        <div className="mt-3">
+          <label
+            htmlFor="admin-organization-search"
+            className="block font-bold font-head text-[0.875rem] text-ink"
+          >
+            Find an organization
+          </label>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input
+              id="admin-organization-search"
+              type="search"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+              }}
+              placeholder="Name, short code or city"
+              className="min-h-[44px] min-w-0 flex-1 basis-[14rem] rounded-[10px] border border-line bg-canvas px-3 text-[0.875rem] text-ink outline-none focus:border-emphasis"
+            />
+            {search ? (
+              <SmallButton
+                onClick={() => {
+                  setSearch('');
+                }}
+              >
+                Clear search
+              </SmallButton>
+            ) : null}
+          </div>
+          {search.trim() ? (
+            <p role="status" className="mt-2 text-[0.8125rem] text-grey">
+              {visible.length} matching organization{visible.length === 1 ? '' : 's'}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {loading ? (
         <p className="mt-3 text-grey">Loading organizations…</p>
       ) : (
         <div className="mt-3 overflow-hidden rounded-[14px] border border-line bg-paper">
           {visible.length === 0 ? (
             <p className="p-3 text-grey">
-              {administrator
-                ? 'No organizations yet.'
-                : 'An administrator can link your account to the organizations you manage.'}
+              {search.trim()
+                ? 'No organization matches that search.'
+                : administrator
+                  ? 'No organizations yet.'
+                  : 'An administrator can link your account to the organizations you manage.'}
             </p>
           ) : (
             visible.map((organization) => (
