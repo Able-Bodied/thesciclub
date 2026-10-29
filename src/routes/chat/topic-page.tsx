@@ -395,7 +395,13 @@ export default function TopicPage() {
     },
     onBlock: blockOffer(post),
     // Not from a closed room: no member could read what arrived.
-    share: closed ? null : <SharePostButton postId={post.id} words={post.body || topic.title} />,
+    share: closed ? null : (
+      <SharePostButton
+        postId={post.id}
+        words={post.body || topic.title}
+        link={`/chat/rooms/${topic.roomId}/topics/${topic.id}?${new URLSearchParams({ post: post.id }).toString()}`}
+      />
+    ),
     edits: edits.byPost.get(post.id) ?? [],
     viewCount: views.loading ? undefined : (views.byPost.get(post.id) ?? null),
     // Keep Like visible while counts load, without inventing a zero count.

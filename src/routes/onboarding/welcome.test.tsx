@@ -24,3 +24,13 @@ describe('the welcome screen after registering for an event', () => {
     expect(screen.queryByText(/on our list/)).toBeNull();
   });
 });
+
+// The owner, 2026-10-28: a shared link says why it asks to sign in.
+describe('the welcome screen from a shared link', () => {
+  it('says something was shared, and that it opens once they are in', () => {
+    render(<WelcomeScreen onJoin={noop} onSignIn={noop} linked />);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Someone shared something from the club with you. Sign in, or join, to see it. We'll take you straight there.",
+    );
+  });
+});

@@ -44,6 +44,7 @@ export function WelcomeScreen({
   onSignIn,
   joiningOpen = false,
   registered = null,
+  linked = false,
 }: {
   onJoin: () => void;
   onSignIn: () => void;
@@ -51,6 +52,8 @@ export function WelcomeScreen({
   joiningOpen?: boolean;
   /** Just registered for a public event (src/lib/event-audience.ts). */
   registered?: { organizer?: string } | null;
+  /** Came by a link to something inside the club (sign-in-destination.ts). */
+  linked?: boolean;
 }) {
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
@@ -65,6 +68,17 @@ export function WelcomeScreen({
               host's own registration may be needed. */}
           <b className="font-extrabold font-head">You're on our list.</b> Join the club to see who's
           coming and join the group chat.
+        </div>
+      ) : linked ? (
+        // A shared link (the owner, 2026-10-28): what it is waits inside.
+        <div
+          role="status"
+          className="mx-[18px] mt-[max(14px,env(safe-area-inset-top))] flex-none rounded-[13px] border-gold border-l-4 bg-gold-lt px-3.5 py-3 text-[0.875rem] text-ink leading-[1.45]"
+        >
+          <b className="font-extrabold font-head">
+            Someone shared something from the club with you.
+          </b>{' '}
+          Sign in, or join, to see it. We'll take you straight there.
         </div>
       ) : null}
       <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">
