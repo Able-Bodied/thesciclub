@@ -219,6 +219,46 @@ describe('compose', () => {
     );
   });
 
+  // 20261029100000: a club partner introduces two members.
+  it('says who would introduce the member to whom, with the note', () => {
+    expect(
+      compose(
+        owed({
+          kind: 'introduction',
+          body: 'You are both C6 and in San Jose.',
+          subject: 'Maya Local',
+          detail: 'asked',
+          url: '/introductions/i1',
+          tag: 'introduction:i1',
+        }),
+      ),
+    ).toEqual({
+      title: 'Bo would like to introduce you to Maya Local',
+      body: 'You are both C6 and in San Jose.',
+      url: '/introductions/i1?n=introduction%3Ai1',
+      tag: 'introduction:i1',
+    });
+  });
+
+  it('tells the partner the introduction is open, and who said yes last', () => {
+    expect(
+      compose(
+        owed({
+          kind: 'introduction',
+          actor_name: 'Sam Local',
+          body: 'You are both C6.',
+          subject: 'Maya & Sam',
+          detail: 'opened',
+          url: '/chat/t/t1',
+          tag: 'introduction:i1:opened',
+        }),
+      ),
+    ).toMatchObject({ title: 'Maya & Sam is open', body: 'Sam Local said yes.' });
+    expect(compose(owed({ kind: 'introduction', detail: 'opened', subject: null }))?.title).toBe(
+      'Your introduction is open',
+    );
+  });
+
   it('says who added the member to a group, and not which group', () => {
     expect(compose(owed({ kind: 'group_add', body: null }))).toMatchObject({
       title: 'Added to a group',
