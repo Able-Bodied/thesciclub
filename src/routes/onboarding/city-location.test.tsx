@@ -54,12 +54,15 @@ describe('Use my location while joining', () => {
     await waitFor(() => {
       expect(set).toHaveBeenCalledWith({ city: 'Sacramento', state: 'CA' });
     });
-    expect(getCurrentPosition.mock.calls[0]?.[2]).toEqual({ timeout: 10000 });
+    expect(getCurrentPosition.mock.calls[0]?.[2]).toEqual({
+      timeout: 10000,
+      enableHighAccuracy: true,
+    });
   });
 
-  it('fills in the ZIP code too, when the answer has one', async () => {
+  it('fills in the ZIP code too, from a close enough position', async () => {
     getCurrentPosition.mockImplementation((ok: (p: object) => void) => {
-      ok({ coords: { latitude: 38.58, longitude: -121.49, accuracy: 900 } });
+      ok({ coords: { latitude: 38.58, longitude: -121.49, accuracy: 40 } });
     });
     reverseGeocode.mockResolvedValue({ city: 'Sacramento', state: 'CA', zip: '95814' });
     const set = vi.fn();
@@ -68,6 +71,19 @@ describe('Use my location while joining', () => {
     await waitFor(() => {
       expect(set).toHaveBeenCalledWith({ city: 'Sacramento', state: 'CA', zip: '95814' });
     });
+  });
+
+  // The owner, 2026-10-28: a laptop placed by Wi-Fi gave the next ZIP over.
+  it('fills in the ZIP code and says to check it', async () => {
+    getCurrentPosition.mockImplementation((ok: (p: object) => void) => {
+      ok({ coords: { latitude: 37.25, longitude: -121.95, accuracy: 1500 } });
+    });
+    reverseGeocode.mockResolvedValue({ city: 'Los Gatos', state: 'CA', zip: '95032' });
+    const set = vi.fn();
+    render(<CityStep data={data} set={set} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Use my location' }));
+    expect(await screen.findByText(/Check it is right/)).toBeInTheDocument();
+    expect(set).toHaveBeenCalledWith({ city: 'Los Gatos', state: 'CA', zip: '95032' });
   });
 
   it('in the iPhone app, asks through iOS alone', async () => {

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { TERMS_UPDATED } from '@/lib/terms';
 import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-page';
 
 /**
@@ -10,7 +11,7 @@ import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 28, 2026">
+    <LegalPage title="Terms of Service" updated={TERMS_UPDATED}>
       <Section title="The club">
         <P>
           The SCI Club is a private community for adults living with spinal cord injury and their
@@ -154,6 +155,10 @@ export default function TermsPage() {
         <P>
           Events in the club are run by the organizations and people who host them, not by us. A
           link to another site opens that site, under its own terms.
+        </P>
+        <P>
+          Meeting anybody from the club in person, at an event or one to one, is your own choice and
+          at your own risk.
         </P>
       </Section>
 

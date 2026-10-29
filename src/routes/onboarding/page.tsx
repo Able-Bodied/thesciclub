@@ -70,6 +70,8 @@ import {
 } from '@/lib/sign-in-destination';
 import { isNative } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
+import { agreeToTerms, hasAgreedToTerms } from '@/lib/terms';
+import { AgreeStep } from '@/routes/onboarding/agree-step';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
 import { LinkButton, PrimaryButton, Question, StepFrame, Sub } from '@/routes/onboarding/chrome';
 import {
@@ -300,6 +302,8 @@ export default function OnboardingPage() {
    * whether this account is invited. Run on each sign-in while the doors are
    * showing, whichever way it happened.
    */
+  /** Where the wizard goes once "Before you join" is agreed. */
+  const resumeAfterAgreeing = useRef<Step>('name');
   const afterSignIn = useCallback(async () => {
     setError(null);
     setNotice(null);
@@ -338,13 +342,31 @@ export default function OnboardingPage() {
         displayName: resumed.displayName.trim() ? resumed.displayName : given,
       };
     });
-    if (saved && saved.step !== 'name') {
-      setStep(saved.step);
-      setNotice('Welcome back. You are where you left off.');
+    const resume: Step = saved && saved.step !== 'name' ? saved.step : 'name';
+    // "Before you join" first, until this account has agreed to the current
+    // terms (src/lib/terms.ts); then on to where it left off.
+    if (!(await hasAgreedToTerms())) {
+      resumeAfterAgreeing.current = resume;
+      setStep('agree');
       return;
     }
-    setStep('name');
+    setStep(resume);
+    if (resume !== 'name') setNotice('Welcome back. You are where you left off.');
   }, []);
+
+  async function submitAgree() {
+    setBusy(true);
+    setError(null);
+    const agreed = await agreeToTerms();
+    setBusy(false);
+    if (!agreed.ok) {
+      setError(agreed.error);
+      return;
+    }
+    const resume = resumeAfterAgreeing.current;
+    setStep(resume);
+    if (resume !== 'name') setNotice('Welcome back. You are where you left off.');
+  }
 
   // Kept as it is typed on this device, and on the account each time the
   // wizard moves on, so leaving halfway costs nothing (progress.ts). Only a
@@ -777,6 +799,8 @@ export default function OnboardingPage() {
     'check-email': 'join',
     // No way back past a confirmed account: it already exists.
     checking: undefined,
+    // Signs out, as Back from the first question does: see leaveForAnotherAccount.
+    agree: undefined,
     // Back from the first question signs out, for another account: see
     // leaveForAnotherAccount.
     name: undefined,
@@ -845,6 +869,7 @@ export default function OnboardingPage() {
       gateRan.current = false;
       return void afterSignIn();
     }
+    if (step === 'agree') return void submitAgree();
     if (step === 'photo') return void finish();
     const order: Step[] = ['name', 'username', 'birthday', 'injury', 'city', 'phone', 'photo'];
     const next = order[order.indexOf(step) + 1];
@@ -878,7 +903,7 @@ export default function OnboardingPage() {
       totalSteps={COUNTED_STEPS.length}
       onSubmit={advance}
       onBack={
-        step === 'name'
+        step === 'agree' || step === 'name'
           ? leaveForAnotherAccount
           : previous
             ? () => {
@@ -1066,6 +1091,7 @@ export default function OnboardingPage() {
           <Sub>One moment.</Sub>
         </>
       ) : null}
+      {step === 'agree' ? <AgreeStep /> : null}
       {step === 'name' ? <NameStep data={data} set={set} /> : null}
       {step === 'username' ? <UsernameStep data={data} set={set} /> : null}
       {step === 'birthday' ? <BirthdayStep data={data} set={set} /> : null}
