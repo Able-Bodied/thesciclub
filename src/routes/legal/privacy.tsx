@@ -527,9 +527,8 @@ export default function PrivacyPage() {
             deleted.
           </li>
           <li>
-            <b>A request for an invite:</b> kept, answered or not, until the org admin it went to
-            leaves the club or the organization is removed from it. Deleting an account does not
-            delete a request sent before joining; email <ContactEmail /> to have it deleted.
+            <b>A request for an invite:</b> 90 days after an org admin answers it, or 90 days after
+            it was sent if nobody does.
           </li>
           <li>
             <b>An invited email address:</b> invites do not expire, so it stays on the list until
