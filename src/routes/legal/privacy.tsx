@@ -59,6 +59,11 @@ export default function PrivacyPage() {
             post’s words; only members can read the post. The confirmation email now has a code to
             type in the app, as well as its link.
           </li>
+          <li>
+            <b>Added:</b> that the club is not covered by HIPAA, how we keep your information safe
+            and what we do if it is ever exposed, when the law can require us to share it, your
+            privacy rights wherever you live in the US, and where your information is kept.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 26, 2026">
@@ -97,6 +102,11 @@ export default function PrivacyPage() {
             We do not sell your information. There is no advertising in the club, and we do not
             track you across other apps or websites.
           </b>
+        </P>
+        <P>
+          The club is not a doctor, hospital or health plan, so HIPAA, the US health privacy law,
+          does not cover what you tell it. This policy does: the health information you share is
+          used only as it says.
         </P>
       </Section>
 
@@ -447,8 +457,9 @@ export default function PrivacyPage() {
 
       <Section title="Service providers">
         <P>
-          We share your information only with the service providers that run the club for us, and
-          they receive only what they need to do that work:
+          Apart from what members, hosts and organizations see as this policy describes, we share
+          your information only with the service providers that run the club for us, and they
+          receive only what they need to do that work:
         </P>
         <List>
           <li>hosting, our database, file storage and sign-in;</li>
@@ -478,6 +489,54 @@ export default function PrivacyPage() {
           . In the iPhone app, Google is contacted only when you press its button. Apart from that,
           a YouTube video you play and your Google photo, nothing in the club loads anything from
           Google.
+        </P>
+      </Section>
+
+      <Section title="When the law asks">
+        <P>
+          We would share information about you outside the club only if the law requires it, such as
+          a court order, or to protect somebody from serious harm. If we are allowed to, we tell you
+          first.
+        </P>
+      </Section>
+
+      <Section title="Keeping it safe">
+        <P>
+          Everything between your device and the club is encrypted on the way. Passwords are kept
+          only in scrambled form, photographs open only for people signed in, and the database
+          itself checks who may read each thing, so a member sees only what this policy says they
+          can.
+        </P>
+        <P>
+          No system is perfectly secure. If we learn that your information has been exposed, we will
+          tell you, and the authorities where the law requires, with what happened and what you can
+          do. If you think somebody else has used your account, change your password and email{' '}
+          <ContactEmail />.
+        </P>
+      </Section>
+
+      <Section title="Your rights">
+        <P>
+          Wherever you live, you can see and correct most of what we hold about you on Me, ask us
+          for a copy of all of it, and ask us to correct or delete it. It costs nothing. Email{' '}
+          <ContactEmail />, from the address on your account if you can; we may write back to that
+          address to check it is you before we act, and we reply when it is done.
+        </P>
+        <P>
+          California and other US states give their residents rights to know what is collected, to
+          correct and delete it, and to opt out of its sale, of its sharing for advertising, and of
+          decisions made about them by a computer alone. We do not sell your information or share it
+          for advertising, and no decision about you is made by a computer alone, so there is
+          nothing to opt out of. We will not treat you differently for asking about your
+          information. The club does not track you across other sites, so a browser’s Do Not Track
+          or Global Privacy Control setting has nothing to stop here.
+        </P>
+      </Section>
+
+      <Section title="Where it is kept">
+        <P>
+          The club is run from the United States. Its service providers may store or handle your
+          information in the United States or in other countries where they work.
         </P>
       </Section>
 

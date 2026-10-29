@@ -17,7 +17,7 @@ import {
  */
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="October 25, 2026">
+    <LegalPage title="Terms of Service" updated="October 28, 2026">
       <Section title="The club">
         <P>
           The SCI Club is a private community for adults living with spinal cord injury and their
@@ -34,11 +34,21 @@ export default function TermsPage() {
         <List>
           <li>
             <b>Invite only.</b> A member organization or a mentor puts your email address on the
-            club’s list, and the club emails you a link, before you can join. The app cannot let you
-            in by itself.
+            club’s list, and the club emails you a link, before you can join. An organization’s org
+            admin can also make a QR code or link that lets people in until it expires. If you have
+            no invite, you can ask an organization for one. The app cannot let you in by itself.
           </li>
           <li>
             <b>Adults only.</b> You must be 18 or over.
+          </li>
+          <li>
+            <b>One account, and it is yours.</b> Give true details about yourself, and keep them up
+            to date in Your details. Keep your password to yourself: what happens on your account is
+            your responsibility. Do not share, sell or hand over your account.
+          </li>
+          <li>
+            <b>Usernames.</b> We may change a username that is offensive, misleading, or someone
+            else’s name, and tell you why.
           </li>
         </List>
       </Section>
@@ -69,6 +79,16 @@ export default function TermsPage() {
           <li>pretends to be somebody else;</li>
           <li>sells, advertises or spams.</li>
         </List>
+        <P>Nor may you use the club against itself or its members:</P>
+        <List>
+          <li>
+            collecting members’ details, by copying them out or with a script, bot or scraper;
+          </li>
+          <li>sending messages or making accounts in bulk, or by automated means;</li>
+          <li>getting around a block, a removal, the invite list or the club’s security;</li>
+          <li>making a report you know is false;</li>
+          <li>sending anything that harms the app or the devices of the people using it.</li>
+        </List>
         <P>
           Talking frankly about bodies, bladder and bowel care, and sex after injury is part of the
           club, and welcome.
@@ -91,6 +111,7 @@ export default function TermsPage() {
           terms, give a strike (it shows on your Standing card, on Me), pause a membership, or end
           it.
         </P>
+        <P>If your membership is ended, do not join again under another name or email address.</P>
       </Section>
 
       <Section title="Reporting and blocking">
@@ -125,6 +146,15 @@ export default function TermsPage() {
           account, what you wrote in Chat stays and says “Deleted member” instead of your name,
           until the other person in a one-to-one conversation deletes it.
         </P>
+        <P>
+          <b>Ideas and feedback</b> you send, in the App Feedback room or by email, may be used to
+          improve the club, without anything owed for them.
+        </P>
+        <P>
+          <b>If something posted is yours</b>, such as your photograph or your writing, and was
+          shared without your permission, email <ContactEmail />. We will take it down if it should
+          not be there, and tell the member who posted it.
+        </P>
       </Section>
 
       <Section title="Events and other sites">
@@ -136,11 +166,12 @@ export default function TermsPage() {
 
       <Section title="Email">
         <P>
-          <b>What the club emails you.</b> The club emails you to run your account: the link that
-          confirms your address, a link to reset or change your password, a notice when your
-          password changes, an invitation link when somebody invites you, and, if you add an event
-          by calendar invitation, what became of it. It does not send newsletters or promotions.
-          Questions or trouble getting an email: <ContactEmail />.
+          <b>What the club emails you.</b> The club emails you to run your account: the code and
+          link that confirm your address, a link to reset or change your password, a notice when
+          your password changes, an invitation link when somebody invites you, and, if you add an
+          event by calendar invitation, what became of it. It also emails you the day before an
+          event you are going to, unless you switch that off on Me. It does not send newsletters or
+          promotions. Questions or trouble getting an email: <ContactEmail />.
         </P>
         <P>
           <b>A phone number is optional.</b> If you add one, it is only so the host of an event you
@@ -150,6 +181,19 @@ export default function TermsPage() {
             Privacy Policy
           </Link>
           .
+        </P>
+      </Section>
+
+      <Section title="The club as it is">
+        <P>
+          The club is free to use. It is offered as it is: we work to keep it running and safe, but
+          cannot promise it will always be available, free of mistakes, or unchanged. Features may
+          change, pause or stop.
+        </P>
+        <P>
+          What members, mentors and organizations write and do is their own, not ours, and so are
+          the events they host. As far as the law allows, we are not responsible for loss or harm
+          that comes from using the club, or from what others say or do in it.
         </P>
       </Section>
 
@@ -167,6 +211,10 @@ export default function TermsPage() {
         <P>
           If these terms change, the date at the top changes with them. Using the club after that
           means you accept the new terms.
+        </P>
+        <P>
+          Notices from the club come by email or in the app, and count as notice in writing. If a
+          part of these terms cannot be enforced, the rest still applies.
         </P>
       </Section>
 

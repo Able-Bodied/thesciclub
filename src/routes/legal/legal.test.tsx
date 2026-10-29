@@ -313,6 +313,20 @@ describe('the Privacy Policy', () => {
 });
 
 describe('the Terms of Service', () => {
+  // From the owner's read of another club's terms, 2026-10-28.
+  it('says the account is yours alone, what else is not allowed, and that the club is as it is', () => {
+    open('/terms');
+    expect(screen.getByText(/Do not share, sell or hand over your account/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/by copying them out or with a script, bot or scraper/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/do not join again under another name or email address/),
+    ).toBeInTheDocument();
+    const section = screen.getByRole('heading', { name: 'The club as it is' }).parentElement;
+    expect(section).toHaveTextContent(/cannot promise it will always be available/);
+  });
+
   it('opens with no account', () => {
     open('/terms');
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
@@ -456,5 +470,19 @@ describe('Deleting your account', () => {
       );
       cleanup();
     }
+  });
+});
+
+describe('the Privacy Policy, on HIPAA, safety and rights', () => {
+  it('says HIPAA does not cover the club, what happens if information is exposed, and how to ask', () => {
+    open('/privacy');
+    expect(screen.getByText(/so HIPAA, the US health privacy law,/)).toBeInTheDocument();
+    const safe = screen.getByRole('heading', { name: 'Keeping it safe' }).parentElement;
+    expect(safe).toHaveTextContent(
+      /If we learn that your information has been exposed, we\s+will tell you/,
+    );
+    const rights = screen.getByRole('heading', { name: 'Your rights' }).parentElement;
+    expect(rights).toHaveTextContent(/It costs nothing/);
+    expect(rights).toHaveTextContent(/nothing to opt out of/);
   });
 });
