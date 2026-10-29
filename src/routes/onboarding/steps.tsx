@@ -21,7 +21,7 @@ import { Chip, Field, Fine, Question, Sub, useAutoFocus } from '@/routes/onboard
 import { SpinalCordFields } from '@/routes/onboarding/spinal-cord-fields';
 import type { OnboardingData } from '@/routes/onboarding/types';
 import { birthPartsOf, injuryDateOf, injuryPartsOf } from '@/routes/onboarding/types';
-import { US_STATES } from '@/types/domain';
+import { hasNoInjury, US_STATES } from '@/types/domain';
 
 /**
  * The questions.
@@ -331,8 +331,9 @@ export function InjuryStep({ data, set }: StepProps) {
   // The birthday as they typed it, for "Since birth".
   const birth = data.birthDate ? birthPartsOf(data) : null;
 
-  // The date first and optional, then the kind. A relative has no date of
-  // their own to give.
+  // The date first and optional, then the kind. A relative or a professional
+  // has no date of their own to give.
+  const noInjury = hasNoInjury(data.injuryType);
   return (
     <>
       {/* Optional said in the question (the owner, 2026-10-29): "Rather not
@@ -343,8 +344,8 @@ export function InjuryStep({ data, set }: StepProps) {
       </Question>
       <Sub>An injury or a condition: members find each other by this.</Sub>
 
-      {data.injuryType === 'family' ? null : <InjuryDate data={data} set={set} birth={birth} />}
-      {data.injuryType !== 'family' &&
+      {noInjury ? null : <InjuryDate data={data} set={set} birth={birth} />}
+      {!noInjury &&
       injury &&
       injuredAt !== null &&
       age !== null &&
@@ -361,9 +362,9 @@ export function InjuryStep({ data, set }: StepProps) {
         <SpinalCordFields
           answer={data}
           onChange={(patch) => {
-            // A relative gives no date of their own: one typed before goes.
+            // No date of their own to give: one typed before goes.
             set(
-              patch.injuryType === 'family'
+              hasNoInjury(patch.injuryType ?? null)
                 ? { ...patch, injuryYear: '', injuryMonth: '', injuryDay: '' }
                 : patch,
             );

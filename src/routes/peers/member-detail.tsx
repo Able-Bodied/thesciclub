@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
+import { PartnerLabel } from '@/components/partner-label';
 import { PhotoViewer } from '@/components/photo-viewer';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -632,6 +633,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     @{member.username}
                   </p>
                 ) : null}
+                <PartnerLabel memberId={member.id} variant="pill" className="mt-1.5" />
                 <p className="mt-1 text-[0.875rem] text-white">{summaryLine(member)}</p>
                 {injury ? <p className="mt-0.5 text-[0.78125rem] text-white/90">{injury}</p> : null}
               </div>

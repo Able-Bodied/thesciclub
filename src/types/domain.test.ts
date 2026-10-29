@@ -106,7 +106,14 @@ describe('the spinal cord question', () => {
   });
 
   it('offers quad, high para, low para, other disability and relative, in that order', () => {
-    expect(OFFERED_INJURY_TYPES).toEqual(['quad', 'high_para', 'low_para', 'condition', 'family']);
+    expect(OFFERED_INJURY_TYPES).toEqual([
+      'quad',
+      'high_para',
+      'low_para',
+      'condition',
+      'family',
+      'professional',
+    ]);
   });
 
   it('asks a level of an injury only, not of another disability or a relative', () => {
@@ -115,6 +122,7 @@ describe('the spinal cord question', () => {
     expect(asksLevel('low_para')).toBe(true);
     expect(asksLevel('condition')).toBe(true);
     expect(asksLevel('family')).toBe(false);
+    expect(asksLevel('professional')).toBe(false);
     expect(asksLevel(null)).toBe(false);
   });
 
@@ -157,6 +165,7 @@ describe('the spinal cord question', () => {
     expect(injuryLabel({ ...base, injuryType: 'high_para' })).toBe('High para');
     expect(injuryLabel({ ...base, injuryType: 'low_para' })).toBe('Low para');
     expect(injuryLabel({ ...base, injuryType: 'family' })).toBe('Family member');
+    expect(injuryLabel({ ...base, injuryType: 'professional' })).toBe('Professional');
   });
 
   it('reads a member from before the question exactly as before', () => {
@@ -181,6 +190,7 @@ describe('the spinal cord question', () => {
     expect(asksCompleteness('central_cord')).toBe(false);
     expect(asksCompleteness('condition')).toBe(false);
     expect(asksCompleteness('family')).toBe(false);
+    expect(asksCompleteness('professional')).toBe(false);
     expect(asksCompleteness('low_para')).toBe(true);
   });
 });

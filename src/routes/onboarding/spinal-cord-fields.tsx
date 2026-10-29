@@ -28,6 +28,7 @@ import {
  *                                       a level if it has one: "Not
  *                                       applicable" unless they choose
  *   Relative/Spouse                     nothing more: a member with no level
+ *   Professional                        nothing more either
  *
  * Everything appears below the choice, never on another screen. Changing the
  * choice clears what no longer fits it: a T6 is not a quad's level, and a

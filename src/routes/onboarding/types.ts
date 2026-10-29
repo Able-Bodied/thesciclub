@@ -2,7 +2,13 @@ import { readDate } from '@/lib/date-parts';
 import { isAdult } from '@/lib/injury';
 import { isCompletePhone } from '@/lib/phone';
 import { isValidUsername } from '@/lib/usernames';
-import type { Completeness, DatePrecision, ExactLevel, InjuryType } from '@/types/domain';
+import {
+  type Completeness,
+  type DatePrecision,
+  type ExactLevel,
+  hasNoInjury,
+  type InjuryType,
+} from '@/types/domain';
 
 /**
  * The shape onboarding collects, and the order it collects it in.
@@ -192,10 +198,11 @@ export function canAdvance(step: Step, data: OnboardingData): boolean {
 
 /**
  * The kind, and what that kind needs: another disability's name, a level for
- * an injury ("Do not know" is a level answer), and nothing for a relative.
+ * an injury ("Do not know" is a level answer), and nothing for a relative or a
+ * professional.
  */
 export function spinalCordAnswered(data: OnboardingData): boolean {
-  if (data.injuryType === 'family') return true;
+  if (hasNoInjury(data.injuryType)) return true;
   if (data.injuryType === 'condition') return data.conditionName.trim() !== '';
   return data.injuryType !== null && data.exactLevel !== null;
 }

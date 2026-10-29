@@ -53,6 +53,9 @@ const api = vi.hoisted(() => ({
   reportsStrikeCount: true,
   /** Open reports, for the count in the Reports tab's label. */
   openReports: 0,
+  /** member id → club partner title (20261029100000). */
+  partners: new Map<string, string>(),
+  partnerCalls: [] as [string, string | null][],
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
@@ -125,6 +128,16 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
     api.typeCalls.push([id, type]);
     return Promise.resolve({ ok: true });
   },
+  setPartner: (id: string, title: string) => {
+    api.partnerCalls.push([id, title]);
+    api.partners.set(id, title);
+    return Promise.resolve({ ok: true });
+  },
+  removePartner: (id: string) => {
+    api.partnerCalls.push([id, null]);
+    api.partners.delete(id);
+    return Promise.resolve({ ok: true });
+  },
   deleteMember: (id: string) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
     api.deleted.push(id);
@@ -155,6 +168,13 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
     api.withdrawn.push([id, reason]);
     return Promise.resolve({ ok: true });
   },
+}));
+
+// Who is a club partner, read with the roster; never the network.
+vi.mock('@/lib/club-partners', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  fetchPartnerTitles: () => Promise.resolve(new Map(api.partners)),
+  forgetPartnerTitles: () => undefined,
 }));
 
 // Read on every render for the Invites tab; what the switch itself does is
@@ -245,6 +265,8 @@ beforeEach(() => {
   api.reinvited = [];
   api.failWith = null;
   api.openReports = 0;
+  api.partners = new Map();
+  api.partnerCalls = [];
   joining.open = false;
   renewals.list = [];
   confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -254,6 +276,46 @@ beforeEach(() => {
   // Setting a return value works either way, which is why the older tests
   // here never noticed.
   confirmSpy.mockClear();
+});
+
+// 20261029100000.
+describe('club partners', () => {
+  it('makes a member a club partner with the title shown beside their name', async () => {
+    renderAdmin();
+    await manage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make club partner' }));
+    const save = screen.getByRole('button', { name: 'Save' });
+    expect(save).toBeDisabled();
+    await userEvent.type(
+      screen.getByLabelText('Title shown beside their name'),
+      ' Physical therapist, SCI-FIT ',
+    );
+    await userEvent.click(save);
+    await waitFor(() => {
+      expect(api.partnerCalls).toEqual([['m1', 'Physical therapist, SCI-FIT']]);
+    });
+    expect(await screen.findByText('Physical therapist, SCI-FIT')).toBeInTheDocument();
+  });
+
+  it('shows the title, and removes the role after asking', async () => {
+    api.partners = new Map([['m1', 'Peer support, SCVMC']]);
+    renderAdmin();
+    await manage();
+    expect(await screen.findByText('Peer support, SCVMC')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as club partner' }));
+    expect(api.partnerCalls).toEqual([]);
+    await userEvent.click(screen.getByRole('button', { name: 'Remove the role' }));
+    await waitFor(() => {
+      expect(api.partnerCalls).toEqual([['m1', null]]);
+    });
+  });
+
+  it('offers nothing on a directory row, which nobody signs in as', async () => {
+    api.members = [member({ isSeed: true })];
+    renderAdmin();
+    await manage();
+    expect(screen.queryByRole('button', { name: 'Make club partner' })).toBeNull();
+  });
 });
 
 describe('getting back out', () => {

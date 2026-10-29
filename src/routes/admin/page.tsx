@@ -7,6 +7,12 @@ import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { looksLikeEmail } from '@/lib/auth-email';
 import { useAdminReports } from '@/lib/chat/reports';
+import {
+  fetchPartnerTitles,
+  forgetPartnerTitles,
+  PARTNER_ROLE_NAME,
+  type PartnerTitles,
+} from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { useJoiningSetting } from '@/lib/joining';
 import { cn } from '@/lib/utils';
@@ -38,11 +44,13 @@ import {
   type MemberReach,
   reinviteByEmail,
   removeAndBlock,
+  removePartner,
   resendInvite,
   revokeInvite,
   type Strike,
   setMemberStatus,
   setMemberType,
+  setPartner,
   unblockEmail,
   vouchedBy as vouchedBy_,
   withdrawnInvites,
@@ -131,17 +139,23 @@ export default function AdminPage() {
   // a state the row is stuck in.
   const [deciding, setDeciding] = useState<string | null>(null);
   const [reach, setReach] = useState<Map<string, MemberReach> | null>(null);
+  const [partners, setPartners] = useState<PartnerTitles>(new Map());
 
   const load = useCallback(async () => {
-    const [memberResult, inviteResult, blockedRows, strikeResult, reachResult] = await Promise.all([
-      fetchAdminMembers(),
-      fetchInvites(),
-      fetchBlockedEmails(),
-      fetchStrikes(),
-      fetchMemberReach(),
-    ]);
+    // Read fresh: a title may have just changed.
+    forgetPartnerTitles();
+    const [memberResult, inviteResult, blockedRows, strikeResult, reachResult, partnerTitles] =
+      await Promise.all([
+        fetchAdminMembers(),
+        fetchInvites(),
+        fetchBlockedEmails(),
+        fetchStrikes(),
+        fetchMemberReach(),
+        fetchPartnerTitles(),
+      ]);
     if (memberResult.ok) setMembers(memberResult.members);
     setReach(reachResult);
+    setPartners(partnerTitles);
     if (inviteResult.ok) setInvites(inviteResult.invites);
     if (strikeResult.ok) setStrikes(strikeResult.strikes);
     setBlocked(blockedRows);
@@ -579,6 +593,13 @@ export default function AdminPage() {
                   onToggleMentor={() => {
                     act(m.id, () => setMemberType(m.id, m.type === 'peer' ? 'mentor' : 'peer'));
                   }}
+                  partnerTitle={partners.get(m.id) ?? null}
+                  onSetPartner={(title) => {
+                    act(m.id, () => setPartner(m.id, title));
+                  }}
+                  onRemovePartner={() => {
+                    act(m.id, () => removePartner(m.id));
+                  }}
                   onRemove={(block, reason) => {
                     // Blocks the address first, then removes: see
                     // removeAndBlock for why that order.
@@ -725,6 +746,9 @@ function Row({
   onRemove,
   onToggleMentor,
   onMakeOrganization,
+  partnerTitle,
+  onSetPartner,
+  onRemovePartner,
   onStrike,
   strikes,
   reach,
@@ -743,6 +767,10 @@ function Row({
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
   onMakeOrganization: () => void;
+  /** Their title as a club partner, or null. Left out where nobody can be one: a seeded row. */
+  partnerTitle?: string | null;
+  onSetPartner?: (title: string) => void;
+  onRemovePartner?: () => void;
   onStrike: (reason: string) => void;
   /** This member's strikes that still count. Withdrawn and expired ones are not here. */
   strikes: Strike[];
@@ -767,6 +795,9 @@ function Row({
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [withdrawReason, setWithdrawReason] = useState('');
   const [listingStrikes, setListingStrikes] = useState(false);
+  // The title being written, while that panel is open.
+  const [partnering, setPartnering] = useState<string | null>(null);
+  const [unpartnering, setUnpartnering] = useState(false);
   // The database refuses a fourth (20260917000000), so the button that would
   // ask for one is not offered. The count beside the name is already saying
   // why, in red, and it opens the list where the sentence about it lives.
@@ -801,6 +832,9 @@ function Row({
             <span className="ml-2 rounded-full bg-gold-lt px-2 py-0.5 font-bold text-[0.625rem] text-gold-dp uppercase tracking-wider">
               Admin
             </span>
+          ) : null}
+          {partnerTitle ? (
+            <span className="ml-2 text-[0.75rem] text-grey">{PARTNER_ROLE_NAME}</span>
           ) : null}
           {isSelf ? <span className="ml-2 text-[0.6875rem] text-grey">you</span> : null}
         </span>
@@ -900,6 +934,35 @@ function Row({
               ) : null}
             </div>
           </fieldset>
+          {onSetPartner ? (
+            <fieldset className="min-w-0 sm:col-span-2">
+              <legend className="mb-2 font-bold text-[0.75rem] text-grey">
+                {PARTNER_ROLE_NAME}
+              </legend>
+              {partnerTitle ? (
+                <p className="mb-2 text-[0.8125rem] text-ink">{partnerTitle}</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <SmallButton
+                  onClick={() => {
+                    setPartnering(partnerTitle ?? '');
+                  }}
+                >
+                  {partnerTitle ? 'Change title' : `Make ${PARTNER_ROLE_NAME.toLowerCase()}`}
+                </SmallButton>
+                {partnerTitle ? (
+                  <SmallButton
+                    destructive
+                    onClick={() => {
+                      setUnpartnering(true);
+                    }}
+                  >
+                    Remove as {PARTNER_ROLE_NAME.toLowerCase()}
+                  </SmallButton>
+                ) : null}
+              </div>
+            </fieldset>
+          ) : null}
           <fieldset className="min-w-0">
             <legend className="mb-2 font-bold text-[0.75rem] text-grey">Membership</legend>
             <div className="flex flex-wrap gap-2">
@@ -1061,6 +1124,78 @@ function Row({
             className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
           />
         </ConfirmPanel>
+      ) : null}
+
+      {unpartnering ? (
+        <ConfirmPanel
+          title={`Remove ${member.displayName} as a ${PARTNER_ROLE_NAME.toLowerCase()}?`}
+          confirmLabel="Remove the role"
+          onCancel={() => {
+            setUnpartnering(false);
+          }}
+          onConfirm={() => {
+            setUnpartnering(false);
+            onRemovePartner?.();
+          }}
+        >
+          <p>
+            Their title goes from their name, their own codes stop letting people in, and they can
+            no longer introduce members. Introductions already made stay.
+          </p>
+        </ConfirmPanel>
+      ) : partnering !== null ? (
+        <Panel
+          title={
+            partnerTitle
+              ? `${member.displayName}’s title`
+              : `Make ${member.displayName} a ${PARTNER_ROLE_NAME.toLowerCase()}?`
+          }
+          buttons={
+            <>
+              <PanelButton
+                onClick={() => {
+                  setPartnering(null);
+                }}
+              >
+                Cancel
+              </PanelButton>
+              <PanelButton
+                disabled={partnering.trim().length < 2}
+                onClick={() => {
+                  const title = partnering.trim();
+                  setPartnering(null);
+                  onSetPartner?.(title);
+                }}
+              >
+                Save
+              </PanelButton>
+            </>
+          }
+        >
+          {partnerTitle ? null : (
+            <p>
+              For professionals who work with people with SCI/D. They can invite without a limit,
+              make codes of their own, introduce members to each other, and see who they invited or
+              introduced. They see nobody’s messages or contact details.
+            </p>
+          )}
+          <label
+            className="mt-2 block font-semibold text-[0.75rem] text-ink"
+            htmlFor={`partner-title-${member.id}`}
+          >
+            Title shown beside their name
+          </label>
+          <input
+            id={`partner-title-${member.id}`}
+            value={partnering}
+            maxLength={80}
+            onChange={(e) => {
+              setPartnering(e.target.value);
+            }}
+            placeholder="Physical therapist, SCI-FIT"
+            className="mt-1 w-full rounded-[10px] border border-line bg-paper px-2.5 py-2 text-[0.8125rem] outline-none focus:border-emphasis"
+          />
+        </Panel>
       ) : null}
 
       {striking ? (
