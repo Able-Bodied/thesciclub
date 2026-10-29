@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 /**
  * The frame the legal pages sit in.
@@ -21,6 +22,11 @@ export function LegalPage({
   updated: string;
   children: React.ReactNode;
 }) {
+  // A link to one section (/terms#…) opens at it; the router does not.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
+  }, [hash]);
   return (
     <main
       id="main"
@@ -44,9 +50,21 @@ export function LegalPage({
   );
 }
 
-export function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** The Terms' "Losing your membership", linked from Me's Standing card. */
+export const LOSING_MEMBERSHIP_ID = 'losing-your-membership';
+
+export function Section({
+  title,
+  id,
+  children,
+}: {
+  title: string;
+  /** For a link straight to it, as /terms#id. */
+  id?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="mt-7 first:mt-0">
+    <section id={id} className="mt-7 scroll-mt-4 first:mt-0">
       <h2 className="font-extrabold font-head text-[1.125rem] text-ink leading-snug">{title}</h2>
       {children}
     </section>

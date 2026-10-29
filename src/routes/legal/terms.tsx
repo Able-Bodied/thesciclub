@@ -1,5 +1,12 @@
 import { Link } from 'react-router-dom';
-import { ContactEmail, LegalPage, List, P, Section } from '@/routes/legal/legal-page';
+import {
+  ContactEmail,
+  LegalPage,
+  List,
+  LOSING_MEMBERSHIP_ID,
+  P,
+  Section,
+} from '@/routes/legal/legal-page';
 
 /**
  * The Terms of Service, at /terms.
@@ -71,7 +78,7 @@ export default function TermsPage() {
         </P>
       </Section>
 
-      <Section title="Losing your membership">
+      <Section title="Losing your membership" id={LOSING_MEMBERSHIP_ID}>
         <P>Membership can be taken away. Any of these will end it:</P>
         <List>
           <li>Selling to members.</li>

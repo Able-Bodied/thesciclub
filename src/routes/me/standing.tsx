@@ -1,6 +1,7 @@
 import { ShieldAlert, ShieldCheck, ShieldX } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { LOSING_MEMBERSHIP_ID } from '@/routes/legal/legal-page';
 import { countingStrikes, type MyStrike, STRIKE_MONTHS } from '@/routes/me/standing-api';
 
 /**
@@ -135,79 +136,15 @@ export function StandingCard({
   );
 }
 
-/**
- * What can end a membership, on demand rather than in full.
- *
- * It was a paragraph on the card. The owner asked for it to come off: the card
- * should say where you stand, and the four things that end a membership belong
- * in the terms of service the club will have — this is the interim until there
- * is one to link to.
- *
- * ---------------------------------------------------------------------------
- * Hover, and not only hover
- * ---------------------------------------------------------------------------
- * Asked for as a hover. Built as hover *plus* focus plus tap, because
- * hover-only would put it out of reach of most of this club: a head pointer or
- * a mouth stick can hover but a switch cannot, and a phone has no hover at all.
- * The same three lines of state serve all three, so there was no reason to pick
- * one.
- *
- * Absolutely positioned so opening it does not push the rest of the column
- * down. A panel that moves the page under a pointer somebody is aiming
- * carefully is worse than no panel.
- */
+/** To the Terms' list of what ends a membership (the owner, 2026-10-28). */
 function HouseRules() {
-  const [open, setOpen] = useState(false);
-  /**
-   * Whether it was opened deliberately rather than passed over.
-   *
-   * A ref and not state because nothing renders from it, and because the
-   * ordering is the whole point: on a touch device a tap fires `mouseenter`
-   * *before* `click`, so a plain toggle opened the panel and then closed it
-   * again in the same tap. It never opened on a phone. A test written for the
-   * touch case caught it; hover and focus both looked fine.
-   */
-  const pinned = useRef(false);
-
   return (
-    <div className="relative">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => {
-          pinned.current = !pinned.current;
-          setOpen(pinned.current);
-        }}
-        onMouseEnter={() => {
-          setOpen(true);
-        }}
-        onMouseLeave={() => {
-          if (!pinned.current) setOpen(false);
-        }}
-        onFocus={() => {
-          setOpen(true);
-        }}
-        onBlur={() => {
-          if (!pinned.current) setOpen(false);
-        }}
-        data-target="small"
-        className="rounded font-semibold text-[0.78125rem] text-emphasis underline decoration-emphasis/30 underline-offset-2 transition-colors hover:decoration-emphasis"
-      >
-        What can end a membership
-      </button>
-      {open ? (
-        <p
-          role="note"
-          // Downward. Opening upward put the panel over "Good standing" and
-          // "Invited by" — the two things the card exists to say — because the
-          // trigger sits at the bottom of it. Covering the answer to show a
-          // footnote is worse than the paragraph this replaced.
-          className="absolute top-full left-0 z-10 mt-1.5 w-full rounded-[11px] border border-line bg-paper p-3 text-[0.78125rem] text-ink2 leading-[1.55] shadow-lg"
-        >
-          Selling to members, harassing anyone, giving medical advice as fact, or repeating outside
-          a room what was said in it.
-        </p>
-      ) : null}
-    </div>
+    <Link
+      to={`/terms#${LOSING_MEMBERSHIP_ID}`}
+      data-target="small"
+      className="rounded font-semibold text-[0.78125rem] text-emphasis underline decoration-emphasis/30 underline-offset-2 transition-colors hover:decoration-emphasis"
+    >
+      What can end a membership
+    </Link>
   );
 }

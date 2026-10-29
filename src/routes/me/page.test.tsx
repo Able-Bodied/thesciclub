@@ -342,12 +342,14 @@ describe('MePage', () => {
   });
 
   it('keeps what can end a membership reachable, without printing it', () => {
-    // The owner took the paragraph off the card: it says where you stand, and
-    // the four things that end a membership go in the terms of service when
-    // there is one. Reachable is still the requirement — see CONTEXT.md.
+    // The card says where you stand; the Terms say what ends a membership
+    // (the owner, 2026-10-28). Reachable is still the requirement — see CONTEXT.md.
     renderMe();
     expect(screen.queryByText(/Selling to members/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /what can end a membership/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /what can end a membership/i })).toHaveAttribute(
+      'href',
+      '/terms#losing-your-membership',
+    );
   });
 
   it('signs out from the tab Me opens on, without looking for it', async () => {

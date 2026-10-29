@@ -79,7 +79,8 @@ export function SignInSection({
         Signing in
       </h2>
       {state.status === 'error' ? <CardError>{state.error}</CardError> : null}
-      <div className="space-y-3">
+      {/* Two to a row on a desktop, so Account is not one long column. */}
+      <div className="grid gap-3 lg:grid-cols-2">
         <EmailCard details={details} />
         <PasswordCard email={details?.email ?? null} />
         <GoogleSignIn

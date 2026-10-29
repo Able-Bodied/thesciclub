@@ -459,56 +459,52 @@ export default function MePage() {
             <p className="text-[0.875rem] text-ink2 leading-[1.5]">
               Signed in as {member?.displayName ?? displayName ?? '—'}.
             </p>
-            {/* Signing in, then leaving and the legal pages beside it on a desktop. */}
-            <div className="grid items-start gap-x-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-              <div className="min-w-0">
-                {/* Kept mounted on this tab alone, which is why Google's, Apple's
+            {/* Kept mounted on this tab alone, which is why Google's, Apple's
                 and the email link's returns open Me here: see `initialTab`. */}
-                <SignInSection
-                  userId={userId}
-                  state={signIn.state}
-                  reload={signIn.reload}
-                  username={changedUsername ?? member?.username ?? null}
-                  onUsernameChanged={setChangedUsername}
-                />
-              </div>
-              <div className="min-w-0 lg:pt-1">
-                <section
-                  aria-labelledby="me-leaving-heading"
-                  // DeleteAccount brings its own top margin, sized for following
-                  // a button; under this heading it only needs a line's gap.
-                  className="mt-6 [&>:not(h2)]:mt-2.5"
+            <SignInSection
+              userId={userId}
+              state={signIn.state}
+              reload={signIn.reload}
+              username={changedUsername ?? member?.username ?? null}
+              onUsernameChanged={setChangedUsername}
+            />
+            {/* Side by side on a desktop, under the sign-in cards. */}
+            <div className="grid items-start gap-x-6 lg:grid-cols-2">
+              <section
+                aria-labelledby="me-leaving-heading"
+                // DeleteAccount brings its own top margin, sized for following
+                // a button; under this heading it only needs a line's gap.
+                className="mt-8 [&>:not(h2)]:mt-2.5"
+              >
+                <h2
+                  id="me-leaving-heading"
+                  className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
                 >
-                  <h2
-                    id="me-leaving-heading"
-                    className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-                  >
-                    Deleting your account
-                  </h2>
-                  {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
-                </section>
-                {/* Reachable after joining, as Apple 5.1.1(i) and Google Play ask. */}
-                <section aria-labelledby="me-legal-heading" className="mt-8">
-                  <h2
-                    id="me-legal-heading"
-                    className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-                  >
-                    Privacy and terms
-                  </h2>
-                  <ul className="mt-1.5">
-                    {LEGAL_LINKS.map(([to, label]) => (
-                      <li key={to}>
-                        <Link
-                          to={to}
-                          className="inline-flex min-h-[44px] items-center font-semibold text-[0.9375rem] text-emphasis underline"
-                        >
-                          {label}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              </div>
+                  Deleting your account
+                </h2>
+                {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
+              </section>
+              {/* Reachable after joining, as Apple 5.1.1(i) and Google Play ask. */}
+              <section aria-labelledby="me-legal-heading" className="mt-8">
+                <h2
+                  id="me-legal-heading"
+                  className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+                >
+                  Privacy and terms
+                </h2>
+                <ul className="mt-1.5">
+                  {LEGAL_LINKS.map(([to, label]) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        className="inline-flex min-h-[44px] items-center font-semibold text-[0.9375rem] text-emphasis underline"
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             </div>
           </TabPanel>
         ) : null}

@@ -1,8 +1,11 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render as renderPlain, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { StandingCard, standingFor } from '@/routes/me/standing';
 import type { MyStrike } from '@/routes/me/standing-api';
+
+/** The card links to the Terms, so it needs a router. */
+const render = (ui: React.ReactElement) => renderPlain(<MemoryRouter>{ui}</MemoryRouter>);
 
 function strike(o: Partial<MyStrike> = {}): MyStrike {
   return {
@@ -24,9 +27,7 @@ function monthsAgo(months: number): string {
 
 describe('what the card says', () => {
   it('reads Good standing when there is nothing against you, and says no more', () => {
-    // The card says where you stand. What can end a membership is behind the
-    // disclosure below it, at the owner's request, until there is a terms page
-    // to link to.
+    // The card says where you stand; what can end a membership is in the Terms.
     render(<StandingCard invitedBy="NorCal SCI" strikes={[]} />);
     expect(screen.getByText('Good standing')).toBeInTheDocument();
     expect(screen.queryByText(/Selling to members/)).not.toBeInTheDocument();
@@ -99,28 +100,13 @@ describe('standingFor', () => {
   });
 });
 
+// The owner, 2026-10-28: a link to the Terms' list, not a panel.
 describe('what can end a membership', () => {
-  // Asked for as a hover. Built as hover plus focus plus tap, because
-  // hover-only would put it out of reach of most of this club: a head pointer
-  // can hover, a switch cannot, and a phone has none at all.
-  it('opens on a pointer', async () => {
+  it('links to where the Terms say it', () => {
     render(<StandingCard invitedBy={null} strikes={[]} />);
-    await userEvent.hover(screen.getByRole('button', { name: /what can end a membership/i }));
-    expect(screen.getByText(/Selling to members/)).toBeInTheDocument();
-  });
-
-  it('opens on keyboard focus, which a switch can reach', async () => {
-    render(<StandingCard invitedBy={null} strikes={[]} />);
-    await userEvent.tab();
-    expect(screen.getByRole('button', { name: /what can end a membership/i })).toHaveFocus();
-    expect(screen.getByText(/Selling to members/)).toBeInTheDocument();
-  });
-
-  it('opens on a tap, where there is no hover at all', async () => {
-    render(<StandingCard invitedBy={null} strikes={[]} />);
-    const trigger = screen.getByRole('button', { name: /what can end a membership/i });
-    await userEvent.click(trigger);
-    expect(screen.getByText(/Selling to members/)).toBeInTheDocument();
-    expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: 'What can end a membership' })).toHaveAttribute(
+      'href',
+      '/terms#losing-your-membership',
+    );
   });
 });
