@@ -17,6 +17,25 @@ describe('reverseGeocode', () => {
     expect(await reverseGeocode(37.3, -121.9)).toEqual({ city: 'San Jose', state: 'CA' });
   });
 
+  // The owner, 2026-10-28: Use my location fills in the ZIP code too.
+  it('carries the ZIP code, first five digits only', async () => {
+    const fetch = ok({
+      address: {
+        city: 'San Jose',
+        state: 'California',
+        postcode: '95112-1234',
+        country_code: 'us',
+      },
+    });
+    vi.stubGlobal('fetch', fetch);
+    expect(await reverseGeocode(37.3, -121.9)).toEqual({
+      city: 'San Jose',
+      state: 'CA',
+      zip: '95112',
+    });
+    expect(String(fetch.mock.calls[0]?.[0])).toContain('zoom=16');
+  });
+
   it('falls back through town, village and county for places with no "city"', async () => {
     vi.stubGlobal(
       'fetch',

@@ -57,6 +57,19 @@ describe('Use my location while joining', () => {
     expect(getCurrentPosition.mock.calls[0]?.[2]).toEqual({ timeout: 10000 });
   });
 
+  it('fills in the ZIP code too, when the answer has one', async () => {
+    getCurrentPosition.mockImplementation((ok: (p: object) => void) => {
+      ok({ coords: { latitude: 38.58, longitude: -121.49, accuracy: 900 } });
+    });
+    reverseGeocode.mockResolvedValue({ city: 'Sacramento', state: 'CA', zip: '95814' });
+    const set = vi.fn();
+    render(<CityStep data={data} set={set} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Use my location' }));
+    await waitFor(() => {
+      expect(set).toHaveBeenCalledWith({ city: 'Sacramento', state: 'CA', zip: '95814' });
+    });
+  });
+
   it('in the iPhone app, asks through iOS alone', async () => {
     onIphone('granted');
     reverseGeocode.mockResolvedValue({ city: 'Sacramento', state: 'CA' });

@@ -451,7 +451,8 @@ export function CityStep({ data, set }: StepProps) {
       return;
     }
     setLocating(true);
-    // Sent once, to Nominatim, to find the city; the club keeps only the city.
+    // Sent once, to Nominatim, to find the city and ZIP code; the club keeps
+    // those, never the position.
     void deviceLocation({ timeout: 10000 }).then((result) => {
       if (!result.ok) {
         setLocationError('Location permission denied — choose it below.');
@@ -460,7 +461,8 @@ export function CityStep({ data, set }: StepProps) {
       }
       void reverseGeocode(result.position.latitude, result.position.longitude)
         .then((place) => {
-          if (place) set({ city: place.city, state: place.state });
+          if (place)
+            set({ city: place.city, state: place.state, ...(place.zip ? { zip: place.zip } : {}) });
           else setLocationError("Couldn't match that to a city — choose it below.");
         })
         .finally(() => {

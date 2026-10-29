@@ -24,6 +24,8 @@ export interface ResolvedPlace {
   city: string;
   /** Two-letter code, matching what the `state` column stores. */
   state: string;
+  /** Five digits, from Use my location (the owner, 2026-10-28); absent when unknown. */
+  zip?: string;
 }
 
 interface NominatimAddress {
@@ -34,6 +36,7 @@ interface NominatimAddress {
   suburb?: string;
   county?: string;
   state?: string;
+  postcode?: string;
   country_code?: string;
 }
 
@@ -55,7 +58,8 @@ function toPlace(address: NominatimAddress | undefined): ResolvedPlace | null {
   const city = cityOf(address);
   const state = address.state ? stateCodeForName(address.state) : null;
   if (!city || !state) return null;
-  return { city, state };
+  const zip = /^([0-9]{5})(-[0-9]{4})?$/.exec(address.postcode?.trim() ?? '')?.[1];
+  return zip ? { city, state, zip } : { city, state };
 }
 
 /** A browser position to a city and state. Returns null rather than throwing. */
@@ -65,7 +69,9 @@ export async function reverseGeocode(
 ): Promise<ResolvedPlace | null> {
   try {
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${latitude}&lon=${longitude}`,
+      // Zoom 16 rather than 10, so the answer carries the ZIP code too; the
+      // same position is sent either way.
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=16&lat=${latitude}&lon=${longitude}`,
       { headers: { Accept: 'application/json' } },
     );
     if (!res.ok) return null;
