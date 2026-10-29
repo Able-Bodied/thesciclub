@@ -50,7 +50,11 @@ const survey = vi.hoisted(() => ({
   declined: new Set<string>(),
 }));
 
-const privileges = vi.hoisted(() => ({ representative: false }));
+const privileges = vi.hoisted(() => ({ representative: false, partner: false }));
+vi.mock('@/lib/club-partners', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useIAmPartner: () => privileges.partner,
+}));
 vi.mock('@/lib/invite-permissions', () => ({
   useInvitePermissions: () => ({
     canInvite:
@@ -184,6 +188,7 @@ function ownMember(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   privileges.representative = false;
+  privileges.partner = false;
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Nicole' };
   own.member = ownMember();
   own.invitedBy = 'NorCal SCI';
@@ -366,6 +371,25 @@ describe('MePage', () => {
     renderMe();
     await userEvent.click(screen.getByRole('button', { name: /Sign out/ }));
     expect(await screen.findByText('network is unreachable')).toBeInTheDocument();
+  });
+
+  // A club partner (20261029100000) finds their page, and their own codes.
+  it('leads a club partner to their page and to making a code', () => {
+    privileges.partner = true;
+    renderMe();
+    const hub = screen.getByRole('link', { name: 'Club partner' });
+    expect(hub).toHaveAttribute('href', '/partner');
+    expect(hub).toHaveAccessibleDescription(/your people, your introductions/i);
+    expect(screen.getByRole('link', { name: 'Create QR code or invite link' })).toHaveAttribute(
+      'href',
+      '/me/qr',
+    );
+  });
+
+  it('offers no partner page to anybody else', () => {
+    renderMe();
+    expect(screen.queryByRole('link', { name: 'Club partner' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Create QR code or invite link' })).toBeNull();
   });
 
   it('marks an administrator, and links to the tools', () => {

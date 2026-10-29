@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   joiningOpen: true,
   /** Organizations the member is an org admin of. */
   mine: new Set<string>(),
+  partner: false,
   codes: [] as MyQrCode[],
   created: [] as NewQrCode[],
   turnedOff: [] as string[],
@@ -31,6 +32,10 @@ vi.mock('@/lib/joining', () => ({
 }));
 vi.mock('@/lib/organization-representatives', () => ({
   useMyOrganizations: () => ({ ids: state.mine, loading: false }),
+}));
+vi.mock('@/lib/club-partners', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useIAmPartner: () => state.partner,
 }));
 vi.mock('@/lib/organizations', () => {
   const ncs = { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null };
@@ -60,6 +65,7 @@ vi.mock('@/lib/qr-codes', async (importOriginal) => ({
       expiresAt: made.expiresAt ? made.expiresAt.toISOString() : null,
       notes: made.notes,
       turnedOffAt: null,
+      madeAsPartner: made.organizationId === null && state.partner && !state.account?.isAdmin,
     };
     state.codes = [code, ...state.codes];
     return Promise.resolve({ ok: true, code });
@@ -102,6 +108,7 @@ const code = (o: Partial<MyQrCode> = {}): MyQrCode => ({
   expiresAt: FAR,
   notes: null,
   turnedOffAt: null,
+  madeAsPartner: false,
   ...o,
 });
 
@@ -128,6 +135,7 @@ beforeEach(() => {
   state.accountEmail = 'alfred@example.com';
   state.joiningOpen = true;
   state.mine = new Set();
+  state.partner = false;
   state.codes = [];
   state.created = [];
   state.turnedOff = [];
@@ -425,5 +433,57 @@ describe('the list of codes', () => {
     expect(screen.getByText(/expired Oct 20/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Turn off' })).toBeNull();
+  });
+});
+
+// A club partner's own code, with no organization, lets people in
+// (20261029100000).
+describe("a club partner's own code", () => {
+  const asPartner = () => {
+    state.account = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Bobby' };
+    state.partner = true;
+  };
+
+  it('lets a partner in, with no organization and no email to show', async () => {
+    asPartner();
+    renderPage();
+    expect(
+      await screen.findByRole('heading', { name: 'Create QR code or invite link' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Your own code, as a club partner')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Email shown while joining is closed')).toBeNull();
+    expect(
+      screen.getByText(/before it expires can join the club, as invited by you/),
+    ).toBeInTheDocument();
+  });
+
+  it('warns of nothing while the club is invite only: it lets them in', async () => {
+    asPartner();
+    state.joiningOpen = false;
+    renderPage();
+    await screen.findByRole('heading', { name: 'Create QR code or invite link' });
+    await waitFor(() => {
+      expect(screen.queryByText('Joining is invite only right now.')).toBeNull();
+    });
+  });
+
+  it('makes one for no organization, without an email, and lists it as their own', async () => {
+    asPartner();
+    renderPage();
+    await userEvent.click(await screen.findByRole('button', { name: 'Make the QR code' }));
+    expect(state.created[0]).toMatchObject({ organizationId: null, contactEmail: null });
+    await userEvent.click(await screen.findByRole('button', { name: 'Done' }));
+    expect(await screen.findByText('Your own code')).toBeInTheDocument();
+  });
+
+  it('offers their organizations, or just themselves, to a partner who is also an org admin', async () => {
+    asPartner();
+    state.mine = new Set(['ncs']);
+    renderPage();
+    const who = await screen.findByLabelText("Who it's for");
+    expect(
+      within(who).getByRole('option', { name: 'Just you, as a club partner' }),
+    ).toBeInTheDocument();
+    expect(within(who).getByRole('option', { name: 'NorCal SCI' })).toBeInTheDocument();
   });
 });
