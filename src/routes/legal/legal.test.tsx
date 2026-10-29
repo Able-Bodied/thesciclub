@@ -464,10 +464,26 @@ describe('Deleting your account', () => {
   it('is linked from the Privacy Policy and the Terms', () => {
     for (const path of ['/privacy', '/terms']) {
       open(path);
-      expect(screen.getByRole('link', { name: 'Deleting your account' })).toHaveAttribute(
-        'href',
-        '/delete-account',
+      // Contents has a link of the same name, to the section on this page.
+      const links = screen.getAllByRole('link', { name: 'Deleting your account' });
+      expect(links.map((link) => link.getAttribute('href'))).toContain('/delete-account');
+      cleanup();
+    }
+  });
+});
+
+// The owner, 2026-10-28.
+describe('Contents', () => {
+  it('links to every section of both pages, in order', () => {
+    for (const path of ['/privacy', '/terms']) {
+      open(path);
+      const contents = screen.getByRole('navigation', { name: 'Contents' });
+      const links = within(contents).getAllByRole('link');
+      const sections = [...document.querySelectorAll('main section[id]')];
+      expect(links.map((link) => link.getAttribute('href'))).toEqual(
+        sections.map((section) => `#${section.id}`),
       );
+      expect(links.length).toBeGreaterThan(8);
       cleanup();
     }
   });
