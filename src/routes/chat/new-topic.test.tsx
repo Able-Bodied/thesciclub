@@ -321,3 +321,33 @@ describe('app feedback', () => {
     expect(screen.getByRole('button', { name: 'Post it' })).toBeInTheDocument();
   });
 });
+
+// The owner, 2026-10-28: the room can be changed while writing.
+describe('choosing the room', () => {
+  beforeEach(() => {
+    db.rooms = [
+      makeRoom({ id: 'equip', name: 'Equipment & assistive tech', category: 'Kit' }),
+      makeRoom({ id: 'general', name: 'General', category: 'General' }),
+      makeRoom({ id: 'shut', name: 'Not open yet', category: 'Kit', openedAt: null }),
+      makeRoom({ id: 'fb', name: 'App Feedback', category: 'Kit' }),
+    ];
+  });
+
+  it('offers the open rooms, and moves the post to another, keeping what came with it', async () => {
+    const user = userEvent.setup();
+    const state = { from: 'home', segment: 'all', draft: 'Side guards?' };
+    renderPage(state);
+    const select = screen.getByLabelText('Room');
+    expect(select).toHaveValue('equip');
+    const names = [...(select as HTMLSelectElement).options].map((o) => o.textContent);
+    expect(names).toEqual(['General', 'Equipment & assistive tech']);
+    await user.selectOptions(select, 'General');
+    expect(db.navigated).toEqual([['/chat/rooms/general/new', state]]);
+  });
+
+  it('is not offered on the App Feedback form', () => {
+    db.rooms = [makeRoom({ id: 'equip', name: 'App Feedback', category: 'Kit' })];
+    renderPage();
+    expect(screen.queryByLabelText('Room')).toBeNull();
+  });
+});

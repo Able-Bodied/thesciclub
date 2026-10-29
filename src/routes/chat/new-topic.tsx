@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { attachmentFolder, deleteAttachments, uploadAttachments } from '@/lib/chat/attachments';
 import { roomPrompt } from '@/lib/chat/room-prompts';
-import { useChatRooms } from '@/lib/chat/rooms';
+import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import { describeThrown } from '@/lib/describe-error';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
@@ -202,8 +202,47 @@ export default function NewTopicPage() {
         <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
           {feedback
             ? 'Tell us what works, what doesn’t, or what you’d like. It’s posted in the App Feedback room, where the team reads it. Every member can read it too, and nothing here is public.'
-            : `In ${room.name}. Every member can read this, including members who join later. Nothing here is public.`}
+            : 'Every member can read this, including members who join later. Nothing here is public.'}
         </p>
+
+        {/* The room can be changed here too (the owner, 2026-10-28): it was
+            fixed once "Add details" brought the post over. The same screen
+            for another room keeps what is typed; App Feedback's stays put. */}
+        {feedback ? null : (
+          <div className="mt-4">
+            <label
+              htmlFor="topic-room"
+              className="block font-bold font-head text-[0.8125rem] text-ink"
+            >
+              Room
+            </label>
+            <select
+              id="topic-room"
+              value={room.id}
+              onChange={(event) => {
+                void navigate(`/chat/rooms/${event.target.value}/new`, {
+                  replace: true,
+                  state: location.state as unknown,
+                });
+              }}
+              className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3 py-2 text-[1rem] text-ink outline-none focus:border-emphasis"
+            >
+              {roomsByCategory(
+                rooms.filter(
+                  (r) => r.id === room.id || (r.openedAt !== null && !appFeedbackRoom([r])),
+                ),
+              ).map(([category, inCategory]) => (
+                <optgroup key={category} label={category}>
+                  {inCategory.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        )}
 
         {failure ? (
           <p
