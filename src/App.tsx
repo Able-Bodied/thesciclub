@@ -57,6 +57,8 @@ const HeldInvitesPage = lazy(() => import('@/routes/events/held-invites'));
 const IntroductionPage = lazy(() => import('@/routes/introductions/page'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
+const PartnerPage = lazy(() => import('@/routes/partner/page'));
+const PartnerCardPage = lazy(() => import('@/routes/partner/card-page'));
 const SavedPage = lazy(() => import('@/routes/me/saved-page'));
 const NotificationsPage = lazy(() => import('@/routes/notifications/page'));
 const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
@@ -275,7 +277,8 @@ function ShellContent() {
             <Route path="/events/:id/guests" element={<GuestListPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/me" element={null} />
-            {/* Administrators only; the page sends anybody else to Me. */}
+            {/* Administrators, org admins and club partners; the page sends
+            anybody else to Me. */}
             <Route path="/me/qr" element={<QrCodePage />} />
             <Route path="/me/saved" element={<SavedPage />} />
             {/* Unlisted in the tab bar: the bell on Home (phone) and at the end
@@ -285,6 +288,9 @@ function ShellContent() {
             Reached from the Invites card on Me, which is where a member goes
             to find out what their membership lets them do. */}
             <Route path="/invites" element={<InvitesPage />} />
+            {/* Club partners only (20261029100000); reached from Me. */}
+            <Route path="/partner" element={<PartnerPage />} />
+            <Route path="/partner/card" element={<PartnerCardPage />} />
             {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
             <Route path="/organizations/manage" element={<OrganizationManagementPage />} />
             <Route path="/admin" element={<AdminPage />} />

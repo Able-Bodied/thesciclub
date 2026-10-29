@@ -8,6 +8,7 @@ import { signOut, useAccount } from '@/lib/account';
 import { EMAIL_RETURN_PARAM, useSignInDetails } from '@/lib/account-email';
 import { APPLE_RETURN_PARAM } from '@/lib/apple-sign-in';
 import { useChatRooms } from '@/lib/chat/rooms';
+import { PARTNER_ROLE_NAME, useIAmPartner } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
@@ -235,9 +236,11 @@ export default function MePage() {
   const feedbackRoom = appFeedbackRoom(useChatRooms().rooms);
   // An org admin makes QR codes for their organization (20261028960000).
   const orgAdmin = useMyOrganizations(userId).ids.size > 0;
+  const partner = useIAmPartner(userId) === true;
   const hasClubTools =
     isAdmin ||
     orgAdmin ||
+    partner ||
     member?.type === 'organization' ||
     invitePermissions.canInvite ||
     Boolean(invitePermissions.error);
@@ -347,7 +350,14 @@ export default function MePage() {
                           description="Members, invites, organizations and moderation."
                         />
                       ) : null}
-                      {isAdmin || orgAdmin ? (
+                      {partner ? (
+                        <ProfileLink
+                          to="/partner"
+                          title={PARTNER_ROLE_NAME}
+                          description="Your people, your introductions, your numbers and your card."
+                        />
+                      ) : null}
+                      {isAdmin || orgAdmin || partner ? (
                         <ProfileLink
                           to="/me/qr"
                           title="Create QR code or invite link"

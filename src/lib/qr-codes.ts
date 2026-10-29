@@ -115,6 +115,8 @@ export interface MyQrCode {
   expiresAt: string | null;
   notes: string | null;
   turnedOffAt: string | null;
+  /** A club partner's own, with no organization: lets people in (20261029100000). */
+  madeAsPartner: boolean;
 }
 
 interface MyQrCodeRow {
@@ -127,6 +129,7 @@ interface MyQrCodeRow {
   expires_at: string | null;
   notes: string | null;
   turned_off_at: string | null;
+  made_as_partner?: boolean | null;
 }
 
 function fromRow(row: MyQrCodeRow): MyQrCode {
@@ -140,6 +143,7 @@ function fromRow(row: MyQrCodeRow): MyQrCode {
     expiresAt: row.expires_at,
     notes: row.notes,
     turnedOffAt: row.turned_off_at,
+    madeAsPartner: Boolean(row.made_as_partner),
   };
 }
 
@@ -151,7 +155,7 @@ export async function fetchMyQrCodes(): Promise<
     const { data, error } = await getSupabase()
       .from('qr_codes')
       .select(
-        'id, code, organization_id, event_name, contact_email, created_at, expires_at, notes, turned_off_at',
+        'id, code, organization_id, event_name, contact_email, created_at, expires_at, notes, turned_off_at, made_as_partner',
       )
       .order('created_at', { ascending: false });
     if (error) return { ok: false, error: describeError(error, 'Could not load your codes.') };

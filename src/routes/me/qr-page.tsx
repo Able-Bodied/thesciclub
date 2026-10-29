@@ -7,6 +7,7 @@ import { useAccount } from '@/lib/account';
 import { loadSignInDetails } from '@/lib/account-email';
 import { useAnnounce } from '@/lib/announce';
 import { looksLikeEmail } from '@/lib/auth-email';
+import { PARTNER_ROLE_NAME, useIAmPartner } from '@/lib/club-partners';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { fetchJoiningIsOpen } from '@/lib/joining';
 import { useMyOrganizations } from '@/lib/organization-representatives';
@@ -35,6 +36,9 @@ import { cn } from '@/lib/utils';
  * Every code expires after a day unless its maker chooses otherwise, and
  * may carry a note only its maker sees. Every code made is listed below with
  * when it was made, when it expires, and a way to turn it off.
+ *
+ * A club partner's own code, with no organization, lets people in as an
+ * org admin's does (20261029100000).
  */
 
 const WHEN: Intl.DateTimeFormatOptions = {
@@ -64,6 +68,7 @@ export default function QrCodePage() {
   const announce = useAnnounce();
   const memberId = account.status === 'member' ? account.userId : null;
   const mine = useMyOrganizations(memberId);
+  const partner = useIAmPartner(memberId);
   const { byId } = useOrganizations();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [atEvent, setAtEvent] = useState(false);
@@ -91,7 +96,9 @@ export default function QrCodePage() {
     .map((id) => byId.get(id))
     .filter((organization) => organization !== undefined)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const mayMake = isAdmin || organizations.length > 0;
+  const mayMake = isAdmin || organizations.length > 0 || partner === true;
+  // A partner's code with no organization lets people in and needs no email.
+  const ownCode = partner === true && !isAdmin;
   // The first of theirs until they choose; an administrator with none makes
   // a code with no organization.
   const forOrganization =
@@ -115,7 +122,10 @@ export default function QrCodePage() {
     });
   }, [mayMake, load]);
 
-  if (account.status === 'loading' || (account.status === 'member' && mine.loading)) {
+  if (
+    account.status === 'loading' ||
+    (account.status === 'member' && (mine.loading || partner === null))
+  ) {
     return <div className="min-h-dvh bg-canvas" />;
   }
   if (account.status !== 'member') return <Navigate to="/join" replace />;
@@ -123,12 +133,16 @@ export default function QrCodePage() {
 
   const event = isAdmin && atEvent ? eventName.trim() : '';
   // A code with no organization shows an email while joining is closed.
-  const needsEmail = forOrganization === null;
+  const needsEmail = forOrganization === null && !ownCode;
+  // Whoever scans it may join, even while the club is invite only.
+  const letsIn = forOrganization !== null || ownCode;
   const ready = (!(isAdmin && atEvent) || event !== '') && (!needsEmail || looksLikeEmail(email));
   const nameOf = (code: MyQrCode) =>
     code.organizationId
       ? (byId.get(code.organizationId)?.name ?? 'Your organization')
-      : (code.eventName ?? 'No event');
+      : code.madeAsPartner
+        ? 'Your own code'
+        : (code.eventName ?? 'No event');
 
   function made() {
     return createQrCode({
@@ -213,7 +227,7 @@ export default function QrCodePage() {
             Create QR code or invite link
           </h1>
           <p className="mt-1 text-[0.78125rem] text-grey leading-[1.45]">
-            {forOrganization
+            {letsIn
               ? 'Anyone who scans your code or opens its link before it expires can join the club, as invited by you. You are told when they do.'
               : 'While anybody can join, people who join from your code are recorded as invited by you, and you are told when they do.'}
           </p>
@@ -221,7 +235,7 @@ export default function QrCodePage() {
       </header>
 
       <div className="mx-auto w-full max-w-[560px] flex-none px-4 pt-4 pb-8">
-        {joiningOpen === false && !forOrganization ? (
+        {joiningOpen === false && !letsIn ? (
           <div
             role="status"
             className="mb-4 rounded-[14px] border border-gold-dp bg-gold-lt p-3.5 text-[0.875rem] text-ink leading-[1.5]"
@@ -247,7 +261,7 @@ export default function QrCodePage() {
             void make();
           }}
         >
-          {organizations.length > 1 || (isAdmin && organizations.length > 0) ? (
+          {organizations.length > 1 || ((isAdmin || ownCode) && organizations.length > 0) ? (
             <div>
               <label
                 htmlFor="qr-organization"
@@ -270,12 +284,20 @@ export default function QrCodePage() {
                 ))}
                 {isAdmin ? (
                   <option value={NO_ORGANIZATION}>No organization (credit only)</option>
+                ) : ownCode ? (
+                  <option value={NO_ORGANIZATION}>
+                    Just you, as a {PARTNER_ROLE_NAME.toLowerCase()}
+                  </option>
                 ) : null}
               </select>
             </div>
           ) : forOrganization ? (
             <p className="text-[0.875rem] text-ink">
               For <b>{byId.get(forOrganization)?.name}</b>
+            </p>
+          ) : ownCode ? (
+            <p className="text-[0.875rem] text-ink">
+              Your own code, as a {PARTNER_ROLE_NAME.toLowerCase()}
             </p>
           ) : null}
 
@@ -554,7 +576,7 @@ function statusOf(code: MyQrCode): string {
   if (code.expiresAt) {
     return `${Date.parse(code.expiresAt) > Date.now() ? 'expires' : 'expired'} ${when(code.expiresAt)}`;
   }
-  if (code.organizationId) return 'no expiry';
+  if (code.organizationId || code.madeAsPartner) return 'no expiry';
   return `shows ${code.contactEmail ?? 'your email'} while closed`;
 }
 
@@ -636,7 +658,7 @@ function ShowingCode({
         <div className="mt-4 w-full max-w-[min(100%,62dvh)]">
           <QrCode text={url} label="QR code that opens the club's join page" />
         </div>
-        {joiningOpen === false && !code.organizationId ? (
+        {joiningOpen === false && !code.organizationId && !code.madeAsPartner ? (
           <p className="mt-3 text-center font-bold text-[0.9375rem] text-[#7a4b00]">
             Joining is invite only right now: this code lets nobody in.
           </p>
