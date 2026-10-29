@@ -1,5 +1,5 @@
+import { Link } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
-import { CONSULTATION_URL } from '@/lib/consultation';
 import { NewTabLink } from '@/routes/onboarding/steps';
 
 /**
@@ -123,12 +123,19 @@ export function WelcomeScreen({
         <p className="mt-2.5 text-center text-[0.78125rem] text-grey">
           Members only. Nothing inside the club is public.
         </p>
-        {/* For somebody with no invite (the owner, 2026-10-10). Somebody
-            signed in with an address that is not on the list gets the same
-            offer on the blocked screen. */}
+        {/* For somebody with no invite: the request page (the owner,
+            2026-10-28; it was a call with Wojtek from 2026-10-10). Somebody
+            signed in with an address that is not on the list is offered the
+            same on the blocked screen. */}
         {joiningOpen ? null : (
           <p className="mt-1.5 text-center text-[0.78125rem] text-grey">
-            No invite yet? <NewTabLink href={CONSULTATION_URL}>Book a call with Wojtek</NewTabLink>
+            No invite yet?{' '}
+            <Link
+              to="/request-invite"
+              className="font-bold text-emphasis underline decoration-2 underline-offset-2"
+            >
+              Request an invite
+            </Link>
           </p>
         )}
         {/* On the first screen, so the terms are readable before anything is

@@ -484,9 +484,13 @@ describe('the welcome screen', () => {
 // The owner, 2026-10-14: for events, an administrator can let anybody join.
 // The doors stop sending a walk-in to find an invite; the database decides.
 describe('while anybody can join', () => {
-  it('says joining is by invitation, and offers the call, while it is not', async () => {
+  it('says joining is by invitation, and offers to request an invite, while it is not', async () => {
     renderJoin();
     expect(screen.getByText(/No invite yet\?/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Request an invite' })).toHaveAttribute(
+      'href',
+      '/request-invite',
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
     expect(screen.getByText('Joining is by invitation only.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'request one' })).toHaveAttribute(

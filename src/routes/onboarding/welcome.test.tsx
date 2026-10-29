@@ -1,6 +1,13 @@
-import { render, screen } from '@testing-library/react';
+import { render as renderBare, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it } from 'vitest';
 import { WelcomeScreen } from '@/routes/onboarding/welcome';
+
+// The request link is a route link (the owner, 2026-10-28).
+function render(ui: ReactElement) {
+  return renderBare(<MemoryRouter>{ui}</MemoryRouter>);
+}
 
 const noop = () => undefined;
 
