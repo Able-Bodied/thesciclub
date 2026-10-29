@@ -2,6 +2,7 @@ import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
+import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
 
 /**
@@ -91,6 +92,9 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
  * moves focus into the box, since pressing Reply on a post halfway up the
  * screen is a decision to write. The bar is the caller's state; this only
  * draws it and reports the ✕.
+ *
+ * `mentions` suggests members after an "@" (20261029070000): in a topic,
+ * where a mention tells them, and not in a conversation.
  */
 /** About six lines. Mirrored by `max-h-[150px]` on the textarea below. */
 const MAX_HEIGHT = 150;
@@ -164,6 +168,7 @@ export function Composer({
   maxLength = 4000,
   replyingTo = null,
   editing = null,
+  mentions = false,
 }: {
   placeholder: string;
   /** What the send button says to a screen reader. */
@@ -176,6 +181,8 @@ export function Composer({
   replyingTo?: ComposerReplyingTo | null;
   /** A post or message whose words are in the box: see the header. */
   editing?: ComposerEditing | null;
+  /** Suggest members after an "@": see the header. */
+  mentions?: boolean;
 }) {
   const announce = useAnnounce();
   const [draft, setDraft] = useState('');
@@ -246,6 +253,18 @@ export function Composer({
     const element = box.current;
     if (element) fitToContent(element);
   }
+
+  const mention = useMentionSuggestions({
+    box,
+    value: draft,
+    onChange: (next) => {
+      draftVersion.current += 1;
+      setDraft(next);
+      requestAnimationFrame(resize);
+    },
+    above: true,
+    enabled: mentions,
+  });
 
   const body = draft.trim();
   const empty = body === '' && files.length === 0;
@@ -326,6 +345,7 @@ export function Composer({
       placeholder={editing ? `Edit your ${editing.noun}` : placeholder}
       aria-label={editing ? `Edit your ${editing.noun}` : placeholder}
       readOnly={editing !== null && sending}
+      {...(mentions ? mention.boxProps : {})}
       onPaste={(event) => {
         pastePhotos(event, photos.current);
       }}
@@ -335,6 +355,7 @@ export function Composer({
         resize();
       }}
       onKeyDown={(event) => {
+        if (mention.onKeyDown(event)) return;
         if (event.key === 'Escape' && editing) {
           event.preventDefault();
           if (!sending) finishEdit(editing, 'Edit cancelled.');
@@ -415,6 +436,7 @@ export function Composer({
           </button>
         </div>
       ) : null}
+      {mentions ? <div className="mx-auto w-full max-w-[720px]">{mention.list}</div> : null}
       {editing && !editing.addPhotos ? null : (
         <div className="mx-auto w-full max-w-[720px]">
           <PhotoStrip

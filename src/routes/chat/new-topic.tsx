@@ -299,6 +299,7 @@ export default function NewTopicPage() {
           value={body}
           maxLength={4000}
           onChange={setBody}
+          mentions
           placeholder={prompt.body}
           hintClassName="mt-1 text-[0.71875rem] text-grey leading-[1.45]"
           onPaste={(event) => {
