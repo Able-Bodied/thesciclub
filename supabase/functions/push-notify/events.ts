@@ -9,6 +9,7 @@ export const EVENTS: ReadonlySet<string> = new Set([
   'post',
   'like',
   'reaction',
+  'mention',
   'group_add',
   'report',
   'member_joined',

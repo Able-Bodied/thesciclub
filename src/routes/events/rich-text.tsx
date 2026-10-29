@@ -73,7 +73,10 @@ export function safeHref(raw: string | null): string | null {
  * would silently delete an event's description, and a blank description looks
  * like a broken app rather than a blocked attack.
  */
-function sanitizeInto(source: Node, target: Node, doc: Document): void {
+/** A member's profile, the one address inside the app a post's @mention may link to. */
+const PEER_HREF = /^\/peers\/[0-9a-f-]{36}$/;
+
+function sanitizeInto(source: Node, target: Node, doc: Document, peers: boolean): void {
   for (const child of Array.from(source.childNodes)) {
     if (child.nodeType === Node.TEXT_NODE) {
       target.appendChild(doc.createTextNode(child.textContent ?? ''));
@@ -86,14 +89,17 @@ function sanitizeInto(source: Node, target: Node, doc: Document): void {
       // Not unwrapped as text: the children of these two are code, and keeping
       // the words would paste that code into the page as visible prose.
       if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE') continue;
-      sanitizeInto(element, target, doc);
+      sanitizeInto(element, target, doc, peers);
       continue;
     }
 
     const clean = doc.createElement(element.tagName.toLowerCase());
     if (clean instanceof HTMLAnchorElement) {
       const href = safeHref(element.getAttribute('href'));
-      if (href) {
+      const peer = element.getAttribute('href') ?? '';
+      if (peers && PEER_HREF.test(peer)) {
+        clean.setAttribute('href', peer);
+      } else if (href) {
         clean.setAttribute('href', href);
         clean.setAttribute('target', '_blank');
         // noopener is the security half; noreferrer keeps the club out of the
@@ -102,18 +108,19 @@ function sanitizeInto(source: Node, target: Node, doc: Document): void {
         clean.setAttribute('rel', 'noopener noreferrer');
       }
     }
-    sanitizeInto(element, clean, doc);
+    sanitizeInto(element, clean, doc, peers);
     target.appendChild(clean);
   }
 }
 
-export function sanitizeHtml(html: string): string {
+/** `peers` keeps links to a member's profile, for a post's @mentions. */
+export function sanitizeHtml(html: string, { peers = false }: { peers?: boolean } = {}): string {
   // An inert document: scripts do not run, images do not load, and no handler
   // fires while this is walked.
   const parsed = new DOMParser().parseFromString(html, 'text/html');
   const out = document.implementation.createHTMLDocument('');
   const root = out.createElement('div');
-  sanitizeInto(parsed.body, root, out);
+  sanitizeInto(parsed.body, root, out, peers);
   return root.innerHTML;
 }
 

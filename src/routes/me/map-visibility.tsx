@@ -44,7 +44,7 @@ export function MapVisibility({
           <p className="font-extrabold font-head text-[0.96875rem] text-ink">Show me on the map</p>
           <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
             {showOnMap
-              ? 'Other members see you counted in your city on the map — never your address.'
+              ? 'Other members see you counted at your ZIP code or city on the map — never your address.'
               : 'You are not counted on the map. Other members can still find you in Peers if you are visible.'}
           </p>
         </div>

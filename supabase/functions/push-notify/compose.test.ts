@@ -193,6 +193,32 @@ describe('compose', () => {
     ).toBe('Your photograph.');
   });
 
+  // 20261029070000: an @username in a post or a topic's opening post.
+  it('says who mentioned the member, with the words, and post or topic', () => {
+    expect(
+      compose(
+        owed({
+          kind: 'mention',
+          body: 'Ask **@ana** about ramps',
+          detail: 'post',
+          url: '/chat/rooms/r/topics/t1?post=p1',
+          tag: 'mention:p1',
+        }),
+      ),
+    ).toMatchObject({
+      title: 'Bo mentioned you in a post',
+      body: 'Ask @ana about ramps',
+      url: '/chat/rooms/r/topics/t1?post=p1&n=mention%3Ap1',
+      tag: 'mention:p1',
+    });
+    expect(compose(owed({ kind: 'mention', body: 'Hi @ana', detail: 'topic' }))?.title).toBe(
+      'Bo mentioned you in a topic',
+    );
+    expect(compose(owed({ kind: 'mention', body: '', photo_count: 1 }))?.body).toBe(
+      'Sent a photograph.',
+    );
+  });
+
   it('says who added the member to a group, and not which group', () => {
     expect(compose(owed({ kind: 'group_add', body: null }))).toMatchObject({
       title: 'Added to a group',

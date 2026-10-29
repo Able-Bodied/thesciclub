@@ -1,4 +1,5 @@
 import { findLinks } from '@/lib/links';
+import { splitMentions } from '@/lib/mentions';
 
 /**
  * A small Markdown, for an event's "About it" (the owner, 2026-10-10).
@@ -24,7 +25,10 @@ const HEADING = /^(#{1,3})\s+(.+)$/;
 const BULLET = /^\s*[-*•]\s+(.+)$/;
 const NUMBERED = /^\s*\d{1,3}[.)]\s+(.+)$/;
 
-export function markdownToHtml(text: string): string {
+/** Where an @username links to, or null to leave it as words (a post's mentions). */
+export type MentionHref = (username: string) => string | null;
+
+export function markdownToHtml(text: string, mention?: MentionHref): string {
   const out: string[] = [];
   let paragraph: string[] = [];
   // Asserted rather than annotated: the closures below reset it, which
@@ -32,13 +36,14 @@ export function markdownToHtml(text: string): string {
   let list = null as { tag: 'ul' | 'ol'; items: string[] } | null;
 
   const closeParagraph = () => {
-    if (paragraph.length) out.push(`<p>${paragraph.map(inline).join('<br>')}</p>`);
+    if (paragraph.length)
+      out.push(`<p>${paragraph.map((line) => inline(line, mention)).join('<br>')}</p>`);
     paragraph = [];
   };
   const closeList = () => {
     if (list) {
       out.push(
-        `<${list.tag}>${list.items.map((i) => `<li>${inline(i)}</li>`).join('')}</${list.tag}>`,
+        `<${list.tag}>${list.items.map((i) => `<li>${inline(i, mention)}</li>`).join('')}</${list.tag}>`,
       );
     }
     list = null;
@@ -55,7 +60,7 @@ export function markdownToHtml(text: string): string {
     if (heading?.[2]) {
       closeParagraph();
       closeList();
-      out.push(`<h3>${inline(heading[2])}</h3>`);
+      out.push(`<h3>${inline(heading[2], mention)}</h3>`);
       continue;
     }
     const bullet = BULLET.exec(line);
@@ -85,32 +90,44 @@ export function markdownToHtml(text: string): string {
 const INLINE =
   /\[([^\]\n]+)\]\(([^)\s]+)\)|\*\*(?=\S)(.+?)(?<=\S)\*\*|(?<![\w*])\*(?=\S)(.+?)(?<=\S)\*(?![\w*])|(?<![\w_])_(?=\S)(.+?)(?<=\S)_(?![\w_])/g;
 
-function inline(text: string): string {
+function inline(text: string, mention?: MentionHref): string {
   let html = '';
   let at = 0;
   for (const match of text.matchAll(INLINE)) {
-    html += plain(text.slice(at, match.index));
+    html += plain(text.slice(at, match.index), mention);
     const [whole, linkText, href, bold, starItalic, underscoreItalic] = match;
     if (linkText !== undefined && href !== undefined) {
       html += `<a href="${escapeHtml(href)}">${inline(linkText)}</a>`;
     } else if (bold !== undefined) {
-      html += `<strong>${inline(bold)}</strong>`;
+      html += `<strong>${inline(bold, mention)}</strong>`;
     } else {
-      html += `<em>${inline(starItalic ?? underscoreItalic ?? '')}</em>`;
+      html += `<em>${inline(starItalic ?? underscoreItalic ?? '', mention)}</em>`;
     }
     at = match.index + whole.length;
   }
-  return html + plain(text.slice(at));
+  return html + plain(text.slice(at), mention);
 }
 
-/** Text with its bare web addresses as links. */
-function plain(text: string): string {
+/** Text with its bare web addresses as links, and its @names where `mention` says. */
+function plain(text: string, mention?: MentionHref): string {
   return findLinks(text)
     .map((piece) =>
       piece.kind === 'text'
-        ? escapeHtml(piece.text)
+        ? mentions(piece.text, mention)
         : `<a href="${escapeHtml(piece.href)}">${escapeHtml(piece.label)}</a>`,
     )
+    .join('');
+}
+
+function mentions(text: string, mention?: MentionHref): string {
+  if (!mention) return escapeHtml(text);
+  return splitMentions(text)
+    .map((piece) => {
+      const href = piece.kind === 'mention' ? mention(piece.username) : null;
+      return href
+        ? `<a href="${escapeHtml(href)}">${escapeHtml(piece.text)}</a>`
+        : escapeHtml(piece.text);
+    })
     .join('');
 }
 

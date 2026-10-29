@@ -14,7 +14,8 @@ import {
 import { cn } from '@/lib/utils';
 
 /**
- * Display settings, on the Me tab.
+ * Display settings, in the Display sheet (display-sheet.tsx); Me → Settings
+ * shows a summary of them (display-summary.tsx).
  *
  * Appearance, Higher contrast, Text size, Easier-to-read text, Underline
  * links, Bigger tap targets and Reduce motion (the last four added
@@ -105,23 +106,7 @@ function OnOff({ value, onChange }: { value: boolean; onChange: (next: boolean) 
   );
 }
 
-export function AccessibilitySettings() {
-  return (
-    <section aria-labelledby="display-settings-heading" className="mt-6">
-      <h2
-        id="display-settings-heading"
-        // mb-2.5, matching the other section headings on Me. It was mb-1
-        // because a paragraph sat under it and carried the rest of the gap.
-        className="mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-      >
-        Display
-      </h2>
-      <DisplayControls />
-    </section>
-  );
-}
-
-/** The rows and Reset, without a heading: Me's section and the Display sheet. */
+/** The rows and Reset, without a heading, for the Display sheet. */
 export function DisplayControls() {
   const { preferences, setPreference, reset } = useAccessibility();
 

@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Children, isValidElement, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 
 /**
  * The frame the legal pages sit in.
@@ -21,6 +22,15 @@ export function LegalPage({
   updated: string;
   children: React.ReactNode;
 }) {
+  // Every Section, in order, for Contents (the owner, 2026-10-28).
+  const sections = Children.toArray(children).flatMap((child) =>
+    isValidElement<{ title: string }>(child) && child.type === Section ? [child.props.title] : [],
+  );
+  // A link to one section (/terms#…) opens at it; the router does not.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (hash) document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
+  }, [hash]);
   return (
     <main
       id="main"
@@ -39,14 +49,53 @@ export function LegalPage({
         {title}
       </h1>
       <p className="mt-1.5 text-[0.8125rem] text-grey">Last updated {updated}</p>
+      {sections.length > 1 ? <Contents titles={sections} /> : null}
       <div className="mt-5 text-[0.9375rem] text-ink2 leading-[1.6]">{children}</div>
     </main>
   );
 }
 
+/** A section's address on its page, as /terms#losing-your-membership. */
+export function sectionId(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[’']/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/** The Terms' "Losing your membership", linked from Me's Standing card. */
+export const LOSING_MEMBERSHIP_ID = sectionId('Losing your membership');
+
+/** A link to each section, under the title. */
+function Contents({ titles }: { titles: string[] }) {
+  return (
+    <nav
+      aria-labelledby="legal-contents"
+      className="mt-5 rounded-[14px] border border-line bg-paper p-4"
+    >
+      <h2 id="legal-contents" className="font-extrabold font-head text-[1rem] text-ink">
+        Contents
+      </h2>
+      <ol className="mt-2 list-decimal pl-5 text-[0.875rem] sm:columns-2 sm:gap-x-8">
+        {titles.map((title) => (
+          <li key={title} className="break-inside-avoid">
+            <a
+              href={`#${sectionId(title)}`}
+              className="inline-flex min-h-[36px] items-center font-semibold text-emphasis underline decoration-emphasis/30 underline-offset-2 hover:decoration-emphasis"
+            >
+              {title}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-7 first:mt-0">
+    <section id={sectionId(title)} className="mt-7 scroll-mt-4 first:mt-0">
       <h2 className="font-extrabold font-head text-[1.125rem] text-ink leading-snug">{title}</h2>
       {children}
     </section>

@@ -636,6 +636,7 @@ export default function TopicPage() {
           sendLabel="Post this reply"
           // Enter breaks a line. Only the button sends — see the header.
           sendOnEnter={false}
+          mentions
           editing={
             edited
               ? {

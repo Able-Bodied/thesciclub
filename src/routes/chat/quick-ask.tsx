@@ -1,10 +1,11 @@
 import { MessageCirclePlus } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { roomsByCategory } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import type { ChatRoom } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { SimilarTopics } from '@/routes/chat/similar-topics';
 
@@ -63,6 +64,8 @@ export function QuickAsk({
   const id = useId();
   const place = fixedRoom?.id ?? 'home';
   const [text, setText] = useState(() => readDraft(place));
+  const box = useRef<HTMLTextAreaElement>(null);
+  const mention = useMentionSuggestions({ box, value: text, onChange: setText });
   const [isQuestion, setIsQuestion] = useState(true);
   const [chosenRoom, setChosenRoom] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -140,15 +143,18 @@ export function QuickAsk({
       </label>
       <textarea
         id={`${id}-text`}
+        ref={box}
         rows={expanded ? 3 : 1}
         maxLength={LIMIT}
         value={text}
         onChange={(event) => {
           setText(event.target.value.replace(/\n/g, ' '));
         }}
+        {...mention.boxProps}
         // Enter posts on a keyboard with one; a phone's return key has no
         // other use in a box that is one line of title.
         onKeyDown={(event) => {
+          if (mention.onKeyDown(event)) return;
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
             post();
@@ -158,6 +164,7 @@ export function QuickAsk({
         aria-describedby={started ? `${id}-left` : undefined}
         className="mt-2 w-full resize-none rounded-[12px] border-[1.6px] border-line bg-canvas px-3.5 py-2.5 text-[1rem] text-ink leading-[1.45] outline-none focus:border-emphasis"
       />
+      {mention.list}
 
       {expanded ? (
         <>

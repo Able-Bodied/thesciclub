@@ -224,6 +224,8 @@
    * so it grids into the full shell instead.
    */
   --events-measure: 720px;
+  /* Me's two columns on a desktop: each about the width of one list above. */
+  --me-measure: 960px;
 
   /* ------------------------------------------------------ semantic */
   --radius: 0.875rem;

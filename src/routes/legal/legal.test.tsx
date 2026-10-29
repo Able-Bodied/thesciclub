@@ -118,6 +118,17 @@ describe('the Privacy Policy', () => {
     ).toBeInTheDocument();
   });
 
+  // 20261029070000.
+  it('says a mention tells the member who, once a post, and never across a block', () => {
+    open('/privacy');
+    expect(screen.getByText(/and so\s+does mentioning a member in a post/)).toBeInTheDocument();
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/mentions your username in a post, you are told who/);
+    expect(section).toHaveTextContent(/Not by somebody you blocked or who blocked you/);
+    expect(section).toHaveTextContent(/Mentions in conversations notify nobody/);
+  });
+
   // public/embed/youtube.html: YouTube refuses to play inside the app.
   it('says the iPhone app plays YouTube through the club’s embed page', () => {
     open('/privacy');
@@ -222,7 +233,8 @@ describe('the Privacy Policy', () => {
     open('/privacy');
     const section = screen.getByRole('heading', { name: 'Emails' }).parentElement;
     if (!section) throw new Error('no section');
-    expect(section).toHaveTextContent(/link that confirms your address/);
+    expect(section).toHaveTextContent(/code and link that confirm your address/);
+    expect(section).toHaveTextContent(/the day before an event you are going to/);
     expect(section).toHaveTextContent(/do not send newsletters or promotions/);
   });
 
@@ -312,6 +324,20 @@ describe('the Privacy Policy', () => {
 });
 
 describe('the Terms of Service', () => {
+  // From the owner's read of another club's terms, 2026-10-28.
+  it('says the account is yours alone, what else is not allowed, and that the club is as it is', () => {
+    open('/terms');
+    expect(screen.getByText(/Do not share, sell or hand over your account/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/by copying them out or with a script, bot or scraper/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/do not join again under another name or email address/),
+    ).toBeInTheDocument();
+    const section = screen.getByRole('heading', { name: 'The club as it is' }).parentElement;
+    expect(section).toHaveTextContent(/cannot promise it will always be available/);
+  });
+
   it('opens with no account', () => {
     open('/terms');
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
@@ -449,11 +475,41 @@ describe('Deleting your account', () => {
   it('is linked from the Privacy Policy and the Terms', () => {
     for (const path of ['/privacy', '/terms']) {
       open(path);
-      expect(screen.getByRole('link', { name: 'Deleting your account' })).toHaveAttribute(
-        'href',
-        '/delete-account',
-      );
+      // Contents has a link of the same name, to the section on this page.
+      const links = screen.getAllByRole('link', { name: 'Deleting your account' });
+      expect(links.map((link) => link.getAttribute('href'))).toContain('/delete-account');
       cleanup();
     }
+  });
+});
+
+// The owner, 2026-10-28.
+describe('Contents', () => {
+  it('links to every section of both pages, in order', () => {
+    for (const path of ['/privacy', '/terms']) {
+      open(path);
+      const contents = screen.getByRole('navigation', { name: 'Contents' });
+      const links = within(contents).getAllByRole('link');
+      const sections = [...document.querySelectorAll('main section[id]')];
+      expect(links.map((link) => link.getAttribute('href'))).toEqual(
+        sections.map((section) => `#${section.id}`),
+      );
+      expect(links.length).toBeGreaterThan(8);
+      cleanup();
+    }
+  });
+});
+
+describe('the Privacy Policy, on HIPAA, safety and rights', () => {
+  it('says HIPAA does not cover the club, what happens if information is exposed, and how to ask', () => {
+    open('/privacy');
+    expect(screen.getByText(/so HIPAA, the US health privacy law,/)).toBeInTheDocument();
+    const safe = screen.getByRole('heading', { name: 'Keeping it safe' }).parentElement;
+    expect(safe).toHaveTextContent(
+      /If we learn that your information has been exposed, we\s+will tell you/,
+    );
+    const rights = screen.getByRole('heading', { name: 'Your rights' }).parentElement;
+    expect(rights).toHaveTextContent(/It costs nothing/);
+    expect(rights).toHaveTextContent(/nothing to opt out of/);
   });
 });

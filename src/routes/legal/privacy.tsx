@@ -45,6 +45,29 @@ export default function PrivacyPage() {
             name show at its middle, so they can tell roughly which part of town you live in. Leave
             the ZIP code out, in Your details, to be counted by city only.
           </li>
+          <li>
+            <b>Added:</b> asking for an invite. Somebody without one can send an organization’s org
+            admins their name, email address and a note. The page that offers this shows each org
+            admin’s first name to anyone who opens it.
+          </li>
+          <li>
+            <b>Changed:</b> an org admin’s QR code or invite link lets in whoever uses it before it
+            expires, and its maker is told who joined.
+          </li>
+          <li>
+            <b>Added:</b> a link to a post can be shared outside the club. It carries none of the
+            post’s words; only members can read the post. The confirmation email now has a code to
+            type in the app, as well as its link.
+          </li>
+          <li>
+            <b>Added:</b> that the club is not covered by HIPAA, how we keep your information safe
+            and what we do if it is ever exposed, when the law can require us to share it, your
+            privacy rights wherever you live in the US, and where your information is kept.
+          </li>
+          <li>
+            <b>Added:</b> mentions. Typing @ and a member’s username in a post or reply tells them
+            who mentioned them, in a notification, and links to their profile.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 26, 2026">
@@ -83,6 +106,11 @@ export default function PrivacyPage() {
             We do not sell your information. There is no advertising in the club, and we do not
             track you across other apps or websites.
           </b>
+        </P>
+        <P>
+          The club is not a doctor, hospital or health plan, so HIPAA, the US health privacy law,
+          does not cover what you tell it. This policy does: the health information you share is
+          used only as it says.
         </P>
       </Section>
 
@@ -166,6 +194,10 @@ export default function PrivacyPage() {
             list, and we email them a link. You can withdraw the invite until it is used.
           </li>
           <li>
+            <b>If you ask for an invite</b>, before you are a member: your name, your email address,
+            a note if you write one, and which organization you asked.
+          </li>
+          <li>
             <b>If you add an event by calendar invitation</b> (members who speak for an
             organization, and administrators): the address it came from, and what it says about the
             event: title, time, place, link and description. Its other guests are never kept. An
@@ -176,8 +208,9 @@ export default function PrivacyPage() {
           Like any website, the services that run the club see your device’s internet (IP) address
           when it connects, and our sign-in service keeps it, with the kind of browser, for each
           signed-in session and in a log of sign-ins, to keep accounts secure. On your device, the
-          app keeps you signed in and remembers settings such as text size. It uses no cookies or
-          tools for advertising or analytics.
+          app keeps you signed in and remembers settings such as text size, and, if you open a link
+          to a post before you are signed in, which post, for 30 days, so it can take you there once
+          you are. It uses no cookies or tools for advertising or analytics.
         </P>
       </Section>
 
@@ -257,9 +290,16 @@ export default function PrivacyPage() {
         </P>
         {/* 20261028980000. */}
         <P>
-          For an event you said you are going to, we also email you the day before: its name, when
-          and where it is, and a link to it. The email goes to your account’s address through our
-          email provider. You can switch these emails off on Me → Settings.
+          For an event you said you are going to, you are also reminded ten minutes before it
+          starts, if that kind of notification is on, and we email you the day before: its name,
+          when and where it is, and a link to it. The email goes to your account’s address through
+          our email provider. You can switch these emails off on Me → Settings.
+        </P>
+        {/* 20261029070000. */}
+        <P>
+          When a member mentions your username in a post, you are told who, with the start of the
+          post, once for each post. Not by somebody you blocked or who blocked you, and only in a
+          room you can read. Mentions in conversations notify nobody.
         </P>
       </Section>
 
@@ -304,8 +344,9 @@ export default function PrivacyPage() {
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
             an event, and, in a conversation you are in, that you have read a message. Liking or
-            reacting to a post or a message tells its author who you are, in a notification. A post
-            shows how many people have read it, never who.
+            reacting to a post or a message tells its author who you are, in a notification, and so
+            does mentioning a member in a post. A post shows how many people have read it, never
+            who.
           </li>
           <li>
             <b>Members who speak for organizations</b>, such as hospitals and peer support programs,
@@ -314,7 +355,14 @@ export default function PrivacyPage() {
             event they manage, and only if you chose Going (see Event hosts, below).
           </li>
           <li>
-            <b>Your email address</b> is also seen by whoever invited you, who already had it.
+            <b>Your email address</b> is also seen by whoever invited you, who already had it. If
+            you join with a QR code or invite link, whoever made it is told that you joined, and
+            sees your profile like any member.
+          </li>
+          <li>
+            <b>If you ask for an invite</b>, what you send is seen by the org admins of the
+            organization you chose, and nobody else. The page where you ask shows the first name of
+            each organization’s org admins, to anyone who opens it.
           </li>
           <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody
@@ -392,12 +440,13 @@ export default function PrivacyPage() {
 
       <Section title="Emails">
         <P>
-          We email you only to run your account: the link that confirms your address, a link to
-          reset or change your password, a notice when your password changes, and the invitation
+          We email you only to run your account: the code and link that confirm your address, a link
+          to reset or change your password, a notice when your password changes, and the invitation
           link if somebody invites you. Invitation links are sent by the club on behalf of the
           member or organization that invited you. If you add an event by calendar invitation, we
           email you what became of it, and when it waits for approval we email whoever may approve
-          it, with your address. We do not send newsletters or promotions.
+          it, with your address. We also email you the day before an event you are going to, unless
+          you switch that off (see Notifications). We do not send newsletters or promotions.
         </P>
         <P>
           <b>
@@ -419,8 +468,9 @@ export default function PrivacyPage() {
 
       <Section title="Service providers">
         <P>
-          We share your information only with the service providers that run the club for us, and
-          they receive only what they need to do that work:
+          Apart from what members, hosts and organizations see as this policy describes, we share
+          your information only with the service providers that run the club for us, and they
+          receive only what they need to do that work:
         </P>
         <List>
           <li>hosting, our database, file storage and sign-in;</li>
@@ -450,6 +500,54 @@ export default function PrivacyPage() {
           . In the iPhone app, Google is contacted only when you press its button. Apart from that,
           a YouTube video you play and your Google photo, nothing in the club loads anything from
           Google.
+        </P>
+      </Section>
+
+      <Section title="When the law asks">
+        <P>
+          We would share information about you outside the club only if the law requires it, such as
+          a court order, or to protect somebody from serious harm. If we are allowed to, we tell you
+          first.
+        </P>
+      </Section>
+
+      <Section title="Keeping it safe">
+        <P>
+          Everything between your device and the club is encrypted on the way. Passwords are kept
+          only in scrambled form, photographs open only for people signed in, and the database
+          itself checks who may read each thing, so a member sees only what this policy says they
+          can.
+        </P>
+        <P>
+          No system is perfectly secure. If we learn that your information has been exposed, we will
+          tell you, and the authorities where the law requires, with what happened and what you can
+          do. If you think somebody else has used your account, change your password and email{' '}
+          <ContactEmail />.
+        </P>
+      </Section>
+
+      <Section title="Your rights">
+        <P>
+          Wherever you live, you can see and correct most of what we hold about you on Me, ask us
+          for a copy of all of it, and ask us to correct or delete it. It costs nothing. Email{' '}
+          <ContactEmail />, from the address on your account if you can; we may write back to that
+          address to check it is you before we act, and we reply when it is done.
+        </P>
+        <P>
+          California and other US states give their residents rights to know what is collected, to
+          correct and delete it, and to opt out of its sale, of its sharing for advertising, and of
+          decisions made about them by a computer alone. We do not sell your information or share it
+          for advertising, and no decision about you is made by a computer alone, so there is
+          nothing to opt out of. We will not treat you differently for asking about your
+          information. The club does not track you across other sites, so a browser’s Do Not Track
+          or Global Privacy Control setting has nothing to stop here.
+        </P>
+      </Section>
+
+      <Section title="Where it is kept">
+        <P>
+          The club is run from the United States. Its service providers may store or handle your
+          information in the United States or in other countries where they work.
         </P>
       </Section>
 
@@ -497,6 +595,10 @@ export default function PrivacyPage() {
           <li>
             <b>Sign-in records</b>, with their email and IP addresses: until your account is
             deleted.
+          </li>
+          <li>
+            <b>A request for an invite:</b> 90 days after an org admin answers it, or 90 days after
+            it was sent if nobody does.
           </li>
           <li>
             <b>An invited email address:</b> invites do not expire, so it stays on the list until

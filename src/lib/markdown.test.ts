@@ -68,6 +68,35 @@ describe('what is shown, after the allowlist', () => {
   });
 });
 
+// A post's @mentions (20261029070000): a profile link where the caller has one.
+describe('markdownToHtml with mentions', () => {
+  const ID = '0b6c7a3e-1d2f-4c5b-8a9e-0f1e2d3c4b5a';
+  const post = (text: string) =>
+    sanitizeHtml(
+      markdownToHtml(text, (name) => (name === 'ana.r' ? `/peers/${ID}` : null)),
+      { peers: true },
+    );
+
+  it('links a known @name in the app, and leaves the rest as words', () => {
+    expect(post('Ask @Ana.R. or @bo')).toBe(`<p>Ask <a href="/peers/${ID}">@Ana.R</a>. or @bo</p>`);
+  });
+
+  it('links inside bold and lists, but not inside a link or an address', () => {
+    expect(post('**@ana.r**')).toBe(`<p><strong><a href="/peers/${ID}">@ana.r</a></strong></p>`);
+    expect(post('- @ana.r')).toContain(`<li><a href="/peers/${ID}">@ana.r</a></li>`);
+    expect(post('[@ana.r](https://a.org)')).not.toContain('/peers/');
+    expect(post('mail me at x@ana.r')).not.toContain('/peers/');
+  });
+
+  it('keeps a profile link only when asked, and nothing else inside the app', () => {
+    const html = markdownToHtml('@ana.r', () => `/peers/${ID}`);
+    expect(sanitizeHtml(html)).toBe('<p><a>@ana.r</a></p>');
+    expect(
+      sanitizeHtml('<a href="/admin">x</a><a href="/peers/../admin">y</a>', { peers: true }),
+    ).toBe('<a>x</a><a>y</a>');
+  });
+});
+
 describe('markdownToPlain', () => {
   it('takes the marks out and keeps the words and the lines', () => {
     expect(

@@ -18,11 +18,11 @@ import { isNative } from '@/lib/standalone';
 import { isPastStartTime } from '@/routes/events/filters';
 import { appFeedbackRoom } from '@/routes/home/feedback-card';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
-import { AccessibilitySettings } from '@/routes/me/accessibility-settings';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
 import { BlockedMembers } from '@/routes/me/blocked-members';
 import { DeckVisibility } from '@/routes/me/deck-visibility';
 import { DeleteAccount } from '@/routes/me/delete-account';
+import { DisplaySummary } from '@/routes/me/display-summary';
 import { MeHero } from '@/routes/me/hero';
 import { MapVisibility } from '@/routes/me/map-visibility';
 import { NotificationSettings } from '@/routes/me/notification-settings';
@@ -276,9 +276,17 @@ export default function MePage() {
       {/* Above the tabs, so it is seen on whichever one Me opens on. */}
       <AddEmailBanner state={signIn.state} reload={signIn.reload} />
 
-      <PageTabs id="me" label="Me" fill tabs={ME_TABS} value={tab} onChange={setTab} />
+      <PageTabs
+        id="me"
+        label="Me"
+        fill
+        tabs={ME_TABS}
+        value={tab}
+        onChange={setTab}
+        measure="max-w-[var(--me-measure)]"
+      />
 
-      <div className="mx-auto w-full max-w-[var(--events-measure)] px-4 pt-5 pb-8">
+      <div className="mx-auto w-full max-w-[var(--me-measure)] px-4 pt-5 pb-8">
         {tab === 'profile' ? (
           <TabPanel id="me" value="profile">
             <MeStats going={going} interested={interested} beenTo={beenTo} />
@@ -430,26 +438,24 @@ export default function MePage() {
                 ? 'Display applies to this phone only.'
                 : 'Display, notifications and installing apply to this phone or computer only.'}
             </p>
-            {/* Display first and always open: it is what somebody who finds
-                the club hard to read comes here for. */}
+            {/* Display first: it is what somebody who finds the club hard to
+                read comes here for. Its controls open in the Display sheet. */}
             <div className="grid items-start gap-x-6 lg:grid-cols-2 [&>section:first-child]:mt-4 lg:[&>section]:mt-4">
-              <AccessibilitySettings />
+              <DisplaySummary />
               <NotificationSettings
                 userId={userId}
                 isMentor={member?.type === 'mentor'}
                 isAdmin={isAdmin}
               />
               <InstallSettings />
-            </div>
-            {/* Follows the account, not the device: apart from the grid above. */}
-            <div className="max-w-[560px]">
+              {/* Follows the account, not the device, as its own words say. */}
               <BlockedMembers />
             </div>
           </TabPanel>
         ) : null}
 
         {tab === 'account' ? (
-          <TabPanel id="me" value="account" className="max-w-[560px]">
+          <TabPanel id="me" value="account">
             <p className="text-[0.875rem] text-ink2 leading-[1.5]">
               Signed in as {member?.displayName ?? displayName ?? '—'}.
             </p>
@@ -462,41 +468,44 @@ export default function MePage() {
               username={changedUsername ?? member?.username ?? null}
               onUsernameChanged={setChangedUsername}
             />
-            <section
-              aria-labelledby="me-leaving-heading"
-              // DeleteAccount brings its own top margin, sized for following
-              // a button; under this heading it only needs a line's gap.
-              className="mt-6 [&>:not(h2)]:mt-2.5"
-            >
-              <h2
-                id="me-leaving-heading"
-                className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+            {/* Side by side on a desktop, under the sign-in cards. */}
+            <div className="grid items-start gap-x-6 lg:grid-cols-2">
+              <section
+                aria-labelledby="me-leaving-heading"
+                // DeleteAccount brings its own top margin, sized for following
+                // a button; under this heading it only needs a line's gap.
+                className="mt-8 [&>:not(h2)]:mt-2.5"
               >
-                Deleting your account
-              </h2>
-              {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
-            </section>
-            {/* Reachable after joining, as Apple 5.1.1(i) and Google Play ask. */}
-            <section aria-labelledby="me-legal-heading" className="mt-8">
-              <h2
-                id="me-legal-heading"
-                className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
-              >
-                Privacy and terms
-              </h2>
-              <ul className="mt-1.5">
-                {LEGAL_LINKS.map(([to, label]) => (
-                  <li key={to}>
-                    <Link
-                      to={to}
-                      className="inline-flex min-h-[44px] items-center font-semibold text-[0.9375rem] text-emphasis underline"
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
+                <h2
+                  id="me-leaving-heading"
+                  className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+                >
+                  Deleting your account
+                </h2>
+                {userId ? <DeleteAccount userId={userId} isAdmin={isAdmin} /> : null}
+              </section>
+              {/* Reachable after joining, as Apple 5.1.1(i) and Google Play ask. */}
+              <section aria-labelledby="me-legal-heading" className="mt-8">
+                <h2
+                  id="me-legal-heading"
+                  className="font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+                >
+                  Privacy and terms
+                </h2>
+                <ul className="mt-1.5">
+                  {LEGAL_LINKS.map(([to, label]) => (
+                    <li key={to}>
+                      <Link
+                        to={to}
+                        className="inline-flex min-h-[44px] items-center font-semibold text-[0.9375rem] text-emphasis underline"
+                      >
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </div>
           </TabPanel>
         ) : null}
       </div>
