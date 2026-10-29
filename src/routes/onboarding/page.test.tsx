@@ -39,6 +39,11 @@ const calls = vi.hoisted(() => {
     invited: true,
     /** Whether anybody can join (20261014000000): only what the doors say. */
     joiningOpen: false,
+    /** The terms version this account agreed to (20261029080000); null is none yet. */
+    termsAgreed: null as string | null,
+    /** The versions agree_to_terms was sent, in turn. */
+    agreedTo: [] as string[],
+    agreeError: false,
     /** What qr_code_details answers for a held administrator's code; null says nothing. */
     qrDetails: null as Record<string, unknown> | null,
     claimResult: true,
@@ -311,6 +316,15 @@ vi.mock('@/lib/supabase', () => ({
           ],
           error: null,
         });
+      // Agreeing to the terms (20261029080000), kept out of the order too.
+      if (name === 'my_terms_agreement')
+        return Promise.resolve({ data: calls.termsAgreed, error: null });
+      if (name === 'agree_to_terms') {
+        if (calls.agreeError) return Promise.resolve({ data: null, error: { message: 'offline' } });
+        calls.agreedTo.push(String(args?.p_version));
+        calls.termsAgreed = String(args?.p_version);
+        return Promise.resolve({ data: null, error: null });
+      }
       if (name === 'qr_code_details') {
         const answer = Promise.resolve({ data: calls.qrDetails, error: null });
         return Object.assign(answer, { maybeSingle: () => answer });
@@ -441,6 +455,10 @@ beforeEach(() => {
   calls.user = { email: 'dana@example.com', user_metadata: {} };
   calls.invited = true;
   calls.joiningOpen = false;
+  // Agreed already, so the other tests open at the first question.
+  calls.termsAgreed = '2026-10-29';
+  calls.agreedTo = [];
+  calls.agreeError = false;
   calls.qrDetails = null;
   calls.claimResult = true;
   calls.claimError = false;
@@ -2021,6 +2039,73 @@ describe('agreeing to the terms', () => {
   });
 });
 
+// "Before you join" (the owner, 2026-10-29): first, until the account agrees.
+describe('before you join', () => {
+  beforeEach(() => {
+    calls.termsAgreed = null;
+    calls.status = 'signed-up';
+  });
+
+  it('comes first, says it is not medical advice, and records the agreement', async () => {
+    renderJoin();
+    expect(await screen.findByRole('heading', { name: 'Before you join' })).toBeInTheDocument();
+    expect(screen.getByText(/It is not medical advice/)).toBeInTheDocument();
+    expect(screen.getByText(/Check with your doctor/)).toBeInTheDocument();
+    expect(screen.getByText(/at your own risk/)).toBeInTheDocument();
+    expect(screen.getByText(/you confirm you are 18 or older/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Terms of Service/ })).toHaveAttribute(
+      'href',
+      '/terms',
+    );
+    expect(screen.getByRole('link', { name: /Privacy Policy/ })).toHaveAttribute(
+      'href',
+      '/privacy',
+    );
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
+    expect(calls.agreedTo).toEqual(['2026-10-29']);
+  });
+
+  it('is not shown again once agreed', async () => {
+    calls.termsAgreed = '2026-10-29';
+    renderJoin();
+    expect(await screen.findByText('What is your name?')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Before you join' })).toBeNull();
+  });
+
+  it('goes on to where it was left, after agreeing', async () => {
+    progress.saved = {
+      step: 'birthday',
+      answers: { displayName: 'Dana', username: 'dana', usernameChecked: 'dana' },
+      savedAt: '2026-10-15T20:00:00Z',
+    };
+    calls.user = { ...calls.user, id: 'user-1' } as typeof calls.user;
+    renderJoin();
+    await screen.findByRole('heading', { name: 'Before you join' });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByText('When is your birthday?')).toBeInTheDocument();
+    expect(screen.getByText(/You are where you left off/)).toBeInTheDocument();
+  });
+
+  it('stays, and says so, when the agreement cannot be saved', async () => {
+    calls.agreeError = true;
+    renderJoin();
+    await screen.findByRole('heading', { name: 'Before you join' });
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Before you join' })).toBeInTheDocument();
+  });
+
+  it('signs out on Back, for another account', async () => {
+    renderJoin();
+    await screen.findByRole('heading', { name: 'Before you join' });
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByRole('button', { name: 'Join the club' })).toBeInTheDocument();
+    expect(calls.order).toContain('signOut');
+  });
+});
+
 // Back from the first question: there is nothing before it but the account.
 describe('the wrong account', () => {
   it('signs out from the first question, for another account', async () => {
@@ -2533,7 +2618,7 @@ describe('steps that move on by themselves', () => {
 
 // Month, day, year like the birthday, but the year alone is a whole answer.
 describe('the injury date boxes', () => {
-  const DATE_LINE = 'When did your injury or condition begin? (optional)';
+  const DATE_LINE = 'When did your injury or condition begin?';
 
   async function reachInjuryStep() {
     await reachBirthday('Dana');

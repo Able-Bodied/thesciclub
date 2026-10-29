@@ -97,8 +97,9 @@ export const INITIAL_ONBOARDING_DATA: OnboardingData = {
 
 /**
  * The first six are the doors and the waiting rooms: none is a step somebody
- * walks through in order, so none is counted in the progress bar. The terms
- * are agreed on the name step, by going on (the owner, 2026-10-15).
+ * walks through in order, so none is counted in the progress bar. Nor is
+ * "Before you join" (agree), where the terms are agreed by tapping Continue
+ * (the owner, 2026-10-29); until then it was the name step, by going on.
  */
 export const STEPS = [
   'welcome',
@@ -107,6 +108,7 @@ export const STEPS = [
   'join',
   'check-email',
   'checking',
+  'agree',
   'name',
   'username',
   'birthday',

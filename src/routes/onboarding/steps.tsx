@@ -335,7 +335,12 @@ export function InjuryStep({ data, set }: StepProps) {
   // their own to give.
   return (
     <>
-      <Question>Your spinal cord</Question>
+      {/* Optional said in the question (the owner, 2026-10-29): "Rather not
+          say" is below the fields, out of sight on a phone. */}
+      <Question>
+        <span>Your spinal cord</span>{' '}
+        <span className="font-bold font-head text-[1rem] text-grey">(optional)</span>
+      </Question>
       <Sub>An injury or a condition: members find each other by this.</Sub>
 
       {data.injuryType === 'family' ? null : <InjuryDate data={data} set={set} birth={birth} />}
@@ -365,6 +370,12 @@ export function InjuryStep({ data, set }: StepProps) {
           }}
         />
       </div>
+      {/* Health information, so said plainly before it is shown (the owner,
+          2026-10-29). Members see it on the profile (privacy policy). */}
+      <Fine>
+        By tapping Continue, you agree to show this on your profile to other members. Nothing in the
+        club is public.
+      </Fine>
     </>
   );
 }
@@ -380,7 +391,7 @@ function InjuryDate({
         id="injury-date-heading"
         className="mt-4 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
       >
-        When did your injury or condition begin? (optional)
+        When did your injury or condition begin?
       </h2>
       <DateFields
         id="injury"

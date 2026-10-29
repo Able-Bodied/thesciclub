@@ -21,7 +21,15 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 28, 2026">
+    <LegalPage title="Privacy Policy" updated="October 29, 2026">
+      <Note title="What changed on October 29, 2026">
+        <List>
+          <li>
+            <b>Added:</b> when you agreed to the Terms of Service and this policy, and to which
+            version, is kept with your account.
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on October 28, 2026">
         <List>
           <li>
@@ -155,6 +163,9 @@ export default function PrivacyPage() {
             <b>Your answers while you join:</b> what you have answered so far and the step you are
             on, so you can pick up where you left off, on this device or another. We also note which
             steps you reached; administrators see only how many people reached each step, never who.
+          </li>
+          <li>
+            <b>When you agreed</b> to the Terms of Service and this policy, and to which version.
           </li>
           <li>
             <b>Whether you read a post on a phone or tablet, or on a computer</b>, from October 20,
