@@ -337,48 +337,46 @@ export default function InvitesPage() {
           ) : (
             <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
               {invites.map((invite) => (
-                <li
-                  key={invite.id}
-                  className="flex items-center gap-3 border-line border-b p-3.5 last:border-b-0"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold font-head text-[0.9375rem] text-ink">
-                      {invite.email ?? (invite.phone ? displayPhone(invite.phone) : 'Unknown')}
-                    </span>
-                    <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.45]">
-                      {inviteState(invite)}
-                      {invite.status === 'pending' && invite.email
-                        ? invite.sentAt
-                          ? ' · link sent'
-                          : ' · link not sent yet'
-                        : ''}
-                      {invite.email === null ? ' · phone invite (old)' : ''}
-                      {invite.note ? ` · ${invite.note}` : ''}
-                    </span>
+                <li key={invite.id} className="border-line border-b p-3.5 last:border-b-0">
+                  {/* The buttons sit below, so a long address has the row's whole width. */}
+                  <span className="block font-extrabold font-head text-[0.9375rem] text-ink [overflow-wrap:anywhere]">
+                    {invite.email ?? (invite.phone ? displayPhone(invite.phone) : 'Unknown')}
                   </span>
-                  {canWithdraw(invite) && invite.email ? (
-                    <button
-                      type="button"
-                      disabled={busyId !== null}
-                      onClick={() => {
-                        act(invite.id, () => resendMyInvite(invite.id));
-                      }}
-                      className="min-h-[40px] flex-none rounded-full bg-tint px-3.5 font-bold font-head text-[0.8125rem] text-emphasis disabled:opacity-40"
-                    >
-                      Resend link
-                    </button>
-                  ) : null}
+                  <span className="mt-0.5 block text-[0.78125rem] text-grey leading-[1.45]">
+                    {inviteState(invite)}
+                    {invite.status === 'pending' && invite.email
+                      ? invite.sentAt
+                        ? ' · link sent'
+                        : ' · link not sent yet'
+                      : ''}
+                    {invite.email === null ? ' · phone invite (old)' : ''}
+                    {invite.note ? ` · ${invite.note}` : ''}
+                  </span>
                   {canWithdraw(invite) ? (
-                    <button
-                      type="button"
-                      disabled={busyId !== null}
-                      onClick={() => {
-                        act(invite.id, () => withdrawMyInvite(invite.id));
-                      }}
-                      className="min-h-[40px] flex-none rounded-full bg-destructive/10 px-3.5 font-bold font-head text-[0.8125rem] text-destructive disabled:opacity-40"
-                    >
-                      {busyId === invite.id ? 'Withdrawing…' : 'Withdraw'}
-                    </button>
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {invite.email ? (
+                        <button
+                          type="button"
+                          disabled={busyId !== null}
+                          onClick={() => {
+                            act(invite.id, () => resendMyInvite(invite.id));
+                          }}
+                          className="min-h-[40px] flex-none rounded-full bg-tint px-3.5 font-bold font-head text-[0.8125rem] text-emphasis disabled:opacity-40"
+                        >
+                          Resend link
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        disabled={busyId !== null}
+                        onClick={() => {
+                          act(invite.id, () => withdrawMyInvite(invite.id));
+                        }}
+                        className="min-h-[40px] flex-none rounded-full bg-destructive/10 px-3.5 font-bold font-head text-[0.8125rem] text-destructive disabled:opacity-40"
+                      >
+                        {busyId === invite.id ? 'Withdrawing…' : 'Withdraw'}
+                      </button>
+                    </div>
                   ) : null}
                 </li>
               ))}
