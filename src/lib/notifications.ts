@@ -49,7 +49,8 @@ export type NotificationKind =
   | 'grant_open'
   | 'profile_reminder'
   | 'blocks_weekly'
-  | 'reaction';
+  | 'reaction'
+  | 'mention';
 
 interface Row {
   id: string;
@@ -241,6 +242,9 @@ export function notificationSentence(n: AppNotification): string {
         return `${name} and ${more} ${more === 1 ? 'other' : 'others'} reacted to ${what}`;
       return emoji ? `${name} reacted ${emoji} to ${what}` : `${name} reacted to ${what}`;
     }
+    // An @username in a post (20261029070000): once a post.
+    case 'mention':
+      return `${name} mentioned you in ${quoted(n.place)}`;
     case 'group_add':
       return `${name} added you to ${n.place ?? 'a group'}`;
     case 'report':

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
@@ -6,6 +6,7 @@ import { roomsByCategory, useChatRooms } from '@/lib/chat/rooms';
 import { createTopic } from '@/lib/chat/topics';
 import type { ChatRoom } from '@/lib/chat/types';
 import { describeThrown } from '@/lib/describe-error';
+import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { QuestionSwitch } from '@/routes/chat/question-switch';
 import { SimilarTopics } from '@/routes/chat/similar-topics';
 import { backToHome } from '@/routes/home/back';
@@ -70,6 +71,12 @@ export default function HomeNewPage() {
   const [chosenRoom, setChosenRoom] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
   const [details, setDetails] = useState('');
+  const detailsBox = useRef<HTMLTextAreaElement>(null);
+  const mention = useMentionSuggestions({
+    box: detailsBox,
+    value: details,
+    onChange: setDetails,
+  });
   const [isQuestion, setIsQuestion] = useState(true);
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -222,15 +229,21 @@ export default function HomeNewPage() {
             </label>
             <textarea
               id="ask-details"
+              ref={detailsBox}
               rows={4}
               maxLength={4000}
               value={details}
               onChange={(event) => {
                 setDetails(event.target.value);
               }}
+              {...mention.boxProps}
+              onKeyDown={(event) => {
+                mention.onKeyDown(event);
+              }}
               placeholder="What you have tried, or anything that helps people answer."
               className={`${FIELD} text-[0.9375rem] leading-[1.5]`}
             />
+            {mention.list}
 
             <RoomSelect rooms={open} value={room?.id ?? ''} onChange={setChosenRoom} />
 

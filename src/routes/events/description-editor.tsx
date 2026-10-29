@@ -1,6 +1,7 @@
 import { Bold, Eye, Heading, Italic, Link2, List, ListOrdered } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { readLink } from '@/routes/events/event-draft';
 import { EventDescription } from '@/routes/events/rich-text';
 
@@ -24,6 +25,8 @@ import { EventDescription } from '@/routes/events/rich-text';
  *
  * Preview shows the description as members will see it, through the same
  * renderer and allowlist as the event page.
+ *
+ * `mentions` suggests members after an "@", for a topic's first post.
  */
 export function DescriptionEditor({
   id,
@@ -33,6 +36,7 @@ export function DescriptionEditor({
   hintClassName,
   onChange,
   onPaste,
+  mentions = false,
 }: {
   id: string;
   value: string;
@@ -42,6 +46,8 @@ export function DescriptionEditor({
   onChange: (value: string) => void;
   /** For pictures pasted in (lib/paste-photos.ts); words paste as ever. */
   onPaste?: (event: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+  /** Suggest members after an "@" (20261029070000). */
+  mentions?: boolean;
 }) {
   const box = useRef<HTMLTextAreaElement | null>(null);
   const linkField = useRef<HTMLInputElement | null>(null);
@@ -51,6 +57,7 @@ export function DescriptionEditor({
   const [address, setAddress] = useState('');
   const [linkProblem, setLinkProblem] = useState<string | null>(null);
   const [preview, setPreview] = useState(false);
+  const mention = useMentionSuggestions({ box, value, onChange, enabled: mentions });
 
   useLayoutEffect(() => {
     const edit = pending.current;
@@ -232,10 +239,15 @@ export function DescriptionEditor({
           onChange(e.target.value);
         }}
         onPaste={onPaste}
+        {...(mentions ? mention.boxProps : {})}
+        onKeyDown={(e) => {
+          mention.onKeyDown(e);
+        }}
         aria-describedby={`${id}-hint`}
         placeholder={placeholder}
         className="w-full rounded-b-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[0.9375rem] text-ink leading-[1.5] outline-none focus:border-emphasis"
       />
+      {mentions ? mention.list : null}
       <p id={`${id}-hint`} className={hintClassName}>
         Select words, then a button to format them. {maxLength - value.length} characters left.
       </p>

@@ -61,6 +61,16 @@ describe('what a notification says', () => {
     );
   });
 
+  // 20261029070000: an @username in a post.
+  it('says who mentioned the member, and in which topic', () => {
+    expect(notificationSentence(n({ kind: 'mention', place: 'Ramps' }))).toBe(
+      'Jan mentioned you in “Ramps”',
+    );
+    expect(notificationSentence(n({ kind: 'mention', actorName: null }))).toBe(
+      'A member mentioned you in a topic',
+    );
+  });
+
   it('says "A member" for a name that is missing, rather than nothing', () => {
     expect(notificationSentence(n({ actorName: null }))).toBe('Message from A member');
   });

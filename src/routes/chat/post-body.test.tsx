@@ -1,0 +1,45 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { describe, expect, it, vi } from 'vitest';
+import type * as Mentions from '@/lib/mentions';
+import { PostBody } from '@/routes/chat/post-body';
+
+/** Who the @names are, as chat_authors would say (20261029070000). */
+vi.mock('@/lib/mentions', async (importOriginal) => ({
+  ...(await importOriginal<typeof Mentions>()),
+  useMentionedMembers: () =>
+    new Map([
+      ['ana', { id: '0b6c7a3e-1d2f-4c5b-8a9e-0f1e2d3c4b5a', hasProfile: true }],
+      ['hidden', { id: '1b6c7a3e-1d2f-4c5b-8a9e-0f1e2d3c4b5a', hasProfile: false }],
+    ]),
+}));
+
+function renderBody(text: string) {
+  render(
+    <MemoryRouter initialEntries={['/chat/rooms/r/topics/t']}>
+      <Routes>
+        <Route path="/chat/rooms/r/topics/t" element={<PostBody text={text} />} />
+        <Route path="/peers/:id" element={<p>Ana’s profile</p>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+describe('a post’s @mentions', () => {
+  it('links a member with a profile, and leaves the others as words', () => {
+    renderBody('Ask @ana, @hidden or @nobody about **ramps**');
+    expect(screen.getByRole('link', { name: '@ana' })).toHaveAttribute(
+      'href',
+      '/peers/0b6c7a3e-1d2f-4c5b-8a9e-0f1e2d3c4b5a',
+    );
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.getByText('ramps').tagName).toBe('STRONG');
+  });
+
+  it('opens the profile in the app', async () => {
+    renderBody('Ask @ana');
+    await userEvent.click(screen.getByRole('link', { name: '@ana' }));
+    expect(screen.getByText('Ana’s profile')).toBeInTheDocument();
+  });
+});

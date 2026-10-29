@@ -189,6 +189,20 @@ describe('NotificationSettings', () => {
       expect(kinds.toggled).toEqual(['reaction']);
     });
 
+    // 20261029070000: a mention has its own switch, after reactions.
+    it('offer mentions as a switch of their own', async () => {
+      hook.state = 'on';
+      kinds.muted = new Set(['mention']);
+      render(<NotificationSettings userId="u1" />);
+      await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
+      const reactions = screen.getByRole('button', { name: /Reactions to my posts and messages/ });
+      const mentions = screen.getByRole('button', { name: /Being mentioned in a post/ });
+      expect(mentions).toHaveAttribute('aria-pressed', 'false');
+      expect(reactions.closest('li')?.nextElementSibling).toBe(mentions.closest('li'));
+      await userEvent.click(mentions);
+      expect(kinds.toggled).toEqual(['mention']);
+    });
+
     // Do not spend a switch on something that cannot happen to this member.
     it('show invites to mentors only and reports to administrators only', async () => {
       hook.state = 'on';

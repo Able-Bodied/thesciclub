@@ -8,10 +8,10 @@ import { AttachmentGrid } from '@/routes/chat/attachment-grid';
 import { EarlierVersions } from '@/routes/chat/earlier-versions';
 import { PostLikes } from '@/routes/chat/like-button';
 import { LinkPreviewCard } from '@/routes/chat/link-preview-card';
+import { PostBody } from '@/routes/chat/post-body';
 import type { ReactionBarProps } from '@/routes/chat/reaction-bar';
 import { ReportControl } from '@/routes/chat/report-control';
 import { ViewCount } from '@/routes/chat/view-count';
-import { EventDescription } from '@/routes/events/rich-text';
 
 /**
  * One post in a topic, from the mock's `fpost()`.
@@ -330,9 +330,8 @@ export function Post({
         // Formatted (the owner, 2026-10-11): the first post's toolbar writes
         // a small Markdown (lib/markdown.ts), shown through the same allowlist
         // as an event's description. Plain text reads as it did: its line
-        // breaks and its addresses as links.
-        <EventDescription
-          html=""
+        // breaks and its addresses as links. An @name links to its member.
+        <PostBody
           text={post.body}
           className="mt-2 text-[0.875rem] text-ink leading-[1.5] [overflow-wrap:anywhere] [&>*+*]:mt-2 [&_a]:font-semibold [&_a]:underline [&_a]:underline-offset-2 [&_h3]:font-extrabold [&_h3]:font-head [&_h3]:text-[0.96875rem] [&_li]:ml-5 [&_ol]:list-decimal [&_ul]:list-disc"
         />
