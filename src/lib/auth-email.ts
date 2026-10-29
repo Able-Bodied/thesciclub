@@ -35,6 +35,9 @@ export type Result =
       notInvited?: boolean;
     };
 
+export const ALREADY_JOINED_MESSAGE =
+  'This email already has an account. Sign in instead, with Google or Apple if you used one before. No password yet? Use Forgot password to set one.';
+
 /** What signup_needs_an_invite answers, word for word (20261012040000). */
 export const NOT_INVITED_MESSAGE = 'This email is not on the invite list.';
 
@@ -50,7 +53,7 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [CONFIRMED_PARAM]: '1', next });
   const token = heldInviteToken();
-  const { error } = await getSupabase().auth.signUp({
+  const { data, error } = await getSupabase().auth.signUp({
     email: cleanEmail(email),
     password,
     options: {
@@ -58,6 +61,13 @@ export async function signUpWithEmail(email: string, password: string): Promise<
       ...(token ? { data: { invite_token: token } } : {}),
     },
   });
+  // An address with an account already, made with Google or Apple or a
+  // password: Supabase answers as though it signed up, with no identities,
+  // and sends nothing (the owner waited for an email that never came,
+  // 2026-10-28). Said here instead.
+  if (!error && data.user?.identities?.length === 0) {
+    return { ok: false, error: ALREADY_JOINED_MESSAGE };
+  }
   if (!error) return { ok: true };
   if (error.status === 403 && error.message === NOT_INVITED_MESSAGE) {
     return { ok: false, error: NOT_INVITED_MESSAGE, notInvited: true };

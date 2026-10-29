@@ -28,6 +28,7 @@ const calls = vi.hoisted(() => {
     afterPassword: 'signed-up',
     passwordError: null as { message: string; code?: string; status?: number } | null,
     signUpError: null as { message: string; code?: string; status?: number } | null,
+    signUpExisting: false,
     resendError: null as { message: string; code?: string } | null,
     resendHold: null as Promise<void> | null,
     resetError: null as { message: string; code?: string } | null,
@@ -235,6 +236,7 @@ vi.mock('@/lib/supabase', () => ({
         calls.order.push(`signUp:${credentials.email}`);
         calls.signUpOptions = credentials.options ?? null;
         return Promise.resolve({
+          data: { user: calls.signUpExisting ? { identities: [] } : { identities: [{}] } },
           error: calls.signUpError,
         });
       },
@@ -675,6 +677,18 @@ describe('joining by email', () => {
     expect(calls.signUpOptions?.emailRedirectTo).toContain('/join?confirmed=1');
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
     expect(screen.getByText('hello@thesciclub.com')).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-28: Supabase answered as though it signed up, sent
+  // nothing, and the page waited for an email that never came.
+  it('says the address already has an account instead of waiting for an email', async () => {
+    calls.signUpExisting = true;
+    await openJoin();
+    await fillDoor('dana@example.com', 'a long password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByText(/This email already has an account/)).toBeInTheDocument();
+    expect(screen.queryByText('Check your email')).toBeNull();
+    calls.signUpExisting = false;
   });
 
   // The owner, 2026-10-28: a code typed here, no link to open.
