@@ -216,7 +216,7 @@ describe('editing in the composer', () => {
     await startEditing(user);
     await user.type(screen.getByLabelText('Edit your message'), ' Second thoughts. {Enter}');
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith('First draft. Second thoughts.');
+      expect(onSave).toHaveBeenCalledWith('First draft. Second thoughts.', []);
     });
     expect(onSend).not.toHaveBeenCalled();
     expect(await screen.findByLabelText('Message Bo')).toHaveValue('Half a thought');
@@ -234,7 +234,7 @@ describe('editing in the composer', () => {
     await user.type(screen.getByLabelText('Edit your message'), '!');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith('First draft.!');
+      expect(onSave).toHaveBeenCalledWith('First draft.!', []);
     });
     expect(await screen.findByLabelText('Message Bo')).toHaveValue('Half a thought');
   });
@@ -287,7 +287,7 @@ describe('editing in the composer', () => {
     await user.clear(screen.getByLabelText('Edit your message'));
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => {
-      expect(onSave).toHaveBeenCalledWith('');
+      expect(onSave).toHaveBeenCalledWith('', []);
     });
   });
 
@@ -440,5 +440,50 @@ describe('pasting a picture', () => {
     });
     expect(pasted).toBe(true);
     expect(screen.queryByRole('button', { name: /Take back/ })).toBeNull();
+  });
+});
+
+// The owner, 2026-10-28: photographs added to a post after it is posted.
+describe('adding photographs while editing a post', () => {
+  function renderPostEditor(photos: number) {
+    const onSave = vi.fn((_body: string, _files: File[]) => Promise.resolve(null));
+    render(
+      <AnnounceProvider>
+        <div id="post-p1" />
+        <Composer
+          placeholder="Reply"
+          sendLabel="Post this reply"
+          onSend={() => Promise.resolve(null)}
+          editing={{
+            id: 'p1',
+            initial: 'Our setup.',
+            noun: 'post',
+            photos,
+            addPhotos: true,
+            anchor: 'post-p1',
+            onSave,
+            onClose: () => undefined,
+          }}
+        />
+      </AnnounceProvider>,
+    );
+    return onSave;
+  }
+
+  it('saves the words unchanged with a photograph added', async () => {
+    const onSave = renderPostEditor(1);
+    expect(screen.getByText(/You can add more\./)).toBeInTheDocument();
+    const input = document.querySelector<HTMLInputElement>('input[type=file]');
+    if (!input) throw new Error('no picker');
+    const photo = new File([new Uint8Array(10)], 'chair.jpg', { type: 'image/jpeg' });
+    await userEvent.upload(input, photo);
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(onSave).toHaveBeenCalledWith('Our setup.', [photo]);
+  });
+
+  it('offers no more once the post has four', () => {
+    renderPostEditor(4);
+    expect(screen.queryByText(/You can add more\./)).toBeNull();
+    expect(screen.getByRole('button', { name: /4 photographs is the most/ })).toBeDisabled();
   });
 });

@@ -276,9 +276,19 @@ export default function TopicPage() {
       });
   }
 
-  async function saveEdit(postId: string, body: string): Promise<string | null> {
-    const result = await editPost(postId, body);
-    if (!result.ok) return result.error;
+  async function saveEdit(postId: string, body: string, files: File[]): Promise<string | null> {
+    // Photographs added go up first, under the room, as a new post's do.
+    let added: string[] = [];
+    if (files.length > 0 && room) {
+      const up = await uploadAttachments(files, attachmentFolder('room', room.id));
+      if (!up.ok) return up.error;
+      added = up.value;
+    }
+    const result = await editPost(postId, body, added);
+    if (!result.ok) {
+      if (added.length > 0) void deleteAttachments(added);
+      return result.error;
+    }
     reload();
     edits.reload();
     return null;
@@ -633,8 +643,9 @@ export default function TopicPage() {
                   initial: edited.body,
                   noun: 'post',
                   photos: edited.attachments.length,
+                  addPhotos: true,
                   anchor: `post-${edited.id}`,
-                  onSave: (body) => saveEdit(edited.id, body),
+                  onSave: (body, files) => saveEdit(edited.id, body, files),
                   onClose: () => {
                     setEditingId(null);
                   },

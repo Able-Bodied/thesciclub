@@ -535,8 +535,20 @@ export async function sendPost(
  * composer stops the first two before sending; reaching them here means a
  * second tab got there first.
  */
-export async function editPost(postId: string, body: string): Promise<ChatWriteResult<null>> {
-  const { error } = await getSupabase().rpc('chat_edit_post', { post: postId, new_body: body });
+export async function editPost(
+  postId: string,
+  body: string,
+  added: string[] = [],
+): Promise<ChatWriteResult<null>> {
+  // With photographs added (20261029000000), else words alone, as before.
+  const { error } =
+    added.length > 0
+      ? await getSupabase().rpc('chat_edit_post_photographs', {
+          post: postId,
+          new_body: body,
+          added,
+        })
+      : await getSupabase().rpc('chat_edit_post', { post: postId, new_body: body });
   if (error) {
     return {
       ok: false,
