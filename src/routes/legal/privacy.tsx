@@ -245,6 +245,12 @@ export default function PrivacyPage() {
           notification you have not opened yet, such as messages or replies; opening one, or your
           notifications list, clears it.
         </P>
+        {/* 20261028980000. */}
+        <P>
+          For an event you said you are going to, we also email you the day before: its name, when
+          and where it is, and a link to it. The email goes to your account’s address through our
+          email provider. You can switch these emails off on Me → Settings.
+        </P>
       </Section>
 
       <Section title="How we use it">

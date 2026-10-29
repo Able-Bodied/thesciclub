@@ -40,6 +40,7 @@ export function PhotoPicker({
   disabled = false,
   compact = false,
   addLabel = 'Add a photograph',
+  already = 0,
   ref,
 }: {
   files: File[];
@@ -49,6 +50,8 @@ export function PhotoPicker({
   compact?: boolean;
   /** What the button says: "Add a screenshot" for app feedback. */
   addLabel?: string;
+  /** Photographs the post already has, which count towards the four. */
+  already?: number;
   /** For pictures pasted into the text beside it. */
   ref?: Ref<PhotoTarget>;
 }) {
@@ -57,7 +60,7 @@ export function PhotoPicker({
 
   function add(list: File[]) {
     if (disabled) return;
-    const said = attachmentProblem(list, files.length);
+    const said = attachmentProblem(list, files.length + already);
     setProblem(said);
     if (said) return;
     onChange([...files, ...list]);
@@ -69,7 +72,7 @@ export function PhotoPicker({
     add(chosen ? [...chosen] : []);
   }
 
-  const full = files.length >= MAX_ATTACHMENTS;
+  const full = files.length + already >= MAX_ATTACHMENTS;
 
   return (
     <>

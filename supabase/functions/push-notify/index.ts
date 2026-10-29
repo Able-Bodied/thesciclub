@@ -27,6 +27,7 @@
 import { apnsDevice, apnsGone, apnsKeys, sendApns } from './apns.ts';
 import { compose, type Owed, type PushMessage } from './compose.ts';
 import { EVENTS } from './events.ts';
+import { type DueEmail, reminderEmail } from './reminder-email.ts';
 import { sendPush } from './webpush.ts';
 
 declare const Deno: {
@@ -44,6 +45,10 @@ const VAPID = {
 // somebody's inbox.
 const SUBJECT = Deno.env.get('VAPID_SUBJECT') ?? 'https://thesciclub.netlify.app';
 const APNS = apnsKeys((name) => Deno.env.get(name));
+// The day-before email (20261028980000): Resend, as send-invite, from the
+// same address. Without them the daily run sends pushes only.
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
+const EMAIL_FROM = Deno.env.get('INVITE_FROM') ?? '';
 
 function reply(status: number, body: Record<string, unknown>): Response {
   return new Response(JSON.stringify(body), {
@@ -174,5 +179,47 @@ Deno.serve(async (request) => {
       console.error('push-notify: push_forget failed', forgot.status, await forgot.text());
   }
 
-  return reply(200, { owed: owed.length, sent, skipped, forgotten: gone.length });
+  const emailed =
+    event === 'daily' || event === 'day_before' ? await emailReminders(secret, key) : 0;
+
+  return reply(200, { owed: owed.length, sent, skipped, forgotten: gone.length, emailed });
 });
+
+/**
+ * The day-ahead reminder by email, with its push: a timed event's 24 hours
+ * before ('day_before'), an all-day event's in the daily run.
+ * event_reminder_emails records and returns each one due, so a second run
+ * sends nothing. One that Resend refuses is logged, not retried.
+ */
+async function emailReminders(secret: string, key: unknown): Promise<number> {
+  if (!RESEND_API_KEY || !EMAIL_FROM) {
+    console.log('push-notify: RESEND_API_KEY or INVITE_FROM is not set; no reminder emails');
+    return 0;
+  }
+  const dueResponse = await rpc('event_reminder_emails', { p_secret: secret, p_key: key });
+  if (!dueResponse.ok) {
+    console.error(
+      'push-notify: event_reminder_emails failed',
+      dueResponse.status,
+      await dueResponse.text(),
+    );
+    return 0;
+  }
+  const due = (await dueResponse.json()) as DueEmail[];
+  let emailed = 0;
+  for (const row of due) {
+    const message = reminderEmail(row);
+    try {
+      const sendResponse = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: EMAIL_FROM, ...message }),
+      });
+      if (sendResponse.ok) emailed++;
+      else console.error('push-notify: a reminder email was refused', sendResponse.status);
+    } catch (e) {
+      console.error('push-notify: a reminder email failed', e);
+    }
+  }
+  return emailed;
+}

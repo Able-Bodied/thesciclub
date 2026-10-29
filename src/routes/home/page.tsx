@@ -304,7 +304,11 @@ export default function HomePage() {
                   state={reactions}
                   readerId={memberId}
                   share={
-                    <SharePostButton postId={item.topic.opening.id} words={item.topic.title} />
+                    <SharePostButton
+                      postId={item.topic.opening.id}
+                      words={item.topic.title}
+                      link={`/chat/rooms/${item.topic.roomId}/topics/${item.topic.id}`}
+                    />
                   }
                 />
               ) : null
@@ -330,7 +334,11 @@ export default function HomePage() {
                   state={reactions}
                   readerId={memberId}
                   share={
-                    <SharePostButton postId={item.topic.opening.id} words={item.topic.title} />
+                    <SharePostButton
+                      postId={item.topic.opening.id}
+                      words={item.topic.title}
+                      link={`/chat/rooms/${item.topic.roomId}/topics/${item.topic.id}`}
+                    />
                   }
                 />
               ) : null

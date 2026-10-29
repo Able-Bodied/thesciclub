@@ -61,7 +61,12 @@ import {
   type QrCodeDetails,
 } from '@/lib/qr-codes';
 import { useRedirectTap } from '@/lib/redirect-tap';
-import { signInDestination } from '@/lib/sign-in-destination';
+import {
+  arrivalDestination,
+  forgetDestination,
+  holdDestination,
+  signInDestination,
+} from '@/lib/sign-in-destination';
 import { isNative } from '@/lib/standalone';
 import { getSupabase } from '@/lib/supabase';
 import { BlockedScreen } from '@/routes/onboarding/blocked';
@@ -172,7 +177,18 @@ export default function OnboardingPage() {
   }, []);
 
   const [params, setParams] = useSearchParams();
-  const destination = signInDestination(params.toString());
+  // Where a shared link was going (the owner, 2026-10-28): from the address,
+  // else kept on this device from an earlier visit, through an invite asked
+  // for and the invite's own link.
+  const [destination] = useState(() => {
+    const fromAddress = signInDestination(params.toString());
+    if (fromAddress !== '/home') holdDestination(fromAddress);
+    return arrivalDestination(params.toString());
+  });
+  // In the club: on the way there now, so this device keeps it no longer.
+  useEffect(() => {
+    if (account.status === 'member') forgetDestination();
+  }, [account.status]);
 
   // The invite link's token has to outlive this page (a confirmation email or
   // Google's round trip comes first), so it is kept the moment /join loads.
@@ -725,6 +741,7 @@ export default function OnboardingPage() {
         <WelcomeScreen
           joiningOpen={joiningOpen}
           registered={registered}
+          linked={!registered && destination !== '/home'}
           onJoin={() => {
             setStep('join');
           }}

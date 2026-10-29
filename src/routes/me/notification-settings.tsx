@@ -1,5 +1,6 @@
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
+import { useEmailEventReminders } from '@/lib/email-reminders';
 import {
   isAppPush,
   NOTIFICATION_KINDS,
@@ -149,6 +150,42 @@ function NotificationKinds({
   );
 }
 
+/** Email the day before an event the member is going to: on unless switched off. */
+function EmailReminders({ userId }: { userId: string }) {
+  const { on, error, set } = useEmailEventReminders(userId);
+  if (on === null) return null;
+  return (
+    <div className="mt-3 border-line border-t pt-2">
+      <button
+        type="button"
+        aria-pressed={on}
+        onClick={() => {
+          void set(!on);
+        }}
+        className="flex min-h-[44px] w-full items-center gap-3 py-1.5 text-left"
+      >
+        <span className="min-w-0 flex-1 text-[0.875rem] text-ink leading-[1.4]">
+          Email me the day before an event I am going to
+        </span>
+        <span
+          aria-hidden="true"
+          className={cn(
+            'flex-none rounded-full px-[0.8em] py-[0.3em] font-bold font-head text-[0.75rem]',
+            on ? 'bg-action text-white' : 'border border-line text-ink2',
+          )}
+        >
+          {on ? 'On' : 'Off'}
+        </span>
+      </button>
+      {error ? (
+        <p role="alert" className="mt-1 text-[0.8125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function NotificationSettings({
   userId,
   isMentor = false,
@@ -208,6 +245,8 @@ export function NotificationSettings({
         {state === 'on' ? (
           <NotificationKinds userId={userId} isMentor={isMentor} isAdmin={isAdmin} />
         ) : null}
+        {/* By email, whether or not this device notifies (20261028980000). */}
+        {userId ? <EmailReminders userId={userId} /> : null}
       </div>
     </section>
   );

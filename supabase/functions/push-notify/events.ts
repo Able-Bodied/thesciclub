@@ -13,6 +13,8 @@ export const EVENTS: ReadonlySet<string> = new Set([
   'report',
   'member_joined',
   'daily',
+  'starting',
+  'day_before',
   'grant_open',
   'profile_reminder',
   'blocks_weekly',

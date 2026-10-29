@@ -223,6 +223,17 @@ describe('compose', () => {
     });
   });
 
+  // 20261028980000: ten minutes before, too.
+  it('says an event is starting soon, ten minutes before', () => {
+    expect(
+      compose(owed({ kind: 'event_starting', subject: 'Adaptive handcycling', detail: '10:00am' })),
+    ).toMatchObject({
+      title: 'Starting soon: Adaptive handcycling',
+      body: "You're going. It starts at 10:00am.",
+    });
+    expect(compose(owed({ kind: 'event_starting', subject: null }))).toBeNull();
+  });
+
   it('counts new events from a followed organization', () => {
     expect(compose(owed({ kind: 'org_events', subject: 'NorCal SCI', detail: '3' }))).toMatchObject(
       {

@@ -1,4 +1,4 @@
-import { Send, X } from 'lucide-react';
+import { Link2, Send, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
@@ -11,6 +11,8 @@ import { threadTitle, useMyThreads } from '@/lib/chat/threads';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { markdownToPlain } from '@/lib/markdown';
 import { useBrowseMembers } from '@/lib/members';
+import { shareLink } from '@/lib/share-link';
+import { siteOrigin } from '@/lib/site-origin';
 import { excerpt } from '@/routes/chat/reaction-bar';
 
 /**
@@ -29,7 +31,16 @@ import { excerpt } from '@/routes/chat/reaction-bar';
  * own control and a large target. The lists scroll in a box measured in `em`,
  * so Send stays near at a large text size.
  */
-export function SharePostButton({ postId, words }: { postId: string; words: string }) {
+export function SharePostButton({
+  postId,
+  words,
+  link,
+}: {
+  postId: string;
+  words: string;
+  /** The post's own page, for a link to send outside the club. */
+  link?: string;
+}) {
   const [open, setOpen] = useState(false);
   const what = `“${excerpt(markdownToPlain(words))}”`;
   return (
@@ -37,7 +48,7 @@ export function SharePostButton({ postId, words }: { postId: string; words: stri
       <button
         type="button"
         aria-haspopup="dialog"
-        aria-label={`Share ${what} in a conversation`}
+        aria-label={`Share ${what}`}
         onClick={() => {
           setOpen(true);
         }}
@@ -51,6 +62,7 @@ export function SharePostButton({ postId, words }: { postId: string; words: stri
             <SharePostSheet
               postId={postId}
               what={what}
+              link={link}
               onClose={() => {
                 setOpen(false);
               }}
@@ -67,13 +79,65 @@ function targetKey(target: ShareTarget): string {
   return 'threadId' in target ? `thread:${target.threadId}` : `member:${target.memberId}`;
 }
 
+/**
+ * A link to send outside the club (the owner, 2026-10-28): the phone's share
+ * sheet, or copied where there is none. It carries no words of the post:
+ * whoever opens it signs in, or asks for an invite, and then lands on it
+ * (sign-in-destination.ts keeps where they were going).
+ */
+function ShareOutside({ path }: { path: string }) {
+  const announce = useAnnounce();
+  const [note, setNote] = useState<string | null>(null);
+  const url = `${siteOrigin()}${path}`;
+
+  async function share() {
+    const outcome = await shareLink({
+      url,
+      title: 'The SCI Club',
+      text: 'Have a look at this on The SCI Club.',
+    });
+    if (outcome === 'copied') {
+      setNote('Link copied.');
+      announce('Link copied.');
+    } else if (outcome === 'failed') {
+      setNote(`Could not share it. The link is ${url}`);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-[14px] bg-tint p-3">
+      <button
+        type="button"
+        onClick={() => {
+          void share();
+        }}
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.6px] border-emphasis bg-paper px-4 font-bold text-[0.9375rem] text-emphasis hover:bg-tint"
+      >
+        <Link2 aria-hidden="true" className="h-4 w-4" />
+        Share a link outside the club
+      </button>
+      <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
+        Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then
+        sees it.
+      </p>
+      {note ? (
+        <p role="status" className="mt-1.5 break-all text-[0.8125rem] text-ink leading-[1.45]">
+          {note}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function SharePostSheet({
   postId,
   what,
+  link,
   onClose,
 }: {
   postId: string;
   what: string;
+  link: string | undefined;
   onClose: () => void;
 }) {
   const account = useAccount();
@@ -174,6 +238,8 @@ function SharePostSheet({
             <X aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
+
+        {link && !sent ? <ShareOutside path={link} /> : null}
 
         {sent ? (
           <div className="mt-4">

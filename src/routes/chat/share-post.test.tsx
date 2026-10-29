@@ -66,6 +66,17 @@ vi.mock('@/components/member-avatar', () => ({
   GroupAvatar: () => null,
 }));
 
+const shared = vi.hoisted(() => ({
+  links: [] as { url: string; text: string }[],
+  outcome: 'copied',
+}));
+vi.mock('@/lib/share-link', () => ({
+  shareLink: (link: { url: string; text: string }) => {
+    shared.links.push(link);
+    return Promise.resolve(shared.outcome);
+  },
+}));
+
 const { SharePostButton } = await import('@/routes/chat/share-post');
 
 function Where() {
@@ -78,7 +89,13 @@ function renderButton() {
       <Routes>
         <Route
           path="/chat/rooms/general/topics/t1"
-          element={<SharePostButton postId="p1" words="Which **cushion** do you use?" />}
+          element={
+            <SharePostButton
+              postId="p1"
+              words="Which **cushion** do you use?"
+              link="/chat/rooms/general/topics/t1?post=p1"
+            />
+          }
         />
         <Route path="*" element={<Where />} />
       </Routes>
@@ -126,7 +143,7 @@ describe('sharing a post into a conversation', () => {
     renderButton();
     await user.click(
       screen.getByRole('button', {
-        name: 'Share “Which cushion do you use?” in a conversation',
+        name: 'Share “Which cushion do you use?”',
       }),
     );
     const sheet = screen.getByRole('dialog', { name: 'Share post' });
@@ -210,5 +227,22 @@ describe('sharing a post into a conversation', () => {
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(share).toHaveFocus();
+  });
+});
+
+// The owner, 2026-10-28: a link to send outside the club.
+describe('sharing a link outside the club', () => {
+  it('shares the post’s own page, with none of its words, and says only members can open it', async () => {
+    shared.links = [];
+    renderButton();
+    await userEvent.click(screen.getByRole('button', { name: /^Share / }));
+    expect(screen.getByText(/Only members can open it/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Share a link outside the club' }));
+    expect(shared.links).toHaveLength(1);
+    expect(shared.links[0]?.url).toBe(
+      `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`,
+    );
+    expect(shared.links[0]?.text).not.toContain('cushion');
+    expect(await screen.findByText('Link copied.')).toBeInTheDocument();
   });
 });

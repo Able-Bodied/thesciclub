@@ -123,12 +123,14 @@ export interface ComposerEditing {
   noun: 'message' | 'post';
   /** How many photographs it has. An edit keeps them. */
   photos: number;
+  /** A post may have photographs added while it is edited (20261029000000). */
+  addPhotos?: boolean;
   /** It shares a post, which an edit keeps, so its words may go. */
   shared?: boolean;
   /** The item's element id: its ••• takes focus afterwards. */
   anchor: string;
-  /** Resolves to null once saved, or to the sentence to show. */
-  onSave: (body: string) => Promise<string | null>;
+  /** Resolves to null once saved, or to the sentence to show; files are the photographs added. */
+  onSave: (body: string, files: File[]) => Promise<string | null>;
   /** The edit is over: saved, cancelled, or nothing changed. */
   onClose: () => void;
 }
@@ -178,6 +180,8 @@ export function Composer({
   const announce = useAnnounce();
   const [draft, setDraft] = useState('');
   const [files, setFiles] = useState<File[]>([]);
+  // Added to the post being edited: apart from the draft's, which wait for it.
+  const [editFiles, setEditFiles] = useState<File[]>([]);
   // Pictures pasted into the box join the photographs (lib/paste-photos.ts).
   // Null while editing, which keeps the photographs it had.
   const photos = useRef<PhotoTarget | null>(null);
@@ -246,10 +250,16 @@ export function Composer({
   const body = draft.trim();
   const empty = body === '' && files.length === 0;
   // Blank words with no photographs: Remove is the way to take it back.
-  const blank = editing !== null && body === '' && editing.photos === 0 && !editing.shared;
+  const blank =
+    editing !== null &&
+    body === '' &&
+    editing.photos === 0 &&
+    editFiles.length === 0 &&
+    !editing.shared;
   const cannotSend = sending || (editing ? blank : empty);
 
   function finishEdit(current: ComposerEditing, message: string) {
+    setEditFiles([]);
     current.onClose();
     announce(message);
     requestAnimationFrame(() => {
@@ -259,14 +269,14 @@ export function Composer({
   }
 
   function saveEdit(current: ComposerEditing) {
-    if (body === current.initial.trim()) {
+    if (body === current.initial.trim() && editFiles.length === 0) {
       finishEdit(current, 'Nothing changed. Edit cancelled.');
       return;
     }
     setSending(true);
     setFailure(null);
     void current
-      .onSave(body)
+      .onSave(body, editFiles)
       .then((problem) => {
         if (problem) {
           setFailure(problem);
@@ -362,6 +372,7 @@ export function Composer({
             {editing.photos === 1
               ? 'Its photograph stays as it is.'
               : `Its ${editing.photos} photographs stay as they are.`}
+            {editing.addPhotos && editing.photos < 4 ? ' You can add more.' : ''}
           </p>
         ) : null}
         {editing.shared ? <p>The shared post stays.</p> : null}
@@ -404,19 +415,31 @@ export function Composer({
           </button>
         </div>
       ) : null}
-      {editing ? null : (
+      {editing && !editing.addPhotos ? null : (
         <div className="mx-auto w-full max-w-[720px]">
           <PhotoStrip
-            files={files}
+            files={editing ? editFiles : files}
             disabled={sending}
             onRemove={(index) => {
-              setFiles((current) => current.filter((_, i) => i !== index));
+              (editing ? setEditFiles : setFiles)((current) =>
+                current.filter((_, i) => i !== index),
+              );
             }}
           />
         </div>
       )}
       <div className="mx-auto flex w-full max-w-[720px] items-end gap-[9px]">
-        {editing ? null : (
+        {editing ? (
+          editing.addPhotos ? (
+            <PhotoPicker
+              files={editFiles}
+              onChange={setEditFiles}
+              disabled={sending}
+              already={editing.photos}
+              compact
+            />
+          ) : null
+        ) : (
           <PhotoPicker ref={photos} files={files} onChange={setFiles} disabled={sending} compact />
         )}
         {textarea}

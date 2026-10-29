@@ -276,9 +276,19 @@ export default function TopicPage() {
       });
   }
 
-  async function saveEdit(postId: string, body: string): Promise<string | null> {
-    const result = await editPost(postId, body);
-    if (!result.ok) return result.error;
+  async function saveEdit(postId: string, body: string, files: File[]): Promise<string | null> {
+    // Photographs added go up first, under the room, as a new post's do.
+    let added: string[] = [];
+    if (files.length > 0 && room) {
+      const up = await uploadAttachments(files, attachmentFolder('room', room.id));
+      if (!up.ok) return up.error;
+      added = up.value;
+    }
+    const result = await editPost(postId, body, added);
+    if (!result.ok) {
+      if (added.length > 0) void deleteAttachments(added);
+      return result.error;
+    }
     reload();
     edits.reload();
     return null;
@@ -395,7 +405,13 @@ export default function TopicPage() {
     },
     onBlock: blockOffer(post),
     // Not from a closed room: no member could read what arrived.
-    share: closed ? null : <SharePostButton postId={post.id} words={post.body || topic.title} />,
+    share: closed ? null : (
+      <SharePostButton
+        postId={post.id}
+        words={post.body || topic.title}
+        link={`/chat/rooms/${topic.roomId}/topics/${topic.id}?${new URLSearchParams({ post: post.id }).toString()}`}
+      />
+    ),
     edits: edits.byPost.get(post.id) ?? [],
     viewCount: views.loading ? undefined : (views.byPost.get(post.id) ?? null),
     // Keep Like visible while counts load, without inventing a zero count.
@@ -510,6 +526,19 @@ export default function TopicPage() {
               on {chatTimeLong(topic.createdAt)}
             </span>
           </p>
+          {/* The topic itself, not one post in it (the owner, 2026-10-28): a
+              question hides its opening post, and with it that post's Share.
+              In a conversation it arrives as the opening post; outside, the
+              link opens the topic from the top. */}
+          {opening && !closed ? (
+            <div className="mt-1 -ml-3">
+              <SharePostButton
+                postId={opening.id}
+                words={topic.title}
+                link={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
+              />
+            </div>
+          ) : null}
           {/* An administrator seeding a room reaches this screen with a
               working composer and no other sign that nobody can read what
               they are writing. The room page says the same thing; forgetting
@@ -614,8 +643,9 @@ export default function TopicPage() {
                   initial: edited.body,
                   noun: 'post',
                   photos: edited.attachments.length,
+                  addPhotos: true,
                   anchor: `post-${edited.id}`,
-                  onSave: (body) => saveEdit(edited.id, body),
+                  onSave: (body, files) => saveEdit(edited.id, body, files),
                   onClose: () => {
                     setEditingId(null);
                   },

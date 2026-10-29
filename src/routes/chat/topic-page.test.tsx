@@ -329,9 +329,11 @@ describe('sharing a post', () => {
       post({ id: '2', replyTo: '1', authorId: 'me', body: 'Air cells.' }),
     ];
     renderTopic();
+    // The topic itself first, under its title (the owner, 2026-10-28).
     expect(screen.getAllByRole('button', { name: /^Share / }).map((b) => b.ariaLabel)).toEqual([
-      'Share “Which cushion do you use?” in a conversation',
-      'Share “Air cells.” in a conversation',
+      'Share “Travelling with a bowel programme”',
+      'Share “Which cushion do you use?”',
+      'Share “Air cells.”',
     ]);
   });
 
