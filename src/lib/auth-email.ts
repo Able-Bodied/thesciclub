@@ -65,6 +65,36 @@ export async function signUpWithEmail(email: string, password: string): Promise<
   return { ok: false, error: describeError(error, 'Could not sign you up.') };
 }
 
+/** Where the confirmation email comes from, so people know what to look for. */
+export const CONFIRMATION_FROM = 'hello@thesciclub.com';
+
+/** The code's length: Supabase sends 6 to 10 digits, never fewer. */
+export const CODE_LENGTH = 6;
+
+/**
+ * The code in the confirmation email, typed on this screen (the owner,
+ * 2026-10-28): no link to open, so no trip through another browser. The same
+ * proof the link is that the address is theirs, and a session follows.
+ */
+export async function verifySignUpCode(email: string, code: string): Promise<Result> {
+  const token = code.replace(/\D/g, '');
+  if (token.length !== CODE_LENGTH)
+    return { ok: false, error: `Enter the ${CODE_LENGTH}-digit code from the email.` };
+  const { error } = await getSupabase().auth.verifyOtp({
+    email: cleanEmail(email),
+    token,
+    type: 'email',
+  });
+  if (!error) return { ok: true };
+  return {
+    ok: false,
+    error:
+      error.code === 'otp_expired'
+        ? 'That code has expired or is not right. Check it, or send a new one.'
+        : describeError(error, 'That code did not work.'),
+  };
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<Result> {
   const { error } = await getSupabase().auth.signInWithPassword({
     email: cleanEmail(email),

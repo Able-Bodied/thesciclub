@@ -1,7 +1,7 @@
-import { render as renderBare, screen, waitFor } from '@testing-library/react';
+import { render as renderBare, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type { InviteRequestChoice } from '@/lib/invite-requests';
 
@@ -18,21 +18,16 @@ vi.mock('@/lib/photos', () => ({
 // (20261029030000); the screen only shows its answer.
 vi.mock('@/lib/invite-requests', () => ({
   fetchInviteRequestChoices: () => Promise.resolve({ ok: true, value: orgs.list }),
+  requestInvite: () => Promise.resolve({ ok: true, value: null }),
 }));
 
 const { BlockedScreen } = await import('@/routes/onboarding/blocked');
-
-function Picked() {
-  const location = useLocation();
-  return <p>picked {JSON.stringify(location.state)}</p>;
-}
 
 function render(screenToShow: ReactElement) {
   return renderBare(
     <MemoryRouter initialEntries={['/join']}>
       <Routes>
         <Route path="/join" element={screenToShow} />
-        <Route path="/request-invite" element={<Picked />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -71,18 +66,15 @@ describe('the screen somebody is turned away on', () => {
 
   // The owner, 2026-10-28: highlight that joining is by invitation only, and
   // list the org admins next to each organization to ask.
-  it('says joining is by invitation only, with a link to request one', async () => {
+  it('says joining is by invitation only, and to tap a name to ask', async () => {
     orgs.list = [organization()];
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(screen.getByText('Joining is by invitation only.')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'request one' })).toHaveAttribute(
-      'href',
-      '/request-invite',
-    );
-    expect(await screen.findByText(/Tap a name to request an invite/)).toBeInTheDocument();
+    expect(screen.getByText('Joining The SCI Club is by invitation only.')).toBeInTheDocument();
+    expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
   });
 
-  it('lists each org admin by first name, and a tap opens the request with them chosen', async () => {
+  // The owner, 2026-10-28: "save them a click": the form opens here.
+  it('lists each org admin by first name, and a tap opens the form here with the address filled in', async () => {
     orgs.list = [
       organization({
         admins: [
@@ -95,17 +87,14 @@ describe('the screen somebody is turned away on', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: 'Ask Alfred from NorCal SCI' }),
     );
-    expect(
-      await screen.findByText('picked {"picked":{"organizationId":"o1","adminId":"a2"}}'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Ask Alfred from NorCal SCI')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
   });
 
-  it('shows no list when nobody can be asked', async () => {
+  it('says so when nobody can be asked', async () => {
     orgs.list = [];
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    await waitFor(() => {
-      expect(screen.queryByText(/Tap a name/)).toBeNull();
-    });
+    expect(await screen.findByText(/Nobody can take requests right now/)).toBeInTheDocument();
   });
 });
 

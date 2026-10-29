@@ -238,6 +238,10 @@ vi.mock('@/lib/supabase', () => ({
           error: calls.signUpError,
         });
       },
+      verifyOtp: (params: { email: string; token: string; type: string }) => {
+        calls.order.push(`verifyOtp:${params.type}:${params.email}:${params.token}`);
+        return Promise.resolve({ error: null });
+      },
       resend: (options: { type: string; email: string }) => {
         calls.order.push(`resend:${options.type}:${options.email}`);
         return (calls.resendHold ?? Promise.resolve()).then(() => ({ error: calls.resendError }));
@@ -670,6 +674,16 @@ describe('joining by email', () => {
     expect(calls.order).toEqual(['signUp:dana@example.com']);
     expect(calls.signUpOptions?.emailRedirectTo).toContain('/join?confirmed=1');
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
+    expect(screen.getByText('hello@thesciclub.com')).toBeInTheDocument();
+  });
+
+  // The owner, 2026-10-28: a code typed here, no link to open.
+  it('checks the emailed code as soon as all six digits are typed', async () => {
+    await openJoin();
+    await fillDoor('dana@example.com', 'a long password');
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await userEvent.type(await screen.findByLabelText('Code from the email'), '12 34 56');
+    expect(calls.order).toContain('verifyOtp:email:dana@example.com:123456');
   });
 
   it('will not sign up with a password under eight characters', async () => {
