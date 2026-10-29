@@ -5,12 +5,15 @@
  *
  * Unit tests mock the channel, so nothing in `pnpm test` says that a message
  * one member writes reaches another. This does: two browsers, two seeded
- * accounts, and two things that have to move on their own.
+ * accounts, and three things that have to move on their own.
  *
  *   1. Alex has the conversation open. Bo writes into it from another browser.
  *      Alex's screen shows it without anybody touching Alex's browser.
  *   2. Bo is on Peers, not on Chat at all. Alex writes. The dot appears on Bo's
  *      Chat tab.
+ *   3. Bo taps through to the conversation. The dot goes, within the 1.5 s
+ *      recount (src/lib/coalesce.ts). Taps, not a page load, which would
+ *      recount anyway and hide a missing `unreadChanged()`.
  *
  * The second is the one worth the trouble. A subscription on the open screen is
  * easy to get right and easy to notice when it breaks; the one in the tab bar
@@ -139,6 +142,15 @@ await first.getByRole('button', { name: /send/i }).click();
 await check(`${b.display_name} got the dot while looking at Peers`, () =>
   second.getByRole('link', { name: 'Chat, something new' }).waitFor({ timeout: 12000 }),
 );
+
+await check(`${b.display_name}'s dot went once they opened the conversation`, async () => {
+  await second.getByRole('link', { name: /^Chat/ }).first().click();
+  await second.locator(`a[href="/chat/t/${threadId}"]`).first().click();
+  await second.getByText(reply).waitFor({ timeout: 12000 });
+  await second
+    .getByRole('link', { name: 'Chat, something new' })
+    .waitFor({ state: 'detached', timeout: 6000 });
+});
 
 await browser.close();
 process.exitCode = failed ? 1 : 0;
