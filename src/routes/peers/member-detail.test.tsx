@@ -4,14 +4,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Blocks from '@/lib/blocks';
 import type * as Reports from '@/lib/chat/reports';
-import type * as ClubOrganization from '@/lib/club-organization';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
-
-vi.mock('@/lib/club-organization', async (original) => ({
-  ...(await original<typeof ClubOrganization>()),
-  useClubOrganizationId: () => 'the-club',
-}));
 
 const state = vi.hoisted(() => ({ current: null as MemberState | null }));
 vi.mock('@/lib/members', () => ({
@@ -360,19 +354,26 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByRole('region', { name: 'Mentor for' })).toBeNull();
   });
 
-  it('shows a mentor of the club alone as plainly a mentor, with nothing to open', () => {
+  // The owner, 2026-10-28: the club is an organization like any other.
+  it('lists every organization a mentor is for, The SCI Club included', async () => {
+    const user = userEvent.setup();
     state.current = ok(
       makeMember({
         type: 'mentor',
         mentorOrganizations: [
+          { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null },
           { id: 'the-club', name: 'The SCI Club', shortCode: 'TSC', logoPath: null },
         ],
       }),
     );
     renderDetail();
-    expect(screen.getByText('Mentor')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Mentor/ })).toBeNull();
-    expect(screen.queryByText(/The SCI Club/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Mentor, NorCal SCI and The SCI Club' }));
+    const list = screen.getByRole('region', { name: 'Mentor for' });
+    expect(
+      within(list)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['NCSNorCal SCI', 'TSCThe SCI Club']);
   });
 
   it('omits a section entirely when there is nothing in it', () => {
