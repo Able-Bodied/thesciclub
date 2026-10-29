@@ -59,6 +59,10 @@ export default function PrivacyPage() {
             post’s words; only members can read the post. The confirmation email now has a code to
             type in the app, as well as its link.
           </li>
+          <li>
+            <b>Added:</b> mentions. Typing @ and a member’s username in a post or reply tells them
+            who mentioned them, in a notification, and links to their profile.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 26, 2026">
@@ -281,6 +285,12 @@ export default function PrivacyPage() {
           when and where it is, and a link to it. The email goes to your account’s address through
           our email provider. You can switch these emails off on Me → Settings.
         </P>
+        {/* 20261029070000. */}
+        <P>
+          When a member mentions your username in a post, you are told who, with the start of the
+          post, once for each post. Not by somebody you blocked or who blocked you, and only in a
+          room you can read. Mentions in conversations notify nobody.
+        </P>
       </Section>
 
       <Section title="How we use it">
@@ -324,8 +334,9 @@ export default function PrivacyPage() {
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
             an event, and, in a conversation you are in, that you have read a message. Liking or
-            reacting to a post or a message tells its author who you are, in a notification. A post
-            shows how many people have read it, never who.
+            reacting to a post or a message tells its author who you are, in a notification, and so
+            does mentioning a member in a post. A post shows how many people have read it, never
+            who.
           </li>
           <li>
             <b>Members who speak for organizations</b>, such as hospitals and peer support programs,

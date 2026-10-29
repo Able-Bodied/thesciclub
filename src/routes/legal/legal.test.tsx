@@ -118,6 +118,17 @@ describe('the Privacy Policy', () => {
     ).toBeInTheDocument();
   });
 
+  // 20261029070000.
+  it('says a mention tells the member who, once a post, and never across a block', () => {
+    open('/privacy');
+    expect(screen.getByText(/and so\s+does mentioning a member in a post/)).toBeInTheDocument();
+    const section = screen.getByRole('heading', { name: 'Notifications' }).parentElement;
+    if (!section) throw new Error('no section');
+    expect(section).toHaveTextContent(/mentions your username in a post, you are told who/);
+    expect(section).toHaveTextContent(/Not by somebody you blocked or who blocked you/);
+    expect(section).toHaveTextContent(/Mentions in conversations notify nobody/);
+  });
+
   // public/embed/youtube.html: YouTube refuses to play inside the app.
   it('says the iPhone app plays YouTube through the club’s embed page', () => {
     open('/privacy');
