@@ -1,9 +1,11 @@
 import { ShieldCheck } from 'lucide-react';
-import { useOrganizations } from '@/lib/organizations';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { fetchInviteRequestChoices, type InviteRequestChoice } from '@/lib/invite-requests';
 import type { QrCodeDetails } from '@/lib/qr-codes';
-import { OrganizationBadge } from '@/routes/events/organization-badge';
-import { organizationTown } from '@/routes/events/organization-places';
-import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
+import { AskForInvite, InvitationOnly } from '@/routes/onboarding/sign-in-steps';
+import { InviteChoiceList } from '@/routes/request-invite/choice-list';
+import type { PickedAdmin } from '@/routes/request-invite/page';
 
 /**
  * The address is not on the list: refused at sign-up, before any email
@@ -27,8 +29,9 @@ import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
  * worst possible moment to be sent to the wrong place.
  *
  * `can_invite` is the one fact that decides who belongs here, so the screen
- * asks the database for it. `organizations` is public-read, which is what makes
- * that possible on a screen nobody is signed in to yet.
+ * asks the database for it: invite_request_choices() (20261029010000), which
+ * also gives each organization's org admins by first name. Tapping one opens
+ * the request form on /request-invite with them chosen (the owner, 2026-10-28).
  *
  * When the query fails there is no fallback list, deliberately. The sentence
  * above it still says a member organization or a mentor has to invite the address,
@@ -51,8 +54,17 @@ export function BlockedScreen({
   /** An administrator's QR code they came by (20261014020000): who to ask. */
   fromCode?: QrCodeDetails | null;
 }) {
-  const { organizations, loading } = useOrganizations();
-  const vouchers = organizations.filter((organization) => organization.canInvite);
+  const navigate = useNavigate();
+  const [choices, setChoices] = useState<InviteRequestChoice[] | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchInviteRequestChoices().then((result) => {
+      if (!cancelled) setChoices(result.ok ? result.value : []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
@@ -64,9 +76,8 @@ export function BlockedScreen({
           This email isn't on the list
         </h1>
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
-          {email ? <b className="text-ink">{email}</b> : 'This account'} has not been invited. The
-          club is closed: a member organization or a peer mentor has to invite your email address
-          before you can join — the app itself cannot let you in.
+          {email ? <b className="text-ink">{email}</b> : 'This account'} has not been invited.{' '}
+          <InvitationOnly invitedLine={false} />
         </p>
         {/* Only while joining is closed: open, the code would have let them
             in, so whatever refused them is not something to ask about. */}
@@ -81,35 +92,26 @@ export function BlockedScreen({
             : 'If you were invited, use the address your invitation was sent to, or open the link in your invitation and join from there.'}
         </p>
 
-        {loading || vouchers.length > 0 ? (
-          <div className="mt-4 min-h-[60px] rounded-[17px] border border-line bg-paper px-3.5">
-            {vouchers.map((organization) => (
-              <div
-                key={organization.id}
-                className="flex gap-3 border-line border-b py-3.5 last:border-b-0"
-              >
-                {/* The same badge the events screens use, rather than a
-                    second hand-rolled gold tile that could only ever show
-                    initials. Somebody being turned away recognises NorCal
-                    SCI's logo faster than they read three letters, and this
-                    is the screen where knowing who to contact is the whole
-                    point. It falls back to the tile on its own. */}
-                <OrganizationBadge organization={organization} />
-                {/* The name and the place, not the description (the owner,
-                    2026-10-11): the descriptions are written for the
-                    organization's own page, and this screen only needs
-                    somebody to recognise who to contact. */}
-                <span className="min-w-0 self-center">
-                  <span className="block font-extrabold font-head text-[0.875rem]">
-                    {organization.name}
-                  </span>
-                  <span className="mt-0.5 block text-[0.75rem] text-grey">
-                    {organizationTown(organization)}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
+        {choices === null || choices.length > 0 ? (
+          <>
+            <p className="mt-4 font-bold text-[0.8875rem] text-ink leading-[1.52]">
+              These organizations can invite you. Tap a name to request an invite.
+            </p>
+            {choices === null ? (
+              <div className="mt-4 min-h-[60px] rounded-[17px] border border-line bg-paper" />
+            ) : (
+              <InviteChoiceList
+                choices={choices}
+                onPick={(organization, admin) => {
+                  const picked: PickedAdmin = {
+                    organizationId: organization.organizationId,
+                    adminId: admin.id,
+                  };
+                  void navigate('/request-invite', { state: { picked } });
+                }}
+              />
+            )}
+          </>
         ) : null}
 
         {/* No consultation call here for now (the owner, 2026-10-25); it may

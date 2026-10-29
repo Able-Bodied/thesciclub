@@ -291,6 +291,20 @@ vi.mock('@/lib/supabase', () => ({
       // the order the other tests read.
       if (name === 'joining_is_open')
         return Promise.resolve({ data: calls.joiningOpen, error: null });
+      // The blocked screen's list (20261029010000), kept out of the order too.
+      if (name === 'invite_request_choices')
+        return Promise.resolve({
+          data: [
+            {
+              organization_id: 'o1',
+              name: 'NorCal SCI',
+              short_code: 'NCS',
+              logo_path: null,
+              admins: [{ id: 'a1', first_name: 'Sam' }],
+            },
+          ],
+          error: null,
+        });
       if (name === 'qr_code_details') {
         const answer = Promise.resolve({ data: calls.qrDetails, error: null });
         return Object.assign(answer, { maybeSingle: () => answer });
@@ -474,7 +488,11 @@ describe('while anybody can join', () => {
     renderJoin();
     expect(screen.getByText(/No invite yet\?/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
-    expect(screen.getByText(/^Joining is by invitation\./)).toBeInTheDocument();
+    expect(screen.getByText('Joining is by invitation only.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'request one' })).toHaveAttribute(
+      'href',
+      '/request-invite',
+    );
   });
 
   it('says anybody can join, and drops the call for an invite', async () => {
@@ -559,9 +577,8 @@ describe("an administrator's QR code", () => {
   it('reads like any join page for a code that says nothing', async () => {
     renderJoin('/join?from=turned-off');
     expect(await screen.findByRole('button', { name: 'Create account' })).toBeInTheDocument();
-    expect(
-      screen.getByText(/^Joining is by invitation\. Use the email address/),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Joining is by invitation only.')).toBeInTheDocument();
+    expect(screen.getByText(/Use the email address you were invited at/)).toBeInTheDocument();
     expect(screen.queryByText(/invited you/)).toBeNull();
   });
 
@@ -1137,6 +1154,7 @@ describe('the not-invited screen', () => {
   it('names only the organizations that can invite, and no consultation call', async () => {
     renderJoin();
     expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ask Sam from NorCal SCI' })).toBeInTheDocument();
     expect(screen.queryByText('Wheel with Me Foundation')).toBeNull();
     expect(screen.queryByRole('link', { name: /Book a call/ })).toBeNull();
   });

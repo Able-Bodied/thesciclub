@@ -62,6 +62,7 @@ const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
 const ProfileAnswersPage = lazy(() => import('@/routes/profile/answers'));
 const ProfileDetailsPage = lazy(() => import('@/routes/profile/details'));
 const ProfileSurveyPage = lazy(() => import('@/routes/profile/page'));
+const RequestInvitePage = lazy(() => import('@/routes/request-invite/page'));
 const ResetPasswordPage = lazy(() => import('@/routes/reset-password/page'));
 
 // The other four tabs, fetched after the first screen so a first tap on one
@@ -432,6 +433,16 @@ function AppRoutes() {
           element={
             <InLight>
               <AppSignInPage />
+            </InLight>
+          }
+        />
+        {/* Asking an org admin for an invite, signed out (20261029010000).
+          Outside the shell, always light, like /join. */}
+        <Route
+          path="/request-invite"
+          element={
+            <InLight>
+              <RequestInvitePage />
             </InLight>
           }
         />

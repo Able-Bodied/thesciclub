@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render as renderBare, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactElement } from 'react';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { Organization } from '@/types/domain';
+import type { InviteRequestChoice } from '@/lib/invite-requests';
 
-const orgs = vi.hoisted(() => ({ list: [] as Organization[] }));
+const orgs = vi.hoisted(() => ({ list: [] as InviteRequestChoice[] }));
 // The logo is drawn through a signed URL since HANDOFF.md "What Home is" step 6. Stubbed
 // here, as every screen test stubs the hooks its screen calls: unstubbed, the
 // signing request is refused by the network guard, storage-js turns that into
@@ -12,73 +14,103 @@ vi.mock('@/lib/photos', () => ({
   usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed.test/${path}` : null),
 }));
 
-vi.mock('@/lib/organizations', () => ({
-  useOrganizations: () => ({ organizations: orgs.list, loading: false }),
+// invite_request_choices() decides which organizations can invite
+// (20261029010000); the screen only shows its answer.
+vi.mock('@/lib/invite-requests', () => ({
+  fetchInviteRequestChoices: () => Promise.resolve({ ok: true, value: orgs.list }),
 }));
 
 const { BlockedScreen } = await import('@/routes/onboarding/blocked');
 
+function Picked() {
+  const location = useLocation();
+  return <p>picked {JSON.stringify(location.state)}</p>;
+}
+
+function render(screenToShow: ReactElement) {
+  return renderBare(
+    <MemoryRouter initialEntries={['/join']}>
+      <Routes>
+        <Route path="/join" element={screenToShow} />
+        <Route path="/request-invite" element={<Picked />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
 const noop = vi.fn();
 
-const organization = (o: Partial<Organization> = {}): Organization =>
-  ({
-    id: 'o1',
-    shortCode: 'NCS',
-    name: 'NorCal SCI',
-    city: 'Northern California',
-    description: 'The peer mentor programme every member of this club came in through.',
-    tags: [],
-    canInvite: true,
-    logoPath: 'organizations/ncs.webp',
-    aliases: [],
-    ...o,
-  }) as Organization;
+const organization = (o: Partial<InviteRequestChoice> = {}): InviteRequestChoice => ({
+  organizationId: 'o1',
+  shortCode: 'NCS',
+  name: 'NorCal SCI',
+  logoPath: 'organizations/ncs.webp',
+  admins: [{ id: 'a1', firstName: 'Sam' }],
+  ...o,
+});
 
 describe('the screen somebody is turned away on', () => {
   // It had its own hand-rolled gold tile that could only ever show initials,
   // while every events screen showed the real logo. This is the screen where
   // recognising who to contact matters most.
-  it('shows an organization’s logo, not just its initials', () => {
+  it('shows an organization’s logo, not just its initials', async () => {
     orgs.list = [organization()];
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
+    await screen.findByText('NorCal SCI');
     const logo = document.querySelector('img');
     expect(logo).not.toBeNull();
     expect(logo?.getAttribute('src')).toBe('https://signed.test/organizations/ncs.webp');
   });
 
-  it('falls back to the short code when there is no logo', () => {
+  it('falls back to the short code when there is no logo', async () => {
     orgs.list = [organization({ logoPath: null })];
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
+    expect(await screen.findByText('NCS')).toBeInTheDocument();
     expect(document.querySelector('img')).toBeNull();
-    expect(screen.getByText('NCS')).toBeInTheDocument();
   });
 
-  // Only the organizations who can actually add a number. Naming one that
-  // cannot sends a newly injured person to the wrong place at the worst
-  // possible moment — see the file header.
-  it('lists only organizations that can invite', () => {
-    orgs.list = [
-      organization(),
-      organization({ id: 'o2', shortCode: 'WWM', name: 'Wheel with Me', canInvite: false }),
-    ];
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
-    expect(screen.queryByText('Wheel with Me')).toBeNull();
-  });
-
-  // The owner, 2026-10-11: the name and the place are enough here.
-  it('names each organization and its place, without its description', () => {
+  // The owner, 2026-10-28: highlight that joining is by invitation only, and
+  // list the org admins next to each organization to ask.
+  it('says joining is by invitation only, with a link to request one', async () => {
     orgs.list = [organization()];
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
-    expect(screen.getByText('Northern California')).toBeInTheDocument();
-    expect(screen.queryByText(/peer mentor programme every member/)).toBeNull();
+    expect(screen.getByText('Joining is by invitation only.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'request one' })).toHaveAttribute(
+      'href',
+      '/request-invite',
+    );
+    expect(await screen.findByText(/Tap a name to request an invite/)).toBeInTheDocument();
+  });
+
+  it('lists each org admin by first name, and a tap opens the request with them chosen', async () => {
+    orgs.list = [
+      organization({
+        admins: [
+          { id: 'a1', firstName: 'Sam' },
+          { id: 'a2', firstName: 'Alfred' },
+        ],
+      }),
+    ];
+    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Ask Alfred from NorCal SCI' }),
+    );
+    expect(
+      await screen.findByText('picked {"picked":{"organizationId":"o1","adminId":"a2"}}'),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no list when nobody can be asked', async () => {
+    orgs.list = [];
+    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
+    await waitFor(() => {
+      expect(screen.queryByText(/Tap a name/)).toBeNull();
+    });
   });
 });
 
 describe('the way out', () => {
   it('names the address that was refused', () => {
-    orgs.list = [];
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
     expect(screen.getByText(/isn't on the list/)).toBeInTheDocument();

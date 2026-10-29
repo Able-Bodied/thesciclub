@@ -683,6 +683,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'reaction', label: 'Reactions to my posts and messages', who: 'all' },
   { kind: 'group_add', label: 'Being added to a group', who: 'all' },
   { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
+  { kind: 'invite_request', label: 'Somebody asking me for an invite', who: 'mentor' },
   { kind: 'report', label: 'New reports, and the weekly count of blocks', who: 'admin' },
 ] as const;
 

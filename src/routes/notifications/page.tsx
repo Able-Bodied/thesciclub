@@ -53,6 +53,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   invite_joined: AtSign,
   event_reminder: CalendarDays,
   event_starting: CalendarDays,
+  invite_request: UserPlus,
   org_events: CalendarDays,
   grant_open: HandCoins,
   profile_reminder: UserPen,
