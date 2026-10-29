@@ -307,7 +307,7 @@ export default function ClubMap({
   useEffect(() => {
     if (map) setOrganizationBadges(map, badgeSources);
   }, [map, badgeSources]);
-  // A city's one member shows their photograph (the owner, 2026-10-28).
+  // A place's one member shows their photograph (the owner, 2026-10-28).
   const lone = useMemo(() => lonePeers(cities), [cities]);
   const lonePhotos = usePhotoUrls(
     layers.has('peers') ? lone.map((member) => member.photoPath) : [],
@@ -908,7 +908,8 @@ function LayerPanel({
             The house is your city, as your profile gives it.
           </p>
           <p className="px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
-            Members are only ever placed by city, never closer.
+            Members are placed at the middle of their ZIP code, or of their city without one, never
+            closer.
           </p>
           {missingPeers > 0 ? (
             <p className="px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">

@@ -35,13 +35,15 @@ export default function PrivacyPage() {
             you have not opened yet, instead of unread conversations.
           </li>
           <li>
-            <b>Changed:</b> on the map, a city with one member shows that member’s photograph and
+            <b>Changed:</b> on the map, a place with one member shows that member’s photograph and
             name, as Peers does.
           </li>
           <li>
             <b>Changed:</b> the ZIP code you give is now kept, and only you can see it. On the map
             you are counted at the middle of your ZIP code instead of your city’s; other members
-            never see the ZIP code itself.
+            never see the ZIP code itself, but if you are the only member there, your photograph and
+            name show at its middle, so they can tell roughly which part of town you live in. Leave
+            the ZIP code out, in Your details, to be counted by city only.
           </li>
         </List>
       </Note>
@@ -294,9 +296,10 @@ export default function PrivacyPage() {
           <li>
             <b>On the map</b>, other members see how many members live in each place, shown at the
             middle of your ZIP code if you gave one, or of your city, never your address or anything
-            closer. A city with one member shows that member’s photograph and name, as Peers does.
-            Turn off <b>Show me on the map</b>, on Me, to be left out; hiding yourself from Peers
-            leaves you off the map too.
+            closer. A place with one member shows that member’s photograph and name, as Peers does,
+            so others can tell roughly which part of town they live in. To be counted by city only,
+            leave your ZIP code out. Turn off <b>Show me on the map</b>, on Me, to be left out;
+            hiding yourself from Peers leaves you off the map too.
           </li>
           <li>
             <b>Members see some of what you do:</b> who likes or reacts to a post, who is going to
