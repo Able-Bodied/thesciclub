@@ -7,7 +7,8 @@ import type * as Reports from '@/lib/chat/reports';
 import type { MemberState } from '@/lib/members';
 import { makeMember } from '@/test/factory';
 
-const state = vi.hoisted(() => ({ current: null as MemberState | null }));
+const state = vi.hoisted(() => ({ current: null as MemberState | null, partner: false }));
+vi.mock('@/lib/club-partners', () => ({ useIAmPartner: () => state.partner }));
 vi.mock('@/lib/members', () => ({
   useBrowseMember: () => state.current,
 }));
@@ -118,6 +119,7 @@ function renderDetail() {
 
 beforeEach(() => {
   state.current = ok(makeMember({ displayName: 'Nicole' }));
+  state.partner = false;
   chatRooms.rooms = [];
   blocks.ids = new Set();
   blocks.reload.mockReset();
@@ -211,6 +213,29 @@ describe('reporting from a profile', () => {
     renderDetail();
     await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
     expect(screen.queryByRole('button', { name: /Report/ })).not.toBeInTheDocument();
+  });
+});
+
+// 20261029100000: only a club partner introduces.
+describe('introducing from a profile', () => {
+  async function openMenu(user: ReturnType<typeof userEvent.setup>) {
+    state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));
+    renderDetail();
+    await user.click(screen.getByRole('button', { name: 'Actions for Nicole' }));
+  }
+
+  it('is not offered to a member who is not a partner', async () => {
+    const user = userEvent.setup();
+    await openMenu(user);
+    expect(screen.queryByRole('button', { name: 'Introduce Nicole…' })).not.toBeInTheDocument();
+  });
+
+  it('opens the sheet for a partner', async () => {
+    state.partner = true;
+    const user = userEvent.setup();
+    await openMenu(user);
+    await user.click(screen.getByRole('button', { name: 'Introduce Nicole…' }));
+    expect(screen.getByRole('dialog', { name: 'Introduce Nicole' })).toBeInTheDocument();
   });
 });
 

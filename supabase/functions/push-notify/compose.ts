@@ -40,6 +40,11 @@
  *   Mention          "Bo mentioned you in a post" + the words, cut short
  *                    ("in a topic" for a topic's opening post)
  *
+ * And introductions by a club partner, 2026-10-29 (20261029100000):
+ *
+ *   Asked            "Bo would like to introduce you to Ana" + the note, cut short
+ *   Opened           "Ana & Sam is open"          + "Ana said yes." (to the partner)
+ *
  * A reply carries its words since 2026-10-01 (the owner; 20261003000000 has
  * `push_owed` return them), cut as a message's are. Until then it said only
  * who replied. Nothing here names a room, a topic or a group — those are
@@ -242,6 +247,24 @@ export function compose(owed: Owed): PushMessage | null {
         ...where,
       };
     }
+    // detail is 'asked' (to the two) or 'opened' (both said yes). subject is
+    // the other member, or the group: their first names.
+    case 'introduction':
+      if (owed.detail === 'opened') {
+        return {
+          title: subject === '' ? 'Your introduction is open' : `${subject} is open`,
+          body: `${name} said yes.`,
+          ...where,
+        };
+      }
+      return {
+        title:
+          subject === ''
+            ? `${name} would like to introduce you`
+            : `${name} would like to introduce you to ${subject}`,
+        body: words(owed) || `${name} would like to introduce you to another member.`,
+        ...where,
+      };
     case 'group_add':
       return { title: 'Added to a group', body: `${name} added you to a group.`, ...where };
     case 'report':
