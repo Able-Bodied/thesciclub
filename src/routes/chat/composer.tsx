@@ -436,7 +436,9 @@ export function Composer({
           </button>
         </div>
       ) : null}
-      {mentions ? <div className="mx-auto w-full max-w-[720px]">{mention.list}</div> : null}
+      {mentions ? (
+        <div className="relative mx-auto w-full max-w-[720px]">{mention.list}</div>
+      ) : null}
       {editing && !editing.addPhotos ? null : (
         <div className="mx-auto w-full max-w-[720px]">
           <PhotoStrip

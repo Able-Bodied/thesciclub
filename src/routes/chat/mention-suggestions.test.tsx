@@ -21,6 +21,14 @@ vi.mock('@/lib/mentions', async (importOriginal) => ({
       },
       { id: 'm2', displayName: 'Mark Ruiz', username: 'markr', photoPath: null, photoAlt: null },
       { id: 'm3', displayName: 'Sam Lee', username: 'sam_lee', photoPath: null, photoAlt: null },
+      // Enough that a bare "@" fills the list.
+      ...Array.from({ length: 25 }, (_, i) => ({
+        id: `z${String(i)}`,
+        displayName: `Zed ${String(i)}`,
+        username: `zed${String(i)}`,
+        photoPath: null,
+        photoAlt: null,
+      })),
     ]),
 }));
 
@@ -37,6 +45,16 @@ function renderComposer(mentions = true) {
 }
 
 describe('mentioning a member', () => {
+  // The owner, 2026-10-29: the list hid the box being typed in.
+  it('offers up to 20 in a list that scrolls, floating over the posts', async () => {
+    const box = renderComposer();
+    await userEvent.type(box, '@');
+    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    expect(within(list).getAllByRole('option')).toHaveLength(20);
+    expect(list).toHaveClass('overflow-y-auto');
+    expect(list.parentElement).toHaveClass('absolute', 'bottom-full');
+  });
+
   it('offers members after an "@", says how many, and chooses none yet', async () => {
     const box = renderComposer();
     await userEvent.type(box, 'Thanks @ma');

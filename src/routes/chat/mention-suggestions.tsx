@@ -57,7 +57,7 @@ export function useMentionSuggestions({
   value: string;
   /** The words with the @name put in. */
   onChange: (value: string) => void;
-  /** Drawn over the box, as at the foot of a topic. */
+  /** Floats over what is above the box, as at the foot of a topic; the caller is `relative`. */
   above?: boolean;
   /** Off in a conversation, where a mention tells nobody. */
   enabled?: boolean;
@@ -70,6 +70,7 @@ export function useMentionSuggestions({
   const [closedAt, setClosedAt] = useState<number | null>(null);
   const [added, setAdded] = useState<string | null>(null);
   const caretTo = useRef<number | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   const look = () => {
     const element = enabled ? box.current : null;
@@ -111,8 +112,17 @@ export function useMentionSuggestions({
     };
   }, [wanted, members]);
 
-  const offered = wanted && members ? suggestMentions(members, query.text) : [];
+  // Up to 20, in a list that scrolls (the owner, 2026-10-29).
+  const offered = wanted && members ? suggestMentions(members, query.text, 20) : [];
   const open = offered.length > 0;
+
+  // The chosen row stays in sight as the arrows move through a scrolled list.
+  useEffect(() => {
+    if (active < 0) return;
+    const row = listRef.current?.querySelector(`#${CSS.escape(`${listId}-${active}`)}`);
+    // jsdom has no scrollIntoView.
+    if (row && 'scrollIntoView' in row) row.scrollIntoView({ block: 'nearest' });
+  }, [active, listId]);
 
   const pick = (member: MentionCandidate) => {
     const element = box.current;
@@ -165,10 +175,18 @@ export function useMentionSuggestions({
         <div
           className={cn(
             'rounded-[11px] border border-line bg-paper shadow-sm',
-            above ? 'mb-2' : 'mt-1',
+            // Over the posts, so the box being typed in never moves out of sight.
+            above ? 'absolute inset-x-0 bottom-full z-20 mb-2 shadow-lg' : 'mt-1',
           )}
         >
-          <div id={listId} role="listbox" aria-label="Members to mention" className="py-1">
+          <div
+            ref={listRef}
+            id={listId}
+            role="listbox"
+            aria-label="Members to mention"
+            // About four and a half rows, so a fifth shows there is more to scroll.
+            className="max-h-[min(14.5rem,40dvh)] overflow-y-auto overscroll-contain py-1"
+          >
             {offered.map((member, index) => (
               // biome-ignore lint/a11y/useKeyWithClickEvents: the box's own keys choose it (aria-activedescendant).
               <div
