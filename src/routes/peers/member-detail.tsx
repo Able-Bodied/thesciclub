@@ -1,5 +1,5 @@
 import { ChevronLeft } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
 import { PhotoViewer } from '@/components/photo-viewer';
@@ -20,8 +20,8 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
-import { MentorControls } from '@/routes/peers/mentor-controls';
-import { RepresentationTags } from '@/routes/peers/representation-tags';
+import { mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
+import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
 import type { BeforeAfter, BrowseMember, RepresentedOrganization } from '@/types/domain';
 
@@ -331,6 +331,12 @@ function withMentorOf(member: BrowseMember, mentorOf: RepresentedOrganization[])
 }
 
 function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
+  // Which role pill's organizations are listed, if any.
+  const [openRole, setOpenRole] = useState<Role | null>(null);
+  const rolesId = useId();
+  const toggleRole = (role: Role) => {
+    setOpenRole((now) => (now === role ? null : role));
+  };
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -355,6 +361,14 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [reporting, setReporting] = useState(false);
   const reports = useMyReports();
   const announce = useAnnounce();
+  const mentoring = useMentorActions({
+    memberId: member?.id ?? null,
+    displayName: member?.displayName ?? '',
+    mentorOf: member?.mentorOrganizations ?? [],
+    onChange: (organizations) => {
+      if (member) setMentorOf({ memberId: member.id, organizations });
+    },
+  });
   // Focus goes back here on close: Safari does not focus a button it clicks.
   const photoButton = useRef<HTMLButtonElement | null>(null);
   // The ••• that opened the report sheet. The menu closes under it, so the
@@ -415,7 +429,15 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
             {isMentor(member) || isAdminOfAny(member) || member.type === 'organization' ? (
               <span className="flex flex-wrap justify-end gap-1.5">
                 {isMentor(member) ? (
-                  <RolePill kind="mentor" organizations={member.mentorOrganizations} />
+                  <RolePill
+                    kind="mentor"
+                    organizations={member.mentorOrganizations}
+                    expanded={openRole === 'mentor'}
+                    controls={rolesId}
+                    onToggle={() => {
+                      toggleRole('mentor');
+                    }}
+                  />
                 ) : null}
                 {member.type === 'organization' ? (
                   <span className="inline-flex items-center rounded-full bg-white px-2.5 py-[5px] font-bold text-[0.6875rem] text-navy uppercase">
@@ -427,6 +449,11 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     kind="admin"
                     organizations={member.representedOrganizations}
                     className="lg:bg-action lg:text-white"
+                    expanded={openRole === 'admin'}
+                    controls={rolesId}
+                    onToggle={() => {
+                      toggleRole('admin');
+                    }}
                   />
                 ) : null}
               </span>
@@ -438,6 +465,17 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 buttonClassName={ACTIONS_BUTTON}
                 buttonRef={menuButton}
               >
+                {mentoring.actions.map((action) => (
+                  <button
+                    key={action.organization.id}
+                    type="button"
+                    onClick={() => {
+                      mentoring.run(action);
+                    }}
+                  >
+                    {mentorActionLabel(action)}
+                  </button>
+                ))}
                 {reports.memberIds.has(member.id) ? (
                   <p className="flex min-h-11 items-center px-3 text-grey text-sm">
                     You reported {member.displayName}
@@ -635,18 +673,22 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               of their own they would all sit beside it or all below it, which
               is the grid this replaced. */}
           <div className="min-w-0 px-4 lg:contents">
-            <RepresentationTags
-              organizations={member.representedOrganizations}
-              mentorOf={member.mentorOrganizations}
-            />
-            <MentorControls
-              memberId={member.id}
-              displayName={member.displayName}
-              mentorOf={member.mentorOrganizations}
-              onChange={(organizations) => {
-                setMentorOf({ memberId: member.id, organizations });
-              }}
-            />
+            {openRole ? (
+              <RoleOrganizations
+                id={rolesId}
+                role={openRole}
+                organizations={
+                  openRole === 'mentor'
+                    ? member.mentorOrganizations
+                    : member.representedOrganizations
+                }
+              />
+            ) : null}
+            {mentoring.error ? (
+              <p role="alert" className="mt-3 text-[0.8125rem] text-destructive leading-[1.45]">
+                {mentoring.error}
+              </p>
+            ) : null}
             {/* The owner's order, 2026-10-10: who they are in their own words,
                 then how it happened, then what they will talk about and do,
                 then the flatter details card. "Bio" because that is what the

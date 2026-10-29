@@ -36,7 +36,32 @@ vi.mock('@/lib/organization-mentors', () => ({
 vi.mock('@/lib/announce', () => ({ useAnnounce: () => state.announce }));
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
 
-const { MentorControls } = await import('@/routes/peers/mentor-controls');
+const { mentorActionLabel, useMentorActions } = await import('@/routes/peers/mentor-controls');
+
+/** The ••• lines as the profile draws them, and the error under them. */
+function Harness(props: {
+  memberId: string;
+  mentorOf: RepresentedOrganization[];
+  onChange: (next: RepresentedOrganization[]) => void;
+}) {
+  const { actions, run, error } = useMentorActions({ ...props, displayName: 'Nicole' });
+  return (
+    <>
+      {actions.map((action) => (
+        <button
+          key={action.organization.id}
+          type="button"
+          onClick={() => {
+            run(action);
+          }}
+        >
+          {mentorActionLabel(action)}
+        </button>
+      ))}
+      {error ? <p role="alert">{error}</p> : null}
+    </>
+  );
+}
 
 const NCS: RepresentedOrganization = {
   id: 'ncs',
@@ -47,14 +72,7 @@ const NCS: RepresentedOrganization = {
 
 function renderIt(mentorOf: RepresentedOrganization[] = [], memberId = 'nicole') {
   const onChange = vi.fn();
-  render(
-    <MentorControls
-      memberId={memberId}
-      displayName="Nicole"
-      mentorOf={mentorOf}
-      onChange={onChange}
-    />,
-  );
+  render(<Harness memberId={memberId} mentorOf={mentorOf} onChange={onChange} />);
   return onChange;
 }
 
@@ -69,8 +87,7 @@ beforeEach(() => {
 describe('making a mentor from a profile', () => {
   it('lets an org admin make a member a mentor of their organization', async () => {
     const onChange = renderIt();
-    expect(screen.getByText('Not a mentor of NorCal SCI')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Make mentor of NorCal SCI' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Make mentor for NorCal SCI' }));
     expect(state.grant).toHaveBeenCalledWith('ncs', 'nicole');
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([NCS]);
@@ -80,7 +97,7 @@ describe('making a mentor from a profile', () => {
 
   it('removes them as its mentor', async () => {
     const onChange = renderIt([NCS]);
-    await userEvent.click(screen.getByRole('button', { name: 'Remove as mentor of NorCal SCI' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as mentor for NorCal SCI' }));
     expect(state.revoke).toHaveBeenCalledWith('ncs', 'nicole');
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith([]);
@@ -93,7 +110,7 @@ describe('making a mentor from a profile', () => {
       error: 'Only that organization’s admins can make its mentors.',
     });
     const onChange = renderIt();
-    await userEvent.click(screen.getByRole('button', { name: 'Make mentor of NorCal SCI' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Make mentor for NorCal SCI' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Only that organization');
     expect(onChange).not.toHaveBeenCalled();
   });
