@@ -246,6 +246,16 @@ export function compose(owed: Owed): PushMessage | null {
         body: owed.detail ? `You're going. It starts at ${owed.detail}.` : "You're going.",
         ...where,
       };
+    // Ten minutes before (20261028980000).
+    case 'event_starting':
+      if (subject === '') return null;
+      return {
+        title: `Starting soon: ${subject}`,
+        body: owed.detail
+          ? `You're going. It starts at ${owed.detail}.`
+          : "You're going. It starts soon.",
+        ...where,
+      };
     case 'org_events': {
       const count = Number(owed.detail);
       if (subject === '' || !Number.isInteger(count) || count < 1) return null;

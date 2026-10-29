@@ -43,6 +43,7 @@ export type NotificationKind =
   | 'report'
   | 'invite_joined'
   | 'event_reminder'
+  | 'event_starting'
   | 'org_events'
   | 'grant_open'
   | 'profile_reminder'
@@ -259,6 +260,11 @@ export function notificationSentence(n: AppNotification): string {
       return n.detail
         ? `Tomorrow at ${n.detail}: ${n.place ?? 'an event you are going to'}`
         : `Tomorrow: ${n.place ?? 'an event you are going to'}`;
+    // Ten minutes before (20261028980000).
+    case 'event_starting':
+      return n.detail
+        ? `Starting at ${n.detail}: ${n.place ?? 'an event you are going to'}`
+        : `Starting soon: ${n.place ?? 'an event you are going to'}`;
     case 'org_events': {
       const added = Number(n.detail);
       const what = Number.isInteger(added) && added > 1 ? `${added} new events` : 'a new event';

@@ -147,13 +147,17 @@ describe('NotificationSettings', () => {
       hook.state = 'on';
       kinds.muted = new Set(['group_add']);
       render(<NotificationSettings userId="u1" />);
-      expect(screen.queryByRole('button', { name: /Events I am going to/ })).toBeNull();
+      expect(
+        screen.queryByRole('button', { name: /Events I am going to, the day before/ }),
+      ).toBeNull();
       const fold = screen.getByRole('button', { name: /Choose which notifications/ });
       expect(fold).toHaveAttribute('aria-expanded', 'false');
       expect(fold).toHaveTextContent(/\d+ of \d+ on/);
       await userEvent.click(fold);
       expect(fold).toHaveAttribute('aria-expanded', 'true');
-      expect(screen.getByRole('button', { name: /Events I am going to/ })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Events I am going to, the day before/ }),
+      ).toBeInTheDocument();
     });
 
     it('offer each kind as a switch that says whether it is on', async () => {
@@ -161,10 +165,9 @@ describe('NotificationSettings', () => {
       kinds.muted = new Set(['group_add']);
       render(<NotificationSettings userId="u1" />);
       await userEvent.click(screen.getByRole('button', { name: /Choose which notifications/ }));
-      expect(screen.getByRole('button', { name: /Events I am going to/ })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      );
+      expect(
+        screen.getByRole('button', { name: /Events I am going to, the day before/ }),
+      ).toHaveAttribute('aria-pressed', 'true');
       const group = screen.getByRole('button', { name: /Being added to a group/ });
       expect(group).toHaveAttribute('aria-pressed', 'false');
       await userEvent.click(group);
