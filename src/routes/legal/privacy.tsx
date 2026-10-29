@@ -45,6 +45,20 @@ export default function PrivacyPage() {
             name show at its middle, so they can tell roughly which part of town you live in. Leave
             the ZIP code out, in Your details, to be counted by city only.
           </li>
+          <li>
+            <b>Added:</b> asking for an invite. Somebody without one can send an organization’s org
+            admins their name, email address and a note. The page that offers this shows each org
+            admin’s first name to anyone who opens it.
+          </li>
+          <li>
+            <b>Changed:</b> an org admin’s QR code or invite link lets in whoever uses it before it
+            expires, and its maker is told who joined.
+          </li>
+          <li>
+            <b>Added:</b> a link to a post can be shared outside the club. It carries none of the
+            post’s words; only members can read the post. The confirmation email now has a code to
+            type in the app, as well as its link.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 26, 2026">
@@ -166,6 +180,10 @@ export default function PrivacyPage() {
             list, and we email them a link. You can withdraw the invite until it is used.
           </li>
           <li>
+            <b>If you ask for an invite</b>, before you are a member: your name, your email address,
+            a note if you write one, and which organization you asked.
+          </li>
+          <li>
             <b>If you add an event by calendar invitation</b> (members who speak for an
             organization, and administrators): the address it came from, and what it says about the
             event: title, time, place, link and description. Its other guests are never kept. An
@@ -176,8 +194,9 @@ export default function PrivacyPage() {
           Like any website, the services that run the club see your device’s internet (IP) address
           when it connects, and our sign-in service keeps it, with the kind of browser, for each
           signed-in session and in a log of sign-ins, to keep accounts secure. On your device, the
-          app keeps you signed in and remembers settings such as text size. It uses no cookies or
-          tools for advertising or analytics.
+          app keeps you signed in and remembers settings such as text size, and, if you open a link
+          to a post before you are signed in, which post, for 30 days, so it can take you there once
+          you are. It uses no cookies or tools for advertising or analytics.
         </P>
       </Section>
 
@@ -257,9 +276,10 @@ export default function PrivacyPage() {
         </P>
         {/* 20261028980000. */}
         <P>
-          For an event you said you are going to, we also email you the day before: its name, when
-          and where it is, and a link to it. The email goes to your account’s address through our
-          email provider. You can switch these emails off on Me → Settings.
+          For an event you said you are going to, you are also reminded ten minutes before it
+          starts, if that kind of notification is on, and we email you the day before: its name,
+          when and where it is, and a link to it. The email goes to your account’s address through
+          our email provider. You can switch these emails off on Me → Settings.
         </P>
       </Section>
 
@@ -314,7 +334,14 @@ export default function PrivacyPage() {
             event they manage, and only if you chose Going (see Event hosts, below).
           </li>
           <li>
-            <b>Your email address</b> is also seen by whoever invited you, who already had it.
+            <b>Your email address</b> is also seen by whoever invited you, who already had it. If
+            you join with a QR code or invite link, whoever made it is told that you joined, and
+            sees your profile like any member.
+          </li>
+          <li>
+            <b>If you ask for an invite</b>, what you send is seen by the org admins of the
+            organization you chose, and nobody else. The page where you ask shows the first name of
+            each organization’s org admins, to anyone who opens it.
           </li>
           <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody
@@ -392,12 +419,13 @@ export default function PrivacyPage() {
 
       <Section title="Emails">
         <P>
-          We email you only to run your account: the link that confirms your address, a link to
-          reset or change your password, a notice when your password changes, and the invitation
+          We email you only to run your account: the code and link that confirm your address, a link
+          to reset or change your password, a notice when your password changes, and the invitation
           link if somebody invites you. Invitation links are sent by the club on behalf of the
           member or organization that invited you. If you add an event by calendar invitation, we
           email you what became of it, and when it waits for approval we email whoever may approve
-          it, with your address. We do not send newsletters or promotions.
+          it, with your address. We also email you the day before an event you are going to, unless
+          you switch that off (see Notifications). We do not send newsletters or promotions.
         </P>
         <P>
           <b>
@@ -497,6 +525,11 @@ export default function PrivacyPage() {
           <li>
             <b>Sign-in records</b>, with their email and IP addresses: until your account is
             deleted.
+          </li>
+          <li>
+            <b>A request for an invite:</b> kept, answered or not, until the org admin it went to
+            leaves the club or the organization is removed from it. Deleting an account does not
+            delete a request sent before joining; email <ContactEmail /> to have it deleted.
           </li>
           <li>
             <b>An invited email address:</b> invites do not expire, so it stays on the list until

@@ -222,7 +222,8 @@ describe('the Privacy Policy', () => {
     open('/privacy');
     const section = screen.getByRole('heading', { name: 'Emails' }).parentElement;
     if (!section) throw new Error('no section');
-    expect(section).toHaveTextContent(/link that confirms your address/);
+    expect(section).toHaveTextContent(/code and link that confirm your address/);
+    expect(section).toHaveTextContent(/the day before an event you are going to/);
     expect(section).toHaveTextContent(/do not send newsletters or promotions/);
   });
 
