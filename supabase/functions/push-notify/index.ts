@@ -179,15 +179,17 @@ Deno.serve(async (request) => {
       console.error('push-notify: push_forget failed', forgot.status, await forgot.text());
   }
 
-  const emailed = event === 'daily' ? await emailReminders(secret, key) : 0;
+  const emailed =
+    event === 'daily' || event === 'day_before' ? await emailReminders(secret, key) : 0;
 
   return reply(200, { owed: owed.length, sent, skipped, forgotten: gone.length, emailed });
 });
 
 /**
- * Tomorrow's events by email, in the daily run: event_reminder_emails records
- * and returns each one due, so a second run sends nothing. One that Resend
- * refuses is logged, not retried.
+ * The day-ahead reminder by email, with its push: a timed event's 24 hours
+ * before ('day_before'), an all-day event's in the daily run.
+ * event_reminder_emails records and returns each one due, so a second run
+ * sends nothing. One that Resend refuses is logged, not retried.
  */
 async function emailReminders(secret: string, key: unknown): Promise<number> {
   if (!RESEND_API_KEY || !EMAIL_FROM) {
