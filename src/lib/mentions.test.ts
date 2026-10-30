@@ -77,9 +77,24 @@ describe('who to suggest', () => {
     ]);
   });
 
-  it('offers a few for a bare "@", and nobody for no match', () => {
-    expect(suggestMentions(club, '', 3)).toHaveLength(3);
+  // The owner, 2026-10-29: after the first letter, not on the "@" alone.
+  it('offers nobody for a bare "@", or for no match', () => {
+    expect(suggestMentions(club, '')).toEqual([]);
     expect(suggestMentions(club, 'zz')).toEqual([]);
+  });
+
+  it("keeps to a conversation's members", () => {
+    expect(
+      suggestMentions(club, 'mar', 6, { among: ['bo', 'sam_mar'] }).map((m) => m.username),
+    ).toEqual(['bo', 'sam_mar']);
+  });
+
+  it('puts the people already in a topic first, then everybody else', () => {
+    expect(suggestMentions(club, 'mar', 6, { first: ['sam_mar'] }).map((m) => m.username)).toEqual([
+      'sam_mar',
+      'mari.j',
+      'bo',
+    ]);
   });
 });
 

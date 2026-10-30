@@ -1,6 +1,7 @@
 import { SendHorizontal, X } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
+import type { MentionScope } from '@/lib/mentions';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
 import { useMentionSuggestions } from '@/routes/chat/mention-suggestions';
 import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
@@ -93,8 +94,9 @@ import { PhotoPicker, PhotoStrip } from '@/routes/chat/photo-picker';
  * screen is a decision to write. The bar is the caller's state; this only
  * draws it and reports the ✕.
  *
- * `mentions` suggests members after an "@" (20261029070000): in a topic,
- * where a mention tells them, and not in a conversation.
+ * `mentions` suggests members after an "@" (20261029070000), once a letter
+ * follows it. `mentionScope` says where to look (the owner, 2026-10-29): a
+ * conversation keeps to its members; a topic puts its own people first.
  */
 /** About six lines. Mirrored by `max-h-[150px]` on the textarea below. */
 const MAX_HEIGHT = 150;
@@ -169,6 +171,7 @@ export function Composer({
   replyingTo = null,
   editing = null,
   mentions = false,
+  mentionScope = {},
 }: {
   placeholder: string;
   /** What the send button says to a screen reader. */
@@ -183,6 +186,7 @@ export function Composer({
   editing?: ComposerEditing | null;
   /** Suggest members after an "@": see the header. */
   mentions?: boolean;
+  mentionScope?: MentionScope;
 }) {
   const announce = useAnnounce();
   const [draft, setDraft] = useState('');
@@ -264,6 +268,8 @@ export function Composer({
     },
     above: true,
     enabled: mentions,
+    among: mentionScope.among,
+    first: mentionScope.first,
   });
 
   const body = draft.trim();

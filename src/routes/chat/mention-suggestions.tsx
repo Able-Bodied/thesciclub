@@ -52,6 +52,8 @@ export function useMentionSuggestions({
   onChange,
   above = false,
   enabled = true,
+  among,
+  first,
 }: {
   box: RefObject<HTMLTextAreaElement | null>;
   value: string;
@@ -59,8 +61,11 @@ export function useMentionSuggestions({
   onChange: (value: string) => void;
   /** Floats over what is above the box, as at the foot of a topic; the caller is `relative`. */
   above?: boolean;
-  /** Off in a conversation, where a mention tells nobody. */
   enabled?: boolean;
+  /** Only these members: a conversation's own. */
+  among?: readonly string[] | undefined;
+  /** These members ahead of the rest: the people already in a topic. */
+  first?: readonly string[] | undefined;
 }): MentionSuggestions {
   const listId = `${useId()}-mentions`;
   const [query, setQuery] = useState<MentionQuery | null>(null);
@@ -113,7 +118,8 @@ export function useMentionSuggestions({
   }, [wanted, members]);
 
   // Up to 20, in a list that scrolls (the owner, 2026-10-29).
-  const offered = wanted && members ? suggestMentions(members, query.text, 20) : [];
+  const offered =
+    wanted && members ? suggestMentions(members, query.text, 20, { among, first }) : [];
   const open = offered.length > 0;
 
   // The chosen row stays in sight as the arrows move through a scrolled list.

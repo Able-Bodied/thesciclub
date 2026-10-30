@@ -9,7 +9,9 @@ import { isValidUsername } from '@/lib/usernames';
  *
  * The database finds the names in a post and tells those members; this finds
  * them the same way (private.mentioned_usernames), for the box's suggestions
- * and for the links in a post. Not in conversations.
+ * and for the links in a post. A conversation suggests its own members
+ * (the owner, 2026-10-29), though a mention there tells nobody more than the
+ * message already does.
  */
 
 /** An @name being typed at the caret: where its "@" is, and what follows, lowercased. */
@@ -125,13 +127,30 @@ export function loadMentionCandidates(): Promise<MentionCandidate[]> {
   return candidates;
 }
 
-/** The best few for what was typed: @name first, then a word of the name. */
+/**
+ * Where to look, as the box knows it (the owner, 2026-10-29): `among` keeps to
+ * those members, as in a conversation; `first` puts those members ahead of
+ * everybody else, as the people already in a topic are.
+ */
+export interface MentionScope {
+  among?: readonly string[] | undefined;
+  first?: readonly string[] | undefined;
+}
+
+/**
+ * The best few for what was typed: @name first, then a word of the name.
+ * Nothing until a first letter follows the "@" (the owner, 2026-10-29).
+ */
 export function suggestMentions(
   members: readonly MentionCandidate[],
   typed: string,
   max = 6,
+  scope: MentionScope = {},
 ): MentionCandidate[] {
   const needle = typed.toLowerCase();
+  if (needle === '') return [];
+  const among = scope.among ? new Set(scope.among) : null;
+  const first = new Set(scope.first ?? []);
   const rank = (member: MentionCandidate): number => {
     if (member.username.startsWith(needle)) return 0;
     if (
@@ -145,9 +164,10 @@ export function suggestMentions(
     return member.username.includes(needle) ? 2 : -1;
   };
   return members
-    .map((member) => ({ member, at: rank(member) }))
+    .filter((member) => !among || among.has(member.id))
+    .map((member) => ({ member, at: rank(member), near: first.has(member.id) ? 0 : 1 }))
     .filter(({ at }) => at >= 0)
-    .sort((a, b) => a.at - b.at)
+    .sort((a, b) => a.near - b.near || a.at - b.at)
     .slice(0, max)
     .map(({ member }) => member);
 }

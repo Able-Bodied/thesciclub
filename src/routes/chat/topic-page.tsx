@@ -190,6 +190,16 @@ export default function TopicPage() {
   });
 
   const authors = useChatAuthors([topic?.authorId ?? null, ...posts.map((post) => post.authorId)]);
+  // An "@" suggests the people already in the topic first, then everybody else
+  // (the owner, 2026-10-29).
+  const mentionScope = useMemo(
+    () => ({
+      first: [topic?.authorId, ...posts.map((post) => post.authorId)].filter(
+        (id): id is string => !!id,
+      ),
+    }),
+    [topic?.authorId, posts],
+  );
   const room = rooms.find((r) => r.id === roomId) ?? null;
   // Home, when the topic was opened from a card there; the room otherwise.
   const location = useLocation();
@@ -637,6 +647,7 @@ export default function TopicPage() {
           // Enter breaks a line. Only the button sends — see the header.
           sendOnEnter={false}
           mentions
+          mentionScope={mentionScope}
           editing={
             edited
               ? {

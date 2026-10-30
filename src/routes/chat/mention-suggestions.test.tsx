@@ -21,7 +21,7 @@ vi.mock('@/lib/mentions', async (importOriginal) => ({
       },
       { id: 'm2', displayName: 'Mark Ruiz', username: 'markr', photoPath: null, photoAlt: null },
       { id: 'm3', displayName: 'Sam Lee', username: 'sam_lee', photoPath: null, photoAlt: null },
-      // Enough that a bare "@" fills the list.
+      // Enough that one letter fills the list.
       ...Array.from({ length: 25 }, (_, i) => ({
         id: `z${String(i)}`,
         displayName: `Zed ${String(i)}`,
@@ -32,13 +32,14 @@ vi.mock('@/lib/mentions', async (importOriginal) => ({
     ]),
 }));
 
-function renderComposer(mentions = true) {
+function renderComposer(mentions = true, mentionScope: Mentions.MentionScope = {}) {
   render(
     <Composer
       placeholder="Reply to this topic"
       sendLabel="Post this reply"
       onSend={() => Promise.resolve(null)}
       mentions={mentions}
+      mentionScope={mentionScope}
     />,
   );
   return screen.getByRole('textbox', { name: 'Reply to this topic' });
@@ -48,11 +49,44 @@ describe('mentioning a member', () => {
   // The owner, 2026-10-29: the list hid the box being typed in.
   it('offers up to 20 in a list that scrolls, floating over the posts', async () => {
     const box = renderComposer();
-    await userEvent.type(box, '@');
+    await userEvent.type(box, '@z');
     const list = await screen.findByRole('listbox', { name: 'Members to mention' });
     expect(within(list).getAllByRole('option')).toHaveLength(20);
     expect(list).toHaveClass('overflow-y-auto');
     expect(list.parentElement).toHaveClass('absolute', 'bottom-full');
+  });
+
+  // The owner, 2026-10-29: once a letter follows the "@".
+  it('waits for a first letter after the "@"', async () => {
+    const box = renderComposer();
+    await userEvent.type(box, 'Thanks @');
+    // The members are read; still nothing is offered.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.queryByRole('listbox')).toBeNull();
+    await userEvent.type(box, 'm');
+    expect(await screen.findByRole('listbox', { name: 'Members to mention' })).toBeInTheDocument();
+  });
+
+  it("keeps to a conversation's members", async () => {
+    const box = renderComposer(true, { among: ['m2', 'm3'] });
+    await userEvent.type(box, '@ma');
+    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((o) => o.getAttribute('aria-label')),
+    ).toEqual(['Mark Ruiz, @markr']);
+  });
+
+  it('puts the people already in a topic first', async () => {
+    const box = renderComposer(true, { first: ['m2'] });
+    await userEvent.type(box, '@ma');
+    const list = await screen.findByRole('listbox', { name: 'Members to mention' });
+    expect(
+      within(list)
+        .getAllByRole('option')
+        .map((o) => o.getAttribute('aria-label')),
+    ).toEqual(['Mark Ruiz, @markr', 'Maya Local, @maya.local']);
   });
 
   it('offers members after an "@", says how many, and chooses none yet', async () => {

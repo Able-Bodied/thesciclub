@@ -12,6 +12,7 @@ import {
   useAttachmentUrls,
 } from '@/lib/chat/attachments';
 import { useChatAuthors } from '@/lib/chat/authors';
+import { useThreadRoster } from '@/lib/chat/groups';
 import { useReactions } from '@/lib/chat/reactions';
 import { readReceipt, useThreadReadReceipts } from '@/lib/chat/read-receipts';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -159,6 +160,11 @@ export default function ThreadPage() {
   const edited = shown.find(
     (m) => m.id === editingId && m.removedAt === null && !m.pending && !m.notice,
   );
+
+  // Who an "@" can suggest here: the conversation's own members (the owner,
+  // 2026-10-29).
+  const roster = useThreadRoster(threadId);
+  const mentionScope = useMemo(() => ({ among: roster.memberIds }), [roster.memberIds]);
 
   const authors = useChatAuthors([
     thread?.otherMemberId ?? null,
@@ -565,6 +571,8 @@ export default function ThreadPage() {
           sendLabel="Send this message"
           // Enter sends here — see the header.
           sendOnEnter
+          mentions
+          mentionScope={mentionScope}
           editing={
             edited
               ? {
