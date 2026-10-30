@@ -124,7 +124,7 @@ export default function EventFormPage() {
       initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
       // A new event has a public page unless its organizer says otherwise
       // (the owner, 2026-10-22).
-      initialAudience={existing?.audience ?? 'public'}
+      initialAudience={existing?.audience ?? 'club'}
       initialFailure={coverFailureFrom(location.state)}
       imported={
         existing && !existing.handAdded

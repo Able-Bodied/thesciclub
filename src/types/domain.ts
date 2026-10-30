@@ -661,11 +661,12 @@ export interface EventTag {
 }
 
 /**
- * Who can see an event (the owner, 2026-10-22, 20261022180000): anyone with
- * the link (a public page, no counts, nobody's name), the whole club, the
- * hosting organization's followers, or the members of chosen group chats.
+ * Who in the club sees an event (the owner, 2026-10-22, 20261022180000): the
+ * whole club, the hosting organization's followers, or the members of chosen
+ * group chats. Every event also has a page anyone with its link can open
+ * (20261029110000), so "anyone with the link" is no longer a choice.
  */
-export const EVENT_AUDIENCES = ['public', 'club', 'followers', 'groups'] as const;
+export const EVENT_AUDIENCES = ['club', 'followers', 'groups'] as const;
 export type EventAudience = (typeof EVENT_AUDIENCES)[number];
 
 export interface ClubEvent {

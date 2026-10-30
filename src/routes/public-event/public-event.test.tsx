@@ -175,10 +175,10 @@ describe('the public event page', () => {
     expect(link.closest('[class*="[&_a]:underline"]')).not.toBeNull();
   });
 
-  it('says so for an event with no public page', async () => {
+  it('says so for an event that is not on the calendar', async () => {
     api.event = null;
-    renderAt('/e/private');
-    expect(await screen.findByText('This event has no public page')).toBeInTheDocument();
+    renderAt('/e/gone');
+    expect(await screen.findByText('This event is not on the calendar')).toBeInTheDocument();
   });
 
   it('sends a member to the members’ page', async () => {

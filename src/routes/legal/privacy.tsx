@@ -29,6 +29,10 @@ export default function PrivacyPage() {
             version, is kept with your account.
           </li>
           <li>
+            <b>Changed:</b> every event has a page anyone with its link can open, whoever in the
+            club it is for, so members can invite people to it.
+          </li>
+          <li>
             <b>Added:</b> trusted partners, professionals who work with people with spinal cord
             injuries, shown with their title. They can introduce two members to each other, and see
             the people they invited or introduced (see Who can see what). Joining, you can say you
@@ -447,9 +451,10 @@ export default function PrivacyPage() {
           instead. Anybody in the club who manages the event sees them on its guest list; for other
           hosts, an administrator passes them on.
         </P>
-        {/* Public event pages and registrations, 2026-10-22 (20261022190000). */}
+        {/* Public event pages and registrations, 2026-10-22 (20261022190000);
+            every event's since 2026-10-29 (20261029110000). */}
         <P>
-          An event can have a public page that anyone with its link can open. It shows the event's
+          Every event has a public page that anyone with its link can open. It shows the event's
           details only, never who is going or how many. Adding yourself to the club’s list there
           shares your name, email address and phone number, if you give it, with the club’s
           administrators and anybody in the club who manages that event, for that event only. It

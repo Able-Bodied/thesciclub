@@ -222,7 +222,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       seriesId: row.series_id,
       photoPath: row.photo_path,
       photoAlt: row.photo_alt,
-      audience: row.audience ?? 'public',
+      audience: row.audience ?? 'club',
       // The description's HTML moves with its words, so it is not listed apart.
       adminChanged: Object.keys(row.admin_override ?? {}).filter((f) => f !== 'description_html'),
       calendarValues: row.feed_values ?? null,
