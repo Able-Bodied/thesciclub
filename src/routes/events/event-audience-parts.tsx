@@ -1,9 +1,10 @@
-import { Users } from 'lucide-react';
+import { QrCode, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
 import { type AudienceHint, fetchAudienceHint, publicEventUrl } from '@/lib/event-audience';
 import { useOrganizationFollows } from '@/lib/organization-follows';
+import { EventGroupCard } from '@/routes/events/event-group-card';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { ClubEvent, EventAudience } from '@/types/domain';
@@ -34,10 +35,13 @@ export function EventAudienceSection({
   event,
   organizationName,
   canChange,
+  canSeeCheckIns = false,
 }: {
   event: ClubEvent;
   organizationName: string | null;
   canChange: boolean;
+  /** The check-in QR code and who has used it. */
+  canSeeCheckIns?: boolean;
 }) {
   const announce = useAnnounce();
   const link = publicEventUrl(event.id);
@@ -80,6 +84,15 @@ export function EventAudienceSection({
         >
           <Users className="h-[17px] w-[17px]" aria-hidden="true" />
           Guest list
+        </Link>
+      ) : null}
+      {canSeeCheckIns ? (
+        <Link
+          to={`/events/${event.id}/check-ins`}
+          className="mt-2.5 flex min-h-[46px] items-center justify-center gap-2 rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.875rem] text-emphasis"
+        >
+          <QrCode className="h-[17px] w-[17px]" aria-hidden="true" />
+          Check-ins and QR code
         </Link>
       ) : null}
     </>
@@ -155,6 +168,7 @@ export function OutsideTheAudience({
           </p>
         </>
       )}
+      <EventGroupCard eventId={eventId} />
     </div>
   );
 }

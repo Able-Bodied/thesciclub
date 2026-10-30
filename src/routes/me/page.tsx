@@ -27,6 +27,7 @@ import { DisplaySummary } from '@/routes/me/display-summary';
 import { MeHero } from '@/routes/me/hero';
 import { MapVisibility } from '@/routes/me/map-visibility';
 import { NotificationSettings } from '@/routes/me/notification-settings';
+import { MyOrganizations } from '@/routes/me/organizations';
 import { SignInSection } from '@/routes/me/sign-in-section';
 import { StandingCard } from '@/routes/me/standing';
 import { loadMyStrikes, type MyStrike } from '@/routes/me/standing-api';
@@ -337,6 +338,7 @@ export default function MePage() {
                 {userId && showOnMap !== null ? (
                   <MapVisibility userId={userId} showOnMap={showOnMap} onChange={setShowOnMap} />
                 ) : null}
+                {userId ? <MyOrganizations userId={userId} /> : null}
               </section>
               <div className="min-w-0 space-y-6">
                 {hasClubTools ? (

@@ -92,11 +92,14 @@ export async function createMyInvite(input: {
   email: string;
   note: string | null;
   unlimited?: boolean;
+  /** Who it makes them a member of, for an org admin of several (20261030000000). */
+  organizationId?: string | null;
 }): Promise<{ ok: boolean; error?: string; sendError?: string }> {
   // Not destructured: the client types rpc data as `any`.
   const result = await getSupabase().rpc('create_my_invite', {
     raw_email: input.email,
     note: input.note,
+    p_organization: input.organizationId ?? null,
   });
   if (result.error)
     return {

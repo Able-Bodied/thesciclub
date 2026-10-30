@@ -11,6 +11,8 @@ import {
   fetchMyInviteRequests,
   type ReceivedInviteRequest,
 } from '@/lib/invite-requests';
+import { useMyOrganizations } from '@/lib/organization-representatives';
+import { useOrganizations } from '@/lib/organizations';
 import {
   canWithdraw,
   createMyInvite,
@@ -55,6 +57,16 @@ export default function InvitesPage() {
   const [requests, setRequests] = useState<ReceivedInviteRequest[]>([]);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
+  // Asked only of an org admin of several (the owner, 2026-10-30); of one, the
+  // database knows which.
+  const [organizationId, setOrganizationId] = useState('');
+  const mine = useMyOrganizations(userId);
+  const { byId } = useOrganizations();
+  const myOrganizations = [...mine.ids]
+    .map((id) => byId.get(id))
+    .filter((organization) => organization !== undefined)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const choosesOrganization = myOrganizations.length > 1;
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +110,11 @@ export default function InvitesPage() {
   if (!permissions.canInvite) return <Navigate to="/me" replace />;
 
   const left = permissions.unlimited ? Infinity : slotsLeft(invites);
-  const ready = looksLikeEmail(email) && left > 0 && userId !== null;
+  const ready =
+    looksLikeEmail(email) &&
+    left > 0 &&
+    userId !== null &&
+    (!choosesOrganization || organizationId !== '');
 
   /**
    * Deliberately not async: these are handed to onClick, which expects void,
@@ -133,10 +149,12 @@ export default function InvitesPage() {
         email: address,
         note: note.trim() || null,
         ...(permissions.unlimited ? { unlimited: true } : {}),
+        ...(choosesOrganization ? { organizationId } : {}),
       });
       if (result.ok) {
         setEmail('');
         setNote('');
+        setOrganizationId('');
         // On the list, but the email did not go: say so, and the row has Resend.
         setNotice(result.sendError ?? `The link is on its way to ${address}.`);
       }
@@ -150,6 +168,7 @@ export default function InvitesPage() {
         email: request.email,
         note: `${request.name} (asked for an invite)`,
         ...(permissions.unlimited ? { unlimited: true } : {}),
+        organizationId: request.organizationId,
       });
       if (!result.ok) return result;
       const answered = await answerInviteRequest(request.id, 'invited');
@@ -270,6 +289,33 @@ export default function InvitesPage() {
                 Withdraw one below to free a slot. An invite somebody has already used stays spent
                 until they leave the club.
               </p>
+            ) : null}
+
+            {choosesOrganization ? (
+              <div className="mt-3">
+                <label
+                  htmlFor="mentor-invite-organization"
+                  className="block font-bold text-[0.75rem] text-ink"
+                >
+                  Inviting for
+                </label>
+                <select
+                  id="mentor-invite-organization"
+                  value={organizationId}
+                  disabled={left === 0}
+                  onChange={(e) => {
+                    setOrganizationId(e.target.value);
+                  }}
+                  className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] outline-none focus:border-emphasis disabled:opacity-40"
+                >
+                  <option value="">Choose an organization</option>
+                  {myOrganizations.map((organization) => (
+                    <option key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             ) : null}
 
             <div className="mt-3">

@@ -1,10 +1,21 @@
 import { ChevronRight } from 'lucide-react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
+import { useAccount } from '@/lib/account';
 import { useEvents } from '@/lib/events';
 import { useOrganizationGrants } from '@/lib/grants';
 import { useBrowseMembers } from '@/lib/members';
 import { useOrganizationFollows } from '@/lib/organization-follows';
+import {
+  fetchOrganizationMembers,
+  JOINED_VIA_LABEL,
+  type OrganizationMember,
+  useMyOrganizationMemberships,
+  useOrganizationChat,
+  useOrganizationCounts,
+} from '@/lib/organization-members';
+import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { FollowButton } from '@/routes/events/follow-button';
@@ -34,6 +45,26 @@ export default function OrganizationDetailPage() {
   const { events } = useEvents({ organizationId: id ?? '00000000-0000-0000-0000-000000000000' });
   const { members } = useBrowseMembers();
   const { grants } = useOrganizationGrants(id);
+  const account = useAccount();
+  const memberId = account.status === 'member' ? account.userId : null;
+  const counts = useOrganizationCounts(id);
+  const memberships = useMyOrganizationMemberships(memberId);
+  const chat = useOrganizationChat(id, memberId);
+  const mine = useMyOrganizations(memberId);
+  const seesMembers =
+    account.status === 'member' && (account.isAdmin || (id !== undefined && mine.ids.has(id)));
+  const [roster, setRoster] = useState<OrganizationMember[] | null>(null);
+
+  useEffect(() => {
+    if (!id || !seesMembers) return;
+    let live = true;
+    void fetchOrganizationMembers(id).then((result) => {
+      if (live && result.ok) setRoster(result.value);
+    });
+    return () => {
+      live = false;
+    };
+  }, [id, seesMembers]);
 
   const organization = id ? (byId.get(id) ?? null) : null;
 
@@ -116,6 +147,17 @@ export default function OrganizationDetailPage() {
             className="mt-3"
           />
 
+          {/* Both, apart (the owner, 2026-10-30): who has taken part, and who
+              follows. Numbers only: who follows is theirs to keep. */}
+          {counts ? (
+            <p className="mt-2.5 text-[#DDE7F3] text-[0.8125rem]">
+              <b className="text-white">{counts.members}</b>{' '}
+              {counts.members === 1 ? 'member' : 'members'} ·{' '}
+              <b className="text-white">{counts.followers}</b>{' '}
+              {counts.followers === 1 ? 'follower' : 'followers'}
+            </p>
+          ) : null}
+
           <div className="mt-2.5 flex flex-wrap gap-1.5">
             {organization.tags.map((tag) => (
               <span
@@ -184,6 +226,68 @@ export default function OrganizationDetailPage() {
                 </button>
               );
             })}
+          </>
+        ) : null}
+
+        {memberships.ids.has(organization.id) || chat ? (
+          <div className="mt-4 rounded-[14px] border border-line bg-paper p-3.5">
+            {memberships.ids.has(organization.id) ? (
+              <p className="font-bold text-[0.9375rem] text-ink">
+                You're a member of {organization.name}
+              </p>
+            ) : null}
+            {chat ? (
+              <Link
+                to={`/chat/t/${chat}`}
+                className="mt-2 flex min-h-[46px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis"
+              >
+                Members' group chat
+              </Link>
+            ) : null}
+            {memberships.ids.has(organization.id) ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void memberships.leave(organization.id, organization.name);
+                }}
+                className="mt-2 min-h-[44px] font-bold text-[0.8125rem] text-emphasis underline"
+              >
+                Leave {organization.name}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {seesMembers && roster && roster.length > 0 ? (
+          <>
+            <h2 className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+              Organization members
+            </h2>
+            <p className="mb-2.5 text-[0.78125rem] text-grey">
+              Only org admins and the club's administrators see this list.
+            </p>
+            <ul className="rounded-[14px] border border-line bg-paper px-3.5">
+              {roster.map((member) => (
+                <li key={member.id} className="border-line border-b last:border-b-0">
+                  <Link to={`/peers/${member.id}`} className="flex items-center gap-2.5 py-2.5">
+                    <MemberAvatar
+                      id={member.id}
+                      displayName={member.displayName}
+                      photoPath={member.photoPath}
+                      photoAlt={member.photoAlt}
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-bold text-[0.9375rem] text-ink">
+                        {member.displayName}
+                      </span>
+                      <span className="block text-[0.78125rem] text-grey">
+                        {JOINED_VIA_LABEL[member.joinedVia]}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </>
         ) : null}
 

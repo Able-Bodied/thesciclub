@@ -21,7 +21,18 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 29, 2026">
+    <LegalPage title="Privacy Policy" updated="October 30, 2026">
+      <Note title="What changed on October 30, 2026">
+        <List>
+          <li>
+            <b>Added:</b> organization members and event check-ins. Joining on an organization’s
+            invite, QR code or link, or checking in to its event, makes you its member and puts you
+            in its members’ group chat. Its org admins see that you are a member and that you
+            checked in. An organization’s page shows how many members and followers it has, never
+            who follows it. You can leave from its page.
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on October 29, 2026">
         <List>
           <li>
@@ -164,6 +175,10 @@ export default function PrivacyPage() {
             interests, work, education and family, the self-care devices and procedures you use
             (catheters, for example), and the topics you want to talk about. Every one of them can
             be left out.
+          </li>
+          <li>
+            <b>The organizations you are a member of</b>, how you came to be, and the events you
+            check in to.
           </li>
           <li>
             <b>What you do in the club:</b> your messages, posts and photographs, the events you

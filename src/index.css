@@ -868,6 +868,11 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
     max-width: none;
     margin: 0;
   }
+  /* An event's check-in code, a page of its own (routes/events/check-ins-page.tsx). */
+  [data-print-card="check-in"] > * {
+    width: 100%;
+    max-width: none;
+  }
   /* Eight to a page, with a faint line to cut along. */
   [data-print-card="business"] {
     grid-template-columns: repeat(2, 3.5in);

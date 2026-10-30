@@ -53,6 +53,8 @@ const HomeNewPage = lazy(() => import('@/routes/home/new'));
 const PublicEventPage = lazy(() => import('@/routes/public-event/page'));
 const RegisterForEventPage = lazy(() => import('@/routes/public-event/register'));
 const GuestListPage = lazy(() => import('@/routes/events/guest-list'));
+const CheckInPage = lazy(() => import('@/routes/events/check-in-page'));
+const CheckInsPage = lazy(() => import('@/routes/events/check-ins-page'));
 const HeldInvitesPage = lazy(() => import('@/routes/events/held-invites'));
 const IntroductionPage = lazy(() => import('@/routes/introductions/page'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
@@ -275,6 +277,8 @@ function ShellContent() {
             <Route path="/events/:id" element={<EventDetailPage />} />
             <Route path="/events/:id/edit" element={<EventFormPage />} />
             <Route path="/events/:id/guests" element={<GuestListPage />} />
+            <Route path="/events/:id/check-in" element={<CheckInPage />} />
+            <Route path="/events/:id/check-ins" element={<CheckInsPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/me" element={null} />
             {/* Administrators, org admins and trusted partners; the page sends

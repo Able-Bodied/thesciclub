@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
+import { checkInOpen } from '@/lib/check-ins';
 import {
   deleteEvent,
   deleteEventAndLater,
@@ -19,6 +20,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { CheckInCard } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
 import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
@@ -152,6 +154,11 @@ export default function EventDetailPage() {
     : null;
   const host = organization?.name ?? event.hostName;
   const canChange = account.status === 'member' && mayChangeEvent(event, account.isAdmin, mine.ids);
+  // Its org admins too, whose imported events they cannot change.
+  const canSeeCheckIns =
+    canChange ||
+    (account.status === 'member' &&
+      (account.isAdmin || (event.organizationId !== null && mine.ids.has(event.organizationId))));
 
   return (
     <>
@@ -254,6 +261,13 @@ export default function EventDetailPage() {
             past events became lines rather than cards; this screen kept
             offering it, so the same finished evening answered two different
             ways depending on how you arrived at it. */}
+          {checkInOpen(event) && account.status === 'member' ? (
+            <CheckInCard
+              eventId={event.id}
+              memberId={account.userId}
+              organizationId={event.organizationId}
+            />
+          ) : null}
           {isPastEvent(event) ? (
             <p className="mt-5 text-[0.8125rem] text-ink2 leading-[1.45]">
               {going
@@ -414,6 +428,7 @@ export default function EventDetailPage() {
             event={event}
             organizationName={organization?.name ?? null}
             canChange={canChange}
+            canSeeCheckIns={canSeeCheckIns}
           />
 
           {canChange && !event.handAdded ? (

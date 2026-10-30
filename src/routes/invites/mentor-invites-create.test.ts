@@ -53,9 +53,18 @@ describe('a mentor adding an invite', () => {
       ok: true,
     });
     expect(db.rpc).toEqual([
-      ['create_my_invite', { raw_email: 'dana@example.com', note: 'Rugby' }],
+      ['create_my_invite', { raw_email: 'dana@example.com', note: 'Rugby', p_organization: null }],
     ]);
     expect(db.inserts).toBe(0);
+  });
+
+  // The owner, 2026-10-30: an org admin of several says which it is for.
+  it('says which organization the invite is for', async () => {
+    await createMyInvite({ email: 'dana@example.com', note: null, organizationId: 'o1' });
+    expect(db.rpc).toContainEqual([
+      'create_my_invite',
+      { raw_email: 'dana@example.com', note: null, p_organization: 'o1' },
+    ]);
   });
 
   it('emails the link of the invite that was just made', async () => {

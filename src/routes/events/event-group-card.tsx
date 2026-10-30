@@ -19,11 +19,14 @@ import { describeThrown } from '@/lib/describe-error';
  * gets rendered.
  *
  * ---------------------------------------------------------------------------
- * Anyone who can see the event may join
+ * Any member may join
  * ---------------------------------------------------------------------------
  * Not only those going, and at any time, before the event or after it (the
  * owner, 2026-10-22; 20261022210000): somebody deciding whether to go, or
- * who missed it, is who most wants to ask. The chat is made the first time
+ * who missed it, is who most wants to ask. Since 2026-10-30 that includes
+ * whoever a followers or groups event leaves out (20261030000000), so a
+ * member who cannot see the event is offered it too (OutsideTheAudience).
+ * The chat is made the first time
  * anybody opens it (`chat_join_event_group`); leaving is from the group.
  */
 export function EventGroupCard({ eventId }: { eventId: string }) {
@@ -70,8 +73,8 @@ export function EventGroupCard({ eventId }: { eventId: string }) {
       </button>
       <p className="mt-1.5 text-[0.7875rem] text-grey leading-[1.45]">
         {existing
-          ? 'Anyone who can see this event can join it. Leave from the group itself.'
-          : 'For anyone who can see this event, going or not. You read what was said before you joined, and can leave at any time.'}
+          ? 'Any member can join it, before the event or after. Leave from the group itself.'
+          : 'For any member, going or not, before the event or after. You read what was said before you joined, and can leave at any time.'}
       </p>
       {failure ? (
         <p className="mt-2 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">

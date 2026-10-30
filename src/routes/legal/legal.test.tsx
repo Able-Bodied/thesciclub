@@ -43,9 +43,10 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(/Added: when you agreed/);
-    expect(notes[1]).toMatch(/Added: address suggestions/);
-    expect(notes[2]).toMatch(/Added: the map/);
+    expect(notes[0]).toMatch(/Added: organization members and event check-ins/);
+    expect(notes[1]).toMatch(/Added: when you agreed/);
+    expect(notes[2]).toMatch(/Added: address suggestions/);
+    expect(notes[3]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });
