@@ -381,11 +381,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     it (members only; only a title and picture come back) or an outbound
     proxy. Never probe internal addresses from a function to find out.
 - **`SPEED-PLAN.md`: Step 1 pushed** (2026-10-29, `19a6ed6`: badges recount
-  at most once per 1.5 s, `lib/coalesce.ts`; app only; `pnpm realtime-check`
-  now also sees the dot clear, `f769c07`). Step 2 next, at the owner's
-  word. Merges the two old speed and chat-rule plans (at `837914c`) with the
-  load test's findings; Steps 1 to 9 in order.
-  Load-test copy and fixes: `~/projects/sciclub-loadtest/`.
+  at most once per 1.5 s, `lib/coalesce.ts`; app only). **Steps 2 to 6
+  committed, not pushed, not live** (2026-10-29): migrations `20261029140000`
+  to `20261029180000`, each proven on a fresh stack only (not the load-test
+  copy); undo SQL in `supabase/undo/<version>.sql`, to compare with the live
+  definitions before release. Step 3 leaves the older `chat_mark_thread_read`
+  alone (a guard would never skip a write). Release in order, Step 5 on its
+  own before Step 6, then watch the logs for refused reads; after Step 6
+  run `chat-reads-unchanged.sql` (before and after phases) and
+  `pnpm realtime-check`. Steps 7 to 9 at the owner's word. Load-test copy
+  and fixes: `~/projects/sciclub-loadtest/`.
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
