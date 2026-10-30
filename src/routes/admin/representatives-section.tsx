@@ -9,7 +9,7 @@ import {
 } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { SmallButton } from '@/routes/admin/controls';
-import type { AdminMember } from '@/routes/admin/members-admin';
+import { type AdminMember, fetchMemberPage } from '@/routes/admin/members-admin';
 
 /**
  * Who speaks for which organization (20261005010000), for an administrator.
@@ -24,15 +24,18 @@ import type { AdminMember } from '@/routes/admin/members-admin';
  *
  * Only members who have joined and are active are offered: a directory row
  * from the seed is nobody anybody could sign in as, and `admin_add_representative`
- * refuses both anyway.
+ * refuses both anyway. Found by a search the database answers, 20 at a
+ * time (20261029230000), so nobody past the first 1,000 is out of reach.
  */
-export function RepresentativesSection({ members }: { members: AdminMember[] }) {
+export function RepresentativesSection() {
   const { organizations, byId, loading: organizationsLoading } = useOrganizations();
   const [representatives, setRepresentatives] = useState<Representative[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState('');
   const [memberId, setMemberId] = useState('');
+  const [find, setFind] = useState('');
+  const [choices, setChoices] = useState<AdminMember[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -47,6 +50,20 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Joined and active, matching what is typed, a moment after typing stops.
+  useEffect(() => {
+    let live = true;
+    const wait = setTimeout(() => {
+      void fetchMemberPage({ query: find, filter: 'active', limit: 20 }).then((result) => {
+        if (live && result.ok) setChoices(result.members);
+      });
+    }, 250);
+    return () => {
+      live = false;
+      clearTimeout(wait);
+    };
+  }, [find]);
 
   function run(key: string, action: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(key);
@@ -67,9 +84,7 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
       });
   }
 
-  const eligible = members
-    .filter((m) => !m.isSeed && m.status === 'active')
-    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  const eligible = [...choices].sort((a, b) => a.displayName.localeCompare(b.displayName));
   const alreadyLinked = representatives.some(
     (r) => r.organizationId === organizationId && r.memberId === memberId,
   );
@@ -127,7 +142,22 @@ export function RepresentativesSection({ members }: { members: AdminMember[] }) 
             </select>
           </div>
           <div className="min-w-[180px] flex-1">
-            <label htmlFor="rep-member" className="block font-bold text-[0.75rem] text-ink">
+            <label htmlFor="rep-find" className="block font-bold text-[0.75rem] text-ink">
+              Find a member
+            </label>
+            <input
+              id="rep-find"
+              type="search"
+              value={find}
+              onChange={(e) => {
+                setFind(e.target.value);
+                // A new search is a new list: nothing chosen from the old one.
+                setMemberId('');
+              }}
+              placeholder="Name, email or @username"
+              className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
+            />
+            <label htmlFor="rep-member" className="mt-2 block font-bold text-[0.75rem] text-ink">
               Member
             </label>
             <select

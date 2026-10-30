@@ -83,16 +83,71 @@ function toAdminMember(row: AdminMemberRow): AdminMember {
   };
 }
 
-export async function fetchAdminMembers(): Promise<
-  { ok: true; members: AdminMember[] } | { ok: false; error: string }
-> {
-  const result = await getSupabase()
-    .from('admin_members')
-    .select('*')
-    .order('created_at', { ascending: false });
+/** Which part of the roster: as Admin's filters, and 'active' for a picker. */
+export type RosterFilter = 'all' | 'joined' | 'directory' | 'attention' | 'active';
+
+/** Rows read at a time; Show more reads as many again. */
+export const ROSTER_PAGE = 50;
+
+/**
+ * The roster, searched and paged by the database (20261029230000): the API
+ * returns at most 1,000 rows, so reading it whole could never find member
+ * 1,001. Newest first. `memberId` reads just that member.
+ */
+export async function fetchMemberPage({
+  query = '',
+  filter = 'all',
+  memberId = null,
+  offset = 0,
+  limit = ROSTER_PAGE,
+}: {
+  query?: string;
+  filter?: RosterFilter;
+  memberId?: string | null;
+  offset?: number;
+  limit?: number;
+}): Promise<{ ok: true; members: AdminMember[]; total: number } | { ok: false; error: string }> {
+  const result = await getSupabase().rpc('admin_member_search', {
+    p_query: query.trim() || null,
+    p_filter: filter,
+    p_member: memberId,
+    p_limit: limit,
+    p_offset: offset,
+  });
   if (result.error)
     return { ok: false, error: describeError(result.error, 'Could not load the members.') };
-  return { ok: true, members: (result.data as AdminMemberRow[]).map(toAdminMember) };
+  const rows = (result.data ?? []) as (AdminMemberRow & { total: number })[];
+  return { ok: true, members: rows.map(toAdminMember), total: rows[0]?.total ?? 0 };
+}
+
+export interface RosterCounts {
+  everyone: number;
+  joined: number;
+  directory: number;
+  /** Joined, and paused or with a strike that counts. */
+  attention: number;
+}
+
+export async function fetchMemberCounts(): Promise<
+  { ok: true; counts: RosterCounts } | { ok: false; error: string }
+> {
+  const result = await getSupabase().rpc('admin_member_counts');
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not count the members.') };
+  const row = (
+    result.data as
+      | { everyone: number; joined: number; directory: number; attention: number }[]
+      | null
+  )?.[0];
+  return {
+    ok: true,
+    counts: {
+      everyone: row?.everyone ?? 0,
+      joined: row?.joined ?? 0,
+      directory: row?.directory ?? 0,
+      attention: row?.attention ?? 0,
+    },
+  };
 }
 
 /** Whether the club can reach a member (20261022040000). */

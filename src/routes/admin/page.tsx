@@ -1,5 +1,5 @@
 import { ChevronDown, Loader2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
@@ -30,10 +30,11 @@ import {
   canRevoke,
   deleteMember,
   deliveryNote,
-  fetchAdminMembers,
   fetchBlockedEmails,
   fetchInvites,
   fetchInvitingOrganizations,
+  fetchMemberCounts,
+  fetchMemberPage,
   fetchMemberReach,
   fetchStrikes,
   type InvitingOrganization,
@@ -42,6 +43,8 @@ import {
   isOldPhoneInvite,
   joinTally,
   type MemberReach,
+  ROSTER_PAGE,
+  type RosterCounts,
   reinviteByEmail,
   removeAndBlock,
   removePartner,
@@ -98,7 +101,20 @@ const ADMIN_MEASURE = 'max-w-[960px]';
 export default function AdminPage() {
   const account = useAccount();
   const [search, setSearch] = useState('');
+  // The rows read so far: the database searches and pages (20261029230000).
   const [members, setMembers] = useState<AdminMember[]>([]);
+  const [found, setFound] = useState(0);
+  const [counts, setCounts] = useState<RosterCounts>({
+    everyone: 0,
+    joined: 0,
+    directory: 0,
+    attention: 0,
+  });
+  // What the search box asks, a moment after typing stops.
+  const [asked, setAsked] = useState('');
+  // One member, from a report's "go to member".
+  const [only, setOnly] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
   const [strikes, setStrikes] = useState<Strike[]>([]);
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedEmail[]>([]);
@@ -141,32 +157,125 @@ export default function AdminPage() {
   const [reach, setReach] = useState<Map<string, MemberReach> | null>(null);
   const [partners, setPartners] = useState<PartnerTitles>(new Map());
 
+  // The roster's question now, and how many rows are drawn, so a reload after
+  // an action reads the same rows and an answer to an older question is
+  // dropped.
+  const rosterAsk = useRef<{ query: string; filter: MemberFilter; only: string | null }>({
+    query: '',
+    filter: 'all',
+    only: null,
+  });
+  const shown = useRef(0);
+  const readRoster = useCallback(async (limit: number) => {
+    const ask = rosterAsk.current;
+    const result = await fetchMemberPage({
+      query: ask.only ? '' : ask.query,
+      filter: ask.only ? 'all' : ask.filter,
+      memberId: ask.only,
+      limit,
+    });
+    if (rosterAsk.current !== ask) return null;
+    if (result.ok) {
+      shown.current = result.members.length;
+      setMembers(result.members);
+      setFound(result.total);
+      return null;
+    }
+    return result.error;
+  }, []);
+
   const load = useCallback(async () => {
     // Read fresh: a title may have just changed.
     forgetPartnerTitles();
-    const [memberResult, inviteResult, blockedRows, strikeResult, reachResult, partnerTitles] =
-      await Promise.all([
-        fetchAdminMembers(),
-        fetchInvites(),
-        fetchBlockedEmails(),
-        fetchStrikes(),
-        fetchMemberReach(),
-        fetchPartnerTitles(),
-      ]);
-    if (memberResult.ok) setMembers(memberResult.members);
+    const [
+      rosterError,
+      countResult,
+      inviteResult,
+      blockedRows,
+      strikeResult,
+      reachResult,
+      partnerTitles,
+    ] = await Promise.all([
+      readRoster(Math.max(shown.current, ROSTER_PAGE)),
+      fetchMemberCounts(),
+      fetchInvites(),
+      fetchBlockedEmails(),
+      fetchStrikes(),
+      fetchMemberReach(),
+      fetchPartnerTitles(),
+    ]);
+    if (countResult.ok) setCounts(countResult.counts);
     setReach(reachResult);
     setPartners(partnerTitles);
     if (inviteResult.ok) setInvites(inviteResult.invites);
     if (strikeResult.ok) setStrikes(strikeResult.strikes);
     setBlocked(blockedRows);
-    const failure = !memberResult.ok
-      ? memberResult.error
-      : !inviteResult.ok
-        ? inviteResult.error
-        : null;
+    const failure =
+      rosterError ??
+      (!countResult.ok ? countResult.error : !inviteResult.ok ? inviteResult.error : null);
     setError(failure);
     setLoading(false);
-  }, []);
+  }, [readRoster]);
+
+  // Typing settles for a moment before the database is asked.
+  useEffect(() => {
+    const wait = setTimeout(() => {
+      setAsked(search.trim());
+    }, 250);
+    return () => {
+      clearTimeout(wait);
+    };
+  }, [search]);
+
+  // A new question reads the first page again; the first one is load's.
+  const asking = useRef(false);
+  useEffect(() => {
+    rosterAsk.current = { query: asked, filter, only };
+    if (!asking.current) {
+      asking.current = true;
+      return;
+    }
+    void readRoster(ROSTER_PAGE).then((failure) => {
+      if (failure) setError(failure);
+    });
+  }, [asked, filter, only, readRoster]);
+
+  // A report's member, once their row is drawn.
+  useEffect(() => {
+    const row =
+      only && members.some((m) => m.id === only) ? document.getElementById(`member-${only}`) : null;
+    // jsdom has no scrollIntoView.
+    if (row && 'scrollIntoView' in row) row.scrollIntoView({ block: 'center' });
+  }, [only, members]);
+
+  function showMore() {
+    const ask = rosterAsk.current;
+    setMore(true);
+    fetchMemberPage({
+      query: ask.query,
+      filter: ask.filter,
+      offset: members.length,
+    })
+      .then((result) => {
+        if (rosterAsk.current !== ask) return;
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setMembers((rows) => {
+          const next = [...rows, ...result.members.filter((m) => !rows.some((r) => r.id === m.id))];
+          shown.current = next.length;
+          return next;
+        });
+        setFound(result.total);
+      })
+      .catch((e: unknown) => {
+        setError(describeThrown(e, 'Could not load more members.'));
+      })
+      .finally(() => {
+        setMore(false);
+      });
+  }
 
   useEffect(() => {
     if (account.status === 'member') {
@@ -197,12 +306,11 @@ export default function AdminPage() {
    */
   function goToMember(memberId: string) {
     setSearch('');
+    setAsked('');
     setFilter('all');
+    setOnly(memberId);
     setOpenMember(memberId);
     setTab('members');
-    requestAnimationFrame(() => {
-      document.getElementById(`member-${memberId}`)?.scrollIntoView({ block: 'center' });
-    });
   }
 
   /**
@@ -242,38 +350,19 @@ export default function AdminPage() {
       });
   }
 
-  const query = search.trim().toLocaleLowerCase();
-  const phoneQuery = /^[+\d\s()-]+$/.test(query) ? query.replace(/\D/g, '') : '';
-  const matching = members.filter((member) => {
-    const words = [
-      member.displayName,
-      member.email,
-      member.username,
-      member.phone,
-      member.city,
-      member.state,
-      member.type,
-      member.status,
-      member.isAdmin ? 'admin' : '',
-    ]
-      .join(' ')
-      .toLocaleLowerCase();
-    return (
-      words.includes(query) ||
-      (phoneQuery.length > 0 && (member.phone ?? '').replace(/\D/g, '').includes(phoneQuery))
-    );
-  });
-  const needsAttention = (m: AdminMember) => !m.isSeed && (m.status !== 'active' || m.strikes > 0);
-  const real = matching.filter((m) => !m.isSeed && (filter !== 'attention' || needsAttention(m)));
-  const seeded = matching.filter((m) => m.isSeed);
+  // The database found these (searched and filtered); here they are only
+  // split into who joined and the directory.
+  const query = only ? '' : asked;
+  const real = members.filter((m) => !m.isSeed);
+  const seeded = members.filter((m) => m.isSeed);
   const showJoined = filter !== 'directory';
   const showDirectory = filter === 'all' || filter === 'directory';
-  const joinedCount = members.filter((m) => !m.isSeed).length;
+  const joinedCount = counts.joined;
   // Zero on the live club since 20261010020000; the directory's filter,
   // section and count are drawn only where there are seeded rows (a local
   // database still has them).
-  const directoryCount = members.length - joinedCount;
-  const attentionCount = members.filter(needsAttention).length;
+  const directoryCount = counts.directory;
+  const attentionCount = counts.attention;
   const pending = invites.filter((i) => i.status === 'pending');
   // Three lists, because "The list" should mean the people who are on it.
   // Withdrawn rows used to sit among them and accumulate forever, which is
@@ -359,6 +448,7 @@ export default function AdminPage() {
                     value={search}
                     onChange={(event) => {
                       setSearch(event.target.value);
+                      setOnly(null);
                     }}
                     placeholder="Name, email, @username, location or account type"
                     className="min-h-[44px] min-w-0 flex-1 basis-[14rem] rounded-[10px] border border-line bg-canvas px-3 text-[0.875rem] text-ink outline-none focus:border-emphasis"
@@ -375,7 +465,19 @@ export default function AdminPage() {
                 </div>
                 {query ? (
                   <p role="status" className="mt-2 text-[0.8125rem] text-grey">
-                    {matching.length} matching member{matching.length === 1 ? '' : 's'}
+                    {found} matching member{found === 1 ? '' : 's'}
+                  </p>
+                ) : null}
+                {only ? (
+                  <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.8125rem] text-grey">
+                    Showing the member from the report.
+                    <SmallButton
+                      onClick={() => {
+                        setOnly(null);
+                      }}
+                    >
+                      Show everyone
+                    </SmallButton>
                   </p>
                 ) : null}
                 {/* Which part of the roster, beside the search rather than as
@@ -385,17 +487,20 @@ export default function AdminPage() {
                 <SegmentPills
                   className="mt-1 pb-0"
                   value={filter}
-                  onChange={setFilter}
+                  onChange={(next) => {
+                    setFilter(next);
+                    setOnly(null);
+                  }}
                   segments={
                     directoryCount > 0
                       ? [
-                          ['all', `All · ${members.length}`],
+                          ['all', `All · ${counts.everyone}`],
                           ['joined', `Joined · ${joinedCount}`],
                           ['directory', `Directory · ${directoryCount}`],
                           ['attention', `Paused or struck · ${attentionCount}`],
                         ]
                       : [
-                          ['all', `All · ${members.length}`],
+                          ['all', `All · ${counts.everyone}`],
                           ['attention', `Paused or struck · ${attentionCount}`],
                         ]
                   }
@@ -422,7 +527,7 @@ export default function AdminPage() {
                   />
                 </div>
                 <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
-                  <RepresentativesSection key={organizationRevision} members={members} />
+                  <RepresentativesSection key={organizationRevision} />
                 </div>
               </div>
             ) : null}
@@ -701,6 +806,17 @@ export default function AdminPage() {
                 />
               ))}
             </Section>
+
+            {tab === 'members' && !only && members.length < found ? (
+              <div className="mt-3 flex flex-col items-center gap-1.5">
+                <p className="text-[0.8125rem] text-grey">
+                  Showing {members.length} of {found}
+                </p>
+                <SmallButton onClick={showMore} disabled={more}>
+                  {more ? 'Loading…' : `Show ${Math.min(ROSTER_PAGE, found - members.length)} more`}
+                </SmallButton>
+              </div>
+            ) : null}
           </TabPanel>
         )}
       </div>
