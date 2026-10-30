@@ -10,7 +10,7 @@ import {
 } from '@/lib/introductions';
 
 /**
- * One introduction, to one of the two a club partner introduced
+ * One introduction, to one of the two a trusted partner introduced
  * (20261029100000): who, why, and Yes or Not now. Opened from the bell.
  */
 export default function IntroductionPage() {

@@ -19,7 +19,7 @@ import { createQrCode, qrJoinUrl } from '@/lib/qr-codes';
 import { cn } from '@/lib/utils';
 
 /**
- * A club partner's printable card (20261029100000): their name, title, a
+ * A trusted partner's printable card (20261029100000): their name, title, a
  * heading and words of their own, and their own QR code. The code has no
  * expiry and lets people in; asking again gives back the same live one.
  * Dark on white whatever the theme, for the camera and the printer.

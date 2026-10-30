@@ -516,11 +516,11 @@ describe('the Privacy Policy, on HIPAA, safety and rights', () => {
 });
 
 // 20261029100000.
-describe('club partners', () => {
+describe('trusted partners', () => {
   it('says who they are, what they see, and that a no is never passed on', () => {
     open('/privacy');
     const who = screen.getByRole('heading', { name: 'Who can see what' }).parentElement;
-    expect(who).toHaveTextContent(/Club partners are professionals/);
+    expect(who).toHaveTextContent(/Trusted partners are professionals/);
     expect(who).toHaveTextContent(/cannot read conversations they are not in/);
     expect(who).toHaveTextContent(/if\s+either says no, the one who said yes is not told/);
     expect(who).toHaveTextContent(/except an address they\s+sent an invite to themselves/);

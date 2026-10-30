@@ -174,7 +174,7 @@ describe("an administrator's codes", () => {
         id: 'q2',
         event_name: null,
         turned_off_at: '2026-10-15T00:00:00Z',
-        // A club partner's own (20261029100000).
+        // A trusted partner's own (20261029100000).
         made_as_partner: true,
       },
     ];

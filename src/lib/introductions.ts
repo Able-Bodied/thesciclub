@@ -2,7 +2,7 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * A club partner introducing two members (20261029100000). Each is asked;
+ * A trusted partner introducing two members (20261029100000). Each is asked;
  * two yeses open a group of the three, with the partner's note first.
  * Whoever said yes is never told the other said no: theirs waits, then
  * expires.
@@ -119,7 +119,7 @@ export async function fetchIntroductionForMe(
         partner: row.partner_id
           ? {
               id: row.partner_id,
-              name: row.partner_name ?? 'A club partner',
+              name: row.partner_name ?? 'A trusted partner',
               photoPath: row.partner_photo,
               title: row.partner_title,
             }

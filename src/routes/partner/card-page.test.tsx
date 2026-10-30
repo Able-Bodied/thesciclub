@@ -7,7 +7,7 @@ import { AnnounceProvider } from '@/lib/announce';
 import type { PartnerCard } from '@/lib/partner-hub';
 import type { NewQrCode } from '@/lib/qr-codes';
 
-/** A club partner's card (20261029100000). Only the reads and writes are stubbed. */
+/** A trusted partner's card (20261029100000). Only the reads and writes are stubbed. */
 const state = vi.hoisted(() => ({
   account: null as Account | null,
   partner: true,

@@ -22,7 +22,7 @@ import {
 import { cn } from '@/lib/utils';
 
 /**
- * A club partner's own page (20261029100000): their numbers, the people they
+ * A trusted partner's own page (20261029100000): their numbers, the people they
  * invited or introduced, and their introductions. Counts and statuses only;
  * nothing from anybody's conversations.
  */
@@ -79,10 +79,10 @@ export default function PartnerPage() {
           <PartnerHub />
         ) : (
           <div className="rounded-[14px] border border-line bg-paper p-4 text-[0.9375rem] text-ink leading-[1.5]">
-            <p className="font-bold">This page is for club partners.</p>
+            <p className="font-bold">This page is for trusted partners.</p>
             <p className="mt-1 text-ink2">
-              Club partners are professionals who work with people with SCI/D, such as peer support
-              leads and therapists. An administrator makes someone a partner.
+              Trusted partners are professionals who work with people with SCI/D, such as peer
+              support leads and therapists. An administrator makes someone a partner.
             </p>
             <Link
               to="/me"

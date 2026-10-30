@@ -115,7 +115,7 @@ export interface MyQrCode {
   expiresAt: string | null;
   notes: string | null;
   turnedOffAt: string | null;
-  /** A club partner's own, with no organization: lets people in (20261029100000). */
+  /** A trusted partner's own, with no organization: lets people in (20261029100000). */
   madeAsPartner: boolean;
 }
 

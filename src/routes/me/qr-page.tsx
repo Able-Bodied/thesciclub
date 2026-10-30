@@ -37,7 +37,7 @@ import { cn } from '@/lib/utils';
  * may carry a note only its maker sees. Every code made is listed below with
  * when it was made, when it expires, and a way to turn it off.
  *
- * A club partner's own code, with no organization, lets people in as an
+ * A trusted partner's own code, with no organization, lets people in as an
  * org admin's does (20261029100000).
  */
 

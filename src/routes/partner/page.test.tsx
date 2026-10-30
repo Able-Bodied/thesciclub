@@ -100,17 +100,17 @@ beforeEach(() => {
   vi.spyOn(window, 'confirm').mockReturnValue(true);
 });
 
-describe('the club partner page', () => {
+describe('the trusted partner page', () => {
   it('tells anybody who is not a partner what it is for', async () => {
     state.partner = false;
     renderPage();
-    expect(await screen.findByText('This page is for club partners.')).toBeInTheDocument();
+    expect(await screen.findByText('This page is for trusted partners.')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your numbers' })).toBeNull();
   });
 
   it('is titled with the role and the partner’s own title, and leads to the card', async () => {
     renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'Club partner' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Trusted partner' })).toBeInTheDocument();
     expect(await screen.findByText('Physical therapist, SCI-FIT')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Your card/ })).toHaveAttribute(
       'href',

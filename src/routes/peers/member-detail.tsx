@@ -486,7 +486,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     {mentorActionLabel(action)}
                   </button>
                 ))}
-                {/* A club partner's (20261029100000). */}
+                {/* A trusted partner's (20261029100000). */}
                 {partner ? (
                   <button
                     type="button"

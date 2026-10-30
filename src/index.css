@@ -834,7 +834,7 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
   animation: opening-wait 0.01ms linear var(--opening-for) backwards;
 }
 
-/* A club partner's card prints alone (routes/partner/card-page.tsx): every
+/* A trusted partner's card prints alone (routes/partner/card-page.tsx): every
    element that neither is nor holds the card is left out, and what holds it
    stops scrolling and clipping. */
 @media print {

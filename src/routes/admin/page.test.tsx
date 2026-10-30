@@ -53,7 +53,7 @@ const api = vi.hoisted(() => ({
   reportsStrikeCount: true,
   /** Open reports, for the count in the Reports tab's label. */
   openReports: 0,
-  /** member id → club partner title (20261029100000). */
+  /** member id → trusted partner title (20261029100000). */
   partners: new Map<string, string>(),
   partnerCalls: [] as [string, string | null][],
 }));
@@ -170,7 +170,7 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   },
 }));
 
-// Who is a club partner, read with the roster; never the network.
+// Who is a trusted partner, read with the roster; never the network.
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchPartnerTitles: () => Promise.resolve(new Map(api.partners)),
@@ -279,11 +279,11 @@ beforeEach(() => {
 });
 
 // 20261029100000.
-describe('club partners', () => {
-  it('makes a member a club partner with the title shown beside their name', async () => {
+describe('trusted partners', () => {
+  it('makes a member a trusted partner with the title shown beside their name', async () => {
     renderAdmin();
     await manage();
-    await userEvent.click(await screen.findByRole('button', { name: 'Make club partner' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Make trusted partner' }));
     const save = screen.getByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
     await userEvent.type(
@@ -302,7 +302,7 @@ describe('club partners', () => {
     renderAdmin();
     await manage();
     expect(await screen.findByText('Peer support, SCVMC')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove as club partner' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as trusted partner' }));
     expect(api.partnerCalls).toEqual([]);
     await userEvent.click(screen.getByRole('button', { name: 'Remove the role' }));
     await waitFor(() => {
@@ -314,7 +314,7 @@ describe('club partners', () => {
     api.members = [member({ isSeed: true })];
     renderAdmin();
     await manage();
-    expect(screen.queryByRole('button', { name: 'Make club partner' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Make trusted partner' })).toBeNull();
   });
 });
 

@@ -9,7 +9,7 @@ import { loadMentionCandidates, type MentionCandidate, suggestMentions } from '@
 import { cn } from '@/lib/utils';
 
 /**
- * A club partner introduces the member whose profile this is to another
+ * A trusted partner introduces the member whose profile this is to another
  * (20261029100000). The geometry and the ways out are BlockSheet's.
  */
 export function IntroduceSheet({

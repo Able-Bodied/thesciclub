@@ -373,11 +373,11 @@ describe('MePage', () => {
     expect(await screen.findByText('network is unreachable')).toBeInTheDocument();
   });
 
-  // A club partner (20261029100000) finds their page, and their own codes.
-  it('leads a club partner to their page and to making a code', () => {
+  // A trusted partner (20261029100000) finds their page, and their own codes.
+  it('leads a trusted partner to their page and to making a code', () => {
     privileges.partner = true;
     renderMe();
-    const hub = screen.getByRole('link', { name: 'Club partner' });
+    const hub = screen.getByRole('link', { name: 'Trusted partner' });
     expect(hub).toHaveAttribute('href', '/partner');
     expect(hub).toHaveAccessibleDescription(/your people, your introductions/i);
     expect(screen.getByRole('link', { name: 'Create QR code or invite link' })).toHaveAttribute(
@@ -388,7 +388,7 @@ describe('MePage', () => {
 
   it('offers no partner page to anybody else', () => {
     renderMe();
-    expect(screen.queryByRole('link', { name: 'Club partner' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Trusted partner' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create QR code or invite link' })).toBeNull();
   });
 

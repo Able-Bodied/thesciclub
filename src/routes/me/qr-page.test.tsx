@@ -436,9 +436,9 @@ describe('the list of codes', () => {
   });
 });
 
-// A club partner's own code, with no organization, lets people in
+// A trusted partner's own code, with no organization, lets people in
 // (20261029100000).
-describe("a club partner's own code", () => {
+describe("a trusted partner's own code", () => {
   const asPartner = () => {
     state.account = { status: 'member', userId: 'me', isAdmin: false, displayName: 'Bobby' };
     state.partner = true;
@@ -450,7 +450,7 @@ describe("a club partner's own code", () => {
     expect(
       await screen.findByRole('heading', { name: 'Create QR code or invite link' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('Your own code, as a club partner')).toBeInTheDocument();
+    expect(screen.getByText('Your own code, as a trusted partner')).toBeInTheDocument();
     expect(screen.queryByLabelText('Email shown while joining is closed')).toBeNull();
     expect(
       screen.getByText(/before it expires can join the club, as invited by you/),
@@ -482,7 +482,7 @@ describe("a club partner's own code", () => {
     renderPage();
     const who = await screen.findByLabelText("Who it's for");
     expect(
-      within(who).getByRole('option', { name: 'Just you, as a club partner' }),
+      within(who).getByRole('option', { name: 'Just you, as a trusted partner' }),
     ).toBeInTheDocument();
     expect(within(who).getByRole('option', { name: 'NorCal SCI' })).toBeInTheDocument();
   });

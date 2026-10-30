@@ -767,7 +767,7 @@ function Row({
   onRemove: (block: boolean, reason: string | null) => void;
   onToggleMentor: () => void;
   onMakeOrganization: () => void;
-  /** Their title as a club partner, or null. Left out where nobody can be one: a seeded row. */
+  /** Their title as a trusted partner, or null. Left out where nobody can be one: a seeded row. */
   partnerTitle?: string | null;
   onSetPartner?: (title: string) => void;
   onRemovePartner?: () => void;

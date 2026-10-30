@@ -221,7 +221,7 @@ describe('reporting from a profile', () => {
   });
 });
 
-// 20261029100000: only a club partner introduces.
+// 20261029100000: only a trusted partner introduces.
 describe('introducing from a profile', () => {
   async function openMenu(user: ReturnType<typeof userEvent.setup>) {
     state.current = ok(makeMember({ id: 'abc', displayName: 'Nicole' }));

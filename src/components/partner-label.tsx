@@ -2,7 +2,7 @@ import { PARTNER_ROLE_NAME, usePartnerTitles } from '@/lib/club-partners';
 import { cn } from '@/lib/utils';
 
 /**
- * "Club partner · Physical therapist, SCI-FIT" beside a club partner's name
+ * "Trusted partner · Physical therapist, SCI-FIT" beside a trusted partner's name
  * (20261029100000), so members can tell a professional is reading. Nothing
  * for anybody else, nor while the titles are being read.
  *

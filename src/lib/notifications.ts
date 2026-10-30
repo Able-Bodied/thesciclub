@@ -251,7 +251,7 @@ export function notificationSentence(n: AppNotification): string {
     // An @username in a post (20261029070000): once a post.
     case 'mention':
       return `${name} mentioned you in ${quoted(n.place)}`;
-    // By a club partner (20261029100000): detail 'asked', or 'opened' once
+    // By a trusted partner (20261029100000): detail 'asked', or 'opened' once
     // both said yes, when place is the group.
     case 'introduction':
       return n.detail === 'opened'

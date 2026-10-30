@@ -71,7 +71,7 @@ describe('what a notification says', () => {
     );
   });
 
-  // 20261029100000: a club partner's introduction, and both saying yes.
+  // 20261029100000: a trusted partner's introduction, and both saying yes.
   it('says who would introduce the member to whom, and when it opened', () => {
     expect(
       notificationSentence(

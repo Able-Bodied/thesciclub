@@ -277,7 +277,7 @@ function ShellContent() {
             <Route path="/events/:id/guests" element={<GuestListPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/me" element={null} />
-            {/* Administrators, org admins and club partners; the page sends
+            {/* Administrators, org admins and trusted partners; the page sends
             anybody else to Me. */}
             <Route path="/me/qr" element={<QrCodePage />} />
             <Route path="/me/saved" element={<SavedPage />} />
@@ -288,7 +288,7 @@ function ShellContent() {
             Reached from the Invites card on Me, which is where a member goes
             to find out what their membership lets them do. */}
             <Route path="/invites" element={<InvitesPage />} />
-            {/* Club partners only (20261029100000); reached from Me. */}
+            {/* Trusted partners only (20261029100000); reached from Me. */}
             <Route path="/partner" element={<PartnerPage />} />
             <Route path="/partner/card" element={<PartnerCardPage />} />
             {/* Unlisted in the tab bar; the page redirects a non-admin away. */}

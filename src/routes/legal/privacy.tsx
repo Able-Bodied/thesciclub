@@ -29,7 +29,7 @@ export default function PrivacyPage() {
             version, is kept with your account.
           </li>
           <li>
-            <b>Added:</b> club partners, professionals who work with people with spinal cord
+            <b>Added:</b> trusted partners, professionals who work with people with spinal cord
             injuries, shown with their title. They can introduce two members to each other, and see
             the people they invited or introduced (see Who can see what). Joining, you can say you
             are such a professional; that alone makes nobody a partner.
@@ -373,7 +373,7 @@ export default function PrivacyPage() {
             event they manage, and only if you chose Going (see Event hosts, below).
           </li>
           <li>
-            <b>Club partners</b> are professionals, such as a hospital’s peer support lead or a
+            <b>Trusted partners</b> are professionals, such as a hospital’s peer support lead or a
             physical therapist, whom an administrator chose. Their title is shown beside their name.
             They see the same profiles as anybody. For the people they invited or introduced, they
             also see whether each joined, finished their profile and was introduced to a mentor, and

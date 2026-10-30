@@ -2,7 +2,7 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * What a club partner sees of their own work (20261029100000): who they
+ * What a trusted partner sees of their own work (20261029100000): who they
  * invited or introduced, their own counts, their introductions, and their
  * card. The database answers only for the signed-in partner.
  */
