@@ -75,9 +75,75 @@ vi.mock('@/lib/chat/reports', () => ({
 // Partial: the network calls are stubbed, but `inviteState` is a pure
 // formatter and the page should be rendering the real one — a stub of it would
 // let this file assert whatever wording it liked.
+const { rosterFilter } = vi.hoisted(() => ({
+  rosterFilter: (
+    m: { isSeed: boolean; status: string; strikes: number },
+    filter: string,
+  ): boolean =>
+    filter === 'joined'
+      ? !m.isSeed
+      : filter === 'directory'
+        ? m.isSeed
+        : filter === 'attention'
+          ? !m.isSeed && (m.status !== 'active' || m.strikes > 0)
+          : filter === 'active'
+            ? !m.isSeed && m.status === 'active'
+            : true,
+}));
 vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   ...(await importOriginal<typeof MembersAdmin>()),
-  fetchAdminMembers: () => Promise.resolve({ ok: true as const, members: api.members }),
+  // As admin_member_search and admin_member_counts (20261029230000) answer.
+  fetchMemberPage: ({
+    query = '',
+    filter = 'all',
+    memberId = null,
+    offset = 0,
+    limit = 50,
+  }: {
+    query?: string;
+    filter?: string;
+    memberId?: string | null;
+    offset?: number;
+    limit?: number;
+  }) => {
+    const q = query.trim().toLocaleLowerCase();
+    const found = api.members.filter(
+      (m) =>
+        ((memberId === null || m.id === memberId) &&
+          rosterFilter(m, filter) &&
+          [
+            m.displayName,
+            m.email,
+            m.username,
+            m.phone,
+            m.city,
+            m.state,
+            m.type,
+            m.status,
+            m.isAdmin ? 'admin' : '',
+          ]
+            .join(' ')
+            .toLocaleLowerCase()
+            .includes(q)) ||
+        (/^[+\d\s()-]+$/.test(q) &&
+          (m.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, ''))),
+    );
+    return Promise.resolve({
+      ok: true as const,
+      members: found.slice(offset, offset + limit),
+      total: found.length,
+    });
+  },
+  fetchMemberCounts: () =>
+    Promise.resolve({
+      ok: true as const,
+      counts: {
+        everyone: api.members.length,
+        joined: api.members.filter((m) => !m.isSeed).length,
+        directory: api.members.filter((m) => m.isSeed).length,
+        attention: api.members.filter((m) => rosterFilter(m, 'attention')).length,
+      },
+    }),
   fetchMemberReach: () => Promise.resolve(api.reach),
   fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
   fetchBlockedEmails: () => Promise.resolve(api.blocked),
@@ -1515,17 +1581,24 @@ describe('finding members', () => {
     ];
     renderAdmin();
     const input = await screen.findByRole('searchbox', { name: 'Find a member' });
+    // The database answers, a moment after typing stops (20261029230000).
     await userEvent.type(input, 'MENTOR');
+    await waitFor(() => {
+      expect(screen.queryByText('Taylor Example')).toBeNull();
+    });
     expect(screen.getByText('Morgan Example')).toBeInTheDocument();
-    expect(screen.queryByText('Taylor Example')).toBeNull();
     await userEvent.clear(input);
     await userEvent.type(input, 'sacramento');
+    await waitFor(() => {
+      expect(screen.queryByText('Morgan Example')).toBeNull();
+    });
     expect(screen.getByText('Taylor Example')).toBeInTheDocument();
-    expect(screen.queryByText('Morgan Example')).toBeNull();
     await userEvent.clear(input);
     await userEvent.type(input, 'morgan');
+    await waitFor(() => {
+      expect(screen.queryByText('Taylor Example')).toBeNull();
+    });
     expect(screen.getByText('Morgan Example')).toBeInTheDocument();
-    expect(screen.queryByText('Taylor Example')).toBeNull();
     // Searching never changes membership or account type.
     expect(api.typeCalls).toEqual([]);
     expect(api.statusCalls).toEqual([]);
@@ -1536,14 +1609,44 @@ describe('finding members', () => {
     renderAdmin();
     const input = await screen.findByRole('searchbox', { name: 'Find a member' });
     await userEvent.type(input, '(999) 000-1234');
+    expect(await screen.findByText('1 matching member')).toBeInTheDocument();
     expect(screen.getByText('Phone Example')).toBeInTheDocument();
     await userEvent.clear(input);
     await userEvent.type(input, 'absent');
-    expect(screen.getByText('No joined members match your search.')).toBeInTheDocument();
+    expect(await screen.findByText('No joined members match your search.')).toBeInTheDocument();
     expect(screen.queryByText('Phone Example')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
-    expect(screen.getByText('Phone Example')).toBeInTheDocument();
+    expect(await screen.findByText('Phone Example')).toBeInTheDocument();
     expect(input).toHaveValue('');
+  });
+
+  // SPEED-PLAN Step 7: the roster comes 50 at a time, so member 1,001 is
+  // reachable, by Show more or by searching.
+  it('shows 50 at a time, with the total, and Show more reads the next', async () => {
+    api.members = Array.from({ length: 120 }, (_, i) =>
+      member({ id: `p${String(i)}`, displayName: `Person ${String(i)}` }),
+    );
+    renderAdmin();
+    expect(await screen.findByText('Showing 50 of 120')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All · 120' })).toBeInTheDocument();
+    expect(screen.queryByText('Person 50')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Show 50 more' }));
+    expect(await screen.findByText('Person 50')).toBeInTheDocument();
+    expect(screen.getByText('Showing 100 of 120')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show 20 more' }));
+    expect(await screen.findByText('Person 119')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Show \d+ more$/ })).toBeNull();
+  });
+
+  it('finds a member past the first page by searching', async () => {
+    api.members = Array.from({ length: 120 }, (_, i) =>
+      member({ id: `p${String(i)}`, displayName: `Person ${String(i)}` }),
+    );
+    renderAdmin();
+    const input = await screen.findByRole('searchbox', { name: 'Find a member' });
+    await userEvent.type(input, 'Person 119');
+    expect(await screen.findByText('Person 119')).toBeInTheDocument();
+    expect(screen.getByText('1 matching member')).toBeInTheDocument();
   });
 });
 
