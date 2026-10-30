@@ -209,10 +209,12 @@ describe('EventDetailPage', () => {
     audience.hint = null;
   });
 
-  it('says who can see it, and gives a public event a link to share', () => {
-    state.events = [makeEvent({ id: 'picnic', audience: 'public' })];
+  // Every event, whoever in the club it is for (the owner, 2026-10-29).
+  it('says who can see it, and gives every event a link to share', () => {
+    state.events = [makeEvent({ id: 'picnic', audience: 'groups' })];
     renderDetail('picnic');
-    expect(screen.getByText('Anyone with the link')).toBeInTheDocument();
+    expect(screen.getByText('Members of chosen groups')).toBeInTheDocument();
+    expect(screen.getByText(/Share the link to invite anyone/)).toBeInTheDocument();
     expect(screen.getByText('https://thesciclub.com/e/picnic')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument();
   });

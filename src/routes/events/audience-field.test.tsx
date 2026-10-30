@@ -49,15 +49,19 @@ function Harness({
   );
 }
 
-describe('Who can see it', () => {
-  it('offers the four, naming the organization whose followers', () => {
+describe('Who in the club sees it', () => {
+  // The link is for every event (the owner, 2026-10-29), so not a choice.
+  it('offers the three, naming the organization whose followers', () => {
     chats.threads = [];
-    render(<Harness start={{ audience: 'public', groups: [] }} seen={[]} />);
+    render(<Harness start={{ audience: 'club', groups: [] }} seen={[]} />);
+    expect(screen.getByRole('group', { name: 'Who in the club sees it' })).toBeInTheDocument();
     const options = screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent);
-    expect(options[0]).toContain('Anyone with the link');
-    expect(options[1]).toContain('Everyone in the club');
-    expect(options[2]).toContain('Followers of NorCal SCI');
-    expect(options[3]).toContain('Chosen groups');
+    expect(options).toHaveLength(3);
+    expect(options[0]).toContain('Everyone in the club');
+    expect(options[1]).toContain('Followers of NorCal SCI');
+    expect(options[2]).toContain('Chosen groups');
+    expect(screen.queryByText(/Anyone with the link/)).toBeNull();
+    expect(screen.getByText(/Anyone you send its link to can open it/)).toBeInTheDocument();
   });
 
   it('has no followers to offer when no organization hosts it', () => {
@@ -96,6 +100,6 @@ describe('Who can see it', () => {
   it('needs a group before a groups event can be saved', () => {
     expect(audienceReady({ audience: 'groups', groups: [] })).toBe(false);
     expect(audienceReady({ audience: 'groups', groups: ['g1'] })).toBe(true);
-    expect(audienceReady({ audience: 'public', groups: [] })).toBe(true);
+    expect(audienceReady({ audience: 'club', groups: [] })).toBe(true);
   });
 });

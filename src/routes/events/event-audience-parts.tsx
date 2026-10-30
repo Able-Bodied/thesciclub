@@ -10,15 +10,13 @@ import type { ClubEvent, EventAudience } from '@/types/domain';
 
 /**
  * The pieces of an event's page that come from who can see it
- * (20261022180000): what the audience is, the public link, the guest list for
- * its organizers, and, for a member outside the audience who has the link,
+ * (20261022180000): what the audience is, the link to share (every event has
+ * one, 20261029110000), the guest list for its organizers, and, for a member outside the audience who has the link,
  * who the event is for and nothing more.
  */
 
 export function audienceLabel(audience: EventAudience, organizationName: string | null): string {
   switch (audience) {
-    case 'public':
-      return 'Anyone with the link';
     case 'club':
       return 'Everyone in the club';
     case 'followers':
@@ -31,7 +29,7 @@ export function audienceLabel(audience: EventAudience, organizationName: string 
 const HEADING =
   'mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
 
-/** Who can see it, the link to share a public event, and the organizers' guest list. */
+/** Who can see it, the link to share it, and the organizers' guest list. */
 export function EventAudienceSection({
   event,
   organizationName,
@@ -50,33 +48,30 @@ export function EventAudienceSection({
         <p className="font-bold text-[0.90625rem] text-ink">
           {audienceLabel(event.audience, organizationName)}
         </p>
-        {event.audience === 'public' ? (
-          <>
-            <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
-              Anyone with the link sees the event and can add themselves to the guest list. Who's
-              going stays in the club.
-            </p>
-            <div className="mt-2.5 flex items-center justify-between gap-3">
-              <span className="min-w-0 break-all text-[0.8125rem] text-ink2">{link}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  void navigator.clipboard.writeText(link).then(
-                    () => {
-                      announce('The link is copied.');
-                    },
-                    () => {
-                      announce('Could not copy the link.');
-                    },
-                  );
-                }}
-                className="min-h-[44px] flex-none rounded-[10px] bg-tint px-3 font-bold text-[0.8125rem] text-emphasis"
-              >
-                Copy link
-              </button>
-            </div>
-          </>
-        ) : null}
+        {/* Every event, to invite whoever you like (the owner, 2026-10-29). */}
+        <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+          Share the link to invite anyone: they see the event and can add themselves to the guest
+          list. Who's going stays in the club.
+        </p>
+        <div className="mt-2.5 flex items-center justify-between gap-3">
+          <span className="min-w-0 break-all text-[0.8125rem] text-ink2">{link}</span>
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard.writeText(link).then(
+                () => {
+                  announce('The link is copied.');
+                },
+                () => {
+                  announce('Could not copy the link.');
+                },
+              );
+            }}
+            className="min-h-[44px] flex-none rounded-[10px] bg-tint px-3 font-bold text-[0.8125rem] text-emphasis"
+          >
+            Copy link
+          </button>
+        </div>
       </div>
       {canChange ? (
         <Link

@@ -5,9 +5,12 @@ import { cn } from '@/lib/utils';
 import type { EventAudience } from '@/types/domain';
 
 /**
- * "Who can see it" on the event form (the owner, 2026-10-22; 20261022180000).
+ * "Who in the club sees it" on the event form (the owner, 2026-10-22;
+ * 20261022180000).
  *
- * One choice for the whole audience. Followers is offered only for an
+ * One choice for the whole audience. Anyone with the event's link can open
+ * its page whatever is chosen (the owner, 2026-10-29; 20261029110000): the
+ * link is how people are invited, so it is not a choice. Followers is offered only for an
  * organization's event. Groups lists the group chats the member is in: as
  * buttons while there are few, and as a list to add from once there are many
  * (the owner: "if there are a lot of groups to choose from, a drop down"),
@@ -23,11 +26,6 @@ export interface AudienceChoice {
 export const GROUP_BUTTONS_MAX = 6;
 
 const CHOICES: { value: EventAudience; title: string; hint: string }[] = [
-  {
-    value: 'public',
-    title: 'Anyone with the link',
-    hint: "A public page; anyone can join the guest list. Who's going stays in the club.",
-  },
   { value: 'club', title: 'Everyone in the club', hint: 'Members only.' },
   { value: 'followers', title: 'Followers', hint: 'Members who follow the organization.' },
   { value: 'groups', title: 'Chosen groups', hint: 'Members of the group chats you pick.' },
@@ -69,7 +67,7 @@ export function AudienceField({
 
   return (
     <fieldset className="mt-5">
-      <legend className={labelClassName}>Who can see it</legend>
+      <legend className={labelClassName}>Who in the club sees it</legend>
       <div className="mt-1.5 rounded-[14px] border border-line bg-paper px-3.5">
         {choices.map((choice) => (
           <label
@@ -181,8 +179,8 @@ export function AudienceField({
         </div>
       ) : null}
       <p className={hintClassName}>
-        Only those who can see it can say they're going. Narrowing it later keeps who already said
-        yes.
+        Only those who see it can say they're going. Narrowing it later keeps who already said yes.
+        Anyone you send its link to can open it and join the guest list.
       </p>
     </fieldset>
   );

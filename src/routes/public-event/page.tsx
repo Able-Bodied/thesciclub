@@ -15,8 +15,8 @@ import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 
 /**
- * A public event's page, for anybody with the link (the owner, 2026-10-22;
- * public_event, 20261022180000).
+ * An event's page, for anybody with the link (the owner, 2026-10-22;
+ * public_event, 20261022180000; every event since 20261029110000).
  *
  * What an organization would post on its own calendar, and nothing that says
  * who is in the club: no counts, nobody's name (not even the host's, who may
@@ -80,10 +80,10 @@ export default function PublicEventPage() {
       {event === null ? (
         <div className="px-6 py-10 text-center">
           <h1 className="font-extrabold font-head text-[1.25rem] text-ink">
-            This event has no public page
+            This event is not on the calendar
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
-            It may be for the club's members only, or it is no longer on the calendar.
+            It may have been removed, or the link is not complete.
           </p>
           <Link
             to="/join"
