@@ -337,10 +337,10 @@ describe('sharing a post', () => {
       post({ id: '2', replyTo: '1', authorId: 'me', body: 'Air cells.' }),
     ];
     renderTopic();
-    // The topic itself first, under its title (the owner, 2026-10-28).
+    // Once each: the opening post's shares the topic by its title, and no
+    // second Share sits under the title (the owner, 2026-10-29).
     expect(screen.getAllByRole('button', { name: /^Share / }).map((b) => b.ariaLabel)).toEqual([
       'Share “Travelling with a bowel programme”',
-      'Share “Which cushion do you use?”',
       'Share “Air cells.”',
     ]);
   });
@@ -576,9 +576,11 @@ describe('views on every standing post', () => {
 });
 
 describe('a topic', () => {
-  it('says how many replies and views it has', () => {
+  // Views are shown beside the post's •••, not in the header too (2026-10-29).
+  it('says how many replies it has, and no views beside who started it', () => {
     renderTopic();
-    expect(screen.getByText(/^2 replies · 3 views · started by/)).toBeInTheDocument();
+    expect(screen.getByText(/^2 replies · started by/)).toBeInTheDocument();
+    expect(screen.queryByText(/views? · started by/)).toBeNull();
   });
 
   // A count of zero is not drawn: a topic nobody has answered says who
@@ -586,14 +588,8 @@ describe('a topic', () => {
   it('leaves out a count of zero', () => {
     db.topic = { ...db.topic, replyCount: 0, viewCount: 1 } as ChatTopic;
     renderTopic();
-    expect(screen.getByText(/^1 view · started by/)).toBeInTheDocument();
+    expect(screen.getByText(/^Started by/)).toBeInTheDocument();
     expect(screen.queryByText(/0 replies/)).toBeNull();
-  });
-
-  it('keeps zero views visible on a new topic', () => {
-    db.topic = { ...db.topic, replyCount: 0, viewCount: 0 } as ChatTopic;
-    renderTopic();
-    expect(screen.getByText(/^0 views · started by/)).toBeInTheDocument();
   });
 
   // The owner, 2026-09-27: a removed post is not drawn at all, and the

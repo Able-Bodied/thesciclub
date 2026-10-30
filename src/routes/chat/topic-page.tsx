@@ -387,7 +387,7 @@ export default function TopicPage() {
 
   const starter = topic.authorId ? authors.get(topic.authorId) : null;
   const topicTitle = topic.title.trim();
-  const counts = topicCounts(topic.replyCount, topic.viewCount);
+  const counts = topicCounts(topic.replyCount);
   const nameOf = (post: ChatPost) =>
     (post.authorId ? authors.get(post.authorId)?.displayName : null) ?? 'a deleted member';
 
@@ -464,11 +464,17 @@ export default function TopicPage() {
     },
     onBlock: blockOffer(post),
     // Not from a closed room: no member could read what arrived.
+    // The opening post's shares the topic itself, from the top, under its
+    // title; it is the only Share for the topic (the owner, 2026-10-29).
     share: closed ? null : (
       <SharePostButton
         postId={post.id}
-        words={post.body || topic.title}
-        link={`/chat/rooms/${topic.roomId}/topics/${topic.id}?${new URLSearchParams({ post: post.id }).toString()}`}
+        words={post.id === openingId ? topic.title : post.body || topic.title}
+        link={
+          post.id === openingId
+            ? `/chat/rooms/${topic.roomId}/topics/${topic.id}`
+            : `/chat/rooms/${topic.roomId}/topics/${topic.id}?${new URLSearchParams({ post: post.id }).toString()}`
+        }
       />
     ),
     edits: edits.byPost.get(post.id) ?? [],
@@ -592,19 +598,6 @@ export default function TopicPage() {
               on {chatTimeLong(topic.createdAt)}
             </span>
           </p>
-          {/* The topic itself, not one post in it (the owner, 2026-10-28): a
-              question hides its opening post, and with it that post's Share.
-              In a conversation it arrives as the opening post; outside, the
-              link opens the topic from the top. */}
-          {opening && !closed ? (
-            <div className="mt-1 -ml-3">
-              <SharePostButton
-                postId={opening.id}
-                words={topic.title}
-                link={`/chat/rooms/${topic.roomId}/topics/${topic.id}`}
-              />
-            </div>
-          ) : null}
           {/* An administrator seeding a room reaches this screen with a
               working composer and no other sign that nobody can read what
               they are writing. The room page says the same thing; forgetting
@@ -817,12 +810,10 @@ export default function TopicPage() {
   );
 }
 
-/** "3 replies · 1 view", including zero views. */
-function topicCounts(replies: number, views: number): string {
-  return [
-    replies ? `${replies} ${replies === 1 ? 'reply' : 'replies'}` : null,
-    `${views} ${views === 1 ? 'view' : 'views'}`,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+/**
+ * "3 replies", or nothing for none. Views are counted on the topic's post,
+ * beside its •••, not here as well (the owner, 2026-10-29).
+ */
+function topicCounts(replies: number): string {
+  return replies ? `${replies} ${replies === 1 ? 'reply' : 'replies'}` : '';
 }
