@@ -42,7 +42,7 @@ describe('the spinal cord question', () => {
       'Quadriplegic (tetraplegic)',
       'High para (T1–T8)',
       'Low para (T9+)',
-      'Spinal cord disorder',
+      'Spinal cord or nerve disorder',
       'Relative/Spouse',
       'Professional / I work with people with SCI/D',
     ]);
@@ -100,15 +100,16 @@ describe('the spinal cord question', () => {
   it('asks which condition in a box, suggesting the spinal cord conditions', async () => {
     const seen: SpinalCordAnswer[] = [];
     const { container } = render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     const box = screen.getByLabelText('Which condition?');
     expect(box).toHaveAttribute('placeholder', 'Start typing, or choose one');
     const suggested = [...container.querySelectorAll('datalist option')].map((o) =>
       o.getAttribute('value'),
     );
-    expect(suggested).toHaveLength(21);
+    expect(suggested).toHaveLength(26);
     expect(suggested).toContain('Transverse myelitis');
     expect(suggested).toContain('Central cord syndrome');
+    expect(suggested).toContain('Guillain-Barré syndrome');
     expect(suggested).not.toContain('Cerebral palsy');
     await userEvent.type(box, 'Transverse myelitis');
     expect(seen.at(-1)?.conditionName).toBe('Transverse myelitis');
@@ -119,7 +120,7 @@ describe('the spinal cord question', () => {
   it('offers a condition every level, starting on Not applicable', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Transverse myelitis');
     const levels = optionsOf('Level, if it has one');
     expect(levels[0]).toBe('Not applicable');
@@ -134,7 +135,7 @@ describe('the spinal cord question', () => {
   it('offers central cord syndrome the neck only, and records it incomplete', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Central cord syndrome');
     const levels = optionsOf('Level, if it has one');
     expect(levels[0]).toBe('Not applicable');
@@ -167,7 +168,7 @@ describe('the spinal cord question', () => {
     render(
       <Harness seen={seen} start={{ ...EMPTY, injuryType: 'quad', exactLevel: 'Do not know' }} />,
     );
-    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     expect(screen.getByLabelText('Level, if it has one')).toHaveValue('');
     expect(seen.at(-1)?.exactLevel).toBeNull();
   });
@@ -175,7 +176,7 @@ describe('the spinal cord question', () => {
   it('keeps a condition that is not suggested as it was typed', async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Friedreich ataxia');
     expect(seen.at(-1)?.conditionName).toBe('Friedreich ataxia');
   });
@@ -202,7 +203,7 @@ describe('the spinal cord question', () => {
   it("lets go of a condition's name when the kind changes", async () => {
     const seen: SpinalCordAnswer[] = [];
     render(<Harness seen={seen} />);
-    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord or nerve disorder/ }));
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');
     await userEvent.click(screen.getByRole('radio', { name: /Low para/ }));
     expect(screen.queryByLabelText('Which condition?')).toBeNull();

@@ -24,7 +24,7 @@ import {
  *
  *   Quadriplegic, High para, Low para   the level, from a list cut to fit,
  *                                       and complete or incomplete
- *   Spinal cord disorder                which, typed, with suggestions, and
+ *   Spinal cord or nerve disorder       which, typed, with suggestions, and
  *                                       a level if it has one: "Not
  *                                       applicable" unless they choose
  *   Relative/Spouse                     nothing more: a member with no level
