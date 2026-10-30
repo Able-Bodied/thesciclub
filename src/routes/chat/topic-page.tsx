@@ -22,6 +22,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { saveKey, useTopicSaves } from '@/lib/chat/saves';
 import { chatTimeLong } from '@/lib/chat/time';
 import {
+  deleteMyTopic,
   deleteTopic,
   editPost,
   firstUnreadThread,
@@ -257,20 +258,23 @@ export default function TopicPage() {
     }
   }, [drawn, threads, lastReadAt, wanted, wantedNavigation, place]);
 
-  function removeTopic() {
+  // `mine`: the starter's own, while nobody else has posted (20261029250000).
+  function removeTopic(mine = false) {
     if (!topicId) return;
     // A confirm, like closing a room: this cannot be undone and takes every
     // reply with it.
     if (
       !window.confirm(
-        'Delete this topic and every reply in it? This cannot be undone. Reports on its posts keep their own copy.',
+        mine
+          ? 'Delete your topic? Nobody has answered yet, so the whole topic goes. This cannot be undone.'
+          : 'Delete this topic and every reply in it? This cannot be undone. Reports on its posts keep their own copy.',
       )
     ) {
       return;
     }
     setDeleting(true);
     setDeleteFailure(null);
-    void deleteTopic(topicId)
+    void (mine ? deleteMyTopic(topicId) : deleteTopic(topicId))
       .then((result) => {
         if (!result.ok) {
           setDeleteFailure(result.error);
@@ -397,6 +401,13 @@ export default function TopicPage() {
         (p.replyTo === post.id || post.id === openingId),
     );
 
+  const wholeTopic = (post: ChatPost) =>
+    post.id === openingId &&
+    topic.authorId !== null &&
+    topic.authorId === account.userId &&
+    post.authorId === account.userId &&
+    !posts.some((p) => p.removedAt === null && p.authorId !== account.userId);
+
   /** Controls act on this specific post, including replies to replies. */
   const postProps = (post: ChatPost) => ({
     post,
@@ -417,8 +428,12 @@ export default function TopicPage() {
     // An administrator can remove anybody's; everybody else only their own.
     // chat_remove_post decides — this only asks.
     canRemove: account.isAdmin || post.authorId === account.userId,
+    // The opening post of the reader's own topic nobody else has posted in:
+    // removing it would leave a title with nothing under it, so the topic goes.
+    removeLabel: wholeTopic(post) ? 'Delete topic' : undefined,
     onRemove: () => {
-      remove(post.id);
+      if (wholeTopic(post)) removeTopic(true);
+      else remove(post.id);
     },
     removing: removingId === post.id,
     // Exactly the posts the reader can neither remove nor wrote, and not a
@@ -616,7 +631,9 @@ export default function TopicPage() {
             {account.isAdmin ? (
               <button
                 type="button"
-                onClick={removeTopic}
+                onClick={() => {
+                  removeTopic();
+                }}
                 disabled={deleting}
                 data-target="small"
                 // A transparent border, so it is exactly Mute's height.

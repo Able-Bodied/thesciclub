@@ -600,6 +600,26 @@ export async function deleteTopic(topicId: string): Promise<ChatWriteResult<stri
 }
 
 /**
+ * Whoever started a topic deletes it, while no other member's post stands in
+ * it (chat_delete_my_topic, 20261029250000). Returns photographs as above.
+ */
+export async function deleteMyTopic(topicId: string): Promise<ChatWriteResult<string[]>> {
+  const { data, error } = (await getSupabase().rpc('chat_delete_my_topic', {
+    topic: topicId,
+  })) as Result<string[]>;
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'The topic was not deleted.',
+        missing: 'That topic is not there any more.',
+      }),
+    };
+  }
+  return { ok: true, value: data ?? [] };
+}
+
+/**
  * Moves a topic to another room: an administrator, or whoever started it
  * (chat_move_topic, 20261010010000). The database decides; the page only
  * offers it to those two.

@@ -144,6 +144,10 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     db.deleted.push(id);
     return Promise.resolve({ ok: true as const, value: ['rooms/bowel/a.webp'] });
   },
+  deleteMyTopic: (id: string) => {
+    db.deleted.push(`mine:${id}`);
+    return Promise.resolve({ ok: true as const, value: [] });
+  },
   removePost: (id: string) => {
     db.removed.push(id);
     return Promise.resolve({ ok: true as const, value: db.removalFiles });
@@ -726,6 +730,34 @@ describe('a topic', () => {
     await waitFor(() => {
       expect(db.edited).toEqual([['1', 'My first words.\n\nUpdate: It worked.']]);
     });
+  });
+
+  // The owner, 2026-10-29: removing an unanswered topic's opening post left
+  // its title standing.
+  it('offers Delete topic on the viewer’s own topic while nobody else has posted', async () => {
+    if (db.topic) db.topic = { ...db.topic, authorId: 'me' };
+    db.posts = [post({ id: '1', authorId: 'me', body: 'Alone here.' })];
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+    expect(await screen.findByText('The room')).toBeInTheDocument();
+    expect(db.deleted).toEqual(['mine:t']);
+    expect(db.removed).toEqual([]);
+    confirm.mockRestore();
+  });
+
+  it('removes only the post once somebody else has posted', async () => {
+    if (db.topic) db.topic = { ...db.topic, authorId: 'me' };
+    db.posts = [
+      post({ id: '1', authorId: 'me', body: 'Asked.' }),
+      post({ id: '2', body: 'Answered.' }),
+    ];
+    renderTopic();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove your post' }));
+    await waitFor(() => {
+      expect(db.removed).toEqual(['1']);
+    });
+    expect(db.deleted).toEqual([]);
   });
 
   it('offers Remove on the viewer’s own post and on nobody else’s', () => {

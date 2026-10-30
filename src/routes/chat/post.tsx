@@ -89,6 +89,7 @@ export function Post({
   depth = 1,
   canEdit,
   appendOnly = false,
+  removeLabel,
   editing,
   onEdit,
   canReply = false,
@@ -125,6 +126,8 @@ export function Post({
   canEdit: boolean;
   /** Somebody has replied: its words stay, and Edit adds an update. */
   appendOnly?: boolean;
+  /** In place of Remove, e.g. Delete topic for an unanswered topic's opening post. */
+  removeLabel?: string | undefined;
   /** Its words are in the composer. */
   editing: boolean;
   onEdit: () => void;
@@ -238,11 +241,11 @@ export function Post({
           type="button"
           onClick={onRemove}
           disabled={removing}
-          aria-label={`Remove ${whose} post`}
+          aria-label={removeLabel ?? `Remove ${whose} post`}
           data-target="small"
           className={`${control} hover:text-destructive`}
         >
-          {removing ? 'Removing…' : 'Remove'}
+          {removing ? 'Removing…' : (removeLabel ?? 'Remove')}
         </button>
       ) : canReport ? (
         <ReportControl
