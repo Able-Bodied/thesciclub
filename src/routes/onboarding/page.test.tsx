@@ -2691,7 +2691,7 @@ describe('the injury date boxes', () => {
     await enterBirthday('1990-04-02');
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await screen.findByText('Your spinal cord');
-    await userEvent.click(screen.getByRole('radio', { name: /Other spinal cord condition/ }));
+    await userEvent.click(screen.getByRole('radio', { name: /Spinal cord disorder/ }));
     expect(screen.getByText(DATE_LINE)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await userEvent.type(screen.getByLabelText('Which condition?'), 'Spina bifida');

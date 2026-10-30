@@ -145,7 +145,7 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
   quad: { title: 'Quadriplegic (tetraplegic)' },
   high_para: { title: 'High para (T1–T8)' },
   low_para: { title: 'Low para (T9+)' },
-  condition: { title: 'Other spinal cord condition' },
+  condition: { title: 'Spinal cord disorder' },
   family: { title: 'Relative/Spouse' },
   professional: { title: 'Professional / I work with people with SCI/D' },
   para: { title: 'Paraplegia' },
