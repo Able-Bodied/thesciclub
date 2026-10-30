@@ -13,22 +13,23 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   injury. Vite 8, React 19, TypeScript strict, Tailwind 4, Supabase, Vitest,
   pnpm, Node 24. Live at https://thesciclub.com (Netlify builds `main`; www
   redirects; thesciclub.netlify.app forwards from the page, index.html says
-  why).
+  why). iPhone app: TestFlight 1.1.6 (2026-10-29; tag `ios-v*`, see Release
+  to TestFlight).
 - **Git**: work on `scaffold-and-peers-deck`. anatol-AbleBodied pushes to it
   and to `main` too: fetch and merge before pushing, never force. Release:
   `git push origin scaffold-and-peers-deck && git push origin HEAD:main`;
   empty `git log --oneline origin/main..HEAD` means nothing is unreleased. The
-  agent's sandbox refuses `git push`: the owner runs it. Since 2026-10-22
+  agent pushes when the owner asks. Since 2026-10-22
   `origin` pushes to Able-Bodied/thesciclub and the owner's private
   Alfredx48/TheSciClub (remote `mine`) at once, fetching from Able-Bodied
   only: pull before pushing, or the two diverge.
 - **Database**: hosted project `erijdvqnxavwezsbbojv`; every migration through
-  `20261026000000` is live (2026-10-26, the map). Address lookups run in
+  `20261029260000` is live (2026-10-29). A migration whose app code calls a
+  new function goes first: `db push`, then the code. Address lookups run in
   the Geocode workflow, started through vault `geocode_github_repo` and
   `geocode_github_token` (a fine-grained token, Actions write on
   Alfredx48/TheSciClub only, renew by ~2027-10-26). Edge functions:
-  `push-notify` (sends `blocks_weekly`, `grant_open` and `profile_reminder`
-  too; the icon badge needs a redeploy once 1.0.4 is installed),
+  `push-notify` (deployed 2026-10-29, with mentions and introductions),
   `link-preview`, `send-invite`, `sign-in-reminder`, `home-screen-handoff`,
   `calendar-inbound`, `apple-token`, `apple-revoke` and `apple-notifications`
   (all deployed; Apple revocation set up live 2026-10-22).
@@ -117,29 +118,23 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   shown (Messages, Replies, Likes, Reactions, Events, Grants, Reminders,
   Invites, Reports; a kind switched off is not counted). `20261028000000` and
   `20261028010000` are live. The owner, 2026-10-28, "clear only 1 of 2"
-  (`20261028900000`, not live): opening one conversation or topic, one row
+  (`20261028900000`, live): opening one conversation or topic, one row
   in the bell, or one pressed push clears that thing only; the bell's list
   clears all. A push's address carries its tag as `?n=`
   (`compose.ts` `withTag`), which `OpenedNotification` hands to
   `notifications_mark_read_by_tag`. Swiping a notification away clears
   nothing: iOS reports it only for a registered category with
   customDismissAction, which `@capacitor/push-notifications` cannot register,
-  and the web's `notificationclose` has no session to call with. To ship, in
-  order: `db push` (`20261028900000`), `functions deploy push-notify
-  --no-verify-jwt`, the client (`main`), a TestFlight build. Probes:
+  and the web's `notificationclose` has no session to call with. Probes:
   `reaction-notifications.sql`, `icon-badge-kinds.sql`,
   `a-notification-clears-where-it-is-opened.sql`.
-- **Location ZIP codes and address suggestions (built 2026-10-28, not
-  live)**: each organization location has an optional ZIP (`postal_code`,
+- **Location ZIP codes and address suggestions (live)**: each organization location has an optional ZIP (`postal_code`,
   five digits or ZIP+4; never in `geocode_key`, so no pin goes stale). The
   Street address box suggests addresses from Komoot's Photon as an
   administrator or organization account types (`lib/address-suggestions.ts`,
   `admin/address-field.tsx`; never Nominatim, whose policy forbids
   type-ahead); a pick fills street, city, state and ZIP, never the label.
-  Privacy Policy names Photon (wording for the owner to approve). To ship:
-  `db push` (`20261028700000`), then the client (`main`; the CSP gains
-  photon.komoot.io; a TestFlight build for the app). Until the push the
-  directory is read without ZIPs. Probe: `organization-place-zip.sql`.
+  Privacy Policy names Photon (wording for the owner to approve). Probe: `organization-place-zip.sql`.
 - **App Store: 1.0.5 (build 6) submitted 2026-10-25, waiting for review**,
   manual release. Reviewer signs in as `review@thesciclub.com`; `peer@` and
   `deleteme@` are in the review notes (all Zoho aliases; passwords only in
@@ -149,17 +144,16 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   App Store Connect → App Review. Owner-side sheet: `app-store-submission.md`
   (untracked).
 
-- **Keys & renewals, not live** (the owner, 2026-10-27): Admin's Sign-in
+- **Keys & renewals, live** (the owner, 2026-10-27): Admin's Sign-in
   tab is renamed (`?tab=sign-in` still opens it) and lists everything the
   club renews, soonest first, with its steps; an administrator saves a new
   date or adds an item (`renewals`, `20261028200000`; the Apple secret's
-  date stays in `sign_in_secrets`). To ship: `pnpm exec supabase db push`
-  (lists `20261028200000`), then `pnpm exec supabase functions deploy
-  sign-in-reminder --no-verify-jwt`, which makes the 30-day emails cover
+  date stays in `sign_in_secrets`). Check `sign-in-reminder` was redeployed
+  (`functions deploy sign-in-reminder --no-verify-jwt`), which makes the 30-day emails cover
   every dated item (until then Apple's only; never twice). Then enter the
   Apple Developer membership and domain dates, and check the distribution
   certificate's (seeded as about 2027-10-21). Probe: `renewals.sql`.
-- **ParaCliffHangers, Wheel With Me, Active Fund, not live** (the owner,
+- **ParaCliffHangers, Wheel With Me, Active Fund, live** (the owner,
   2026-10-27). `20261028300000`: ParaCliffHangers' Indoor page is its own feed
   (`scrapers/paracliffhangers-meetups.js`): each chapter's schedule made into
   dates 92 days ahead in its state's zone, nothing for one it cannot read
@@ -168,9 +162,7 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   ParaCliffHangers and its three upcoming copies go; nineteen gyms on the map
   by name (paused Brick and Flemington left off). `20261028310000`: an
   organization's city may be empty; Wheel With Me's is. `20261028320000`: the
-  Active Fund's next dates are not announced. Order: the job's code on `main`
-  first (else the nightly run fails on the new feed type and Rec Hub adds the
-  copies back), then `db push`. Saving ParaCliffHangers in Admin copies
+  Active Fund's next dates are not announced. Saving ParaCliffHangers in Admin copies
   Berkeley (its main place) into the directory's "Bay Area", as for any
   organization with places. Probes: `paracliffhangers-meetups.sql`,
   `wheel-with-me-has-no-place.sql`, `active-fund-dates-not-announced.sql`.
@@ -387,10 +379,22 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   roster searched and paged by `admin_member_search`). Undo SQL for 2 to 6 in
   `supabase/undo/<version>.sql`. Steps 8 (retest, then the Supabase plan) and
   9 at the owner's word. Load-test copy and fixes: `~/projects/sciclub-loadtest/`.
-- **Editing a post** (`20261029240000`, live): once it has a reply its words
-  stay and Edit becomes Add an update; a topic posted with only its title
-  keeps Add details. Anybody who can read a post sees its earlier versions;
-  a conversation's stay administrators'.
+- **Posts and topics** (the owner, 2026-10-29; `20261029240000` to
+  `20261029260000`, live): until somebody else replies, the author edits a
+  post freely and may remove it; after, only adds words or photographs after
+  what is there (the trigger `chat_posts_keep_answered_words`, which also
+  stops the author's removal; administrators still remove anything). The
+  author's own replies do not count. A topic posted with only its title is
+  edited as its title (`chat_edit_topic_title`). The starter deletes their
+  own topic while nobody else has posted (`chat_delete_my_topic`, offered as
+  Delete topic in the opening post's •••); administrators delete any topic.
+  Anybody who can read a post sees its earlier versions; a conversation's
+  stay administrators'. The opening post is drawn under the title as the
+  topic's own (unnumbered; answers count from 1), and views and Share show
+  once, on its row.
+- **Legal wording of 2026-10-29 for the owner to approve**: Privacy Policy
+  and Terms on trusted partners and on editing and removing posts (shown to
+  the owner in the session; not yet answered).
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
@@ -402,8 +406,8 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   proof is `c550eff^:public/sms-opt-in/`) or the campaign with a public
   opt-in page and SMS terms back in Privacy and Terms (the old section:
   `d4f26ef:src/routes/legal/privacy.tsx`). Build to their answer.
-- **Speed work of 2026-10-22, not pushed** (client only; no migration). Once
-  it is live, make the small copies for photographs already stored, with
+- **Speed work of 2026-10-22, live** (client only). If not done yet, make the
+  small copies for photographs already stored, with
   `pnpm dev` running (it uses the app's own code), dry run first:
   `SUPABASE_URL=https://erijdvqnxavwezsbbojv.supabase.co
   SUPABASE_SERVICE_ROLE_KEY=<sb_secret_…> pnpm reprocess-photos --thumbs
@@ -443,6 +447,24 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 All live. Migration headers and the files named say how and why.
 
+- **Trusted partners** (the owner, 2026-10-29; `20261029100000`,
+  `20261029120000`): professionals an administrator makes partners in Admin →
+  Members, with a title shown as "Trusted partner · <title>"
+  (`components/partner-label.tsx`; the name is `PARTNER_ROLE_NAME` in
+  `lib/club-partners.ts`, one place to rename). Unlimited invites; their own
+  code with no organization lets people in (`qr_codes.made_as_partner`).
+  Introduce… in a profile's ••• (`peers/introduce-sheet.tsx`): both answer on
+  `/introductions/:id`; two yeses open a group of the two, the partner too
+  only if they ticked the box, starting with an `introduced` notice (the
+  partner's note); whoever said yes is never told of a no. `/partner`: their
+  numbers, My people (never messages or contact details beyond addresses
+  they invited) and introductions; `/partner/card` prints their QR card.
+  Joining offers "Professional", which grants nothing. Probes were run on a
+  throwaway stack; none is saved under `supabase/tests`.
+- **Admin finds every member** (`20261029230000`): the roster is searched and
+  paged by `admin_member_search` (50 at a time, an exact match first) and
+  counted by `admin_member_counts`; the org admin picker searches the same way.
+
 - **Blocking**: Block in the ••• of a profile, message, post or reply
   (`BlockMemberSheet`, `peers/block-sheet.tsx`), Me → Settings → Blocked
   members, Admin → Reports → Blocks (`#blocks`), where Monday's count leads;
@@ -468,7 +490,7 @@ All live. Migration headers and the files named say how and why.
   photo; the account's copy goes when the member is made, or after 90 days.
   `onboarding_steps` feeds Stats. Notifications are asked once, by the
   installed app (`AskOnOpening`).
-- **Google photo** (2026-10-22, not pushed): a Google account is offered its
+- **Google photo** (2026-10-22): a Google account is offered its
   photo on the photo step and Your details, copied only on a tap. The browser
   fetches it from `lh3.googleusercontent.com` (connect-src; Google allows any
   origin) and uploads it as a chosen file (`lib/google-photo.ts`).
@@ -477,7 +499,7 @@ All live. Migration headers and the files named say how and why.
   things name members, by the owner's choice and said in Privacy: signing in
   (`admin_sign_in_methods`, `sign_ins` from `record_sign_in`, not Supabase's
   audit log, which keeps emails and IPs) and who viewed a post (Chat).
-- **Me**: tabs Profile, Settings, Account (`?tab=` replaced, not pushed). The
+- **Me**: tabs Profile, Settings, Account (`?tab=` replaced). The
   email is read only (an administrator uses the script). Phone is optional,
   for event hosts; Going shares email, and phone if given, with the host
   (Admin → Going, `event_host_contacts`).
@@ -509,7 +531,7 @@ All live. Migration headers and the files named say how and why.
   (`NAVIGATE`, `FollowNotification`); in the store app, through
   `pushNotificationActionPerformed` (`lib/native-shell.ts`). Probe:
   `push-app-tokens.sql`.
-- **Speed** (2026-10-22; live once pushed, see Open): Home, Peers, Chat,
+- **Speed** (2026-10-22): Home, Peers, Chat,
   Events and Me stay mounted once opened (`KeptTabs` in `App.tsx`, React's
   `<Activity>`): hidden, a tab keeps its state and scroll and its effects
   stop; shown again, its reads run
@@ -667,6 +689,9 @@ All live. Migration headers and the files named say how and why.
 
 ## Traps
 
+- **Email code length**: the app takes 6 digits (`CODE_LENGTH`), and so must
+  Supabase → Authentication → Email → Email OTP Length. It was 8 on the live
+  project until 2026-10-29; `config.toml` does not reach the live project.
 - **No test may reach the network.** A screen gaining a hook means its test
   stubs it (`@/lib/photos`, `@/lib/push/notifications` especially).
 - **Tests that pass by not testing**: text the screen never draws; a check
