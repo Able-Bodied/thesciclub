@@ -35,6 +35,8 @@ export function IntroduceSheet({
   const [typed, setTyped] = useState('');
   const [chosen, setChosen] = useState<MentionCandidate | null>(null);
   const [note, setNote] = useState('');
+  // Off unless ticked (the owner, 2026-10-29).
+  const [join, setJoin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -61,7 +63,7 @@ export function IntroduceSheet({
     }
     setBusy(true);
     setFailure(null);
-    makeIntroduction(member.id, chosen.id, note)
+    makeIntroduction(member.id, chosen.id, note, join)
       .then((result) => {
         if (!result.ok) {
           setFailure(result.error);
@@ -111,8 +113,8 @@ export function IntroduceSheet({
             Introduce {member.displayName}
           </h2>
           <p className="mt-1.5 text-[0.9375rem] text-ink2 leading-[1.5]">
-            Both are asked. If both say yes, a conversation of the three of you opens, with your
-            note first. Neither is told if the other says no.
+            Both are asked. If both say yes, a conversation opens between them. Neither is told if
+            the other says no.
           </p>
 
           {chosen ? (
@@ -216,6 +218,22 @@ export function IntroduceSheet({
             rows={4}
             className="mt-1.5 w-full rounded-[11px] border border-line bg-paper px-3 py-2.5 text-[1rem] text-ink"
           />
+
+          <label className="mt-3 flex min-h-[44px] items-center gap-2.5 text-[0.9375rem] text-ink">
+            <input
+              type="checkbox"
+              checked={join}
+              onChange={(e) => {
+                setJoin(e.target.checked);
+              }}
+              className="h-5 w-5 flex-none"
+            />
+            Join the conversation yourself
+          </label>
+          <p className="text-[0.8125rem] text-grey leading-[1.45]">
+            If both say yes, a conversation opens with a line saying you connected them, and your
+            note. {join ? 'You will be in it too.' : 'Only the two of them will be in it.'}
+          </p>
 
           {failure ? (
             <p

@@ -3,7 +3,8 @@ import { getSupabase } from '@/lib/supabase';
 
 /**
  * A trusted partner introducing two members (20261029100000). Each is asked;
- * two yeses open a group of the three, with the partner's note first.
+ * two yeses open a group of the two, the partner too only if they chose to
+ * join (20261029120000), opening with a line saying who connected them.
  * Whoever said yes is never told the other said no: theirs waits, then
  * expires.
  */
@@ -56,12 +57,15 @@ export async function makeIntroduction(
   firstId: string,
   secondId: string,
   note: string,
+  /** The partner is in the conversation it opens too (20261029120000). */
+  join = false,
 ): Promise<Result<string>> {
   try {
     const { data, error } = (await getSupabase().rpc('make_introduction', {
       p_first: firstId,
       p_second: secondId,
       p_note: note.trim(),
+      p_join: join,
     })) as { data: string | null; error: Failure | null };
     if (error) {
       // 54000 is the week's limit, worded by the database.

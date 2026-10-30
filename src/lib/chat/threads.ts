@@ -227,6 +227,11 @@ export function noticeText(notice: ChatNotice, who: string, body: string, withNa
     return withName && body ? `${who} renamed the group to “${body}”` : `${who} renamed the group`;
   }
   if (notice === 'pictured') return `${who} changed the group’s picture`;
+  // A trusted partner's introduction (20261029120000); the body is their note.
+  if (notice === 'introduced')
+    return who === 'You'
+      ? 'You connected them because you thought they’d be a good fit'
+      : `${who} connected you because they thought you’d be a good fit`;
   return `${who} took the group’s picture away`;
 }
 

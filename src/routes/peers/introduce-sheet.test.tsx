@@ -67,14 +67,30 @@ describe('introducing two members', () => {
     expect(
       screen.getByText(/leave out health details\. 480 characters left\./),
     ).toBeInTheDocument();
+    // The partner stays out of it unless they tick the box (the owner, 2026-10-29).
+    expect(
+      screen.getByRole('checkbox', { name: 'Join the conversation yourself' }),
+    ).not.toBeChecked();
+    expect(screen.getByText(/Only the two of them will be in it\./)).toBeInTheDocument();
     await userEvent.click(send);
-    expect(state.make).toHaveBeenCalledWith('sam', 'maya', 'Both C6 in San Jose.');
+    expect(state.make).toHaveBeenCalledWith('sam', 'maya', 'Both C6 in San Jose.', false);
     await waitFor(() => {
       expect(onSent).toHaveBeenCalled();
     });
     expect(state.announce).toHaveBeenCalledWith(
       'Introduction sent. Sam Lee and Maya Local will each be asked.',
     );
+  });
+
+  it('puts the partner in the conversation when they tick the box', async () => {
+    state.make.mockResolvedValue({ ok: true, value: 'i1' });
+    open();
+    await chooseMaya();
+    await userEvent.type(screen.getByLabelText('A note to both of them'), 'Both C6.');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Join the conversation yourself' }));
+    expect(screen.getByText(/You will be in it too\./)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Send introduction' }));
+    expect(state.make).toHaveBeenCalledWith('sam', 'maya', 'Both C6.', true);
   });
 
   it('says the database refusal aloud and stays open', async () => {
