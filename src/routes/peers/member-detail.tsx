@@ -171,6 +171,51 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
+/** The @name, selectable, with a button that copies it. */
+function UsernameRow({ username }: { username: string }) {
+  const announce = useAnnounce();
+  const [copied, setCopied] = useState(false);
+  const handle = `@${username}`;
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => {
+      setCopied(false);
+    }, 2000);
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [copied]);
+
+  return (
+    <Section title="Username">
+      <div className="flex items-center justify-between gap-3 rounded-[14px] border border-line bg-paper py-1.5 pr-1.5 pl-3.5">
+        <span className="min-w-0 select-all break-all font-semibold text-[0.9375rem] text-ink">
+          {handle}
+        </span>
+        <button
+          type="button"
+          aria-label={copied ? `Copied ${handle}` : `Copy ${handle}`}
+          onClick={() => {
+            void navigator.clipboard.writeText(handle).then(
+              () => {
+                setCopied(true);
+                announce(`Copied ${handle}.`);
+              },
+              () => {
+                announce('Could not copy it. Select it and copy instead.');
+              },
+            );
+          }}
+          className="min-h-[44px] flex-none rounded-[10px] bg-tint px-3 font-bold text-[0.8125rem] text-emphasis"
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </button>
+      </div>
+    </Section>
+  );
+}
+
 function Chips({ items, tone }: { items: string[]; tone: 'solid' | 'outline' | 'gold' }) {
   const cls =
     tone === 'gold'
@@ -726,6 +771,9 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 then how it happened, then what they will talk about and do,
                 then the flatter details card. "Bio" because that is what the
                 survey now asks for ("Brief bio"). */}
+            {/* Above Bio, to copy for an @mention (the owner, 2026-10-29): the
+                one over the photograph cannot be selected. */}
+            {member.username ? <UsernameRow username={member.username} /> : null}
             {member.bio ? (
               <Section title="Bio">
                 <p className="text-[0.8875rem] text-ink2 leading-[1.52]">

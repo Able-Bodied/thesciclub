@@ -292,10 +292,26 @@ describe('blocking from a profile', () => {
 });
 
 describe('the @username', () => {
-  it('is under the name on a profile', () => {
+  it('is under the name on a profile, and again above Bio to copy', () => {
+    state.current = ok(
+      makeMember({ displayName: 'Nicole', username: 'nicole.s', bio: 'Coach and climber.' }),
+    );
+    renderDetail();
+    expect(screen.getAllByText('@nicole.s')).toHaveLength(2);
+    const heading = screen.getByRole('heading', { name: 'Username' });
+    expect(heading.compareDocumentPosition(screen.getByRole('heading', { name: 'Bio' }))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  // The owner, 2026-10-29: easy to copy, for an @mention.
+  it('copies the @username with one press', async () => {
+    const user = userEvent.setup();
     state.current = ok(makeMember({ displayName: 'Nicole', username: 'nicole.s' }));
     renderDetail();
-    expect(screen.getByText('@nicole.s')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Copy @nicole.s' }));
+    expect(await navigator.clipboard.readText()).toBe('@nicole.s');
+    expect(screen.getByRole('button', { name: 'Copied @nicole.s' })).toHaveTextContent('Copied');
   });
 
   it('is left out for a member who has none, rather than drawing a bare @', () => {
