@@ -380,20 +380,17 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     addresses. Blocked: note it there and close. Not: the owner picks accepting
     it (members only; only a title and picture come back) or an outbound
     proxy. Never probe internal addresses from a function to find out.
-- **`SPEED-PLAN.md`: Step 1 pushed** (2026-10-29, `19a6ed6`: badges recount
-  at most once per 1.5 s, `lib/coalesce.ts`; app only). **Steps 2 to 6
-  committed, not pushed, not live** (2026-10-29): migrations `20261029140000`
-  to `20261029180000`, each proven on a fresh stack only (not the load-test
-  copy); undo SQL in `supabase/undo/<version>.sql`, to compare with the live
-  definitions before release. Step 3 leaves the older `chat_mark_thread_read`
-  alone (a guard would never skip a write). Release in order, Step 5 on its
-  own before Step 6, then watch the logs for refused reads; after Step 6
-  run `chat-reads-unchanged.sql` (before and after phases) and
-  `pnpm realtime-check`. **Step 7 committed, not pushed** (`20261029230000`:
-  Admin's roster searched and paged by `admin_member_search`, counts from
-  `admin_member_counts`); its app code calls them, so it goes live only with
-  that migration. Steps 8 and 9 at the owner's word. Load-test copy
-  and fixes: `~/projects/sciclub-loadtest/`.
+- **`SPEED-PLAN.md`: Steps 1 to 7 live** (2026-10-29). Step 1 `19a6ed6`
+  (badges recount at most once per 1.5 s, app only); Steps 2 to 6
+  `20261029140000` to `20261029180000`, released in two rounds (2 to 5, then
+  6) with clean Postgres logs between; Step 7 `20261029230000` (Admin's
+  roster searched and paged by `admin_member_search`). Undo SQL for 2 to 6 in
+  `supabase/undo/<version>.sql`. Steps 8 (retest, then the Supabase plan) and
+  9 at the owner's word. Load-test copy and fixes: `~/projects/sciclub-loadtest/`.
+- **Editing a post** (`20261029240000`, live): once it has a reply its words
+  stay and Edit becomes Add an update; a topic posted with only its title
+  keeps Add details. Anybody who can read a post sees its earlier versions;
+  a conversation's stay administrators'.
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
