@@ -127,7 +127,8 @@ describe('the spinal cord question', () => {
   });
 
   it("suggests the owner's spinal cord conditions, then central cord syndrome", () => {
-    expect(SPINAL_CORD_CONDITIONS).toHaveLength(21);
+    expect(SPINAL_CORD_CONDITIONS).toHaveLength(26);
+    expect(SPINAL_CORD_CONDITIONS).toContain('Guillain-Barré syndrome');
     expect(SPINAL_CORD_CONDITIONS[0]).toBe('Transverse myelitis');
     expect(SPINAL_CORD_CONDITIONS.at(-1)).toBe('Central cord syndrome');
     for (const outside of [

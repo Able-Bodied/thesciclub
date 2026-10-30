@@ -145,7 +145,7 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
   quad: { title: 'Quadriplegic (tetraplegic)' },
   high_para: { title: 'High para (T1–T8)' },
   low_para: { title: 'Low para (T9+)' },
-  condition: { title: 'Other spinal cord condition' },
+  condition: { title: 'Spinal cord or nerve disorder' },
   family: { title: 'Relative/Spouse' },
   professional: { title: 'Professional / I work with people with SCI/D' },
   para: { title: 'Paraplegia' },
@@ -154,7 +154,8 @@ export const INJURY_TYPE_TEXT: Record<InjuryType, { title: string }> = {
 
 /**
  * Suggested under "Which condition?" while typing (the owner's list,
- * 2026-10-14, then central cord syndrome). Anything typed is kept as written.
+ * 2026-10-14, then central cord syndrome, then nerve disorders, 2026-10-29).
+ * Anything typed is kept as written.
  */
 export const SPINAL_CORD_CONDITIONS = [
   'Transverse myelitis',
@@ -177,6 +178,11 @@ export const SPINAL_CORD_CONDITIONS = [
   'Spinal muscular atrophy (SMA)',
   'ALS (motor neuron disease)',
   'Post-polio syndrome',
+  'Guillain-Barré syndrome',
+  'CIDP (chronic inflammatory demyelinating polyneuropathy)',
+  "Friedreich's ataxia",
+  'Charcot-Marie-Tooth disease',
+  'Peripheral neuropathy',
   'Central cord syndrome',
 ] as const;
 

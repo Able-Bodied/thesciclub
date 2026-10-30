@@ -246,7 +246,7 @@ export interface ChatThread {
  * name as its body, `pictured` the new picture as its one attachment, and
  * `unpictured` neither.
  */
-export const CHAT_NOTICES = ['renamed', 'pictured', 'unpictured'] as const;
+export const CHAT_NOTICES = ['renamed', 'pictured', 'unpictured', 'introduced'] as const;
 export type ChatNotice = (typeof CHAT_NOTICES)[number];
 
 /** One message in a thread. */

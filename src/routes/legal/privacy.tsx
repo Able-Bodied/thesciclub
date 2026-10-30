@@ -384,9 +384,10 @@ export default function PrivacyPage() {
             how many of them posted in a room or chose Going for an event, as a count. They cannot
             read conversations they are not in. Introduced by one, you are asked first, and so is
             the other member; if either says no, the one who said yes is not told. When both say
-            yes, a group conversation of the three of you opens, with the partner’s note as its
-            first message. Partners see no email address or phone number, except an address they
-            sent an invite to themselves.
+            yes, a group conversation opens with a line saying who connected you and the partner’s
+            note; the partner is in it only if they chose to join when making the introduction.
+            Partners see no email address or phone number, except an address they sent an invite to
+            themselves.
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it. If

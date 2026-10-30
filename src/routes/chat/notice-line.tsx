@@ -71,10 +71,20 @@ export function NoticeLine({
           <span className="whitespace-nowrap">{chatTime(message.createdAt)}</span>
         </span>
       </p>
+      {notice === 'introduced' && message.removedAt === null ? (
+        // The partner's note, in their words.
+        <blockquote className="max-w-[34rem] whitespace-pre-wrap rounded-[11px] bg-tint px-3.5 py-2.5 text-left text-[0.9375rem] text-ink leading-[1.5]">
+          {message.body}
+        </blockquote>
+      ) : null}
       {canReport && message.removedAt === null ? (
         <ReportControl
           reported={reported}
-          label={`Report ${who}’s change to the group`}
+          label={
+            notice === 'introduced'
+              ? `Report ${who}’s introduction`
+              : `Report ${who}’s change to the group`
+          }
           onReport={onReport}
           buttonClassName="min-h-[1.75rem] font-semibold text-[0.71875rem] text-grey underline decoration-line underline-offset-2 hover:text-destructive"
           noteClassName="font-semibold text-[0.71875rem] text-grey"
