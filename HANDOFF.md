@@ -389,7 +389,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   alone (a guard would never skip a write). Release in order, Step 5 on its
   own before Step 6, then watch the logs for refused reads; after Step 6
   run `chat-reads-unchanged.sql` (before and after phases) and
-  `pnpm realtime-check`. Steps 7 to 9 at the owner's word. Load-test copy
+  `pnpm realtime-check`. **Step 7 committed, not pushed** (`20261029230000`:
+  Admin's roster searched and paged by `admin_member_search`, counts from
+  `admin_member_counts`); its app code calls them, so it goes live only with
+  that migration. Steps 8 and 9 at the owner's word. Load-test copy
   and fixes: `~/projects/sciclub-loadtest/`.
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and

@@ -284,6 +284,9 @@ On a fresh stack, then on the load-test copy:
 
 ## Step 7: Admin finds every member
 
+**Built 2026-10-29, not live** (`20261029230000`). An exact match on a name,
+@username or email comes first, then newest first.
+
 - **The defect:** search sees only the first 1,000 members, and each open
   downloads the whole roster and invite list.
 - **Fix:** search and paging in the database, 50 at a time, behind the same
