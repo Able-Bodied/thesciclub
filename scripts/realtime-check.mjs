@@ -5,7 +5,8 @@
  *
  * Unit tests mock the channel, so nothing in `pnpm test` says that a message
  * one member writes reaches another. This does: two browsers, two seeded
- * accounts, and three things that have to move on their own.
+ * accounts, and three things that have to move on their own, and one that
+ * must not.
  *
  *   1. Alex has the conversation open. Bo writes into it from another browser.
  *      Alex's screen shows it without anybody touching Alex's browser.
@@ -14,6 +15,10 @@
  *   3. Bo taps through to the conversation. The dot goes, within the 1.5 s
  *      recount (src/lib/coalesce.ts). Taps, not a page load, which would
  *      recount anyway and hide a missing `unreadChanged()`.
+ *   4. A third account, outside the conversation, receives neither message
+ *      over its socket. Realtime runs the chat read rules for every listener,
+ *      so a rule that is too generous shows here first. Bo's socket carrying
+ *      the reply shows the listening works.
  *
  * The second is the one worth the trouble. A subscription on the open screen is
  * easy to get right and easy to notice when it breaks; the one in the tab bar
@@ -32,10 +37,11 @@
  *     python3 -c 'import json,sys; print(json.load(sys.stdin)["PUBLISHABLE_KEY"])') \
  *   ./node_modules/.bin/vite --port 5183 --strictPort
  *
- * Both accounts need a member row. The two seeded here (`sam@local.test` and
- * `maya@local.test`, password `local-dev-password`, see supabase/seed.sql) have
- * one after a `db reset`; for any other pair, set RT_EMAIL_A / RT_EMAIL_B and
- * RT_PASSWORD, and run `pnpm demo-member` for an account that has no row.
+ * Every account needs a member row. The three seeded here (`sam@local.test`,
+ * `maya@local.test` and `alfred@local.test`, password `local-dev-password`,
+ * see supabase/seed.sql) have one after a `db reset`; for others, set
+ * RT_EMAIL_A / RT_EMAIL_B / RT_EMAIL_C and RT_PASSWORD, and run
+ * `pnpm demo-member` for an account that has no row.
  *
  * Local only, and it refuses to run anywhere else: it signs in with a fixed
  * password and writes messages.
@@ -51,6 +57,7 @@ const PASSWORD = process.env.RT_PASSWORD ?? 'local-dev-password';
 const ACCOUNTS = [
   { email: process.env.RT_EMAIL_A ?? 'sam@local.test', password: PASSWORD },
   { email: process.env.RT_EMAIL_B ?? 'maya@local.test', password: PASSWORD },
+  { email: process.env.RT_EMAIL_C ?? 'alfred@local.test', password: PASSWORD },
 ];
 
 if (!/127\.0\.0\.1|localhost/.test(BASE) || !/127\.0\.0\.1|localhost/.test(API)) {
@@ -90,18 +97,33 @@ async function signIn(page, { email, password }) {
   }
 }
 
-const [a, b] = await Promise.all(ACCOUNTS.map((account) => memberFor(account.email)));
+const [a, b, c] = await Promise.all(ACCOUNTS.map((account) => memberFor(account.email)));
 
 const browser = await chromium.launch();
-// Separate contexts, so the two are two different people and not two tabs.
-const contexts = await Promise.all([
-  browser.newContext({ viewport: { width: 430, height: 860 } }),
-  browser.newContext({ viewport: { width: 430, height: 860 } }),
-]);
-const [first, second] = await Promise.all(contexts.map((context) => context.newPage()));
+// Separate contexts, so they are different people and not tabs.
+const contexts = await Promise.all(
+  ACCOUNTS.map(() => browser.newContext({ viewport: { width: 430, height: 860 } })),
+);
+const [first, second, outsider] = await Promise.all(contexts.map((context) => context.newPage()));
+
+// Everything each socket receives, from before the app opens one.
+const heard = (page) => {
+  const frames = [];
+  page.on('websocket', (ws) => {
+    ws.on('framereceived', ({ payload }) => {
+      frames.push(String(payload));
+    });
+  });
+  return frames;
+};
+const secondHeard = heard(second);
+const outsiderHeard = heard(outsider);
 
 await signIn(first, ACCOUNTS[0]);
 await signIn(second, ACCOUNTS[1]);
+await signIn(outsider, ACCOUNTS[2]);
+// On Peers, where the tab bar listens to every conversation the rules allow.
+await outsider.goto(`${BASE}/peers`, { waitUntil: 'networkidle' });
 
 // The first one opens a conversation with the second from their profile, which
 // also exercises chat_open_direct and the Message button.
@@ -150,6 +172,15 @@ await check(`${b.display_name}'s dot went once they opened the conversation`, as
   await second
     .getByRole('link', { name: 'Chat, something new' })
     .waitFor({ state: 'detached', timeout: 6000 });
+});
+
+await check(`${c.display_name}, outside the conversation, received neither message`, async () => {
+  if (!secondHeard.some((frame) => frame.includes(reply))) {
+    throw new Error('the listening is broken');
+  }
+  if (outsiderHeard.some((frame) => frame.includes(words) || frame.includes(reply))) {
+    throw new Error('the outsider received it');
+  }
 });
 
 await browser.close();
