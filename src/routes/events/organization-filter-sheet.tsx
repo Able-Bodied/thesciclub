@@ -11,7 +11,7 @@ const CHIPS: [Exclude<keyof DirectoryFilters, 'query'>, string][] = [
   ['hasGrants', 'Has grants'],
   ['grantsOpen', 'Grants open now'],
   ['onCalendar', 'On the calendar'],
-  ['following', 'Following'],
+  ['following', 'Member of'],
 ];
 
 /**

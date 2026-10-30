@@ -27,7 +27,7 @@ export const GROUP_BUTTONS_MAX = 6;
 
 const CHOICES: { value: EventAudience; title: string; hint: string }[] = [
   { value: 'club', title: 'Everyone in the club', hint: 'Members only.' },
-  { value: 'followers', title: 'Followers', hint: 'Members who follow the organization.' },
+  { value: 'followers', title: 'Its members', hint: 'People who have joined the organization.' },
   { value: 'groups', title: 'Chosen groups', hint: 'Members of the group chats you pick.' },
 ];
 
@@ -86,7 +86,7 @@ export function AudienceField({
             <span className="min-w-0">
               <span className="block font-bold text-[0.9375rem] text-ink">
                 {choice.value === 'followers' && organizationName
-                  ? `Followers of ${organizationName}`
+                  ? `Members of ${organizationName}`
                   : choice.title}
               </span>
               <span className="block text-[0.8125rem] text-ink2 leading-[1.4]">{choice.hint}</span>

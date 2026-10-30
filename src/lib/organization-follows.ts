@@ -110,48 +110,32 @@ export function useOrganizationFollows(): FollowsState {
         });
       };
 
-      const write = wasFollowing
-        ? getSupabase()
-            .from('organization_follows')
-            .delete()
-            .eq('member_id', memberId)
-            .eq('organization_id', organizationId)
-        : getSupabase()
-            .from('organization_follows')
-            // `ignoreDuplicates` for the reason rooms.ts gives: the row is
-            // only ever inserted or deleted, and `on conflict do update` needs
-            // an update grant this table only has by default — which the next
-            // migration to tighten its grants would silently take away.
-            .upsert(
-              { member_id: memberId, organization_id: organizationId },
-              { onConflict: 'member_id,organization_id', ignoreDuplicates: true },
-            );
+      // Join replaces Follow (the owner, 2026-10-30): the database keeps this
+      // table to the members (20261030000000).
+      const write = getSupabase().rpc(wasFollowing ? 'leave_organization' : 'join_organization', {
+        p_organization: organizationId,
+      });
 
       void Promise.resolve(write)
         .then(({ error: failure }) => {
           if (!failure) {
             setError(null);
             // The button moved before the write; this says the write held.
-            announce(
-              wasFollowing ? 'You are no longer following them.' : 'You are following them now.',
-            );
+            announce(wasFollowing ? 'You left the organization.' : 'You joined the organization.');
             return;
           }
           undo();
-          setError(
-            describeError(
-              failure,
-              wasFollowing ? 'You still follow them.' : 'You are not following them yet.',
-            ),
+          const said = describeError(
+            failure,
+            wasFollowing ? 'You are still a member.' : 'You did not join.',
           );
+          setError(said);
+          announce(said);
         })
         .catch((e: unknown) => {
           undo();
           setError(
-            describeThrown(
-              e,
-              wasFollowing ? 'You still follow them.' : 'You are not following them yet.',
-            ),
+            describeThrown(e, wasFollowing ? 'You are still a member.' : 'You did not join.'),
           );
         });
     },

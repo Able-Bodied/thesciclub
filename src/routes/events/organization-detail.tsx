@@ -1,19 +1,18 @@
 import { ChevronRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useEvents } from '@/lib/events';
 import { useOrganizationGrants } from '@/lib/grants';
-import { useBrowseMembers } from '@/lib/members';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import {
   fetchOrganizationMembers,
   JOINED_VIA_LABEL,
   type OrganizationMember,
-  useMyOrganizationMemberships,
+  useMyDenial,
   useOrganizationChat,
-  useOrganizationCounts,
+  useOrganizationMemberCount,
 } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
@@ -23,8 +22,8 @@ import { dateTileParts } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OrganizationGrants } from '@/routes/events/organization-grants';
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
+import { OrganizationReviews } from '@/routes/events/organization-reviews';
 import { EventDescription } from '@/routes/events/rich-text';
-import { injuryLabel } from '@/types/domain';
 
 /**
  * One organization, from `orgPage()` in the mock: who they are, the members who
@@ -43,28 +42,26 @@ export default function OrganizationDetailPage() {
   const { byId, loading } = useOrganizations();
   const follows = useOrganizationFollows();
   const { events } = useEvents({ organizationId: id ?? '00000000-0000-0000-0000-000000000000' });
-  const { members } = useBrowseMembers();
   const { grants } = useOrganizationGrants(id);
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
-  const counts = useOrganizationCounts(id);
-  const memberships = useMyOrganizationMemberships(memberId);
+  const count = useOrganizationMemberCount(id);
+  const denial = useMyDenial(id, memberId);
   const chat = useOrganizationChat(id, memberId);
   const mine = useMyOrganizations(memberId);
   const seesMembers =
     account.status === 'member' && (account.isAdmin || (id !== undefined && mine.ids.has(id)));
   const [roster, setRoster] = useState<OrganizationMember[] | null>(null);
 
-  useEffect(() => {
-    if (!id || !seesMembers) return;
-    let live = true;
+  const readRoster = useCallback(() => {
+    if (!id) return;
     void fetchOrganizationMembers(id).then((result) => {
-      if (live && result.ok) setRoster(result.value);
+      if (result.ok) setRoster(result.value);
     });
-    return () => {
-      live = false;
-    };
-  }, [id, seesMembers]);
+  }, [id]);
+  const isMember = id !== undefined && follows.following.has(id);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: joining or leaving changes the list.
+  useEffect(readRoster, [readRoster, isMember]);
 
   const organization = id ? (byId.get(id) ?? null) : null;
 
@@ -91,10 +88,6 @@ export default function OrganizationDetailPage() {
       </div>
     );
   }
-
-  // Members name their affiliations as free text matched against the
-  // organization's name, which is why `organizations.name` is unique.
-  const affiliated = members.filter((member) => member.affiliations.includes(organization.name));
 
   const now = new Date().toISOString();
   const upcoming = events
@@ -138,23 +131,20 @@ export default function OrganizationDetailPage() {
               same row as a 21px organization name leaves the name about nine
               characters, and "Christopher & Dana Reeve Foundation" is one of
               six rows here. */}
-          <FollowButton
-            onNavy
-            following={follows.following.has(organization.id)}
-            onToggle={() => {
-              follows.toggle(organization.id);
-            }}
-            className="mt-3"
-          />
+          {denial === null ? (
+            <FollowButton
+              onNavy
+              following={follows.following.has(organization.id)}
+              onToggle={() => {
+                follows.toggle(organization.id);
+              }}
+              className="mt-3"
+            />
+          ) : null}
 
-          {/* Both, apart (the owner, 2026-10-30): who has taken part, and who
-              follows. Numbers only: who follows is theirs to keep. */}
-          {counts ? (
+          {count !== null ? (
             <p className="mt-2.5 text-[#DDE7F3] text-[0.8125rem]">
-              <b className="text-white">{counts.members}</b>{' '}
-              {counts.members === 1 ? 'member' : 'members'} ·{' '}
-              <b className="text-white">{counts.followers}</b>{' '}
-              {counts.followers === 1 ? 'follower' : 'followers'}
+              <b className="text-white">{count}</b> {count === 1 ? 'member' : 'members'}
             </p>
           ) : null}
 
@@ -229,43 +219,33 @@ export default function OrganizationDetailPage() {
           </>
         ) : null}
 
-        {memberships.ids.has(organization.id) || chat ? (
-          <div className="mt-4 rounded-[14px] border border-line bg-paper p-3.5">
-            {memberships.ids.has(organization.id) ? (
-              <p className="font-bold text-[0.9375rem] text-ink">
-                You're a member of {organization.name}
-              </p>
-            ) : null}
-            {chat ? (
-              <Link
-                to={`/chat/t/${chat}`}
-                className="mt-2 flex min-h-[46px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.875rem] text-emphasis"
-              >
-                Members' group chat
-              </Link>
-            ) : null}
-            {memberships.ids.has(organization.id) ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void memberships.leave(organization.id, organization.name);
-                }}
-                className="mt-2 min-h-[44px] font-bold text-[0.8125rem] text-emphasis underline"
-              >
-                Leave {organization.name}
-              </button>
-            ) : null}
+        {denial !== null ? (
+          <div role="status" className="mt-4 rounded-[14px] border border-line bg-paper p-3.5">
+            <p className="font-bold text-[0.9375rem] text-ink">
+              {organization.name} declined your membership
+            </p>
+            <p className="mt-1 text-[0.875rem] text-ink2 leading-[1.5]">{denial}</p>
           </div>
         ) : null}
 
-        {seesMembers && roster && roster.length > 0 ? (
+        {chat ? (
+          <Link
+            to={`/chat/t/${chat}`}
+            className="mt-4 flex min-h-[46px] items-center justify-center rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.875rem] text-emphasis"
+          >
+            Members' group chat
+          </Link>
+        ) : null}
+
+        {seesMembers ? (
+          <OrganizationReviews organizationId={organization.id} onChanged={readRoster} />
+        ) : null}
+
+        {roster && roster.length > 0 ? (
           <>
-            <h2 className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-              Organization members
+            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
+              Members
             </h2>
-            <p className="mb-2.5 text-[0.78125rem] text-grey">
-              Only org admins and the club's administrators see this list.
-            </p>
             <ul className="rounded-[14px] border border-line bg-paper px-3.5">
               {roster.map((member) => (
                 <li key={member.id} className="border-line border-b last:border-b-0">
@@ -280,9 +260,11 @@ export default function OrganizationDetailPage() {
                       <span className="block font-bold text-[0.9375rem] text-ink">
                         {member.displayName}
                       </span>
-                      <span className="block text-[0.78125rem] text-grey">
-                        {JOINED_VIA_LABEL[member.joinedVia]}
-                      </span>
+                      {member.joinedVia ? (
+                        <span className="block text-[0.78125rem] text-grey">
+                          {JOINED_VIA_LABEL[member.joinedVia]}
+                        </span>
+                      ) : null}
                     </span>
                   </Link>
                 </li>
@@ -291,48 +273,9 @@ export default function OrganizationDetailPage() {
           </>
         ) : null}
 
-        {affiliated.length > 0 ? (
-          <>
-            <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-              Members here
-            </h2>
-            {affiliated.map((member) => {
-              return (
-                <button
-                  key={member.id}
-                  type="button"
-                  onClick={() => {
-                    void navigate(`/peers/${member.id}`);
-                  }}
-                  className="flex w-full items-center gap-3 border-line border-b py-[13px] text-left last:border-b-0"
-                >
-                  {/* The same tile as everywhere else a member appears beside
-                      their name, which signs its own photograph. */}
-                  <MemberAvatar
-                    id={member.id}
-                    displayName={member.displayName}
-                    photoPath={member.photoPath}
-                    photoAlt={member.photoAlt}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
-                      {member.displayName}
-                    </span>
-                    <span className="block text-[0.78125rem] text-grey">
-                      {[injuryLabel(member), member.city].filter(Boolean).join(' · ')}
-                    </span>
-                  </span>
-                  <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
-                </button>
-              );
-            })}
-          </>
-        ) : null}
-
         {organization.canInvite ? (
           <p className="mt-5 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
-            {organization.name} can invite people by email. Membership is granted by a person, never
-            claimed by a form.
+            {organization.name} can invite people to the club by email.
           </p>
         ) : null}
       </div>

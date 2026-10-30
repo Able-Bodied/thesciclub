@@ -2,7 +2,7 @@ import { Check, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
- * Follow an organization, or stop.
+ * Join an organization, or leave (the owner, 2026-10-30: Join replaces Follow).
  *
  * One component for both places it appears, so the two cannot drift into
  * disagreeing about what the states are called — which is the fault
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
  * ---------------------------------------------------------------------------
  * The label says the state, not the action
  * ---------------------------------------------------------------------------
- * "Following" rather than "Unfollow". A button that names the action it will
+ * "Member" rather than "Leave". A button that names the action it will
  * perform is right where the action is the point — Withdraw, Remove, Pause —
  * and wrong for a toggle somebody scans a list of, because then the list reads
  * as a column of things to undo. `aria-pressed` carries the action for anybody
@@ -46,9 +46,9 @@ export function FollowButton({
       onClick={onToggle}
       aria-pressed={following}
       // Named for the action, because the visible label is the state. Without
-      // this a screen reader announces "Following, button" and there is nothing
+      // this a screen reader announces "Member, button" and there is nothing
       // to tell somebody what pressing it does.
-      aria-label={following ? 'Following. Press to unfollow.' : 'Follow'}
+      aria-label={following ? 'Member. Press to leave.' : 'Join'}
       className={cn(
         // Sized in em off its own letters, not in px. The club offers a text
         // size setting that multiplies the root font size, so a px box around
@@ -66,7 +66,7 @@ export function FollowButton({
       )}
     >
       <Icon className="h-[1em] w-[1em] flex-none" />
-      {following ? 'Following' : 'Follow'}
+      {following ? 'Member' : 'Join'}
     </button>
   );
 }

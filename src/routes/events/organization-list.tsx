@@ -326,7 +326,7 @@ export function OrganizationList({
           }}
         />
         <FilterChip
-          label="Following"
+          label="Member of"
           on={filters.following}
           onClick={() => {
             toggle('following');

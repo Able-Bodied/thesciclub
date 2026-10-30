@@ -58,7 +58,7 @@ describe('Who in the club sees it', () => {
     const options = screen.getAllByRole('radio').map((r) => r.closest('label')?.textContent);
     expect(options).toHaveLength(3);
     expect(options[0]).toContain('Everyone in the club');
-    expect(options[1]).toContain('Followers of NorCal SCI');
+    expect(options[1]).toContain('Members of NorCal SCI');
     expect(options[2]).toContain('Chosen groups');
     expect(screen.queryByText(/Anyone with the link/)).toBeNull();
     expect(screen.getByText(/Anyone you send its link to can open it/)).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe('Who in the club sees it', () => {
   it('has no followers to offer when no organization hosts it', () => {
     chats.threads = [];
     render(<Harness start={{ audience: 'club', groups: [] }} organizationName={null} seen={[]} />);
-    expect(screen.queryByText(/Followers/)).toBeNull();
+    expect(screen.queryByText(/Its members/)).toBeNull();
   });
 
   it('chooses groups with a button each while there are few', async () => {

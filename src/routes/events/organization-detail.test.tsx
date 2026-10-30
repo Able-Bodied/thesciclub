@@ -109,7 +109,7 @@ describe('an organization’s grants', () => {
     );
     expect(screen.getByText(/Applications are open now, until/)).toBeInTheDocument();
     expect(
-      screen.getByText('Follow NatureTrack and we’ll notify you when applications open.'),
+      screen.getByText('Join NatureTrack and we’ll notify you when applications open.'),
     ).toBeInTheDocument();
   });
 

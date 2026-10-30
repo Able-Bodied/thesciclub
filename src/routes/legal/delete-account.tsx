@@ -45,7 +45,7 @@ export default function DeleteAccountPage() {
           </li>
           <li>Your sign-in records, with the email and IP addresses they hold.</li>
           <li>
-            Your likes, reactions, saved posts, followed organizations, replies to events, blocks
+            Your likes, reactions, saved posts, organizations you joined, replies to events, blocks
             and notifications.
           </li>
           <li>Your address on the invite list, so coming back takes a new invite.</li>

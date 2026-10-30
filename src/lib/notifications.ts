@@ -290,7 +290,7 @@ export function notificationSentence(n: AppNotification): string {
     case 'org_events': {
       const added = Number(n.detail);
       const what = Number.isInteger(added) && added > 1 ? `${added} new events` : 'a new event';
-      return `${n.place ?? 'An organization you follow'} added ${what}`;
+      return `${n.place ?? 'An organization you belong to'} added ${what}`;
     }
     // detail is the day applications close, as YYYY-MM-DD.
     case 'grant_open': {

@@ -21,7 +21,7 @@ export function audienceLabel(audience: EventAudience, organizationName: string 
     case 'club':
       return 'Everyone in the club';
     case 'followers':
-      return organizationName ? `Followers of ${organizationName}` : 'Followers';
+      return organizationName ? `Members of ${organizationName}` : 'Its members';
     case 'groups':
       return 'Members of chosen groups';
   }
@@ -142,10 +142,10 @@ export function OutsideTheAudience({
         <>
           <OrganizationBadge organization={organization} size="lg" className="mx-auto" />
           <h1 className="mt-3 font-extrabold font-head text-[1.25rem] text-ink">
-            For {organization.name}'s followers
+            For {organization.name}'s members
           </h1>
           <p className="mt-2 text-[0.875rem] text-ink2 leading-[1.5]">
-            This event is for members who follow {organization.name}. Follow them to see it and say
+            This event is for people who have joined {organization.name}. Join to see it and say
             you're going.
           </p>
           <FollowButton

@@ -140,7 +140,7 @@ function GrantForm({
           <p className="text-[0.8125rem] text-grey">
             {draft.applyAnyTime
               ? 'Leave empty for a grant open all year.'
-              : 'When applications open and close. Followers are told the day a round opens.'}
+              : 'When applications open and close. Members are told the day a round opens.'}
           </p>
           {draft.windows.map((w, index) => (
             <fieldset
@@ -275,7 +275,7 @@ export function OrganizationGrantsEditor({
         {organizationName}’s grants
       </h3>
       <p className="text-[0.8125rem] text-grey">
-        Shown on its page. Its followers are told when a round opens.
+        Shown on its page. Its members are told when a round opens.
       </p>
       {error ? (
         <p role="alert" className="mt-2 text-destructive">

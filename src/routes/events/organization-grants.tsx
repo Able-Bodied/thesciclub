@@ -64,8 +64,8 @@ export function OrganizationGrants({
       {hasDates ? (
         <p className="mt-3 text-[0.8125rem] text-ink2 leading-[1.5]">
           {following
-            ? `You follow ${organizationName}, so we’ll notify you when applications open.`
-            : `Follow ${organizationName} and we’ll notify you when applications open.`}
+            ? `You’re a member of ${organizationName}, so we’ll notify you when applications open.`
+            : `Join ${organizationName} and we’ll notify you when applications open.`}
         </p>
       ) : null}
     </section>

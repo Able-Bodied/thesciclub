@@ -43,7 +43,7 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(/Added: organization members and event check-ins/);
+    expect(notes[0]).toMatch(/Changed: Join replaces Follow/);
     expect(notes[1]).toMatch(/Added: when you agreed/);
     expect(notes[2]).toMatch(/Added: address suggestions/);
     expect(notes[3]).toMatch(/Added: the map/);

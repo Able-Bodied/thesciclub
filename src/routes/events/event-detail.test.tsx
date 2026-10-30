@@ -197,8 +197,8 @@ describe('EventDetailPage', () => {
       organization: { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null },
     };
     renderDetail('for-followers');
-    expect(await screen.findByText("For NorCal SCI's followers")).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Follow/ })).toBeInTheDocument();
+    expect(await screen.findByText("For NorCal SCI's members")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeInTheDocument();
     audience.hint = null;
   });
 

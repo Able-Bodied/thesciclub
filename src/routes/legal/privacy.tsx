@@ -25,11 +25,16 @@ export default function PrivacyPage() {
       <Note title="What changed on October 30, 2026">
         <List>
           <li>
-            <b>Added:</b> organization members and event check-ins. Joining on an organization’s
-            invite, QR code or link, or checking in to its event, makes you its member and puts you
-            in its members’ group chat. Its org admins see that you are a member and that you
-            checked in. An organization’s page shows how many members and followers it has, never
-            who follows it. You can leave from its page.
+            <b>Changed:</b> Join replaces Follow. An organization’s members are shown to other
+            members, on its page and on each member’s profile, unless you are hidden from Peers. If
+            you followed an organization, you are now its member and in its members’ group chat. You
+            can leave at any time.
+          </li>
+          <li>
+            <b>Added:</b> joining an organization’s members by pressing Join, by its invite, QR code
+            or link, or by checking in to its event. Its org admins see how you joined and can
+            decline a membership, saying why. They see that you checked in, and can invite you to
+            join, once, by a direct message.
           </li>
         </List>
       </Note>
@@ -182,8 +187,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>What you do in the club:</b> your messages, posts and photographs, the events you
-            reply to, the organizations you follow, the posts you like, react to or save, the posts
-            you have read, in a room or on Home, and anything you report or anyone you block.
+            reply to, the posts you like, react to or save, the posts you have read, in a room or on
+            Home, and anything you report or anyone you block.
           </li>
           <li>
             <b>If you register for an event on its public page:</b> your name, your email address,

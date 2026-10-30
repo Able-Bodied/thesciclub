@@ -338,7 +338,7 @@ export default function MePage() {
                 {userId && showOnMap !== null ? (
                   <MapVisibility userId={userId} showOnMap={showOnMap} onChange={setShowOnMap} />
                 ) : null}
-                {userId ? <MyOrganizations userId={userId} /> : null}
+                {userId ? <MyOrganizations /> : null}
               </section>
               <div className="min-w-0 space-y-6">
                 {hasClubTools ? (

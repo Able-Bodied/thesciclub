@@ -2,22 +2,30 @@
 -- Organization members, and checking in to an event
 -- ============================================================================
 -- The owner, 2026-10-29 and 30: "org members ... active participants in an
--- organization." A follower chooses to see an organization's calendar; a
--- member has taken part. Both are kept, apart.
+-- organization", then "let's combine membership with follow": Join replaces
+-- Follow. Somebody becomes an organization's member when they:
 --
--- Somebody becomes an organization's member when they:
---
---   invite    join on an email invite made for it. An org admin of one
---             organization makes them for that one; an org admin of several
---             chooses, in create_my_invite.
---   code      join by a QR code or invite link made for it.
+--   join      press Join on it. They are a member at once; its org admins
+--             then approve them, or deny them and say why.
+--   invite    join the club on an email invite made for it. An org admin of
+--             one organization makes them for that one; an org admin of
+--             several chooses, in create_my_invite.
+--   code      join the club by a QR code or invite link made for it.
 --   check_in  check in to one of its events.
 --
--- Only from now on: nobody who joined before this is added. The SCI Club
--- itself has no such list (every member is in it).
+-- organization_follows stays underneath, kept to the active members by
+-- organization_member_changed, so everything that reads it (who sees a
+-- 'followers' event, new-event and grant notifications, the filters) now
+-- means members. Nobody writes it directly any more. Everybody following
+-- today becomes a member below, already approved, and nobody who joined the
+-- club before this is otherwise added. The SCI Club itself has no such list
+-- (every member is in it).
 --
 -- Leaving keeps the row with left_at, so a later check-in does not quietly
--- put back somebody who chose to go.
+-- put back somebody who chose to go; Join does. Denying keeps it with
+-- denied_at and the reason, so they cannot just press Join again; an org admin
+-- can take it back. The reason reaches them as a direct message from the org
+-- admin, and on the organization's page.
 --
 -- Checking in (event_check_ins) needs no code. The button is on the event's
 -- page, and the printed QR code is that page's address, so both are the same
@@ -27,20 +35,25 @@
 -- end of the day after its last. A check-in is not an RSVP: Going shares
 -- contact details with the host, and this does not.
 --
--- Who sees what: each member reads their own rows. organization_member_list
--- and event_check_in_list are for that organization's org admins, the event's
--- organizers and the club's administrators. organization_counts gives any
--- member the two numbers and no names: who follows stays private.
+-- Who sees what (the owner: "everyone should see what orgs you are a member
+-- of"): any member sees an organization's members and a member's organizations,
+-- leaving out a blocked pair and anybody hidden from Peers. How each came to
+-- join, the reviews and event_check_in_list are for that organization's org
+-- admins, the event's organizers and the club's administrators.
 -- ============================================================================
 
 -- ------------------------------------------------------ the two new lists --
 create table public.organization_members (
   organization_id uuid not null references public.organizations (id) on delete cascade,
   member_id uuid not null references public.members (id) on delete cascade,
-  joined_via text not null check (joined_via in ('invite', 'code', 'check_in')),
+  joined_via text not null check (joined_via in ('join', 'invite', 'code', 'check_in')),
   event_id uuid references public.events (id) on delete set null,
   joined_at timestamptz not null default now(),
   left_at timestamptz,
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.members (id) on delete set null,
+  denied_at timestamptz,
+  denied_reason text check (char_length(denied_reason) <= 500),
   primary key (organization_id, member_id)
 );
 
@@ -57,7 +70,7 @@ create policy "a member reads their own organizations"
   using (member_id = (select auth.uid()));
 
 comment on table public.organization_members is
-  'Who has taken part in an organization, apart from who follows it. See 20261030000000.';
+  'Who belongs to an organization. Active: left_at and denied_at both null. See 20261030000000.';
 
 create table public.event_check_ins (
   event_id uuid not null references public.events (id) on delete cascade,
@@ -297,40 +310,112 @@ security definer
 stable
 set search_path = ''
 as $$
-  select m.id, m.display_name, m.username::text, m.photo_path, m.photo_alt, om.joined_via, om.joined_at
+  select m.id, m.display_name, m.username::text, m.photo_path, m.photo_alt,
+         case when public.is_admin() or public.speaks_for(p_organization)
+              then om.joined_via end,
+         om.joined_at
     from public.organization_members om
     join public.members m on m.id = om.member_id and m.status = 'active'
    where om.organization_id = p_organization
      and om.left_at is null
-     and (public.is_admin() or public.speaks_for(p_organization))
+     and om.denied_at is null
+     and public.is_member()
+     and (
+       public.is_admin()
+       or public.speaks_for(p_organization)
+       or m.id = auth.uid()
+       or (m.show_in_browse and not public.members_blocked(auth.uid(), m.id))
+     )
    order by m.display_name, m.id;
 $$;
 
 revoke all on function public.organization_member_list(uuid) from public, anon;
 grant execute on function public.organization_member_list(uuid) to authenticated;
 
--- Numbers only, for any member. Who follows is theirs to keep.
-create function public.organization_counts(p_organization uuid)
-returns table (members bigint, followers bigint)
+-- A profile's organizations.
+create function public.member_organizations(p_member uuid)
+returns setof uuid
 language sql
 security definer
 stable
 set search_path = ''
 as $$
-  select
-    (select count(*)
-       from public.organization_members om
-       join public.members m on m.id = om.member_id and m.status = 'active'
-      where om.organization_id = p_organization and om.left_at is null),
-    (select count(*)
-       from public.organization_follows f
-       join public.members m on m.id = f.member_id and m.status = 'active'
-      where f.organization_id = p_organization)
-   where public.is_member();
+  select om.organization_id
+    from public.organization_members om
+    join public.members m on m.id = om.member_id and m.status = 'active'
+   where om.member_id = p_member
+     and om.left_at is null
+     and om.denied_at is null
+     and public.is_member()
+     and (
+       m.id = auth.uid()
+       or (m.show_in_browse and not public.members_blocked(auth.uid(), m.id))
+     );
 $$;
 
-revoke all on function public.organization_counts(uuid) from public, anon;
-grant execute on function public.organization_counts(uuid) to authenticated;
+revoke all on function public.member_organizations(uuid) from public, anon;
+grant execute on function public.member_organizations(uuid) to authenticated;
+
+create function public.organization_member_count(p_organization uuid)
+returns bigint
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select count(*)
+    from public.organization_members om
+    join public.members m on m.id = om.member_id and m.status = 'active'
+   where om.organization_id = p_organization
+     and om.left_at is null
+     and om.denied_at is null
+     and public.is_member();
+$$;
+
+revoke all on function public.organization_member_count(uuid) from public, anon;
+grant execute on function public.organization_member_count(uuid) to authenticated;
+
+-- ------------------------------------------------------ joining and leaving --
+create function public.join_organization(p_organization uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  me uuid := auth.uid();
+  found_organization record;
+begin
+  if not public.is_active_member() then
+    raise exception 'Only an active member can join an organization.' using errcode = '42501';
+  end if;
+  select o.name, o.is_the_club into found_organization
+    from public.organizations o
+   where o.id = p_organization and o.removed_at is null;
+  if not found then
+    raise exception 'There is no such organization.' using errcode = 'P0002';
+  end if;
+  if found_organization.is_the_club then
+    raise exception 'Everybody here already belongs to The SCI Club.' using errcode = '22023';
+  end if;
+  if exists (
+    select 1 from public.organization_members om
+     where om.organization_id = p_organization and om.member_id = me and om.denied_at is not null
+  ) then
+    raise exception '% declined your membership.', found_organization.name using errcode = '42501';
+  end if;
+
+  insert into public.organization_members (organization_id, member_id, joined_via)
+  values (p_organization, me, 'join')
+  on conflict (organization_id, member_id) do update
+    set left_at = null, joined_via = 'join', joined_at = now(),
+        reviewed_at = null, reviewed_by = null
+    where public.organization_members.left_at is not null;
+end;
+$$;
+
+revoke all on function public.join_organization(uuid) from public, anon;
+grant execute on function public.join_organization(uuid) to authenticated;
 
 create function public.leave_organization(p_organization uuid)
 returns void
@@ -347,6 +432,104 @@ $$;
 
 revoke all on function public.leave_organization(uuid) from public, anon;
 grant execute on function public.leave_organization(uuid) to authenticated;
+
+-- ------------------------------------------------- org admins reviewing Join --
+create function public.organization_member_reviews(p_organization uuid)
+returns table (
+  member_id uuid,
+  display_name text,
+  username text,
+  photo_path text,
+  photo_alt text,
+  joined_at timestamptz,
+  denied_at timestamptz,
+  denied_reason text
+)
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select m.id, m.display_name, m.username::text, m.photo_path, m.photo_alt,
+         om.joined_at, om.denied_at, om.denied_reason
+    from public.organization_members om
+    join public.members m on m.id = om.member_id and m.status = 'active'
+   where om.organization_id = p_organization
+     and (public.is_admin() or public.speaks_for(p_organization))
+     and (
+       om.denied_at is not null
+       or (om.joined_via = 'join' and om.reviewed_at is null and om.left_at is null)
+     )
+   order by om.denied_at nulls first, om.joined_at desc, m.id;
+$$;
+
+revoke all on function public.organization_member_reviews(uuid) from public, anon;
+grant execute on function public.organization_member_reviews(uuid) to authenticated;
+
+-- Approving also takes back a denial. Denying needs a reason, which goes to
+-- them as a direct message; a blocked pair has no such thread, and the
+-- organization's page still shows it.
+create function public.review_organization_member(
+  p_organization uuid,
+  p_member uuid,
+  p_approve boolean,
+  p_reason text default null
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  me uuid := auth.uid();
+  why text := nullif(btrim(coalesce(p_reason, '')), '');
+  organization_name text;
+  thread uuid;
+begin
+  if not (public.speaks_for(p_organization) or public.is_admin()) then
+    raise exception 'Only its org admins can review its members.' using errcode = '42501';
+  end if;
+
+  if p_approve then
+    update public.organization_members
+       set reviewed_at = now(), reviewed_by = me, denied_at = null, denied_reason = null
+     where organization_id = p_organization and member_id = p_member;
+    if not found then
+      raise exception 'They are not a member.' using errcode = 'P0002';
+    end if;
+    return;
+  end if;
+
+  if why is null then
+    raise exception 'Say why, so they know.' using errcode = '22023';
+  end if;
+  if char_length(why) > 500 then
+    raise exception 'Keep the reason to 500 characters.' using errcode = '22023';
+  end if;
+
+  update public.organization_members
+     set reviewed_at = now(), reviewed_by = me, denied_at = now(), denied_reason = why
+   where organization_id = p_organization
+     and member_id = p_member
+     and left_at is null
+     and denied_at is null;
+  if not found then
+    raise exception 'They are not a member.' using errcode = 'P0002';
+  end if;
+
+  select o.name into organization_name from public.organizations o where o.id = p_organization;
+  begin
+    thread := public.chat_open_direct(p_member);
+    insert into public.chat_messages (thread_id, author_id, body)
+    values (thread, me, 'Your membership of ' || organization_name || ' was declined: ' || why);
+  exception when others then
+    raise warning 'review_organization_member: %', sqlerrm;
+  end;
+end;
+$$;
+
+revoke all on function public.review_organization_member(uuid, uuid, boolean, text) from public, anon;
+grant execute on function public.review_organization_member(uuid, uuid, boolean, text) to authenticated;
 
 -- ------------------------------------------------------ the members' group chat --
 -- The owner, 2026-10-30: "We should create a group chat for all members."
@@ -413,24 +596,37 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  active boolean := new.left_at is null and new.denied_at is null;
 begin
-  if new.left_at is null then
-    insert into public.chat_thread_members (thread_id, member_id)
-    values (private.organization_chat(new.organization_id), new.member_id)
-    on conflict (thread_id, member_id) do nothing;
-  elsif not exists (
-    select 1 from public.organization_representatives r
-     where r.organization_id = new.organization_id and r.member_id = new.member_id
-  ) then
-    delete from public.chat_thread_members tm
-     using public.chat_threads t
-     where t.id = tm.thread_id
-       and t.organization_id = new.organization_id
-       and tm.member_id = new.member_id;
+  -- Following is being a member: see the header.
+  if active then
+    insert into public.organization_follows (member_id, organization_id)
+    values (new.member_id, new.organization_id)
+    on conflict do nothing;
+  else
+    delete from public.organization_follows f
+     where f.member_id = new.member_id and f.organization_id = new.organization_id;
   end if;
-  return null;
-exception when others then
-  raise warning 'organization_member_changed: %', sqlerrm;
+
+  begin
+    if active then
+      insert into public.chat_thread_members (thread_id, member_id)
+      values (private.organization_chat(new.organization_id), new.member_id)
+      on conflict (thread_id, member_id) do nothing;
+    elsif not exists (
+      select 1 from public.organization_representatives r
+       where r.organization_id = new.organization_id and r.member_id = new.member_id
+    ) then
+      delete from public.chat_thread_members tm
+       using public.chat_threads t
+       where t.id = tm.thread_id
+         and t.organization_id = new.organization_id
+         and tm.member_id = new.member_id;
+    end if;
+  exception when others then
+    raise warning 'organization_member_changed: %', sqlerrm;
+  end;
   return null;
 end;
 $$;
@@ -438,7 +634,7 @@ $$;
 revoke all on function private.organization_member_changed() from public, anon, authenticated;
 
 create trigger organization_members_chat
-  after insert or update of left_at on public.organization_members
+  after insert or update of left_at, denied_at on public.organization_members
   for each row execute function private.organization_member_changed();
 
 -- An org admin added or removed later, once the chat exists.
@@ -461,6 +657,7 @@ begin
      where om.organization_id = old.organization_id
        and om.member_id = old.member_id
        and om.left_at is null
+       and om.denied_at is null
   ) then
     delete from public.chat_thread_members tm
      using public.chat_threads t
@@ -499,6 +696,7 @@ begin
      where om.organization_id = organization
        and om.member_id = new.member_id
        and om.left_at is null
+       and om.denied_at is null
     union all
     select 1 from public.organization_representatives r
      where r.organization_id = organization and r.member_id = new.member_id
@@ -583,3 +781,92 @@ begin
   return found_thread;
 end;
 $$;
+
+-- ---------------------------------------------------- follows become members --
+-- Written only by the trigger from now on. Anybody following today is a member,
+-- already approved, and is in that organization's chat.
+revoke insert, delete on public.organization_follows from authenticated;
+
+insert into public.organization_members (organization_id, member_id, joined_via, joined_at, reviewed_at)
+select f.organization_id, f.member_id, 'join', f.followed_at, now()
+  from public.organization_follows f
+  join public.organizations o on o.id = f.organization_id
+  join public.members m on m.id = f.member_id and m.status = 'active'
+ where o.removed_at is null
+   and not o.is_the_club
+on conflict do nothing;
+
+-- ------------------------------------------------- an org admin inviting a member --
+-- The owner, 2026-10-30: seeing what somebody belongs to, "as an admin we can
+-- let them invite members to join". From a profile, a direct message from the
+-- org admin with the organization's page; they still press Join themselves, so
+-- nobody is put in a chat by somebody else. Once for each organization and
+-- member, so it cannot become a stream of messages.
+create table public.organization_member_invites (
+  organization_id uuid not null references public.organizations (id) on delete cascade,
+  member_id uuid not null references public.members (id) on delete cascade,
+  invited_by uuid references public.members (id) on delete set null,
+  created_at timestamptz not null default now(),
+  primary key (organization_id, member_id)
+);
+
+create index organization_member_invites_member_idx
+  on public.organization_member_invites (member_id);
+create index organization_member_invites_invited_by_idx
+  on public.organization_member_invites (invited_by);
+
+alter table public.organization_member_invites enable row level security;
+revoke all on public.organization_member_invites from public, anon, authenticated;
+
+create function public.invite_to_organization(p_organization uuid, p_member uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  me uuid := auth.uid();
+  organization_name text;
+  thread uuid;
+begin
+  if not public.speaks_for(p_organization) then
+    raise exception 'Only its org admins can invite people to it.' using errcode = '42501';
+  end if;
+  if p_member = me then
+    raise exception 'You are already with this organization.' using errcode = '22023';
+  end if;
+  select o.name into organization_name
+    from public.organizations o
+   where o.id = p_organization and not o.is_the_club;
+  if organization_name is null then
+    raise exception 'Everybody here already belongs to The SCI Club.' using errcode = '22023';
+  end if;
+  if exists (
+    select 1 from public.organization_members om
+     where om.organization_id = p_organization
+       and om.member_id = p_member
+       and om.left_at is null
+  ) then
+    raise exception 'They are already a member, or were declined.' using errcode = '22023';
+  end if;
+
+  insert into public.organization_member_invites (organization_id, member_id, invited_by)
+  values (p_organization, p_member, me)
+  on conflict do nothing;
+  if not found then
+    raise exception 'They have been invited to it already.' using errcode = '22023';
+  end if;
+
+  -- A blocked pair is refused here, and the invite with it.
+  thread := public.chat_open_direct(p_member);
+  insert into public.chat_messages (thread_id, author_id, body)
+  values (
+    thread, me,
+    'You''re invited to join ' || organization_name
+      || ': https://thesciclub.com/events/organizations/' || p_organization::text
+  );
+end;
+$$;
+
+revoke all on function public.invite_to_organization(uuid, uuid) from public, anon;
+grant execute on function public.invite_to_organization(uuid, uuid) to authenticated;

@@ -189,7 +189,7 @@ export function EventFilterSheet({
                 widens the set in the usual way. */}
             {followedHosts.length > 0 ? (
               <FilterChip
-                label="Ones you follow"
+                label="Yours"
                 on={showingFollowed}
                 onClick={() => {
                   onChange({

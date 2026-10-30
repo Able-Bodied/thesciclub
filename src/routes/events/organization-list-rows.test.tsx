@@ -45,10 +45,8 @@ function renderList(following: Set<string>, handlers: Partial<{ open: () => void
 describe('the organizations directory', () => {
   it('offers a follow on every row, in the state the viewer is in', () => {
     renderList(new Set(['ncs']));
-    expect(
-      screen.getByRole('button', { name: 'Following. Press to unfollow.' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Follow' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Member. Press to leave.' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeInTheDocument();
   });
 
   // The row used to be one <button> and Follow cannot live inside one: a button
@@ -56,13 +54,13 @@ describe('the organizations directory', () => {
   // follow would have been a dead region that opened the organization instead.
   // This is that, asserted.
   it('follows without opening the organization', async () => {
-    // Only NorCal SCI is unfollowed, so "Follow" names exactly one button. The
+    // Only NorCal SCI is not joined, so "Join" names exactly one button. The
     // alternative is indexing into the rows, and the list is sorted by calendar
     // activity — with no events that falls back to alphabetical, so the first
     // row is Adaptive Rec Hub and the assertion would be about the ordering
     // rather than about the button.
     const { onToggleFollow, onOpen } = renderList(new Set(['arh']));
-    await userEvent.click(screen.getByRole('button', { name: 'Follow' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Join' }));
     expect(onToggleFollow).toHaveBeenCalledWith('ncs');
     expect(onOpen).not.toHaveBeenCalled();
   });
@@ -173,7 +171,7 @@ describe("the directory's filters held by the screen", () => {
     );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.queryByText('Adaptive Rec Hub')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Following' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Member of' }));
     expect(changed).toHaveBeenCalledWith(expect.objectContaining({ following: true }));
   });
 });

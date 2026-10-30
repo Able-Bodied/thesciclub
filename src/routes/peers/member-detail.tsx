@@ -14,6 +14,7 @@ import { useIAmPartner } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
+import { useMemberOrganizations } from '@/lib/organization-members';
 import { organizationByName, useOrganizations } from '@/lib/organizations';
 import { usePhotoUrl } from '@/lib/photos';
 import { ContinueInRooms } from '@/routes/chat/continue-in-room';
@@ -22,6 +23,7 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
+import { InviteToOrganization } from '@/routes/peers/invite-to-organization';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
 import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
@@ -215,6 +217,36 @@ function UsernameRow({ username }: { username: string }) {
           <Copy className="h-[15px] w-[15px] flex-none text-grey" aria-hidden="true" />
         )}
       </button>
+    </Section>
+  );
+}
+
+/** What they belong to, for anybody to find one worth joining (the owner, 2026-10-30). */
+function MemberOf({ memberId, name }: { memberId: string; name: string }) {
+  const ids = useMemberOrganizations(memberId);
+  const { byId } = useOrganizations();
+  const organizations = ids
+    .map((id) => byId.get(id))
+    .filter((organization) => organization !== undefined)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const invite = <InviteToOrganization memberId={memberId} name={name} memberOf={ids} />;
+  if (organizations.length === 0) return invite;
+  return (
+    <Section title="Member of">
+      <ul className="flex flex-wrap gap-2">
+        {organizations.map((organization) => (
+          <li key={organization.id}>
+            <Link
+              to={`/events/organizations/${organization.id}`}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line bg-paper py-1 pr-3.5 pl-1.5 font-bold text-[0.8125rem] text-ink"
+            >
+              <OrganizationBadge organization={organization} size="sm" />
+              {organization.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {invite}
     </Section>
   );
 }
@@ -784,6 +816,8 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 </p>
               </Section>
             ) : null}
+
+            <MemberOf memberId={member.id} name={member.displayName} />
 
             {member.howInjured ? (
               <Section title="How it happened">
