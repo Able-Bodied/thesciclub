@@ -212,15 +212,16 @@ export function Post({
           {save.saved ? 'Remove from Saved' : 'Save post'}
         </button>
       ) : null}
-      {canEdit && !hideBody && !editing ? (
+      {canEdit && !editing ? (
         <button
           type="button"
           onClick={onEdit}
-          aria-label="Edit your post"
+          aria-label={hideBody ? 'Add details to your question' : 'Edit your post'}
           data-target="small"
           className={`${control} hover:text-emphasis`}
         >
-          Edit
+          {/* A question with only its title has no words of its own to edit. */}
+          {hideBody ? 'Add details' : 'Edit'}
         </button>
       ) : null}
       {canRemove ? (
