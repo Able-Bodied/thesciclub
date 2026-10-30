@@ -133,6 +133,11 @@ export interface ComposerEditing {
   addPhotos?: boolean;
   /** It shares a post, which an edit keeps, so its words may go. */
   shared?: boolean;
+  /**
+   * Somebody has replied, so its words stay and only an update is added
+   * after them (20261029240000). The box starts empty; onSave gets the update.
+   */
+  appendOnly?: boolean;
   /** The item's element id: its ••• takes focus afterwards. */
   anchor: string;
   /** Resolves to null once saved, or to the sentence to show; files are the photographs added. */
@@ -213,7 +218,7 @@ export function Composer({
   }, []);
 
   const editingId = editing?.id ?? null;
-  const editingWords = editing?.initial ?? '';
+  const editingWords = editing?.appendOnly ? '' : (editing?.initial ?? '');
   const editingNoun = editing?.noun ?? 'message';
   useLayoutEffect(() => {
     if (editingId === loaded.current) return;
@@ -224,7 +229,11 @@ export function Composer({
       if (from === null) setAside.current = { text: draft, version: draftVersion.current };
       draftVersion.current += 1;
       setDraft(editingWords);
-      announce(`Editing your ${editingNoun}.`);
+      announce(
+        editing?.appendOnly
+          ? `Adding an update to your ${editingNoun}.`
+          : `Editing your ${editingNoun}.`,
+      );
     } else {
       // The draft's own version too, so a send still in flight clears it.
       const back = setAside.current;
@@ -233,7 +242,7 @@ export function Composer({
       setDraft(back ? back.text : '');
     }
     setSwaps((n) => n + 1);
-  }, [editingId, editingWords, editingNoun, draft, announce]);
+  }, [editingId, editingWords, editingNoun, draft, announce, editing?.appendOnly]);
 
   useLayoutEffect(() => {
     const element = box.current;
@@ -278,7 +287,7 @@ export function Composer({
   const blank =
     editing !== null &&
     body === '' &&
-    editing.photos === 0 &&
+    (editing.photos === 0 || editing.appendOnly === true) &&
     editFiles.length === 0 &&
     !editing.shared;
   const cannotSend = sending || (editing ? blank : empty);
@@ -294,7 +303,7 @@ export function Composer({
   }
 
   function saveEdit(current: ComposerEditing) {
-    if (body === current.initial.trim() && editFiles.length === 0) {
+    if (body === (current.appendOnly ? '' : current.initial.trim()) && editFiles.length === 0) {
       finishEdit(current, 'Nothing changed. Edit cancelled.');
       return;
     }
@@ -348,8 +357,20 @@ export function Composer({
       value={draft}
       rows={1}
       maxLength={maxLength}
-      placeholder={editing ? `Edit your ${editing.noun}` : placeholder}
-      aria-label={editing ? `Edit your ${editing.noun}` : placeholder}
+      placeholder={
+        editing
+          ? editing.appendOnly
+            ? `Add an update to your ${editing.noun}`
+            : `Edit your ${editing.noun}`
+          : placeholder
+      }
+      aria-label={
+        editing
+          ? editing.appendOnly
+            ? `Add an update to your ${editing.noun}`
+            : `Edit your ${editing.noun}`
+          : placeholder
+      }
       readOnly={editing !== null && sending}
       {...(mentions ? mention.boxProps : {})}
       onPaste={(event) => {
@@ -392,7 +413,14 @@ export function Composer({
   const editBar = editing ? (
     <div className="mx-auto mb-2 flex w-full max-w-[720px] items-center gap-2 rounded-[11px] border-emphasis border-l-[3px] bg-tint py-1 pr-1 pl-3">
       <div className="min-w-0 flex-1 py-1 text-[0.8125rem] text-ink2 leading-[1.4]">
-        <p className="font-semibold text-ink">Editing {editing.noun}</p>
+        <p className="font-semibold text-ink">
+          {editing.appendOnly
+            ? `Adding an update to your ${editing.noun}`
+            : `Editing ${editing.noun}`}
+        </p>
+        {editing.appendOnly ? (
+          <p>Someone has replied, so what you wrote stays. Your update goes under it.</p>
+        ) : null}
         {editing.initial.trim() ? <p className="truncate">{excerpt(editing.initial)}</p> : null}
         {editing.photos > 0 ? (
           <p>
@@ -404,7 +432,9 @@ export function Composer({
         ) : null}
         {editing.shared ? <p>The shared post stays.</p> : null}
         <p aria-live="polite">
-          {blank ? `A ${editing.noun} needs words. To delete it, use Remove.` : ''}
+          {blank && !editing.appendOnly
+            ? `A ${editing.noun} needs words. To delete it, use Remove.`
+            : ''}
         </p>
       </div>
       <button

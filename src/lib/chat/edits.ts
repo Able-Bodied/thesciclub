@@ -6,15 +6,9 @@ import { ID_BATCH, readInBatches } from '@/lib/read-pages';
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * Every earlier version of an edited post or message, for an administrator.
- *
- * `chat_edits` has one select policy, `is_admin()`, and select is granted to
- * `authenticated` (20260930000000). So a member's read would come back
- * empty rather than refused — and this hook does not make it: for anybody
- * who is not an administrator it answers with empty maps without asking,
- * because a read that will return nothing is still a round trip on a phone,
- * and because a screen that reads chat_edits for a member is a screen that
- * has forgotten who the table is for.
+ * Every earlier version of an edited post, for anybody who can read the post
+ * (20261029240000), and of a conversation's message, for an administrator.
+ * A member's messages are not asked for: that read would come back empty.
  *
  * One read for every id the screen has, keyed so that a second render with
  * the same ids does not ask again. `reload` is for the moment an
@@ -82,7 +76,7 @@ export function useEdits(postIds: readonly string[], messageIds: readonly string
   // The ids as one string, so the effect re-runs when the set changes and
   // not when the caller builds a new array with the same ids in it.
   const postKey = [...postIds].sort().join(',');
-  const messageKey = [...messageIds].sort().join(',');
+  const messageKey = isAdmin ? [...messageIds].sort().join(',') : '';
 
   const [grouped, setGrouped] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -94,7 +88,7 @@ export function useEdits(postIds: readonly string[], messageIds: readonly string
     // Read, not only depended on: biome counts an unread dependency as a
     // spare one, and a re-run for the same ids is the whole point of it.
     if (attempt < 0) return;
-    if (!isAdmin || (postKey === '' && messageKey === '')) {
+    if (account.status !== 'member' || (postKey === '' && messageKey === '')) {
       setGrouped(EMPTY);
       setLoading(false);
       setError(null);
@@ -177,7 +171,7 @@ export function useEdits(postIds: readonly string[], messageIds: readonly string
     return () => {
       controller.abort();
     };
-  }, [isAdmin, postKey, messageKey, attempt]);
+  }, [account.status, postKey, messageKey, attempt]);
 
   const reload = useCallback(() => {
     setAttempt((n) => n + 1);

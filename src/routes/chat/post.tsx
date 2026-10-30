@@ -88,6 +88,7 @@ export function Post({
   nested = false,
   depth = 1,
   canEdit,
+  appendOnly = false,
   editing,
   onEdit,
   canReply = false,
@@ -122,6 +123,8 @@ export function Post({
   depth?: number;
   /** The reader's own standing post. */
   canEdit: boolean;
+  /** Somebody has replied: its words stay, and Edit adds an update. */
+  appendOnly?: boolean;
   /** Its words are in the composer. */
   editing: boolean;
   onEdit: () => void;
@@ -216,12 +219,18 @@ export function Post({
         <button
           type="button"
           onClick={onEdit}
-          aria-label={hideBody ? 'Add details to your post' : 'Edit your post'}
+          aria-label={
+            hideBody
+              ? 'Add details to your post'
+              : appendOnly
+                ? 'Add an update to your post'
+                : 'Edit your post'
+          }
           data-target="small"
           className={`${control} hover:text-emphasis`}
         >
           {/* A topic posted with only its title has no words of its own to edit. */}
-          {hideBody ? 'Add details' : 'Edit'}
+          {hideBody ? 'Add details' : appendOnly ? 'Add an update' : 'Edit'}
         </button>
       ) : null}
       {canRemove ? (

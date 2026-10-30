@@ -161,7 +161,7 @@ export default function TopicPage() {
   // anything, and a removal arrives as an UPDATE and redraws as the sentence
   // that replaces it. The scroll is not affected: it happens once, on the
   // first load, so a reply landing does not throw the reader up the page.
-  // Administrators only; everybody else gets empty maps without a read.
+  // Anybody who can read the post sees what it said before (20261029240000).
   const editedIds = useMemo(
     () => posts.filter((post) => post.editedAt !== null).map((post) => post.id),
     [posts],
@@ -383,6 +383,20 @@ export default function TopicPage() {
     ? posts.find((p) => p.id === editingId && p.removedAt === null)
     : undefined;
 
+  // Once somebody has replied, a post's words stay and an edit only adds an
+  // update (20261029240000): a reply to it, or for the opening post, any
+  // other post. Not a topic posted with only its title, whose details may
+  // replace it. The database decides; this only chooses the box.
+  const openingId = posts[0]?.id ?? null;
+  const appendOnly = (post: ChatPost) =>
+    !(post.attachments.length === 0 && post.body.trim() === topicTitle) &&
+    posts.some(
+      (p) =>
+        p.id !== post.id &&
+        p.removedAt === null &&
+        (p.replyTo === post.id || post.id === openingId),
+    );
+
   /** Controls act on this specific post, including replies to replies. */
   const postProps = (post: ChatPost) => ({
     post,
@@ -390,6 +404,7 @@ export default function TopicPage() {
     // The author's own, and nobody else's — not an administrator's either.
     // chat_edit_post decides; this only asks.
     canEdit: canPost && post.authorId === account.userId,
+    appendOnly: appendOnly(post),
     editing: edited?.id === post.id,
     onEdit: () => {
       setEditingId(post.id);
@@ -656,8 +671,19 @@ export default function TopicPage() {
                   noun: 'post',
                   photos: edited.attachments.length,
                   addPhotos: true,
+                  appendOnly: appendOnly(edited),
                   anchor: `post-${edited.id}`,
-                  onSave: (body, files) => saveEdit(edited.id, body, files),
+                  onSave: (body, files) =>
+                    saveEdit(
+                      edited.id,
+                      // An update goes under what is there, as the database requires.
+                      appendOnly(edited)
+                        ? body
+                          ? `${edited.body.trimEnd()}\n\nUpdate: ${body}`
+                          : edited.body
+                        : body,
+                      files,
+                    ),
                   onClose: () => {
                     setEditingId(null);
                   },

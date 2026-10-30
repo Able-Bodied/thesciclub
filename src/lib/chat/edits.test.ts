@@ -63,16 +63,23 @@ beforeEach(() => {
 });
 
 describe('useEdits', () => {
-  // THE test. chat_edits is for administrators; a member's read would come
-  // back empty, and this hook does not even make it.
-  it('asks nothing for a member, and answers with nothing', async () => {
+  // A member reads a post's earlier versions (20261029240000), but a
+  // conversation's messages' stay administrators', so those are not asked.
+  it('asks for posts only for a member', async () => {
     const { result } = renderHook(() => useEdits(['p1'], ['m1']));
     await waitFor(() => {
       expect(result.current.loading).toBe(false);
     });
-    expect(db.reads).toEqual([]);
-    expect(result.current.byPost.size).toBe(0);
+    expect(db.reads).toEqual([['post_id', ['p1']]]);
     expect(result.current.byMessage.size).toBe(0);
+  });
+
+  it('asks nothing for a member about messages alone', async () => {
+    const { result } = renderHook(() => useEdits([], ['m1']));
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+    expect(db.reads).toEqual([]);
   });
 
   it('asks nothing when there is nothing to ask about', async () => {

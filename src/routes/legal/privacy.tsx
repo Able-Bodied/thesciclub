@@ -33,6 +33,11 @@ export default function PrivacyPage() {
             club it is for, so members can invite people to it.
           </li>
           <li>
+            <b>Changed:</b> when you change a post in a room, anybody who can read the post can see
+            what it said before. Once somebody has replied, you can add to a post but not change
+            what it already says.
+          </li>
+          <li>
             <b>Added:</b> trusted partners, professionals who work with people with spinal cord
             injuries, shown with their title. They can introduce two members to each other, and see
             the people they invited or introduced (see Who can see what). Joining, you can say you
@@ -400,6 +405,11 @@ export default function PrivacyPage() {
             each organization’s org admins, to anyone who opens it.
           </li>
           <li>
+            <b>A post you change</b> shows Edited, and anybody who can read it can open its earlier
+            versions. Once somebody has replied to it, you can add an update but not change what it
+            already says, so the replies still make sense.
+          </li>
+          <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody
             reports a single message or post, that one message is shown to administrators, with who
             wrote it and when, and nothing else from the conversation.
@@ -427,8 +437,8 @@ export default function PrivacyPage() {
           </li>
           <li>blocks: who blocked whom, with no words, and a weekly count;</li>
           <li>
-            when you change a post or a message, the earlier wording, which nobody else can read,
-            you included;
+            when you change a message in a conversation, the earlier wording, which nobody else can
+            read, you included;
           </li>
           <li>who is going to each event, to pass on to its host (see Event hosts);</li>
           <li>

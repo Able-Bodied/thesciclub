@@ -709,6 +709,25 @@ describe('a topic', () => {
     );
   });
 
+  // The owner, 2026-10-29: once somebody has replied, a post's words stay.
+  it('offers Add an update on the viewer’s own post once somebody has replied', async () => {
+    db.posts = [
+      post({ id: '1', authorId: 'me', body: 'My first words.' }),
+      post({ id: '2', body: 'An answer.' }),
+    ];
+    renderTopic();
+    expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Add an update to your post' }));
+    const box = screen.getByLabelText('Add an update to your post');
+    expect(box).toHaveValue('');
+    expect(screen.getByText(/Someone has replied, so what you wrote stays/)).toBeInTheDocument();
+    await userEvent.type(box, 'It worked.');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(db.edited).toEqual([['1', 'My first words.\n\nUpdate: It worked.']]);
+    });
+  });
+
   it('offers Remove on the viewer’s own post and on nobody else’s', () => {
     db.posts = [post({ id: '1' }), post({ id: '2', authorId: 'me' })];
     renderTopic();
