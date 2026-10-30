@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react';
+import { Check, ChevronLeft, Copy } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { LinkedText } from '@/components/linked-text';
@@ -171,7 +171,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-/** The @name, selectable, with a button that copies it. */
+/** The @name, which copies itself when pressed (the owner, 2026-10-29: no Copy button). */
 function UsernameRow({ username }: { username: string }) {
   const announce = useAnnounce();
   const [copied, setCopied] = useState(false);
@@ -189,29 +189,32 @@ function UsernameRow({ username }: { username: string }) {
 
   return (
     <Section title="Username">
-      <div className="flex items-center justify-between gap-3 rounded-[14px] border border-line bg-paper py-1.5 pr-1.5 pl-3.5">
-        <span className="min-w-0 select-all break-all font-semibold text-[0.9375rem] text-ink">
-          {handle}
-        </span>
-        <button
-          type="button"
-          aria-label={copied ? `Copied ${handle}` : `Copy ${handle}`}
-          onClick={() => {
-            void navigator.clipboard.writeText(handle).then(
-              () => {
-                setCopied(true);
-                announce(`Copied ${handle}.`);
-              },
-              () => {
-                announce('Could not copy it. Select it and copy instead.');
-              },
-            );
-          }}
-          className="min-h-[44px] flex-none rounded-[10px] bg-tint px-3 font-bold text-[0.8125rem] text-emphasis"
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
+      <button
+        type="button"
+        aria-label={copied ? `Copied ${handle}` : `Copy ${handle}`}
+        onClick={() => {
+          void navigator.clipboard.writeText(handle).then(
+            () => {
+              setCopied(true);
+              announce(`Copied ${handle}.`);
+            },
+            () => {
+              announce('Could not copy it. Select it and copy instead.');
+            },
+          );
+        }}
+        className="-ml-1 inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-[10px] px-1 text-left font-semibold text-[0.9375rem] text-ink"
+      >
+        <span className="min-w-0 break-all">{handle}</span>
+        {copied ? (
+          <span className="inline-flex flex-none items-center gap-1 font-bold text-[0.78125rem] text-emphasis">
+            <Check className="h-[15px] w-[15px]" aria-hidden="true" />
+            Copied
+          </span>
+        ) : (
+          <Copy className="h-[15px] w-[15px] flex-none text-grey" aria-hidden="true" />
+        )}
+      </button>
     </Section>
   );
 }
