@@ -88,7 +88,7 @@ export function Post({
   nested = false,
   depth = 1,
   canEdit,
-  appendOnly = false,
+  repeatsTitle = false,
   removeLabel,
   editing,
   onEdit,
@@ -125,8 +125,8 @@ export function Post({
   depth?: number;
   /** The reader's own standing post. */
   canEdit: boolean;
-  /** Somebody has replied: its words stay, and Edit adds an update. */
-  appendOnly?: boolean;
+  /** A topic's opening post repeating its title, under that title: not said twice. */
+  repeatsTitle?: boolean;
   /** In place of Remove, e.g. Delete topic for an unanswered topic's opening post. */
   removeLabel?: string | undefined;
   /** Its words are in the composer. */
@@ -228,18 +228,11 @@ export function Post({
         <button
           type="button"
           onClick={onEdit}
-          aria-label={
-            hideBody
-              ? 'Add details to your post'
-              : appendOnly
-                ? 'Add an update to your post'
-                : 'Edit your post'
-          }
+          aria-label="Edit your post"
           data-target="small"
           className={`${control} hover:text-emphasis`}
         >
-          {/* A topic posted with only its title has no words of its own to edit. */}
-          {hideBody ? 'Add details' : appendOnly ? 'Add an update' : 'Edit'}
+          Edit
         </button>
       ) : null}
       {canRemove ? (
@@ -347,7 +340,7 @@ export function Post({
         </div>
       )}
 
-      {post.body && !hideBody ? (
+      {post.body && !hideBody && !repeatsTitle ? (
         // Formatted (the owner, 2026-10-11): the first post's toolbar writes
         // a small Markdown (lib/markdown.ts), shown through the same allowlist
         // as an event's description. Plain text reads as it did: its line

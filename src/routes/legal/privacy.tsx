@@ -34,8 +34,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Changed:</b> when you change a post in a room, anybody who can read the post can see
-            what it said before. Once somebody has replied, you can add to a post but not change
-            what it already says.
+            what it said before. Once somebody else has replied, you can add words or photographs to
+            a post but not change or remove what it already says, or delete it.
           </li>
           <li>
             <b>Added:</b> trusted partners, professionals who work with people with spinal cord
@@ -406,8 +406,8 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>A post you change</b> shows Edited, and anybody who can read it can open its earlier
-            versions. Once somebody has replied to it, you can add an update but not change what it
-            already says, so the replies still make sense.
+            versions. Once somebody else has replied to it, you can add words or photographs but not
+            change or remove what it already says, or delete it, so the replies still make sense.
           </li>
           <li>
             <b>Direct and group conversations</b> cannot be read by administrators. If somebody

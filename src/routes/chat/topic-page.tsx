@@ -25,6 +25,7 @@ import {
   deleteMyTopic,
   deleteTopic,
   editPost,
+  editTopicTitle,
   firstUnreadThread,
   type PostThread,
   removePost,
@@ -290,6 +291,23 @@ export default function TopicPage() {
       });
   }
 
+  // The title is the words; photographs added go on its post.
+  async function saveTitleEdit(
+    postId: string,
+    title: string,
+    files: File[],
+  ): Promise<string | null> {
+    if (!topicId) return 'This topic is not there any more.';
+    if (title !== topicTitle) {
+      const result = await editTopicTitle(topicId, title);
+      if (!result.ok) return result.error;
+    }
+    if (files.length > 0) return saveEdit(postId, title, files);
+    reload();
+    edits.reload();
+    return null;
+  }
+
   async function saveEdit(postId: string, body: string, files: File[]): Promise<string | null> {
     // Photographs added go up first, under the room, as a new post's do.
     let added: string[] = [];
@@ -387,19 +405,21 @@ export default function TopicPage() {
     ? posts.find((p) => p.id === editingId && p.removedAt === null)
     : undefined;
 
-  // Once somebody has replied, a post's words stay and an edit only adds an
-  // update (20261029240000): a reply to it, or for the opening post, any
-  // other post. Not a topic posted with only its title, whose details may
-  // replace it. The database decides; this only chooses the box.
+  // Once somebody else has replied, a post is only added to and stays
+  // (20261029260000): a reply to it, or for the opening post, anybody else's
+  // post. The database decides; this only chooses what to offer.
   const openingId = posts[0]?.id ?? null;
-  const appendOnly = (post: ChatPost) =>
-    !(post.attachments.length === 0 && post.body.trim() === topicTitle) &&
+  const answered = (post: ChatPost) =>
     posts.some(
       (p) =>
         p.id !== post.id &&
         p.removedAt === null &&
+        p.authorId !== post.authorId &&
         (p.replyTo === post.id || post.id === openingId),
     );
+  // A topic posted with only its title: editing it edits the title.
+  const titleOnly = (post: ChatPost) =>
+    post.id === openingId && post.attachments.length === 0 && post.body.trim() === topicTitle;
 
   const wholeTopic = (post: ChatPost) =>
     post.id === openingId &&
@@ -415,7 +435,6 @@ export default function TopicPage() {
     // The author's own, and nobody else's — not an administrator's either.
     // chat_edit_post decides; this only asks.
     canEdit: canPost && post.authorId === account.userId,
-    appendOnly: appendOnly(post),
     editing: edited?.id === post.id,
     onEdit: () => {
       setEditingId(post.id);
@@ -427,7 +446,7 @@ export default function TopicPage() {
     },
     // An administrator can remove anybody's; everybody else only their own.
     // chat_remove_post decides — this only asks.
-    canRemove: account.isAdmin || post.authorId === account.userId,
+    canRemove: account.isAdmin || (post.authorId === account.userId && !answered(post)),
     // The opening post of the reader's own topic nobody else has posted in:
     // removing it would leave a title with nothing under it, so the topic goes.
     removeLabel: wholeTopic(post) ? 'Delete topic' : undefined,
@@ -514,6 +533,7 @@ export default function TopicPage() {
         flash={flashId === thread.post.id}
         hideBody={onlyTitle}
         opening={first}
+        repeatsTitle={first && thread.post.body.trim() === topicTitle}
       >
         {thread.replies.map((reply) => renderThread(reply, depth + 1))}
       </Post>
@@ -694,19 +714,12 @@ export default function TopicPage() {
                   noun: 'post',
                   photos: edited.attachments.length,
                   addPhotos: true,
-                  appendOnly: appendOnly(edited),
+                  appendOnly: answered(edited),
                   anchor: `post-${edited.id}`,
                   onSave: (body, files) =>
-                    saveEdit(
-                      edited.id,
-                      // An update goes under what is there, as the database requires.
-                      appendOnly(edited)
-                        ? body
-                          ? `${edited.body.trimEnd()}\n\nUpdate: ${body}`
-                          : edited.body
-                        : body,
-                      files,
-                    ),
+                    titleOnly(edited)
+                      ? saveTitleEdit(edited.id, body, files)
+                      : saveEdit(edited.id, body, files),
                   onClose: () => {
                     setEditingId(null);
                   },

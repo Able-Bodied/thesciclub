@@ -144,6 +144,10 @@ vi.mock('@/lib/chat/topics', async (importOriginal) => ({
     db.deleted.push(id);
     return Promise.resolve({ ok: true as const, value: ['rooms/bowel/a.webp'] });
   },
+  editTopicTitle: (id: string, title: string) => {
+    db.edited.push([`title:${id}`, title]);
+    return Promise.resolve({ ok: true as const, value: null });
+  },
   deleteMyTopic: (id: string) => {
     db.deleted.push(`mine:${id}`);
     return Promise.resolve({ ok: true as const, value: [] });
@@ -705,32 +709,42 @@ describe('a topic', () => {
   });
 
   // The owner, 2026-10-29: a topic posted with only a title offered no Edit.
-  it('offers Add details on the viewer’s own topic that has only its title', async () => {
+  it('edits the title of the viewer’s own topic that has only its title', async () => {
+    if (db.topic) db.topic = { ...db.topic, authorId: 'me' };
     db.posts = [post({ id: '1', authorId: 'me', body: 'Travelling with a bowel programme' })];
     renderTopic();
-    expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Add details to your post' }));
-    expect(screen.getByLabelText('Edit your post')).toHaveValue(
-      'Travelling with a bowel programme',
-    );
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+    const box = screen.getByLabelText('Edit your post');
+    expect(box).toHaveValue('Travelling with a bowel programme');
+    await userEvent.clear(box);
+    await userEvent.type(box, 'Flying with a bowel programme');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => {
+      expect(db.edited).toEqual([['title:t', 'Flying with a bowel programme']]);
+    });
   });
 
   // The owner, 2026-10-29: once somebody has replied, a post's words stay.
-  it('offers Add an update on the viewer’s own post once somebody has replied', async () => {
+  it('only adds to the viewer’s own post once somebody else has replied', async () => {
     db.posts = [
       post({ id: '1', authorId: 'me', body: 'My first words.' }),
       post({ id: '2', body: 'An answer.' }),
     ];
     renderTopic();
-    expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Add an update to your post' }));
-    const box = screen.getByLabelText('Add an update to your post');
-    expect(box).toHaveValue('');
-    expect(screen.getByText(/Someone has replied, so what you wrote stays/)).toBeInTheDocument();
-    await userEvent.type(box, 'It worked.');
+    await userEvent.click(screen.getByRole('button', { name: 'Edit your post' }));
+    const box = screen.getByLabelText('Edit your post');
+    expect(box).toHaveValue('My first words.');
+    expect(screen.getByText(/you can add words or photographs but not change/)).toBeInTheDocument();
+    await userEvent.clear(box);
+    await userEvent.type(box, 'Different words.');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(await screen.findByText(/Put the words back as they were/)).toBeInTheDocument();
+    expect(db.edited).toEqual([]);
+    await userEvent.clear(box);
+    await userEvent.type(box, 'My first words. And more.');
     await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
     await waitFor(() => {
-      expect(db.edited).toEqual([['1', 'My first words.\n\nUpdate: It worked.']]);
+      expect(db.edited).toEqual([['1', 'My first words. And more.']]);
     });
   });
 
@@ -748,18 +762,17 @@ describe('a topic', () => {
     confirm.mockRestore();
   });
 
-  it('removes only the post once somebody else has posted', async () => {
+  it('offers no Remove on the viewer’s own post once somebody else has replied', () => {
     if (db.topic) db.topic = { ...db.topic, authorId: 'me' };
     db.posts = [
       post({ id: '1', authorId: 'me', body: 'Asked.' }),
       post({ id: '2', body: 'Answered.' }),
+      post({ id: '3', authorId: 'me', body: 'Thanks.' }),
     ];
     renderTopic();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove your post' }));
-    await waitFor(() => {
-      expect(db.removed).toEqual(['1']);
-    });
-    expect(db.deleted).toEqual([]);
+    // Only the unanswered reply of their own can go.
+    expect(screen.getAllByRole('button', { name: 'Remove your post' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Delete topic' })).toBeNull();
   });
 
   // The owner, 2026-10-29: details added to a topic read as a reply under it.

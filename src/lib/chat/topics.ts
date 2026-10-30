@@ -600,6 +600,31 @@ export async function deleteTopic(topicId: string): Promise<ChatWriteResult<stri
 }
 
 /**
+ * The starter edits a topic posted with only its title: the title and the
+ * post repeating it, together (chat_edit_topic_title, 20261029260000).
+ */
+export async function editTopicTitle(
+  topicId: string,
+  title: string,
+): Promise<ChatWriteResult<null>> {
+  const { error } = (await getSupabase().rpc('chat_edit_topic_title', {
+    topic: topicId,
+    new_title: title,
+  })) as Result<null>;
+  if (error) {
+    return {
+      ok: false,
+      error: describeError(error, {
+        attempt: 'Your edit was not saved.',
+        refused: 'You can only edit your own topic.',
+        missing: 'This topic is not there any more.',
+      }),
+    };
+  }
+  return { ok: true, value: null };
+}
+
+/**
  * Whoever started a topic deletes it, while no other member's post stands in
  * it (chat_delete_my_topic, 20261029250000). Returns photographs as above.
  */
