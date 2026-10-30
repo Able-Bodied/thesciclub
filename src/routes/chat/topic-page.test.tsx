@@ -698,12 +698,12 @@ describe('a topic', () => {
     expect(screen.getByText(/started by Nicole on/i)).toBeInTheDocument();
   });
 
-  // The owner, 2026-10-29: a question asked with only a title offered no Edit.
-  it('offers Add details on the viewer’s own question that has only its title', async () => {
+  // The owner, 2026-10-29: a topic posted with only a title offered no Edit.
+  it('offers Add details on the viewer’s own topic that has only its title', async () => {
     db.posts = [post({ id: '1', authorId: 'me', body: 'Travelling with a bowel programme' })];
     renderTopic();
     expect(screen.queryByRole('button', { name: 'Edit your post' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Add details to your question' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add details to your post' }));
     expect(screen.getByLabelText('Edit your post')).toHaveValue(
       'Travelling with a bowel programme',
     );

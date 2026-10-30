@@ -216,11 +216,11 @@ export function Post({
         <button
           type="button"
           onClick={onEdit}
-          aria-label={hideBody ? 'Add details to your question' : 'Edit your post'}
+          aria-label={hideBody ? 'Add details to your post' : 'Edit your post'}
           data-target="small"
           className={`${control} hover:text-emphasis`}
         >
-          {/* A question with only its title has no words of its own to edit. */}
+          {/* A topic posted with only its title has no words of its own to edit. */}
           {hideBody ? 'Add details' : 'Edit'}
         </button>
       ) : null}
