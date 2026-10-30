@@ -380,11 +380,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     addresses. Blocked: note it there and close. Not: the owner picks accepting
     it (members only; only a title and picture come back) or an outbound
     proxy. Never probe internal addresses from a function to find out.
-- **`PERFORMANCE-PLAN.md`, then `CHAT-SECURITY-PLAN.md`: neither started**
-  (2026-10-27: no planned indexes, no link-preview cache header,
-  `tw-animate-css` still in, no chat rule rewrites). The migration names in
-  both are now taken by others; give them new ones. Order: performance steps
-  1 to 4, then chat security Phase A, then B.
+- **`SPEED-PLAN.md`: Step 1 pushed** (2026-10-29, `19a6ed6`: badges recount
+  at most once per 1.5 s, `lib/coalesce.ts`; app only; `pnpm realtime-check`
+  now also sees the dot clear, `f769c07`). Step 2 next, at the owner's
+  word. Merges the two old speed and chat-rule plans (at `837914c`) with the
+  load test's findings; Steps 1 to 9 in order.
+  Load-test copy and fixes: `~/projects/sciclub-loadtest/`.
 - **Signing in on Stats**: the `oauth` amr was never seen (no Google
   locally). Check the first real Google and Apple sign-ins say google and
   apple. Probe: `supabase/tests/admin-sign-in-methods.sql`.
