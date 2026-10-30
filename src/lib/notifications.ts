@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from '@/lib/account';
 import { useRealtimeRows } from '@/lib/chat/realtime';
+import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { californiaToday, grantDay } from '@/lib/grants';
 import { getSupabase } from '@/lib/supabase';
@@ -50,7 +51,8 @@ export type NotificationKind =
   | 'profile_reminder'
   | 'blocks_weekly'
   | 'reaction'
-  | 'mention';
+  | 'mention'
+  | 'introduction';
 
 interface Row {
   id: string;
@@ -164,23 +166,27 @@ export function useUnseenNotifications(): {
       .catch(() => undefined);
   }, [memberId]);
 
+  // A burst of notifications or focus changes is one recount.
+  const soon = useMemo(() => coalesce(refresh, RECOUNT_MS), [refresh]);
+
   useEffect(() => {
     refresh();
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible') soon();
     };
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener(NOTIFICATIONS_CHANGED, refresh);
+    window.addEventListener(NOTIFICATIONS_CHANGED, soon);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener(NOTIFICATIONS_CHANGED, refresh);
+      window.removeEventListener(NOTIFICATIONS_CHANGED, soon);
+      soon.cancel();
     };
-  }, [refresh]);
+  }, [refresh, soon]);
 
   useRealtimeRows({
     table: 'notifications',
     filter: memberId ? `member_id=eq.${memberId}` : undefined,
-    onChange: refresh,
+    onChange: soon,
     enabled: memberId !== null,
   });
 
@@ -245,6 +251,12 @@ export function notificationSentence(n: AppNotification): string {
     // An @username in a post (20261029070000): once a post.
     case 'mention':
       return `${name} mentioned you in ${quoted(n.place)}`;
+    // By a trusted partner (20261029100000): detail 'asked', or 'opened' once
+    // both said yes, when place is the group.
+    case 'introduction':
+      return n.detail === 'opened'
+        ? `${name} said yes: ${n.place ?? 'your introduction'} is open`
+        : `${name} would like to introduce you to ${n.place ?? 'another member'}`;
     case 'group_add':
       return `${name} added you to ${n.place ?? 'a group'}`;
     case 'report':

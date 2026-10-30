@@ -833,3 +833,49 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
 .opening-icon {
   animation: opening-wait 0.01ms linear var(--opening-for) backwards;
 }
+
+/* A trusted partner's card prints alone (routes/partner/card-page.tsx): every
+   element that neither is nor holds the card is left out, and what holds it
+   stops scrolling and clipping. */
+@media print {
+  @page {
+    size: letter;
+    margin: 0.5in;
+  }
+  body:has([data-print-card])
+    *:not([data-print-card], [data-print-card] *, :has([data-print-card])) {
+    display: none !important;
+  }
+  body:has([data-print-card]) :has([data-print-card]) {
+    display: block !important;
+    position: static !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #ffffff !important;
+  }
+  [data-print-card] {
+    display: grid !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  [data-print-card="half-letter"] > * {
+    width: 5.5in;
+    max-width: none;
+    margin: 0;
+  }
+  /* Eight to a page, with a faint line to cut along. */
+  [data-print-card="business"] {
+    grid-template-columns: repeat(2, 3.5in);
+  }
+  [data-print-card="business"] > * {
+    width: 3.5in;
+    max-width: none;
+    margin: 0;
+    outline: 0.5pt dashed #9a9a9a;
+  }
+}

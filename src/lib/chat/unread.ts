@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAccount } from '@/lib/account';
+import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -89,23 +90,20 @@ export function useUnreadThreads(): UnreadState {
     }
   }, [signedIn]);
 
+  // Every message anywhere asks again; a burst is one recount.
+  const again = useMemo(() => coalesce(() => void load(), RECOUNT_MS), [load]);
+
   useEffect(() => {
     void load();
 
-    const again = () => {
-      void load();
-    };
     listeners.add(again);
     window.addEventListener('focus', again);
     return () => {
       listeners.delete(again);
       window.removeEventListener('focus', again);
+      again.cancel();
     };
-  }, [load]);
+  }, [load, again]);
 
-  const reload = useCallback(() => {
-    void load();
-  }, [load]);
-
-  return { count, reload };
+  return { count, reload: again };
 }

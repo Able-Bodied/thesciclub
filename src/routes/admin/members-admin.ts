@@ -1,3 +1,4 @@
+import { forgetPartnerTitles } from '@/lib/club-partners';
 import { describeError } from '@/lib/describe-error';
 import { addedButNotSent, SEND_FAILED, sendInvite } from '@/lib/send-invite';
 import { getSupabase } from '@/lib/supabase';
@@ -360,6 +361,29 @@ export async function setMemberType(
   });
   return error
     ? { ok: false, error: describeError(error, 'Their role was not changed.') }
+    : { ok: true };
+}
+
+/** Make them a trusted partner, or change the title beside their name (20261029100000). */
+export async function setPartner(
+  target: string,
+  title: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_set_partner', {
+    p_member: target,
+    p_title: title,
+  });
+  forgetPartnerTitles();
+  return error
+    ? { ok: false, error: describeError(error, 'They were not made a trusted partner.') }
+    : { ok: true };
+}
+
+export async function removePartner(target: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await getSupabase().rpc('admin_remove_partner', { p_member: target });
+  forgetPartnerTitles();
+  return error
+    ? { ok: false, error: describeError(error, 'They are still a trusted partner.') }
     : { ok: true };
 }
 

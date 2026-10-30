@@ -71,6 +71,20 @@ describe('what a notification says', () => {
     );
   });
 
+  // 20261029100000: a trusted partner's introduction, and both saying yes.
+  it('says who would introduce the member to whom, and when it opened', () => {
+    expect(
+      notificationSentence(
+        n({ kind: 'introduction', actorName: 'Phoebe', place: 'Maya Local', detail: 'asked' }),
+      ),
+    ).toBe('Phoebe would like to introduce you to Maya Local');
+    expect(
+      notificationSentence(
+        n({ kind: 'introduction', actorName: 'Sam', place: 'Maya & Sam', detail: 'opened' }),
+      ),
+    ).toBe('Sam said yes: Maya & Sam is open');
+  });
+
   it('says "A member" for a name that is missing, rather than nothing', () => {
     expect(notificationSentence(n({ actorName: null }))).toBe('Message from A member');
   });

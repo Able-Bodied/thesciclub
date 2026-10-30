@@ -167,7 +167,17 @@ describe('claiming the held code', () => {
 
 describe("an administrator's codes", () => {
   it('lists them', async () => {
-    db.rows = [row, { ...row, id: 'q2', event_name: null, turned_off_at: '2026-10-15T00:00:00Z' }];
+    db.rows = [
+      row,
+      {
+        ...row,
+        id: 'q2',
+        event_name: null,
+        turned_off_at: '2026-10-15T00:00:00Z',
+        // A trusted partner's own (20261029100000).
+        made_as_partner: true,
+      },
+    ];
     expect(await fetchMyQrCodes()).toEqual({
       ok: true,
       codes: [
@@ -178,6 +188,7 @@ describe("an administrator's codes", () => {
           contactEmail: 'alfred@example.com',
           createdAt: '2026-10-14T17:00:00Z',
           turnedOffAt: null,
+          madeAsPartner: false,
         },
         {
           id: 'q2',
@@ -186,6 +197,7 @@ describe("an administrator's codes", () => {
           contactEmail: 'alfred@example.com',
           createdAt: '2026-10-14T17:00:00Z',
           turnedOffAt: '2026-10-15T00:00:00Z',
+          madeAsPartner: true,
         },
       ],
     });

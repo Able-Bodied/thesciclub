@@ -32,6 +32,12 @@ export default function PrivacyPage() {
             <b>Changed:</b> every event has a page anyone with its link can open, whoever in the
             club it is for, so members can invite people to it.
           </li>
+          <li>
+            <b>Added:</b> trusted partners, professionals who work with people with spinal cord
+            injuries, shown with their title. They can introduce two members to each other, and see
+            the people they invited or introduced (see Who can see what). Joining, you can say you
+            are such a professional; that alone makes nobody a partner.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 28, 2026">
@@ -144,8 +150,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>About your injury or condition:</b> which describes you best (or that you are a
-            relative or spouse), its level, whether it is complete, when it began and how, as far as
-            you choose to say. This is health information.
+            relative or spouse, or a professional who works with people with spinal cord injuries),
+            its level, whether it is complete, when it began and how, as far as you choose to say.
+            This is health information.
           </li>
           <li>
             <b>What you choose to answer</b> in the profile questions, such as your languages,
@@ -368,6 +375,18 @@ export default function PrivacyPage() {
             see the same profile inside the app as anybody else, to help match members with peers
             and mentors. They see your email address and phone number only on the guest list of an
             event they manage, and only if you chose Going (see Event hosts, below).
+          </li>
+          <li>
+            <b>Trusted partners</b> are professionals, such as a hospital’s peer support lead or a
+            physical therapist, whom an administrator chose. Their title is shown beside their name.
+            They see the same profiles as anybody. For the people they invited or introduced, they
+            also see whether each joined, finished their profile and was introduced to a mentor, and
+            how many of them posted in a room or chose Going for an event, as a count. They cannot
+            read conversations they are not in. Introduced by one, you are asked first, and so is
+            the other member; if either says no, the one who said yes is not told. When both say
+            yes, a group conversation of the three of you opens, with the partner’s note as its
+            first message. Partners see no email address or phone number, except an address they
+            sent an invite to themselves.
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it. If

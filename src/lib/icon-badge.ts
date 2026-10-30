@@ -1,6 +1,7 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useAccount } from '@/lib/account';
 import { useRealtimeRows } from '@/lib/chat/realtime';
+import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
 import type { Failure } from '@/lib/describe-error';
 import { NOTIFICATIONS_CHANGED } from '@/lib/notifications';
 import { showOnAppIcon } from '@/lib/push/notifications';
@@ -32,23 +33,27 @@ export function useIconBadge(): void {
       .catch(() => undefined);
   }, [memberId]);
 
+  // A burst of notifications or focus changes is one recount.
+  const soon = useMemo(() => coalesce(refresh, RECOUNT_MS), [refresh]);
+
   useEffect(() => {
     refresh();
     const onVisible = () => {
-      if (document.visibilityState === 'visible') refresh();
+      if (document.visibilityState === 'visible') soon();
     };
     document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener(NOTIFICATIONS_CHANGED, refresh);
+    window.addEventListener(NOTIFICATIONS_CHANGED, soon);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener(NOTIFICATIONS_CHANGED, refresh);
+      window.removeEventListener(NOTIFICATIONS_CHANGED, soon);
+      soon.cancel();
     };
-  }, [refresh]);
+  }, [refresh, soon]);
 
   useRealtimeRows({
     table: 'notifications',
     filter: memberId ? `member_id=eq.${memberId}` : undefined,
-    onChange: refresh,
+    onChange: soon,
     enabled: memberId !== null,
   });
 }

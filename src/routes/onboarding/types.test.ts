@@ -103,6 +103,7 @@ describe('canAdvance', () => {
 
   it('takes a relative with nothing more', () => {
     expect(canAdvance('injury', data({ injuryType: 'family' }))).toBe(true);
+    expect(canAdvance('injury', data({ injuryType: 'professional' }))).toBe(true);
   });
 
   it('takes a condition by its name, with or without a level', () => {
