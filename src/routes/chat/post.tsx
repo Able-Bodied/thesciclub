@@ -110,6 +110,7 @@ export function Post({
   replies = 0,
   flash = false,
   hideBody = false,
+  opening = false,
   children,
 }: {
   post: ChatPost;
@@ -181,6 +182,11 @@ export function Post({
    * nothing, and no Edit, which would edit a copy of the title.
    */
   hideBody?: boolean;
+  /**
+   * The topic's own first post: drawn under the title as part of the topic,
+   * not as a card that reads like an answer. The header names who started it.
+   */
+  opening?: boolean;
   /** The replies, as `<Post nested>` elements. */
   children?: ReactNode;
 }) {
@@ -277,7 +283,7 @@ export function Post({
       // notification starts on the post it was about. The flash marks it.
       tabIndex={-1}
       className={cn(
-        hideBody
+        hideBody || opening
           ? 'mb-2.5 border-line border-b pb-2.5'
           : nested
             ? depth <= 4
@@ -288,8 +294,8 @@ export function Post({
         flash && 'message-flash',
       )}
     >
-      {hideBody ? (
-        <h2 className="sr-only">The question</h2>
+      {hideBody || opening ? (
+        <h2 className="sr-only">{hideBody ? 'The question' : 'The topic'}</h2>
       ) : (
         <div className="flex items-center gap-2.5">
           <AvatarLink memberId={author?.id} hasProfile={author?.hasProfile}>

@@ -602,9 +602,10 @@ describe('a topic', () => {
       post({ id: '4' }),
     ];
     renderTopic();
+    // The opening post is the topic's own and unnumbered (2026-10-29); the
+    // one answer left is 1/1.
     expect(screen.getAllByRole('article')).toHaveLength(2);
-    expect(screen.getByText('1/2')).toBeInTheDocument();
-    expect(screen.getByText('2/2')).toBeInTheDocument();
+    expect(screen.getByText('1/1')).toBeInTheDocument();
     expect(screen.queryByText(/Removed by/)).toBeNull();
   });
 
@@ -648,7 +649,8 @@ describe('a topic', () => {
   });
 
   it('names a member who has left the club without linking to them', () => {
-    db.posts = [post({ id: '1', authorId: null })];
+    // An answer: the opening post is drawn under the header, which names its starter.
+    db.posts = [post({ id: '1' }), post({ id: '2', authorId: null })];
     renderTopic();
     const article = screen.getByText('Deleted member').closest('article');
     if (!article) throw new Error('the post is not drawn as an article');
@@ -758,6 +760,18 @@ describe('a topic', () => {
       expect(db.removed).toEqual(['1']);
     });
     expect(db.deleted).toEqual([]);
+  });
+
+  // The owner, 2026-10-29: details added to a topic read as a reply under it.
+  it('draws the opening post under the title, unnumbered and without a name of its own', () => {
+    db.posts = [post({ id: '1', body: 'Which cushion do you use?' })];
+    renderTopic();
+    const article = screen.getByText('Which cushion do you use?').closest('article');
+    if (!article) throw new Error('no article');
+    expect(within(article).getByRole('heading', { name: 'The topic' })).toBeInTheDocument();
+    expect(within(article).queryByText(/^\d+\/\d+$/)).toBeNull();
+    expect(within(article).queryByRole('link', { name: 'Nicole' })).toBeNull();
+    expect(screen.getByText('No answers yet. Yours can be the first.')).toBeInTheDocument();
   });
 
   it('offers Remove on the viewer’s own post and on nobody else’s', () => {
@@ -946,14 +960,14 @@ describe('a topic', () => {
       renderTopic();
       const articles = screen.getAllByRole('article');
       // Three articles: the question with its reply inside it, and the answer.
+      // The question is the topic's own post, unnumbered; the answer is 1/1.
       expect(articles).toHaveLength(3);
       const question = articles[0];
       if (!question) throw new Error('no question');
-      expect(within(question).getByText('1/2')).toBeInTheDocument();
+      expect(within(question).queryByText(/^\d+\/\d+$/)).toBeNull();
       expect(within(question).getByRole('article')).toBeInTheDocument();
-      expect(screen.getByText('2/2')).toBeInTheDocument();
-      expect(screen.queryByText('3/3')).toBeNull();
-      expect(screen.queryByText(/\/3$/)).toBeNull();
+      expect(screen.getByText('1/1')).toBeInTheDocument();
+      expect(screen.queryByText(/\/2$/)).toBeNull();
     });
 
     it('offers Reply on every standing post, named for its author', () => {

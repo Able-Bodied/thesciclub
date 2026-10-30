@@ -491,16 +491,21 @@ export default function TopicPage() {
   // so it is drawn as the question's row of actions rather than as post 1,
   // and the answers are counted from 1.
   const opening = threads[0]?.post;
-  const questionOnly = opening?.attachments.length === 0 && opening.body.trim() === topicTitle;
-  const skip = questionOnly ? 1 : 0;
+  // The opening post is the topic's own, drawn with it; answers count from 1.
+  // Not once it is removed: then the first thread is an answer.
+  const openingStands = opening?.id === openingId;
+  const questionOnly =
+    openingStands && opening.attachments.length === 0 && opening.body.trim() === topicTitle;
+  const skip = openingStands ? 1 : 0;
 
   function renderThread(thread: PostThread, depth: number, index?: number): ReactNode {
-    const onlyTitle = questionOnly && depth === 0 && index === 0;
+    const first = openingStands && depth === 0 && index === 0;
+    const onlyTitle = questionOnly && first;
     return (
       <Post
         key={thread.post.id}
         {...postProps(thread.post)}
-        {...(index === undefined || onlyTitle
+        {...(index === undefined || first
           ? {}
           : { number: index + 1 - skip, total: threads.length - skip })}
         nested={depth > 0}
@@ -508,6 +513,7 @@ export default function TopicPage() {
         replies={replyCount(thread)}
         flash={flashId === thread.post.id}
         hideBody={onlyTitle}
+        opening={first}
       >
         {thread.replies.map((reply) => renderThread(reply, depth + 1))}
       </Post>
@@ -664,7 +670,7 @@ export default function TopicPage() {
           {threads.map((thread, index) => renderThread(thread, 0, index))}
           {/* The question's row alone reads as unfinished; say what it is
               waiting for. */}
-          {questionOnly && threads.length === 1 && (threads[0]?.replies.length ?? 0) === 0 ? (
+          {openingStands && threads.length === 1 && (threads[0]?.replies.length ?? 0) === 0 ? (
             <p className="py-6 text-center text-[0.875rem] text-grey">
               No answers yet. Yours can be the first.
             </p>
