@@ -137,7 +137,13 @@ function HeldCard({ invite, onDecided }: { invite: HeldInvite; onDecided: () => 
         </label>
       ) : (
         <p className="mt-2 text-[0.8125rem] text-ink2">
-          Hosted by <b className="text-ink">{invite.organizationName}</b>
+          Hosted by{' '}
+          <Link
+            to={`/events/organizations/${invite.organizationId}`}
+            className="font-bold text-ink underline-offset-2 hover:underline"
+          >
+            {invite.organizationName}
+          </Link>
         </p>
       )}
 

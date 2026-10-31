@@ -8,19 +8,17 @@ import type { MapData } from '@/lib/map-data';
 import type { NearHome } from '@/lib/near-home';
 import type { ClubMapProps } from '@/routes/map/club-map';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
-import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
+import type { ClubEvent, Organization, RsvpStatus } from '@/types/domain';
 
 const state = vi.hoisted(() => ({
   events: [] as ClubEvent[],
   rsvps: new Map<string, RsvpStatus>(),
-  attendees: new Map<string, EventAttendee[]>(),
   organizations: [] as Organization[],
   loading: false,
   error: null as string | null,
   setRsvp: vi.fn(),
   reload: vi.fn(),
   reloadEvents: vi.fn(),
-  reloadAttendees: vi.fn(),
   near: { status: 'any', ids: null as ReadonlySet<string> | null },
 }));
 
@@ -40,12 +38,6 @@ vi.mock('@/lib/events', async (importOriginal) => ({
     loading: state.loading,
     error: state.error,
     reload: state.reloadEvents,
-  }),
-  useAttendeesByEvent: () => ({
-    byEvent: state.attendees,
-    loading: false,
-    error: null,
-    reload: state.reloadAttendees,
   }),
   useViewerEvents: () => ({
     rsvps: state.rsvps,
@@ -171,14 +163,12 @@ beforeEach(() => {
     makeEvent({ id: 'zoom', title: 'Driving Q&A', startTime: soon(3), format: 'online', tags: [] }),
   ];
   state.rsvps = new Map();
-  state.attendees = new Map();
   state.organizations = [];
   state.loading = false;
   state.error = null;
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
   state.reloadEvents = vi.fn();
-  state.reloadAttendees = vi.fn();
   state.near = { status: 'any', ids: null };
   map.reads = 0;
   map.retry = vi.fn();
@@ -314,7 +304,6 @@ describe('EventsPage', () => {
       await waitFor(() => {
         expect(state.reload).toHaveBeenCalled();
         expect(state.reloadEvents).toHaveBeenCalled();
-        expect(state.reloadAttendees).toHaveBeenCalled();
       });
     });
 

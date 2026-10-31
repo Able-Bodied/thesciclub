@@ -52,13 +52,13 @@ const EVENT_COLUMNS =
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
- * description (twice, words and HTML) and the import's bookkeeping, which
- * only the event's own page and its form use. Those read one event by id and
- * still get every column. Most of a list's bytes were descriptions
- * (2026-10-14).
+ * description's HTML and the import's bookkeeping, which only the event's own
+ * page and its form use. Those read one event by id and still get every
+ * column. Most of a list's bytes were descriptions (2026-10-14). The words
+ * came back for the first lines on a card (the owner, 2026-10-31).
  */
 const LIST_COLUMNS =
-  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
+  'id, title, description, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
 
 /**
  * Each event's tags and tallies, embedded in the same read. They were two
@@ -939,36 +939,18 @@ export interface AttendeesByEventState {
 }
 
 /**
- * Every attendee the viewer is allowed to see, for the whole list at once.
- *
- * The card shows two overlapping avatars and "Nicole and Jake are going", so
- * the list needs attendees for every event on it, not one event at a time —
- * a request per card would be a request per card.
- *
- * This is small in practice: `event_attendees` only has rows for members who
- * have actually RSVPed, and the view already refuses everything unless the
- * viewer is an active member, so a signed-out or suspended caller gets an empty
- * map rather than an error to render.
+ * Who is going, for one event: its own page, or a card's count once it is
+ * opened. A card otherwise says only how many, from event_rsvp_counts (the
+ * owner, 2026-10-31): reading the faces for a whole list grew with every RSVP.
+ * The view refuses everything unless the viewer is an
+ * active member, so a signed-out or suspended caller gets an empty map rather
+ * than an error to render.
  */
 const ATTENDEE_COLUMNS =
   'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, injury_type, condition_name, type';
 
-/**
- * `eventIds` narrows the read to the events on the screen. Without it this
- * read every RSVP ever made (2026-10-14), which only grows: the import never
- * removes a past event. Ids are sent a hundred at a time, as the tag and
- * count reads are, to keep each URL bounded. `null` waits: the events are not
- * known yet.
- */
-export function useAttendeesByEvent(
-  eventIds?: readonly string[] | null,
-  /**
-   * Instead of ids: every event starting in this window, filtered through the
-   * view's link to `events`, so the read need not wait for the events to know
-   * their ids (Home reads both at once).
-   */
-  window?: { from?: string; to?: string },
-): AttendeesByEventState {
+/** Ids are sent a hundred at a time, to keep each URL bounded. */
+export function useAttendeesByEvent(eventIds: readonly string[]): AttendeesByEventState {
   const [state, setState] = useState<Omit<AttendeesByEventState, 'reload'>>({
     byEvent: new Map(),
     loading: true,
@@ -982,23 +964,14 @@ export function useAttendeesByEvent(
   // The events whose faces are drawn; read again, they stay up meanwhile.
   const shown = useRef<string | null>(null);
   // A stable key, so a new array holding the same ids does not read again.
-  const key = window
-    ? `window|${window.from ?? ''}|${window.to ?? ''}`
-    : eventIds === undefined
-      ? '*'
-      : eventIds === null
-        ? null
-        : [...eventIds].sort().join(',');
+  const key = [...eventIds].sort().join(',');
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
-    if (key === null) return;
     const controller = new AbortController();
     const { signal } = controller;
     const aborted = () => signal.aborted;
-    const [kind, start, end] = key.split('|');
-    const inWindow = kind === 'window' ? { start, end } : null;
-    const ids = inWindow || key === '*' ? null : key === '' ? [] : key.split(',');
+    const ids = key === '' ? [] : key.split(',');
     // Another set of events: say so, so a screen waiting on the faces waits.
     const again = shown.current === key;
     if (!again) setState((current) => (current.loading ? current : { ...current, loading: true }));
@@ -1006,30 +979,15 @@ export function useAttendeesByEvent(
     async function load() {
       try {
         const supabase = getSupabase();
-        const read = (batch: string[] | null) => {
-          if (inWindow) {
-            // Paged, with a full order: a busy month can pass 1,000 RSVPs.
-            return readPages<AttendeeRow & { event_id: string }>((first, last) => {
-              let query = supabase
-                .from('event_attendees')
-                .select(`${ATTENDEE_COLUMNS}, events!event_rsvps_event_id_fkey!inner(start_time)`);
-              if (inWindow.start) query = query.gte('events.start_time', inWindow.start);
-              if (inWindow.end) query = query.lte('events.start_time', inWindow.end);
-              return query
-                .order('display_name')
-                .order('member_id')
-                .order('event_id')
-                .range(first, last)
-                .abortSignal(signal);
-            });
-          }
-          let query = supabase.from('event_attendees').select(ATTENDEE_COLUMNS);
-          if (batch) query = query.in('event_id', batch);
-          return query.order('display_name').abortSignal(signal);
-        };
-        const batches: (string[] | null)[] = [];
-        if (ids === null) batches.push(null);
-        else for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
+        const read = (batch: string[]) =>
+          supabase
+            .from('event_attendees')
+            .select(ATTENDEE_COLUMNS)
+            .in('event_id', batch)
+            .order('display_name')
+            .abortSignal(signal);
+        const batches: string[][] = [];
+        for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
         const results = await Promise.all(batches.map(read));
         const error = results.find((result) => result.error)?.error ?? null;
         const data = results.flatMap((result) => result.data ?? []);

@@ -18,7 +18,7 @@ import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
+import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { CheckInCard } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
@@ -37,7 +37,7 @@ import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import { canShowOnMap, mapLinkFor } from '@/routes/map/show-on-map';
-import { type EventAttendee, injuryLabel, type RsvpStatus } from '@/types/domain';
+import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
 /**
  * One event, matching `evDetail()` in the mock: a navy hero carrying the when,
@@ -477,10 +477,6 @@ export function siteName(href: string): string {
  *
  * Renders nothing at all when nobody has said yes — an empty "Going" heading
  * reads as a failure to load rather than as an accurate zero.
- *
- * When the tally is higher than the number of people named, it says so instead
- * of quietly showing fewer. The difference is members who opted out of being
- * browsed, and leaving it unexplained makes the count look broken.
  */
 function AttendeeSection({
   title,
@@ -494,41 +490,13 @@ function AttendeeSection({
   onOpen: (memberId: string) => void;
 }) {
   if (total === 0) return null;
-  const unnamed = total - attendees.length;
 
   return (
     <>
       <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title} · {total}
       </h2>
-      {attendees.map((attendee) => (
-        <button
-          key={attendee.memberId}
-          type="button"
-          onClick={() => {
-            onOpen(attendee.memberId);
-          }}
-          className="flex w-full items-center gap-3 border-line border-b py-[13px] text-left last:border-b-0"
-        >
-          <AttendeeAvatar attendee={attendee} />
-          <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
-              {attendee.displayName}
-            </span>
-            <span className="block text-[0.78125rem] text-grey">
-              {[injuryLabel(attendee), attendee.city].filter(Boolean).join(' · ')}
-            </span>
-          </span>
-          <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
-        </button>
-      ))}
-      {unnamed > 0 ? (
-        <p className="py-2.5 text-[0.78125rem] text-grey">
-          {attendees.length === 0
-            ? `${unnamed} member${unnamed === 1 ? '' : 's'}, not shown by choice`
-            : `and ${unnamed} more who ${unnamed === 1 ? 'is' : 'are'} not shown by choice`}
-        </p>
-      ) : null}
+      <AttendeeList attendees={attendees} total={total} onOpen={onOpen} />
     </>
   );
 }

@@ -1,16 +1,16 @@
 import { ExternalLink } from 'lucide-react';
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import { AttendeeRow } from '@/routes/events/attendee-avatar';
 import { EventCover } from '@/routes/events/event-cover';
 import { isOnline } from '@/routes/events/filters';
 import { dateTileParts, shortWeekday, timeRange } from '@/routes/events/format';
+import { GoingCount } from '@/routes/events/going-count';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
 import { descriptionPreview, safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
-import type { ClubEvent, EventAttendee, Organization, RsvpStatus } from '@/types/domain';
+import type { ClubEvent, Organization, RsvpStatus } from '@/types/domain';
 
 /**
  * One event in the list, matching `.ecard` in docs/index.html.
@@ -47,13 +47,13 @@ export interface EventCardProps {
   event: ClubEvent;
   /** The viewer's own RSVP, or null if they have not said. */
   status: RsvpStatus | null;
-  /** Members going, as this viewer may see them — fewer than goingCount if some opted out. */
-  attendees: EventAttendee[];
   /** The hosting club organization, when the event links to one. */
   organization: Organization | null;
   onOpen: () => void;
-  /** A click on the host's logo, when there is an organization to open. */
+  /** A click on the host's logo or name, when there is an organization to open. */
   onOpenOrganization?: (id: string) => void;
+  /** A click on somebody in the list that opens from the count. */
+  onOpenMember?: (id: string) => void;
   onRsvp: (next: RsvpStatus | null) => void;
   /**
    * Drop the bottom margin, because something belongs directly under this card.
@@ -100,10 +100,10 @@ const RSVP_CHOSEN = 'border-[1.4px] border-emphasis bg-tint text-emphasis hover:
 export function EventCard({
   event,
   status,
-  attendees,
   organization,
   onOpen,
   onOpenOrganization,
+  onOpenMember,
   onRsvp,
   past = false,
   attached = false,
@@ -147,16 +147,6 @@ export function EventCard({
     () => descriptionPreview(event.descriptionHtml, event.description),
     [event.descriptionHtml, event.description],
   );
-
-  const goingOnly = attendees.filter((a) => a.status === 'going');
-
-  // A count of zero is not drawn: "2 going", not "2 going · 0 interested".
-  const rsvpLine = [
-    event.goingCount ? `${event.goingCount} going` : null,
-    event.interestedCount ? `${event.interestedCount} interested` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   // A past event is a line, not a card. Everything the full card carries is
   // there to answer "should I go to this" — the tags, the place, who else is
@@ -290,7 +280,7 @@ export function EventCard({
 
           {metaLine ? (
             <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
-              {metaLine}
+              {hostBadge(<span className="underline-offset-2 hover:underline">{metaLine}</span>)}
             </span>
           ) : null}
           {whenLine ? (
@@ -310,15 +300,17 @@ export function EventCard({
               {preview}
             </span>
           ) : null}
-
-          {rsvpLine ? (
-            <span className="mt-2 block font-bold text-[0.8125rem] text-emphasis">{rsvpLine}</span>
-          ) : null}
-
-          <AttendeeRow attendees={goingOnly} />
         </span>
         <EventCover path={event.photoPath} alt={event.photoAlt} size="card" className="-mr-1" />
       </button>
+
+      {/* Beside the card's button, not in it: it is a button of its own. */}
+      <GoingCount
+        eventId={event.id}
+        going={event.goingCount}
+        interested={event.interestedCount}
+        onOpenMember={onOpenMember}
+      />
 
       {/* Only as wide as their words, and quiet until chosen (the owner,
           2026-10-27): the card is for reading what the event is. Still a

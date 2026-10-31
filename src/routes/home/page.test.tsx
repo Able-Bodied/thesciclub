@@ -41,7 +41,6 @@ const db = vi.hoisted(() => ({
   setRsvp: vi.fn(),
   reload: vi.fn(),
   reloadEvents: vi.fn(),
-  reloadAttendees: vi.fn(),
   likes: new Map<string, string[]>(),
   likesAskedFor: [] as string[][],
   liked: [] as string[],
@@ -135,12 +134,6 @@ vi.mock('@/lib/events', async (importOriginal) => ({
     loading: db.eventsLoading,
     error: db.eventsError,
     reload: db.reloadEvents,
-  }),
-  useAttendeesByEvent: () => ({
-    byEvent: new Map(),
-    loading: false,
-    error: null,
-    reload: db.reloadAttendees,
   }),
   useViewerEvents: () => ({ rsvps: db.rsvps, loading: false, error: null, reload: db.reload }),
   setRsvp: (...args: unknown[]): Promise<{ ok: boolean; error?: string }> =>
@@ -246,7 +239,6 @@ beforeEach(() => {
   db.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   db.reload = vi.fn();
   db.reloadEvents = vi.fn();
-  db.reloadAttendees = vi.fn();
   db.likes = new Map();
   db.likesAskedFor = [];
   db.liked = [];
@@ -500,7 +492,6 @@ describe('Home', () => {
     await waitFor(() => {
       expect(db.reload).toHaveBeenCalled();
       expect(db.reloadEvents).toHaveBeenCalled();
-      expect(db.reloadAttendees).toHaveBeenCalled();
     });
   });
 

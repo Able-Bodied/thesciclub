@@ -12,7 +12,7 @@ import { useChatRooms } from '@/lib/chat/rooms';
 import { useMyThreads } from '@/lib/chat/threads';
 import type { ChatPost } from '@/lib/chat/types';
 import { usePostViews } from '@/lib/chat/views';
-import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
 import { useBrowseMembers } from '@/lib/members';
@@ -157,12 +157,6 @@ export default function HomePage() {
     () => pickEvents(eventsRead.events, undefined, near.ids),
     [eventsRead.events, near.ids],
   );
-  // The same window, read beside the events rather than after them.
-  const {
-    byEvent: attendeesByEvent,
-    loading: attendeesLoading,
-    reload: reloadAttendees,
-  } = useAttendeesByEvent(undefined, eventWindow);
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const membersRead = useBrowseMembers();
@@ -206,9 +200,7 @@ export default function HomePage() {
 
   const loading: Record<Source, boolean> = {
     topics: topicRead.loading || rooms.loading,
-    // With the faces: they used to arrive after the cards and make each one
-    // taller under the reader.
-    events: eventsRead.loading || attendeesLoading || near.status === 'loading',
+    events: eventsRead.loading || near.status === 'loading',
     // A failed conversations read is not waited on and not reported: the cost
     // is suggesting somebody the viewer already talks to, which is smaller
     // than losing the suggestions.
@@ -261,14 +253,13 @@ export default function HomePage() {
         if (result.ok) {
           viewer.reload();
           eventsRead.reload?.();
-          reloadAttendees();
           rsvpSheetFor(event, next, (again) => {
             onRsvp(event, again);
           });
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, eventsRead.reload, reloadAttendees, rsvpSheetFor],
+    [memberId, viewer, eventsRead.reload, rsvpSheetFor],
   );
 
   /** A standing opener keeps its Like visible while the real count loads. */
@@ -357,7 +348,6 @@ export default function HomePage() {
           <EventCard
             event={item.event}
             status={viewer.rsvps.get(item.event.id) ?? null}
-            attendees={attendeesByEvent.get(item.event.id) ?? []}
             organization={
               item.event.organizationId
                 ? (organizationsById.get(item.event.organizationId) ?? null)
@@ -368,6 +358,9 @@ export default function HomePage() {
             }}
             onOpenOrganization={(id) => {
               void navigate(`/events/organizations/${id}`, { state: linkState });
+            }}
+            onOpenMember={(id) => {
+              void navigate(`/peers/${id}`, { state: linkState });
             }}
             onRsvp={(next) => {
               onRsvp(item.event, next);

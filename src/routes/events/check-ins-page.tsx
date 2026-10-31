@@ -72,19 +72,18 @@ export default function CheckInsPage() {
         {people && people.length > 0 ? (
           <ul className="rounded-[14px] border border-line bg-paper px-3.5">
             {people.map((person) => (
-              <li
-                key={person.id}
-                className="flex items-center gap-2.5 border-line border-b py-2.5 last:border-b-0"
-              >
-                <MemberAvatar
-                  id={person.id}
-                  displayName={person.displayName}
-                  photoPath={person.photoPath}
-                  photoAlt={person.photoAlt}
-                />
-                <span className="min-w-0 font-bold text-[0.9375rem] text-ink">
-                  {person.displayName}
-                </span>
+              <li key={person.id} className="border-line border-b last:border-b-0">
+                <Link to={`/peers/${person.id}`} className="flex items-center gap-2.5 py-2.5">
+                  <MemberAvatar
+                    id={person.id}
+                    displayName={person.displayName}
+                    photoPath={person.photoPath}
+                    photoAlt={person.photoAlt}
+                  />
+                  <span className="min-w-0 font-bold text-[0.9375rem] text-ink">
+                    {person.displayName}
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>

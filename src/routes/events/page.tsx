@@ -5,7 +5,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
-import { setRsvp, useAttendeesByEvent, useEvents, useViewerEvents } from '@/lib/events';
+import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { useHome } from '@/lib/home-state';
 import { useNearHome } from '@/lib/near-home';
 import { useOrganizationFollows } from '@/lib/organization-follows';
@@ -189,17 +189,6 @@ export default function EventsPage() {
     ...(dateRange ?? {}),
     ...(beenTo === undefined ? {} : { ids: beenTo }),
   });
-  // Who is going: for the window's events, read beside them; for Been to,
-  // once its few events are known. Never every RSVP ever made.
-  const eventIds = useMemo(() => events.map((event) => event.id), [events]);
-  const {
-    byEvent: attendeesByEvent,
-    loading: attendeesLoading,
-    reload: reloadAttendees,
-  } = useAttendeesByEvent(
-    beenTo === undefined ? undefined : loading ? null : eventIds,
-    beenTo === undefined ? (dateRange ?? {}) : undefined,
-  );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);
 
@@ -280,14 +269,13 @@ export default function EventsPage() {
         if (result.ok) {
           viewer.reload();
           reload?.();
-          reloadAttendees();
           rsvpSheetFor(event, next, (again) => {
             onRsvp(event, again);
           });
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, reload, reloadAttendees, rsvpSheetFor],
+    [memberId, viewer, reload, rsvpSheetFor],
   );
 
   // The RSVP choice lives in the URL (as the segment) but is one of the
@@ -313,7 +301,6 @@ export default function EventsPage() {
       event={event}
       past={isPastEvent(event)}
       status={viewer.rsvps.get(event.id) ?? null}
-      attendees={attendeesByEvent.get(event.id) ?? []}
       organization={
         event.organizationId ? (organizationsById.get(event.organizationId) ?? null) : null
       }
@@ -322,6 +309,9 @@ export default function EventsPage() {
       }}
       onOpenOrganization={(id) => {
         void navigate(`/events/organizations/${id}`, { state: { segment, view: 'map' } });
+      }}
+      onOpenMember={(id) => {
+        void navigate(`/peers/${id}`, { state: { segment, view: 'map' } });
       }}
       onRsvp={(next) => {
         onRsvp(event, next);
@@ -465,7 +455,7 @@ export default function EventsPage() {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
             />
-          ) : loading || attendeesLoading || (near.status === 'loading' && !rsvp) ? (
+          ) : loading || (near.status === 'loading' && !rsvp) ? (
             <LoadingCards label="Loading events…" count={4} height={120} />
           ) : error ? (
             <div className="px-6 py-10 text-center">
@@ -499,7 +489,6 @@ export default function EventsPage() {
                     mapHref={
                       !asLine && canShowOnMap(event) ? mapLinkFor(event.id, segment) : undefined
                     }
-                    attendees={attendeesByEvent.get(event.id) ?? []}
                     organization={
                       event.organizationId
                         ? (organizationsById.get(event.organizationId) ?? null)
@@ -510,6 +499,9 @@ export default function EventsPage() {
                     }}
                     onOpenOrganization={(id) => {
                       void navigate(`/events/organizations/${id}`, { state: { segment } });
+                    }}
+                    onOpenMember={(id) => {
+                      void navigate(`/peers/${id}`, { state: { segment } });
                     }}
                     onRsvp={(next) => {
                       onRsvp(event, next);
