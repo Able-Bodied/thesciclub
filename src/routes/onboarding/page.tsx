@@ -1,8 +1,7 @@
 import { Loader2 } from 'lucide-react';
-import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
-import { InstallNudge } from '@/components/install-nudge';
 import { signOut, useAccount } from '@/lib/account';
 import { APPLE_RETURN_PARAM, signInWithApple } from '@/lib/apple-sign-in';
 import {
@@ -775,19 +774,17 @@ export default function OnboardingPage() {
 
   if (step === 'welcome') {
     return (
-      <WithInstallNudge>
-        <WelcomeScreen
-          joiningOpen={joiningOpen}
-          registered={registered}
-          linked={!registered && destination !== '/home'}
-          onJoin={() => {
-            setStep('join');
-          }}
-          onSignIn={() => {
-            setStep('signin');
-          }}
-        />
-      </WithInstallNudge>
+      <WelcomeScreen
+        joiningOpen={joiningOpen}
+        registered={registered}
+        linked={!registered && destination !== '/home'}
+        onJoin={() => {
+          setStep('join');
+        }}
+        onSignIn={() => {
+          setStep('signin');
+        }}
+      />
     );
   }
 
@@ -897,7 +894,7 @@ export default function OnboardingPage() {
     !(step === 'forgot' && forgotSent) &&
     !(step === 'checking' && !error);
 
-  const frame = (
+  return (
     <StepFrame
       stepNumber={n}
       totalSteps={COUNTED_STEPS.length}
@@ -1111,23 +1108,5 @@ export default function OnboardingPage() {
         />
       ) : null}
     </StepFrame>
-  );
-  return DOORS.includes(step) ? <WithInstallNudge>{frame}</WithInstallNudge> : frame;
-}
-
-/**
- * The Home Screen nudge under the sign-in doors, on a phone's browser (the
- * owner, 2026-10-11). On an iPhone the Home Screen app keeps its own sign-in,
- * so adding it before signing in means signing in once, inside it. The door
- * screens are each a full-height <main>; here they share the height with the
- * nudge, which renders nothing on a computer, in the installed app, while
- * snoozed, or for its first few seconds.
- */
-function WithInstallNudge({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex h-dvh flex-col">
-      <div className="min-h-0 flex-1 [&>main]:h-full">{children}</div>
-      <InstallNudge />
-    </div>
   );
 }

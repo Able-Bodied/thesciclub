@@ -48,7 +48,7 @@ describe('the Home Screen nudge', () => {
     expect(screen.getByText(/notifications on your iPhone/)).toBeInTheDocument();
   });
 
-  it('shows Safari’s steps, and says the app signs in once more', async () => {
+  it('shows Safari’s steps, and says what to do if the app is signed out', async () => {
     browserIs(IPHONE_SAFARI);
     renderAfterWait();
     const user = userEvent.setup();

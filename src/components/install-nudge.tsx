@@ -20,8 +20,10 @@ import { isNative } from '@/lib/standalone';
  *
  * Why it matters here more than on most sites: on an iPhone the club can only
  * send notifications once it is on the Home Screen, and it opens full screen
- * and in one tap. iOS keeps the Home Screen app's sign-in separate from
- * Safari's, so it says so: one more sign-in, once.
+ * and in one tap. Only inside the club, after joining and the passkey offer
+ * (the owner, 2026-10-30): iOS keeps the Home Screen app's sign-in separate from
+ * Safari's, so added while signed in, the app opens signed in by the handoff
+ * (src/lib/home-screen-handoff.ts), and added before, it starts at the doors.
  *
  * A card above the tab bar rather than a box over the screen: it pushes the
  * page up instead of covering it, and it is closed with one press, which
@@ -236,8 +238,8 @@ export function InstallSheet({
         </ol>
         {ios ? (
           <p className="mt-4 text-[0.8125rem] text-grey leading-[1.5]">
-            The Home Screen app signs in separately from your browser, so sign in inside it. On an
-            iPhone, notifications only work from there.
+            The Home Screen app should open already signed in. If it doesn't, sign in inside it. On
+            an iPhone, notifications only work from there.
           </p>
         ) : null}
         <button
