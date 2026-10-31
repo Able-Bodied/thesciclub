@@ -77,6 +77,17 @@ describe('summaryLine', () => {
     const m = makeMember({ exactLevel: 'T4', completeness: 'Complete', age: null, city: null });
     expect(summaryLine(m)).toBe('T4 complete');
   });
+
+  it('puts the state after the city, and never on its own', () => {
+    const m = { exactLevel: 'T4', completeness: 'Complete', age: null } as const;
+    expect(summaryLine(makeMember({ ...m, city: 'Fresno', state: 'CA' }))).toBe(
+      'T4 complete · Fresno, CA',
+    );
+    expect(summaryLine(makeMember({ ...m, city: 'Fresno', state: '' }))).toBe(
+      'T4 complete · Fresno',
+    );
+    expect(summaryLine(makeMember({ ...m, city: null, state: 'CA' }))).toBe('T4 complete');
+  });
 });
 
 describe('initialsOf', () => {
@@ -114,7 +125,7 @@ describe('MemberCard', () => {
       />,
     );
     expect(screen.getByText('Nicole')).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 28 · Santa Clara')).toBeInTheDocument();
+    expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
   });
 
   it('shows the @username under the name, and nothing for a member who has none', () => {
@@ -252,7 +263,7 @@ describe('an administrator', () => {
       />,
     );
     expect(screen.getByText('Dana')).toBeInTheDocument();
-    expect(screen.getByText('T4 complete · 30 · Fresno')).toBeInTheDocument();
+    expect(screen.getByText('T4 complete · 30 · Fresno, CA')).toBeInTheDocument();
     expect(screen.queryByText('Official')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'The SCI Club' })).not.toBeInTheDocument();
   });

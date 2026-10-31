@@ -80,6 +80,8 @@ describe("a city's members on the map", () => {
       true,
     );
     expect(screen.getByRole('dialog', { name: '2 members in this area' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Member 1, C5–C8 · 30 · San Jose' })).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: 'Member 1, C5–C8 · 30 · San Jose, CA' }),
+    ).toBeVisible();
   });
 });

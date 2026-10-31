@@ -250,6 +250,15 @@ export function levelsForCondition(conditionName: string): ExactLevel[] {
   );
 }
 
+/** Where a member lives, "San Jose, CA", or null with no city (the owner, 2026-10-30). */
+export function cityAndState(member: {
+  city: string | null;
+  state?: string | null;
+}): string | null {
+  if (!member.city) return null;
+  return member.state ? `${member.city}, ${member.state}` : member.city;
+}
+
 /**
  * How somebody's disability reads in a line: "T6", "C5 central cord",
  * "Transverse myelitis", "High para", "Family member", "Professional". One function, so a

@@ -42,7 +42,7 @@ describe('a member worth meeting', () => {
       }),
     );
     expect(screen.getByText('Worth meeting')).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 34 · Oakland')).toBeInTheDocument();
+    expect(screen.getByText('C6 incomplete · 34 · Oakland, CA')).toBeInTheDocument();
     expect(screen.getByText('Occupational therapy')).toBeInTheDocument();
   });
 

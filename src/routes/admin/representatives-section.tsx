@@ -10,6 +10,7 @@ import {
 import { useOrganizations } from '@/lib/organizations';
 import { SmallButton } from '@/routes/admin/controls';
 import { type AdminMember, fetchMemberPage } from '@/routes/admin/members-admin';
+import { cityAndState } from '@/types/domain';
 
 /**
  * Who speaks for which organization (20261005010000), for an administrator.
@@ -172,7 +173,7 @@ export function RepresentativesSection() {
               {eligible.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.displayName}
-                  {m.city ? ` — ${m.city}` : ''}
+                  {m.city ? ` — ${cityAndState(m)}` : ''}
                 </option>
               ))}
             </select>

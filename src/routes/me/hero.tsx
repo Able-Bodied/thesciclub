@@ -4,7 +4,7 @@ import { useMyMentorOrganizations } from '@/lib/organization-mentors';
 import { usePhotoUrl } from '@/lib/photos';
 import { gradientFor, initialsOf } from '@/routes/peers/member-card';
 import { RolePill } from '@/routes/peers/role-pill';
-import { injuryLabel } from '@/types/domain';
+import { cityAndState, injuryLabel } from '@/types/domain';
 
 /**
  * The navy hero at the top of Me, from `mePage()` in the mock.
@@ -47,7 +47,7 @@ export function MeHero({ member }: { member: OwnMember }) {
   // Which organizations made them a mentor, with each one's logo (20261028000000).
   const mentorOf = useMyMentorOrganizations(member.id);
 
-  const summary = [injuryLabel(member), age, member.city].filter(Boolean).join(' · ');
+  const summary = [injuryLabel(member), age, cityAndState(member)].filter(Boolean).join(' · ');
 
   return (
     <div className="bg-plate px-4 pt-[18px] pb-[26px] text-white">

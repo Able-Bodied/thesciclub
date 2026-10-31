@@ -6,7 +6,7 @@ import { useAccount } from '@/lib/account';
 import { openDirect } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
 import { useBrowseMembers } from '@/lib/members';
-import { injuryLabel } from '@/types/domain';
+import { cityAndState, injuryLabel } from '@/types/domain';
 
 /**
  * Starting a conversation from Chat (the owner, 2026-10-10): until now the only
@@ -149,7 +149,11 @@ export default function NewMessagePage() {
                       <span className="block text-[0.75rem] text-grey">
                         {opening === member.id
                           ? 'Opening…'
-                          : [member.username ? `@${member.username}` : null, level, member.city]
+                          : [
+                              member.username ? `@${member.username}` : null,
+                              level,
+                              cityAndState(member),
+                            ]
                               .filter(Boolean)
                               .join(' · ')}
                       </span>

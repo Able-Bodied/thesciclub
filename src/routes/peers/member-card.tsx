@@ -5,7 +5,7 @@ import { usePhotoUrl } from '@/lib/photos';
 import { cn } from '@/lib/utils';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
-import { asksCompleteness, type BrowseMember, injuryLabel } from '@/types/domain';
+import { asksCompleteness, type BrowseMember, cityAndState, injuryLabel } from '@/types/domain';
 
 /**
  * The full-bleed browse card, matching `.pcard` in docs/index.html. The photo
@@ -58,7 +58,7 @@ export function summaryLine(member: BrowseMember): string {
     member.completeness === 'Do not know' || !asksCompleteness(member.injuryType)
       ? level
       : `${level} ${member.completeness.toLowerCase()}`;
-  return [levelPart, member.age, member.city].filter(Boolean).join(' · ');
+  return [levelPart, member.age, cityAndState(member)].filter(Boolean).join(' · ');
 }
 
 /**
