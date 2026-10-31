@@ -14,13 +14,14 @@ import { getSupabase } from '@/lib/supabase';
  * Only its org admins see how each joined, and review those who pressed Join.
  */
 
-export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in';
+export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in' | 'org_admin';
 
 export const JOINED_VIA_LABEL: Record<JoinedVia, string> = {
   join: 'Pressed Join',
   invite: 'Invited',
   code: 'QR code or link',
   check_in: 'Checked in',
+  org_admin: 'Org admin',
 };
 
 /** Why this member was declined, if they were. */
