@@ -19,6 +19,8 @@ const state = vi.hoisted(() => ({
   error: null as string | null,
   setRsvp: vi.fn(),
   reload: vi.fn(),
+  reloadEvents: vi.fn(),
+  reloadAttendees: vi.fn(),
   near: { status: 'any', ids: null as ReadonlySet<string> | null },
 }));
 
@@ -33,8 +35,18 @@ vi.mock('@/lib/home-state', () => ({
 
 vi.mock('@/lib/events', async (importOriginal) => ({
   rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
-  useEvents: () => ({ events: state.events, loading: state.loading, error: state.error }),
-  useAttendeesByEvent: () => ({ byEvent: state.attendees, loading: false, error: null }),
+  useEvents: () => ({
+    events: state.events,
+    loading: state.loading,
+    error: state.error,
+    reload: state.reloadEvents,
+  }),
+  useAttendeesByEvent: () => ({
+    byEvent: state.attendees,
+    loading: false,
+    error: null,
+    reload: state.reloadAttendees,
+  }),
   useViewerEvents: () => ({
     rsvps: state.rsvps,
     loading: false,
@@ -165,6 +177,8 @@ beforeEach(() => {
   state.error = null;
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
+  state.reloadEvents = vi.fn();
+  state.reloadAttendees = vi.fn();
   state.near = { status: 'any', ids: null };
   map.reads = 0;
   map.retry = vi.fn();
@@ -299,6 +313,8 @@ describe('EventsPage', () => {
       await userEvent.click(firstGoingButton());
       await waitFor(() => {
         expect(state.reload).toHaveBeenCalled();
+        expect(state.reloadEvents).toHaveBeenCalled();
+        expect(state.reloadAttendees).toHaveBeenCalled();
       });
     });
 

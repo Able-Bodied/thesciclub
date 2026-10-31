@@ -185,14 +185,18 @@ export default function EventsPage() {
             }),
     [segment, viewer.loading, viewer.rsvps, viewer.startTimes],
   );
-  const { events, loading, error } = useEvents({
+  const { events, loading, error, reload } = useEvents({
     ...(dateRange ?? {}),
     ...(beenTo === undefined ? {} : { ids: beenTo }),
   });
   // Who is going: for the window's events, read beside them; for Been to,
   // once its few events are known. Never every RSVP ever made.
   const eventIds = useMemo(() => events.map((event) => event.id), [events]);
-  const { byEvent: attendeesByEvent, loading: attendeesLoading } = useAttendeesByEvent(
+  const {
+    byEvent: attendeesByEvent,
+    loading: attendeesLoading,
+    reload: reloadAttendees,
+  } = useAttendeesByEvent(
     beenTo === undefined ? undefined : loading ? null : eventIds,
     beenTo === undefined ? (dateRange ?? {}) : undefined,
   );
@@ -275,13 +279,15 @@ export default function EventsPage() {
         // the button disagreeing until the next load.
         if (result.ok) {
           viewer.reload();
+          reload?.();
+          reloadAttendees();
           rsvpSheetFor(event, next, (again) => {
             onRsvp(event, again);
           });
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, rsvpSheetFor],
+    [memberId, viewer, reload, reloadAttendees, rsvpSheetFor],
   );
 
   // The RSVP choice lives in the URL (as the segment) but is one of the

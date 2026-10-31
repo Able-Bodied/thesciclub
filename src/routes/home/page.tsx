@@ -158,10 +158,11 @@ export default function HomePage() {
     [eventsRead.events, near.ids],
   );
   // The same window, read beside the events rather than after them.
-  const { byEvent: attendeesByEvent, loading: attendeesLoading } = useAttendeesByEvent(
-    undefined,
-    eventWindow,
-  );
+  const {
+    byEvent: attendeesByEvent,
+    loading: attendeesLoading,
+    reload: reloadAttendees,
+  } = useAttendeesByEvent(undefined, eventWindow);
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const membersRead = useBrowseMembers();
@@ -259,13 +260,15 @@ export default function HomePage() {
         // button disagreeing.
         if (result.ok) {
           viewer.reload();
+          eventsRead.reload?.();
+          reloadAttendees();
           rsvpSheetFor(event, next, (again) => {
             onRsvp(event, again);
           });
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, viewer, rsvpSheetFor],
+    [memberId, viewer, eventsRead.reload, reloadAttendees, rsvpSheetFor],
   );
 
   /** A standing opener keeps its Like visible while the real count loads. */

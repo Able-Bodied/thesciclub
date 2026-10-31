@@ -934,6 +934,8 @@ export interface AttendeesByEventState {
   byEvent: Map<string, EventAttendee[]>;
   loading: boolean;
   error: string | null;
+  /** Read again, after an RSVP: the faces stay up until the new read lands. */
+  reload: () => void;
 }
 
 /**
@@ -967,11 +969,16 @@ export function useAttendeesByEvent(
    */
   window?: { from?: string; to?: string },
 ): AttendeesByEventState {
-  const [state, setState] = useState<AttendeesByEventState>({
+  const [state, setState] = useState<Omit<AttendeesByEventState, 'reload'>>({
     byEvent: new Map(),
     loading: true,
     error: null,
   });
+  // Bumped to read again; part of the effect's dependencies for that reason.
+  const [round, setRound] = useState(0);
+  const reload = useCallback(() => {
+    setRound((n) => n + 1);
+  }, []);
   // The events whose faces are drawn; read again, they stay up meanwhile.
   const shown = useRef<string | null>(null);
   // A stable key, so a new array holding the same ids does not read again.
@@ -983,6 +990,7 @@ export function useAttendeesByEvent(
         ? null
         : [...eventIds].sort().join(',');
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
     if (key === null) return;
     const controller = new AbortController();
@@ -1063,7 +1071,7 @@ export function useAttendeesByEvent(
     return () => {
       controller.abort();
     };
-  }, [key]);
+  }, [key, round]);
 
-  return state;
+  return { ...state, reload };
 }

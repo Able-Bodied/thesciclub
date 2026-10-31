@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -19,6 +19,8 @@ const state = vi.hoisted(() => ({
   error: null as string | null,
   setRsvp: vi.fn(),
   reload: vi.fn(),
+  reloadEvents: vi.fn(),
+  reloadAttendees: vi.fn(),
   threads: [] as { id: string; eventId: string | null }[],
   joinEventGroup: vi.fn(),
   /** The number on file for the member: null for none. */
@@ -34,8 +36,18 @@ vi.mock('@/lib/event-phone', async (importOriginal) => ({
 
 vi.mock('@/lib/events', async (importOriginal) => ({
   rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
-  useEvents: () => ({ events: state.events, loading: state.loading, error: state.error }),
-  useAttendeesByEvent: () => ({ byEvent: state.attendees, loading: false, error: null }),
+  useEvents: () => ({
+    events: state.events,
+    loading: state.loading,
+    error: state.error,
+    reload: state.reloadEvents,
+  }),
+  useAttendeesByEvent: () => ({
+    byEvent: state.attendees,
+    loading: false,
+    error: null,
+    reload: state.reloadAttendees,
+  }),
   useViewerEvents: () => ({
     rsvps: state.rsvps,
     loading: false,
@@ -147,6 +159,8 @@ beforeEach(() => {
   state.error = null;
   state.setRsvp = vi.fn().mockResolvedValue({ ok: true });
   state.reload = vi.fn();
+  state.reloadEvents = vi.fn();
+  state.reloadAttendees = vi.fn();
   state.threads = [];
   state.joinEventGroup = vi.fn().mockResolvedValue({ ok: true, value: 'th-ev' });
   state.phone = null;
@@ -271,6 +285,25 @@ describe('EventDetailPage', () => {
       expect(register).toHaveAccessibleDescription(/own sign-up and marks you as going here/);
       await userEvent.click(register);
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
+    });
+
+    it('reads the Going list and tally again when it is taken back', async () => {
+      state.events = [
+        makeEvent({
+          id: 'rugby',
+          startTime: aheadByDays(21),
+          registrationUrl: 'https://norcalsci.org/register/rugby',
+        }),
+      ];
+      state.rsvps = new Map([['rugby', 'going']]);
+      renderDetail();
+      await userEvent.click(screen.getByRole('button', { name: 'Going ✓' }));
+      expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', null);
+      await waitFor(() => {
+        expect(state.reloadAttendees).toHaveBeenCalled();
+      });
+      expect(state.reloadEvents).toHaveBeenCalled();
+      expect(state.reload).toHaveBeenCalled();
     });
 
     it('once going, keeps Going ✓ to take it back, and the sign-up as a link', () => {

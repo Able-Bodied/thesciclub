@@ -60,7 +60,7 @@ export default function EventDetailPage() {
   const { events, loading, error, reload } = useEvents({
     id: id ?? '00000000-0000-0000-0000-000000000000',
   });
-  const { byEvent } = useAttendeesByEvent(id ? [id] : []);
+  const { byEvent, reload: reloadAttendees } = useAttendeesByEvent(id ? [id] : []);
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const account = useAccount();
@@ -77,12 +77,15 @@ export default function EventDetailPage() {
       setWriteError(null);
       void setRsvp(event.id, memberId, next).then((result) => {
         if (result.ok) {
+          // The button, and the Going list and tally under it.
           viewer.reload();
+          reload?.();
+          reloadAttendees();
           rsvpSheetFor(event, next, onRsvp);
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, event, viewer, rsvpSheetFor],
+    [memberId, event, viewer, reload, reloadAttendees, rsvpSheetFor],
   );
 
   if (loading) {
