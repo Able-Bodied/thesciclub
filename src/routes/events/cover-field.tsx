@@ -6,9 +6,9 @@ import type { PhotoTarget } from '@/lib/paste-photos';
 import { usePhotoUrl } from '@/lib/photos';
 
 /**
- * The event form's cover picture (the owner, 2026-10-10): one picture, a
+ * The event form's cover picture (the owner, 2026-10-10): the main picture, a
  * flyer or the venue, shown at the top of the event's page and small on its
- * card. Chosen here; uploaded only when the event is saved, so nothing is
+ * card, with any others in more-pictures-field.tsx. Chosen here; uploaded only when the event is saved, so nothing is
  * stored for an event that is never added.
  *
  * "Describe the picture" is optional, and says why: it is what a screen
@@ -16,8 +16,7 @@ import { usePhotoUrl } from '@/lib/photos';
  * the right answer.
  *
  * A picture pasted into the description becomes the cover (the owner,
- * 2026-10-22, lib/paste-photos.ts): an event has one picture, so that is
- * where a pasted one goes, through the same check as one chosen here.
+ * 2026-10-22, lib/paste-photos.ts), through the same check as one chosen here.
  */
 export function CoverField({
   value,

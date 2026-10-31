@@ -738,6 +738,8 @@ export interface ClubEvent {
   photoPath: string | null;
   /** What a screen reader says for the cover picture. */
   photoAlt: string | null;
+  /** The pictures besides the cover (20261031060000). Not in a list's read. */
+  morePhotos?: { path: string; alt: string }[];
   /** Who can see it (20261022180000). */
   audience: EventAudience;
   /**

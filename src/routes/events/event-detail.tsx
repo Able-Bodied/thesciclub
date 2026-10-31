@@ -22,8 +22,8 @@ import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
-import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
+import { EventGallery } from '@/routes/events/event-gallery';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
@@ -179,7 +179,12 @@ export default function EventDetailPage() {
               ← {backLabel(location)}
             </button>
 
-            <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
+            <EventGallery
+              path={event.photoPath}
+              alt={event.photoAlt}
+              more={event.morePhotos}
+              className="mb-4"
+            />
 
             {/* A calendar, because the line is a date. This was a map pin, which
               says "place" in front of text that says "Friday 11 September". */}

@@ -48,7 +48,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience, admin_override, feed_values';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, more_photos, timezone, all_day, state, audience, admin_override, feed_values';
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
@@ -115,6 +115,7 @@ interface EventRow {
   series_id: string | null;
   photo_path: string | null;
   photo_alt: string | null;
+  more_photos?: EventPhoto[] | null;
   /** The event's own zone, when its source gave one (20261021000000). */
   timezone: string | null;
   all_day: boolean;
@@ -222,6 +223,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       seriesId: row.series_id,
       photoPath: row.photo_path,
       photoAlt: row.photo_alt,
+      morePhotos: row.more_photos ?? [],
       audience: row.audience ?? 'club',
       // The description's HTML moves with its words, so it is not listed apart.
       adminChanged: Object.keys(row.admin_override ?? {}).filter((f) => f !== 'description_html'),
@@ -755,6 +757,67 @@ export async function saveEventCover(
     }
     return { ok: true };
   } catch (e) {
+    return { ok: false, error: describeThrown(e, COVER_REFUSAL) };
+  }
+}
+
+/** A picture besides the cover (20261031060000). */
+export interface EventPhoto {
+  path: string;
+  alt: string;
+}
+
+export const MAX_MORE_PHOTOS = 6;
+
+/** One of an event's other pictures on the form: one it has, or one chosen. */
+export type MorePhotoChange =
+  | { kind: 'keep'; path: string; alt: string }
+  | { kind: 'new'; id: string; file: File; alt: string };
+
+/**
+ * Sets an event's other pictures, the cover's order and rules: upload, point
+ * the row at them, then delete what nothing names any more. Applies to later
+ * dates of a repeating event, as the cover does.
+ */
+export async function saveMorePhotos(
+  eventId: string,
+  changes: readonly MorePhotoChange[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const storage = getSupabase().storage.from(PHOTOS_BUCKET);
+  const uploaded: string[] = [];
+  const undo = async () => {
+    if (uploaded.length > 0) await storage.remove(uploaded);
+  };
+  try {
+    const photos: EventPhoto[] = [];
+    for (const change of changes) {
+      if (change.kind === 'keep') {
+        photos.push({ path: change.path, alt: change.alt });
+        continue;
+      }
+      const { blob, ext } = await preparePhoto(change.file, COVER_EDGE, '#ffffff');
+      const path = `events/${eventId}/${crypto.randomUUID()}.${ext}`;
+      const upload = await storage.upload(path, blob, { upsert: false, contentType: blob.type });
+      if (upload.error) {
+        await undo();
+        return { ok: false, error: describeError(upload.error, COVER_REFUSAL) };
+      }
+      uploaded.push(path);
+      photos.push({ path, alt: change.alt });
+    }
+    const { data, error } = (await getSupabase().rpc('set_event_more_photos', {
+      event: eventId,
+      photos,
+    })) as { data: string[] | null; error: Failure | null };
+    if (error) {
+      await undo();
+      return { ok: false, error: describeError(error, COVER_REFUSAL) };
+    }
+    // Its failure is not reported: the event's pictures are saved either way.
+    if (data && data.length > 0) await storage.remove(data);
+    return { ok: true };
+  } catch (e) {
+    await undo();
     return { ok: false, error: describeThrown(e, COVER_REFUSAL) };
   }
 }

@@ -114,6 +114,7 @@ export interface PublicEvent {
   url: string | null;
   registrationUrl: string | null;
   photoPath: string | null;
+  morePhotos?: { path: string; alt: string }[];
   photoAlt: string | null;
   organization: { id: string; name: string; shortCode: string; logoPath: string | null } | null;
 }
@@ -135,6 +136,7 @@ interface PublicEventRow {
   registration_url: string | null;
   photo_path: string | null;
   photo_alt: string | null;
+  more_photos?: { path: string; alt: string }[] | null;
   organization_id: string | null;
   organization_name: string | null;
   organization_short_code: string | null;
@@ -170,6 +172,7 @@ export async function fetchPublicEvent(eventId: string): Promise<Result<PublicEv
       registrationUrl: row.registration_url,
       photoPath: row.photo_path,
       photoAlt: row.photo_alt,
+      morePhotos: row.more_photos ?? [],
       organization:
         row.organization_id && row.organization_name
           ? {
