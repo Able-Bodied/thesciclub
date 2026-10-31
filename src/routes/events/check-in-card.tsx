@@ -4,9 +4,27 @@ import { useMyCheckIn } from '@/lib/check-ins';
 
 /**
  * "Check in" (the owner, 2026-10-30; 20261030000000), on the event's page
- * while check-in is open and on the page a printed QR code opens. Saying so
+ * around the event and on the page a printed QR code opens. Saying so
  * when it makes somebody an organization's member, with the way to leave.
  */
+/** The same button, unlit, until an hour before the event (the owner, 2026-10-31). */
+export function CheckInNotYet() {
+  return (
+    <div className="mt-5">
+      <button
+        type="button"
+        disabled
+        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[13px] bg-line font-bold font-head text-[0.9375rem] text-ink2"
+      >
+        I'm here: check in
+      </button>
+      <p className="mt-2 text-center text-[0.8125rem] text-ink2 leading-[1.45]">
+        Check-in opens an hour before the event.
+      </p>
+    </div>
+  );
+}
+
 export function CheckInCard({
   eventId,
   memberId,

@@ -675,6 +675,7 @@ export function useDeviceNotifications(userId: string | null) {
 export const NOTIFICATION_KINDS = [
   { kind: 'event_reminder', label: 'Events I am going to, the day before', who: 'all' },
   { kind: 'event_starting', label: 'Events I am going to, 10 minutes before', who: 'all' },
+  { kind: 'check_in_reminder', label: 'Reminders to check in after an event', who: 'all' },
   { kind: 'org_events', label: 'New events from organizations I belong to', who: 'all' },
   { kind: 'grant_open', label: 'Grants opening from organizations I belong to', who: 'all' },
   { kind: 'profile_reminder', label: 'Reminders to finish my profile', who: 'all' },
@@ -686,6 +687,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'introduction', label: 'Introductions to another member', who: 'all' },
   { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
   { kind: 'invite_request', label: 'Somebody asking me for an invite', who: 'mentor' },
+  { kind: 'join_request', label: 'Somebody asking to join my organization', who: 'mentor' },
   { kind: 'report', label: 'New reports, and the weekly count of blocks', who: 'admin' },
 ] as const;
 

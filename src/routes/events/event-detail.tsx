@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { checkInOpen } from '@/lib/check-ins';
+import { useCheckInPhase } from '@/lib/check-ins';
 import {
   deleteEvent,
   deleteEventAndLater,
@@ -20,7 +20,7 @@ import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backToEvents } from '@/routes/events/back';
-import { CheckInCard } from '@/routes/events/check-in-card';
+import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
 import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
@@ -69,6 +69,7 @@ export default function EventDetailPage() {
   const registerNote = useId();
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
+  const checkInPhase = useCheckInPhase(event);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
@@ -264,13 +265,14 @@ export default function EventDetailPage() {
             past events became lines rather than cards; this screen kept
             offering it, so the same finished evening answered two different
             ways depending on how you arrived at it. */}
-          {checkInOpen(event) && account.status === 'member' ? (
+          {checkInPhase === 'open' && account.status === 'member' ? (
             <CheckInCard
               eventId={event.id}
               memberId={account.userId}
               organizationId={event.organizationId}
             />
           ) : null}
+          {checkInPhase === 'soon' && account.status === 'member' ? <CheckInNotYet /> : null}
           {isPastEvent(event) ? (
             <p className="mt-5 text-[0.8125rem] text-ink2 leading-[1.45]">
               {going
