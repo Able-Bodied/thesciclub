@@ -23,12 +23,16 @@ import { ReportSheet } from '@/routes/chat/report-sheet';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
-import { InviteToOrganization } from '@/routes/peers/invite-to-organization';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
 import { mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
 import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
-import type { BeforeAfter, BrowseMember, RepresentedOrganization } from '@/types/domain';
+import {
+  type BeforeAfter,
+  type BrowseMember,
+  cityAndState,
+  type RepresentedOrganization,
+} from '@/types/domain';
 
 /**
  * One member's full profile — where a tapped card lands.
@@ -222,15 +226,14 @@ function UsernameRow({ username }: { username: string }) {
 }
 
 /** What they belong to, for anybody to find one worth joining (the owner, 2026-10-30). */
-function MemberOf({ memberId, name }: { memberId: string; name: string }) {
+function MemberOf({ memberId }: { memberId: string }) {
   const ids = useMemberOrganizations(memberId);
   const { byId } = useOrganizations();
   const organizations = ids
     .map((id) => byId.get(id))
     .filter((organization) => organization !== undefined)
     .sort((a, b) => a.name.localeCompare(b.name));
-  const invite = <InviteToOrganization memberId={memberId} name={name} memberOf={ids} />;
-  if (organizations.length === 0) return invite;
+  if (organizations.length === 0) return null;
   return (
     <Section title="Member of">
       <ul className="flex flex-wrap gap-2">
@@ -246,7 +249,6 @@ function MemberOf({ memberId, name }: { memberId: string; name: string }) {
           </li>
         ))}
       </ul>
-      {invite}
     </Section>
   );
 }
@@ -817,7 +819,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               </Section>
             ) : null}
 
-            <MemberOf memberId={member.id} name={member.displayName} />
+            <MemberOf memberId={member.id} />
 
             {member.howInjured ? (
               <Section title="How it happened">
@@ -857,6 +859,41 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               </Section>
             ) : null}
 
+            {/* Above the equipment (the owner, 2026-10-31). */}
+            {verifier ? (
+              <Section title="Member of">
+                {member.affiliations.map((org) => {
+                  const known = organizationByName(organizations, org);
+                  const row = (
+                    <>
+                      <OrganizationBadge
+                        organization={known}
+                        hostName={org}
+                        className="h-[34px] w-[34px] rounded-[11px] text-[0.6875rem]"
+                      />
+                      <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
+                    </>
+                  );
+                  const box =
+                    'mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3';
+                  // A link where the club has the organization's page.
+                  return known ? (
+                    <Link
+                      key={org}
+                      to={`/events/organizations/${known.id}`}
+                      className={`${box} transition-colors hover:bg-tint`}
+                    >
+                      {row}
+                    </Link>
+                  ) : (
+                    <div key={org} className={box}>
+                      {row}
+                    </div>
+                  );
+                })}
+              </Section>
+            ) : null}
+
             {member.sportsEquipment ? (
               <Section title="Adaptive sports equipment">
                 <p className="text-[0.8875rem] text-ink2 leading-[1.52]">
@@ -891,46 +928,9 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                   label="Languages"
                   value={member.languages.length ? member.languages.join(', ') : null}
                 />
-                <DetailRow
-                  label="Where"
-                  value={[member.city, member.state].filter(Boolean).join(', ') || null}
-                />
+                <DetailRow label="Where" value={cityAndState(member)} />
               </div>
             </Section>
-
-            {verifier ? (
-              <Section title="Member of">
-                {member.affiliations.map((org) => {
-                  const known = organizationByName(organizations, org);
-                  const row = (
-                    <>
-                      <OrganizationBadge
-                        organization={known}
-                        hostName={org}
-                        className="h-[34px] w-[34px] rounded-[11px] text-[0.6875rem]"
-                      />
-                      <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
-                    </>
-                  );
-                  const box =
-                    'mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3';
-                  // A link where the club has the organization's page.
-                  return known ? (
-                    <Link
-                      key={org}
-                      to={`/events/organizations/${known.id}`}
-                      className={`${box} transition-colors hover:bg-tint`}
-                    >
-                      {row}
-                    </Link>
-                  ) : (
-                    <div key={org} className={box}>
-                      {row}
-                    </div>
-                  );
-                })}
-              </Section>
-            ) : null}
 
             {/* The rooms this member's topics reach, after everything about
                 the member: the page is for reading the person, and these were

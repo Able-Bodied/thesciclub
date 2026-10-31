@@ -19,6 +19,7 @@ import { useOrganizations } from '@/lib/organizations';
 import { backLabel, backToEvents } from '@/routes/events/back';
 import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
+import { OrganizationAddMembers } from '@/routes/events/organization-add-members';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OrganizationGrants } from '@/routes/events/organization-grants';
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
@@ -45,7 +46,8 @@ export default function OrganizationDetailPage() {
   const { grants } = useOrganizationGrants(id);
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
-  const count = useOrganizationMemberCount(id);
+  const [additions, setAdditions] = useState(0);
+  const count = useOrganizationMemberCount(id, additions);
   const denial = useMyDenial(id, memberId);
   const chat = useOrganizationChat(id, memberId);
   const mine = useMyOrganizations(memberId);
@@ -271,6 +273,17 @@ export default function OrganizationDetailPage() {
               ))}
             </ul>
           </>
+        ) : null}
+
+        {seesMembers ? (
+          <OrganizationAddMembers
+            organizationId={organization.id}
+            exclude={new Set(roster?.map((member) => member.id))}
+            onAdded={() => {
+              readRoster();
+              setAdditions((n) => n + 1);
+            }}
+          />
         ) : null}
 
         {organization.canInvite ? (

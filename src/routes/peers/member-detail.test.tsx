@@ -367,7 +367,7 @@ describe('MemberDetailPage', () => {
     );
     renderDetail();
     expect(screen.getByRole('heading', { name: 'Nicole' })).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 28 · Santa Clara')).toBeInTheDocument();
+    expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
   });
 
   it('flags a mentor', () => {
@@ -606,7 +606,7 @@ describe('an administrator’s profile', () => {
     );
     renderDetail();
     expect(screen.getByRole('heading', { name: 'Dana' })).toBeInTheDocument();
-    expect(screen.getByText('C6 incomplete · 28 · Santa Clara')).toBeInTheDocument();
+    expect(screen.getByText('C6 incomplete · 28 · Santa Clara, CA')).toBeInTheDocument();
     expect(screen.queryByText('Official account')).not.toBeInTheDocument();
     expect(screen.queryByText('What this account is')).not.toBeInTheDocument();
   });

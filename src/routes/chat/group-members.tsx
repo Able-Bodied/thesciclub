@@ -8,6 +8,8 @@ import { useChatAuthors } from '@/lib/chat/authors';
 import { addToGroup, leaveGroup, useThreadRoster } from '@/lib/chat/groups';
 import { useMyThreads } from '@/lib/chat/threads';
 import { describeThrown } from '@/lib/describe-error';
+import { useThreadOrganization } from '@/lib/organization-members';
+import { useMyOrganizations } from '@/lib/organization-representatives';
 import { GroupIdentity } from '@/routes/chat/group-identity';
 import { MemberPicker } from '@/routes/chat/member-picker';
 
@@ -38,6 +40,13 @@ import { MemberPicker } from '@/routes/chat/member-picker';
  * the picker is not drawn and the reason is printed where it would have been.
  *
  * ---------------------------------------------------------------------------
+ * An organization's group is added to by its org admins
+ * ---------------------------------------------------------------------------
+ * Its roster is the organization's members, so adding somebody makes them a
+ * member (20261030020000): that is for its org admins and the club's
+ * administrators, and nobody else is shown the picker.
+ *
+ * ---------------------------------------------------------------------------
  * Leaving asks twice
  * ---------------------------------------------------------------------------
  * Not a browser `confirm()` — a modal that cannot be styled, cannot be read
@@ -64,6 +73,12 @@ export default function GroupMembersPage() {
     reload,
   } = useThreadRoster(threadId);
   const authors = useChatAuthors(memberIds);
+  const organizationId = useThreadOrganization(threadId);
+  const mine = useMyOrganizations(viewerId);
+  const addsToOrganization =
+    typeof organizationId === 'string' &&
+    account.status === 'member' &&
+    (account.isAdmin || mine.ids.has(organizationId));
 
   const [picked, setPicked] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
@@ -242,8 +257,18 @@ export default function GroupMembersPage() {
             This is the group chat for an event. It keeps the event’s name, and everybody going to
             it can join from the event, so nobody is added by hand here.
           </p>
+        ) : organizationId === undefined ? null : organizationId && !addsToOrganization ? (
+          <p className="mt-4 rounded-r-[11px] border-gold border-l-[3px] bg-gold-lt px-3.5 py-3 text-gold-ink text-[0.7875rem] leading-[1.5]">
+            This is the group chat for an organization's members. Anybody who joins the organization
+            is in it, and its org admins can add people here.
+          </p>
         ) : (
           <>
+            {addsToOrganization ? (
+              <p className="mt-4 text-[0.78125rem] text-ink2 leading-[1.45]">
+                Adding somebody here makes them a member of the organization.
+              </p>
+            ) : null}
             <MemberPicker
               picked={picked}
               onToggle={toggle}
