@@ -575,6 +575,10 @@ export interface Invite {
 
 export interface Organization {
   id: string;
+  /** The club's own row, which everybody already belongs to. */
+  isTheClub?: boolean;
+  /** Join asks its org admins, instead of making a member (20261031010000). */
+  joinsNeedApproval?: boolean;
   /** Two or three letters, for the badge on a mentor's card. */
   shortCode: string;
   name: string;

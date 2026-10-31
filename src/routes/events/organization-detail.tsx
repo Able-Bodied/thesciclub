@@ -22,6 +22,8 @@ import { dateTileParts } from '@/routes/events/format';
 import { OrganizationAddMembers } from '@/routes/events/organization-add-members';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OrganizationGrants } from '@/routes/events/organization-grants';
+import { OrganizationJoinSetting } from '@/routes/events/organization-join-setting';
+import { OrganizationMemberRemove } from '@/routes/events/organization-member-remove';
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
 import { OrganizationReviews } from '@/routes/events/organization-reviews';
 import { EventDescription } from '@/routes/events/rich-text';
@@ -47,6 +49,7 @@ export default function OrganizationDetailPage() {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
   const [additions, setAdditions] = useState(0);
+  const [reviewsRead, setReviewsRead] = useState(0);
   const count = useOrganizationMemberCount(id, additions);
   const denial = useMyDenial(id, memberId);
   const chat = useOrganizationChat(id, memberId);
@@ -64,6 +67,15 @@ export default function OrganizationDetailPage() {
   const isMember = id !== undefined && follows.following.has(id);
   // biome-ignore lint/correctness/useExhaustiveDependencies: joining or leaving changes the list.
   useEffect(readRoster, [readRoster, isMember]);
+
+  const membersChanged = useCallback(() => {
+    readRoster();
+    setAdditions((n) => n + 1);
+  }, [readRoster]);
+  const everythingChanged = useCallback(() => {
+    membersChanged();
+    setReviewsRead((n) => n + 1);
+  }, [membersChanged]);
 
   const organization = id ? (byId.get(id) ?? null) : null;
 
@@ -137,6 +149,7 @@ export default function OrganizationDetailPage() {
             <FollowButton
               onNavy
               following={follows.following.has(organization.id)}
+              requested={follows.requested.has(organization.id)}
               onToggle={() => {
                 follows.toggle(organization.id);
               }}
@@ -240,7 +253,18 @@ export default function OrganizationDetailPage() {
         ) : null}
 
         {seesMembers ? (
-          <OrganizationReviews organizationId={organization.id} onChanged={readRoster} />
+          <>
+            <OrganizationJoinSetting
+              organizationId={organization.id}
+              needed={organization.joinsNeedApproval === true}
+              onChanged={everythingChanged}
+            />
+            <OrganizationReviews
+              key={reviewsRead}
+              organizationId={organization.id}
+              onChanged={membersChanged}
+            />
+          </>
         ) : null}
 
         {roster && roster.length > 0 ? (
@@ -251,7 +275,10 @@ export default function OrganizationDetailPage() {
             <ul className="rounded-[14px] border border-line bg-paper px-3.5">
               {roster.map((member) => (
                 <li key={member.id} className="border-line border-b last:border-b-0">
-                  <Link to={`/peers/${member.id}`} className="flex items-center gap-2.5 py-2.5">
+                  <Link
+                    to={`/peers/${member.id}`}
+                    className="flex items-center gap-2.5 pt-2.5 pb-1"
+                  >
                     <MemberAvatar
                       id={member.id}
                       displayName={member.displayName}
@@ -269,6 +296,15 @@ export default function OrganizationDetailPage() {
                       ) : null}
                     </span>
                   </Link>
+                  {seesMembers && member.id !== memberId && member.joinedVia !== 'org_admin' ? (
+                    <OrganizationMemberRemove
+                      organizationId={organization.id}
+                      member={member}
+                      onRemoved={everythingChanged}
+                    />
+                  ) : (
+                    <div className="h-1.5" />
+                  )}
                 </li>
               ))}
             </ul>
@@ -279,10 +315,7 @@ export default function OrganizationDetailPage() {
           <OrganizationAddMembers
             organizationId={organization.id}
             exclude={new Set(roster?.map((member) => member.id))}
-            onAdded={() => {
-              readRoster();
-              setAdditions((n) => n + 1);
-            }}
+            onAdded={everythingChanged}
           />
         ) : null}
 

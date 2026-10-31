@@ -11,6 +11,8 @@ import SQL from '../../../supabase/migrations/20261022040000_finish_your_profile
  * should point this file at itself.
  */
 
+const COUNTED = QUESTIONS.filter((q) => !q.uncounted);
+
 function body(name: string): string {
   const start = SQL.indexOf(`function public.${name}(`);
   if (start === -1) throw new Error(`${name} is not in the migration`);
@@ -21,7 +23,7 @@ describe('the database’s idea of finished', () => {
   const profile = body('member_profile_done');
   const details = body('member_details_done');
 
-  it.each(QUESTIONS.map((q) => [q.key, q.column] as const))(
+  it.each(COUNTED.map((q) => [q.key, q.column] as const))(
     'asks the survey’s %s, in column %s',
     (key, column) => {
       expect(profile).toContain(`m.${column},`);
@@ -31,7 +33,7 @@ describe('the database’s idea of finished', () => {
 
   it('asks exactly the questions the survey has', () => {
     const asked = [...profile.matchAll(/profile_answered\(m\.(\w+),/g)].map((match) => match[1]);
-    expect(asked.sort()).toEqual(QUESTIONS.map((q) => q.column).sort());
+    expect(asked.sort()).toEqual(COUNTED.map((q) => q.column).sort());
   });
 
   it('has a condition for each question that applies only sometimes', () => {

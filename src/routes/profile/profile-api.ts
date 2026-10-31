@@ -28,11 +28,23 @@ const COLUMNS = [...QUESTIONS.map((q) => q.column), 'declined'];
 
 /**
  * The columns the app may know about before the database does: `declined`
- * (20260917030000) and the equipment and grants answers (20261011020000).
+ * (20260917030000), the equipment and grants answers (20261011020000) and the
+ * organizations not in the directory (20261031000000).
  * Left out of the fallback read below, so the survey still loads, without
  * them, on a database that does not have them yet.
  */
-const NEWEST_COLUMNS = ['declined', 'sports_equipment', 'grants'];
+const NEWEST_COLUMNS = ['declined', 'sports_equipment', 'grants', 'other_organizations'];
+
+export interface OwnPlace {
+  city: string | null;
+  state: string | null;
+}
+
+/** Where the member lives, for the organizations near them. Null if it cannot be read. */
+export async function loadOwnPlace(): Promise<OwnPlace | null> {
+  const { data, error } = await getSupabase().from('members').select('city, state').maybeSingle();
+  return error || !data ? null : data;
+}
 
 /** What the row says somebody has declined, with anything unexpected dropped. */
 export function declinedFrom(row: Record<string, unknown>): Set<string> {

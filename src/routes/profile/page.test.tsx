@@ -21,6 +21,9 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
+vi.mock('@/routes/profile/organizations-picker', () => ({
+  OrganizationsPicker: () => <p>The organizations</p>,
+}));
 vi.mock('@/routes/profile/profile-api', () => ({
   loadAnswers: () =>
     Promise.resolve({ ok: true as const, answers: api.answers, declined: api.declined }),
@@ -184,10 +187,28 @@ describe('the profile survey', () => {
       await userEvent.click(await screen.findByRole('button', { name: 'Standing frame' }));
       await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
       expect(
-        await screen.findByRole('heading', { name: 'Do you own any adaptive sports equipment?' }),
+        await screen.findByRole('heading', { name: 'Are you part of any organizations?' }),
       ).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Back' }));
       expect(await screen.findByRole('heading', { name: 'Self-care devices' })).toBeInTheDocument();
+    });
+  });
+
+  describe('organizations', () => {
+    it('comes before the equipment, with the list and a box for the rest', async () => {
+      renderSurvey();
+      await screen.findByText('About you');
+      await skipTo('Are you part of any organizations?');
+      expect(await screen.findByText('The organizations')).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', {
+          name: /Please tell us about any organizations that are not in our list/,
+        }),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Skip this one' }));
+      expect(
+        await screen.findByRole('heading', { name: 'Do you own any adaptive sports equipment?' }),
+      ).toBeInTheDocument();
     });
   });
 

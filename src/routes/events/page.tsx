@@ -448,6 +448,7 @@ export default function EventsPage() {
               organizations={organizations}
               events={events}
               following={follows.following}
+              requested={follows.requested}
               onToggleFollow={follows.toggle}
               filters={directory}
               onFiltersChange={setDirectory}

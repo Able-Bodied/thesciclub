@@ -715,6 +715,36 @@ describe('administrator-linked organizations', () => {
     );
   });
 
+  it('shows five of what they belong to, and the rest behind a link', async () => {
+    const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'].map((letter) => `${letter} Club`);
+    state.current = ok(makeMember({ affiliations: names }));
+    renderDetail();
+    expect(screen.getByText('E Club')).toBeInTheDocument();
+    expect(screen.queryByText('F Club')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: '3 more' }));
+    expect(screen.getByText('H Club')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /more$/ })).toBeNull();
+  });
+
+  it('has no link when five is all of them', () => {
+    state.current = ok(
+      makeMember({ affiliations: ['A', 'B', 'C', 'D', 'E'].map((l) => `${l} Club`) }),
+    );
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /more$/ })).toBeNull();
+  });
+
+  it('puts Member of directly above the equipment, once', () => {
+    state.current = ok(
+      makeMember({ affiliations: ['Able Bodied'], sportsEquipment: 'A handcycle' }),
+    );
+    renderDetail();
+    const headings = screen.getAllByRole('heading').map((heading) => heading.textContent);
+    const at = headings.indexOf('Member of');
+    expect(headings.filter((heading) => heading === 'Member of')).toHaveLength(1);
+    expect(headings[at + 1]).toBe('Adaptive sports equipment');
+  });
+
   it('does not turn self-described affiliations into representative tags', () => {
     state.current = ok(makeMember({ affiliations: ['Able Bodied'], representedOrganizations: [] }));
     renderDetail();

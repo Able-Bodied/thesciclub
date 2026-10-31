@@ -59,6 +59,7 @@ import {
   withdrawnInvites,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { OrganizationSuggestions } from '@/routes/admin/organization-suggestions';
 import { OrganizationsSection } from '@/routes/admin/organizations-section';
 import { renewalsDue, useRenewals } from '@/routes/admin/renewals';
 import { ReportsSection } from '@/routes/admin/reports-section';
@@ -525,6 +526,7 @@ export default function AdminPage() {
                       setOrganizationRevision((value) => value + 1);
                     }}
                   />
+                  <OrganizationSuggestions />
                 </div>
                 <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
                   <RepresentativesSection key={organizationRevision} />

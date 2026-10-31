@@ -44,6 +44,11 @@ export interface Question {
   allowOther?: boolean;
   /** Only asked when this returns true. */
   onlyIf?: (answers: Answers) => boolean;
+  /**
+   * Not counted towards a finished profile, here or in member_profile_done, so
+   * adding it finished nobody's profile less.
+   */
+  uncounted?: boolean;
 }
 
 export type Answers = Record<string, Answer>;
@@ -266,6 +271,17 @@ export const QUESTIONS: Question[] = [
     otherPlaceholder: 'In your own words',
   },
 
+  // Notes for the club, not a profile answer (20261031000000).
+  {
+    key: 'otherOrganizations',
+    column: 'other_organizations',
+    title:
+      'Please tell us about any organizations that are not in our list. It helps us populate our database.',
+    kind: 'text',
+    placeholder: 'The name, and where it is',
+    uncounted: true,
+  },
+
   {
     key: 'sportsEquipment',
     column: 'sports_equipment',
@@ -324,6 +340,8 @@ export interface Screen {
   hint?: string;
   /** A short list under the hint, before the questions: what saying yes means. */
   details?: { title: string; items: string[] };
+  /** Draws the organizations to join above its questions (organizations-picker.tsx). */
+  organizations?: boolean;
 }
 
 export const SCREENS: Screen[] = [
@@ -362,6 +380,12 @@ export const SCREENS: Screen[] = [
     title: 'The specifics',
     keys: ['detail'],
     hint: 'Which dictation program, which vehicle modifications, which assist devices — the details are what people message you about.',
+  },
+  {
+    title: 'Are you part of any organizations?',
+    keys: ['otherOrganizations'],
+    hint: 'Choose any you belong to and you join them, the same as on their page.',
+    organizations: true,
   },
   {
     title: 'Do you own any adaptive sports equipment?',
@@ -499,7 +523,7 @@ export function advancesItself(screen: Screen, answers: Answers): boolean {
 
 /** Every question that applies right now, conditionals included. */
 export function applicableQuestions(answers: Answers): Question[] {
-  return QUESTIONS.filter((q) => !q.onlyIf || q.onlyIf(answers));
+  return QUESTIONS.filter((q) => !q.uncounted && (!q.onlyIf || q.onlyIf(answers)));
 }
 
 export interface Progress {
@@ -555,7 +579,7 @@ export function firstOpenScreen(
   declined: ReadonlySet<string> = EMPTY_DECLINED,
 ): number | null {
   const index = SCREENS.findIndex((screen) =>
-    questionsOn(screen, answers).some((q) => !isAnswered(q, answers, declined)),
+    questionsOn(screen, answers).some((q) => !q.uncounted && !isAnswered(q, answers, declined)),
   );
   return index === -1 ? null : index;
 }

@@ -1207,6 +1207,7 @@ function OrganizationRows({
           grants={grants.get(organization.id)?.length ?? 0}
           grantOpen={hasOpenGrant(grants.get(organization.id), today)}
           following={follows.following.has(organization.id)}
+          requested={follows.requested.has(organization.id)}
           onToggleFollow={follows.toggle}
           locations={theirs.length}
           onOpen={(id) => {

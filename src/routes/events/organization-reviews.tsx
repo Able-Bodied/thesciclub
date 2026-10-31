@@ -4,10 +4,10 @@ import { MemberAvatar } from '@/components/member-avatar';
 import { fetchMemberReviews, type MemberReview, useReviewMember } from '@/lib/organization-members';
 
 /**
- * For an organization's org admins (the owner, 2026-10-30): somebody who
- * pressed Join is a member at once, and this is where they are approved, or
- * denied with a reason, which reaches them as a direct message. Denied people
- * stay listed, so a denial can be taken back.
+ * For an organization's org admins (the owner, 2026-10-30 and 31): when it
+ * approves first, whoever asked to join is here to approve, or deny with a
+ * reason, which reaches them as a direct message. Denied people stay listed,
+ * whatever the setting, so a denial can be taken back.
  */
 export function OrganizationReviews({
   organizationId,
@@ -57,10 +57,10 @@ export function OrganizationReviews({
       {waiting.length > 0 ? (
         <>
           <h2 className="mt-5 mb-1 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
-            New members to review ({waiting.length})
+            Asking to join ({waiting.length})
           </h2>
           <p className="mb-2.5 text-[0.78125rem] text-grey">
-            They are members already. Only org admins see this.
+            They are not members until you approve them. Only org admins see this.
           </p>
           <ul className="rounded-[14px] border border-line bg-paper px-3.5">
             {waiting.map((person) => (

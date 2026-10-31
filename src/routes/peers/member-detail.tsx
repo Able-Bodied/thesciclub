@@ -225,29 +225,78 @@ function UsernameRow({ username }: { username: string }) {
   );
 }
 
-/** What they belong to, for anybody to find one worth joining (the owner, 2026-10-30). */
-function MemberOf({ memberId }: { memberId: string }) {
+/** How many a profile shows before the rest go behind "3 more" (the owner, 2026-10-31). */
+const MEMBER_OF_SHOWN = 5;
+
+/**
+ * What they belong to, for anybody to find one worth joining (the owner,
+ * 2026-10-30): the organizations they are in, and what they said on the
+ * survey, one list and each once.
+ */
+function MemberOf({
+  memberId,
+  affiliations,
+}: {
+  memberId: string;
+  affiliations: readonly string[];
+}) {
   const ids = useMemberOrganizations(memberId);
-  const { byId } = useOrganizations();
-  const organizations = ids
-    .map((id) => byId.get(id))
-    .filter((organization) => organization !== undefined)
+  const { organizations: directory, byId } = useOrganizations();
+  const [all, setAll] = useState(false);
+
+  const joined = ids.map((id) => byId.get(id)).filter((organization) => organization !== undefined);
+  const said = affiliations.map((name) => ({
+    name,
+    organization: organizationByName(directory, name),
+  }));
+  const rows = [
+    ...joined.map((organization) => ({ name: organization.name, organization })),
+    ...said.filter(
+      ({ organization }) => !organization || !joined.some((o) => o.id === organization.id),
+    ),
+  ]
+    .filter(
+      (row, index, list) =>
+        !row.organization ||
+        list.findIndex((other) => other.organization?.id === row.organization?.id) === index,
+    )
     .sort((a, b) => a.name.localeCompare(b.name));
-  if (organizations.length === 0) return null;
+  if (rows.length === 0) return null;
+
+  const shown = all ? rows : rows.slice(0, MEMBER_OF_SHOWN);
+  const chip =
+    'inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line bg-paper py-1 pr-3.5 pl-1.5 font-bold text-[0.8125rem] text-ink';
   return (
     <Section title="Member of">
       <ul className="flex flex-wrap gap-2">
-        {organizations.map((organization) => (
-          <li key={organization.id}>
-            <Link
-              to={`/events/organizations/${organization.id}`}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-line bg-paper py-1 pr-3.5 pl-1.5 font-bold text-[0.8125rem] text-ink"
-            >
-              <OrganizationBadge organization={organization} size="sm" />
-              {organization.name}
-            </Link>
+        {shown.map(({ name, organization }) => (
+          <li key={organization?.id ?? name}>
+            {organization ? (
+              <Link to={`/events/organizations/${organization.id}`} className={chip}>
+                <OrganizationBadge organization={organization} size="sm" />
+                {organization.name}
+              </Link>
+            ) : (
+              <span className={chip}>
+                <OrganizationBadge organization={null} hostName={name} size="sm" />
+                {name}
+              </span>
+            )}
           </li>
         ))}
+        {rows.length > shown.length ? (
+          <li>
+            <button
+              type="button"
+              onClick={() => {
+                setAll(true);
+              }}
+              className="inline-flex min-h-[44px] items-center px-2 font-bold text-[0.8125rem] text-emphasis underline underline-offset-2"
+            >
+              {rows.length - shown.length} more
+            </button>
+          </li>
+        ) : null}
       </ul>
     </Section>
   );
@@ -437,7 +486,6 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
       : loaded;
   // Before the early returns: hooks cannot run conditionally, and every
   // branch below this either renders the profile or does not need the list.
-  const { organizations } = useOrganizations();
   const account = useAccount();
   const photo = usePhotoUrl(member?.photoPath);
   // The whole photograph, uncropped, over the page (the owner, 2026-10-15).
@@ -486,7 +534,6 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   }
 
   const [from, to] = gradientFor(member.id);
-  const verifier = member.affiliations[0] ?? null;
   const injury = injuryLine(member);
   const canMessage = account.userId !== null && account.userId !== member.id;
 
@@ -819,8 +866,6 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
               </Section>
             ) : null}
 
-            <MemberOf memberId={member.id} />
-
             {member.howInjured ? (
               <Section title="How it happened">
                 <p className="text-[0.8875rem] text-ink2 leading-[1.52]">{member.howInjured}</p>
@@ -860,39 +905,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
             ) : null}
 
             {/* Above the equipment (the owner, 2026-10-31). */}
-            {verifier ? (
-              <Section title="Member of">
-                {member.affiliations.map((org) => {
-                  const known = organizationByName(organizations, org);
-                  const row = (
-                    <>
-                      <OrganizationBadge
-                        organization={known}
-                        hostName={org}
-                        className="h-[34px] w-[34px] rounded-[11px] text-[0.6875rem]"
-                      />
-                      <span className="font-extrabold font-head text-[0.90625rem]">{org}</span>
-                    </>
-                  );
-                  const box =
-                    'mb-2 flex flow-root items-center gap-3 rounded-[14px] border border-line bg-paper p-3';
-                  // A link where the club has the organization's page.
-                  return known ? (
-                    <Link
-                      key={org}
-                      to={`/events/organizations/${known.id}`}
-                      className={`${box} transition-colors hover:bg-tint`}
-                    >
-                      {row}
-                    </Link>
-                  ) : (
-                    <div key={org} className={box}>
-                      {row}
-                    </div>
-                  );
-                })}
-              </Section>
-            ) : null}
+            <MemberOf memberId={member.id} affiliations={member.affiliations} />
 
             {member.sportsEquipment ? (
               <Section title="Adaptive sports equipment">

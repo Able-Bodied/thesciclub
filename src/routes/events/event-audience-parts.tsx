@@ -150,6 +150,7 @@ export function OutsideTheAudience({
           </p>
           <FollowButton
             following={follows.following.has(organization.id)}
+            requested={follows.requested.has(organization.id)}
             onToggle={() => {
               follows.toggle(organization.id);
               // Seen once the follow is saved: the page reads the event again.

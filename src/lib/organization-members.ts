@@ -12,7 +12,9 @@ import { getSupabase } from '@/lib/supabase';
  * by being added by an org admin or club administrator (20261030020000).
  *
  * Any member can see an organization's members and a member's organizations.
- * Only its org admins see how each joined, and review those who pressed Join.
+ * Only its org admins see how each joined. An organization is open to all
+ * unless they turn on approving first (the owner, 2026-10-31; 20261031010000):
+ * then pressing Join asks, and they answer it.
  */
 
 export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in' | 'org_admin' | 'added';
@@ -174,7 +176,7 @@ export interface MemberReview extends MemberFace {
   deniedReason: string | null;
 }
 
-/** Those who pressed Join and wait to be approved, and those denied. */
+/** Those who asked to join and wait to be approved, and those denied. */
 export function fetchMemberReviews(organizationId: string) {
   return read<MemberReview>(
     'organization_member_reviews',
@@ -271,6 +273,24 @@ export function useThreadOrganization(threadId: string | undefined) {
   }, [threadId]);
 
   return organizationId;
+}
+
+/** Open to all, or approved first. Going back to open lets in whoever is waiting. */
+export async function setJoinsNeedApproval(
+  organizationId: string,
+  needed: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const refusal = 'That was not saved. Try again.';
+  try {
+    const { error } = await getSupabase().rpc('set_organization_joins_need_approval', {
+      p_organization: organizationId,
+      p_needed: needed,
+    });
+    if (error) return { ok: false, error: describeError(error, refusal) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
 }
 
 /** Makes somebody a member, for its org admins and the club's administrators. */

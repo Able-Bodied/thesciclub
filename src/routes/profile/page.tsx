@@ -8,6 +8,7 @@ import { describeThrown } from '@/lib/describe-error';
 import { MEMBER_LIST_ITEM_MAX, memberTextMax } from '@/lib/member-limits';
 import { signInDoor } from '@/lib/sign-in-destination';
 import { cn } from '@/lib/utils';
+import { OrganizationsPicker } from '@/routes/profile/organizations-picker';
 import { loadAnswers, saveAnswers, saveDeclined } from '@/routes/profile/profile-api';
 import {
   type Answer,
@@ -303,6 +304,8 @@ export default function ProfileSurveyPage() {
           </section>
         ) : null}
 
+        {screen.organizations && !loading ? <OrganizationsPicker /> : null}
+
         {loading ? (
           <p className="py-10 text-center text-[0.875rem] text-grey">Loading your answers…</p>
         ) : (
@@ -317,7 +320,7 @@ export default function ProfileSurveyPage() {
               // A lone question's title repeats the screen's, so it is left
               // out — except a yes/no, whose buttons say nothing without it:
               // "Mentoring" over Yes and No is not a question.
-              solo={questions.length === 1 && question.kind !== 'yesno'}
+              solo={questions.length === 1 && question.kind !== 'yesno' && !screen.organizations}
             />
           ))
         )}

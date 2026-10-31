@@ -70,7 +70,11 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
   fetchAudienceHint: () => Promise.resolve(audience.hint),
 }));
 vi.mock('@/lib/organization-follows', () => ({
-  useOrganizationFollows: () => ({ following: new Set<string>(), toggle: () => undefined }),
+  useOrganizationFollows: () => ({
+    following: new Set<string>(),
+    requested: new Set<string>(),
+    toggle: () => undefined,
+  }),
 }));
 
 vi.mock('@/lib/organizations', () => ({
