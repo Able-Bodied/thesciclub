@@ -97,19 +97,16 @@ const TYPE_PREFIX = 'club-org-type-';
 const TYPE_ICONS = [...ORGANIZATION_CATEGORIES.map((type) => type.id), NO_CATEGORY].map(
   (type) => `${TYPE_PREFIX}${type}`,
 );
-const ICONS = [
-  PEER_ICON,
-  ORGANIZATION_ICON,
-  COUNT_CHIP,
-  HOME,
-  EVENT_PIN,
-  EVENT_PIN_COUNTED,
-  ...TYPE_ICONS,
-];
+const PIN_ICONS = [EVENT_PIN, EVENT_PIN_COUNTED, ORGANIZATION_ICON, ...TYPE_ICONS];
+const ICONS = [PEER_ICON, COUNT_CHIP, HOME, ...PIN_ICONS];
 
 const CHIP_SIZE = 19;
-/** The chip sits on the badge's upper right. */
-const CHIP_AT = 26;
+/** The chip sits on the pin's head, at its upper right. */
+const CHIP_RIGHT = 12;
+const CHIP_UP = 31;
+/** The rings round an open organization's other places, on the pin's head. */
+const RING_OUTER = 15.5;
+const RING_INNER = 13;
 
 /**
  * How much bigger than drawn every place's mark shows (the owner,
@@ -127,10 +124,17 @@ const PIN_HEIGHT = 34;
 const PIN_HEAD = 13;
 /** Where a count sits off the point: in the head, above the tip. */
 const PIN_COUNT_UP = PIN_HEIGHT - PIN_HEAD;
+/** Across, of an organization type's icon in the head. */
+const PIN_ICON = 15;
 /** A state's name, just under its pin's tip. */
 const EVENT_STATE_NAME_DOWN = 3;
 
-/** A map pin in the shape Google's made familiar, navy in a white edge. */
+/**
+ * A map pin in the shape Google's made familiar, its tip on the place. An
+ * event's is navy with a gold edge. An organization's is its type's colour with
+ * its icon in the head, white-edged on either basemap; charcoal for several
+ * together, with a count there instead.
+ */
 function drawPin(id: string): ImageData | null {
   const canvas = document.createElement('canvas');
   canvas.width = PIN_WIDTH * ICON_RATIO;
@@ -138,6 +142,8 @@ function drawPin(id: string): ImageData | null {
   const pen = canvas.getContext('2d');
   if (!pen) return null;
   pen.scale(ICON_RATIO, ICON_RATIO);
+  const event = id === EVENT_PIN || id === EVENT_PIN_COUNTED;
+  const type = ORGANIZATION_CATEGORIES.find((each) => `${TYPE_PREFIX}${each.id}` === id);
   const middle = PIN_WIDTH / 2;
   const r = 11.5;
   // Where the head's round gives way to the sides that narrow to the tip.
@@ -151,9 +157,8 @@ function drawPin(id: string): ImageData | null {
   pen.closePath();
   pen.lineWidth = 1.5;
   pen.lineJoin = 'round';
-  pen.fillStyle = NAVY;
-  // Gold, not white: an organization's disc is white-edged (the owner, 2026-11-01).
-  pen.strokeStyle = GOLD;
+  pen.fillStyle = event ? NAVY : (type?.color ?? NO_CATEGORY_COLOR);
+  pen.strokeStyle = event ? GOLD : WHITE;
   pen.fill();
   pen.stroke();
   if (id === EVENT_PIN) {
@@ -162,33 +167,12 @@ function drawPin(id: string): ImageData | null {
     pen.fillStyle = WHITE;
     pen.fill();
   }
-  return pen.getImageData(0, 0, canvas.width, canvas.height);
-}
-
-/** A disc in its type's colour, white-edged on either basemap, with its icon. */
-function drawType(id: string): ImageData | null {
-  const canvas = document.createElement('canvas');
-  canvas.width = BADGE_SIZE * ICON_RATIO;
-  canvas.height = BADGE_SIZE * ICON_RATIO;
-  const pen = canvas.getContext('2d');
-  if (!pen) return null;
-  pen.scale(ICON_RATIO, ICON_RATIO);
-  const type = ORGANIZATION_CATEGORIES.find((each) => `${TYPE_PREFIX}${each.id}` === id);
-  const middle = BADGE_SIZE / 2;
-  pen.beginPath();
-  pen.arc(middle, middle, middle, 0, Math.PI * 2);
-  pen.fillStyle = WHITE;
-  pen.fill();
-  pen.beginPath();
-  pen.arc(middle, middle, middle - 1.25, 0, Math.PI * 2);
-  pen.fillStyle = type?.color ?? NO_CATEGORY_COLOR;
-  pen.fill();
   if (type) {
-    // The icon's 24 by 24 grid, in the middle of the disc.
-    pen.translate(6.5, 6.5);
-    pen.scale(19 / 24, 19 / 24);
+    // The icon's 24 by 24 grid, in the middle of the head.
+    pen.translate(middle - PIN_ICON / 2, PIN_HEAD - PIN_ICON / 2);
+    pen.scale(PIN_ICON / 24, PIN_ICON / 24);
     pen.strokeStyle = WHITE;
-    pen.lineWidth = 2.4;
+    pen.lineWidth = 2.6;
     pen.lineCap = 'round';
     pen.lineJoin = 'round';
     pen.stroke(new Path2D(type.icon));
@@ -198,8 +182,7 @@ function drawType(id: string): ImageData | null {
 
 /** Badges drawn by path, not roundRect, which iOS 15's Safari lacks. */
 function drawIcon(id: string): ImageData | null {
-  if (id === EVENT_PIN || id === EVENT_PIN_COUNTED) return drawPin(id);
-  if (TYPE_ICONS.includes(id)) return drawType(id);
+  if (PIN_ICONS.includes(id)) return drawPin(id);
   const size =
     id === PEER_ICON ? 34 : id === HOME ? 28 : id === COUNT_CHIP ? CHIP_SIZE : BADGE_SIZE;
   const canvas = document.createElement('canvas');
@@ -317,11 +300,11 @@ export function addLayers(map: MapLibreMap): void {
       source: FOCUS,
       minzoom: ORGANIZATIONS_APART_FROM,
       paint: {
-        'circle-radius': 22,
+        'circle-radius': RING_OUTER,
         'circle-color': 'rgba(0,0,0,0)',
         'circle-stroke-color': WHITE,
         'circle-stroke-width': 3,
-        'circle-translate': [15, -15],
+        'circle-translate': [0, -PIN_COUNT_UP],
       },
     },
     {
@@ -330,11 +313,11 @@ export function addLayers(map: MapLibreMap): void {
       source: FOCUS,
       minzoom: ORGANIZATIONS_APART_FROM,
       paint: {
-        'circle-radius': 19,
+        'circle-radius': RING_INNER,
         'circle-color': 'rgba(0,0,0,0)',
         'circle-stroke-color': NAVY,
         'circle-stroke-width': 3,
-        'circle-translate': [15, -15],
+        'circle-translate': [0, -PIN_COUNT_UP],
       },
     },
     {
@@ -342,6 +325,7 @@ export function addLayers(map: MapLibreMap): void {
       type: 'symbol',
       source: SOURCES.organizations,
       layout: {
+        'icon-anchor': 'bottom',
         'icon-image': [
           'case',
           ['has', 'point_count'],
@@ -356,12 +340,7 @@ export function addLayers(map: MapLibreMap): void {
         'text-allow-overlap': true,
         'text-ignore-placement': true,
       },
-      // Up and right of the point, so a city's events stay in view.
-      paint: {
-        'text-color': WHITE,
-        'icon-translate': [15, -15],
-        'text-translate': [15, -15],
-      },
+      paint: { 'text-color': WHITE, 'text-translate': [0, -PIN_COUNT_UP] },
     },
     {
       id: 'club-organizations-count',
@@ -380,8 +359,8 @@ export function addLayers(map: MapLibreMap): void {
       },
       paint: {
         'text-color': WHITE,
-        'icon-translate': [CHIP_AT, -CHIP_AT],
-        'text-translate': [CHIP_AT, -CHIP_AT],
+        'icon-translate': [CHIP_RIGHT, -CHIP_UP],
+        'text-translate': [CHIP_RIGHT, -CHIP_UP],
       },
     },
     // A name under each mark (the owner, 2026-10-28): a city's one member,
@@ -398,7 +377,7 @@ export function addLayers(map: MapLibreMap): void {
         'text-anchor': 'top',
         'text-max-width': 9,
       },
-      paint: { ...NAME_PAINT, 'text-translate': [15, 4] },
+      paint: { ...NAME_PAINT, 'text-translate': [0, 3] },
     },
     {
       id: 'club-peers-name',
@@ -567,22 +546,21 @@ export function applyTextScale(map: MapLibreMap, scale: number): void {
   map.setPaintProperty(HOME, 'icon-translate', [0, at(18)]);
   marks.setLayoutProperty('club-organizations', 'text-size', off(12));
   marks.setLayoutProperty('club-organizations', 'icon-size', mark);
-  marks.setPaintProperty('club-organizations', 'icon-translate', [off(15), off(-15)]);
-  marks.setPaintProperty('club-organizations', 'text-translate', [off(15), off(-15)]);
+  marks.setPaintProperty('club-organizations', 'text-translate', [0, off(-PIN_COUNT_UP)]);
   marks.setLayoutProperty('club-organizations-count', 'text-size', off(11));
   marks.setLayoutProperty('club-organizations-count', 'icon-size', mark);
   marks.setPaintProperty('club-organizations-count', 'icon-translate', [
-    off(CHIP_AT),
-    off(-CHIP_AT),
+    off(CHIP_RIGHT),
+    off(-CHIP_UP),
   ]);
   marks.setPaintProperty('club-organizations-count', 'text-translate', [
-    off(CHIP_AT),
-    off(-CHIP_AT),
+    off(CHIP_RIGHT),
+    off(-CHIP_UP),
   ]);
   marks.setLayoutProperty('club-peers', 'text-size', off(14));
   for (const [id, x, y] of [
     ['club-peers-name', -17, 3],
-    ['club-organizations-name', 15, 4],
+    ['club-organizations-name', 0, 3],
   ] as const) {
     marks.setLayoutProperty(id, 'text-size', at(11) * ICON_GROW ** 0.5);
     marks.setPaintProperty(id, 'text-translate', [off(x), off(y)]);
@@ -598,11 +576,11 @@ export function applyTextScale(map: MapLibreMap, scale: number): void {
   map.setLayoutProperty(EVENT_STATE_NAME, 'text-size', at(11) * ICON_GROW ** 0.5);
   map.setPaintProperty(EVENT_STATE_NAME, 'text-translate', [0, off(EVENT_STATE_NAME_DOWN)]);
   for (const [id, r] of [
-    [`${FOCUS}-outer`, 22],
-    [`${FOCUS}-inner`, 19],
+    [`${FOCUS}-outer`, RING_OUTER],
+    [`${FOCUS}-inner`, RING_INNER],
   ] as const) {
     map.setPaintProperty(id, 'circle-radius', off(r));
-    map.setPaintProperty(id, 'circle-translate', [off(15), off(-15)]);
+    map.setPaintProperty(id, 'circle-translate', [0, off(-PIN_COUNT_UP)]);
   }
 }
 
