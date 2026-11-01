@@ -55,6 +55,7 @@ export type NotificationKind =
   | 'join_request'
   | 'check_in_reminder'
   | 'event_followup'
+  | 'calendar_invite'
   | 'introduction';
 
 interface Row {
@@ -296,6 +297,24 @@ export function notificationSentence(n: AppNotification): string {
     // The morning after the event (20261031070000).
     case 'event_followup':
       return `How was ${n.place ?? 'the event'}? Leave a review and add your pictures`;
+    // place is the invitation's title, detail what became of it (20261101000000).
+    case 'calendar_invite': {
+      const title = n.place ?? 'Your event';
+      switch (n.detail) {
+        case 'held':
+          return `${title} is waiting for approval`;
+        case 'choose':
+          return `Choose which organization hosts ${title}`;
+        case 'updated':
+          return `${title} was updated from your calendar`;
+        case 'refused':
+          return `${title} could not be added from your calendar`;
+        case 'cancelled':
+          return `${title} was taken off the calendar`;
+        default:
+          return `${title} was added from your calendar`;
+      }
+    }
     // place is the organization (20261031030000).
     case 'join_request':
       return n.count > 1

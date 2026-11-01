@@ -325,6 +325,26 @@ export function compose(owed: Owed): PushMessage | null {
         body: 'Leave a review and add your pictures.',
         ...where,
       };
+    // What became of a calendar invitation (20261101000000).
+    case 'calendar_invite': {
+      if (subject === '') return null;
+      const told: Record<string, { title: string; body: string }> = {
+        added: { title: 'Added to the club', body: `${subject} is on the calendar.` },
+        updated: {
+          title: 'Updated in the club',
+          body: `${subject} was updated from your calendar.`,
+        },
+        held: {
+          title: 'Waiting for approval',
+          body: `Approve ${subject} to put it on the calendar.`,
+        },
+        choose: { title: 'Choose a host', body: `Choose which organization hosts ${subject}.` },
+        refused: { title: 'Not added', body: `${subject} could not be added from your calendar.` },
+        cancelled: { title: 'Taken off the club', body: `${subject} was taken off the calendar.` },
+      };
+      const words = told[owed.detail ?? ''];
+      return words ? { ...words, ...where } : null;
+    }
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       if (subject === '') return null;

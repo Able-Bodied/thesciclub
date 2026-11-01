@@ -27,6 +27,20 @@ describe('the follow-up after an event', () => {
   });
 });
 
+describe('a calendar invitation', () => {
+  it.each([
+    ['added', 'Weekly was added from your calendar'],
+    ['updated', 'Weekly was updated from your calendar'],
+    ['held', 'Weekly is waiting for approval'],
+    ['choose', 'Choose which organization hosts Weekly'],
+    ['refused', 'Weekly could not be added from your calendar'],
+    ['cancelled', 'Weekly was taken off the calendar'],
+  ])('says what became of it when %s', (detail, sentence) => {
+    const told = n({ kind: 'calendar_invite', actorName: null, place: 'Weekly', detail });
+    expect(notificationSentence(told)).toBe(sentence);
+  });
+});
+
 describe('a reminder to check in', () => {
   it('names the event', () => {
     const asked = n({ kind: 'check_in_reminder', actorName: null, place: 'Climbing' });

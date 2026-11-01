@@ -445,6 +445,16 @@ describe('a formatted post in a notification', () => {
     expect(compose({ ...asked, subject: null })).toBeNull();
   });
 
+  it('says what became of a calendar invitation, and nothing without a name or a state', () => {
+    const told = owed({ kind: 'calendar_invite', subject: 'Weekly', detail: 'held' });
+    expect(compose(told)?.title).toBe('Waiting for approval');
+    expect(compose(told)?.body).toBe('Approve Weekly to put it on the calendar.');
+    expect(compose({ ...told, detail: 'added' })?.body).toBe('Weekly is on the calendar.');
+    expect(compose({ ...told, detail: 'choose' })?.title).toBe('Choose a host');
+    expect(compose({ ...told, subject: null })).toBeNull();
+    expect(compose({ ...told, detail: null })).toBeNull();
+  });
+
   it('asks whether they made it, and says nothing without an event', () => {
     const due = owed({ kind: 'check_in_reminder', subject: 'Climbing' });
     expect(compose(due)?.title).toBe('Did you make it to Climbing?');
