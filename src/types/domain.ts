@@ -835,8 +835,8 @@ export interface EventFilters {
   withinMiles: number | null;
 }
 
-/** The owner, 2026-10-20: what is within 20 miles, unless widened. */
-export const DEFAULT_WITHIN_MILES = 20;
+/** The owner, 2026-10-31: the list shows what is within 50 miles, unless widened. */
+export const DEFAULT_WITHIN_MILES = 50;
 
 export const EMPTY_EVENT_FILTERS: EventFilters = {
   when: 'next30',

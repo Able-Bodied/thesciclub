@@ -52,6 +52,8 @@ export interface EventFilterSheetProps {
   filters: EventFilters;
   /** The member's own RSVP list, or null for every event. */
   rsvp: 'going' | 'interested' | 'been-to' | null;
+  /** The list's; the map shows every place. */
+  distance?: boolean;
   onRsvpChange: (next: 'going' | 'interested' | 'been-to' | null) => void;
   matchCount: number;
   activeCount: number;
@@ -69,6 +71,7 @@ export function EventFilterSheet({
   home,
   filters,
   rsvp,
+  distance = true,
   onRsvpChange,
   matchCount,
   activeCount,
@@ -134,7 +137,7 @@ export function EventFilterSheet({
 
       {/* Not for an RSVP list either: what a member said yes to is theirs
           wherever it is. */}
-      {rsvp ? null : (
+      {rsvp || !distance ? null : (
         <DistanceFilter
           miles={filters.withinMiles}
           city={home.city}

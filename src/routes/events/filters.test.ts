@@ -314,7 +314,7 @@ describe('filterEvents', () => {
   });
 });
 
-// The owner, 2026-10-20: within 20 miles of home unless widened.
+// The owner, 2026-10-31: within 50 miles of home unless widened.
 describe('distance from home', () => {
   const near = makeEvent({ id: 'near', startTime: daysFromNow(1), format: 'in_person' });
   const far = makeEvent({ id: 'far', startTime: daysFromNow(2), format: 'in_person' });
@@ -371,9 +371,9 @@ describe('distance from home', () => {
     ).toEqual(['far']);
   });
 
-  it('counts as a filter only when moved from 20 miles', () => {
-    expect(activeFilterCount(withFilters({ withinMiles: 20 }))).toBe(0);
-    expect(activeFilterCount(withFilters({ withinMiles: 50 }))).toBe(1);
+  it('counts as a filter only when moved from 50 miles', () => {
+    expect(activeFilterCount(withFilters({ withinMiles: 50 }))).toBe(0);
+    expect(activeFilterCount(withFilters({ withinMiles: 20 }))).toBe(1);
     expect(activeFilterCount(withFilters({ withinMiles: null }))).toBe(1);
   });
 });

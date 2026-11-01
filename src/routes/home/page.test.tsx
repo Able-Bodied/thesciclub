@@ -263,10 +263,10 @@ describe('events near home', () => {
     ];
   });
 
-  it('shows only events within 20 miles, online ones by their host', () => {
+  it('shows only events within 50 miles, online ones by their host', () => {
     db.near = { status: 'ready', ids: new Set(['near', 'online']) };
     renderPage('/home?segment=events');
-    expect(db.nearAskedFor).toContain(20);
+    expect(db.nearAskedFor).toContain(50);
     expect(screen.getByText('Swim across town')).toBeInTheDocument();
     expect(screen.getByText('Video meetup')).toBeInTheDocument();
     expect(screen.queryByText('Swim three hours away')).not.toBeInTheDocument();

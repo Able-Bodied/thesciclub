@@ -190,10 +190,10 @@ describe('EventsPage', () => {
     expect(screen.queryByRole('button', { name: 'Display settings' })).toBeNull();
   });
 
-  // The owner, 2026-10-20: within 20 miles unless widened in Filters.
+  // The owner, 2026-10-31: within 50 miles unless widened in Filters.
   describe('distance from home', () => {
     // events_within_miles answers an online event by its host's city.
-    it('lists what is within 20 miles, online events included, until widened to any distance', async () => {
+    it('lists what is within 50 miles, online events included, until widened to any distance', async () => {
       state.near = { status: 'ready', ids: new Set(['rugby', 'zoom']) };
       const user = userEvent.setup();
       renderPage();
@@ -202,12 +202,23 @@ describe('EventsPage', () => {
       expect(screen.queryByText('Newly injured coffee')).toBeNull();
 
       await user.click(screen.getByRole('button', { name: 'Filters' }));
-      const slider = screen.getByLabelText('Within 20 miles of San Jose');
+      const slider = screen.getByLabelText('Within 50 miles of San Jose');
       fireEvent.change(slider, { target: { value: '105' } });
       expect(screen.getByLabelText('Any distance')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /^Show 3/ }));
       expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+    });
+
+    it('leaves distance out of the map and its Filters', async () => {
+      state.near = { status: 'ready', ids: new Set(['rugby', 'zoom']) };
+      const user = userEvent.setup();
+      renderPage('/events?view=map');
+      await screen.findByTestId('club-map');
+      const near = screen.getByText(/^On the map:/).textContent;
+      expect(near.split(', ')).toHaveLength(3);
+      await user.click(screen.getByRole('button', { name: 'Filter events' }));
+      expect(screen.queryByLabelText(/^Within 50 miles/)).toBeNull();
     });
 
     it('shows every distance while home is not on the map', () => {

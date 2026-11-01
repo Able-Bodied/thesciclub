@@ -544,7 +544,7 @@ All live. Migration headers and the files named say how and why.
   photograph where there is none. Measured with a scratch Playwright script
   against a throwaway stack behind a 0.3s HTTP/2 proxy (in the commits).
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
-  Events on Home are within Events' default 20 miles of home, online ones
+  Events on Home are within Events' default 50 miles of home, online ones
   anywhere (`events_within_miles`). Distance is measured from exactly what
   the map may show (`private.visible_event_places`, `20261025020000`): the
   exact pin, else the city middle, else the host organization's confirmed
