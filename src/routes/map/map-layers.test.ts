@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/map', () => ({ MAP_FONT: 'Noto Sans Regular' }));
 
@@ -34,6 +34,7 @@ function oldSafariPen() {
       lineTo: record('lineTo'),
       arcTo: record('arcTo'),
       arc: record('arc'),
+      translate: record('translate'),
       quadraticCurveTo: record('quadraticCurveTo'),
       closePath: record('closePath'),
       fill: record('fill'),
@@ -48,8 +49,13 @@ function oldSafariPen() {
   };
 }
 
+beforeEach(() => {
+  vi.stubGlobal('Path2D', vi.fn());
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("the map's badges", () => {
@@ -129,13 +135,13 @@ describe("organizations' places", () => {
     }
   });
 
-  it("show each organization's own badge, and a purple count where places run together", () => {
+  it("show each organization's type, and a count where places run together", () => {
     const badge = layersOf().added.find((layer) => layer.id === 'club-organizations');
     expect(badge?.layout?.['icon-image']).toEqual([
       'case',
       ['has', 'point_count'],
       'club-organization',
-      ['concat', 'org-logo-', ['get', 'organizationId']],
+      ['concat', 'club-org-type-', ['coalesce', ['get', 'category'], 'none']],
     ]);
     expect(badge?.layout?.['text-field']).toEqual([
       'case',
@@ -169,15 +175,15 @@ describe("organizations' places", () => {
     expect(chip?.layout?.['text-field']).toEqual(['to-string', ['get', 'count']]);
   });
 
-  it('draw a badge when MapLibre asks for one, as it is needed', () => {
+  it('draw a type when MapLibre asks for it again, after a theme change', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
       oldSafariPen().pen as unknown as CanvasRenderingContext2D,
     );
     const { resolver, map } = layersOf();
     map.addImage.mockClear();
-    resolver.ask?.('org-logo-borp');
-    expect(map.addImage).toHaveBeenCalledWith('org-logo-borp', expect.anything(), {
-      pixelRatio: 2,
+    resolver.ask?.('club-org-type-veterans');
+    expect(map.addImage).toHaveBeenCalledWith('club-org-type-veterans', expect.anything(), {
+      pixelRatio: 4,
     });
   });
 });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { motionReduced } from '@/lib/accessibility';
 import { useAnnounce } from '@/lib/announce';
+import { ORGANIZATION_CATEGORIES, type OrganizationCategory } from '@/lib/organization-categories';
 import {
   type OrganizationDraft,
   saveOrganization,
@@ -287,6 +288,28 @@ export function OrganizationEditor({
               }}
             />
             <span className="text-[0.8125rem] text-grey">Two to four letters for its badge.</span>
+          </label>
+          <label className="text-ink">
+            Type
+            <select
+              className={field}
+              required={!organization}
+              value={draft.category ?? ''}
+              onChange={(event) => {
+                setDraft({
+                  ...draft,
+                  category: (event.target.value || null) as OrganizationCategory | null,
+                });
+              }}
+            >
+              <option value="">Choose a type</option>
+              {ORGANIZATION_CATEGORIES.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-[0.8125rem] text-grey">The colour of its pin on the map.</span>
           </label>
           <label className="text-ink">
             City or region

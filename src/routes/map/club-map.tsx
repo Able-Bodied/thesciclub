@@ -1,4 +1,4 @@
-import { House, Layers, LocateFixed, MapPin, SlidersHorizontal } from 'lucide-react';
+import { ChevronDown, House, Layers, LocateFixed, MapPin, SlidersHorizontal } from 'lucide-react';
 import {
   lazy,
   type ReactNode,
@@ -24,6 +24,7 @@ import {
 } from '@/lib/map';
 import type { MapContents, MapOrganization } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
+import { NO_CATEGORY, ORGANIZATION_CATEGORIES } from '@/lib/organization-categories';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { usePhotoUrls } from '@/lib/photos';
@@ -56,7 +57,6 @@ import {
 import { MapSheet } from '@/routes/map/map-sheet';
 import { MapPlaceholder } from '@/routes/map/map-view';
 import { MemberRow } from '@/routes/map/member-row';
-import { type BadgeSource, setOrganizationBadges } from '@/routes/map/organization-badges';
 import { type PhotoSource, setPhotoBoxes } from '@/routes/map/peer-photos';
 import {
   apart,
@@ -208,8 +208,11 @@ export default function ClubMap({
   const [lastFocus, setLastFocus] = useState(focus);
   if (focus !== lastFocus) {
     setLastFocus(focus);
-    setLayers((current) => new Set([...current, focus]));
+    // Switches, as the toggle says; showing both is Layers' to ask for (the
+    // owner, 2026-11-01).
+    setLayers(new Set([focus]));
   }
+  const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<string>>(() => new Set());
   const [held, setHeld] = useState<MapLibreMap | null>(null);
   // A map MapCanvas removed (a kept tab hidden) is dead at once, before state catches up.
   const live = useRef<MapLibreMap | null>(null);
@@ -253,10 +256,18 @@ export default function ClubMap({
     () => peerCities(contents.peerCities, shownMembers),
     [contents.peerCities, shownMembers],
   );
-  const placedOrganizations = useMemo(
-    () => organizationSpots(contents.organizations, organizations),
-    [contents.organizations, organizations],
-  );
+  const placedOrganizations = useMemo(() => {
+    const placed = organizationSpots(contents.organizations, organizations);
+    if (hiddenTypes.size === 0) return placed;
+    // A place shared with a type still shown stays, for the ones still shown.
+    const spots = placed.spots.flatMap((spot) => {
+      const kept = spot.organizations.filter(
+        (organization) => !hiddenTypes.has(organization.category ?? NO_CATEGORY),
+      );
+      return kept.length > 0 ? [{ ...spot, organizations: kept }] : [];
+    });
+    return { ...placed, spots };
+  }, [contents.organizations, organizations, hiddenTypes]);
   const missingPeers = useMemo(
     () => notOnMap(contents.peerCities, shownMembers),
     [contents.peerCities, shownMembers],
@@ -303,31 +314,6 @@ export default function ClubMap({
     () => apart(foldByState(organizationData), farZoom, gap),
     [organizationData, farZoom, gap],
   );
-  // Logos signed only while their layer is on; each fetched once its badge is drawn.
-  const badged = useMemo(
-    () => [...new Set(placedOrganizations.spots.flatMap((spot) => spot.organizations))],
-    [placedOrganizations],
-  );
-  const logoUrls = usePhotoUrls(
-    layers.has('organizations') ? badged.map((organization) => organization.logoPath) : [],
-  );
-  const badgeSources = useMemo(
-    () =>
-      new Map<string, BadgeSource>(
-        badged.map((organization) => [
-          organization.id,
-          {
-            shortCode: organization.shortCode,
-            logoPath: organization.logoPath,
-            logoUrl: organization.logoPath ? (logoUrls.get(organization.logoPath) ?? null) : null,
-          },
-        ]),
-      ),
-    [badged, logoUrls],
-  );
-  useEffect(() => {
-    if (map) setOrganizationBadges(map, badgeSources);
-  }, [map, badgeSources]);
   // A place's one member shows their photograph (the owner, 2026-10-28).
   const lone = useMemo(() => lonePeers(cities), [cities]);
   const lonePhotos = usePhotoUrls(
@@ -645,6 +631,13 @@ export default function ClubMap({
       return next;
     });
   };
+  const toggleType = (type: string) => {
+    setHiddenTypes((now) => {
+      const next = new Set(now);
+      if (!next.delete(type)) next.add(type);
+      return next;
+    });
+  };
 
   // One place in a tapped sheet: what a double on its pin does, for a keyboard too.
   const closeUp = ((): CloseUp | null => {
@@ -714,6 +707,8 @@ export default function ClubMap({
           onOpenChange={setPanelOpen}
           layers={layers}
           onToggle={toggleLayer}
+          hiddenTypes={hiddenTypes}
+          onToggleType={toggleType}
           unplaced={placedOrganizations.unplaced.length}
           missingPeers={layers.has('peers') ? missingPeers : 0}
           onShowUnplaced={() => {
@@ -861,6 +856,8 @@ function LayerPanel({
   onOpenChange,
   layers,
   onToggle,
+  hiddenTypes,
+  onToggleType,
   unplaced,
   missingPeers,
   onShowUnplaced,
@@ -869,12 +866,15 @@ function LayerPanel({
   onOpenChange: (open: boolean) => void;
   layers: ReadonlySet<Layer>;
   onToggle: (layer: Layer) => void;
+  hiddenTypes: ReadonlySet<string>;
+  onToggleType: (type: string) => void;
   unplaced: number;
   /** In the list, not on the map: the map is off for them, or their city is not placed. */
   missingPeers: number;
   onShowUnplaced: () => void;
 }) {
   const panelId = useId();
+  const [typesOpen, setTypesOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -928,6 +928,64 @@ function LayerPanel({
               </label>
             ))}
           </fieldset>
+          {layers.has('organizations') ? (
+            <>
+              <button
+                type="button"
+                aria-expanded={typesOpen}
+                onClick={() => {
+                  setTypesOpen((now) => !now);
+                }}
+                className="flex min-h-[44px] w-full items-center gap-2 rounded-xl px-2.5 font-semibold text-[0.875rem] text-emphasis hover:bg-tint"
+              >
+                <ChevronDown
+                  aria-hidden="true"
+                  className={cn('h-4 w-4 transition-transform', typesOpen && 'rotate-180')}
+                />
+                Organization types
+                {hiddenTypes.size > 0 ? (
+                  <span className="font-normal text-ink2">({hiddenTypes.size} hidden)</span>
+                ) : null}
+              </button>
+              {typesOpen ? (
+                <fieldset className="mb-1">
+                  <legend className="sr-only">Types of organization</legend>
+                  {ORGANIZATION_CATEGORIES.map((type) => (
+                    <label
+                      key={type.id}
+                      className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl px-2.5 hover:bg-tint"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={!hiddenTypes.has(type.id)}
+                        onChange={() => {
+                          onToggleType(type.id);
+                        }}
+                        className="h-5 w-5 flex-none accent-[var(--action)]"
+                      />
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 32 32"
+                        className="h-[22px] w-[22px] flex-none"
+                      >
+                        <circle cx="16" cy="16" r="15" fill={type.color} stroke="#ffffff" />
+                        <path
+                          d={type.icon}
+                          transform="translate(6.5 6.5) scale(0.79)"
+                          fill="none"
+                          stroke="#ffffff"
+                          strokeWidth="2.4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span className="text-[0.875rem] text-ink">{type.label}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ) : null}
+            </>
+          ) : null}
           <p className="mt-1 flex items-center gap-2.5 px-2.5 py-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
             <span
               aria-hidden="true"
@@ -972,7 +1030,7 @@ function LayerKey({ layer }: { layer: Layer }) {
         <path
           d="M13 33C9.5 25 1.5 20 1.5 13a11.5 11.5 0 1 1 23 0c0 7-8 12-11.5 20Z"
           fill="#102a4c"
-          stroke="#ffffff"
+          stroke="#d4a83a"
           strokeWidth="1.5"
           strokeLinejoin="round"
         />
@@ -994,7 +1052,7 @@ function LayerKey({ layer }: { layer: Layer }) {
   return (
     <span
       aria-hidden="true"
-      className="h-[20px] w-[20px] flex-none rounded-full border-[3px] border-[#5b3d8f] bg-white shadow-[0_0_0_1px_#ffffff]"
+      className="h-[20px] w-[20px] flex-none rounded-full border-[3px] border-[#3b4252] bg-white shadow-[0_0_0_1px_#ffffff]"
     />
   );
 }

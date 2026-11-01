@@ -8,13 +8,11 @@ import {
 } from '@/lib/map';
 import type { MapOrganization } from '@/lib/map-data';
 import {
-  addBadge,
-  BADGE_PREFIX,
-  BADGE_SIZE,
-  isBadge,
-  PLUM,
-  setBadgeScale,
-} from '@/routes/map/organization-badges';
+  NO_CATEGORY,
+  NO_CATEGORY_COLOR,
+  ORGANIZATION_CATEGORIES,
+} from '@/lib/organization-categories';
+import { BADGE_SIZE, setBadgeScale } from '@/routes/map/organization-badges';
 import { addPhotoBox, isPhotoBox, PHOTO_PREFIX } from '@/routes/map/peer-photos';
 import { type Box, LAYERS, type Layer } from '@/routes/map/places';
 
@@ -94,7 +92,20 @@ const HOME = 'club-home';
 /** An event's pin, and the one with room in its head for a count. */
 const EVENT_PIN = 'club-event-pin';
 const EVENT_PIN_COUNTED = 'club-event-pin-counted';
-const ICONS = [PEER_ICON, ORGANIZATION_ICON, COUNT_CHIP, HOME, EVENT_PIN, EVENT_PIN_COUNTED];
+/** An organization's pin: its type's colour and icon (20261101030000). */
+const TYPE_PREFIX = 'club-org-type-';
+const TYPE_ICONS = [...ORGANIZATION_CATEGORIES.map((type) => type.id), NO_CATEGORY].map(
+  (type) => `${TYPE_PREFIX}${type}`,
+);
+const ICONS = [
+  PEER_ICON,
+  ORGANIZATION_ICON,
+  COUNT_CHIP,
+  HOME,
+  EVENT_PIN,
+  EVENT_PIN_COUNTED,
+  ...TYPE_ICONS,
+];
 
 const CHIP_SIZE = 19;
 /** The chip sits on the badge's upper right. */
@@ -141,7 +152,8 @@ function drawPin(id: string): ImageData | null {
   pen.lineWidth = 1.5;
   pen.lineJoin = 'round';
   pen.fillStyle = NAVY;
-  pen.strokeStyle = WHITE;
+  // Gold, not white: an organization's disc is white-edged (the owner, 2026-11-01).
+  pen.strokeStyle = GOLD;
   pen.fill();
   pen.stroke();
   if (id === EVENT_PIN) {
@@ -153,9 +165,41 @@ function drawPin(id: string): ImageData | null {
   return pen.getImageData(0, 0, canvas.width, canvas.height);
 }
 
+/** A disc in its type's colour, white-edged on either basemap, with its icon. */
+function drawType(id: string): ImageData | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = BADGE_SIZE * ICON_RATIO;
+  canvas.height = BADGE_SIZE * ICON_RATIO;
+  const pen = canvas.getContext('2d');
+  if (!pen) return null;
+  pen.scale(ICON_RATIO, ICON_RATIO);
+  const type = ORGANIZATION_CATEGORIES.find((each) => `${TYPE_PREFIX}${each.id}` === id);
+  const middle = BADGE_SIZE / 2;
+  pen.beginPath();
+  pen.arc(middle, middle, middle, 0, Math.PI * 2);
+  pen.fillStyle = WHITE;
+  pen.fill();
+  pen.beginPath();
+  pen.arc(middle, middle, middle - 1.25, 0, Math.PI * 2);
+  pen.fillStyle = type?.color ?? NO_CATEGORY_COLOR;
+  pen.fill();
+  if (type) {
+    // The icon's 24 by 24 grid, in the middle of the disc.
+    pen.translate(6.5, 6.5);
+    pen.scale(19 / 24, 19 / 24);
+    pen.strokeStyle = WHITE;
+    pen.lineWidth = 2.4;
+    pen.lineCap = 'round';
+    pen.lineJoin = 'round';
+    pen.stroke(new Path2D(type.icon));
+  }
+  return pen.getImageData(0, 0, canvas.width, canvas.height);
+}
+
 /** Badges drawn by path, not roundRect, which iOS 15's Safari lacks. */
 function drawIcon(id: string): ImageData | null {
   if (id === EVENT_PIN || id === EVENT_PIN_COUNTED) return drawPin(id);
+  if (TYPE_ICONS.includes(id)) return drawType(id);
   const size =
     id === PEER_ICON ? 34 : id === HOME ? 28 : id === COUNT_CHIP ? CHIP_SIZE : BADGE_SIZE;
   const canvas = document.createElement('canvas');
@@ -202,14 +246,14 @@ function drawIcon(id: string): ImageData | null {
     pen.fillStyle = GOLD;
     pen.strokeStyle = NAVY;
   } else {
-    // Purple in a white edge, the size of a badge or its chip.
+    // Charcoal in a white edge, the size of a mark or its chip: several together.
     const middle = size / 2;
     pen.arc(middle, middle, middle, 0, Math.PI * 2);
     pen.fillStyle = WHITE;
     pen.fill();
     pen.beginPath();
     pen.arc(middle, middle, middle - 1.25, 0, Math.PI * 2);
-    pen.fillStyle = PLUM;
+    pen.fillStyle = NO_CATEGORY_COLOR;
     pen.fill();
     return pen.getImageData(0, 0, canvas.width, canvas.height);
   }
@@ -228,11 +272,10 @@ const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 
 export function addLayers(map: MapLibreMap): void {
   for (const id of ICONS) addIcon(map, id);
-  // A theme change can drop our badges, and logos are drawn when first
+  // A theme change can drop our marks, and photographs are drawn when first
   // needed. MapLibre 6 asks this, not a styleimagemissing listener, which comes too late.
   map.setMissingStyleImageResolver((id) => {
-    if (isBadge(id)) addBadge(map, id);
-    else if (isPhotoBox(id)) addPhotoBox(map, id);
+    if (isPhotoBox(id)) addPhotoBox(map, id);
     else addIcon(map, id);
   });
   for (const layer of LAYERS) {
@@ -299,12 +342,11 @@ export function addLayers(map: MapLibreMap): void {
       type: 'symbol',
       source: SOURCES.organizations,
       layout: {
-        // Its own logo, fetched only once MapLibre asks (organization-badges.ts).
         'icon-image': [
           'case',
           ['has', 'point_count'],
           ORGANIZATION_ICON,
-          ['concat', BADGE_PREFIX, ['get', 'organizationId']],
+          ['concat', TYPE_PREFIX, ['coalesce', ['get', 'category'], NO_CATEGORY]],
         ],
         'icon-allow-overlap': true,
         'icon-ignore-placement': true,

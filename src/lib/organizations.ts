@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import type { OrganizationCategory } from '@/lib/organization-categories';
 import { readPages } from '@/lib/read-pages';
 import { onCalendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
@@ -19,6 +20,7 @@ interface OrganizationRow {
   can_invite: boolean;
   logo_path: string | null;
   state?: string | null;
+  category?: OrganizationCategory | null;
   organization_places?: PlaceRow[] | null;
 }
 
@@ -59,6 +61,7 @@ export function toOrganization(row: OrganizationRow): Organization {
     canInvite: row.can_invite,
     logoPath: row.logo_path,
     state: row.state ?? null,
+    category: row.category ?? null,
     joinsNeedApproval: row.joins_need_approval === true,
     anonymousReviews: row.anonymous_reviews !== false,
     places: toOrganizationPlaces(row.organization_places),
@@ -130,7 +133,7 @@ onForgetSharedReads(forgetDirectory);
 onCalendarChanged(forgetDirectory);
 
 const DIRECTORY =
-  'id, short_code, name, city, description, tags, can_invite, logo_path, state, joins_need_approval, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, joins_need_approval, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
 /** Before 20261028700000: no ZIP codes. */
 const DIRECTORY_WITHOUT_ZIP =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)';

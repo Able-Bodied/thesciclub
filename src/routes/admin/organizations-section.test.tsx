@@ -107,6 +107,7 @@ describe('organization management', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add organization' }));
     await userEvent.type(screen.getByLabelText('Organization name'), 'New organization');
     await userEvent.type(screen.getByLabelText(/Short code/), 'new');
+    await userEvent.selectOptions(screen.getByLabelText(/^Type/), 'outdoor');
     await userEvent.type(screen.getByLabelText('City or region'), 'Test region');
     await userEvent.type(screen.getByLabelText(/Tags/), 'Events, Support');
     await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
@@ -130,6 +131,7 @@ describe('organization management', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add organization' }));
     await userEvent.type(screen.getByLabelText('Organization name'), 'No place');
     await userEvent.type(screen.getByLabelText(/Short code/), 'nop');
+    await userEvent.selectOptions(screen.getByLabelText(/^Type/), 'outdoor');
     expect(screen.getByLabelText('City or region')).not.toBeRequired();
     await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));
     await waitFor(() => {
@@ -273,6 +275,7 @@ describe('organization management', () => {
       draft: {
         name: 'Rolling Hikers',
         shortCode: 'RH',
+        category: 'team',
         city: 'Reno',
         description: '',
         tags: [],
@@ -365,6 +368,7 @@ describe('an organization’s logo', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Add organization' }));
     await userEvent.type(screen.getByLabelText('Organization name'), 'New organization');
     await userEvent.type(screen.getByLabelText(/Short code/), 'new');
+    await userEvent.selectOptions(screen.getByLabelText(/^Type/), 'outdoor');
     await userEvent.type(screen.getByLabelText('City or region'), 'Test region');
     await userEvent.upload(screen.getByLabelText('Choose a logo'), png());
     await userEvent.click(screen.getByRole('button', { name: 'Save organization' }));

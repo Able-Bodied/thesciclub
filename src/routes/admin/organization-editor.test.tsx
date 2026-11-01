@@ -21,6 +21,7 @@ beforeEach(() => {
 async function fillIn() {
   await userEvent.type(screen.getByLabelText('Organization name'), 'Rolling Hikers');
   await userEvent.type(screen.getByLabelText(/^Short code/), 'rh');
+  await userEvent.selectOptions(screen.getByLabelText(/^Type/), 'outdoor');
 }
 
 describe('adding an organization', () => {

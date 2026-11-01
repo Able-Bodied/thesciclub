@@ -1,3 +1,5 @@
+import type { OrganizationCategory } from '@/lib/organization-categories';
+
 /**
  * Domain types for The SCI Club.
  *
@@ -596,6 +598,8 @@ export interface Organization {
   logoPath: string | null;
   /** Two letters, only as its own site gives it; none keeps it off the map. */
   state?: string | null;
+  /** What kind it is, for its pin (20261101030000). */
+  category?: OrganizationCategory | null;
   /** Where it is, main place first (20261025015000). */
   places?: OrganizationPlace[];
 }

@@ -1,4 +1,5 @@
 import type { MapContents, MapOrganization, MapPoint } from '@/lib/map-data';
+import { NO_CATEGORY } from '@/lib/organization-categories';
 import type { BrowseMember, ClubEvent, Organization } from '@/types/domain';
 
 /**
@@ -136,6 +137,7 @@ interface Feature {
     exact?: boolean;
     orgs?: string;
     organizationId?: string;
+    category?: string;
     /** The one member of a city, whose photograph its box shows (peer-photos.ts). */
     photo?: string;
     /** The name under the mark: a city's one member, or the organization whose logo it is. */
@@ -249,6 +251,7 @@ export function organizationFeatures(spots: OrganizationSpot[]): Features {
       const [first] = [...spot.organizations].sort((a, b) => a.name.localeCompare(b.name));
       if (first) {
         point.properties.organizationId = first.id;
+        point.properties.category = first.category ?? NO_CATEGORY;
         point.properties.label = shortLabel(first.name);
       }
       return point;
