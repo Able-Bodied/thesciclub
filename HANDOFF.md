@@ -453,12 +453,17 @@ All live. Migration headers and the files named say how and why.
   (`components/partner-label.tsx`; the name is `PARTNER_ROLE_NAME` in
   `lib/club-partners.ts`, one place to rename). Unlimited invites; their own
   code with no organization lets people in (`qr_codes.made_as_partner`).
-  Introduce… in a profile's ••• (`peers/introduce-sheet.tsx`): both answer on
-  `/introductions/:id`; two yeses open a group of the two, the partner too
-  only if they ticked the box, starting with an `introduced` notice (the
-  partner's note); whoever said yes is never told of a no. `/partner`: their
-  numbers, My people (never messages or contact details beyond addresses
-  they invited) and introductions; `/partner/card` prints their QR card.
+  `/stats` (Stats & controls, `20261031110000`, for org admins, partners and
+  administrators, `private.can_connect`; `/partner` redirects): an
+  organization's numbers (`my_organization_stats`, only what its page already
+  shows), Connect two members, their numbers, My people (never messages or
+  contact details beyond addresses they invited) and introductions. Connecting
+  (`make_introduction`, also Introduce… in a profile's •••) asks nobody (the
+  owner, 2026-10-31): it opens a group at once, the connector too only if they
+  ticked the box, starting with an `introduced` notice (their note); the two
+  get the ordinary `group_add` notification; a pair is connected once. The
+  answer page `/introductions/:id` serves only those asked before that. The
+  card page is gone; `my_partner_card` still gives the title.
   Joining offers "Professional", which grants nothing. Probes were run on a
   throwaway stack; none is saved under `supabase/tests`.
 - **Admin finds every member** (`20261029230000`): the roster is searched and

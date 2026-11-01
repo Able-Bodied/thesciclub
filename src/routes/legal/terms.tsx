@@ -47,8 +47,9 @@ export default function TermsPage() {
           <li>
             <b>Trusted partners.</b> We may make a professional who works with people with spinal
             cord injuries a trusted partner, shown with their title. A partner can invite without a
-            limit, make QR codes and links that let people in until they expire, and introduce two
-            members to each other, who each choose whether to meet. A partner’s word is not medical
+            limit, make QR codes and links that let people in until they expire, and connect two
+            members, as an org admin can. Connecting adds both to a group conversation without
+            asking them first, and either can leave it at any time. A partner’s word is not medical
             advice either, and we may end the role at any time.
           </li>
         </List>
