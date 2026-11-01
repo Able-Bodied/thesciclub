@@ -6,11 +6,21 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * next person on the phone is handed the last one's for up to an hour.
  */
 
-const auth = vi.hoisted(() => ({ error: null as { message: string } | null }));
+const auth = vi.hoisted((): { error: { message: string } | null; options: unknown } => ({
+  error: null,
+  options: undefined,
+}));
 
 vi.mock('@/lib/push/notifications', () => ({ forgetThisDevice: () => Promise.resolve() }));
 vi.mock('@/lib/supabase', () => ({
-  getSupabase: () => ({ auth: { signOut: () => Promise.resolve({ error: auth.error }) } }),
+  getSupabase: () => ({
+    auth: {
+      signOut: (options: unknown) => {
+        auth.options = options;
+        return Promise.resolve({ error: auth.error });
+      },
+    },
+  }),
 }));
 
 const { signOut } = await import('@/lib/account');
@@ -19,6 +29,7 @@ const KEPT = 'thesciclub.signed-photos';
 
 beforeEach(() => {
   auth.error = null;
+  auth.options = undefined;
   localStorage.setItem(
     KEPT,
     JSON.stringify({ 'seed/a.webp': { url: 'https://signed.test/a', until: Date.now() + 60_000 } }),
@@ -26,6 +37,11 @@ beforeEach(() => {
 });
 
 describe('signOut', () => {
+  it("signs out this device only, leaving the member's others signed in", async () => {
+    await signOut();
+    expect(auth.options).toEqual({ scope: 'local' });
+  });
+
   it('forgets the photograph URLs kept for this member', async () => {
     expect(await signOut()).toEqual({ ok: true });
     expect(localStorage.getItem(KEPT)).toBeNull();
