@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   activeFilterCount,
   ageBandsIn,
-  citiesIn,
   filterMembers,
   hasConditions,
+  membersWithin,
+  organizationsIn,
   othersOnly,
   regionsIn,
   toggleFilter,
@@ -80,9 +81,47 @@ describe('filters', () => {
     expect(filtered.map((m) => m.displayName)).toEqual(['Quad']);
   });
 
-  it('excludes members with no city when a city filter is on', () => {
-    const deck = [makeMember({ city: null }), makeMember({ city: 'San Jose' })];
-    expect(filterMembers(deck, { ...none, cities: ['San Jose'] }, 'everyone')).toHaveLength(1);
+  it('keeps mentors or those who are not', () => {
+    const deck = [
+      makeMember({ displayName: 'M', type: 'mentor' }),
+      makeMember({ displayName: 'P', type: 'peer' }),
+    ];
+    const names = (role: 'mentors' | 'peers') =>
+      filterMembers(deck, { ...none, role }, 'everyone').map((m) => m.displayName);
+    expect(names('mentors')).toEqual(['M']);
+    expect(names('peers')).toEqual(['P']);
+  });
+
+  it("keeps the members of one organization, by their words or the club's records", () => {
+    const deck = [
+      makeMember({ displayName: 'Said', affiliations: ['BORP'] }),
+      makeMember({
+        displayName: 'Mentor',
+        affiliations: [],
+        mentorOrganizations: [{ id: 'b', name: 'BORP' }] as never,
+      }),
+      makeMember({ displayName: 'Other', affiliations: ['NorCal SCI'] }),
+    ];
+    const kept = filterMembers(deck, { ...none, organization: 'BORP' }, 'everyone');
+    expect(kept.map((m) => m.displayName)).toEqual(['Said', 'Mentor']);
+    expect(organizationsIn(deck)).toEqual(['BORP', 'NorCal SCI']);
+  });
+
+  it("measures from the member's city to where the map places each city", () => {
+    const home = { latitude: 37.34, longitude: -121.89 };
+    const peerCities = [
+      { latitude: 37.8, longitude: -122.27, city: 'Oakland', state: 'CA', memberIds: ['near'] },
+      { latitude: 34.05, longitude: -118.24, city: 'LA', state: 'CA', memberIds: ['far'] },
+    ];
+    expect([...(membersWithin({ home, peerCities }, 50) ?? [])]).toEqual(['near']);
+    expect(membersWithin({ home, peerCities }, null)).toBeNull();
+    expect(membersWithin({ home: null, peerCities }, 50)).toBeNull();
+    const deck = [makeMember({ id: 'near' }), makeMember({ id: 'unplaced' })];
+    expect(
+      filterMembers(deck, { ...none, withinMiles: 50 }, 'everyone', new Set(['near'])).map(
+        (m) => m.id,
+      ),
+    ).toEqual(['near']);
   });
 
   it('matches a topic filter against interests too, since people file things under both', () => {
@@ -108,12 +147,12 @@ describe('filters', () => {
 
   it('combines filters with AND, not OR', () => {
     const deck = [
-      makeMember({ displayName: 'Both', region: 'Cervical', city: 'San Jose' }),
-      makeMember({ displayName: 'OnlyRegion', region: 'Cervical', city: 'Eureka' }),
+      makeMember({ displayName: 'Both', region: 'Cervical', type: 'mentor' }),
+      makeMember({ displayName: 'OnlyRegion', region: 'Cervical', type: 'peer' }),
     ];
     const filtered = filterMembers(
       deck,
-      { ...none, regions: ['Cervical'], cities: ['San Jose'] },
+      { ...none, regions: ['Cervical'], role: 'mentors' },
       'everyone',
     );
     expect(filtered.map((m) => m.displayName)).toEqual(['Both']);
@@ -177,7 +216,6 @@ describe('option lists', () => {
 
   it('deduplicates and drops null cities', () => {
     expect(regionsIn(deck)).toEqual(['Cervical']);
-    expect(citiesIn(deck)).toEqual(['San Jose']);
     // Grouped: "Driving" is one of the wordings under the driving group, and
     // "Travel" is claimed by nothing, so it keeps the member's own word.
     expect(topicsIn(deck)).toEqual(['Driving and getting about', 'Travel']);
@@ -218,15 +256,6 @@ describe('the spinal cord condition filter', () => {
       'TM',
       'SB at L4',
     ]);
-  });
-
-  it('still narrows with the city, as the other groups do', () => {
-    const placed = deck.map((m, i) => ({ ...m, city: i === 2 ? 'San Jose' : 'Eureka' }));
-    expect(
-      filterMembers(placed, { ...none, condition: true, cities: ['San Jose'] }, 'everyone').map(
-        (m) => m.displayName,
-      ),
-    ).toEqual(['TM']);
   });
 
   it('counts as one active filter, and is offered only when somebody has a condition', () => {

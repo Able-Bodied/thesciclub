@@ -1,5 +1,6 @@
 import { CalendarPlus, ExternalLink } from 'lucide-react';
 import { useCallback, useId, useRef, useState } from 'react';
+import { SheetGrip } from '@/components/sheet-grip';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -127,7 +128,7 @@ export function RsvpSheet({
           'lg:shadow-[0_24px_60px_rgba(10,20,35,.35)]',
         )}
       >
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
+        <SheetGrip sheet={dialog} onClose={onClose} />
         <div className="flex-1 overflow-y-auto px-[18px] pt-1 pb-2 lg:pt-5">
           <h2
             id={titleId}

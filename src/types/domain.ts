@@ -1,3 +1,5 @@
+import type { OrganizationCategory } from '@/lib/organization-categories';
+
 /**
  * Domain types for The SCI Club.
  *
@@ -596,6 +598,8 @@ export interface Organization {
   logoPath: string | null;
   /** Two letters, only as its own site gives it; none keeps it off the map. */
   state?: string | null;
+  /** What kind it is, for its pin (20261101030000). */
+  category?: OrganizationCategory | null;
   /** Where it is, main place first (20261025015000). */
   places?: OrganizationPlace[];
 }
@@ -625,7 +629,12 @@ export interface MemberFilters {
    * condition with a level is in a region as well.
    */
   condition: boolean;
-  cities: string[];
+  /** Mentors, the members who are not, or everybody. */
+  role: 'any' | 'mentors' | 'peers';
+  /** An organization's name, from the members in the list; null for any. */
+  organization: string | null;
+  /** From the member's own city, as the map places everybody; null for any distance. */
+  withinMiles: number | null;
   topics: string[];
   /** Age groups (AGE_BANDS in peers/filters.ts); any one matches. */
   ages: string[];
@@ -635,7 +644,9 @@ export interface MemberFilters {
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   regions: [],
   condition: false,
-  cities: [],
+  role: 'any',
+  organization: null,
+  withinMiles: null,
   topics: [],
   ages: [],
   search: '',
@@ -689,6 +700,8 @@ export interface ClubEvent {
   description: string;
   /** Sanitized HTML with absolute links, for the detail view. */
   descriptionHtml: string;
+  /** A sentence or two for a card (20261031140000). A card without one shows no words. */
+  detailSummary?: string | null;
   /** ISO 8601. Always present — an event with no start time is not ingested. */
   startTime: string;
   endTime: string | null;

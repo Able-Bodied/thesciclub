@@ -689,6 +689,8 @@ export const NOTIFICATION_KINDS = [
   { kind: 'invite_joined', label: 'Somebody I invited joining', who: 'mentor' },
   { kind: 'invite_request', label: 'Somebody asking me for an invite', who: 'mentor' },
   { kind: 'join_request', label: 'Somebody asking to join my organization', who: 'mentor' },
+  { kind: 'calendar_invite', label: 'Events I add from my calendar', who: 'mentor' },
+  { kind: 'organization_request', label: 'Requests to add an organization', who: 'all' },
   { kind: 'report', label: 'New reports, and the weekly count of blocks', who: 'admin' },
 ] as const;
 

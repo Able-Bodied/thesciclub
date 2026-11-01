@@ -129,7 +129,8 @@ describe('the Content-Security-Policy', () => {
       expect(text, path).not.toMatch(/Content-Security-Policy|X-Frame-Options/);
     }
     const edgePaths = [...NETLIFY.matchAll(/^\s*path = "([^"]+)"$/gm)].map((m) => m[1]);
-    expect(edgePaths).toEqual(['/embed/youtube.html']);
+    // The event previews answer only what fetches previews, with a page of tags.
+    expect(edgePaths).toEqual(['/embed/youtube.html', '/e/*', '/events/*']);
   });
 });
 

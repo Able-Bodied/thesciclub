@@ -291,6 +291,20 @@ export function compose(owed: Owed): PushMessage | null {
     }
     // Somebody asked to join (20261031030000): subject is the organization,
     // detail how many are unread. Only its org admins' devices.
+    // Asked to add an organization, or the answer (20261101010000).
+    case 'organization_request':
+      if (subject === '') return null;
+      if (owed.detail === 'approved') {
+        return { title: 'Organization added', body: `${subject} is in the club.`, ...where };
+      }
+      if (owed.detail === 'declined') {
+        return { title: 'Organization not added', body: `${subject} was not added.`, ...where };
+      }
+      return {
+        title: 'Organization to approve',
+        body: `${name} asked to add ${subject}.`,
+        ...where,
+      };
     case 'join_request':
       return {
         title: 'Request to join',
@@ -325,6 +339,26 @@ export function compose(owed: Owed): PushMessage | null {
         body: 'Leave a review and add your pictures.',
         ...where,
       };
+    // What became of a calendar invitation (20261101000000).
+    case 'calendar_invite': {
+      if (subject === '') return null;
+      const told: Record<string, { title: string; body: string }> = {
+        added: { title: 'Added to the club', body: `${subject} is on the calendar.` },
+        updated: {
+          title: 'Updated in the club',
+          body: `${subject} was updated from your calendar.`,
+        },
+        held: {
+          title: 'Waiting for approval',
+          body: `Approve ${subject} to put it on the calendar.`,
+        },
+        choose: { title: 'Choose a host', body: `Choose which organization hosts ${subject}.` },
+        refused: { title: 'Not added', body: `${subject} could not be added from your calendar.` },
+        cancelled: { title: 'Taken off the club', body: `${subject} was taken off the calendar.` },
+      };
+      const words = told[owed.detail ?? ''];
+      return words ? { ...words, ...where } : null;
+    }
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       if (subject === '') return null;

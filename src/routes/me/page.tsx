@@ -451,6 +451,21 @@ export default function MePage() {
                 ? 'Display applies to this phone only.'
                 : 'Display, notifications and installing apply to this phone or computer only.'}
             </p>
+            {/* So somebody can tell which copy of the app they have. */}
+            {import.meta.env.VITE_APP_BUILT ? (
+              <p className="mt-1 text-[0.75rem] text-grey">
+                Version{' '}
+                {new Date(`${import.meta.env.VITE_APP_BUILT}Z`).toLocaleString('en-US', {
+                  timeZone: 'America/Los_Angeles',
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZoneName: 'short',
+                })}
+              </p>
+            ) : null}
             {/* Display first: it is what somebody who finds the club hard to
                 read comes here for. Its controls open in the Display sheet. */}
             <div className="grid items-start gap-x-6 lg:grid-cols-2 [&>section:first-child]:mt-4 lg:[&>section]:mt-4">

@@ -301,7 +301,7 @@ export function repliesFor(
         {
           to: sender,
           subject: `Waiting for approval: ${title}`,
-          text: `${title} is waiting before it goes on The SCI Club's calendar.\n\n${result.reason ?? ''}\n\nA representative of the organization can approve it here: ${waiting}`,
+          text: `${title} is waiting before it goes on The SCI Club's calendar.\n\n${result.reason ?? ''}\n\nApprove it, or choose its organization, here: ${waiting}`,
         },
         ...(result.notify ?? [])
           .filter((address) => address !== sender)

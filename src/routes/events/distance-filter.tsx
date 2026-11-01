@@ -22,11 +22,17 @@ export function DistanceFilter({
   city,
   status,
   onChange,
+  things = 'events',
+  note = 'From the middle of your city. Online events count from their host’s city.',
 }: {
   miles: number | null;
   city: string | null;
   status: NearHomeStatus;
   onChange: (miles: number | null) => void;
+  /** What every distance shows of, while nothing can be measured. */
+  things?: string;
+  /** Under the slider, once distances are working. */
+  note?: string;
 }) {
   const id = useId();
   const label = distanceLabel(miles, city);
@@ -61,11 +67,11 @@ export function DistanceFilter({
       <p className="mt-1.5 text-[0.78125rem] text-grey leading-[1.5]">
         {status === 'unplaced'
           ? city
-            ? `${city} isn't on our map yet, so events at every distance show for now. It's added overnight.`
+            ? `${city} isn't on our map yet, so ${things} at every distance show for now. It's added overnight.`
             : 'Add your city in Me, Your details, to see what is near you. Until then, every distance shows.'
           : status === 'error'
             ? 'Could not check distances just now, so every distance shows.'
-            : 'From the middle of your city. Online events count from their host’s city.'}
+            : note}
       </p>
     </section>
   );

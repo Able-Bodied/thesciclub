@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { SheetGrip } from '@/components/sheet-grip';
 import { REPORT_NOTE_MAX, reportNoteProblem, reportPreamble } from '@/lib/chat/reports';
 import { describeThrown } from '@/lib/describe-error';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -127,7 +128,7 @@ export function ReportSheet({
         )}
       >
         {/* A phone affordance; noise on a panel. */}
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
+        <SheetGrip sheet={dialog} onClose={onCancel} />
 
         <div className="flex-1 overflow-y-auto px-[18px] pt-1 lg:pt-5">
           <h2

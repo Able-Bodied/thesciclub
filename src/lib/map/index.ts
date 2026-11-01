@@ -8,6 +8,7 @@
 
 export type {
   AddLayerObject,
+  ExpressionSpecification,
   GeoJSONSource,
   LngLatBounds,
   Map as MapLibreMap,

@@ -164,13 +164,6 @@ describe('EventCard', () => {
       expect(screen.queryByText('Nicole')).toBeNull();
     });
 
-    it('shows the first lines of the description', () => {
-      renderCard({
-        event: makeEvent({ description: 'Bring a friend. Coffee is on us. Parking is free.' }),
-      });
-      expect(screen.getByText('Bring a friend. Coffee is on us.')).toBeInTheDocument();
-    });
-
     it('opens the host from its name, not the event', async () => {
       const onOpenOrganization = vi.fn();
       const organization = makeOrganization({ id: 'o1', name: 'Bay Area Adaptive' });
@@ -324,6 +317,21 @@ describe('the host logo', () => {
     const props = renderCard({ event: makeEvent({ hostName: 'Bay Rollers' }) });
     await userEvent.click(screen.getByText('BR'));
     expect(props.onOpen).toHaveBeenCalled();
+  });
+});
+
+describe('the words on a card', () => {
+  const words = 'Click here!!! https://x.org First lines.';
+
+  it('are the summary when there is one', () => {
+    renderCard({ event: makeEvent({ description: words, detailSummary: 'A coffee meetup.' }) });
+    expect(screen.getByText('A coffee meetup.')).toBeInTheDocument();
+    expect(screen.queryByText(/Click here/)).toBeNull();
+  });
+
+  it('are nothing without one, whatever the description says', () => {
+    renderCard({ event: makeEvent({ description: words, detailSummary: null }) });
+    expect(screen.queryByText(/Click here/)).toBeNull();
   });
 });
 

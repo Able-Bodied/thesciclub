@@ -39,6 +39,16 @@
   path = "/embed/youtube.html"
   function = "youtube-embed"
 
+# What a text message shows for a link to an event. Only for what fetches
+# previews; a member's browser goes straight on.
+[[edge_functions]]
+  path = "/e/*"
+  function = "event-preview"
+
+[[edge_functions]]
+  path = "/events/*"
+  function = "event-preview"
+
 [[headers]]
   for = "/*"
   [headers.values]

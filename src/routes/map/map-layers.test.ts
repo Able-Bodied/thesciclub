@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/map', () => ({ MAP_FONT: 'Noto Sans Regular' }));
 
@@ -34,6 +34,8 @@ function oldSafariPen() {
       lineTo: record('lineTo'),
       arcTo: record('arcTo'),
       arc: record('arc'),
+      translate: record('translate'),
+      quadraticCurveTo: record('quadraticCurveTo'),
       closePath: record('closePath'),
       fill: record('fill'),
       stroke: record('stroke'),
@@ -47,8 +49,13 @@ function oldSafariPen() {
   };
 }
 
+beforeEach(() => {
+  vi.stubGlobal('Path2D', vi.fn());
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("the map's badges", () => {
@@ -58,10 +65,17 @@ describe("the map's badges", () => {
       pen as unknown as CanvasRenderingContext2D,
     );
     const map = { hasImage: () => false, addImage: vi.fn() };
-    for (const id of ['club-peer', 'club-organization', 'club-organization-chip', 'club-home']) {
+    for (const id of [
+      'club-peer',
+      'club-organization',
+      'club-organization-chip',
+      'club-home',
+      'club-event-pin',
+      'club-event-pin-counted',
+    ]) {
       addIcon(map as never, id);
     }
-    expect(map.addImage).toHaveBeenCalledTimes(4);
+    expect(map.addImage).toHaveBeenCalledTimes(6);
     expect(calls).toContain('arcTo');
     expect(calls).not.toContain('roundRect');
   });
@@ -86,13 +100,48 @@ describe("organizations' places", () => {
     return { added, resolver, map };
   }
 
-  it("show each organization's own badge, and a purple count where places run together", () => {
+  it('mark events with a pin whose tip is the place, a count in the head of a pin of many', () => {
+    const { added } = layersOf();
+    const layer = (id: string) => added.find((each) => each.id === id);
+    expect(layer('club-events-one')?.layout).toMatchObject({
+      'icon-image': 'club-event-pin',
+      'icon-anchor': 'bottom',
+    });
+    expect(layer('club-events-many')?.layout).toMatchObject({
+      'icon-image': 'club-event-pin-counted',
+      'icon-anchor': 'bottom',
+    });
+    const count = layer('club-events-count') as { paint?: Record<string, unknown> } | undefined;
+    expect(count?.paint?.['text-translate']).toEqual([0, -21]);
+  });
+
+  it('name their marks in gold on a dark map, with no bright glow round the letters', () => {
+    const names = layersOf().added.filter((layer) => layer.id.endsWith('-name'));
+    expect(names.length).toBeGreaterThanOrEqual(3);
+    for (const layer of names) {
+      const paint = (layer as { paint?: Record<string, unknown> }).paint;
+      expect(paint?.['text-color']).toEqual([
+        'case',
+        ['global-state', 'dark'],
+        '#e6c46a',
+        '#102a4c',
+      ]);
+      expect(paint?.['text-halo-color']).toEqual([
+        'case',
+        ['global-state', 'dark'],
+        'rgba(0,0,0,0.85)',
+        'rgba(255,255,255,0.85)',
+      ]);
+    }
+  });
+
+  it("show each organization's type, and a count where places run together", () => {
     const badge = layersOf().added.find((layer) => layer.id === 'club-organizations');
     expect(badge?.layout?.['icon-image']).toEqual([
       'case',
       ['has', 'point_count'],
       'club-organization',
-      ['concat', 'org-logo-', ['get', 'organizationId']],
+      ['concat', 'club-org-type-', ['coalesce', ['get', 'category'], 'none']],
     ]);
     expect(badge?.layout?.['text-field']).toEqual([
       'case',
@@ -126,15 +175,15 @@ describe("organizations' places", () => {
     expect(chip?.layout?.['text-field']).toEqual(['to-string', ['get', 'count']]);
   });
 
-  it('draw a badge when MapLibre asks for one, as it is needed', () => {
+  it('draw a type when MapLibre asks for it again, after a theme change', () => {
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
       oldSafariPen().pen as unknown as CanvasRenderingContext2D,
     );
     const { resolver, map } = layersOf();
     map.addImage.mockClear();
-    resolver.ask?.('org-logo-borp');
-    expect(map.addImage).toHaveBeenCalledWith('org-logo-borp', expect.anything(), {
-      pixelRatio: 2,
+    resolver.ask?.('club-org-type-veterans');
+    expect(map.addImage).toHaveBeenCalledWith('club-org-type-veterans', expect.anything(), {
+      pixelRatio: 4,
     });
   });
 });

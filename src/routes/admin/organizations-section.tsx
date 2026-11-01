@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import { useAnnounce } from '@/lib/announce';
 import { removeOrganization } from '@/lib/organization-management';
+import {
+  decideOrganizationRequest,
+  type OrganizationRequest,
+  useOrganizationRequests,
+} from '@/lib/organization-requests';
 import { useOrganizations } from '@/lib/organizations';
 import { SmallButton } from '@/routes/admin/controls';
 import { OrganizationEditor } from '@/routes/admin/organization-editor';
@@ -38,7 +43,8 @@ export function OrganizationsSection({
   onChange?: () => void;
 }) {
   const { organizations, loading, error, reload } = useOrganizations();
-  const [editing, setEditing] = useState<Organization | 'new' | null>(null);
+  const [editing, setEditing] = useState<Organization | OrganizationRequest | 'new' | null>(null);
+  const waiting = useOrganizationRequests(administrator);
   const [removing, setRemoving] = useState<Organization | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -50,15 +56,65 @@ export function OrganizationsSection({
   const visible = theirs.filter((organization) => matchesOrganizationSearch(organization, search));
   function changed() {
     reload();
+    waiting.reload();
     onChange?.();
   }
+  const reviewing = editing && editing !== 'new' && 'draft' in editing ? editing : null;
+  const editingOrganization =
+    editing && editing !== 'new' && !('draft' in editing) ? editing : null;
+  const decline = (request: OrganizationRequest) => {
+    setBusy(true);
+    setFailure(null);
+    void decideOrganizationRequest(request.id, false, null)
+      .then((result) => {
+        if (result.ok) {
+          announce(`${request.draft.name} declined.`);
+          waiting.reload();
+        } else setFailure(result.error);
+      })
+      .finally(() => {
+        setBusy(false);
+      });
+  };
   return (
     <section>
       <h2 className="mt-4 font-extrabold font-head text-ink">Organizations</h2>
-      {error || failure ? (
+      {error || failure || waiting.error ? (
         <p role="alert" className="mt-2 text-destructive">
-          {error ?? failure}
+          {error ?? failure ?? waiting.error}
         </p>
+      ) : null}
+      {waiting.requests.length > 0 && !editing ? (
+        <div className="mt-3 rounded-[14px] border border-line bg-paper px-3.5 py-3">
+          <h3 className="font-bold text-ink">Waiting for approval</h3>
+          <ul className="mt-1">
+            {waiting.requests.map((request) => (
+              <li key={request.id} className="border-line border-b py-2.5 last:border-b-0">
+                <p className="font-bold text-[0.875rem] text-ink">{request.draft.name}</p>
+                <p className="text-[0.8125rem] text-ink2">
+                  Asked by {request.memberName ?? 'a former member'}
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-2">
+                  <SmallButton
+                    onClick={() => {
+                      setEditing(request);
+                    }}
+                  >
+                    Review
+                  </SmallButton>
+                  <SmallButton
+                    disabled={busy}
+                    onClick={() => {
+                      decline(request);
+                    }}
+                  >
+                    Decline
+                  </SmallButton>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       ) : null}
       {administrator && !editing ? (
         <button
@@ -74,7 +130,8 @@ export function OrganizationsSection({
       {editing ? (
         <OrganizationEditor
           key={editing === 'new' ? 'new' : editing.id}
-          organization={editing === 'new' ? null : editing}
+          organization={editingOrganization}
+          {...(reviewing ? { request: reviewing } : {})}
           administrator={administrator}
           onCancel={() => {
             setEditing(null);

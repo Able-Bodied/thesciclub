@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHECK_EVERY_MS, stayCurrent } from '@/lib/stay-current';
+import { CHECK_EVERY_MS, GRACE_MS, stayCurrent } from '@/lib/stay-current';
 
 function fakeWorkers(inControl: boolean) {
   const events = new EventTarget();
@@ -126,6 +126,68 @@ describe('catching up when a new version takes over', () => {
     expect(() => {
       stayCurrent({ container: undefined })();
     }).not.toThrow();
+  });
+});
+
+describe('a copy still behind after the worker had its chance', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+  });
+
+  function behind(reload = vi.fn(), emptyCopy = vi.fn(() => Promise.resolve())) {
+    const { container } = fakeWorkers(true);
+    stop = stayCurrent({
+      container,
+      reload,
+      built: 'old',
+      latest: () => Promise.resolve('new'),
+      emptyCopy,
+    });
+    return { reload, emptyCopy };
+  }
+
+  it('empties its copy of the site and reloads, after the grace', async () => {
+    const { reload, emptyCopy } = behind();
+    await vi.advanceTimersByTimeAsync(GRACE_MS - 1);
+    expect(reload).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(emptyCopy).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves it alone when this copy is the latest', async () => {
+    const reload = vi.fn();
+    const { container } = fakeWorkers(true);
+    stop = stayCurrent({
+      container,
+      reload,
+      built: 'same',
+      latest: () => Promise.resolve('same'),
+      emptyCopy: vi.fn(() => Promise.resolve()),
+    });
+    await vi.advanceTimersByTimeAsync(GRACE_MS * 2);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  it('waits for the background if the member is using it', async () => {
+    const { reload } = behind();
+    window.dispatchEvent(new Event('pointerdown'));
+    await vi.advanceTimersByTimeAsync(GRACE_MS);
+    expect(reload).not.toHaveBeenCalled();
+    setVisibility('hidden');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('tries once for a release, so a bad deploy cannot loop', async () => {
+    const first = behind();
+    await vi.advanceTimersByTimeAsync(GRACE_MS);
+    expect(first.reload).toHaveBeenCalledTimes(1);
+    stop();
+    const second = behind();
+    await vi.advanceTimersByTimeAsync(GRACE_MS);
+    expect(second.reload).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,8 @@
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
+import type { OrganizationCategory } from '@/lib/organization-categories';
 import { PHOTOS_BUCKET } from '@/lib/photos';
+import { calendarChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 export interface OrganizationDraft {
@@ -10,6 +12,8 @@ export interface OrganizationDraft {
   description: string;
   tags: string[];
   canInvite: boolean;
+  /** What kind it is (20261101030000). Absent leaves it as it is. */
+  category?: OrganizationCategory | null;
   /** '' clears it; null or absent keeps what is saved. */
   state?: string | null;
 }
@@ -41,6 +45,7 @@ export async function saveOrganizationPlaces(
         postal_code: place.postalCode,
       })),
     })) as { error: Failure | null };
+    if (!error) calendarChanged();
     return error
       ? { ok: false, error: describeError(error, 'The locations were not saved.') }
       : { ok: true };
@@ -65,6 +70,14 @@ export async function saveOrganization(
       can_invite: draft.canInvite,
       state: draft.state ?? null,
     })) as { data: string | null; error: Failure | null };
+    if (!error && draft.category !== undefined) {
+      const { error: unset } = (await getSupabase().rpc('set_organization_category', {
+        p_organization: data ?? id,
+        p_category: draft.category,
+      })) as { error: Failure | null };
+      if (unset) return { ok: false, error: describeError(unset, 'Its type was not saved.') };
+    }
+    if (!error) calendarChanged();
     return error
       ? {
           ok: false,

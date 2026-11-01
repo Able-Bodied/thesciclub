@@ -238,6 +238,23 @@ describe('EventDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument();
   });
 
+  it('says the link is copied, briefly, where it can be seen', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    state.events = [makeEvent({ id: 'picnic' })];
+    renderDetail('picnic');
+    await user.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(writeText).toHaveBeenCalledWith('https://thesciclub.com/e/picnic');
+    expect(await screen.findByText('Link copied')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Link copied')).toBeNull();
+      },
+      { timeout: 3000 },
+    );
+  });
+
   describe('RSVP', () => {
     // Dated ahead for this block. The fixture's own start time is in the past
     // now, and an event that is over offers no buttons to press — which is the

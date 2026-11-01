@@ -149,6 +149,25 @@ describe('the pieces', () => {
     );
   });
 
+  it("keeps a description's links, as Markdown the event page reads", () => {
+    expect(
+      cleanDescription(
+        'The notes are <a href="https://docs.google.com/d/1?a=1&amp;b=2" target="_blank"><u>here</u></a>.',
+      ),
+    ).toBe('The notes are [here](https://docs.google.com/d/1?a=1&b=2).');
+    expect(cleanDescription('<a href="https://a.org">https://a.org</a>')).toBe('https://a.org');
+    expect(cleanDescription("<a href='mailto:a@b.org'>Write to us</a>")).toBe(
+      '[Write to us](mailto:a@b.org)',
+    );
+    expect(cleanDescription('<a href="https://a.org/x_(y)">The [plan]</a>')).toBe(
+      '[The plan](https://a.org/x_%28y%29)',
+    );
+  });
+
+  it('keeps only the words of a link that is not a web or mail address', () => {
+    expect(cleanDescription('<a href="javascript:alert(1)">Click</a>')).toBe('Click');
+  });
+
   it('turns a wall-clock time into UTC across a daylight-saving change', () => {
     // 1 November 2026, the day Pacific time falls back: 10am is PST.
     expect(

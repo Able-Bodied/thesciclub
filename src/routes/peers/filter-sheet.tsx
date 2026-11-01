@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
+import type { NearHomeStatus } from '@/lib/near-home';
+import { DistanceFilter } from '@/routes/events/distance-filter';
 import { AGE_BANDS, toggleFilter } from '@/routes/peers/filters';
 import type { InjuryRegion, MemberFilters } from '@/types/domain';
 
@@ -30,11 +32,20 @@ import type { InjuryRegion, MemberFilters } from '@/types/domain';
  */
 export const TOPICS_SHOWN = 24;
 
+const ROLES: [MemberFilters['role'], string][] = [
+  ['any', 'Everyone'],
+  ['mentors', 'Mentors'],
+  ['peers', 'Not mentors'],
+];
+
 export interface FilterSheetProps {
   regions: InjuryRegion[];
   /** Somebody in the deck has a spinal cord condition: offer its chip. */
   conditions: boolean;
-  cities: string[];
+  /** The organizations of the members in the list, by name (organizationsIn). */
+  organizations: string[];
+  /** The member's own city and whether distances can be measured. */
+  home: { city: string | null; status: NearHomeStatus };
   /** Age groups somebody in the deck is in (ageBandsIn). */
   ages: string[];
   /** Every topic, most common first. The sheet decides how many to draw. */
@@ -51,7 +62,8 @@ export interface FilterSheetProps {
 export function FilterSheet({
   regions,
   conditions,
-  cities,
+  organizations,
+  home,
   ages,
   topics,
   filters,
@@ -87,6 +99,30 @@ export function FilterSheet({
       clearCount={activeCount}
       applyLabel={`Show ${matchCount}`}
     >
+      <DistanceFilter
+        miles={filters.withinMiles}
+        city={home.city}
+        status={home.status}
+        things="members"
+        note="From the middle of your city to the middle of theirs. Members who keep off the map aren’t counted."
+        onChange={(withinMiles) => {
+          onChange({ ...filters, withinMiles });
+        }}
+      />
+
+      <FilterGroup title="Mentors">
+        {ROLES.map(([role, label]) => (
+          <FilterChip
+            key={role}
+            label={label}
+            on={filters.role === role}
+            onClick={() => {
+              onChange({ ...filters, role });
+            }}
+          />
+        ))}
+      </FilterGroup>
+
       {regions.length > 0 || conditions ? (
         <FilterGroup title="Level or condition">
           {regions.map((region) => (
@@ -126,19 +162,34 @@ export function FilterSheet({
         </FilterGroup>
       ) : null}
 
-      {cities.length > 0 ? (
-        <FilterGroup title="City">
-          {cities.map((city) => (
-            <FilterChip
-              key={city}
-              label={city}
-              on={filters.cities.includes(city)}
-              onClick={() => {
-                onChange(toggleFilter(filters, 'cities', city));
-              }}
-            />
-          ))}
-        </FilterGroup>
+      {organizations.length > 0 || filters.organization ? (
+        <label className="mb-4 block">
+          <span className="mb-2 block font-extrabold font-head text-[0.71875rem] text-grey uppercase tracking-[0.13em]">
+            Member of
+          </span>
+          <select
+            value={filters.organization ?? ''}
+            onChange={(event) => {
+              onChange({ ...filters, organization: event.target.value || null });
+            }}
+            className="min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+          >
+            <option value="">Any organization</option>
+            {/* Kept while chosen, though a change elsewhere leaves nobody in it. */}
+            {[
+              ...new Set([
+                ...(filters.organization ? [filters.organization] : []),
+                ...organizations,
+              ]),
+            ]
+              .sort((a, b) => a.localeCompare(b))
+              .map((organization) => (
+                <option key={organization} value={organization}>
+                  {organization}
+                </option>
+              ))}
+          </select>
+        </label>
       ) : null}
 
       {topics.length > 0 ? (

@@ -184,6 +184,33 @@ function matchesSegment(
  * act of unticking the last box, with no hint that unticking one more would
  * bring it all back.
  */
+/**
+ * The header's search (the owner, 2026-11-01): every word somewhere in what is
+ * written about the event or who hosts it, as the directory's search does.
+ */
+export function matchesEventSearch(
+  event: ClubEvent,
+  query: string,
+  organizationName?: string,
+): boolean {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return true;
+  const text = [
+    event.title,
+    event.detailSummary,
+    event.description,
+    event.location,
+    event.city,
+    event.hostName,
+    organizationName,
+    ...event.tags.map((tag) => tag.name),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return words.every((word) => text.includes(word));
+}
+
 export function filterEvents(
   events: ClubEvent[],
   filters: EventFilters,

@@ -3,7 +3,7 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { preparePhoto } from '@/lib/image';
 import { PHOTOS_BUCKET } from '@/lib/photos';
 import { readInBatches, readPages } from '@/lib/read-pages';
-import { onForgetSharedReads } from '@/lib/shared-reads';
+import { calendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type {
   ClubEvent,
@@ -48,7 +48,7 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, more_photos, timezone, all_day, state, audience, admin_override, feed_values';
+  'id, title, description, description_html, detail_summary, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, more_photos, timezone, all_day, state, audience, admin_override, feed_values';
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
@@ -58,7 +58,7 @@ const EVENT_COLUMNS =
  * came back for the first lines on a card (the owner, 2026-10-31).
  */
 const LIST_COLUMNS =
-  'id, title, description, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
+  'id, title, description, detail_summary, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
 
 /**
  * Each event's tags and tallies, embedded in the same read. They were two
@@ -101,6 +101,7 @@ interface EventRow {
   /** Not in a list's read (LIST_COLUMNS). */
   description?: string;
   description_html?: string;
+  detail_summary?: string | null;
   start_time: string;
   end_time: string | null;
   location: string;
@@ -201,6 +202,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       title: row.title,
       description: row.description ?? '',
       descriptionHtml: row.description_html ?? '',
+      detailSummary: row.detail_summary ?? null,
       startTime: row.start_time,
       endTime: row.end_time,
       // A hand-added event has no feed, and is read in Pacific: the form says
@@ -623,6 +625,7 @@ export async function saveEvent(
     if (error || !data) {
       return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
     }
+    calendarChanged();
     return { ok: true, id: data };
   } catch (e) {
     return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
@@ -671,6 +674,7 @@ export async function saveEventSeries(
     if (error || !data) {
       return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
     }
+    calendarChanged();
     return { ok: true, id: data };
   } catch (e) {
     return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
@@ -689,6 +693,7 @@ export async function deleteEventAndLater(eventId: string): Promise<WriteResult>
   };
   try {
     const { error } = await getSupabase().rpc('delete_event_and_later', { event: eventId });
+    if (!error) calendarChanged();
     return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, refusal) };
@@ -877,6 +882,7 @@ export async function deleteEvent(eventId: string): Promise<WriteResult> {
   };
   try {
     const { error } = await getSupabase().rpc('delete_event', { event: eventId });
+    if (!error) calendarChanged();
     return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, refusal) };

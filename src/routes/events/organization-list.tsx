@@ -277,67 +277,72 @@ export function OrganizationList({
 
   return (
     <>
-      <div className="relative mb-2.5">
-        <Search
-          className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-[16px] w-[16px] text-grey"
-          strokeWidth={2}
-          aria-hidden="true"
-        />
-        <input
-          type="search"
-          value={filters.query}
-          onChange={(e) => {
-            setFilters((f) => ({ ...f, query: e.target.value }));
-          }}
-          aria-label="Search organizations"
-          placeholder="Search by name, place or what they do"
-          className="min-h-[44px] w-full rounded-full border-[1.6px] border-line bg-canvas py-2 pr-9 pl-9 text-[0.875rem] text-ink outline-none transition-colors placeholder:text-grey focus:border-emphasis [&::-webkit-search-cancel-button]:appearance-none"
-        />
-        {filters.query ? (
-          <button
-            type="button"
-            onClick={() => {
-              setFilters((f) => ({ ...f, query: '' }));
-            }}
-            aria-label="Clear the search"
-            data-target="small"
-            className="-translate-y-1/2 absolute top-1/2 right-2 grid h-[26px] w-[26px] place-items-center rounded-full text-grey transition-colors hover:bg-tint hover:text-ink"
-          >
-            <X className="h-[15px] w-[15px]" />
-          </button>
-        ) : null}
-      </div>
-      <fieldset className="mb-3 flex flex-wrap gap-1.5">
-        <legend className="sr-only">Filter organizations</legend>
-        <FilterChip
-          label="Has grants"
-          on={filters.hasGrants}
-          onClick={() => {
-            toggle('hasGrants');
-          }}
-        />
-        <FilterChip
-          label="Grants open now"
-          on={filters.grantsOpen}
-          onClick={() => {
-            toggle('grantsOpen');
-          }}
-        />
-        <FilterChip
-          label="On the calendar"
-          on={filters.onCalendar}
-          onClick={() => {
-            toggle('onCalendar');
-          }}
-        />
-        <FilterChip
-          label="Member of"
-          on={filters.following}
-          onClick={() => {
-            toggle('following');
-          }}
-        />
-      </fieldset>
+      {/* A screen holding the filters puts them in its own header. */}
+      {given ? null : (
+        <>
+          <div className="relative mb-2.5">
+            <Search
+              className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-[16px] w-[16px] text-grey"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              value={filters.query}
+              onChange={(e) => {
+                setFilters((f) => ({ ...f, query: e.target.value }));
+              }}
+              aria-label="Search organizations"
+              placeholder="Search by name, place or what they do"
+              className="min-h-[44px] w-full rounded-full border-[1.6px] border-line bg-canvas py-2 pr-9 pl-9 text-[0.875rem] text-ink outline-none transition-colors placeholder:text-grey focus:border-emphasis [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {filters.query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setFilters((f) => ({ ...f, query: '' }));
+                }}
+                aria-label="Clear the search"
+                data-target="small"
+                className="-translate-y-1/2 absolute top-1/2 right-2 grid h-[26px] w-[26px] place-items-center rounded-full text-grey transition-colors hover:bg-tint hover:text-ink"
+              >
+                <X className="h-[15px] w-[15px]" />
+              </button>
+            ) : null}
+          </div>
+          <fieldset className="mb-3 flex flex-wrap gap-1.5">
+            <legend className="sr-only">Filter organizations</legend>
+            <FilterChip
+              label="Has grants"
+              on={filters.hasGrants}
+              onClick={() => {
+                toggle('hasGrants');
+              }}
+            />
+            <FilterChip
+              label="Grants open now"
+              on={filters.grantsOpen}
+              onClick={() => {
+                toggle('grantsOpen');
+              }}
+            />
+            <FilterChip
+              label="On the calendar"
+              on={filters.onCalendar}
+              onClick={() => {
+                toggle('onCalendar');
+              }}
+            />
+            <FilterChip
+              label="Member of"
+              on={filters.following}
+              onClick={() => {
+                toggle('following');
+              }}
+            />
+          </fieldset>
+        </>
+      )}
       {filtered ? (
         <p role="status" className="mb-2.5 text-[0.8125rem] text-ink2">
           {shown.length === 0

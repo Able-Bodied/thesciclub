@@ -298,9 +298,23 @@ export function readRepeat(
   return { repeat: { unit, every, endsOn, endsAfter }, note: null };
 }
 
+/** A link's address, or the words alone, in the Markdown an event's text is read as. */
+function linkAsMarkdown(href: string, inner: string): string {
+  const words = inner
+    .replace(/<[^>]+>/g, '')
+    .replace(/[[\]]/g, '')
+    .trim();
+  const address = href.trim();
+  if (!/^(https?:|mailto:)/i.test(address)) return words;
+  if (words === '' || words === address) return address;
+  const escaped = address.replace(/\(/g, '%28').replace(/\)/g, '%29').replace(/\s/g, '%20');
+  return `[${words}](${escaped})`;
+}
+
 /**
  * A description as words: Google's footer ("Invitation from Google Calendar"
- * and its join links, set off by -::~:~::~ lines) and any HTML taken out.
+ * and its join links, set off by -::~:~::~ lines) and any HTML taken out, its
+ * links kept (the owner, 2026-11-01).
  */
 export function cleanDescription(raw: string): string {
   let text = raw;
@@ -308,6 +322,11 @@ export function cleanDescription(raw: string): string {
   if (footer >= 0) text = text.slice(0, footer);
   if (/<[a-z][\s\S]*>/i.test(text)) {
     text = text
+      .replace(
+        /<a\b[^>]*?\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')[^>]*>([\s\S]*?)<\/a>/gi,
+        (_, double: string | undefined, single: string | undefined, inner: string) =>
+          linkAsMarkdown(double ?? single ?? '', inner),
+      )
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/(p|div|li)>/gi, '\n')
       .replace(/<[^>]+>/g, '')

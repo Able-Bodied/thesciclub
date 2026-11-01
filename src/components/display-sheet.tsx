@@ -1,5 +1,6 @@
 import { ALargeSmall } from 'lucide-react';
 import { createContext, useCallback, useContext, useId, useRef, useState } from 'react';
+import { SheetGrip } from '@/components/sheet-grip';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 import { DisplayControls } from '@/routes/me/accessibility-settings';
@@ -96,7 +97,7 @@ function DisplaySheet({ onClose }: { onClose: () => void }) {
           'lg:shadow-[0_24px_60px_rgba(10,20,35,.35)]',
         )}
       >
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
+        <SheetGrip sheet={dialog} onClose={onClose} />
 
         <div className="flex flex-none items-start justify-between gap-3 px-[18px] pt-1 lg:pt-5">
           <div className="min-w-0">

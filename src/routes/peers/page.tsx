@@ -3,7 +3,10 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoadingCards } from '@/components/loading-cards';
 import { SegmentPills } from '@/components/segment-pills';
+import { useHome } from '@/lib/home-state';
+import { useMapData } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
+import type { NearHomeStatus } from '@/lib/near-home';
 import { useSession } from '@/lib/session';
 import { type MapProblem, MapProblemNote, MapView } from '@/routes/map/map-view';
 import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
@@ -11,9 +14,10 @@ import { FilterSheet } from '@/routes/peers/filter-sheet';
 import {
   activeFilterCount,
   ageBandsIn,
-  citiesIn,
   filterMembers,
   hasConditions,
+  membersWithin,
+  organizationsIn,
   othersOnly,
   regionsIn,
   topicsIn,
@@ -70,9 +74,32 @@ export default function PeersPage() {
   // cannot disagree about who is in it.
   const others = useMemo(() => othersOnly(members, memberId), [members, memberId]);
 
+  // Read only once a distance is asked: the map's own data, on the list too.
+  const home = useHome();
+  const mapData = useMapData(filters.withinMiles !== null);
+  const near = useMemo(
+    () => membersWithin(mapData.contents, filters.withinMiles),
+    [mapData.contents, filters.withinMiles],
+  );
+  const distanceStatus: NearHomeStatus =
+    filters.withinMiles === null
+      ? 'any'
+      : mapData.status === 'error'
+        ? 'error'
+        : mapData.status === 'loading'
+          ? 'loading'
+          : mapData.contents.home
+            ? 'ready'
+            : 'unplaced';
+
   const visible = useMemo(
-    () => rankMembers(filterMembers(others, filters, segment), viewer),
-    [others, filters, segment],
+    () => rankMembers(filterMembers(others, filters, segment, near), viewer),
+    [others, filters, segment, near],
+  );
+  // Those in the list as it stands without this choice, so it never offers nobody.
+  const organizations = useMemo(
+    () => organizationsIn(filterMembers(others, { ...filters, organization: null }, segment, near)),
+    [others, filters, segment, near],
   );
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
@@ -200,6 +227,7 @@ export default function PeersPage() {
           onProblem={setMapProblem}
           focus="peers"
           members={visible}
+          zoomToMiles={filters.withinMiles}
           filters={{
             label: 'Filter peers',
             count: filterCount,
@@ -290,7 +318,8 @@ export default function PeersPage() {
         <FilterSheet
           regions={regionsIn(members)}
           conditions={hasConditions(members)}
-          cities={citiesIn(members)}
+          organizations={organizations}
+          home={{ city: home?.city ?? null, status: distanceStatus }}
           ages={ageBandsIn(members)}
           // Frequency-ordered. The sheet draws the common ones and keeps the
           // long tail of one-person topics behind "Show all", where it cannot

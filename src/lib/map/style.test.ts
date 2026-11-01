@@ -125,6 +125,11 @@ describe('the dark basemap', () => {
     ).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('tells the layers drawn over it which theme it is', () => {
+    expect(dark.state).toEqual({ dark: { default: true } });
+    expect(basemapStyle(false).state).toEqual({ dark: { default: false } });
+  });
+
   it('is the flavor the dark style is drawn in', () => {
     const roads = dark.layers.find((layer) => layer.id === 'usa-roads_highway');
     expect(JSON.stringify(roads?.paint)).toContain(DARK_FLAVOR.highway);

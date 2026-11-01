@@ -31,6 +31,24 @@ const MAP_MODULES =
 const MAP_FILES = ['assets/maplibre-*', 'map/**', 'tiles/**'];
 
 /** public/tiles/ is for `pnpm dev`; builds read the tiles Worker (src/lib/map/tiles.ts). */
+/** This build, to the minute: in the app, and in /version.json for what is out. */
+const BUILT = new Date().toISOString().slice(0, 16);
+
+/** What an installed app compares itself with (src/lib/stay-current.ts). */
+function versionFile(): Plugin {
+  return {
+    name: 'version-file',
+    apply: 'build',
+    generateBundle() {
+      this.emitFile({
+        type: 'asset',
+        fileName: 'version.json',
+        source: JSON.stringify({ built: BUILT }),
+      });
+    },
+  };
+}
+
 function noTilesInBuild(): Plugin {
   let outDir = '';
   return {
@@ -49,10 +67,15 @@ function noTilesInBuild(): Plugin {
 // `--mode native` builds the store app's copy (capacitor.config.ts): no
 // service worker, its own folder, and the policy native-csp.ts writes.
 export default defineConfig(({ mode }) => ({
+  // Which copy of the app a member has (src/lib/device-check.ts).
+  define: {
+    'import.meta.env.VITE_APP_BUILT': JSON.stringify(BUILT),
+  },
   plugins: [
     react(),
     tailwindcss(),
     noTilesInBuild(),
+    versionFile(),
     ...(mode === 'native' ? [nativeCspPlugin()] : []),
     VitePWA({
       disable: mode === 'native',

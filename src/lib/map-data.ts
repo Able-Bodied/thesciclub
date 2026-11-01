@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
-import { onForgetSharedReads } from '@/lib/shared-reads';
+import { onCalendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -161,6 +161,11 @@ function readMap(userId: string, again = false): Promise<MapContents> {
   );
   return read;
 }
+
+// Stale, not forgotten: the last answer stays drawn until the new one lands.
+onCalendarChanged(() => {
+  if (held) held.at = 0;
+});
 
 function isStale(userId: string): boolean {
   return held?.userId === userId && Date.now() - (held.at ?? 0) > MAP_FRESH_MS;

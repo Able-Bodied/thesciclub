@@ -94,7 +94,9 @@ describe('the YouTube page', () => {
 
 describe("the YouTube page's headers", () => {
   it('are set by an edge function for exactly this page', () => {
-    const declared = NETLIFY.split('[[edge_functions]]').slice(1);
+    const declared = NETLIFY.split('[[edge_functions]]')
+      .slice(1)
+      .filter((block) => block.includes('youtube-embed'));
     expect(declared).toHaveLength(1);
     expect(declared[0]).toMatch(/^\s*path = "\/embed\/youtube\.html"$/m);
     expect(declared[0]).toMatch(/^\s*function = "youtube-embed"$/m);

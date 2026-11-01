@@ -10,7 +10,8 @@ function renderSheet(overrides: Partial<FilterSheetProps> = {}) {
   const props: FilterSheetProps = {
     regions: [],
     conditions: false,
-    cities: [],
+    organizations: [],
+    home: { city: 'San Jose', status: 'any' },
     ages: [],
     topics: topics(30),
     filters: EMPTY_MEMBER_FILTERS,
@@ -26,6 +27,33 @@ function renderSheet(overrides: Partial<FilterSheetProps> = {}) {
 }
 
 const topicChips = () => screen.getAllByRole('button', { name: /^Topic \d+$/ });
+
+describe('who to look for', () => {
+  it('narrows to mentors, or to those who are not', async () => {
+    const onChange = vi.fn();
+    renderSheet({ onChange });
+    await userEvent.click(screen.getByRole('button', { name: 'Not mentors' }));
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ role: 'peers' }));
+  });
+
+  it('offers the organizations in the list, as a menu', async () => {
+    const onChange = vi.fn();
+    renderSheet({ organizations: ['BORP', 'NorCal SCI'], onChange });
+    await userEvent.selectOptions(screen.getByLabelText('Member of'), 'BORP');
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ organization: 'BORP' }));
+  });
+
+  it('has no menu when nobody in the list has an organization', () => {
+    renderSheet();
+    expect(screen.queryByLabelText('Member of')).toBeNull();
+  });
+
+  it('asks how far, not which city', () => {
+    renderSheet();
+    expect(screen.getByRole('slider')).toHaveAccessibleName('Any distance');
+    expect(screen.queryByRole('heading', { name: 'City' })).toBeNull();
+  });
+});
 
 describe('the topics on the Peers filter', () => {
   it('draws the most common ones and offers the rest', () => {

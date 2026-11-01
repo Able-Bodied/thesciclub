@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
+import { SheetGrip } from '@/components/sheet-grip';
 import { fetchPostViewers, type PostViewer } from '@/lib/chat/post-viewers';
 import { chatTime } from '@/lib/chat/time';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -75,7 +76,7 @@ export function PostViewersSheet({ postId, onClose }: { postId: string; onClose:
           'lg:-translate-y-1/2 lg:rounded-3xl lg:shadow-[0_24px_60px_rgba(10,20,35,.35)]',
         )}
       >
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
+        <SheetGrip sheet={dialog} onClose={onClose} />
         <div className="flex-none px-[18px] pt-1 lg:pt-5">
           <h2
             id={titleId}

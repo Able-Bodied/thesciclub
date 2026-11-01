@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown } from '@/lib/describe-error';
+import { calendarChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -101,6 +102,7 @@ export async function decideInvite(
       organization: organizationId,
     })) as { data: string | null; error: Failure | null };
     if (error) return { ok: false, error: describeError(error, refusal) };
+    calendarChanged();
     return { ok: true, eventId: data };
   } catch (thrown) {
     return { ok: false, error: describeThrown(thrown, refusal) };

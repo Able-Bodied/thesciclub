@@ -150,8 +150,7 @@ describe('an organization in several places', () => {
 });
 
 describe("the directory's filters held by the screen", () => {
-  it('shows what the screen asks, so its map can agree', async () => {
-    const changed = vi.fn();
+  it('shows what the screen asks, so its map can agree, leaving the controls to its header', () => {
     render(
       <OrganizationList
         organizations={organizations}
@@ -166,12 +165,12 @@ describe("the directory's filters held by the screen", () => {
           onCalendar: false,
           following: false,
         }}
-        onFiltersChange={changed}
+        onFiltersChange={vi.fn()}
       />,
     );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.queryByText('Adaptive Rec Hub')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Member of' }));
-    expect(changed).toHaveBeenCalledWith(expect.objectContaining({ following: true }));
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Member of' })).toBeNull();
   });
 });
