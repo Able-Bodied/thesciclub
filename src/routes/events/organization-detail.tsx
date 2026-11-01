@@ -25,8 +25,10 @@ import { OrganizationGrants } from '@/routes/events/organization-grants';
 import { OrganizationJoinSetting } from '@/routes/events/organization-join-setting';
 import { OrganizationMemberRemove } from '@/routes/events/organization-member-remove';
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
+import { OrganizationReviewSetting } from '@/routes/events/organization-review-setting';
 import { OrganizationReviews } from '@/routes/events/organization-reviews';
 import { EventDescription } from '@/routes/events/rich-text';
+import { ReviewsSection } from '@/routes/reviews/reviews-section';
 
 /**
  * One organization, from `orgPage()` in the mock: who they are, the members who
@@ -195,6 +197,10 @@ export default function OrganizationDetailPage() {
           following={follows.following.has(organization.id)}
         />
 
+        {memberId ? (
+          <ReviewsSection target={{ kind: 'organization', id: organization.id }} />
+        ) : null}
+
         {upcoming.length > 0 ? (
           <>
             <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
@@ -258,6 +264,10 @@ export default function OrganizationDetailPage() {
               organizationId={organization.id}
               needed={organization.joinsNeedApproval === true}
               onChanged={everythingChanged}
+            />
+            <OrganizationReviewSetting
+              organizationId={organization.id}
+              allowed={organization.anonymousReviews !== false}
             />
             <OrganizationReviews
               key={reviewsRead}

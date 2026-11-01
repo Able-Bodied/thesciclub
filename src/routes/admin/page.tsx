@@ -70,6 +70,7 @@ import { SignInSection } from '@/routes/admin/sign-in-section';
 import { StatsSection } from '@/routes/admin/stats-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
+import { ReportedReviews } from '@/routes/reviews/reported-reviews';
 
 const ADMIN_TAB_VALUES = [
   'members',
@@ -535,13 +536,16 @@ export default function AdminPage() {
             ) : null}
 
             {tab === 'reports' ? (
-              <ReportsSection
-                reports={reports.reports}
-                loading={reports.loading}
-                error={reports.error}
-                reload={reports.reload}
-                onGoToMember={goToMember}
-              />
+              <>
+                <ReportedReviews />
+                <ReportsSection
+                  reports={reports.reports}
+                  loading={reports.loading}
+                  error={reports.error}
+                  reload={reports.reload}
+                  onGoToMember={goToMember}
+                />
+              </>
             ) : null}
 
             {tab === 'invites' ? (

@@ -12,12 +12,21 @@ import { usePhotoUrl } from '@/lib/photos';
 export function MorePicturesField({
   value,
   onChange,
+  max = MAX_MORE_PHOTOS,
+  label = 'More pictures (optional)',
+  hint = `Up to ${MAX_MORE_PHOTOS}, shown in a row under the cover. Members press one to see it large.`,
+  addLabel = 'Add more pictures',
   labelClassName,
   hintClassName,
   fieldClassName,
 }: {
   value: MorePhotoChange[];
   onChange: (next: MorePhotoChange[]) => void;
+  /** A review's pictures use this too (reviews/review-page.tsx). */
+  max?: number;
+  label?: string;
+  hint?: string;
+  addLabel?: string;
   labelClassName: string;
   hintClassName: string;
   fieldClassName: string;
@@ -27,8 +36,8 @@ export function MorePicturesField({
 
   function add(files: File[]) {
     if (files.length === 0) return;
-    if (value.length + files.length > MAX_MORE_PHOTOS) {
-      setProblem(`Up to ${MAX_MORE_PHOTOS} more pictures on an event.`);
+    if (value.length + files.length > max) {
+      setProblem(`Up to ${max} pictures.`);
       return;
     }
     const said = files.map((file) => attachmentProblem([file], 0)).find(Boolean) ?? null;
@@ -47,10 +56,8 @@ export function MorePicturesField({
 
   return (
     <>
-      <p className={labelClassName}>More pictures (optional)</p>
-      <p className={hintClassName}>
-        Up to {MAX_MORE_PHOTOS}, shown in a row under the cover. Members press one to see it large.
-      </p>
+      <p className={labelClassName}>{label}</p>
+      <p className={hintClassName}>{hint}</p>
       <input
         ref={input}
         type="file"
@@ -85,14 +92,14 @@ export function MorePicturesField({
         </ul>
       ) : null}
 
-      {value.length < MAX_MORE_PHOTOS ? (
+      {value.length < max ? (
         <button
           type="button"
           onClick={() => input.current?.click()}
           className="mt-2 inline-flex min-h-[44px] items-center gap-2 rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint"
         >
           <ImagePlus className="h-[19px] w-[19px]" aria-hidden="true" />
-          Add more pictures
+          {addLabel}
         </button>
       ) : null}
       {problem ? (

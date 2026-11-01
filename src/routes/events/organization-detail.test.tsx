@@ -28,6 +28,7 @@ vi.mock('@/lib/organizations', () => ({
     loading: false,
   }),
 }));
+vi.mock('@/routes/reviews/reviews-section', () => ({ ReviewsSection: () => null }));
 vi.mock('@/lib/organization-follows', () => ({
   useOrganizationFollows: () => ({
     following: new Set(),

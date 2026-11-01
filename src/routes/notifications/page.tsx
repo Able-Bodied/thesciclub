@@ -55,6 +55,7 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   event_reminder: CalendarDays,
   event_starting: CalendarDays,
   check_in_reminder: CalendarDays,
+  event_followup: CalendarDays,
   invite_request: UserPlus,
   join_request: UserPlus,
   org_events: CalendarDays,

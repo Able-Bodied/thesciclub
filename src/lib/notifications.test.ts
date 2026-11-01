@@ -18,6 +18,15 @@ const n = (o: Partial<AppNotification>): AppNotification => ({
   ...o,
 });
 
+describe('the follow-up after an event', () => {
+  it('names the event and asks for a review', () => {
+    const asked = n({ kind: 'event_followup', actorName: null, place: 'Climbing' });
+    expect(notificationSentence(asked)).toBe(
+      'How was Climbing? Leave a review and add your pictures',
+    );
+  });
+});
+
 describe('a reminder to check in', () => {
   it('names the event', () => {
     const asked = n({ kind: 'check_in_reminder', actorName: null, place: 'Climbing' });

@@ -16,6 +16,7 @@ export const EVENTS: ReadonlySet<string> = new Set([
   'daily',
   'starting',
   'check_in_reminder',
+  'event_followup',
   'day_before',
   'grant_open',
   'invite_request',

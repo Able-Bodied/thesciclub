@@ -317,6 +317,14 @@ export function compose(owed: Owed): PushMessage | null {
           : "You're going. It starts soon.",
         ...where,
       };
+    // The morning after the event (20261031070000).
+    case 'event_followup':
+      if (subject === '') return null;
+      return {
+        title: `How was ${subject}?`,
+        body: 'Leave a review and add your pictures.',
+        ...where,
+      };
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       if (subject === '') return null;

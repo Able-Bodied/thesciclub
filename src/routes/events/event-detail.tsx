@@ -37,6 +37,7 @@ import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import { canShowOnMap, mapLinkFor } from '@/routes/map/show-on-map';
+import { ReviewsSection } from '@/routes/reviews/reviews-section';
 import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
 /**
@@ -379,6 +380,7 @@ export default function EventDetailPage() {
             Members only: the read behind it is the viewer's own conversation
             list, and an event page is the one surface that is public. */}
           {memberId ? <EventGroupCard eventId={event.id} /> : null}
+          {memberId ? <ReviewsSection target={{ kind: 'event', id: event.id }} /> : null}
 
           <AttendeeSection
             title="Going"

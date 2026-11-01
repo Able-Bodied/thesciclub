@@ -439,6 +439,12 @@ describe('a formatted post in a notification', () => {
     ).toBe('Tips United');
   });
 
+  it('asks how the event was', () => {
+    const asked = owed({ kind: 'event_followup', subject: 'Climbing' });
+    expect(compose(asked)?.title).toBe('How was Climbing?');
+    expect(compose({ ...asked, subject: null })).toBeNull();
+  });
+
   it('asks whether they made it, and says nothing without an event', () => {
     const due = owed({ kind: 'check_in_reminder', subject: 'Climbing' });
     expect(compose(due)?.title).toBe('Did you make it to Climbing?');

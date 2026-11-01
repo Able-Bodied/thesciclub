@@ -69,6 +69,7 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
   fetchAudienceHint: () => Promise.resolve(audience.hint),
 }));
+vi.mock('@/routes/reviews/reviews-section', () => ({ ReviewsSection: () => null }));
 vi.mock('@/lib/organization-follows', () => ({
   useOrganizationFollows: () => ({
     following: new Set<string>(),

@@ -54,6 +54,7 @@ const PublicEventPage = lazy(() => import('@/routes/public-event/page'));
 const RegisterForEventPage = lazy(() => import('@/routes/public-event/register'));
 const GuestListPage = lazy(() => import('@/routes/events/guest-list'));
 const CheckInPage = lazy(() => import('@/routes/events/check-in-page'));
+const ReviewPage = lazy(() => import('@/routes/reviews/review-page'));
 const CheckInsPage = lazy(() => import('@/routes/events/check-ins-page'));
 const HeldInvitesPage = lazy(() => import('@/routes/events/held-invites'));
 const IntroductionPage = lazy(() => import('@/routes/introductions/page'));
@@ -278,6 +279,11 @@ function ShellContent() {
             <Route path="/events/:id/edit" element={<EventFormPage />} />
             <Route path="/events/:id/guests" element={<GuestListPage />} />
             <Route path="/events/:id/check-in" element={<CheckInPage />} />
+            <Route path="/events/:id/review" element={<ReviewPage kind="event" />} />
+            <Route
+              path="/events/organizations/:id/review"
+              element={<ReviewPage kind="organization" />}
+            />
             <Route path="/events/:id/check-ins" element={<CheckInsPage />} />
             <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
             <Route path="/me" element={null} />
