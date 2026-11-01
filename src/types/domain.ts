@@ -629,7 +629,12 @@ export interface MemberFilters {
    * condition with a level is in a region as well.
    */
   condition: boolean;
-  cities: string[];
+  /** Mentors, the members who are not, or everybody. */
+  role: 'any' | 'mentors' | 'peers';
+  /** An organization's name, from the members in the list; null for any. */
+  organization: string | null;
+  /** From the member's own city, as the map places everybody; null for any distance. */
+  withinMiles: number | null;
   topics: string[];
   /** Age groups (AGE_BANDS in peers/filters.ts); any one matches. */
   ages: string[];
@@ -639,7 +644,9 @@ export interface MemberFilters {
 export const EMPTY_MEMBER_FILTERS: MemberFilters = {
   regions: [],
   condition: false,
-  cities: [],
+  role: 'any',
+  organization: null,
+  withinMiles: null,
   topics: [],
   ages: [],
   search: '',

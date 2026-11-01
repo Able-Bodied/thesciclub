@@ -15,6 +15,7 @@
  * is for; the box finds a person by name and moves on the first keystroke.
  */
 
+import type { MapContents, MapPoint } from '@/lib/map-data';
 import { canonicalTopicsOf } from '@/routes/peers/topics';
 import type { BrowseMember, InjuryRegion, MemberFilters, PeersSegment } from '@/types/domain';
 
@@ -25,7 +26,9 @@ export function activeFilterCount(filters: MemberFilters): number {
   return (
     filters.regions.length +
     (filters.condition ? 1 : 0) +
-    filters.cities.length +
+    (filters.role === 'any' ? 0 : 1) +
+    (filters.organization ? 1 : 0) +
+    (filters.withinMiles === null ? 0 : 1) +
     filters.topics.length +
     filters.ages.length
   );
@@ -73,7 +76,7 @@ function matchesLevel(member: BrowseMember, filters: MemberFilters): boolean {
 }
 
 /** Toggle a value in one of the list-shaped filters. */
-export function toggleFilter<K extends 'regions' | 'cities' | 'topics' | 'ages'>(
+export function toggleFilter<K extends 'regions' | 'topics' | 'ages'>(
   filters: MemberFilters,
   key: K,
   value: MemberFilters[K][number],
@@ -106,18 +109,69 @@ function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
   return true;
 }
 
+/** Every organization a member is part of, by name: their own words and the club's records. */
+function organizationsOf(member: BrowseMember): string[] {
+  return [
+    ...member.affiliations,
+    ...member.representedOrganizations.map((organization) => organization.name),
+    ...member.mentorOrganizations.map((organization) => organization.name),
+  ];
+}
+
+/** The organizations of the members given, for the sheet's list, by name. */
+export function organizationsIn(members: BrowseMember[]): string[] {
+  return [...new Set(members.flatMap(organizationsOf))].sort((a, b) => a.localeCompare(b));
+}
+
+const EARTH_MILES = 3958.8;
+
+/** As the crow flies, from city middle to city middle. */
+function milesBetween(a: MapPoint, b: MapPoint): number {
+  const radians = (degrees: number) => (degrees * Math.PI) / 180;
+  const up = radians(b.latitude - a.latitude);
+  const across = radians(b.longitude - a.longitude);
+  const h =
+    Math.sin(up / 2) ** 2 +
+    Math.cos(radians(a.latitude)) * Math.cos(radians(b.latitude)) * Math.sin(across / 2) ** 2;
+  return 2 * EARTH_MILES * Math.asin(Math.sqrt(h));
+}
+
+/**
+ * Who is within so many miles of the reader, from what the map already holds:
+ * where each city's members are placed (the middle of a ZIP code or city, never
+ * closer), so a distance says nothing the map does not. Somebody who keeps off
+ * the map has no place to measure and is not counted. Null with no distance
+ * asked, or no home to measure from: nothing is narrowed.
+ */
+export function membersWithin(
+  contents: Pick<MapContents, 'home' | 'peerCities'>,
+  miles: number | null,
+): ReadonlySet<string> | null {
+  const { home } = contents;
+  if (miles === null || !home) return null;
+  return new Set(
+    contents.peerCities
+      .filter((city) => milesBetween(home, city) <= miles)
+      .flatMap((city) => city.memberIds),
+  );
+}
+
 export function filterMembers(
   members: BrowseMember[],
   filters: MemberFilters,
   segment: PeersSegment,
+  near: ReadonlySet<string> | null = null,
 ): BrowseMember[] {
   const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
     if (!matchesLevel(member, filters)) return false;
     if (!matchesAge(member, filters)) return false;
-    if (filters.cities.length && (!member.city || !filters.cities.includes(member.city))) {
+    if (filters.role === 'mentors' && member.type !== 'mentor') return false;
+    if (filters.role === 'peers' && member.type === 'mentor') return false;
+    if (filters.organization && !organizationsOf(member).includes(filters.organization)) {
       return false;
     }
+    if (near && !near.has(member.id)) return false;
     // A member matches a topic filter if any selected topic appears in their
     // topics *or* their interests — people file the same thing under both.
     //
@@ -165,10 +219,6 @@ export function regionsIn(members: BrowseMember[]): InjuryRegion[] {
 /** Whether anybody in the deck has a condition: the chip is drawn only then. */
 export function hasConditions(members: BrowseMember[]): boolean {
   return members.some((m) => m.injuryType === 'condition');
-}
-
-export function citiesIn(members: BrowseMember[]): string[] {
-  return [...new Set(members.map((m) => m.city).filter((c): c is string => Boolean(c)))].sort();
 }
 
 /**

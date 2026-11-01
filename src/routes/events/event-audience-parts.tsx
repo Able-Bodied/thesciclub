@@ -27,6 +27,8 @@ export function audienceLabel(audience: EventAudience, organizationName: string 
   }
 }
 
+const POPUP_MS = 2000;
+
 const HEADING =
   'mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
 
@@ -45,8 +47,35 @@ export function EventAudienceSection({
 }) {
   const announce = useAnnounce();
   const link = publicEventUrl(event.id);
+  // Seen, as well as heard (the owner, 2026-11-01): nothing else on the screen
+  // changes when a link is copied.
+  const [popup, setPopup] = useState<string | null>(null);
+  useEffect(() => {
+    if (!popup) return;
+    const timer = setTimeout(() => {
+      setPopup(null);
+    }, POPUP_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [popup]);
+  const say = (words: string) => {
+    setPopup(words);
+    announce(`${words}.`);
+  };
   return (
     <>
+      {popup ? (
+        // The announcement is what a screen reader hears; this would say it twice.
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-x-0 bottom-24 z-[80] flex justify-center px-4"
+        >
+          <span className="rounded-full bg-action px-4 py-2 font-bold text-[0.875rem] text-white shadow-[0_6px_18px_rgba(10,20,35,.35)]">
+            {popup}
+          </span>
+        </div>
+      ) : null}
       <h2 className={HEADING}>Who can see it</h2>
       <div className="rounded-[14px] border border-line bg-paper p-3.5">
         <p className="font-bold text-[0.90625rem] text-ink">
@@ -64,10 +93,10 @@ export function EventAudienceSection({
             onClick={() => {
               void navigator.clipboard.writeText(link).then(
                 () => {
-                  announce('The link is copied.');
+                  say('Link copied');
                 },
                 () => {
-                  announce('Could not copy the link.');
+                  say('Could not copy the link');
                 },
               );
             }}

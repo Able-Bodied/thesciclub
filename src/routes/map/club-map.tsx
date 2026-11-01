@@ -110,9 +110,10 @@ export interface ClubMapProps {
   renderEvent?: (event: ClubEvent) => ReactNode;
   /** Said where the events layer would be empty for a reason, such as past events. */
   eventsNote?: string | undefined;
-  /** The screen's filter sheet. */
   /** Its own chip, for a screen with no filter button in its header. */
   filters?: { label: string; count: number; onOpen: () => void };
+  /** A distance just chosen: the map shows that far around the member's city. */
+  zoomToMiles?: number | null;
   /** Router state for the detail pages, so back returns to the map. */
   backState: Record<string, string>;
   /** The List view is showing: the map's sources are left alone. */
@@ -196,6 +197,7 @@ export default function ClubMap({
   renderEvent,
   eventsNote,
   filters,
+  zoomToMiles = null,
   backState,
   hidden = false,
   onUnsupported,
@@ -631,6 +633,25 @@ export default function ClubMap({
       return next;
     });
   };
+  // On a change of distance, not on every return to the map: where somebody
+  // has moved it to is theirs until they ask for another.
+  const zoomedTo = useRef<number | null>(null);
+  const homePoint = contents.home;
+  useEffect(() => {
+    if (!map || hidden || !homePoint || zoomToMiles === zoomedTo.current) return;
+    zoomedTo.current = zoomToMiles;
+    if (zoomToMiles === null) return;
+    const north = zoomToMiles / 69;
+    const east = north / Math.cos((homePoint.latitude * Math.PI) / 180);
+    map.fitBounds(
+      [
+        [homePoint.longitude - east, homePoint.latitude - north],
+        [homePoint.longitude + east, homePoint.latitude + north],
+      ],
+      { padding: 24 },
+    );
+  }, [map, hidden, homePoint, zoomToMiles]);
+
   const toggleType = (type: string) => {
     setHiddenTypes((now) => {
       const next = new Set(now);
@@ -965,16 +986,22 @@ function LayerPanel({
                       />
                       <svg
                         aria-hidden="true"
-                        viewBox="0 0 32 32"
-                        className="h-[22px] w-[22px] flex-none"
+                        viewBox="0 0 26 34"
+                        className="h-[30px] w-[23px] flex-none"
                       >
-                        <circle cx="16" cy="16" r="15" fill={type.color} stroke="#ffffff" />
+                        <path
+                          d="M13 33C9.5 25 1.5 20 1.5 13a11.5 11.5 0 1 1 23 0c0 7-8 12-11.5 20Z"
+                          fill={type.color}
+                          stroke="#ffffff"
+                          strokeWidth="1.5"
+                          strokeLinejoin="round"
+                        />
                         <path
                           d={type.icon}
-                          transform="translate(6.5 6.5) scale(0.79)"
+                          transform="translate(5.5 5.5) scale(0.625)"
                           fill="none"
                           stroke="#ffffff"
-                          strokeWidth="2.4"
+                          strokeWidth="2.6"
                           strokeLinecap="round"
                           strokeLinejoin="round"
                         />
