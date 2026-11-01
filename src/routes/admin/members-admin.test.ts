@@ -4,6 +4,7 @@ import {
   createInvite,
   deliveryNote,
   fetchInvites,
+  fetchMemberPage,
   inviteLabel,
   isOldPhoneInvite,
   joinTally,
@@ -362,5 +363,17 @@ describe('the tally of who joined while open', () => {
         invite({ status: 'consumed', joinedWhileOpen: false, invitedByMember: 'Alfred' }),
       ]),
     ).toEqual([]);
+  });
+});
+
+describe('finding a member', () => {
+  it('searches for a username without the @ it is typed with', async () => {
+    await fetchMemberPage({ query: ' @maya.local ', filter: 'active' });
+    expect(calls.log.at(-1)).toContain('admin_member_search(maya.local,active');
+  });
+
+  it('leaves an email address whole', async () => {
+    await fetchMemberPage({ query: 'maya@local.test' });
+    expect(calls.log.at(-1)).toContain('admin_member_search(maya@local.test,all');
   });
 });

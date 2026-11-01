@@ -12,6 +12,18 @@ import { SmallButton } from '@/routes/admin/controls';
 import { type AdminMember, fetchMemberPage } from '@/routes/admin/members-admin';
 import { cityAndState } from '@/types/domain';
 
+function MemberLine({ member }: { member: AdminMember }) {
+  const where = member.city ? cityAndState(member) : null;
+  return (
+    <span className="min-w-0 flex-1">
+      <span className="block font-bold text-[0.875rem] text-ink">{member.displayName}</span>
+      <span className="block text-[0.75rem] text-grey">
+        {[member.username ? `@${member.username}` : null, where].filter(Boolean).join(' · ')}
+      </span>
+    </span>
+  );
+}
+
 /**
  * Who speaks for which organization (20261005010000), for an administrator.
  *
@@ -27,6 +39,7 @@ import { cityAndState } from '@/types/domain';
  * from the seed is nobody anybody could sign in as, and `admin_add_representative`
  * refuses both anyway. Found by a search the database answers, 20 at a
  * time (20261029230000), so nobody past the first 1,000 is out of reach.
+ * Answers appear under the box as it is typed in, and one is pressed to choose.
  */
 export function RepresentativesSection() {
   const { organizations, byId, loading: organizationsLoading } = useOrganizations();
@@ -34,9 +47,12 @@ export function RepresentativesSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState('');
-  const [memberId, setMemberId] = useState('');
+  const [chosen, setChosen] = useState<AdminMember | null>(null);
   const [find, setFind] = useState('');
   const [choices, setChoices] = useState<AdminMember[]>([]);
+  // What `choices` answers, so an older answer is never shown for newer words.
+  const [searched, setSearched] = useState('');
+  const [findError, setFindError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -55,9 +71,15 @@ export function RepresentativesSection() {
   // Joined and active, matching what is typed, a moment after typing stops.
   useEffect(() => {
     let live = true;
+    setFindError(null);
+    if (find.trim() === '') return;
     const wait = setTimeout(() => {
       void fetchMemberPage({ query: find, filter: 'active', limit: 20 }).then((result) => {
-        if (live && result.ok) setChoices(result.members);
+        if (!live) return;
+        if (result.ok) {
+          setChoices(result.members);
+          setSearched(find);
+        } else setFindError(result.error);
       });
     }, 250);
     return () => {
@@ -75,7 +97,7 @@ export function RepresentativesSection() {
           return;
         }
         await load();
-        if (key === 'add') setMemberId('');
+        if (key === 'add') setChosen(null);
       })
       .catch((e: unknown) => {
         setError(describeThrown(e, 'That did not work.'));
@@ -87,7 +109,7 @@ export function RepresentativesSection() {
 
   const eligible = [...choices].sort((a, b) => a.displayName.localeCompare(b.displayName));
   const alreadyLinked = representatives.some(
-    (r) => r.organizationId === organizationId && r.memberId === memberId,
+    (r) => r.organizationId === organizationId && r.memberId === chosen?.id,
   );
 
   // Grouped by organization, in the directory's own order.
@@ -143,40 +165,70 @@ export function RepresentativesSection() {
             </select>
           </div>
           <div className="min-w-[180px] flex-1">
-            <label htmlFor="rep-find" className="block font-bold text-[0.75rem] text-ink">
-              Find a member
-            </label>
-            <input
-              id="rep-find"
-              type="search"
-              value={find}
-              onChange={(e) => {
-                setFind(e.target.value);
-                // A new search is a new list: nothing chosen from the old one.
-                setMemberId('');
-              }}
-              placeholder="Name, email or @username"
-              className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
-            />
-            <label htmlFor="rep-member" className="mt-2 block font-bold text-[0.75rem] text-ink">
-              Member
-            </label>
-            <select
-              id="rep-member"
-              value={memberId}
-              onChange={(e) => {
-                setMemberId(e.target.value);
-              }}
-              className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink outline-none focus:border-emphasis"
-            >
-              <option value="">Choose…</option>
-              {eligible.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.displayName}
-                  {m.city ? ` — ${cityAndState(m)}` : ''}
-                </option>
-              ))}
-            </select>
+            {chosen ? (
+              <>
+                <p className="block font-bold text-[0.75rem] text-ink">Member</p>
+                <div className="mt-1.5 flex items-center gap-2 rounded-[11px] border-[1.6px] border-line bg-paper py-1 pr-1 pl-3">
+                  <MemberLine member={chosen} />
+                  <button
+                    type="button"
+                    aria-label={`Change from ${chosen.displayName}`}
+                    onClick={() => {
+                      setChosen(null);
+                    }}
+                    className="min-h-[44px] rounded-lg px-3 font-semibold text-[0.8125rem] text-emphasis hover:bg-tint"
+                  >
+                    Change
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <label htmlFor="rep-find" className="block font-bold text-[0.75rem] text-ink">
+                  Find a member
+                </label>
+                <input
+                  id="rep-find"
+                  type="search"
+                  autoComplete="off"
+                  value={find}
+                  onChange={(e) => {
+                    setFind(e.target.value);
+                  }}
+                  placeholder="Name, email or @username"
+                  className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.875rem] text-ink"
+                />
+                {findError ? (
+                  <p role="alert" className="mt-1.5 text-[0.8125rem] text-destructive">
+                    {findError}
+                  </p>
+                ) : find.trim() === '' || searched !== find ? null : eligible.length === 0 ? (
+                  <p role="status" className="mt-1.5 text-[0.8125rem] text-grey">
+                    Nobody matches that.
+                  </p>
+                ) : (
+                  <ul
+                    aria-label="Members"
+                    className="mt-1.5 rounded-[11px] border border-line py-1"
+                  >
+                    {eligible.map((member) => (
+                      <li key={member.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setChosen(member);
+                            setFind('');
+                          }}
+                          className="flex min-h-[44px] w-full items-center px-3 py-1.5 text-left hover:bg-tint"
+                        >
+                          <MemberLine member={member} />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </div>
         </div>
         {alreadyLinked ? (
@@ -184,9 +236,9 @@ export function RepresentativesSection() {
         ) : null}
         <button
           type="button"
-          disabled={!organizationId || !memberId || alreadyLinked || busy !== null}
+          disabled={!organizationId || !chosen || alreadyLinked || busy !== null}
           onClick={() => {
-            run('add', () => addRepresentative(organizationId, memberId));
+            if (chosen) run('add', () => addRepresentative(organizationId, chosen.id));
           }}
           className="mt-3 flex min-h-[44px] w-full items-center justify-center rounded-[11px] bg-action font-bold font-head text-[0.875rem] text-white disabled:opacity-40"
         >

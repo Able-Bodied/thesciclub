@@ -777,7 +777,6 @@ export default function OnboardingPage() {
       <WelcomeScreen
         joiningOpen={joiningOpen}
         registered={registered}
-        linked={!registered && destination !== '/home'}
         onJoin={() => {
           setStep('join');
         }}

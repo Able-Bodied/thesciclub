@@ -8,6 +8,7 @@ import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { type ShareTarget, sharePost } from '@/lib/chat/shared-posts';
 import { threadTitle, useMyThreads } from '@/lib/chat/threads';
+import type { ChatThread } from '@/lib/chat/types';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { markdownToPlain } from '@/lib/markdown';
 import { useBrowseMembers } from '@/lib/members';
@@ -21,7 +22,8 @@ import { excerpt } from '@/routes/chat/reaction-bar';
  *
  * A visible button beside React and Reply, as every action on a post is: no
  * long press. It opens a sheet of the member's conversations, newest first,
- * and "Someone else" for a member they have no conversation with yet. A line
+ * and "Someone else" for a member they have no conversation with yet. A search
+ * above them finds either by name or @username (the owner, 2026-10-31). A line
  * of their own is optional. What arrives is a message carrying a card of the
  * post, which each reader sees only if they may read the post themselves
  * (shared-posts.ts).
@@ -72,6 +74,15 @@ export function SharePostButton({
         : null}
     </>
   );
+}
+
+/** What was typed in the search, as it is matched. Empty is no search. */
+function searchNeedle(search: string): string {
+  return search.trim().toLowerCase().replace(/^@/, '');
+}
+
+function matchesNeedle(needle: string, name: string, username: string | null | undefined): boolean {
+  return needle === '' || name.toLowerCase().includes(needle) || (username ?? '').includes(needle);
 }
 
 /** The value of a destination's radio button. */
@@ -153,6 +164,7 @@ function SharePostSheet({
   const offered = threads.threads.filter((t) => t.kind === 'group' || t.otherMemberId !== null);
   const authors = useChatAuthors(offered.map((t) => t.otherMemberId));
   const [picking, setPicking] = useState(false);
+  const [search, setSearch] = useState('');
   const [target, setTarget] = useState<{ value: ShareTarget; name: string } | null>(null);
   const [line, setLine] = useState('');
   const [sending, setSending] = useState(false);
@@ -164,6 +176,12 @@ function SharePostSheet({
   }, [sent]);
 
   const chosen = target ? targetKey(target.value) : null;
+  const needle = searchNeedle(search);
+  const shownThreads = offered.filter((thread) => {
+    if (chosen === `thread:${thread.id}`) return true;
+    const other = thread.otherMemberId ? authors.get(thread.otherMemberId) : undefined;
+    return matchesNeedle(needle, threadTitle(thread, other?.displayName ?? null), other?.username);
+  });
 
   /** A conversation's name as it reads now: a name still loading when picked fills in. */
   function nameOf(to: { value: ShareTarget; name: string }): string {
@@ -273,6 +291,28 @@ function SharePostSheet({
               send();
             }}
           >
+            <label
+              htmlFor="share-post-search"
+              className="block font-bold font-head text-[0.875rem] text-ink"
+            >
+              Search
+            </label>
+            <input
+              id="share-post-search"
+              type="search"
+              autoComplete="off"
+              autoCapitalize="none"
+              value={search}
+              placeholder="Name or @username"
+              onChange={(event) => {
+                setSearch(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                // Not Send: the keyboard's Enter ends a search.
+                if (event.key === 'Enter') event.preventDefault();
+              }}
+              className="mt-1.5 mb-3 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+            />
             <fieldset>
               <legend className="font-bold font-head text-[0.875rem] text-ink">Send to</legend>
               <p className="mt-0.5 text-[0.78125rem] text-grey leading-[1.45]">
@@ -284,13 +324,13 @@ function SharePostSheet({
                 </p>
               ) : threads.error ? (
                 <p className="py-4 text-[0.875rem] text-ink2">{threads.error}</p>
-              ) : offered.length === 0 ? (
+              ) : offered.length === 0 && needle === '' ? (
                 <p className="py-4 text-[0.875rem] text-grey">
                   No conversations yet. Choose someone below.
                 </p>
-              ) : (
+              ) : shownThreads.length === 0 ? null : (
                 <div className="mt-2 max-h-[16em] overflow-y-auto rounded-[14px] border border-line px-3.5">
-                  {offered.map((thread) => {
+                  {shownThreads.map((thread) => {
                     const other = thread.otherMemberId
                       ? (authors.get(thread.otherMemberId) ?? null)
                       : null;
@@ -336,27 +376,35 @@ function SharePostSheet({
                 </div>
               )}
 
-              <button
-                type="button"
-                aria-expanded={picking}
-                aria-controls="share-post-members"
-                onClick={() => {
-                  // A member chosen from the list goes with it, so Send never
-                  // names somebody whose choice is no longer on screen.
-                  if (picking && target && 'memberId' in target.value) setTarget(null);
-                  setPicking(!picking);
-                }}
-                className="mt-2 inline-flex min-h-11 items-center font-semibold text-[0.875rem] text-emphasis underline underline-offset-2"
-              >
-                {picking ? 'Hide the members' : 'Someone else'}
-              </button>
-              <div id="share-post-members" hidden={!picking}>
-                {picking ? (
+              {/* A search reaches every member, so the list is already open. */}
+              {needle === '' ? (
+                <button
+                  type="button"
+                  aria-expanded={picking}
+                  aria-controls="share-post-members"
+                  onClick={() => {
+                    // A member chosen from the list goes with it, so Send never
+                    // names somebody whose choice is no longer on screen.
+                    if (picking && target && 'memberId' in target.value) setTarget(null);
+                    setPicking(!picking);
+                  }}
+                  className="mt-2 inline-flex min-h-11 items-center font-semibold text-[0.875rem] text-emphasis underline underline-offset-2"
+                >
+                  {picking ? 'Hide the members' : 'Someone else'}
+                </button>
+              ) : null}
+              <div id="share-post-members" hidden={!picking && needle === ''}>
+                {picking || needle !== '' ? (
                   <MemberChoices
                     viewerId={memberId}
                     chosen={chosen}
+                    needle={needle}
+                    conversations={offered}
+                    foundConversation={shownThreads.length > 0}
                     onChoose={(id, name) => {
                       setTarget({ value: { memberId: id }, name });
+                      // Stays on screen once the search is cleared.
+                      setPicking(true);
                     }}
                   />
                 ) : null}
@@ -405,32 +453,37 @@ function SharePostSheet({
 
 /**
  * Members to start a direct conversation with: the people Peers shows, as
- * New message offers them, narrowed by name on the client.
+ * New message offers them, narrowed by the sheet's search. A member with a
+ * direct conversation is found there instead, not twice.
  */
 function MemberChoices({
   viewerId,
   chosen,
+  needle,
+  conversations,
+  foundConversation,
   onChoose,
 }: {
   viewerId: string | null;
   chosen: string | null;
+  needle: string;
+  conversations: ChatThread[];
+  foundConversation: boolean;
   onChoose: (memberId: string, name: string) => void;
 }) {
   const { members, loading, error } = useBrowseMembers();
-  const [filter, setFilter] = useState('');
   const shown = useMemo(() => {
-    const needle = filter.trim().toLowerCase();
+    const direct = new Set(conversations.map((thread) => thread.otherMemberId));
     return members
       .filter((member) => member.id !== viewerId)
       .filter(
         (member) =>
-          needle === '' ||
           // The chosen one stays, so the choice never vanishes from the group.
           `member:${member.id}` === chosen ||
-          member.displayName.toLowerCase().includes(needle) ||
-          (member.username ?? '').includes(needle.replace(/^@/, '')),
+          needle === '' ||
+          (!direct.has(member.id) && matchesNeedle(needle, member.displayName, member.username)),
       );
-  }, [members, viewerId, filter, chosen]);
+  }, [members, viewerId, needle, conversations, chosen]);
 
   if (loading) {
     return (
@@ -443,28 +496,12 @@ function MemberChoices({
 
   return (
     <>
-      <label
-        htmlFor="share-post-filter"
-        className="mt-2 block font-semibold text-[0.8125rem] text-ink"
-      >
-        Narrow the list by name
-      </label>
-      <input
-        id="share-post-filter"
-        type="text"
-        autoComplete="off"
-        value={filter}
-        onChange={(event) => {
-          setFilter(event.target.value);
-        }}
-        className="mt-1.5 min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 py-2.5 text-[1rem] text-ink outline-none focus:border-emphasis"
-      />
       {shown.length === 0 ? (
-        <p className="py-4 text-[0.875rem] text-grey">
-          {filter.trim() === ''
-            ? 'Nobody else is in the club yet.'
-            : `Nobody here is called “${filter.trim()}”.`}
-        </p>
+        foundConversation ? null : (
+          <p className="py-4 text-[0.875rem] text-grey">
+            {needle === '' ? 'Nobody else is in the club yet.' : `Nobody matches “${needle}”.`}
+          </p>
+        )
       ) : (
         <div className="mt-2 max-h-[16em] overflow-y-auto rounded-[14px] border border-line px-3.5">
           {shown.map((member) => {

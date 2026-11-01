@@ -772,4 +772,5 @@ All live. Migration headers and the files named say how and why.
 `ClubWordmark` (the owner's SVGs, never redrawn), `DateFields` /
 `lib/date-parts.ts` (every date as typed boxes; only the event form opens the
 phone's calendar), `NotificationsStep`, `useHoldScroll`, `LinkPreviewCard`,
-`DescriptionEditor` / `EventDescription`, `useSession`, `CountUp`.
+`DescriptionEditor` / `EventDescription`, `useSession`, `CountUp`,
+`PasswordReveal` (every password box).

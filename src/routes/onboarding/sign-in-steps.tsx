@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { GoogleButton } from '@/components/google-button';
 import { GoogleInBrowserButton } from '@/components/google-in-browser-button';
 import { OpeningIcon } from '@/components/opening-icon';
+import { PasswordReveal } from '@/components/password-reveal';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { CODE_LENGTH, CONFIRMATION_FROM, looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
@@ -308,16 +309,20 @@ export function SignInStep({
       <label htmlFor="password" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         Password
       </label>
-      <Field
-        ref={passwordRef}
-        id="password"
-        type="password"
-        autoComplete="current-password"
-        value={data.password}
-        onChange={(e) => {
-          set({ password: e.target.value });
-        }}
-      />
+      <PasswordReveal what="password" className="mt-2.5">
+        {(input) => (
+          <Field
+            {...input}
+            ref={passwordRef}
+            id="password"
+            autoComplete="current-password"
+            value={data.password}
+            onChange={(e) => {
+              set({ password: e.target.value });
+            }}
+          />
+        )}
+      </PasswordReveal>
       <button
         type="button"
         onClick={onForgot}
@@ -406,28 +411,36 @@ export function JoinStep({
       <label htmlFor="password" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         Password
       </label>
-      <Field
-        id="password"
-        type="password"
-        autoComplete="new-password"
-        minLength={MIN_PASSWORD}
-        value={data.password}
-        onChange={(e) => {
-          set({ password: e.target.value });
-        }}
-      />
+      <PasswordReveal what="password" className="mt-2.5">
+        {(input) => (
+          <Field
+            {...input}
+            id="password"
+            autoComplete="new-password"
+            minLength={MIN_PASSWORD}
+            value={data.password}
+            onChange={(e) => {
+              set({ password: e.target.value });
+            }}
+          />
+        )}
+      </PasswordReveal>
       <label htmlFor="password-again" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         Type it again
       </label>
-      <Field
-        id="password-again"
-        type="password"
-        autoComplete="new-password"
-        value={data.passwordAgain}
-        onChange={(e) => {
-          set({ passwordAgain: e.target.value });
-        }}
-      />
+      <PasswordReveal what="the password typed again" className="mt-2.5">
+        {(input) => (
+          <Field
+            {...input}
+            id="password-again"
+            autoComplete="new-password"
+            value={data.passwordAgain}
+            onChange={(e) => {
+              set({ passwordAgain: e.target.value });
+            }}
+          />
+        )}
+      </PasswordReveal>
       {data.passwordAgain !== '' && data.password !== data.passwordAgain ? (
         <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
           The two passwords do not match.
