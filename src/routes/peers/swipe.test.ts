@@ -29,10 +29,8 @@ describe('swipeDirection', () => {
 
 describe('nextSegment', () => {
   it('moves between the two segments', () => {
-    expect(nextSegment('everyone', 'left')).toBe('near');
-    expect(nextSegment('near', 'left')).toBe('mentors');
-    expect(nextSegment('mentors', 'right')).toBe('near');
-    expect(nextSegment('near', 'right')).toBe('everyone');
+    expect(nextSegment('everyone', 'left')).toBe('mentors');
+    expect(nextSegment('mentors', 'right')).toBe('everyone');
   });
 
   it('stops at each end rather than wrapping', () => {

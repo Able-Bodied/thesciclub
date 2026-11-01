@@ -19,9 +19,6 @@ import type { MapContents, MapPoint } from '@/lib/map-data';
 import { canonicalTopicsOf } from '@/routes/peers/topics';
 import type { BrowseMember, InjuryRegion, MemberFilters, PeersSegment } from '@/types/domain';
 
-/** Cities that count as the South Bay for the "Near me" segment. */
-const NEARBY_CITIES = ['San Jose', 'Santa Clara', 'Sunnyvale', 'Campbell', 'Fremont'];
-
 export function activeFilterCount(filters: MemberFilters): number {
   return (
     filters.regions.length +
@@ -105,7 +102,6 @@ function matchesSearch(member: BrowseMember, search: string): boolean {
 
 function matchesSegment(member: BrowseMember, segment: PeersSegment): boolean {
   if (segment === 'mentors') return member.type === 'mentor';
-  if (segment === 'near') return member.city !== null && NEARBY_CITIES.includes(member.city);
   return true;
 }
 
