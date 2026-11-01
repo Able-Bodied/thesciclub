@@ -884,3 +884,8 @@ a[href]:not([class^="rounded"]):not([class*=" rounded"]):not(:has(div, p, img, h
     outline: 0.5pt dashed #9a9a9a;
   }
 }
+
+/* Edge draws its own eye in a password box, beside ours. */
+input::-ms-reveal {
+  display: none;
+}

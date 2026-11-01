@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { PasswordReveal } from '@/components/password-reveal';
 import { MIN_PASSWORD } from '@/lib/auth-email';
 import { describeError } from '@/lib/describe-error';
 import { forgetRecoveryLink, recoveryLinkWorked } from '@/lib/recovery-link';
@@ -118,27 +119,35 @@ export default function ResetPasswordPage() {
       <label htmlFor="new-password" className="mt-5 block font-bold text-[0.8125rem] text-ink">
         New password
       </label>
-      <Field
-        id="new-password"
-        type="password"
-        autoComplete="new-password"
-        value={password}
-        onChange={(e) => {
-          setPassword(e.target.value);
-        }}
-      />
+      <PasswordReveal what="new password" className="mt-2.5">
+        {(input) => (
+          <Field
+            {...input}
+            id="new-password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+            }}
+          />
+        )}
+      </PasswordReveal>
       <label htmlFor="again" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         Type it again
       </label>
-      <Field
-        id="again"
-        type="password"
-        autoComplete="new-password"
-        value={again}
-        onChange={(e) => {
-          setAgain(e.target.value);
-        }}
-      />
+      <PasswordReveal what="the password typed again" className="mt-2.5">
+        {(input) => (
+          <Field
+            {...input}
+            id="again"
+            autoComplete="new-password"
+            value={again}
+            onChange={(e) => {
+              setAgain(e.target.value);
+            }}
+          />
+        )}
+      </PasswordReveal>
       {mismatch ? (
         <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
           The two passwords do not match.

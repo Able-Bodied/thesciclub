@@ -1,8 +1,10 @@
 import { useId, useState } from 'react';
+import { PasswordReveal } from '@/components/password-reveal';
 import { addEmailAndPassword, changeEmail } from '@/lib/account-email';
 import { useAnnounce } from '@/lib/announce';
 import { looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import { describeThrown } from '@/lib/describe-error';
+import { cn } from '@/lib/utils';
 import {
   CARD_BUTTON,
   CardError,
@@ -105,33 +107,41 @@ export function AddEmailForm({
         <label htmlFor={passwordId} className={FIELD_LABEL}>
           Password
         </label>
-        <input
-          id={passwordId}
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          aria-describedby={`${passwordId}-hint`}
-          onChange={(event) => {
-            setPassword(event.target.value);
-          }}
-          className={FIELD}
-        />
+        <PasswordReveal what="password" className="mt-1.5">
+          {(input) => (
+            <input
+              {...input}
+              id={passwordId}
+              autoComplete="new-password"
+              value={password}
+              aria-describedby={`${passwordId}-hint`}
+              onChange={(event) => {
+                setPassword(event.target.value);
+              }}
+              className={cn(FIELD, input.className)}
+            />
+          )}
+        </PasswordReveal>
         <p id={`${passwordId}-hint`} className="mt-1 text-[0.78125rem] text-grey">
           At least {MIN_PASSWORD} characters.
         </p>
         <label htmlFor={againId} className={FIELD_LABEL}>
           Type it again
         </label>
-        <input
-          id={againId}
-          type="password"
-          autoComplete="new-password"
-          value={again}
-          onChange={(event) => {
-            setAgain(event.target.value);
-          }}
-          className={FIELD}
-        />
+        <PasswordReveal what="the password typed again" className="mt-1.5">
+          {(input) => (
+            <input
+              {...input}
+              id={againId}
+              autoComplete="new-password"
+              value={again}
+              onChange={(event) => {
+                setAgain(event.target.value);
+              }}
+              className={cn(FIELD, input.className)}
+            />
+          )}
+        </PasswordReveal>
         {mismatch ? (
           <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
             The two passwords do not match.
