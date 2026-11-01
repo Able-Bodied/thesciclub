@@ -34,7 +34,7 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: api.status, userId: null, isAdmin: false, displayName: null }),
 }));
-vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/lib/photos', () => ({ PHOTOS_BUCKET: 'photos', usePhotoUrl: () => null }));
 
 const { default: PublicEventPage } = await import('@/routes/public-event/page');
 const { default: RegisterForEventPage } = await import('@/routes/public-event/register');

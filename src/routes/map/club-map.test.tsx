@@ -85,6 +85,7 @@ vi.mock('@/lib/organizations', () => ({
 vi.mock('@/lib/organization-follows', () => ({
   useOrganizationFollows: () => ({
     following: new Set(),
+    requested: new Set(),
     loading: false,
     error: null,
     toggle: vi.fn(),

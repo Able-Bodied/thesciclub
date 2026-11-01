@@ -28,8 +28,13 @@ vi.mock('@/lib/organizations', () => ({
     loading: false,
   }),
 }));
+vi.mock('@/routes/reviews/reviews-section', () => ({ ReviewsSection: () => null }));
 vi.mock('@/lib/organization-follows', () => ({
-  useOrganizationFollows: () => ({ following: new Set(), toggle: () => undefined }),
+  useOrganizationFollows: () => ({
+    following: new Set(),
+    requested: new Set(),
+    toggle: () => undefined,
+  }),
 }));
 vi.mock('@/lib/events', () => ({ useEvents: () => ({ events: [], loading: false, error: null }) }));
 vi.mock('@/lib/members', () => ({ useBrowseMembers: () => ({ members: [], loading: false }) }));

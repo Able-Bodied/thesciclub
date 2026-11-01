@@ -1149,13 +1149,15 @@ function OwnEventCards({
           <EventCard
             event={event}
             status={viewer.rsvps.get(event.id) ?? null}
-            attendees={[]}
             organization={event.organizationId ? (byId.get(event.organizationId) ?? null) : null}
             onOpen={() => {
               void navigate(`/events/${event.id}`, { state: backState });
             }}
             onOpenOrganization={(id) => {
               void navigate(`/events/organizations/${id}`, { state: backState });
+            }}
+            onOpenMember={(id) => {
+              void navigate(`/peers/${id}`, { state: backState });
             }}
             onRsvp={(next) => {
               onRsvp(event, next);
@@ -1205,6 +1207,7 @@ function OrganizationRows({
           grants={grants.get(organization.id)?.length ?? 0}
           grantOpen={hasOpenGrant(grants.get(organization.id), today)}
           following={follows.following.has(organization.id)}
+          requested={follows.requested.has(organization.id)}
           onToggleFollow={follows.toggle}
           locations={theirs.length}
           onOpen={(id) => {

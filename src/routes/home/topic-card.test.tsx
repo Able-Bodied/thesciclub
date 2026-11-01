@@ -76,6 +76,7 @@ describe('a topic on Home', () => {
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/chat/rooms/bowel',
       '/chat/rooms/bowel/topics/t1',
+      '/peers/a',
     ]);
     const link = screen.getByRole('link', { name: 'Morning or evening routine?' });
     await user.click(link);
@@ -87,13 +88,22 @@ describe('a topic on Home', () => {
   it('says which room it is in, and who asked', () => {
     renderCard({ topic: makeHomeTopic({ room: makeRoom({ name: 'Bowel management' }) }) });
     expect(screen.getByText('Bowel management')).toBeInTheDocument();
-    expect(screen.getByText(/^Alex · C6 · /)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Alex' }).closest('span')).toHaveTextContent(
+      /^Alex · C6 · /,
+    );
+  });
+
+  it('opens the profile from a name', async () => {
+    const user = userEvent.setup();
+    renderCard();
+    await user.click(screen.getByRole('link', { name: 'Alex' }));
+    expect(screen.getByText('at /peers/a with {"from":"home"}')).toBeInTheDocument();
   });
 
   // Decorative: hidden from a screen reader, which has the name beside it.
   it('draws who asked with their picture beside their name', () => {
     renderCard();
-    const row = screen.getByText(/^Alex · C6 · /).closest('p');
+    const row = screen.getByRole('link', { name: 'Alex' }).closest('p');
     const picture = row?.querySelector('[aria-hidden="true"]');
     expect(picture).not.toBeNull();
     expect(picture).toHaveTextContent(/\S/);
@@ -116,7 +126,9 @@ describe('a topic on Home', () => {
       }),
       replier: author({ id: 'j', displayName: 'Jan', level: 'T4' }),
     });
-    expect(screen.getByText('Jan · T4')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Jan' }).closest('span')).toHaveTextContent(
+      /^Jan · T4$/,
+    );
     expect(screen.getByText('Evenings, after a year of mornings.')).toBeInTheDocument();
     expect(screen.getByText('3 replies')).toBeInTheDocument();
   });
@@ -186,6 +198,8 @@ describe('likes on a topic card', () => {
     await user.tab();
     await user.tab();
     expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('link', { name: 'Alex' })).toHaveFocus();
     await user.tab();
     expect(screen.getByRole('button', { name: 'Like Morning or evening routine?' })).toHaveFocus();
     await user.tab();

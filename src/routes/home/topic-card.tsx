@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { LinkedText } from '@/components/linked-text';
 import { AvatarLink, FormerMemberAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useSeenOnHome } from '@/lib/chat/home-views';
 import { chatTime } from '@/lib/chat/time';
@@ -135,7 +136,7 @@ export function TopicCard({
           )}
         </AvatarLink>
         <span className="min-w-0">
-          {byline(topic.authorId, starter)}
+          <BylineName authorId={topic.authorId} author={starter} linkState={linkState} />
           {starter?.level ? ` · ${starter.level}` : ''} · {chatTime(topic.createdAt)}
         </span>
       </p>
@@ -168,12 +169,16 @@ export function TopicCard({
               )}
             </AvatarLink>
             <span className="font-semibold text-[0.78125rem] text-ink2">
-              {byline(reply.authorId, replier)}
+              <BylineName authorId={reply.authorId} author={replier} linkState={linkState} />
               {replier?.level ? ` · ${replier.level}` : ''}
             </span>
           </p>
-          <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52]">
-            {reply.body ? markdownToPlain(reply.body) : 'Replied with a photograph.'}
+          <p className="mt-1.5 line-clamp-4 whitespace-pre-line text-[0.875rem] text-ink2 leading-[1.52] [&_a]:relative [&_a]:z-[1]">
+            {reply.body ? (
+              <LinkedText text={markdownToPlain(reply.body)} />
+            ) : (
+              'Replied with a photograph.'
+            )}
           </p>
           {reply.linkPreview ? (
             <LinkPreviewCard preview={reply.linkPreview} className="relative" />
@@ -243,6 +248,30 @@ export interface CardLikes {
 export function byline(authorId: string | null, author: ChatAuthor | null): string {
   if (author) return author.displayName;
   return authorId ? '…' : 'Deleted member';
+}
+
+/** The name in a byline, above the title's stretched link, as the picture beside it is. */
+function BylineName({
+  authorId,
+  author,
+  linkState,
+}: {
+  authorId: string | null;
+  author: ChatAuthor | null;
+  linkState: unknown;
+}) {
+  const name = byline(authorId, author);
+  if (!author?.hasProfile) return name;
+  return (
+    <Link
+      to={`/peers/${author.id}`}
+      state={linkState}
+      data-target="small"
+      className="relative z-[1] underline-offset-2 hover:underline"
+    >
+      {name}
+    </Link>
+  );
 }
 
 /**

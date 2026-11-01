@@ -289,6 +289,17 @@ export function compose(owed: Owed): PushMessage | null {
         ...where,
       };
     }
+    // Somebody asked to join (20261031030000): subject is the organization,
+    // detail how many are unread. Only its org admins' devices.
+    case 'join_request':
+      return {
+        title: 'Request to join',
+        body:
+          Number(owed.detail) > 1
+            ? `${owed.detail} people asked to join ${subject || 'your organization'}.`
+            : `${name} asked to join ${subject || 'your organization'}.`,
+        ...where,
+      };
     case 'event_reminder':
       if (subject === '') return null;
       return {
@@ -304,6 +315,22 @@ export function compose(owed: Owed): PushMessage | null {
         body: owed.detail
           ? `You're going. It starts at ${owed.detail}.`
           : "You're going. It starts soon.",
+        ...where,
+      };
+    // The morning after the event (20261031070000).
+    case 'event_followup':
+      if (subject === '') return null;
+      return {
+        title: `How was ${subject}?`,
+        body: 'Leave a review and add your pictures.',
+        ...where,
+      };
+    // Thirty minutes after the event (20261031050000).
+    case 'check_in_reminder':
+      if (subject === '') return null;
+      return {
+        title: `Did you make it to ${subject}?`,
+        body: 'Check in while it is still open.',
         ...where,
       };
     case 'org_events': {

@@ -11,9 +11,12 @@ import { fetchAudienceGroups, setEventAudience } from '@/lib/event-audience';
 import {
   adminChangeImportedEvent,
   type CoverChange,
+  type EventPhoto,
+  type MorePhotoChange,
   saveEvent,
   saveEventCover,
   saveEventSeries,
+  saveMorePhotos,
   useEvents,
 } from '@/lib/events';
 import { useMyOrganizations } from '@/lib/organization-representatives';
@@ -43,6 +46,7 @@ import {
   repeatLabels,
   TITLE_MAX,
 } from '@/routes/events/event-draft';
+import { MorePicturesField } from '@/routes/events/more-pictures-field';
 import {
   EVENT_FORMAT_LABELS,
   EVENT_FORMATS,
@@ -122,6 +126,7 @@ export default function EventFormPage() {
             })()
       }
       initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
+      initialMore={existing?.morePhotos ?? []}
       // A new event has a public page unless its organizer says otherwise
       // (the owner, 2026-10-22).
       initialAudience={existing?.audience ?? 'club'}
@@ -158,6 +163,7 @@ function EventForm({
   eventId,
   initial,
   initialCover,
+  initialMore,
   initialAudience,
   initialFailure,
   imported,
@@ -174,6 +180,7 @@ function EventForm({
   initial: EventDraft;
   /** The picture the event has, and its words, before anything is changed. */
   initialCover: { path: string | null; alt: string };
+  initialMore: EventPhoto[];
   /** Who can see it before anything is changed (20261022180000). */
   initialAudience: EventAudience;
   /** A picture that did not go up when the event was saved, said on arrival. */
@@ -185,6 +192,9 @@ function EventForm({
   const announce = useAnnounce();
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [cover, setCover] = useState<CoverChange>({ kind: 'keep', ...initialCover });
+  const [more, setMore] = useState<MorePhotoChange[]>(
+    initialMore.map((photo) => ({ kind: 'keep', ...photo })),
+  );
   const [audience, setAudience] = useState<AudienceChoice>({
     audience: initialAudience,
     groups: [],
@@ -234,6 +244,13 @@ function EventForm({
     (cover.kind === 'remove' && initialCover.path !== null) ||
     (cover.kind === 'keep' && cover.path !== null && cover.alt !== initialCover.alt);
 
+  const moreChanged =
+    more.length !== initialMore.length ||
+    more.some((item, index) => {
+      const was = initialMore[index];
+      return item.kind === 'new' || item.path !== was?.path || item.alt !== was.alt;
+    });
+
   // Followers are an organization's: with no organization hosting, there are
   // none to choose, and the event is for the club instead.
   const hostName = options.find((option) => option.id === draft.host)?.name ?? null;
@@ -265,6 +282,16 @@ function EventForm({
       // a filled-in "add" form that would add the event a second time.
       if (coverChanged) {
         const saved = await saveEventCover(result.id, cover);
+        if (!saved.ok) {
+          void navigate(`/events/${result.id}/edit`, {
+            replace: true,
+            state: { coverFailure: `The event is saved. ${saved.error}` },
+          });
+          return;
+        }
+      }
+      if (moreChanged) {
+        const saved = await saveMorePhotos(result.id, more);
         if (!saved.ok) {
           void navigate(`/events/${result.id}/edit`, {
             replace: true,
@@ -559,6 +586,16 @@ function EventForm({
           value={cover}
           onChange={(next) => {
             setCover(next);
+            setFailure(null);
+          }}
+          labelClassName={LABEL}
+          hintClassName={HINT}
+          fieldClassName={FIELD}
+        />
+        <MorePicturesField
+          value={more}
+          onChange={(next) => {
+            setMore(next);
             setFailure(null);
           }}
           labelClassName={LABEL}

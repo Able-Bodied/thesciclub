@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MemberAvatar } from '@/components/member-avatar';
 import { useBrowseMembers } from '@/lib/members';
-import { injuryLabel } from '@/types/domain';
+import { cityAndState, injuryLabel } from '@/types/domain';
 
 /**
  * Picking members — for a new group, and for adding to one that exists.
@@ -141,7 +141,7 @@ export function MemberPicker({
                     {member.displayName}
                   </span>
                   <span className="block text-[0.71875rem] text-grey">
-                    {[member.username ? `@${member.username}` : null, level, member.city]
+                    {[member.username ? `@${member.username}` : null, level, cityAndState(member)]
                       .filter(Boolean)
                       .join(' · ')}
                   </span>

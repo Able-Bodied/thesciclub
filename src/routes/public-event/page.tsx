@@ -5,7 +5,7 @@ import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
-import { EventCover } from '@/routes/events/event-cover';
+import { EventGallery } from '@/routes/events/event-gallery';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { longWhen, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
@@ -96,7 +96,12 @@ export default function PublicEventPage() {
 
       {event ? (
         <article className="px-[18px]">
-          <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
+          <EventGallery
+            path={event.photoPath}
+            alt={event.photoAlt}
+            more={event.morePhotos}
+            className="mb-4"
+          />
           <p className="flex items-center gap-1.5 font-bold text-[0.75rem] text-gold-dp uppercase tracking-[0.07em]">
             <CalendarDays className="h-[13px] w-[13px]" aria-hidden="true" />
             {longWhen(event.startTime, timezone, event.allDay)}

@@ -7,12 +7,17 @@ import { getSupabase } from '@/lib/supabase';
  *
  * In the app, from the event's page, or by a printed QR code, which is only
  * the address of /events/:id/check-in. The database holds the window and says
- * no outside it; this mirrors it, so the button is not offered when it would
- * only be refused. An organization's event makes whoever checks in a member
- * of that organization.
+ * no outside it; this mirrors it, so the button is only lit when it would work
+ * (the owner, 2026-10-31: "an hour before and after the event"; 20261031040000).
+ * An organization's event makes whoever checks in a member of that
+ * organization.
  */
 
 const HOUR = 3_600_000;
+/** How long before it opens an event's page shows the button, unlit. */
+const UNLIT_FOR = 24 * HOUR;
+/** The longest a timer can wait. */
+const LONGEST_WAIT = 2 ** 31 - 1;
 
 interface WhenItIs {
   startTime: string;
@@ -33,6 +38,43 @@ export function checkInWindow(event: WhenItIs): { opens: number; closes: number 
 export function checkInOpen(event: WhenItIs, now: number = Date.now()): boolean {
   const { opens, closes } = checkInWindow(event);
   return now >= opens && now <= closes;
+}
+
+export type CheckInPhase = 'far' | 'soon' | 'open' | 'over';
+
+/** Where an event is: soon is the day before it opens, when the button shows unlit. */
+export function checkInPhase(event: WhenItIs, now: number = Date.now()): CheckInPhase {
+  const { opens, closes } = checkInWindow(event);
+  if (now > closes) return 'over';
+  if (now >= opens) return 'open';
+  return now >= opens - UNLIT_FOR ? 'soon' : 'far';
+}
+
+/** The phase, moving on by itself, so a page left open lights up by itself. */
+export function useCheckInPhase(event: WhenItIs | null | undefined): CheckInPhase | null {
+  const [, setTick] = useState(0);
+  const phase = event ? checkInPhase(event) : null;
+  const startTime = event?.startTime;
+  const endTime = event?.endTime;
+  const allDay = event?.allDay;
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the phase and the event's times are what it waits on.
+  useEffect(() => {
+    if (!event || phase === null || phase === 'over') return;
+    const { opens, closes } = checkInWindow(event);
+    const next = phase === 'far' ? opens - UNLIT_FOR : phase === 'soon' ? opens : closes + 1;
+    const timer = window.setTimeout(
+      () => {
+        setTick((n) => n + 1);
+      },
+      Math.min(Math.max(next - Date.now(), 0), LONGEST_WAIT),
+    );
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [phase, startTime, endTime, allDay]);
+
+  return phase;
 }
 
 /** What the printed code opens. */

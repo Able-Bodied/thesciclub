@@ -39,10 +39,15 @@ function renderIt() {
   );
 }
 
-describe('reviewing who pressed Join', () => {
+describe('reviewing who asked to join', () => {
   beforeEach(() => {
     api.rows = [row({})];
     api.calls = [];
+  });
+
+  it('says they are not members yet', async () => {
+    renderIt();
+    expect(await screen.findByText(/not members until you approve them/)).toBeInTheDocument();
   });
 
   it('approves', async () => {

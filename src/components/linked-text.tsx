@@ -1,4 +1,6 @@
+import { Link } from 'react-router-dom';
 import { findLinks } from '@/lib/links';
+import { splitMentions, useMentionedMembers } from '@/lib/mentions';
 
 /**
  * Text somebody wrote, with its web addresses as links.
@@ -13,14 +15,34 @@ import { findLinks } from '@/lib/links';
  * on a navy bubble and on paper without a second palette to keep above AA.
  * `overflow-wrap: anywhere` because a shortened label can still be one long
  * word on a 320px screen.
+ *
+ * An @username of a member with a profile links to it, as in a post
+ * (the owner, 2026-10-31). Other @names stay words.
  */
 export function LinkedText({ text }: { text: string }) {
+  const members = useMentionedMembers(text);
   return (
     <>
       {findLinks(text).map((piece, index) =>
         piece.kind === 'text' ? (
           // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional and never reorder
-          <span key={index}>{piece.text}</span>
+          <span key={index}>
+            {splitMentions(piece.text).map((part, at) => {
+              const member = part.kind === 'mention' ? members.get(part.username) : undefined;
+              return member?.hasProfile ? (
+                <Link
+                  // biome-ignore lint/suspicious/noArrayIndexKey: parts are positional and never reorder
+                  key={at}
+                  to={`/peers/${member.id}`}
+                  className="font-semibold underline decoration-1 underline-offset-2"
+                >
+                  {part.text}
+                </Link>
+              ) : (
+                part.text
+              );
+            })}
+          </span>
         ) : (
           <a
             // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional and never reorder

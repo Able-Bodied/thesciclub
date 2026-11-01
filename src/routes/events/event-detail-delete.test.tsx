@@ -27,7 +27,12 @@ const state = vi.hoisted(() => ({
 vi.mock('@/lib/events', async (importOriginal) => ({
   rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
   useEvents: () => ({ events: state.events, loading: false, error: null, reload: state.reload }),
-  useAttendeesByEvent: () => ({ byEvent: new Map(), loading: false, error: null }),
+  useAttendeesByEvent: () => ({
+    byEvent: new Map(),
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+  }),
   useViewerEvents: () => ({ rsvps: new Map(), loading: false, error: null, reload: vi.fn() }),
   setRsvp: vi.fn(),
   deleteEvent: (id: string) => state.deleteEvent(id) as unknown,

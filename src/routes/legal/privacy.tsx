@@ -186,9 +186,9 @@ export default function PrivacyPage() {
             check in to.
           </li>
           <li>
-            <b>What you do in the club:</b> your messages, posts and photographs, the events you
-            reply to, the posts you like, react to or save, the posts you have read, in a room or on
-            Home, and anything you report or anyone you block.
+            <b>What you do in the club:</b> your messages, posts, reviews and photographs, the
+            events you reply to, the posts you like, react to or save, the posts you have read, in a
+            room or on Home, and anything you report or anyone you block.
           </li>
           <li>
             <b>If you register for an event on its public page:</b> your name, your email address,

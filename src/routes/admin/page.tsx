@@ -59,6 +59,7 @@ import {
   withdrawnInvites,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
+import { OrganizationSuggestions } from '@/routes/admin/organization-suggestions';
 import { OrganizationsSection } from '@/routes/admin/organizations-section';
 import { renewalsDue, useRenewals } from '@/routes/admin/renewals';
 import { ReportsSection } from '@/routes/admin/reports-section';
@@ -69,6 +70,7 @@ import { SignInSection } from '@/routes/admin/sign-in-section';
 import { StatsSection } from '@/routes/admin/stats-section';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { STRIKE_LIMIT } from '@/routes/me/standing-api';
+import { ReportedReviews } from '@/routes/reviews/reported-reviews';
 
 const ADMIN_TAB_VALUES = [
   'members',
@@ -525,6 +527,7 @@ export default function AdminPage() {
                       setOrganizationRevision((value) => value + 1);
                     }}
                   />
+                  <OrganizationSuggestions />
                 </div>
                 <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
                   <RepresentativesSection key={organizationRevision} />
@@ -533,13 +536,16 @@ export default function AdminPage() {
             ) : null}
 
             {tab === 'reports' ? (
-              <ReportsSection
-                reports={reports.reports}
-                loading={reports.loading}
-                error={reports.error}
-                reload={reports.reload}
-                onGoToMember={goToMember}
-              />
+              <>
+                <ReportedReviews />
+                <ReportsSection
+                  reports={reports.reports}
+                  loading={reports.loading}
+                  error={reports.error}
+                  reload={reports.reload}
+                  onGoToMember={goToMember}
+                />
+              </>
             ) : null}
 
             {tab === 'invites' ? (

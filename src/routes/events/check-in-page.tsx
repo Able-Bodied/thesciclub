@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useAccount } from '@/lib/account';
-import { checkInOpen, checkInWindow } from '@/lib/check-ins';
+import { useCheckInPhase } from '@/lib/check-ins';
 import { fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
-import { CheckInCard } from '@/routes/events/check-in-card';
+import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 import { longWhen } from '@/routes/events/format';
 
 /**
@@ -17,6 +17,7 @@ export default function CheckInPage() {
   const memberId = account.status === 'member' ? account.userId : null;
   const [event, setEvent] = useState<PublicEvent | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const phase = useCheckInPhase(event);
 
   useEffect(() => {
     let live = true;
@@ -59,18 +60,18 @@ export default function CheckInPage() {
             <p className="mt-1.5 text-[0.875rem] text-ink2">
               {longWhen(event.startTime, event.timezone ?? 'America/Los_Angeles', event.allDay)}
             </p>
-            {checkInOpen(event) ? (
+            {phase === 'open' ? (
               <CheckInCard
                 eventId={event.id}
                 memberId={memberId}
                 organizationId={event.organization?.id ?? null}
               />
-            ) : (
+            ) : phase === 'over' ? (
               <p className="mt-5 rounded-[14px] border border-line bg-paper p-3.5 text-[0.875rem] text-ink2 leading-[1.5]">
-                {Date.now() < checkInWindow(event).opens
-                  ? 'Check-in opens an hour before the event.'
-                  : 'Check-in for this event has closed.'}
+                Check-in for this event has closed.
               </p>
+            ) : (
+              <CheckInNotYet />
             )}
             <Link
               to={`/events/${event.id}`}

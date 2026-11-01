@@ -250,6 +250,15 @@ export function levelsForCondition(conditionName: string): ExactLevel[] {
   );
 }
 
+/** Where a member lives, "San Jose, CA", or null with no city (the owner, 2026-10-30). */
+export function cityAndState(member: {
+  city: string | null;
+  state?: string | null;
+}): string | null {
+  if (!member.city) return null;
+  return member.state ? `${member.city}, ${member.state}` : member.city;
+}
+
 /**
  * How somebody's disability reads in a line: "T6", "C5 central cord",
  * "Transverse myelitis", "High para", "Family member", "Professional". One function, so a
@@ -566,6 +575,10 @@ export interface Invite {
 
 export interface Organization {
   id: string;
+  /** Join asks its org admins, instead of making a member (20261031010000). */
+  joinsNeedApproval?: boolean;
+  /** Whether a review of it can be anonymous (20261031080000). */
+  anonymousReviews?: boolean;
   /** Two or three letters, for the badge on a mentor's card. */
   shortCode: string;
   name: string;
@@ -725,6 +738,8 @@ export interface ClubEvent {
   photoPath: string | null;
   /** What a screen reader says for the cover picture. */
   photoAlt: string | null;
+  /** The pictures besides the cover (20261031060000). Not in a list's read. */
+  morePhotos?: { path: string; alt: string }[];
   /** Who can see it (20261022180000). */
   audience: EventAudience;
   /**

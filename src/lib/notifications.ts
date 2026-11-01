@@ -52,6 +52,9 @@ export type NotificationKind =
   | 'blocks_weekly'
   | 'reaction'
   | 'mention'
+  | 'join_request'
+  | 'check_in_reminder'
+  | 'event_followup'
   | 'introduction';
 
 interface Row {
@@ -287,6 +290,17 @@ export function notificationSentence(n: AppNotification): string {
       return n.count > 1
         ? `${n.count} people asked for an invite${n.place ? ` through ${n.place}` : ''}`
         : `${n.detail ?? 'Somebody'} asked you for an invite${n.place ? ` through ${n.place}` : ''}`;
+    // Thirty minutes after the event (20261031050000).
+    case 'check_in_reminder':
+      return `Did you make it to ${n.place ?? 'the event'}? Check in`;
+    // The morning after the event (20261031070000).
+    case 'event_followup':
+      return `How was ${n.place ?? 'the event'}? Leave a review and add your pictures`;
+    // place is the organization (20261031030000).
+    case 'join_request':
+      return n.count > 1
+        ? `${n.count} people asked to join ${n.place ?? 'your organization'}`
+        : `${name} asked to join ${n.place ?? 'your organization'}`;
     case 'org_events': {
       const added = Number(n.detail);
       const what = Number.isInteger(added) && added > 1 ? `${added} new events` : 'a new event';

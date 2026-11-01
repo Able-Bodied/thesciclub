@@ -117,6 +117,7 @@ export function OrganizationRow({
   grants,
   grantOpen,
   following,
+  requested = false,
   onToggleFollow,
   onOpen,
   locations = placesOf(organization).length,
@@ -126,6 +127,7 @@ export function OrganizationRow({
   grants: number;
   grantOpen: boolean;
   following: boolean;
+  requested?: boolean;
   onToggleFollow: (id: string) => void;
   onOpen: (id: string) => void;
   /** Its places, when more than one is worth saying. */
@@ -163,6 +165,7 @@ export function OrganizationRow({
         </button>
         <FollowButton
           following={following}
+          requested={requested}
           onToggle={() => {
             onToggleFollow(organization.id);
           }}
@@ -242,6 +245,7 @@ export function OrganizationList({
   organizations,
   events,
   following,
+  requested,
   onToggleFollow,
   onOpen,
   filters: given,
@@ -251,6 +255,7 @@ export function OrganizationList({
   /** Used only to count what each organization is running. */
   events: ClubEvent[];
   following: Set<string>;
+  requested?: ReadonlySet<string>;
   onToggleFollow: (id: string) => void;
   onOpen: (id: string) => void;
   /** Held by the screen, so its map shows what the list does; else its own. */
@@ -358,6 +363,7 @@ export function OrganizationList({
           grants={grants.get(organization.id)?.length ?? 0}
           grantOpen={hasOpenGrant(grants.get(organization.id), today)}
           following={following.has(organization.id)}
+          requested={requested?.has(organization.id) === true}
           onToggleFollow={onToggleFollow}
           onOpen={onOpen}
         />

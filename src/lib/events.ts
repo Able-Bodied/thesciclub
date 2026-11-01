@@ -48,17 +48,17 @@ import { memberType } from '@/types/domain';
 export const HAND_ADDED_TIMEZONE = 'America/Los_Angeles';
 
 const EVENT_COLUMNS =
-  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience, admin_override, feed_values';
+  'id, title, description, description_html, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, more_photos, timezone, all_day, state, audience, admin_override, feed_values';
 
 /**
  * A list's columns: what a card, a filter and Home draw, without the
- * description (twice, words and HTML) and the import's bookkeeping, which
- * only the event's own page and its form use. Those read one event by id and
- * still get every column. Most of a list's bytes were descriptions
- * (2026-10-14).
+ * description's HTML and the import's bookkeeping, which only the event's own
+ * page and its form use. Those read one event by id and still get every
+ * column. Most of a list's bytes were descriptions (2026-10-14). The words
+ * came back for the first lines on a card (the owner, 2026-10-31).
  */
 const LIST_COLUMNS =
-  'id, title, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
+  'id, title, description, start_time, end_time, location, city, url, registration_url, event_format, organization_id, host_name, feed_id, series_id, photo_path, photo_alt, timezone, all_day, state, audience';
 
 /**
  * Each event's tags and tallies, embedded in the same read. They were two
@@ -115,6 +115,7 @@ interface EventRow {
   series_id: string | null;
   photo_path: string | null;
   photo_alt: string | null;
+  more_photos?: EventPhoto[] | null;
   /** The event's own zone, when its source gave one (20261021000000). */
   timezone: string | null;
   all_day: boolean;
@@ -222,6 +223,7 @@ export function toEvents(inputs: EventJoinInputs): ClubEvent[] {
       seriesId: row.series_id,
       photoPath: row.photo_path,
       photoAlt: row.photo_alt,
+      morePhotos: row.more_photos ?? [],
       audience: row.audience ?? 'club',
       // The description's HTML moves with its words, so it is not listed apart.
       adminChanged: Object.keys(row.admin_override ?? {}).filter((f) => f !== 'description_html'),
@@ -759,6 +761,67 @@ export async function saveEventCover(
   }
 }
 
+/** A picture besides the cover (20261031060000). */
+export interface EventPhoto {
+  path: string;
+  alt: string;
+}
+
+export const MAX_MORE_PHOTOS = 6;
+
+/** One of an event's other pictures on the form: one it has, or one chosen. */
+export type MorePhotoChange =
+  | { kind: 'keep'; path: string; alt: string }
+  | { kind: 'new'; id: string; file: File; alt: string };
+
+/**
+ * Sets an event's other pictures, the cover's order and rules: upload, point
+ * the row at them, then delete what nothing names any more. Applies to later
+ * dates of a repeating event, as the cover does.
+ */
+export async function saveMorePhotos(
+  eventId: string,
+  changes: readonly MorePhotoChange[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const storage = getSupabase().storage.from(PHOTOS_BUCKET);
+  const uploaded: string[] = [];
+  const undo = async () => {
+    if (uploaded.length > 0) await storage.remove(uploaded);
+  };
+  try {
+    const photos: EventPhoto[] = [];
+    for (const change of changes) {
+      if (change.kind === 'keep') {
+        photos.push({ path: change.path, alt: change.alt });
+        continue;
+      }
+      const { blob, ext } = await preparePhoto(change.file, COVER_EDGE, '#ffffff');
+      const path = `events/${eventId}/${crypto.randomUUID()}.${ext}`;
+      const upload = await storage.upload(path, blob, { upsert: false, contentType: blob.type });
+      if (upload.error) {
+        await undo();
+        return { ok: false, error: describeError(upload.error, COVER_REFUSAL) };
+      }
+      uploaded.push(path);
+      photos.push({ path, alt: change.alt });
+    }
+    const { data, error } = (await getSupabase().rpc('set_event_more_photos', {
+      event: eventId,
+      photos,
+    })) as { data: string[] | null; error: Failure | null };
+    if (error) {
+      await undo();
+      return { ok: false, error: describeError(error, COVER_REFUSAL) };
+    }
+    // Its failure is not reported: the event's pictures are saved either way.
+    if (data && data.length > 0) await storage.remove(data);
+    return { ok: true };
+  } catch (e) {
+    await undo();
+    return { ok: false, error: describeThrown(e, COVER_REFUSAL) };
+  }
+}
+
 /**
  * An administrator's change to an imported event (20261012060000): only the
  * fields that differ from the organization's calendar are kept as changes,
@@ -934,63 +997,44 @@ export interface AttendeesByEventState {
   byEvent: Map<string, EventAttendee[]>;
   loading: boolean;
   error: string | null;
+  /** Read again, after an RSVP: the faces stay up until the new read lands. */
+  reload: () => void;
 }
 
 /**
- * Every attendee the viewer is allowed to see, for the whole list at once.
- *
- * The card shows two overlapping avatars and "Nicole and Jake are going", so
- * the list needs attendees for every event on it, not one event at a time —
- * a request per card would be a request per card.
- *
- * This is small in practice: `event_attendees` only has rows for members who
- * have actually RSVPed, and the view already refuses everything unless the
- * viewer is an active member, so a signed-out or suspended caller gets an empty
- * map rather than an error to render.
+ * Who is going, for one event: its own page, or a card's count once it is
+ * opened. A card otherwise says only how many, from event_rsvp_counts (the
+ * owner, 2026-10-31): reading the faces for a whole list grew with every RSVP.
+ * The view refuses everything unless the viewer is an
+ * active member, so a signed-out or suspended caller gets an empty map rather
+ * than an error to render.
  */
 const ATTENDEE_COLUMNS =
   'event_id, member_id, status, display_name, photo_path, photo_alt, avatar_color, city, level_range, exact_level, injury_type, condition_name, type';
 
-/**
- * `eventIds` narrows the read to the events on the screen. Without it this
- * read every RSVP ever made (2026-10-14), which only grows: the import never
- * removes a past event. Ids are sent a hundred at a time, as the tag and
- * count reads are, to keep each URL bounded. `null` waits: the events are not
- * known yet.
- */
-export function useAttendeesByEvent(
-  eventIds?: readonly string[] | null,
-  /**
-   * Instead of ids: every event starting in this window, filtered through the
-   * view's link to `events`, so the read need not wait for the events to know
-   * their ids (Home reads both at once).
-   */
-  window?: { from?: string; to?: string },
-): AttendeesByEventState {
-  const [state, setState] = useState<AttendeesByEventState>({
+/** Ids are sent a hundred at a time, to keep each URL bounded. */
+export function useAttendeesByEvent(eventIds: readonly string[]): AttendeesByEventState {
+  const [state, setState] = useState<Omit<AttendeesByEventState, 'reload'>>({
     byEvent: new Map(),
     loading: true,
     error: null,
   });
+  // Bumped to read again; part of the effect's dependencies for that reason.
+  const [round, setRound] = useState(0);
+  const reload = useCallback(() => {
+    setRound((n) => n + 1);
+  }, []);
   // The events whose faces are drawn; read again, they stay up meanwhile.
   const shown = useRef<string | null>(null);
   // A stable key, so a new array holding the same ids does not read again.
-  const key = window
-    ? `window|${window.from ?? ''}|${window.to ?? ''}`
-    : eventIds === undefined
-      ? '*'
-      : eventIds === null
-        ? null
-        : [...eventIds].sort().join(',');
+  const key = [...eventIds].sort().join(',');
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `round` is the reload trigger.
   useEffect(() => {
-    if (key === null) return;
     const controller = new AbortController();
     const { signal } = controller;
     const aborted = () => signal.aborted;
-    const [kind, start, end] = key.split('|');
-    const inWindow = kind === 'window' ? { start, end } : null;
-    const ids = inWindow || key === '*' ? null : key === '' ? [] : key.split(',');
+    const ids = key === '' ? [] : key.split(',');
     // Another set of events: say so, so a screen waiting on the faces waits.
     const again = shown.current === key;
     if (!again) setState((current) => (current.loading ? current : { ...current, loading: true }));
@@ -998,30 +1042,15 @@ export function useAttendeesByEvent(
     async function load() {
       try {
         const supabase = getSupabase();
-        const read = (batch: string[] | null) => {
-          if (inWindow) {
-            // Paged, with a full order: a busy month can pass 1,000 RSVPs.
-            return readPages<AttendeeRow & { event_id: string }>((first, last) => {
-              let query = supabase
-                .from('event_attendees')
-                .select(`${ATTENDEE_COLUMNS}, events!event_rsvps_event_id_fkey!inner(start_time)`);
-              if (inWindow.start) query = query.gte('events.start_time', inWindow.start);
-              if (inWindow.end) query = query.lte('events.start_time', inWindow.end);
-              return query
-                .order('display_name')
-                .order('member_id')
-                .order('event_id')
-                .range(first, last)
-                .abortSignal(signal);
-            });
-          }
-          let query = supabase.from('event_attendees').select(ATTENDEE_COLUMNS);
-          if (batch) query = query.in('event_id', batch);
-          return query.order('display_name').abortSignal(signal);
-        };
-        const batches: (string[] | null)[] = [];
-        if (ids === null) batches.push(null);
-        else for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
+        const read = (batch: string[]) =>
+          supabase
+            .from('event_attendees')
+            .select(ATTENDEE_COLUMNS)
+            .in('event_id', batch)
+            .order('display_name')
+            .abortSignal(signal);
+        const batches: string[][] = [];
+        for (let i = 0; i < ids.length; i += 100) batches.push(ids.slice(i, i + 100));
         const results = await Promise.all(batches.map(read));
         const error = results.find((result) => result.error)?.error ?? null;
         const data = results.flatMap((result) => result.data ?? []);
@@ -1063,7 +1092,7 @@ export function useAttendeesByEvent(
     return () => {
       controller.abort();
     };
-  }, [key]);
+  }, [key, round]);
 
-  return state;
+  return { ...state, reload };
 }

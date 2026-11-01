@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkInOpen, checkInUrl, checkInWindow } from '@/lib/check-ins';
+import { checkInOpen, checkInPhase, checkInUrl, checkInWindow } from '@/lib/check-ins';
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -15,6 +15,14 @@ describe('when check-in is open', () => {
     expect(checkInOpen(timed, at('2026-11-01T17:00:00Z'))).toBe(true);
     expect(checkInOpen(timed, at('2026-11-01T21:00:00Z'))).toBe(true);
     expect(checkInOpen(timed, at('2026-11-01T21:01:00Z'))).toBe(false);
+  });
+
+  it('is soon the day before it opens, and over an hour after the end', () => {
+    expect(checkInPhase(timed, at('2026-10-31T16:59:00Z'))).toBe('far');
+    expect(checkInPhase(timed, at('2026-10-31T17:00:00Z'))).toBe('soon');
+    expect(checkInPhase(timed, at('2026-11-01T16:59:00Z'))).toBe('soon');
+    expect(checkInPhase(timed, at('2026-11-01T19:00:00Z'))).toBe('open');
+    expect(checkInPhase(timed, at('2026-11-01T21:01:00Z'))).toBe('over');
   });
 
   it('counts an event with no end as four hours long', () => {

@@ -24,7 +24,7 @@ export function EventCover({
   path: string | null;
   alt: string | null;
   size: 'page' | 'card';
-  className?: string;
+  className?: string | undefined;
 }) {
   const url = usePhotoUrl(path);
   if (!url) return null;

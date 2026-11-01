@@ -1,33 +1,49 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as Events from '@/lib/events';
 import { EventCard, type EventCardProps } from '@/routes/events/event-card';
 import { makeEvent, makeOrganization, makeTag } from '@/test/factory';
-import type { EventAttendee } from '@/types/domain';
 
-function attendee(name: string, status: 'going' | 'interested' = 'going'): EventAttendee {
-  return {
-    memberId: name,
-    status,
-    displayName: name,
-    photoPath: null,
-    photoAlt: null,
-    avatarColor: null,
-    city: 'San Jose',
-    levelRange: 'T1–T6',
-    exactLevel: null,
-    injuryType: null,
-    conditionName: null,
-    type: 'peer',
-  };
-}
+const attendees = vi.hoisted(() => ({ read: vi.fn() }));
+vi.mock('@/lib/events', async (importOriginal) => ({
+  ...(await importOriginal<typeof Events>()),
+  useAttendeesByEvent: (ids: string[]) => {
+    attendees.read(ids);
+    const row = (memberId: string, displayName: string, status: string) => ({
+      memberId,
+      displayName,
+      status,
+      photoPath: null,
+      photoAlt: null,
+      avatarColor: null,
+      city: null,
+      levelRange: null,
+      exactLevel: null,
+      injuryType: null,
+      conditionName: null,
+      type: 'peer',
+    });
+    return {
+      byEvent: new Map([
+        [ids[0], [row('m1', 'Nicole', 'going'), row('m2', 'Kerry', 'interested')]],
+      ]),
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+    };
+  },
+}));
+
+beforeEach(() => {
+  attendees.read.mockClear();
+});
 
 function renderCard(overrides: Partial<EventCardProps> = {}) {
   const props: EventCardProps = {
     event: makeEvent(),
     status: null,
-    attendees: [],
     organization: null,
     onOpen: vi.fn(),
     onRsvp: vi.fn(),
@@ -113,33 +129,55 @@ describe('EventCard', () => {
     });
   });
 
-  describe('who is going', () => {
-    it('names people rather than counting them', () => {
-      renderCard({ attendees: [attendee('Nicole'), attendee('Jake')] });
-      expect(screen.getByText(/Nicole and Jake are going/)).toBeInTheDocument();
+  describe('what it says', () => {
+    it('says how many are going, and reads nobody until asked', () => {
+      renderCard({ event: makeEvent({ goingCount: 3 }), onOpenMember: vi.fn() });
+      expect(screen.getByRole('button', { name: '3 going' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+      expect(attendees.read).not.toHaveBeenCalled();
     });
 
-    it('uses "is" for one person', () => {
-      renderCard({ attendees: [attendee('Nicole')] });
-      expect(screen.getByText(/Nicole is going/)).toBeInTheDocument();
-    });
-
-    it('lets the overflow take the "and" slot rather than stacking two', () => {
-      renderCard({
-        attendees: [attendee('Nicole'), attendee('Jake'), attendee('Bob'), attendee('Jan')],
+    it('opens who is going from the count, not the event', async () => {
+      const onOpenMember = vi.fn();
+      const props = renderCard({
+        event: makeEvent({ id: 'e1', goingCount: 3 }),
+        onOpenMember,
       });
-      expect(screen.getByText(/Nicole, Jake and 2 others are going/)).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: '3 going' }));
+      expect(props.onOpen).not.toHaveBeenCalled();
+      expect(attendees.read).toHaveBeenCalledWith(['e1']);
+      await userEvent.click(screen.getByRole('button', { name: /Nicole/ }));
+      expect(onOpenMember).toHaveBeenCalledWith('m1');
+      // Interested is not going; the rest chose not to be shown.
+      expect(screen.queryByText('Kerry')).toBeNull();
+      expect(screen.getByText(/and 2 more who are not shown by choice/)).toBeInTheDocument();
     });
 
-    it('leaves out members who are only interested', () => {
-      // The row says "are going". Somebody who said Interested has not.
-      renderCard({ attendees: [attendee('Kerry', 'interested')] });
-      expect(screen.queryByText(/Kerry/)).not.toBeInTheDocument();
+    it('closes again', async () => {
+      renderCard({ event: makeEvent({ goingCount: 1 }), onOpenMember: vi.fn() });
+      const count = screen.getByRole('button', { name: '1 going' });
+      await userEvent.click(count);
+      await userEvent.click(count);
+      expect(count).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByText('Nicole')).toBeNull();
     });
 
-    it('says nothing at all when the viewer recognises nobody', () => {
-      renderCard({ attendees: [] });
-      expect(screen.queryByText(/going$/)).not.toBeInTheDocument();
+    it('shows the first lines of the description', () => {
+      renderCard({
+        event: makeEvent({ description: 'Bring a friend. Coffee is on us. Parking is free.' }),
+      });
+      expect(screen.getByText('Bring a friend. Coffee is on us.')).toBeInTheDocument();
+    });
+
+    it('opens the host from its name, not the event', async () => {
+      const onOpenOrganization = vi.fn();
+      const organization = makeOrganization({ id: 'o1', name: 'Bay Area Adaptive' });
+      const props = renderCard({ organization, onOpenOrganization });
+      await userEvent.click(screen.getByText('Bay Area Adaptive'));
+      expect(onOpenOrganization).toHaveBeenCalledWith('o1');
+      expect(props.onOpen).not.toHaveBeenCalled();
     });
   });
 
@@ -188,6 +226,12 @@ describe('EventCard', () => {
     expect(screen.getByText('2 going · 3 interested')).toBeInTheDocument();
   });
 
+  it('keeps the interested count beside a count that opens', () => {
+    renderCard({ event: makeEvent({ goingCount: 2, interestedCount: 3 }), onOpenMember: vi.fn() });
+    expect(screen.getByRole('button', { name: '2 going' })).toBeInTheDocument();
+    expect(screen.getByText('· 3 interested')).toBeInTheDocument();
+  });
+
   it('opens the event when the body is tapped', async () => {
     const props = renderCard({ event: makeEvent({ title: 'Rugby practice' }) });
     await userEvent.click(screen.getByText('Rugby practice'));
@@ -221,9 +265,8 @@ describe('an event that is over', () => {
     renderCard({
       past: true,
       event: makeEvent({ tags: [makeTag('wheelchair-rugby')] }),
-      attendees: [attendee('Nicole')],
     });
-    // Tags, the going counter and the faces are all there to answer "should I
+    // Tags and the going counter are all there to answer "should I
     // go"; none of them is a live question afterwards.
     expect(screen.queryByText('wheelchair-rugby')).not.toBeInTheDocument();
     expect(screen.queryByText(/going ·/i)).not.toBeInTheDocument();
@@ -291,7 +334,6 @@ describe('View on the map on a card', () => {
         <EventCard
           event={makeEvent({ title: 'Rugby' })}
           status={null}
-          attendees={[]}
           organization={null}
           onOpen={vi.fn()}
           onRsvp={vi.fn()}

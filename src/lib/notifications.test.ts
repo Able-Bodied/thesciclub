@@ -18,6 +18,30 @@ const n = (o: Partial<AppNotification>): AppNotification => ({
   ...o,
 });
 
+describe('the follow-up after an event', () => {
+  it('names the event and asks for a review', () => {
+    const asked = n({ kind: 'event_followup', actorName: null, place: 'Climbing' });
+    expect(notificationSentence(asked)).toBe(
+      'How was Climbing? Leave a review and add your pictures',
+    );
+  });
+});
+
+describe('a reminder to check in', () => {
+  it('names the event', () => {
+    const asked = n({ kind: 'check_in_reminder', actorName: null, place: 'Climbing' });
+    expect(notificationSentence(asked)).toBe('Did you make it to Climbing? Check in');
+  });
+});
+
+describe('somebody asking to join', () => {
+  it('says who, and how many once there are several', () => {
+    const asked = n({ kind: 'join_request', actorName: 'Maya Ruiz', place: 'NorCal SCI' });
+    expect(notificationSentence(asked)).toBe('Maya Ruiz asked to join NorCal SCI');
+    expect(notificationSentence({ ...asked, count: 3 })).toBe('3 people asked to join NorCal SCI');
+  });
+});
+
 describe('what a notification says', () => {
   it('names who wrote, and counts what gathered while unread', () => {
     expect(notificationSentence(n({ kind: 'direct' }))).toBe('Message from Jan');

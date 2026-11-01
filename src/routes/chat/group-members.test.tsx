@@ -24,6 +24,8 @@ const db = vi.hoisted(() => ({
   authors: new Map<string, ChatAuthor>(),
   members: [] as BrowseMember[],
   added: [] as [string, string][],
+  threadOrganization: null as string | null,
+  mineOrganizations: new Set<string>(),
   addFailure: null as string | null,
   left: [] as [string, string][],
   navigated: [] as string[],
@@ -56,6 +58,14 @@ vi.mock('@/lib/chat/attachments', async (importOriginal) => ({
 
 vi.mock('@/lib/account', () => ({
   useAccount: () => ({ status: 'member', userId: 'me', isAdmin: false, displayName: 'Alex' }),
+}));
+
+vi.mock('@/lib/organization-members', () => ({
+  useThreadOrganization: () => db.threadOrganization,
+}));
+
+vi.mock('@/lib/organization-representatives', () => ({
+  useMyOrganizations: () => ({ ids: db.mineOrganizations, loading: false }),
 }));
 
 vi.mock('@/lib/members', () => ({
@@ -176,6 +186,8 @@ beforeEach(() => {
     makeMember({ id: 'bo', displayName: 'Bo' }),
   ];
   db.added = [];
+  db.threadOrganization = null;
+  db.mineOrganizations = new Set();
   db.addFailure = null;
   db.left = [];
   db.navigated = [];
@@ -205,6 +217,28 @@ describe('who is in a group', () => {
     ]);
     renderPage();
     expect(screen.getByText('@jan.k · T4')).toBeInTheDocument();
+  });
+
+  it('keeps an organization’s group to its org admins to add to', () => {
+    db.threadOrganization = 'org1';
+    renderPage();
+    expect(screen.queryByText('Add somebody')).toBeNull();
+    expect(screen.getByText(/its org admins can add people here/)).toBeInTheDocument();
+  });
+
+  it('tells an org admin that adding somebody makes them a member', async () => {
+    db.threadOrganization = 'org1';
+    db.mineOrganizations = new Set(['org1']);
+    db.members = [makeMember({ id: 'bo', displayName: 'Bo' })];
+    renderPage();
+    expect(
+      screen.getByText('Adding somebody here makes them a member of the organization.'),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox', { name: /Bo/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Add 1 member' }));
+    await waitFor(() => {
+      expect(db.added).toEqual([['g1', 'bo']]);
+    });
   });
 
   it('offers no way to put anybody else out', () => {

@@ -1,4 +1,4 @@
-import { Check, Plus } from 'lucide-react';
+import { Check, Clock, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -29,26 +29,36 @@ import { cn } from '@/lib/utils';
  */
 export function FollowButton({
   following,
+  requested = false,
   onToggle,
   onNavy = false,
   className,
 }: {
   following: boolean;
+  /** Asked to join one that approves first, and not yet a member. */
+  requested?: boolean;
   onToggle: () => void;
   /** For the organization page's navy header, where the paper palette vanishes. */
   onNavy?: boolean;
   className?: string;
 }) {
-  const Icon = following ? Check : Plus;
+  const Icon = requested ? Clock : following ? Check : Plus;
+  const held = following || requested;
   return (
     <button
       type="button"
       onClick={onToggle}
-      aria-pressed={following}
+      aria-pressed={held}
       // Named for the action, because the visible label is the state. Without
       // this a screen reader announces "Member, button" and there is nothing
       // to tell somebody what pressing it does.
-      aria-label={following ? 'Member. Press to leave.' : 'Join'}
+      aria-label={
+        requested
+          ? 'Requested. Press to take it back.'
+          : following
+            ? 'Member. Press to leave.'
+            : 'Join'
+      }
       className={cn(
         // Sized in em off its own letters, not in px. The club offers a text
         // size setting that multiplies the root font size, so a px box around
@@ -56,17 +66,17 @@ export function FollowButton({
         // ring and the organization tile were both fixed to follow.
         'inline-flex items-center gap-1 rounded-full px-[0.85em] py-[0.45em] font-bold font-head text-[0.78125rem] leading-[1.3] transition-colors',
         onNavy
-          ? following
+          ? held
             ? 'bg-white/15 text-white hover:bg-white/25'
             : 'bg-white text-navy hover:bg-[#E8EFF7]'
-          : following
+          : held
             ? 'bg-tint text-emphasis hover:bg-line'
             : 'border-[1.6px] border-emphasis text-emphasis hover:bg-tint',
         className,
       )}
     >
       <Icon className="h-[1em] w-[1em] flex-none" />
-      {following ? 'Member' : 'Join'}
+      {requested ? 'Requested' : following ? 'Member' : 'Join'}
     </button>
   );
 }

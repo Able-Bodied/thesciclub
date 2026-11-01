@@ -439,6 +439,24 @@ describe('a formatted post in a notification', () => {
     ).toBe('Tips United');
   });
 
+  it('asks how the event was', () => {
+    const asked = owed({ kind: 'event_followup', subject: 'Climbing' });
+    expect(compose(asked)?.title).toBe('How was Climbing?');
+    expect(compose({ ...asked, subject: null })).toBeNull();
+  });
+
+  it('asks whether they made it, and says nothing without an event', () => {
+    const due = owed({ kind: 'check_in_reminder', subject: 'Climbing' });
+    expect(compose(due)?.title).toBe('Did you make it to Climbing?');
+    expect(compose({ ...due, subject: null })).toBeNull();
+  });
+
+  it('says who asked to join, and how many once there are several', () => {
+    const asked = owed({ kind: 'join_request', subject: 'NorCal SCI', detail: '1' });
+    expect(compose(asked)?.body).toBe('Bo asked to join NorCal SCI.');
+    expect(compose({ ...asked, detail: '3' })?.body).toBe('3 people asked to join NorCal SCI.');
+  });
+
   it('drops them from the post quoted in a like', () => {
     expect(compose(owed({ kind: 'like', body: '**Bring water**' }))?.body).toBe('“Bring water”');
   });

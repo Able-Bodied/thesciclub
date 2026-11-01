@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { checkInOpen } from '@/lib/check-ins';
+import { useCheckInPhase } from '@/lib/check-ins';
 import {
   deleteEvent,
   deleteEventAndLater,
@@ -18,12 +18,12 @@ import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
-import { AttendeeAvatar } from '@/routes/events/attendee-avatar';
+import { AttendeeList } from '@/routes/events/attendee-list';
 import { backLabel, backToEvents } from '@/routes/events/back';
-import { CheckInCard } from '@/routes/events/check-in-card';
+import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 import { EventAudienceSection, OutsideTheAudience } from '@/routes/events/event-audience-parts';
-import { EventCover } from '@/routes/events/event-cover';
 import { mayChangeEvent } from '@/routes/events/event-draft';
+import { EventGallery } from '@/routes/events/event-gallery';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
@@ -37,7 +37,8 @@ import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import { canShowOnMap, mapLinkFor } from '@/routes/map/show-on-map';
-import { type EventAttendee, injuryLabel, type RsvpStatus } from '@/types/domain';
+import { ReviewsSection } from '@/routes/reviews/reviews-section';
+import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
 /**
  * One event, matching `evDetail()` in the mock: a navy hero carrying the when,
@@ -60,7 +61,7 @@ export default function EventDetailPage() {
   const { events, loading, error, reload } = useEvents({
     id: id ?? '00000000-0000-0000-0000-000000000000',
   });
-  const { byEvent } = useAttendeesByEvent(id ? [id] : []);
+  const { byEvent, reload: reloadAttendees } = useAttendeesByEvent(id ? [id] : []);
   const { byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const account = useAccount();
@@ -69,6 +70,7 @@ export default function EventDetailPage() {
   const registerNote = useId();
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
+  const checkInPhase = useCheckInPhase(event);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
@@ -77,12 +79,15 @@ export default function EventDetailPage() {
       setWriteError(null);
       void setRsvp(event.id, memberId, next).then((result) => {
         if (result.ok) {
+          // The button, and the Going list and tally under it.
           viewer.reload();
+          reload?.();
+          reloadAttendees();
           rsvpSheetFor(event, next, onRsvp);
         } else setWriteError(result.error ?? 'Could not save that.');
       });
     },
-    [memberId, event, viewer, rsvpSheetFor],
+    [memberId, event, viewer, reload, reloadAttendees, rsvpSheetFor],
   );
 
   if (loading) {
@@ -175,7 +180,12 @@ export default function EventDetailPage() {
               ← {backLabel(location)}
             </button>
 
-            <EventCover path={event.photoPath} alt={event.photoAlt} size="page" className="mb-4" />
+            <EventGallery
+              path={event.photoPath}
+              alt={event.photoAlt}
+              more={event.morePhotos}
+              className="mb-4"
+            />
 
             {/* A calendar, because the line is a date. This was a map pin, which
               says "place" in front of text that says "Friday 11 September". */}
@@ -261,13 +271,14 @@ export default function EventDetailPage() {
             past events became lines rather than cards; this screen kept
             offering it, so the same finished evening answered two different
             ways depending on how you arrived at it. */}
-          {checkInOpen(event) && account.status === 'member' ? (
+          {checkInPhase === 'open' && account.status === 'member' ? (
             <CheckInCard
               eventId={event.id}
               memberId={account.userId}
               organizationId={event.organizationId}
             />
           ) : null}
+          {checkInPhase === 'soon' && account.status === 'member' ? <CheckInNotYet /> : null}
           {isPastEvent(event) ? (
             <p className="mt-5 text-[0.8125rem] text-ink2 leading-[1.45]">
               {going
@@ -369,6 +380,7 @@ export default function EventDetailPage() {
             Members only: the read behind it is the viewer's own conversation
             list, and an event page is the one surface that is public. */}
           {memberId ? <EventGroupCard eventId={event.id} /> : null}
+          {memberId ? <ReviewsSection target={{ kind: 'event', id: event.id }} /> : null}
 
           <AttendeeSection
             title="Going"
@@ -474,10 +486,6 @@ export function siteName(href: string): string {
  *
  * Renders nothing at all when nobody has said yes — an empty "Going" heading
  * reads as a failure to load rather than as an accurate zero.
- *
- * When the tally is higher than the number of people named, it says so instead
- * of quietly showing fewer. The difference is members who opted out of being
- * browsed, and leaving it unexplained makes the count look broken.
  */
 function AttendeeSection({
   title,
@@ -491,41 +499,13 @@ function AttendeeSection({
   onOpen: (memberId: string) => void;
 }) {
   if (total === 0) return null;
-  const unnamed = total - attendees.length;
 
   return (
     <>
       <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
         {title} · {total}
       </h2>
-      {attendees.map((attendee) => (
-        <button
-          key={attendee.memberId}
-          type="button"
-          onClick={() => {
-            onOpen(attendee.memberId);
-          }}
-          className="flex w-full items-center gap-3 border-line border-b py-[13px] text-left last:border-b-0"
-        >
-          <AttendeeAvatar attendee={attendee} />
-          <span className="min-w-0 flex-1">
-            <span className="block font-extrabold font-head text-[0.90625rem] text-ink">
-              {attendee.displayName}
-            </span>
-            <span className="block text-[0.78125rem] text-grey">
-              {[injuryLabel(attendee), attendee.city].filter(Boolean).join(' · ')}
-            </span>
-          </span>
-          <ChevronRight className="h-[19px] w-[19px] flex-none text-grey" />
-        </button>
-      ))}
-      {unnamed > 0 ? (
-        <p className="py-2.5 text-[0.78125rem] text-grey">
-          {attendees.length === 0
-            ? `${unnamed} member${unnamed === 1 ? '' : 's'}, not shown by choice`
-            : `and ${unnamed} more who ${unnamed === 1 ? 'is' : 'are'} not shown by choice`}
-        </p>
-      ) : null}
+      <AttendeeList attendees={attendees} total={total} onOpen={onOpen} />
     </>
   );
 }

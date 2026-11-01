@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { CheckInCard } from '@/routes/events/check-in-card';
+import { CheckInCard, CheckInNotYet } from '@/routes/events/check-in-card';
 
 const api = vi.hoisted(() => ({
   checkedIn: false,
@@ -35,6 +35,14 @@ function renderCard() {
     </MemoryRouter>,
   );
 }
+
+describe('before check-in opens', () => {
+  it('shows the button unlit, and says when it opens', () => {
+    render(<CheckInNotYet />);
+    expect(screen.getByRole('button', { name: /check in/ })).toBeDisabled();
+    expect(screen.getByText('Check-in opens an hour before the event.')).toBeInTheDocument();
+  });
+});
 
 describe('checking in', () => {
   beforeEach(() => {

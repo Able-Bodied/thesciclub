@@ -8,13 +8,16 @@ import { getSupabase } from '@/lib/supabase';
  * group chat, and the database keeps organization_follows to the active
  * members, so useOrganizationFollows still answers "who am I in". Somebody is
  * a member by pressing Join, by joining the club on an invite, QR code or link
- * made for it, or by checking in to one of its events.
+ * made for it, by checking in to one of its events, by being its org admin, or
+ * by being added by an org admin or club administrator (20261030020000).
  *
  * Any member can see an organization's members and a member's organizations.
- * Only its org admins see how each joined, and review those who pressed Join.
+ * Only its org admins see how each joined. An organization is open to all
+ * unless they turn on approving first (the owner, 2026-10-31; 20261031010000):
+ * then pressing Join asks, and they answer it.
  */
 
-export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in' | 'org_admin';
+export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in' | 'org_admin' | 'added';
 
 export const JOINED_VIA_LABEL: Record<JoinedVia, string> = {
   join: 'Pressed Join',
@@ -22,6 +25,7 @@ export const JOINED_VIA_LABEL: Record<JoinedVia, string> = {
   code: 'QR code or link',
   check_in: 'Checked in',
   org_admin: 'Org admin',
+  added: 'Added',
 };
 
 /** Why this member was declined, if they were. */
@@ -53,10 +57,14 @@ export function useMyDenial(organizationId: string | undefined, memberId: string
   return reason;
 }
 
-/** How many members it has; null until read, or if the read fails. */
-export function useOrganizationMemberCount(organizationId: string | undefined) {
+/**
+ * How many members it has; null until read, or if the read fails. `refresh`
+ * reads it again: bump it after adding somebody.
+ */
+export function useOrganizationMemberCount(organizationId: string | undefined, refresh = 0) {
   const [count, setCount] = useState<number | null>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh is there to read it again.
   useEffect(() => {
     if (!organizationId) return;
     let live = true;
@@ -71,7 +79,7 @@ export function useOrganizationMemberCount(organizationId: string | undefined) {
     return () => {
       live = false;
     };
-  }, [organizationId]);
+  }, [organizationId, refresh]);
 
   return count;
 }
@@ -168,7 +176,7 @@ export interface MemberReview extends MemberFace {
   deniedReason: string | null;
 }
 
-/** Those who pressed Join and wait to be approved, and those denied. */
+/** Those who asked to join and wait to be approved, and those denied. */
 export function fetchMemberReviews(organizationId: string) {
   return read<MemberReview>(
     'organization_member_reviews',
@@ -242,19 +250,62 @@ export function useOrganizationChat(organizationId: string | undefined, memberId
   return threadId;
 }
 
-/** An org admin asking a member to join, by a direct message; once for each. */
-export async function inviteToOrganization(
+/** The organization a group chat belongs to: null for none, undefined until known. */
+export function useThreadOrganization(threadId: string | undefined) {
+  const [organizationId, setOrganizationId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!threadId) return;
+    let live = true;
+    void Promise.resolve(
+      getSupabase().from('chat_threads').select('organization_id').eq('id', threadId).maybeSingle(),
+    ).then(
+      ({ data }) => {
+        if (live) setOrganizationId((data?.organization_id as string | null | undefined) ?? null);
+      },
+      () => {
+        if (live) setOrganizationId(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [threadId]);
+
+  return organizationId;
+}
+
+/** Open to all, or approved first. Going back to open lets in whoever is waiting. */
+export async function setJoinsNeedApproval(
+  organizationId: string,
+  needed: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const refusal = 'That was not saved. Try again.';
+  try {
+    const { error } = await getSupabase().rpc('set_organization_joins_need_approval', {
+      p_organization: organizationId,
+      p_needed: needed,
+    });
+    if (error) return { ok: false, error: describeError(error, refusal) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
+}
+
+/** Makes somebody a member, for its org admins and the club's administrators. */
+export async function addOrganizationMember(
   organizationId: string,
   memberId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const refusal = 'The invite was not sent.';
   try {
-    const { error } = (await getSupabase().rpc('invite_to_organization', {
+    const { error } = await getSupabase().rpc('add_organization_member', {
       p_organization: organizationId,
       p_member: memberId,
-    })) as { error: Failure | null };
-    return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
-  } catch (thrown) {
-    return { ok: false, error: describeThrown(thrown, refusal) };
+    });
+    if (error) return { ok: false, error: describeError(error, 'They were not added.') };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'They were not added.') };
   }
 }

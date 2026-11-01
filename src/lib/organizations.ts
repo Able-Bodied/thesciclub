@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { describeError, describeThrown } from '@/lib/describe-error';
+import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
 import { onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
@@ -7,6 +7,8 @@ import type { Organization, OrganizationPlace } from '@/types/domain';
 
 /** The member directory, excluding entries an administrator removed. */
 interface OrganizationRow {
+  joins_need_approval?: boolean | null;
+  anonymous_reviews?: boolean | null;
   id: string;
   short_code: string;
   name: string;
@@ -57,6 +59,8 @@ export function toOrganization(row: OrganizationRow): Organization {
     canInvite: row.can_invite,
     logoPath: row.logo_path,
     state: row.state ?? null,
+    joinsNeedApproval: row.joins_need_approval === true,
+    anonymousReviews: row.anonymous_reviews !== false,
     places: toOrganizationPlaces(row.organization_places),
   };
 }
@@ -124,20 +128,25 @@ onForgetSharedReads(() => {
 });
 
 const DIRECTORY =
-  'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state, postal_code)';
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, joins_need_approval, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
 /** Before 20261028700000: no ZIP codes. */
 const DIRECTORY_WITHOUT_ZIP =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)';
 
 function readDirectory(columns: typeof DIRECTORY | typeof DIRECTORY_WITHOUT_ZIP) {
-  return readPages<OrganizationRow>((from, to) =>
-    getSupabase()
-      .from('organizations')
-      .select(columns)
-      .is('removed_at', null)
-      .order('name')
-      .order('id')
-      .range(from, to),
+  return readPages<OrganizationRow>(
+    (from, to) =>
+      // Cast because the list is longer than supabase-js's types can parse.
+      getSupabase()
+        .from('organizations')
+        .select(columns)
+        .is('removed_at', null)
+        .order('name')
+        .order('id')
+        .range(from, to) as unknown as PromiseLike<{
+        data: OrganizationRow[] | null;
+        error: Failure | null;
+      }>,
   );
 }
 
