@@ -114,7 +114,7 @@ export default function ResetPasswordPage() {
       }
     >
       <Question>Choose a new password</Question>
-      <Sub>At least {MIN_PASSWORD} characters.</Sub>
+      <Sub>At least {MIN_PASSWORD} characters. Saving it signs you out on your other devices.</Sub>
       <label htmlFor="new-password" className="mt-5 block font-bold text-[0.8125rem] text-ink">
         New password
       </label>

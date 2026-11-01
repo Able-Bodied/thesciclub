@@ -47,6 +47,9 @@ import {
   pageTextScale,
   pick,
   SOURCES,
+  STATE_GAP,
+  STATE_SOURCES,
+  STATES_APART_FROM,
   STREET_ZOOM,
   setHome,
 } from '@/routes/map/map-layers';
@@ -56,12 +59,14 @@ import { MemberRow } from '@/routes/map/member-row';
 import { type BadgeSource, setOrganizationBadges } from '@/routes/map/organization-badges';
 import { type PhotoSource, setPhotoBoxes } from '@/routes/map/peer-photos';
 import {
+  apart,
   type Box,
   contentsOf,
   countWords,
   eventFeatures,
   eventSpots,
   type Features,
+  foldByState,
   inBox,
   LAYERS,
   type Layer,
@@ -282,6 +287,21 @@ export default function ClubMap({
     () => organizationFeatures(placedOrganizations.spots),
     [placedOrganizations],
   );
+  // Spaced for the zoom in half steps, redrawn when a zoom ends, never during one.
+  const [farZoom, setFarZoom] = useState(STATES_APART_FROM);
+  const gap = STATE_GAP * scale;
+  const eventStates = useMemo(
+    () => apart(foldByState(eventData), farZoom, gap),
+    [eventData, farZoom, gap],
+  );
+  const peerStates = useMemo(
+    () => apart(foldByState(peerData), farZoom, gap),
+    [peerData, farZoom, gap],
+  );
+  const organizationStates = useMemo(
+    () => apart(foldByState(organizationData), farZoom, gap),
+    [organizationData, farZoom, gap],
+  );
   // Logos signed only while their layer is on; each fetched once its badge is drawn.
   const badged = useMemo(
     () => [...new Set(placedOrganizations.spots.flatMap((spot) => spot.organizations))],
@@ -335,6 +355,9 @@ export default function ClubMap({
   useSourceData(map, SOURCES.events, eventData, hidden);
   useSourceData(map, SOURCES.peers, peerData, hidden);
   useSourceData(map, SOURCES.organizations, organizationData, hidden);
+  useSourceData(map, STATE_SOURCES.events, eventStates, hidden);
+  useSourceData(map, STATE_SOURCES.peers, peerStates, hidden);
+  useSourceData(map, STATE_SOURCES.organizations, organizationStates, hidden);
 
   useEffect(() => {
     if (map) applyTextScale(map, scale);
@@ -373,7 +396,9 @@ export default function ClubMap({
     if (!map) return;
     const onMoved = () => {
       setBox(boxOf(map));
+      setFarZoom(Math.min(Math.floor(map.getZoom() * 2) / 2, STATES_APART_FROM));
     };
+    onMoved();
     const onMoving = () => {
       setNotice(null);
     };
@@ -429,10 +454,10 @@ export default function ClubMap({
         }
         // A bubble of places apart: around all of them, as a single tap.
         pick(map, [hit], [event.lngLat.lng, event.lngLat.lat])
-          .then(async ({ spread }) => {
+          .then(async ({ spread, atLeast }) => {
             if (live.current !== map) return;
             if (spread) {
-              fitSpread(map, spread);
+              fitSpread(map, spread, atLeast);
               return;
             }
             const target = await closeUpOf(map, hit);
@@ -447,12 +472,12 @@ export default function ClubMap({
       const open = () => {
         // The map can be removed before a cluster answers; then the tap is moot.
         pick(map, hits, [event.lngLat.lng, event.lngLat.lat])
-          .then(({ keys, zoomTo, spread }) => {
+          .then(({ keys, zoomTo, spread, atLeast }) => {
             if (live.current !== map) return;
             // A bubble of places apart zooms in around them so they come
             // apart (the owner, 2026-10-28); one place, or a bubble that is
             // all one place, opens the sheet.
-            if (spread) fitSpread(map, spread);
+            if (spread) fitSpread(map, spread, atLeast);
             else setSheet({ kind: 'place', keys, zoomTo });
           })
           .catch(() => undefined);

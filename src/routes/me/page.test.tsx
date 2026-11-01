@@ -50,10 +50,11 @@ const survey = vi.hoisted(() => ({
   declined: new Set<string>(),
 }));
 
-const privileges = vi.hoisted(() => ({ representative: false, partner: false }));
+const privileges = vi.hoisted(() => ({ representative: false, partner: false, connects: false }));
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useIAmPartner: () => privileges.partner,
+  useICanConnect: () => privileges.connects,
 }));
 vi.mock('@/lib/invite-permissions', () => ({
   useInvitePermissions: () => ({
@@ -189,6 +190,7 @@ function ownMember(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   privileges.representative = false;
   privileges.partner = false;
+  privileges.connects = false;
   account.current = { status: 'member', userId: 'u1', isAdmin: false, displayName: 'Nicole' };
   own.member = ownMember();
   own.invitedBy = 'NorCal SCI';
@@ -374,21 +376,22 @@ describe('MePage', () => {
   });
 
   // A trusted partner (20261029100000) finds their page, and their own codes.
-  it('leads a trusted partner to their page and to making a code', () => {
+  it('leads an org admin or a partner to Stats & controls and to making a code', () => {
     privileges.partner = true;
+    privileges.connects = true;
     renderMe();
-    const hub = screen.getByRole('link', { name: 'Trusted partner' });
-    expect(hub).toHaveAttribute('href', '/partner');
-    expect(hub).toHaveAccessibleDescription(/your people, your introductions/i);
+    const hub = screen.getByRole('link', { name: 'Stats & controls' });
+    expect(hub).toHaveAttribute('href', '/stats');
+    expect(hub).toHaveAccessibleDescription(/connecting members/i);
     expect(screen.getByRole('link', { name: 'Create QR code or invite link' })).toHaveAttribute(
       'href',
       '/me/qr',
     );
   });
 
-  it('offers no partner page to anybody else', () => {
+  it('offers no Stats & controls to anybody else', () => {
     renderMe();
-    expect(screen.queryByRole('link', { name: 'Trusted partner' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Stats & controls' })).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Create QR code or invite link' })).toBeNull();
   });
 

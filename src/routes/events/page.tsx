@@ -42,6 +42,7 @@ import { canShowOnMap, mapLinkFor, SHOW_PARAM } from '@/routes/map/show-on-map';
 import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
 import {
   type ClubEvent,
+  DEFAULT_WITHIN_MILES,
   EMPTY_EVENT_FILTERS,
   EVENTS_SEGMENTS,
   type EventFilters,
@@ -203,6 +204,11 @@ export default function EventsPage() {
     () => filterEvents(events, filters, segment, viewerState),
     [events, filters, segment, viewerState],
   );
+  // Distance is the list's (the owner, 2026-10-31): the map shows every place.
+  const onMap = useMemo(
+    () => filterEvents(events, { ...filters, withinMiles: null }, segment, viewerState),
+    [events, filters, segment, viewerState],
+  );
 
   // Grouped only in the browsing segments. "I'm going", "Interested" and
   // "Been to" are lists of particular dates a member chose, and collapsing the
@@ -245,11 +251,15 @@ export default function EventsPage() {
     () =>
       filterEvents(
         events,
-        { ...EMPTY_EVENT_FILTERS, when: filters.when, withinMiles: filters.withinMiles },
+        {
+          ...EMPTY_EVENT_FILTERS,
+          when: filters.when,
+          withinMiles: showingMap ? null : filters.withinMiles,
+        },
         segment,
         viewerState,
       ),
-    [events, segment, viewerState, filters.when, filters.withinMiles],
+    [events, segment, viewerState, filters.when, filters.withinMiles, showingMap],
   );
 
   const hostingOrganizations = useMemo(() => {
@@ -281,7 +291,9 @@ export default function EventsPage() {
   // The RSVP choice lives in the URL (as the segment) but is one of the
   // filters, so it counts towards the dot.
   const rsvp = isRsvpSegment(segment) ? (segment as keyof typeof RSVP_LABELS) : null;
-  const filterCount = activeFilterCount(filters) + (rsvp ? 1 : 0);
+  const filterCount =
+    activeFilterCount(showingMap ? { ...filters, withinMiles: DEFAULT_WITHIN_MILES } : filters) +
+    (rsvp ? 1 : 0);
   const showingList = segment !== 'orgs';
 
   // The event "View on the map" asked for: from the list, or read by itself
@@ -403,7 +415,7 @@ export default function EventsPage() {
             {...(show ? { show, onShown: clearShow } : {})}
             onProblem={setMapProblem}
             focus={segment === 'orgs' ? 'organizations' : 'events'}
-            events={visible}
+            events={onMap}
             {...(mapOrganizations ? { organizations: mapOrganizations } : {})}
             renderEvent={mapCard}
             // The map holds what is still to come (map_events).
@@ -556,10 +568,11 @@ export default function EventsPage() {
           home={{ city: home?.city ?? null, status: near.status }}
           filters={filters}
           rsvp={rsvp}
+          distance={!showingMap}
           onRsvpChange={(next) => {
             setSegment(next ?? 'upcoming');
           }}
-          matchCount={visible.length}
+          matchCount={showingMap ? onMap.length : visible.length}
           activeCount={filterCount}
           onChange={setFilters}
           onClear={() => {

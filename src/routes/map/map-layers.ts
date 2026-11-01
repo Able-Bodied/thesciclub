@@ -32,11 +32,33 @@ export const SOURCES: Record<Layer, string> = {
   peers: 'club-peers',
   organizations: 'club-organizations',
 };
-export const LAYER_IDS: Record<Layer, string[]> = {
+/** Below this zoom, one bubble a state; from it, bubbles by distance. */
+export const STATES_APART_FROM = 5;
+/** The same layers fed one bubble a state (foldByState), for far out. */
+const atStateLevel = (id: string) => `${id}-states`;
+export const STATE_SOURCES: Record<Layer, string> = {
+  events: atStateLevel(SOURCES.events),
+  peers: atStateLevel(SOURCES.peers),
+  organizations: atStateLevel(SOURCES.organizations),
+};
+/** A state's name under its bubble of events, which have no name layer of their own. */
+const EVENT_STATE_NAME = 'club-events-state-name';
+/** Bubbles' middles apart when zoomed out, room for a state's name under each. */
+export const STATE_GAP = 58;
+const PIN_LAYERS: Record<Layer, string[]> = {
   events: ['club-events-one', 'club-events-many', 'club-events-count'],
   peers: ['club-peers', 'club-peers-name'],
   organizations: ['club-organizations', 'club-organizations-count', 'club-organizations-name'],
 };
+const andStateLevel = (ids: string[]) => ids.flatMap((id) => [id, atStateLevel(id)]);
+export const LAYER_IDS: Record<Layer, string[]> = {
+  events: [...andStateLevel(PIN_LAYERS.events), EVENT_STATE_NAME],
+  peers: andStateLevel(PIN_LAYERS.peers),
+  organizations: andStateLevel(PIN_LAYERS.organizations),
+};
+const PINS = new Set(Object.values(PIN_LAYERS).flat());
+const layerOf = (source: string | undefined) =>
+  LAYERS.find((name) => SOURCES[name] === source || STATE_SOURCES[name] === source);
 const FOCUS = 'club-organization-focus';
 /** The zoom from which organizations' places are drawn one by one. */
 const ORGANIZATIONS_APART_FROM = 10;
@@ -160,6 +182,7 @@ export function addLayers(map: MapLibreMap): void {
       // A cluster's count is its places' counts added up.
       clusterProperties: { count: ['+', ['get', 'count']] },
     });
+    map.addSource(STATE_SOURCES[layer], { type: 'geojson', data: EMPTY });
   }
   if (!map.getSource(FOCUS)) map.addSource(FOCUS, { type: 'geojson', data: EMPTY });
   if (!map.getSource(HOME)) map.addSource(HOME, { type: 'geojson', data: EMPTY });
@@ -366,7 +389,67 @@ export function addLayers(map: MapLibreMap): void {
       paint: { 'text-color': WHITE },
     },
   ];
-  for (const layer of layers) if (!map.getLayer(layer.id)) map.addLayer(layer);
+  for (const layer of layers) {
+    if (map.getLayer(layer.id)) continue;
+    const source = 'source' in layer ? layerOf(layer.source as string) : undefined;
+    if (!source) {
+      map.addLayer(layer);
+      continue;
+    }
+    // A zoom swaps them with nothing to rebuild, so the map stays smooth.
+    map.addLayer({ ...layer, minzoom: STATES_APART_FROM } as AddLayerObject);
+    map.addLayer({
+      ...layer,
+      id: atStateLevel(layer.id),
+      source: STATE_SOURCES[source],
+      maxzoom: STATES_APART_FROM,
+      // A bubble here is named for its state, unlike a bubble by distance.
+      ...(layer.id.endsWith('-name') ? { filter: ['has', 'label'] } : {}),
+    } as AddLayerObject);
+  }
+  if (!map.getLayer(EVENT_STATE_NAME)) {
+    map.addLayer({
+      id: EVENT_STATE_NAME,
+      type: 'symbol',
+      source: STATE_SOURCES.events,
+      maxzoom: STATES_APART_FROM,
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': [MAP_FONT],
+        'text-size': 11,
+        'text-anchor': 'top',
+      },
+      paint: {
+        'text-color': NAVY,
+        'text-halo-color': 'rgba(255,255,255,0.85)',
+        'text-halo-width': 1,
+        'text-halo-blur': 1,
+        'text-translate': [0, 24],
+      },
+    });
+  }
+}
+
+/** Paint and layout set on a pin layer and its state-level twin alike. */
+function pins(map: MapLibreMap) {
+  const each = (id: string) => (PINS.has(id) ? [id, atStateLevel(id)] : [id]);
+  return {
+    setLayoutProperty: (
+      id: string,
+      name: Parameters<MapLibreMap['setLayoutProperty']>[1],
+      value: unknown,
+    ) => {
+      for (const layer of each(id)) map.setLayoutProperty(layer, name, value as never);
+    },
+    setPaintProperty: (
+      id: string,
+      name: Parameters<MapLibreMap['setPaintProperty']>[1],
+      value: unknown,
+    ) => {
+      for (const layer of each(id)) map.setPaintProperty(layer, name, value as never);
+    },
+  };
 }
 
 /** Puts the house at the member's city, or takes it away. */
@@ -387,6 +470,7 @@ export function pageTextScale(): number {
 
 /** Counts and badges grow with the text, so a count still fits its pin. */
 export function applyTextScale(map: MapLibreMap, scale: number): void {
+  const marks = pins(map);
   const at = (n: number) => n * scale;
   // Every place's mark, and where it sits off its point, grows; Home does not.
   const mark = scale * ICON_GROW;
@@ -394,30 +478,38 @@ export function applyTextScale(map: MapLibreMap, scale: number): void {
   setBadgeScale(mark);
   map.setLayoutProperty(HOME, 'icon-size', scale);
   map.setPaintProperty(HOME, 'icon-translate', [0, at(18)]);
-  map.setLayoutProperty('club-organizations', 'text-size', off(12));
-  map.setLayoutProperty('club-organizations', 'icon-size', mark);
-  map.setPaintProperty('club-organizations', 'icon-translate', [off(15), off(-15)]);
-  map.setPaintProperty('club-organizations', 'text-translate', [off(15), off(-15)]);
-  map.setLayoutProperty('club-organizations-count', 'text-size', off(11));
-  map.setLayoutProperty('club-organizations-count', 'icon-size', mark);
-  map.setPaintProperty('club-organizations-count', 'icon-translate', [off(CHIP_AT), off(-CHIP_AT)]);
-  map.setPaintProperty('club-organizations-count', 'text-translate', [off(CHIP_AT), off(-CHIP_AT)]);
-  map.setLayoutProperty('club-peers', 'text-size', off(14));
+  marks.setLayoutProperty('club-organizations', 'text-size', off(12));
+  marks.setLayoutProperty('club-organizations', 'icon-size', mark);
+  marks.setPaintProperty('club-organizations', 'icon-translate', [off(15), off(-15)]);
+  marks.setPaintProperty('club-organizations', 'text-translate', [off(15), off(-15)]);
+  marks.setLayoutProperty('club-organizations-count', 'text-size', off(11));
+  marks.setLayoutProperty('club-organizations-count', 'icon-size', mark);
+  marks.setPaintProperty('club-organizations-count', 'icon-translate', [
+    off(CHIP_AT),
+    off(-CHIP_AT),
+  ]);
+  marks.setPaintProperty('club-organizations-count', 'text-translate', [
+    off(CHIP_AT),
+    off(-CHIP_AT),
+  ]);
+  marks.setLayoutProperty('club-peers', 'text-size', off(14));
   for (const [id, x, y] of [
     ['club-peers-name', -17, 3],
     ['club-organizations-name', 15, 4],
   ] as const) {
-    map.setLayoutProperty(id, 'text-size', at(11) * ICON_GROW ** 0.5);
-    map.setPaintProperty(id, 'text-translate', [off(x), off(y)]);
+    marks.setLayoutProperty(id, 'text-size', at(11) * ICON_GROW ** 0.5);
+    marks.setPaintProperty(id, 'text-translate', [off(x), off(y)]);
   }
-  map.setLayoutProperty('club-peers', 'icon-size', mark);
-  map.setPaintProperty('club-peers', 'icon-translate', [off(-17), off(-17)]);
-  map.setPaintProperty('club-peers', 'text-translate', [off(-17), off(-17)]);
+  marks.setLayoutProperty('club-peers', 'icon-size', mark);
+  marks.setPaintProperty('club-peers', 'icon-translate', [off(-17), off(-17)]);
+  marks.setPaintProperty('club-peers', 'text-translate', [off(-17), off(-17)]);
   // Events' dots as big as the other marks (the owner, 2026-10-28): every
   // place on the map one size, a bubble of many a little bigger.
-  map.setLayoutProperty('club-events-count', 'text-size', off(13));
-  map.setPaintProperty('club-events-one', 'circle-radius', off(EVENT_DOT));
-  map.setPaintProperty('club-events-many', 'circle-radius', [
+  marks.setLayoutProperty('club-events-count', 'text-size', off(13));
+  map.setLayoutProperty(EVENT_STATE_NAME, 'text-size', at(11) * ICON_GROW ** 0.5);
+  map.setPaintProperty(EVENT_STATE_NAME, 'text-translate', [0, off(24)]);
+  marks.setPaintProperty('club-events-one', 'circle-radius', off(EVENT_DOT));
+  marks.setPaintProperty('club-events-many', 'circle-radius', [
     'step',
     ['get', 'count'],
     off(EVENT_DOT),
@@ -455,14 +547,15 @@ export function applyFocus(
   });
   const faded = focus ? DIM : 1;
   for (const id of LAYER_IDS.events) {
-    if (id === 'club-events-count') map.setPaintProperty(id, 'text-opacity', faded);
-    else {
+    if (id.startsWith('club-events-count') || id === EVENT_STATE_NAME) {
+      map.setPaintProperty(id, 'text-opacity', faded);
+    } else {
       map.setPaintProperty(id, 'circle-opacity', faded);
       map.setPaintProperty(id, 'circle-stroke-opacity', faded);
     }
   }
-  map.setPaintProperty('club-peers', 'icon-opacity', faded);
-  map.setPaintProperty('club-peers', 'text-opacity', faded);
+  pins(map).setPaintProperty('club-peers', 'icon-opacity', faded);
+  pins(map).setPaintProperty('club-peers', 'text-opacity', faded);
   // Typed loosely: MapLibre's expression types do not follow a spread.
   const theirs = (
     focus
@@ -498,6 +591,8 @@ export interface Picked {
    * 2026-10-28): a tap zooms to fit them, so they come apart.
    */
   spread: [[number, number], [number, number]] | null;
+  /** The zoom a state's bubble must reach to come apart; 0 for any other. */
+  atLeast: number;
 }
 
 /** How close fitting a bubble's places goes: a few streets, never one. */
@@ -544,14 +639,31 @@ export async function pick(
   let zoomTo: Picked['zoomTo'] = null;
   const points: [number, number][] = [];
   let clustered = false;
+  let atLeast = 0;
   for (const hit of hits) {
-    const layer = LAYERS.find((name) => SOURCES[name] === hit.source);
+    const layer = layerOf(hit.source);
     if (!layer) continue;
     const properties = hit.properties as {
       key?: string;
       cluster_id?: number;
       point_count?: number;
+      west?: number;
+      south?: number;
+      east?: number;
+      north?: number;
     };
+    const { west, south, east, north } = properties;
+    if (
+      typeof west === 'number' &&
+      typeof south === 'number' &&
+      typeof east === 'number' &&
+      typeof north === 'number'
+    ) {
+      clustered = true;
+      atLeast = STATES_APART_FROM;
+      points.push([west, south], [east, north]);
+      continue;
+    }
     if (typeof properties.cluster_id !== 'number') {
       if (properties.key) keys[layer].add(properties.key);
       const point = pointOf(hit);
@@ -577,7 +689,7 @@ export async function pick(
       zoomTo = { center: tapped, zoom };
     }
   }
-  return { keys, zoomTo, spread: clustered ? spreadOf(points) : null };
+  return { keys, zoomTo, spread: clustered ? spreadOf(points) : null, atLeast };
 }
 
 export const boxOf = (map: MapLibreMap): Box => {
@@ -599,13 +711,19 @@ export interface CloseUp {
 
 /** Where a double on this pin goes: a cluster to where it splits, a place up close. */
 export async function closeUpOf(map: MapLibreMap, hit: MapGeoJSONFeature): Promise<CloseUp | null> {
-  const layer = LAYERS.find((name) => SOURCES[name] === hit.source);
+  const layer = layerOf(hit.source);
   const geometry = (hit as unknown as { geometry: { type: string; coordinates: number[] } })
     .geometry;
   if (!layer || geometry.type !== 'Point') return null;
   const [lng = 0, lat = 0] = geometry.coordinates;
-  const center: [number, number] = [lng, lat];
-  const properties = hit.properties as { cluster_id?: number; exact?: boolean };
+  const properties = hit.properties as {
+    cluster_id?: number;
+    exact?: boolean;
+    longitude?: number;
+    latitude?: number;
+  };
+  // A place's own point: far out, a feature's geometry is hundreds of metres off.
+  const center: [number, number] = [properties.longitude ?? lng, properties.latitude ?? lat];
   if (typeof properties.cluster_id === 'number') {
     const source = map.getSource<GeoJSONSource>(SOURCES[layer]);
     if (!source) return null;
@@ -617,6 +735,14 @@ export async function closeUpOf(map: MapLibreMap, hit: MapGeoJSONFeature): Promi
 }
 
 /** Zooms to fit a bubble's places, never closer than a few streets. */
-export function fitSpread(map: MapLibreMap, spread: NonNullable<Picked['spread']>): void {
-  map.fitBounds(spread, { padding: SPREAD_PADDING, maxZoom: SPREAD_MAX_ZOOM });
+export function fitSpread(
+  map: MapLibreMap,
+  spread: NonNullable<Picked['spread']>,
+  atLeast = 0,
+): void {
+  const options = { padding: SPREAD_PADDING, maxZoom: SPREAD_MAX_ZOOM };
+  // A big state on a phone fits only from further out than its bubble opens.
+  const fit = atLeast > 0 ? map.cameraForBounds(spread, options) : undefined;
+  if (fit?.center && (fit.zoom ?? 0) < atLeast) map.easeTo({ center: fit.center, zoom: atLeast });
+  else map.fitBounds(spread, options);
 }

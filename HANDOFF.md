@@ -453,12 +453,19 @@ All live. Migration headers and the files named say how and why.
   (`components/partner-label.tsx`; the name is `PARTNER_ROLE_NAME` in
   `lib/club-partners.ts`, one place to rename). Unlimited invites; their own
   code with no organization lets people in (`qr_codes.made_as_partner`).
-  Introduce… in a profile's ••• (`peers/introduce-sheet.tsx`): both answer on
-  `/introductions/:id`; two yeses open a group of the two, the partner too
-  only if they ticked the box, starting with an `introduced` notice (the
-  partner's note); whoever said yes is never told of a no. `/partner`: their
-  numbers, My people (never messages or contact details beyond addresses
-  they invited) and introductions; `/partner/card` prints their QR card.
+  `/stats` (Stats & controls, `20261031110000`, for org admins, partners and
+  administrators, `private.can_connect`; `/partner` redirects): an
+  organization's numbers (`my_organization_stats`, only what its page already
+  shows; `my_organization_events`, one row an event held, turnout only of
+  those who said Going; `my_organization_weeks`, eight weeks), their numbers,
+  Connect two members, My people (never messages or
+  contact details beyond addresses they invited) and introductions. Connecting
+  (`make_introduction`, also Introduce… in a profile's •••) asks nobody (the
+  owner, 2026-10-31): it opens a group at once, the connector too only if they
+  ticked the box, starting with an `introduced` notice (their note); the two
+  get the ordinary `group_add` notification; a pair is connected once. The
+  answer page `/introductions/:id` serves only those asked before that. The
+  card page is gone; `my_partner_card` still gives the title.
   Joining offers "Professional", which grants nothing. Probes were run on a
   throwaway stack; none is saved under `supabase/tests`.
 - **Admin finds every member** (`20261029230000`): the roster is searched and
@@ -544,7 +551,7 @@ All live. Migration headers and the files named say how and why.
   photograph where there is none. Measured with a scratch Playwright script
   against a throwaway stack behind a 0.3s HTTP/2 proxy (in the commits).
 - **Home**: Admin → Rooms has a Home-feed switch per room (`show_in_home`).
-  Events on Home are within Events' default 20 miles of home, online ones
+  Events on Home are within Events' default 50 miles of home, online ones
   anywhere (`events_within_miles`). Distance is measured from exactly what
   the map may show (`private.visible_event_places`, `20261025020000`): the
   exact pin, else the city middle, else the host organization's confirmed
@@ -554,7 +561,10 @@ All live. Migration headers and the files named say how and why.
 - **Map** (2026-10-25, migrations `20261025015000`–`040000`): List | Map on
   Events and Peers (`src/routes/map/`, `src/lib/map/`). Peers are a count at
   a confirmed city middle (`city_places.settlement`), never finer; "Show me
-  on the map" in Me. Events and organization places get an exact pin only
+  on the map" in Me. Below zoom 5, one labelled bubble a state, spaced apart
+  (`foldByState`, `apart`, the `-states` layers); from 5, bubbles by distance.
+  The list's distance filter does not apply to the map. Events and
+  organization places get an exact pin only
   when the geocoded address matches the current one; a save starts the
   Geocode workflow (`.github/workflows/geocode.yml`, `20261026000000`;
   Nominatim refuses Supabase's servers), which places it in a couple of

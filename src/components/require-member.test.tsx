@@ -244,3 +244,55 @@ describe('an event address, signed out', () => {
     expect(await screen.findByText('Welcome screen')).toBeInTheDocument();
   });
 });
+
+// A link shared from a post (share-post.tsx), opened outside the club.
+describe('a link to a post', () => {
+  function renderPost() {
+    return render(
+      <MemoryRouter initialEntries={['/chat/rooms/r1/topics/t1?post=p1']}>
+        <Routes>
+          <Route path="/join" element={<p>Welcome screen</p>} />
+          <Route
+            path="/chat/rooms/:roomId/topics/:topicId"
+            element={
+              <RequireMember>
+                <p>Inside the club</p>
+              </RequireMember>
+            }
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('shows somebody signed out a blurred post and a way in, not the door', () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    renderPost();
+    expect(
+      screen.getByRole('heading', { name: 'Please sign in or join to see this post' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Welcome screen')).toBeNull();
+    expect(screen.queryByText('Inside the club')).toBeNull();
+    expect(screen.getByTestId('locked-post-shapes')).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.getByTestId('locked-post-shapes')).toHaveTextContent('');
+  });
+
+  it('comes back to the post after signing in or joining', () => {
+    account.current = { status: 'signed-out', userId: null, isAdmin: false, displayName: null };
+    renderPost();
+    const door = '/join?next=%2Fchat%2Frooms%2Fr1%2Ftopics%2Ft1%3Fpost%3Dp1';
+    expect(screen.getByRole('link', { name: 'Join the club' })).toHaveAttribute('href', door);
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', door);
+  });
+
+  it('opens the post for a member', () => {
+    renderPost();
+    expect(screen.getByText('Inside the club')).toBeInTheDocument();
+  });
+
+  it('sends somebody part-way through joining back to finish', () => {
+    account.current = { status: 'signed-up', userId: 'u1', isAdmin: false, displayName: null };
+    renderPost();
+    expect(screen.getByText('Welcome screen')).toBeInTheDocument();
+  });
+});

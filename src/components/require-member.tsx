@@ -13,6 +13,7 @@ import {
 import { restoreDeviceNotifications } from '@/lib/push/notifications';
 import { forgetSharedReads } from '@/lib/shared-reads';
 import { signInDoor } from '@/lib/sign-in-destination';
+import { LockedPost } from '@/routes/chat/locked-post';
 
 /**
  * The door.
@@ -92,6 +93,10 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
     // when it has one (20261022180000), the door otherwise.
     const eventId = EVENT_PATH.exec(location.pathname)?.[1];
     if (eventId) return <ToPublicEvent eventId={eventId} door={door} />;
+    // A shared link to a post, for somebody signed out: see LockedPost.
+    if (status === 'signed-out' && TOPIC_PATH.test(location.pathname)) {
+      return <LockedPost door={door} />;
+    }
     // Someone part-way through signup goes back to finish it, not to a wall.
     return <Navigate to={door} replace />;
   }
@@ -111,6 +116,9 @@ export function RequireMember({ children }: { children: React.ReactNode }) {
 
 /** An event's page in the club, by id: `/events/<uuid>`, nothing after it. */
 const EVENT_PATH = /^\/events\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/?$/i;
+
+/** A topic's page: where a link to a post goes (share-post.tsx). */
+const TOPIC_PATH = /^\/chat\/rooms\/[^/]+\/topics\/[^/]+\/?$/;
 
 /**
  * Somebody signed out on an event's own address: the public page if the event

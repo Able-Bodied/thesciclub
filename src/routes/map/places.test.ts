@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { MapContents } from '@/lib/map-data';
 import {
+  apart,
   contentsOf,
   countWords,
   eventFeatures,
   eventSpots,
+  foldByState,
   inBox,
   lonePeers,
   notOnMap,
@@ -60,6 +62,9 @@ describe('peers on the map', () => {
     expect(features[0]?.properties).toEqual({
       key: `San Jose|CA|${SAN_JOSE.latitude},${SAN_JOSE.longitude}`,
       count: 3,
+      longitude: SAN_JOSE.longitude,
+      latitude: SAN_JOSE.latitude,
+      state: 'CA',
     });
   });
 });
@@ -89,8 +94,8 @@ describe('events on the map', () => {
 
   it('marks an event at its city middle as approximate', () => {
     const features = eventFeatures(eventSpots(placed, events)).features;
-    expect(features.map((feature) => feature.properties)).toEqual([
-      { key: '37.3,-121.9|exact', count: 2, exact: true },
+    expect(features.map((feature) => feature.properties)).toMatchObject([
+      { key: '37.3,-121.9|exact', count: 2, exact: true, longitude: -121.9, latitude: 37.3 },
       { key: '37.33874,-121.88524|city', count: 2, exact: false },
     ]);
   });
@@ -155,10 +160,12 @@ describe('organizations on the map', () => {
 
   it('marks each place exact or at its city middle, and names its organizations', () => {
     const features = organizationFeatures(organizationSpots(placed, organizations).spots).features;
-    expect(features[0]?.properties).toEqual({
+    expect(features[0]?.properties).toMatchObject({
       key: '37.87,-122.27|city',
       count: 2,
       exact: false,
+      longitude: -122.27,
+      latitude: 37.87,
       orgs: ',borp,cil,',
       organizationId: 'borp',
       label: 'BORP',
@@ -263,5 +270,73 @@ describe('the name under a mark', () => {
       [makeMember({ id: 'sam', displayName: 'Sam Rivera', photoPath: null })],
     );
     expect(peerFeatures(cities).features[0]?.properties.label).toBe('Sam Rivera');
+  });
+});
+
+describe('zoomed out, one bubble a state (the owner, 2026-10-31)', () => {
+  const point = (key: string, longitude: number, latitude: number, state?: string, count = 1) => ({
+    type: 'Feature' as const,
+    geometry: { type: 'Point' as const, coordinates: [longitude, latitude] as [number, number] },
+    properties: { key, count, longitude, latitude, ...(state ? { state } : {}) },
+  });
+  const collection = (...features: ReturnType<typeof point>[]) => ({
+    type: 'FeatureCollection' as const,
+    features,
+  });
+
+  it('never folds one state in with its neighbour', () => {
+    const { features } = foldByState(
+      collection(
+        point('nyc', -74, 40.7, 'NY'),
+        point('buffalo', -78.9, 42.9, 'NY'),
+        point('atlanta', -84.4, 33.7, 'GA'),
+        point('savannah', -81.1, 32.1, 'GA'),
+      ),
+    );
+    expect(features.map((f) => [f.properties.label, f.properties.count])).toEqual([
+      ['NY', 2],
+      ['GA', 2],
+    ]);
+  });
+
+  it('adds up what each point holds, and keeps its bounds for a tap', () => {
+    const [bubble] = foldByState(
+      collection(point('a', -74, 40, 'NY', 3), point('b', -78, 43, 'NY', 1)),
+    ).features;
+    expect(bubble?.properties).toMatchObject({
+      count: 4,
+      point_count: 2,
+      west: -78,
+      south: 40,
+      east: -74,
+      north: 43,
+    });
+    expect(bubble?.geometry.coordinates).toEqual([-75, 40.75]);
+  });
+
+  it('leaves a state with one point, and a point with no state, as they are', () => {
+    const vermont = point('burlington', -73.2191474, 44.4753549, 'VT');
+    const nowhere = point('unknown', -100, 40);
+    expect(foldByState(collection(vermont, nowhere)).features).toEqual([vermont, nowhere]);
+  });
+
+  it('moves marks apart where they are drawn, not where they are', () => {
+    const near = collection(point('a', -74, 41), point('b', -74.1, 41));
+    const moved = apart(near, 2, 58).features;
+    const [first, second] = moved.map((f) => f.geometry.coordinates[0]);
+    expect((second ?? 0) - (first ?? 0)).not.toBeCloseTo(-0.1);
+    const metresApart = Math.abs((second ?? 0) - (first ?? 0)) * ((512 * 2 ** 2) / 360);
+    expect(metresApart).toBeCloseTo(58, 0);
+    expect(moved.map((f) => f.properties.longitude)).toEqual([-74, -74.1]);
+  });
+
+  it('parts two marks at one point, and leaves distant ones alone', () => {
+    const together = collection(point('a', -74, 41), point('b', -74, 41));
+    const [one, two] = apart(together, 3, 58).features;
+    expect(one?.geometry.coordinates).not.toEqual(two?.geometry.coordinates);
+    const far = collection(point('a', -122, 37), point('b', -74, 41));
+    const moved = apart(far, 3, 58).features;
+    expect(moved[0]?.geometry.coordinates[0]).toBeCloseTo(-122, 6);
+    expect(moved[0]?.geometry.coordinates[1]).toBeCloseTo(37, 6);
   });
 });

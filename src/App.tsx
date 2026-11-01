@@ -60,8 +60,7 @@ const HeldInvitesPage = lazy(() => import('@/routes/events/held-invites'));
 const IntroductionPage = lazy(() => import('@/routes/introductions/page'));
 const InvitesPage = lazy(() => import('@/routes/invites/page'));
 const QrCodePage = lazy(() => import('@/routes/me/qr-page'));
-const PartnerPage = lazy(() => import('@/routes/partner/page'));
-const PartnerCardPage = lazy(() => import('@/routes/partner/card-page'));
+const StatsPage = lazy(() => import('@/routes/stats/page'));
 const SavedPage = lazy(() => import('@/routes/me/saved-page'));
 const NotificationsPage = lazy(() => import('@/routes/notifications/page'));
 const MemberDetailPage = lazy(() => import('@/routes/peers/member-detail'));
@@ -298,9 +297,10 @@ function ShellContent() {
             Reached from the Invites card on Me, which is where a member goes
             to find out what their membership lets them do. */}
             <Route path="/invites" element={<InvitesPage />} />
-            {/* Trusted partners only (20261029100000); reached from Me. */}
-            <Route path="/partner" element={<PartnerPage />} />
-            <Route path="/partner/card" element={<PartnerCardPage />} />
+            {/* Org admins and trusted partners (20261031110000); reached from Me. */}
+            <Route path="/stats" element={<StatsPage />} />
+            {/* The page's old address, in notifications already sent. */}
+            <Route path="/partner" element={<Navigate to="/stats" replace />} />
             {/* Unlisted in the tab bar; the page redirects a non-admin away. */}
             <Route path="/organizations/manage" element={<OrganizationManagementPage />} />
             <Route path="/admin" element={<AdminPage />} />

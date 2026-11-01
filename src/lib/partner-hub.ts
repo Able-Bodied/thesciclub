@@ -2,9 +2,10 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * What a trusted partner sees of their own work (20261029100000): who they
- * invited or introduced, their own counts, their introductions, and their
- * card. The database answers only for the signed-in partner.
+ * What an org admin or a trusted partner sees of their work on Stats &
+ * controls (20261031110000): who they invited or connected, their own counts,
+ * their introductions, and their organization's numbers. The database
+ * answers only for whoever is signed in.
  */
 
 type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -117,10 +118,15 @@ export interface PartnerStats {
   active: number;
   introductions: number;
   opened: number;
+  /** Of your people who are not mentors themselves. */
   withMentor: number;
+  couldHaveMentor: number;
+  /** Median days from joining to a first mentor; null with nobody yet. */
+  daysToMentor: number | null;
 }
 
 export const STAT_PERIODS = [
+  { days: 1, label: '24 hours' },
   { days: 30, label: '30 days' },
   { days: 90, label: '90 days' },
   { days: 365, label: 'A year' },
@@ -133,6 +139,8 @@ interface StatsRow {
   introductions: number;
   opened: number;
   with_mentor: number;
+  could_have_mentor: number;
+  days_to_mentor: number | null;
 }
 
 export async function fetchPartnerStats(days: number): Promise<Result<PartnerStats>> {
@@ -148,6 +156,8 @@ export async function fetchPartnerStats(days: number): Promise<Result<PartnerSta
       introductions: row?.introductions ?? 0,
       opened: row?.opened ?? 0,
       withMentor: row?.with_mentor ?? 0,
+      couldHaveMentor: row?.could_have_mentor ?? 0,
+      daysToMentor: row?.days_to_mentor ?? null,
     },
   };
 }
@@ -202,6 +212,162 @@ export async function fetchMyIntroductions(): Promise<Result<MadeIntroduction[]>
   };
 }
 
+/* ---------------------------------------------------------- organization */
+
+/** An organization's numbers: nothing its org admins cannot see on its page. */
+export interface OrganizationStats {
+  members: number;
+  joined: number;
+  waiting: number;
+  eventsHeld: number;
+  going: number;
+  checkedIn: number;
+  /** Of those checked in, who had said Going: a walk-in is not turnout. */
+  saidGoingAndCame: number;
+  /** Came in the period, and have been to one of its events once. */
+  firstTimers: number;
+  /** Came in the period, and have been more than once. */
+  cameBack: number;
+  reviews: number;
+  /** Null with no reviews in the period. */
+  rating: number | null;
+}
+
+interface OrganizationStatsRow {
+  members: number;
+  joined: number;
+  waiting: number;
+  events_held: number;
+  going: number;
+  checked_in: number;
+  said_going_and_came: number;
+  first_timers: number;
+  came_back: number;
+  reviews: number;
+  rating: number | null;
+}
+
+export async function fetchOrganizationStats(
+  organizationId: string,
+  days: number,
+): Promise<Result<OrganizationStats | null>> {
+  const result = await call(
+    'my_organization_stats',
+    { p_organization: organizationId, p_days: days },
+    'Could not load the organization’s numbers.',
+  );
+  if (!result.ok) return result;
+  const row = (result.value as OrganizationStatsRow[] | null)?.[0];
+  return {
+    ok: true,
+    value: row
+      ? {
+          members: row.members,
+          joined: row.joined,
+          waiting: row.waiting,
+          eventsHeld: row.events_held,
+          going: row.going,
+          checkedIn: row.checked_in,
+          saidGoingAndCame: row.said_going_and_came,
+          firstTimers: row.first_timers,
+          cameBack: row.came_back,
+          reviews: row.reviews,
+          rating: row.rating,
+        }
+      : null,
+  };
+}
+
+/** One event the organization held. */
+export interface HeldEvent {
+  id: string;
+  title: string;
+  startTime: string;
+  timezone: string | null;
+  going: number;
+  checkedIn: number;
+  saidGoingAndCame: number;
+}
+
+interface HeldEventRow {
+  id: string;
+  title: string;
+  start_time: string;
+  timezone: string | null;
+  going: number;
+  checked_in: number;
+  said_going_and_came: number;
+}
+
+export async function fetchOrganizationEvents(
+  organizationId: string,
+  days: number,
+): Promise<Result<HeldEvent[]>> {
+  const result = await call(
+    'my_organization_events',
+    { p_organization: organizationId, p_days: days },
+    'Could not load the organization’s events.',
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    value: ((result.value as HeldEventRow[] | null) ?? []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      startTime: row.start_time,
+      timezone: row.timezone,
+      going: row.going,
+      checkedIn: row.checked_in,
+      saidGoingAndCame: row.said_going_and_came,
+    })),
+  };
+}
+
+/** One week of an organization, Monday to Monday in California. */
+export interface OrganizationWeek {
+  /** The Monday, as an ISO date. */
+  week: string;
+  members: number;
+  joined: number;
+  events: number;
+  checkedIn: number;
+  going: number;
+  saidGoingAndCame: number;
+}
+
+interface OrganizationWeekRow {
+  week: string;
+  members: number;
+  joined: number;
+  events: number;
+  checked_in: number;
+  going: number;
+  said_going_and_came: number;
+}
+
+export async function fetchOrganizationWeeks(
+  organizationId: string,
+): Promise<Result<OrganizationWeek[]>> {
+  const result = await call(
+    'my_organization_weeks',
+    { p_organization: organizationId },
+    'Could not load the organization’s weeks.',
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    value: ((result.value as OrganizationWeekRow[] | null) ?? []).map((row) => ({
+      week: row.week,
+      members: row.members,
+      joined: row.joined,
+      events: row.events,
+      checkedIn: row.checked_in,
+      going: row.going,
+      saidGoingAndCame: row.said_going_and_came,
+    })),
+  };
+}
+
 export async function withdrawIntroduction(id: string): Promise<Result<null>> {
   const result = await call(
     'withdraw_introduction',
@@ -211,19 +377,13 @@ export async function withdrawIntroduction(id: string): Promise<Result<null>> {
   return result.ok ? { ok: true, value: null } : result;
 }
 
-/* ------------------------------------------------------------------ card */
+/* ----------------------------------------------------------------- title */
 
 export interface PartnerCard {
   title: string;
   heading: string | null;
   body: string | null;
 }
-
-export const CARD_HEADING_MAX = 80;
-export const CARD_BODY_MAX = 400;
-export const DEFAULT_CARD_HEADING = 'Meet people who get it';
-export const DEFAULT_CARD_BODY =
-  'The SCI Club is a private community for adults living with spinal cord injury or disease, and the people close to them. Scan to join.';
 
 export async function fetchMyPartnerCard(): Promise<Result<PartnerCard | null>> {
   const result = await call('my_partner_card', {}, 'Could not load your card.');
@@ -237,13 +397,4 @@ export async function fetchMyPartnerCard(): Promise<Result<PartnerCard | null>> 
     ok: true,
     value: row ? { title: row.title, heading: row.card_heading, body: row.card_body } : null,
   };
-}
-
-export async function saveMyPartnerCard(heading: string, body: string): Promise<Result<null>> {
-  const result = await call(
-    'set_my_partner_card',
-    { p_heading: heading.trim() || null, p_body: body.trim() || null },
-    'Your card was not saved.',
-  );
-  return result.ok ? { ok: true, value: null } : result;
 }

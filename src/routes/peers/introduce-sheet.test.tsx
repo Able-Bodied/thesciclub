@@ -35,7 +35,7 @@ function open(onSent = vi.fn()) {
 }
 
 async function chooseMaya() {
-  await userEvent.type(screen.getByLabelText('Introduce them to'), 'ma');
+  await userEvent.type(screen.getByLabelText('Connect them to'), 'ma');
   await userEvent.click(await screen.findByRole('button', { name: /Maya Local/ }));
 }
 
@@ -56,11 +56,11 @@ describe('introducing two members', () => {
   it('never offers the member themselves, and sends both ids with the note', async () => {
     state.make.mockResolvedValue({ ok: true, value: 'i1' });
     const onSent = open();
-    const send = screen.getByRole('button', { name: 'Send introduction' });
+    const send = screen.getByRole('button', { name: 'Connect them' });
     expect(send).toBeDisabled();
-    await userEvent.type(screen.getByLabelText('Introduce them to'), 'sam');
+    await userEvent.type(screen.getByLabelText('Connect them to'), 'sam');
     expect(await screen.findByText('Nobody matches that.')).toBeInTheDocument();
-    await userEvent.clear(screen.getByLabelText('Introduce them to'));
+    await userEvent.clear(screen.getByLabelText('Connect them to'));
     await chooseMaya();
     expect(screen.getByRole('button', { name: 'Change from Maya Local' })).toBeInTheDocument();
     await userEvent.type(screen.getByLabelText('A note to both of them'), 'Both C6 in San Jose.');
@@ -77,9 +77,7 @@ describe('introducing two members', () => {
     await waitFor(() => {
       expect(onSent).toHaveBeenCalled();
     });
-    expect(state.announce).toHaveBeenCalledWith(
-      'Introduction sent. Sam Lee and Maya Local will each be asked.',
-    );
+    expect(state.announce).toHaveBeenCalledWith('Sam Lee and Maya Local are connected.');
   });
 
   it('puts the partner in the conversation when they tick the box', async () => {
@@ -89,7 +87,7 @@ describe('introducing two members', () => {
     await userEvent.type(screen.getByLabelText('A note to both of them'), 'Both C6.');
     await userEvent.click(screen.getByRole('checkbox', { name: 'Join the conversation yourself' }));
     expect(screen.getByText(/You will be in it too\./)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Send introduction' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Connect them' }));
     expect(state.make).toHaveBeenCalledWith('sam', 'maya', 'Both C6.', true);
   });
 
@@ -101,7 +99,7 @@ describe('introducing two members', () => {
     const onSent = open();
     await chooseMaya();
     await userEvent.type(screen.getByLabelText('A note to both of them'), 'Hi');
-    await userEvent.click(screen.getByRole('button', { name: 'Send introduction' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Connect them' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'One of those members cannot be introduced.',
     );
@@ -116,6 +114,6 @@ describe('introducing two members', () => {
     await userEvent.paste('x'.repeat(501));
     expect(screen.getByText(/1 characters over\./)).toBeInTheDocument();
     expect(note).toHaveAttribute('aria-invalid', 'true');
-    expect(screen.getByRole('button', { name: 'Send introduction' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Connect them' })).toBeDisabled();
   });
 });

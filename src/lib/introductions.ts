@@ -2,11 +2,10 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * A trusted partner introducing two members (20261029100000). Each is asked;
- * two yeses open a group of the two, the partner too only if they chose to
- * join (20261029120000), opening with a line saying who connected them.
- * Whoever said yes is never told the other said no: theirs waits, then
- * expires.
+ * Connecting two members (20261031110000): a group of the two opens at once,
+ * the connector too only if they chose, starting with a line saying who
+ * connected them. One from before that asked each of them, and waits for two
+ * yeses until it expires; whoever said yes is never told the other said no.
  */
 
 export const INTRODUCTION_NOTE_MAX = 500;
@@ -57,7 +56,7 @@ export async function makeIntroduction(
   firstId: string,
   secondId: string,
   note: string,
-  /** The partner is in the conversation it opens too (20261029120000). */
+  /** The connector is in the conversation it opens too (20261029120000). */
   join = false,
 ): Promise<Result<string>> {
   try {
@@ -73,15 +72,15 @@ export async function makeIntroduction(
       return {
         ok: false,
         error: describeError(error, {
-          attempt: 'Could not send the introduction.',
-          duplicate: 'Those two have already been asked, and have 30 days to answer.',
+          attempt: 'Could not connect them.',
+          duplicate: 'Those two have been connected already.',
         }),
       };
     }
-    if (!data) return { ok: false, error: 'Could not send the introduction. Try again.' };
+    if (!data) return { ok: false, error: 'Could not connect them. Try again.' };
     return { ok: true, value: data };
   } catch (error) {
-    return { ok: false, error: describeThrown(error, 'Could not send the introduction.') };
+    return { ok: false, error: describeThrown(error, 'Could not connect them.') };
   }
 }
 

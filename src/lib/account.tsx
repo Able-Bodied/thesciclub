@@ -244,7 +244,8 @@ export async function signOut(): Promise<{ ok: boolean; error?: string }> {
   // member's notifications. Its saved preference and browser subscription
   // survive so this member can resume on login. See forgetThisDevice.
   await forgetThisDevice();
-  const { error } = await getSupabase().auth.signOut();
+  // This device only: the default, global, ends the member's other devices too.
+  const { error } = await getSupabase().auth.signOut({ scope: 'local' });
   // Signed photograph URLs are kept across reloads (src/lib/chat/attachments.ts)
   // and were signed under this member's session. The next person on this
   // phone signs their own.

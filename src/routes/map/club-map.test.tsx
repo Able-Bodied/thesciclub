@@ -364,16 +364,16 @@ describe("an organization's places", () => {
     await userEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }),
     );
-    // The badges, their count chips and their names, all.
-    const last = the.map?.setPaintProperty.mock.calls.slice(-6);
-    expect(last).toEqual([
-      ['club-organizations', 'icon-opacity', 1],
-      ['club-organizations', 'text-opacity', 1],
-      ['club-organizations-count', 'icon-opacity', 1],
-      ['club-organizations-count', 'text-opacity', 1],
-      ['club-organizations-name', 'icon-opacity', 1],
-      ['club-organizations-name', 'text-opacity', 1],
-    ]);
+    // The badges, their count chips and their names, all, at either level.
+    const last = the.map?.setPaintProperty.mock.calls.slice(-12);
+    expect(last).toEqual(
+      ['club-organizations', 'club-organizations-count', 'club-organizations-name'].flatMap((id) =>
+        [id, `${id}-states`].flatMap((layer) => [
+          [layer, 'icon-opacity', 1],
+          [layer, 'text-opacity', 1],
+        ]),
+      ),
+    );
   });
 
   it('draws only the organizations the directory shows', async () => {

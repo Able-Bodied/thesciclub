@@ -8,7 +8,7 @@ import { signOut, useAccount } from '@/lib/account';
 import { EMAIL_RETURN_PARAM, useSignInDetails } from '@/lib/account-email';
 import { APPLE_RETURN_PARAM } from '@/lib/apple-sign-in';
 import { useChatRooms } from '@/lib/chat/rooms';
-import { PARTNER_ROLE_NAME, useIAmPartner } from '@/lib/club-partners';
+import { useIAmPartner, useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
@@ -238,6 +238,7 @@ export default function MePage() {
   // An org admin makes QR codes for their organization (20261028960000).
   const orgAdmin = useMyOrganizations(userId).ids.size > 0;
   const partner = useIAmPartner(userId) === true;
+  const canConnect = useICanConnect(userId) === true;
   const hasClubTools =
     isAdmin ||
     orgAdmin ||
@@ -352,11 +353,11 @@ export default function MePage() {
                           description="Members, invites, organizations and moderation."
                         />
                       ) : null}
-                      {partner ? (
+                      {canConnect ? (
                         <ProfileLink
-                          to="/partner"
-                          title={PARTNER_ROLE_NAME}
-                          description="Your people, your introductions, your numbers and your card."
+                          to="/stats"
+                          title="Stats & controls"
+                          description="Your organization's numbers, your people, and connecting members."
                         />
                       ) : null}
                       {isAdmin || orgAdmin || partner ? (

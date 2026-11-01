@@ -21,7 +21,21 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 30, 2026">
+    <LegalPage title="Privacy Policy" updated="October 31, 2026">
+      <Note title="What changed on October 31, 2026">
+        <List>
+          <li>
+            <b>Changed:</b> an org admin or a trusted partner can connect two members without asking
+            either of them first. You are added to a group conversation with the other member and
+            told who connected you. You can leave it, block or report anyone in it, at any time.
+          </li>
+          <li>
+            <b>Added:</b> org admins see what trusted partners see of the people they invited or
+            connected, and counts for their organization, such as members, event turnout and reviews
+            (see Who can see what).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on October 30, 2026">
         <List>
           <li>
@@ -404,15 +418,23 @@ export default function PrivacyPage() {
           <li>
             <b>Trusted partners</b> are professionals, such as a hospital’s peer support lead or a
             physical therapist, whom an administrator chose. Their title is shown beside their name.
-            They see the same profiles as anybody. For the people they invited or introduced, they
+            They see the same profiles as anybody. For the people they invited or connected, they
             also see whether each joined, finished their profile and was introduced to a mentor, and
             how many of them posted in a room or chose Going for an event, as a count. They cannot
-            read conversations they are not in. Introduced by one, you are asked first, and so is
-            the other member; if either says no, the one who said yes is not told. When both say
-            yes, a group conversation opens with a line saying who connected you and the partner’s
-            note; the partner is in it only if they chose to join when making the introduction.
-            Partners see no email address or phone number, except an address they sent an invite to
-            themselves.
+            read conversations they are not in. Partners see no email address or phone number,
+            except an address they sent an invite to themselves.
+          </li>
+          <li>
+            <b>Org admins</b> see the same about the people they invited or connected, and counts
+            for their organization: members, how they joined, events, turnout and reviews.
+          </li>
+          <li>
+            <b>Being connected.</b> An org admin or a trusted partner can connect two members. You
+            are not asked first: you and the other member are added to a group conversation, which
+            opens with a line saying who connected you and their note, and you are told. Whoever
+            connected you is in it only if they chose to be, and can read it only then. You can
+            leave it, block or report anyone in it, at any time, and you will not be connected to
+            the same member twice.
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it. If

@@ -43,10 +43,11 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(/Changed: Join replaces Follow/);
-    expect(notes[1]).toMatch(/Added: when you agreed/);
-    expect(notes[2]).toMatch(/Added: address suggestions/);
-    expect(notes[3]).toMatch(/Added: the map/);
+    expect(notes[0]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
+    expect(notes[1]).toMatch(/Changed: Join replaces Follow/);
+    expect(notes[2]).toMatch(/Added: when you agreed/);
+    expect(notes[3]).toMatch(/Added: address suggestions/);
+    expect(notes[4]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });
@@ -518,12 +519,14 @@ describe('the Privacy Policy, on HIPAA, safety and rights', () => {
 
 // 20261029100000.
 describe('trusted partners', () => {
-  it('says who they are, what they see, and that a no is never passed on', () => {
+  it('says who they are, what they see, and that nobody is asked first', () => {
     open('/privacy');
     const who = screen.getByRole('heading', { name: 'Who can see what' }).parentElement;
     expect(who).toHaveTextContent(/Trusted partners are professionals/);
     expect(who).toHaveTextContent(/cannot read conversations they are not in/);
-    expect(who).toHaveTextContent(/if\s+either says no, the one who said yes is not told/);
+    expect(who).toHaveTextContent(/You\s+are not asked first/);
+    expect(who).toHaveTextContent(/You can\s+leave it, block or report anyone in it/);
+    expect(who).toHaveTextContent(/Org admins see the same about the people they invited/);
     expect(who).toHaveTextContent(/except an address they\s+sent an invite to themselves/);
     expect(document.body.textContent).toMatch(/that alone makes nobody a partner/);
   });
@@ -531,6 +534,8 @@ describe('trusted partners', () => {
   it('are in the Terms, with what they can do', () => {
     open('/terms');
     expect(document.body.textContent).toMatch(/We may make a professional/);
-    expect(document.body.textContent).toMatch(/who each choose whether to meet/);
+    expect(document.body.textContent).toMatch(
+      /Connecting adds both to a group conversation without\s+asking them first/,
+    );
   });
 });

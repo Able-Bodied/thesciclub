@@ -1705,6 +1705,18 @@ describe('a roster that fits on a phone', () => {
 });
 
 describe('the tabs', () => {
+  it('shows org admins without scrolling past the organizations on a narrow screen', async () => {
+    renderAdmin('/admin?tab=organizations');
+    const heading = await screen.findByRole('heading', { name: 'Org admins', hidden: true });
+    const panel = heading.closest('.min-w-0');
+    expect(panel).toHaveClass('hidden', 'lg:block', 'lg:overflow-y-auto');
+    await userEvent.click(screen.getByRole('button', { name: 'Org admins' }));
+    expect(panel).not.toHaveClass('hidden');
+    expect(
+      screen.getByRole('heading', { name: 'Organizations', hidden: true }).closest('.min-w-0'),
+    ).toHaveClass('hidden', 'lg:block');
+  });
+
   it('opens the tab the address names', async () => {
     renderAdmin('/admin?tab=invites');
     expect(await screen.findByRole('tab', { name: 'Invites' })).toHaveAttribute(
