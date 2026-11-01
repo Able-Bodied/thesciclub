@@ -31,8 +31,8 @@ vi.mock('@/routes/map/club-map', () => ({
     return (
       <div data-testid="club-map">
         <p>Counted: {(props.members ?? []).map((member) => member.displayName).join(', ')}</p>
-        <button type="button" onClick={props.filters.onOpen}>
-          {props.filters.label}
+        <button type="button" onClick={props.filters?.onOpen}>
+          {props.filters?.label}
         </button>
         <button type="button" onClick={props.onUnsupported}>
           No WebGL2

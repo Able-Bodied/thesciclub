@@ -1,9 +1,10 @@
 import { Plus, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { HeaderSearch } from '@/components/header-search';
 import { LoadingCards } from '@/components/loading-cards';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
-import { SegmentPills } from '@/components/segment-pills';
+import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { useHome } from '@/lib/home-state';
@@ -24,6 +25,7 @@ import {
   isPastEvent,
   isPastStartTime,
   isRsvpSegment,
+  matchesEventSearch,
   organizationIdsIn,
   tagsIn,
 } from '@/routes/events/filters';
@@ -73,17 +75,20 @@ import {
  *
  * Most events here were published by somebody else and ingested
  * (jobs/event-ingest). From 2026-10-05 an administrator, or a member who
- * speaks for an organization, can also add one by hand, and only they are
- * shown "Add an event" (event-form.tsx).
+ * speaks for an organization, can also add one by hand (event-form.tsx). Every
+ * member can ask to add an organization, so the + is for everybody.
  *
  * The segments are the mock's, from `evPage()`. Organizations is the odd one:
  * it is not a narrowing of the list but a different body entirely, because the
  * mock treats the directory of organizations as part of this tab rather than as
  * a tab of its own.
+ *
+ * The header is two rows, to leave the screen to the list or the map (the
+ * owner, 2026-11-01): what to look at and how, then search, filters and +.
  */
 
 /**
- * Two pills: the calendar and the organizations (the owner, 2026-10-10).
+ * A toggle: the calendar and the organizations (the owner, 2026-10-10).
  *
  * There were seven. Going, Interested and Been to are the member's own RSVPs,
  * and are now "Your RSVP" in Filters, beside the other ways of narrowing the
@@ -92,10 +97,10 @@ import {
  * Me's counters link straight to it.
  */
 type EventsPill = 'events' | 'orgs';
-const PILLS: [EventsPill, string][] = [
+const PILLS = [
   ['events', 'Events'],
   ['orgs', 'Organizations'],
-];
+] as const satisfies readonly (readonly [EventsPill, string])[];
 
 /** The RSVP lists, by the words Filters and the "Showing" line use. */
 const RSVP_LABELS: Record<'going' | 'interested' | 'been-to', string> = {
@@ -114,7 +119,7 @@ export default function EventsPage() {
   const viewer = useViewerEvents(memberId);
   const account = useAccount();
   const mine = useMyOrganizations(memberId);
-  const canAdd = account.status === 'member' && mayAddEvents(account.isAdmin, mine.ids);
+  const canAddEvents = account.status === 'member' && mayAddEvents(account.isAdmin, mine.ids);
 
   // The segment lives in the URL, not in component state. Opening an
   // organization and pressing back used to land on Upcoming, because the state
@@ -170,6 +175,7 @@ export default function EventsPage() {
   const [mapOrganizations, setMapOrganizations] = useState<Organization[] | null>(null);
   const [directorySheetOpen, setDirectorySheetOpen] = useState(false);
   const [filters, setFilters] = useState<EventFilters>(EMPTY_EVENT_FILTERS);
+  const [eventSearch, setEventSearch] = useState('');
   const dateRange = dateWindowRange(
     isRsvpSegment(segment) ? (segment === 'been-to' ? 'past' : 'any') : filters.when,
   );
@@ -200,14 +206,25 @@ export default function EventsPage() {
     [viewer.rsvps, near.ids],
   );
 
+  const searched = useCallback(
+    (list: ClubEvent[]) =>
+      list.filter((event) =>
+        matchesEventSearch(
+          event,
+          eventSearch,
+          event.organizationId ? organizationsById.get(event.organizationId)?.name : undefined,
+        ),
+      ),
+    [eventSearch, organizationsById],
+  );
   const visible = useMemo(
-    () => filterEvents(events, filters, segment, viewerState),
-    [events, filters, segment, viewerState],
+    () => searched(filterEvents(events, filters, segment, viewerState)),
+    [events, filters, segment, viewerState, searched],
   );
   // Distance is the list's (the owner, 2026-10-31): the map shows every place.
   const onMap = useMemo(
-    () => filterEvents(events, { ...filters, withinMiles: null }, segment, viewerState),
-    [events, filters, segment, viewerState],
+    () => searched(filterEvents(events, { ...filters, withinMiles: null }, segment, viewerState)),
+    [events, filters, segment, viewerState, searched],
   );
 
   // Grouped only in the browsing segments. "I'm going", "Interested" and
@@ -295,6 +312,10 @@ export default function EventsPage() {
     activeFilterCount(showingMap ? { ...filters, withinMiles: DEFAULT_WITHIN_MILES } : filters) +
     (rsvp ? 1 : 0);
   const showingList = segment !== 'orgs';
+  // The search box says its own words; this is the filters behind the circle.
+  const headerFilterCount = showingList
+    ? filterCount
+    : directoryFilterCount({ ...directory, query: '' });
 
   // The event "View on the map" asked for: from the list, or read by itself
   // when the filters leave it out (it is shown anyway).
@@ -332,52 +353,49 @@ export default function EventsPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] flex-wrap items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
-            Events
-          </h1>
-          <div className="flex items-center gap-2">
-            <ViewSwitch view={view} onChange={setView} />
-            {canAdd ? (
-              <Link
-                to="/events/new"
-                className="flex min-h-[38px] items-center gap-1.5 rounded-full bg-tint px-3.5 font-semibold text-[0.84375rem] text-emphasis transition-colors hover:bg-line"
-                data-target="small"
-              >
-                <Plus className="h-[15px] w-[15px]" strokeWidth={2.4} aria-hidden="true" />
-                Add an event
-              </Link>
-            ) : null}
-            {/* On the map, its own chip opens the same sheet. */}
-            {showingList && !showingMap ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSheetOpen(true);
-                }}
-                aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-                data-target="small"
-                className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-              >
-                <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
-                {filterCount ? (
-                  <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-                ) : null}
-              </button>
-            ) : null}
-          </div>
+    <div className="relative flex flex-1 flex-col overflow-hidden">
+      <header className="flex-none border-line border-b bg-paper px-[18px] pt-2.5">
+        <h1 className="sr-only">Events</h1>
+        <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center justify-between gap-2">
+          <TwoWayToggle
+            label="Show"
+            options={PILLS}
+            value={segment === 'orgs' ? 'orgs' : 'events'}
+            onChange={(next) => {
+              setSegment(next === 'orgs' ? 'orgs' : 'upcoming');
+            }}
+          />
+          <ViewSwitch view={view} onChange={setView} iconsOnly />
         </div>
 
-        <SegmentPills
-          segments={PILLS}
-          value={segment === 'orgs' ? 'orgs' : 'events'}
-          onChange={(next) => {
-            setSegment(next === 'orgs' ? 'orgs' : 'upcoming');
-          }}
-          className="max-w-[var(--events-measure)]"
-        />
+        <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center gap-2 py-2">
+          <HeaderSearch
+            label={showingList ? 'Search events' : 'Search organizations'}
+            value={showingList ? eventSearch : directory.query}
+            onChange={(next) => {
+              if (showingList) setEventSearch(next);
+              else setDirectory({ ...directory, query: next });
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (showingList) setSheetOpen(true);
+              else setDirectorySheetOpen(true);
+            }}
+            aria-label={headerFilterCount ? `Filters, ${headerFilterCount} active` : 'Filters'}
+            className="relative -ml-0.5 grid h-11 w-11 flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
+          >
+            <SlidersHorizontal
+              aria-hidden="true"
+              className="h-[17px] w-[17px] text-emphasis"
+              strokeWidth={2}
+            />
+            {headerFilterCount ? (
+              <span className="absolute top-[7px] right-[7px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
+            ) : null}
+          </button>
+        </div>
         {/* Said, so a narrowed list is never mistaken for the calendar. */}
         {rsvp ? (
           <p className="mx-auto flex w-full max-w-[var(--events-measure)] flex-wrap items-center gap-x-2 pb-2.5 text-[0.8125rem] text-ink2">
@@ -424,29 +442,25 @@ export default function EventsPage() {
                 ? 'The map shows upcoming events only. Past ones are in the list.'
                 : undefined
             }
-            filters={
-              segment === 'orgs'
-                ? {
-                    label: 'Filter organizations',
-                    count: directoryFilterCount(directory),
-                    onOpen: () => {
-                      setDirectorySheetOpen(true);
-                    },
-                  }
-                : {
-                    label: 'Filter events',
-                    count: filterCount,
-                    onOpen: () => {
-                      setSheetOpen(true);
-                    },
-                  }
-            }
             backState={{ segment, view: 'map' }}
           />
         </>
       ) : null}
 
-      <div hidden={showingMap} className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
+      {/* Floating, away from the header's search and filter, and on the lists
+          only: the map keeps its corner for its own buttons (the owner,
+          2026-11-01). */}
+      {account.status === 'member' && !showingMap ? (
+        <Link
+          to={canAddEvents && showingList ? '/events/new' : '/events/new?add=organization'}
+          aria-label="Add"
+          className="absolute right-4 bottom-4 z-10 grid h-14 w-14 place-items-center rounded-full bg-action text-white shadow-[0_6px_18px_rgba(10,20,35,.35)] transition-colors hover:bg-action-hi"
+        >
+          <Plus className="h-6 w-6" strokeWidth={2.4} aria-hidden="true" />
+        </Link>
+      ) : null}
+
+      <div hidden={showingMap} className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[88px] md:px-6">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {view === 'map' && mapProblem ? <MapProblemNote problem={mapProblem} /> : null}
           {writeError ? (
@@ -545,7 +559,7 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {directorySheetOpen && showingMap ? (
+      {directorySheetOpen ? (
         <OrganizationFilterSheet
           organizations={organizations}
           events={events}

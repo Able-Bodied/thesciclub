@@ -7,6 +7,7 @@ import {
   isOnline,
   isPastEvent,
   isSport,
+  matchesEventSearch,
   selectsExactly,
   toggleFilter,
   type ViewerEventState,
@@ -96,6 +97,26 @@ describe('dateWindowRange', () => {
     expect(monthStart).not.toBe('');
     // Past ends strictly before the forward window opens, so no event is in both.
     expect(pastEnd.localeCompare(monthStart)).toBeLessThan(0);
+  });
+});
+
+describe('matchesEventSearch', () => {
+  const event = makeEvent({
+    title: 'Wheelchair rugby',
+    location: 'James Kenney Center',
+    city: 'Berkeley',
+    description: 'Weekly practice',
+  });
+
+  it('finds every word somewhere in what is written about it, in any case', () => {
+    expect(matchesEventSearch(event, 'RUGBY berkeley')).toBe(true);
+    expect(matchesEventSearch(event, 'kenney practice')).toBe(true);
+    expect(matchesEventSearch(event, 'rugby oakland')).toBe(false);
+  });
+
+  it('finds it by who hosts it, and keeps everything for an empty search', () => {
+    expect(matchesEventSearch(event, 'borp', 'BORP')).toBe(true);
+    expect(matchesEventSearch(event, '   ')).toBe(true);
   });
 });
 

@@ -111,7 +111,8 @@ export interface ClubMapProps {
   /** Said where the events layer would be empty for a reason, such as past events. */
   eventsNote?: string | undefined;
   /** The screen's filter sheet. */
-  filters: { label: string; count: number; onOpen: () => void };
+  /** Its own chip, for a screen with no filter button in its header. */
+  filters?: { label: string; count: number; onOpen: () => void };
   /** Router state for the detail pages, so back returns to the map. */
   backState: Record<string, string>;
   /** The List view is showing: the map's sources are left alone. */
@@ -692,20 +693,22 @@ export default function ClubMap({
       </Suspense>
 
       <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap items-start gap-2">
-        <button
-          type="button"
-          onClick={filters.onOpen}
-          aria-label={filters.count ? `${filters.label}, ${filters.count} active` : filters.label}
-          className={CHIP}
-        >
-          <SlidersHorizontal aria-hidden="true" className="h-[17px] w-[17px]" strokeWidth={2} />
-          {filters.label}
-          {filters.count ? (
-            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-action px-1.5 text-[0.75rem] text-white">
-              {filters.count}
-            </span>
-          ) : null}
-        </button>
+        {filters ? (
+          <button
+            type="button"
+            onClick={filters.onOpen}
+            aria-label={filters.count ? `${filters.label}, ${filters.count} active` : filters.label}
+            className={CHIP}
+          >
+            <SlidersHorizontal aria-hidden="true" className="h-[17px] w-[17px]" strokeWidth={2} />
+            {filters.label}
+            {filters.count ? (
+              <span className="grid h-6 min-w-6 place-items-center rounded-full bg-action px-1.5 text-[0.75rem] text-white">
+                {filters.count}
+              </span>
+            ) : null}
+          </button>
+        ) : null}
         <LayerPanel
           open={panelOpen}
           onOpenChange={setPanelOpen}
@@ -965,10 +968,16 @@ function LayerPanel({
 function LayerKey({ layer }: { layer: Layer }) {
   if (layer === 'events') {
     return (
-      <span
-        aria-hidden="true"
-        className="h-[18px] w-[18px] flex-none rounded-full border-[2.5px] border-white bg-[#102a4c] shadow-[0_0_0_1px_#102a4c]"
-      />
+      <svg aria-hidden="true" viewBox="0 0 26 34" className="h-[23px] w-[18px] flex-none">
+        <path
+          d="M13 33C9.5 25 1.5 20 1.5 13a11.5 11.5 0 1 1 23 0c0 7-8 12-11.5 20Z"
+          fill="#102a4c"
+          stroke="#ffffff"
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+        <circle cx="13" cy="13" r="4.5" fill="#ffffff" />
+      </svg>
     );
   }
   if (layer === 'peers') {

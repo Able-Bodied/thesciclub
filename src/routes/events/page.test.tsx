@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccountContext } from '@/lib/account-context';
 import type * as Events from '@/lib/events';
 import type * as Grants from '@/lib/grants';
 import type { MapData } from '@/lib/map-data';
@@ -98,9 +99,6 @@ vi.mock('@/routes/map/club-map', () => ({
       <div data-testid="club-map">
         <p>On the map: {(props.events ?? []).map((event) => event.id).join(', ')}</p>
         <p>Organizations on the map: {(props.organizations ?? []).map((o) => o.name).join(', ')}</p>
-        <button type="button" onClick={props.filters.onOpen}>
-          {props.filters.label}
-        </button>
         <button type="button" onClick={props.onUnsupported}>
           No WebGL2
         </button>
@@ -217,7 +215,7 @@ describe('EventsPage', () => {
       await screen.findByTestId('club-map');
       const near = screen.getByText(/^On the map:/).textContent;
       expect(near.split(', ')).toHaveLength(3);
-      await user.click(screen.getByRole('button', { name: 'Filter events' }));
+      await user.click(screen.getByRole('button', { name: /^Filters/ }));
       expect(screen.queryByLabelText(/^Within 50 miles/)).toBeNull();
     });
 
@@ -271,10 +269,56 @@ describe('EventsPage', () => {
       expect(screen.queryByText('Wheelchair rugby')).not.toBeInTheDocument();
     });
 
-    it('hides the filter button under Organizations, which it cannot filter', async () => {
+    it('keeps the filter button under Organizations, for the directory’s own filters', async () => {
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Organizations' }));
-      expect(screen.queryByRole('button', { name: 'Filters' })).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(screen.getByRole('dialog', { name: 'Filter organizations' })).toBeInTheDocument();
+    });
+
+    it('filters the events as each letter is typed, and says the search is for them', async () => {
+      renderPage();
+      await userEvent.type(screen.getByRole('searchbox', { name: 'Search events' }), 'rugby');
+      expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();
+      expect(screen.queryByText('Newly injured coffee')).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Clear the search' }));
+      expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
+    });
+
+    it('searches organizations under Organizations, and does not count it as a filter', async () => {
+      renderPage('/events?segment=orgs');
+      await userEvent.type(screen.getByRole('searchbox', { name: 'Search organizations' }), 'x');
+      expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
+    });
+
+    it('offers + to every member, for an organization if they cannot add events', () => {
+      render(
+        <AccountContext.Provider
+          value={{ status: 'member', userId: 'me', isAdmin: false, displayName: 'Bo' }}
+        >
+          <MemoryRouter initialEntries={['/events']}>
+            <EventsPage />
+          </MemoryRouter>
+        </AccountContext.Provider>,
+      );
+      expect(screen.getByRole('link', { name: 'Add' })).toHaveAttribute(
+        'href',
+        '/events/new?add=organization',
+      );
+    });
+
+    it('leaves + off the map', async () => {
+      render(
+        <AccountContext.Provider
+          value={{ status: 'member', userId: 'me', isAdmin: false, displayName: 'Bo' }}
+        >
+          <MemoryRouter initialEntries={['/events?view=map']}>
+            <EventsPage />
+          </MemoryRouter>
+        </AccountContext.Provider>,
+      );
+      await screen.findByTestId('club-map');
+      expect(screen.queryByRole('link', { name: 'Add' })).toBeNull();
     });
   });
 
@@ -486,7 +530,7 @@ describe('List or Map', () => {
   it('gives the map the filtered list, so the two agree', async () => {
     renderPage('/events?view=map');
     expect(await screen.findByText('On the map: rugby, coffee, zoom')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Filter events' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     await userEvent.click(screen.getByRole('button', { name: 'peer-support' }));
     expect(screen.getByText('On the map: coffee')).toBeInTheDocument();
   });
@@ -496,8 +540,8 @@ describe('List or Map', () => {
       event.id === 'coffee' ? { ...event, format: 'hybrid' } : event,
     );
     renderPage('/events?view=map');
-    expect(screen.queryByRole('button', { name: /^Filters/ })).toBeNull();
-    await userEvent.click(await screen.findByRole('button', { name: 'Filter events' }));
+    await screen.findByTestId('club-map');
+    await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     expect(screen.getByRole('dialog', { name: 'Filter events' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'In person' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Online' })).toBeNull();
@@ -541,7 +585,7 @@ describe('List or Map', () => {
   it('says the map holds upcoming events only when the list is of past ones', async () => {
     renderPage('/events?view=map');
     expect(map.props?.eventsNote).toBeUndefined();
-    await userEvent.click(await screen.findByRole('button', { name: 'Filter events' }));
+    await userEvent.click(await screen.findByRole('button', { name: /^Filters/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Past events' }));
     expect(map.props?.eventsNote).toMatch(/upcoming events only/);
   });
@@ -555,12 +599,15 @@ describe('List or Map', () => {
     expect(
       await screen.findByText('Organizations on the map: BORP, NorCal SCI'),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Filter organizations' }));
-    const sheet = screen.getByRole('dialog', { name: 'Filter organizations' });
-    await userEvent.type(within(sheet).getByRole('searchbox'), 'berkeley');
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Search organizations' }),
+      'berkeley',
+    );
     expect(screen.getByText('Organizations on the map: BORP')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+    expect(screen.getByRole('dialog', { name: 'Filter organizations' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Show 1' }));
     // The list on the same segment agrees.
-    await userEvent.click(within(sheet).getByRole('button', { name: 'Show 1' }));
     await userEvent.click(screen.getByRole('button', { name: 'List' }));
     expect(screen.getByRole('searchbox', { name: 'Search organizations' })).toHaveValue('berkeley');
   });
