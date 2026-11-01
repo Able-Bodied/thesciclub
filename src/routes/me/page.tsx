@@ -457,10 +457,13 @@ export default function MePage() {
                 Version{' '}
                 {new Date(`${import.meta.env.VITE_APP_BUILT}Z`).toLocaleString('en-US', {
                   timeZone: 'America/Los_Angeles',
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                })}{' '}
-                Pacific
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                  timeZoneName: 'short',
+                })}
               </p>
             ) : null}
             {/* Display first: it is what somebody who finds the club hard to
