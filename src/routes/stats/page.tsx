@@ -270,12 +270,7 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
   const tiles: Tile[] = [
     ['Members', stats?.members, 'Right now.'],
     ['New members', stats?.joined],
-    ['Left', stats?.left],
-    ['From a QR code', stats?.byCode, 'Of the new members.'],
-    ['From checking in', stats?.byCheckIn, 'Of the new members.'],
     ['Events held', stats?.eventsHeld],
-    ['Events coming up', stats?.eventsAhead, 'Right now.'],
-    ['Said Going', stats?.going, 'All events held, together.'],
     ['Checked in', stats?.checkedIn, 'All events held, together.'],
     [
       'Turnout',

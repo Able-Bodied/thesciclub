@@ -107,12 +107,8 @@ const { default: StatsPage } = await import('@/routes/stats/page');
 const stats = (o: Partial<OrganizationStats> = {}): OrganizationStats => ({
   members: 12,
   joined: 3,
-  left: 1,
   waiting: 0,
-  byCode: 2,
-  byCheckIn: 1,
   eventsHeld: 2,
-  eventsAhead: 4,
   going: 8,
   checkedIn: 7,
   saidGoingAndCame: 6,
@@ -227,6 +223,26 @@ describe('your organization', () => {
     expect(state.orgAsked).toEqual([['o1', 30]]);
     await userEvent.click(within(section).getByRole('button', { name: '90 days' }));
     expect(state.orgAsked.at(-1)).toEqual(['o1', 90]);
+  });
+
+  it('shows only the numbers that were kept', async () => {
+    state.orgIds = new Set(['o1']);
+    renderPage();
+    const section = screen.getByRole('region', { name: 'Your organization' });
+    await within(section).findByText('12');
+    expect(
+      within(section)
+        .getAllByRole('term')
+        .map((tile) => tile.textContent),
+    ).toEqual([
+      'Members',
+      'New members',
+      'Events held',
+      'Checked in',
+      'Turnout',
+      'Reviews',
+      'Average rating',
+    ]);
   });
 
   it('leads to whoever is waiting, on the organization’s page', async () => {

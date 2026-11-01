@@ -210,12 +210,8 @@ export async function fetchMyIntroductions(): Promise<Result<MadeIntroduction[]>
 export interface OrganizationStats {
   members: number;
   joined: number;
-  left: number;
   waiting: number;
-  byCode: number;
-  byCheckIn: number;
   eventsHeld: number;
-  eventsAhead: number;
   going: number;
   checkedIn: number;
   /** Of those checked in, who had said Going: a walk-in is not turnout. */
@@ -228,12 +224,8 @@ export interface OrganizationStats {
 interface OrganizationStatsRow {
   members: number;
   joined: number;
-  left_it: number;
   waiting: number;
-  by_code: number;
-  by_check_in: number;
   events_held: number;
-  events_ahead: number;
   going: number;
   checked_in: number;
   said_going_and_came: number;
@@ -258,12 +250,8 @@ export async function fetchOrganizationStats(
       ? {
           members: row.members,
           joined: row.joined,
-          left: row.left_it,
           waiting: row.waiting,
-          byCode: row.by_code,
-          byCheckIn: row.by_check_in,
           eventsHeld: row.events_held,
-          eventsAhead: row.events_ahead,
           going: row.going,
           checkedIn: row.checked_in,
           saidGoingAndCame: row.said_going_and_came,
