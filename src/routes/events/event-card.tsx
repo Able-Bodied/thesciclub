@@ -291,7 +291,7 @@ export function EventCard({
           <OutOfStateMark state={event.state} className="mt-1" />
 
           {event.detailSummary ? (
-            <span className="mt-1.5 block text-[0.8125rem] text-ink2 leading-[1.45]">
+            <span className="mt-1.5 block text-[0.8125rem] text-ink leading-[1.45]">
               {event.detailSummary}
             </span>
           ) : null}
