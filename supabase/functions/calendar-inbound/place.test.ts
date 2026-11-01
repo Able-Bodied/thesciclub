@@ -86,6 +86,24 @@ describe('a place and its link, apart', () => {
     ).toMatchObject({ link: 'https://meet.google.com/abc-defg-hij', format: 'in_person' });
   });
 
+  it('a conference link wins over a page written in the place', () => {
+    const meet = 'https://meet.google.com/abc-defg-hij';
+    const page = 'https://example.org/picnic';
+    expect(whereOf({ ...none, location: page, conference: [meet] })).toMatchObject({
+      place: '',
+      link: meet,
+      format: 'online',
+    });
+    expect(
+      whereOf({ ...none, location: `123 J St, Sacramento, CA 95814; ${page}`, conference: [meet] }),
+    ).toMatchObject({ place: '123 J St, Sacramento, CA 95814', link: meet, format: 'in_person' });
+  });
+
+  it('keeps a page written in the place when there is no call', () => {
+    const page = 'https://example.org/picnic';
+    expect(whereOf({ ...none, location: page }).link).toBe(page);
+  });
+
   it('a meeting link wins over the invitation’s own URL; the URL is kept without one', () => {
     const page = 'https://example.org/picnic';
     expect(
