@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   eventIdIn,
+  isOrganizationsLink,
   isPreviewer,
+  organizationMapPage,
   type PreviewEvent,
   previewPage,
   whenLine,
@@ -58,6 +60,19 @@ describe('a link to an event in a text message', () => {
   it('cannot be broken out of by an event’s name', () => {
     const page = previewPage({ ...event, title: '"><script>alert(1)</script>' }, null);
     expect(page).not.toContain('<script>');
+  });
+
+  it('gives a link to the organizations its own title and picture', () => {
+    const link = (path: string) => isOrganizationsLink(new URL(`https://thesciclub.com${path}`));
+    expect(link('/events?segment=orgs&view=map')).toBe(true);
+    expect(link('/events?view=map&segment=orgs')).toBe(true);
+    expect(link('/events?view=map')).toBe(false);
+    expect(link(`/events/${ID}?segment=orgs`)).toBe(false);
+    const page = organizationMapPage();
+    expect(page).toContain(
+      '<meta property="og:title" content="Map of SCI organizations on The SCI Club" />',
+    );
+    expect(page).toContain('content="https://thesciclub.com/share/organization-map.jpg"');
   });
 
   it('falls back to the club’s picture', () => {

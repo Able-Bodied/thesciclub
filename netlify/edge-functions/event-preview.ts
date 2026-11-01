@@ -57,6 +57,37 @@ export function whenLine(event: PreviewEvent): string {
 const escaped = (text: string) =>
   text.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** The Organizations list or map, as a link to it says: /events?segment=orgs. */
+export function isOrganizationsLink(url: URL): boolean {
+  return /^\/events\/?$/.test(url.pathname) && url.searchParams.get('segment') === 'orgs';
+}
+
+/** A picture of the map, from public/share/: no reading, so nothing to go wrong. */
+export function organizationMapPage(): string {
+  const title = 'Map of SCI organizations on The SCI Club';
+  const description =
+    'Adaptive sports, peer support, rehab and more, near you and across the country.';
+  const url = `${SITE}/events?segment=orgs&view=map`;
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>${title}</title>
+<meta name="description" content="${description}" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="The SCI Club" />
+<meta property="og:title" content="${title}" />
+<meta property="og:description" content="${description}" />
+<meta property="og:url" content="${escaped(url)}" />
+<meta property="og:image" content="${SITE}/share/organization-map.jpg" />
+<meta property="og:image:width" content="792" />
+<meta property="og:image:height" content="749" />
+<meta name="twitter:card" content="summary_large_image" />
+</head>
+<body><a href="${escaped(url)}">${title}</a></body>
+</html>`;
+}
+
 export function previewPage(event: PreviewEvent, image: string | null): string {
   const when = whenLine(event);
   const place = [event.location, event.city, event.state].filter(Boolean).join(', ');
@@ -109,10 +140,20 @@ export default async function eventPreview(
   request: Request,
   context: { next: () => Promise<Response> },
 ): Promise<Response> {
-  const id = eventIdIn(new URL(request.url).pathname);
+  const url = new URL(request.url);
+  const previewing = isPreviewer(request.headers.get('user-agent'));
+  if (previewing && isOrganizationsLink(url)) {
+    return new Response(organizationMapPage(), {
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=300',
+      },
+    });
+  }
+  const id = eventIdIn(url.pathname);
   const base = Netlify.env.get('VITE_SUPABASE_URL');
   const key = Netlify.env.get('VITE_SUPABASE_ANON_KEY');
-  if (!id || !base || !key || !isPreviewer(request.headers.get('user-agent'))) {
+  if (!id || !base || !key || !previewing) {
     return await context.next();
   }
   try {

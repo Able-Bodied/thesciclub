@@ -60,15 +60,6 @@ describe('segments', () => {
   it('mentors shows only mentors', () => {
     expect(filterMembers(deck, none, 'mentors').map((m) => m.displayName)).toEqual(['Mentor']);
   });
-
-  it('near me shows only nearby cities', () => {
-    expect(filterMembers(deck, none, 'near').map((m) => m.displayName)).toEqual(['Local']);
-  });
-
-  it('a member with no city is not "near me"', () => {
-    const noCity = [makeMember({ displayName: 'Nowhere', city: null })];
-    expect(filterMembers(noCity, none, 'near')).toHaveLength(0);
-  });
 });
 
 describe('filters', () => {

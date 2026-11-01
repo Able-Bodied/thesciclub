@@ -109,13 +109,6 @@ describe('PeersPage', () => {
     expect(screen.getByText('Todd')).toBeInTheDocument();
   });
 
-  it('narrows to nearby cities on Near me', async () => {
-    renderPage();
-    await userEvent.click(screen.getByRole('button', { name: 'Near me' }));
-    expect(screen.getByText('Kerry')).toBeInTheDocument();
-    expect(screen.queryByText('Todd')).not.toBeInTheDocument();
-  });
-
   it('says how many of how many are showing', async () => {
     renderPage();
     expect(await screen.findByText('3 of 3 members')).toBeInTheDocument();

@@ -49,6 +49,11 @@
   path = "/events/*"
   function = "event-preview"
 
+# And a link to the organizations' map.
+[[edge_functions]]
+  path = "/events"
+  function = "event-preview"
+
 [[headers]]
   for = "/*"
   [headers.values]
