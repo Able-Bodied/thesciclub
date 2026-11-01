@@ -78,6 +78,14 @@ describe('choosing a new password', () => {
     expect(auth.forgotten).toBe(1);
   });
 
+  // Supabase ends the member's other sessions on every password change.
+  it('says saving signs out the other devices', async () => {
+    renderPage();
+    expect(
+      await screen.findByText(/Saving it signs you out on your other devices/),
+    ).toBeInTheDocument();
+  });
+
   it('says when the two do not match, and does not save', async () => {
     renderPage();
     await userEvent.type(await screen.findByLabelText('New password'), 'a new password');
