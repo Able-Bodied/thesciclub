@@ -554,7 +554,10 @@ All live. Migration headers and the files named say how and why.
 - **Map** (2026-10-25, migrations `20261025015000`–`040000`): List | Map on
   Events and Peers (`src/routes/map/`, `src/lib/map/`). Peers are a count at
   a confirmed city middle (`city_places.settlement`), never finer; "Show me
-  on the map" in Me. Events and organization places get an exact pin only
+  on the map" in Me. Below zoom 5, one labelled bubble a state, spaced apart
+  (`foldByState`, `apart`, the `-states` layers); from 5, bubbles by distance.
+  The list's distance filter does not apply to the map. Events and
+  organization places get an exact pin only
   when the geocoded address matches the current one; a save starts the
   Geocode workflow (`.github/workflows/geocode.yml`, `20261026000000`;
   Nominatim refuses Supabase's servers), which places it in a couple of

@@ -140,6 +140,14 @@ interface Feature {
     photo?: string;
     /** The name under the mark: a city's one member, or the organization whose logo it is. */
     label?: string;
+    /** Two letters: what folds it into its state's bubble when zoomed out. */
+    state?: string;
+    /** On a state's bubble: how many points it holds, and their bounds. */
+    point_count?: number;
+    west?: number;
+    south?: number;
+    east?: number;
+    north?: number;
   };
 }
 
@@ -148,7 +156,13 @@ export interface Features {
   features: Feature[];
 }
 
-function feature(point: MapPoint, key: string, count: number, exact?: boolean): Feature {
+function feature(
+  point: MapPoint,
+  key: string,
+  count: number,
+  exact?: boolean,
+  state?: string | null,
+): Feature {
   return {
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [point.longitude, point.latitude] },
@@ -158,6 +172,7 @@ function feature(point: MapPoint, key: string, count: number, exact?: boolean): 
       longitude: point.longitude,
       latitude: point.latitude,
       ...(exact === undefined ? {} : { exact }),
+      ...(state ? { state } : {}),
     },
   };
 }
@@ -180,7 +195,15 @@ export function shortLabel(name: string, max = LABEL_MAX): string {
 export function eventFeatures(spots: EventSpot[]): Features {
   return {
     type: 'FeatureCollection',
-    features: spots.map((spot) => feature(spot, spot.key, spot.events.length, spot.exact)),
+    features: spots.map((spot) =>
+      feature(
+        spot,
+        spot.key,
+        spot.events.length,
+        spot.exact,
+        spot.events.find((event) => event.state)?.state,
+      ),
+    ),
   };
 }
 
@@ -188,7 +211,7 @@ export function peerFeatures(cities: PeerCity[]): Features {
   return {
     type: 'FeatureCollection',
     features: cities.map((city) => {
-      const point = feature(city, city.key, city.members.length);
+      const point = feature(city, city.key, city.members.length, undefined, city.state);
       const [only] = city.members;
       if (city.members.length === 1 && only) {
         if (only.photoPath) point.properties.photo = only.id;
@@ -215,7 +238,13 @@ export function organizationFeatures(spots: OrganizationSpot[]): Features {
   return {
     type: 'FeatureCollection',
     features: spots.map((spot) => {
-      const point = feature(spot, spot.key, spot.organizations.length, spot.exact);
+      const point = feature(
+        spot,
+        spot.key,
+        spot.organizations.length,
+        spot.exact,
+        spot.places[0]?.state,
+      );
       point.properties.orgs = `,${spot.organizations.map((o) => o.id).join(',')},`;
       const [first] = [...spot.organizations].sort((a, b) => a.name.localeCompare(b.name));
       if (first) {
@@ -223,6 +252,101 @@ export function organizationFeatures(spots: OrganizationSpot[]): Features {
         point.properties.label = shortLabel(first.name);
       }
       return point;
+    }),
+  };
+}
+
+/**
+ * One bubble a state, at the middle of its places, for far out: bubbles by
+ * distance alone folded Atlanta and Chicago in with New York (the owner,
+ * 2026-10-31). A state with one point, or a point with no state, stays itself.
+ */
+export function foldByState(data: Features): Features {
+  const byState = new Map<string, Feature[]>();
+  const alone: Feature[] = [];
+  for (const point of data.features) {
+    const { state } = point.properties;
+    if (!state) alone.push(point);
+    else byState.set(state, [...(byState.get(state) ?? []), point]);
+  }
+  const bubbles = [...byState].flatMap(([state, points]): Feature[] => {
+    const [only] = points;
+    if (only && points.length === 1) return [only];
+    const lngs = points.map((point) => point.properties.longitude);
+    const lats = points.map((point) => point.properties.latitude);
+    const count = points.reduce((sum, point) => sum + point.properties.count, 0);
+    const middle = (of: (point: Feature) => number) =>
+      points.reduce((sum, point) => sum + of(point) * point.properties.count, 0) / count;
+    const longitude = middle((point) => point.properties.longitude);
+    const latitude = middle((point) => point.properties.latitude);
+    return [
+      {
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [longitude, latitude] },
+        properties: {
+          key: `state:${state}`,
+          label: state,
+          count,
+          longitude,
+          latitude,
+          state,
+          point_count: points.length,
+          west: Math.min(...lngs),
+          south: Math.min(...lats),
+          east: Math.max(...lngs),
+          north: Math.max(...lats),
+        },
+      },
+    ];
+  });
+  return { type: 'FeatureCollection', features: [...bubbles, ...alone] };
+}
+
+const WORLD_AT_ZOOM_0 = 512;
+
+/**
+ * The same marks moved just far enough apart to read and tap at this zoom,
+ * `gap` pixels between middles. Only where they are drawn: their properties
+ * keep the true point. The Northeast's states fall on each other far out.
+ */
+export function apart(data: Features, zoom: number, gap: number): Features {
+  const world = WORLD_AT_ZOOM_0 * 2 ** zoom;
+  const toPixels = ([lng, lat]: [number, number]): [number, number] => [
+    ((lng + 180) / 360) * world,
+    (0.5 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / (2 * Math.PI)) * world,
+  ];
+  const toPlace = ([x, y]: [number, number]): [number, number] => [
+    (x / world) * 360 - 180,
+    (Math.atan(Math.exp((0.5 - y / world) * 2 * Math.PI)) * 360) / Math.PI - 90,
+  ];
+  const at = data.features.map((point) => toPixels(point.geometry.coordinates));
+  for (let round = 0; round < 60; round++) {
+    let moved = false;
+    for (const [i, a] of at.entries()) {
+      for (const b of at.slice(i + 1)) {
+        const dx = b[0] - a[0];
+        const dy = b[1] - a[1];
+        const distance = Math.hypot(dx, dy);
+        if (distance >= gap) continue;
+        moved = true;
+        // Two at one point part along a fixed line, so the same map is drawn each time.
+        const [ux, uy] = distance > 0 ? [dx / distance, dy / distance] : [1, 0];
+        const push = (gap - distance) / 2;
+        a[0] -= ux * push;
+        a[1] -= uy * push;
+        b[0] += ux * push;
+        b[1] += uy * push;
+      }
+    }
+    if (!moved) break;
+  }
+  return {
+    type: 'FeatureCollection',
+    features: data.features.map((point, index) => {
+      const pixels = at[index];
+      return pixels
+        ? { ...point, geometry: { type: 'Point', coordinates: toPlace(pixels) } }
+        : point;
     }),
   };
 }

@@ -2,9 +2,20 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/map', () => ({ MAP_FONT: 'Noto Sans Regular' }));
 
-const { addIcon, addLayers, closeUpOf, SOURCES, setHome, spreadOf, STREET_ZOOM } = await import(
-  '@/routes/map/map-layers'
-);
+const {
+  addIcon,
+  addLayers,
+  closeUpOf,
+  fitSpread,
+  LAYER_IDS,
+  pick,
+  SOURCES,
+  STATE_SOURCES,
+  STATES_APART_FROM,
+  setHome,
+  spreadOf,
+  STREET_ZOOM,
+} = await import('@/routes/map/map-layers');
 
 /** A 2D context as iOS 15's Safari has it: no roundRect. */
 function oldSafariPen() {
@@ -103,7 +114,9 @@ describe("organizations' places", () => {
     const { added } = layersOf();
     const ids = added.map((layer) => layer.id);
     const chip = added.find((layer) => layer.id === 'club-organizations-count');
-    expect(ids.indexOf('club-organizations-count')).toBe(ids.indexOf('club-organizations') + 1);
+    expect(ids.indexOf('club-organizations-count')).toBeGreaterThan(
+      ids.indexOf('club-organizations'),
+    );
     expect(chip?.filter).toEqual([
       'all',
       ['!', ['has', 'point_count']],
@@ -215,16 +228,103 @@ describe('spreadOf (the owner, 2026-10-28)', () => {
 });
 
 describe('a place reached from far out (the owner, 2026-10-31)', () => {
+  const hit = (properties: Record<string, unknown>, source = SOURCES.organizations) =>
+    ({
+      source,
+      properties,
+      // Rounded to its tile, as MapLibre hands back at zoom 2.5.
+      geometry: { type: 'Point', coordinates: [-73.2239, 44.4729] },
+    }) as never;
+
   it('goes to the true point, not the rounded one', async () => {
     const target = await closeUpOf(
       { getZoom: () => 2.5 } as never,
-      {
-        source: SOURCES.organizations,
-        properties: { exact: true, longitude: -73.2191474, latitude: 44.4753549 },
-        // Rounded to its tile, as MapLibre hands back at zoom 2.5.
-        geometry: { type: 'Point', coordinates: [-73.2239, 44.4729] },
-      } as never,
+      hit({ exact: true, longitude: -73.2191474, latitude: 44.4753549 }),
     );
     expect(target).toEqual({ center: [-73.2191474, 44.4753549], zoom: STREET_ZOOM });
+  });
+
+  it('finds a lone place drawn at state level', async () => {
+    const target = await closeUpOf(
+      { getZoom: () => 2.5 } as never,
+      hit({ exact: true, longitude: -73.2, latitude: 44.4 }, STATE_SOURCES.organizations),
+    );
+    expect(target?.zoom).toBe(STREET_ZOOM);
+  });
+});
+
+describe("a state's bubble", () => {
+  const bounds = { west: -124, south: 32.5, east: -114, north: 42 };
+  const bubble = {
+    source: STATE_SOURCES.organizations,
+    properties: { key: 'state:CA', count: 71, point_count: 40, ...bounds },
+  } as never;
+
+  it('fits the whole state when tapped, and needs the zoom that opens it', async () => {
+    const picked = await pick({} as never, [bubble], [-120, 37]);
+    expect(picked.spread).toEqual([
+      [-124, 32.5],
+      [-114, 42],
+    ]);
+    expect(picked.atLeast).toBe(STATES_APART_FROM);
+  });
+
+  it('goes no further out than opens it, on a screen too small to fit it', () => {
+    const map = {
+      cameraForBounds: () => ({ center: [-119, 37], zoom: 3.9 }),
+      easeTo: vi.fn(),
+      fitBounds: vi.fn(),
+    };
+    fitSpread(
+      map as never,
+      [
+        [-124, 32.5],
+        [-114, 42],
+      ],
+      STATES_APART_FROM,
+    );
+    expect(map.easeTo).toHaveBeenCalledWith({ center: [-119, 37], zoom: STATES_APART_FROM });
+    expect(map.fitBounds).not.toHaveBeenCalled();
+  });
+
+  it('fits normally where the state fits past that zoom', () => {
+    const map = {
+      cameraForBounds: () => ({ center: [-119, 37], zoom: 5.7 }),
+      easeTo: vi.fn(),
+      fitBounds: vi.fn(),
+    };
+    fitSpread(
+      map as never,
+      [
+        [-124, 32.5],
+        [-114, 42],
+      ],
+      STATES_APART_FROM,
+    );
+    expect(map.fitBounds).toHaveBeenCalled();
+    expect(map.easeTo).not.toHaveBeenCalled();
+  });
+});
+
+describe('the two sets of layers', () => {
+  it('hands over at one zoom, with nothing drawn twice or missing', () => {
+    const added: { id: string; minzoom?: number; maxzoom?: number }[] = [];
+    const map = {
+      hasImage: () => false,
+      addImage: vi.fn(),
+      setMissingStyleImageResolver: vi.fn(),
+      getSource: () => undefined,
+      addSource: vi.fn(),
+      getLayer: () => undefined,
+      addLayer: (layer: (typeof added)[number]) => added.push(layer),
+    };
+    addLayers(map as never);
+    for (const id of Object.values(LAYER_IDS).flat()) {
+      const layer = added.find((each) => each.id === id);
+      expect(layer).toBeDefined();
+      if (id.endsWith('-states') || id === 'club-events-state-name') {
+        expect(layer?.maxzoom).toBe(STATES_APART_FROM);
+      } else expect(layer?.minzoom).toBe(STATES_APART_FROM);
+    }
   });
 });
