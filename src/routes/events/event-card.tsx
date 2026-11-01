@@ -1,5 +1,4 @@
 import { ExternalLink } from 'lucide-react';
-import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { EventCover } from '@/routes/events/event-cover';
 import { isOnline } from '@/routes/events/filters';
@@ -8,7 +7,7 @@ import { GoingCount } from '@/routes/events/going-count';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { placeLine } from '@/routes/events/place';
-import { descriptionPreview, safeHref } from '@/routes/events/rich-text';
+import { safeHref } from '@/routes/events/rich-text';
 import { ViewOnMap } from '@/routes/events/view-on-map';
 import type { ClubEvent, Organization, RsvpStatus } from '@/types/domain';
 
@@ -143,10 +142,6 @@ export function EventCard({
   const whenLine = timeRange(event.startTime, event.endTime, event.timezone, event.allDay);
   const whereLine = placeLine(event);
   const registerHref = safeHref(event.registrationUrl);
-  const preview = useMemo(
-    () => descriptionPreview(event.descriptionHtml, event.description),
-    [event.descriptionHtml, event.description],
-  );
 
   // A past event is a line, not a card. Everything the full card carries is
   // there to answer "should I go to this" — the tags, the place, who else is
@@ -295,9 +290,9 @@ export function EventCard({
           ) : null}
           <OutOfStateMark state={event.state} className="mt-1" />
 
-          {preview ? (
-            <span className="mt-1.5 line-clamp-3 block text-[0.8125rem] text-ink2 leading-[1.45]">
-              {preview}
+          {event.detailSummary ? (
+            <span className="mt-1.5 block text-[0.8125rem] text-ink2 leading-[1.45]">
+              {event.detailSummary}
             </span>
           ) : null}
         </span>

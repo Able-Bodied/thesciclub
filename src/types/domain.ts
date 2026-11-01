@@ -689,6 +689,8 @@ export interface ClubEvent {
   description: string;
   /** Sanitized HTML with absolute links, for the detail view. */
   descriptionHtml: string;
+  /** A sentence or two for a card (20261031140000). A card without one shows no words. */
+  detailSummary?: string | null;
   /** ISO 8601. Always present — an event with no start time is not ingested. */
   startTime: string;
   endTime: string | null;
