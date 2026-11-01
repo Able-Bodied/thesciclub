@@ -684,25 +684,9 @@ describe('an event that is over', () => {
   });
 });
 
-describe('View on the map, on the event page', () => {
-  it('opens the Events map on this event', async () => {
+describe('the place on the event page', () => {
+  it('has no button to the club map: the place itself opens a map', async () => {
     state.events = [makeEvent({ id: 'rugby', title: 'Rugby', startTime: aheadByDays(3) })];
-    renderDetail();
-    expect(await screen.findByRole('link', { name: 'View Rugby on the map' })).toHaveAttribute(
-      'href',
-      '/events?view=map&show=rugby',
-    );
-  });
-
-  it('is not offered for an event only online, or one over', async () => {
-    state.events = [
-      makeEvent({ id: 'rugby', title: 'Rugby', format: 'online', startTime: aheadByDays(3) }),
-    ];
-    const { unmount } = renderDetail();
-    expect(await screen.findByRole('heading', { name: 'Rugby' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /on the map/ })).toBeNull();
-    unmount();
-    state.events = [makeEvent({ id: 'rugby', title: 'Rugby', startTime: '2020-03-04T18:00:00Z' })];
     renderDetail();
     expect(await screen.findByRole('heading', { name: 'Rugby' })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /on the map/ })).toBeNull();

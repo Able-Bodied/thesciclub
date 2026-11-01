@@ -344,6 +344,8 @@ describe('View on the map on a card', () => {
     const link = screen.getByRole('link', { name: 'View Rugby on the map' });
     expect(link).toHaveAttribute('href', '/events?view=map&show=x');
     expect(link.closest('button')).toBeNull();
+    // Not on a phone, where the map's sheet leaves too little of it.
+    expect(link).toHaveClass('hidden', 'lg:inline-flex');
   });
 
   it('is not drawn without a place to go', () => {

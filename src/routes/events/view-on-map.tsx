@@ -6,17 +6,16 @@ import { preloadMap } from '@/routes/map/view-switch';
 /**
  * "View on the map": a link, not a button, as it goes somewhere. It loads
  * nothing of the map itself; a hover or focus may start its script early.
+ * Wide screens only (the owner, 2026-10-31): on a phone the map's sheet leaves
+ * too little of it to use.
  */
 export function ViewOnMap({
   title,
   to,
-  tone = 'card',
   className,
 }: {
   title: string;
   to: string;
-  /** `plate` on the event page's navy band. */
-  tone?: 'card' | 'plate';
   className?: string;
 }) {
   return (
@@ -26,10 +25,7 @@ export function ViewOnMap({
       onPointerEnter={preloadMap}
       onFocus={preloadMap}
       className={cn(
-        'inline-flex min-h-11 items-center gap-1.5 rounded-[13px] px-3.5 font-bold font-head text-[0.875rem] transition-colors',
-        tone === 'plate'
-          ? 'border-[1.6px] border-white/60 text-white hover:bg-plate-hover'
-          : 'border-[1.6px] border-line text-emphasis hover:bg-tint',
+        'hidden min-h-11 items-center gap-1.5 rounded-[13px] border-[1.6px] border-line px-3.5 font-bold font-head text-[0.875rem] text-emphasis transition-colors hover:bg-tint lg:inline-flex',
         className,
       )}
     >
