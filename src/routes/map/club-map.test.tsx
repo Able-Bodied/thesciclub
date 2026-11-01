@@ -278,11 +278,12 @@ describe('what the map says', () => {
         'icon-size',
         mark,
       );
-      // Events' dots as wide as a badge: 16 across the middle, grown alike.
+      // Events' pins grown alike, with the count kept in the head.
+      expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-events-one', 'icon-size', mark);
       expect(the.map?.setPaintProperty).toHaveBeenCalledWith(
-        'club-events-one',
-        'circle-radius',
-        16 * mark,
+        'club-events-count',
+        'text-translate',
+        [0, -21 * mark],
       );
       // Home keeps its size.
       expect(the.map?.setLayoutProperty).toHaveBeenCalledWith('club-home', 'icon-size', 1.5);

@@ -34,6 +34,7 @@ function oldSafariPen() {
       lineTo: record('lineTo'),
       arcTo: record('arcTo'),
       arc: record('arc'),
+      quadraticCurveTo: record('quadraticCurveTo'),
       closePath: record('closePath'),
       fill: record('fill'),
       stroke: record('stroke'),
@@ -58,10 +59,17 @@ describe("the map's badges", () => {
       pen as unknown as CanvasRenderingContext2D,
     );
     const map = { hasImage: () => false, addImage: vi.fn() };
-    for (const id of ['club-peer', 'club-organization', 'club-organization-chip', 'club-home']) {
+    for (const id of [
+      'club-peer',
+      'club-organization',
+      'club-organization-chip',
+      'club-home',
+      'club-event-pin',
+      'club-event-pin-counted',
+    ]) {
       addIcon(map as never, id);
     }
-    expect(map.addImage).toHaveBeenCalledTimes(4);
+    expect(map.addImage).toHaveBeenCalledTimes(6);
     expect(calls).toContain('arcTo');
     expect(calls).not.toContain('roundRect');
   });
@@ -86,7 +94,22 @@ describe("organizations' places", () => {
     return { added, resolver, map };
   }
 
-  it('name their marks in white on a dark map, with no bright glow round the letters', () => {
+  it('mark events with a pin whose tip is the place, a count in the head of a pin of many', () => {
+    const { added } = layersOf();
+    const layer = (id: string) => added.find((each) => each.id === id);
+    expect(layer('club-events-one')?.layout).toMatchObject({
+      'icon-image': 'club-event-pin',
+      'icon-anchor': 'bottom',
+    });
+    expect(layer('club-events-many')?.layout).toMatchObject({
+      'icon-image': 'club-event-pin-counted',
+      'icon-anchor': 'bottom',
+    });
+    const count = layer('club-events-count') as { paint?: Record<string, unknown> } | undefined;
+    expect(count?.paint?.['text-translate']).toEqual([0, -21]);
+  });
+
+  it('name their marks in gold on a dark map, with no bright glow round the letters', () => {
     const names = layersOf().added.filter((layer) => layer.id.endsWith('-name'));
     expect(names.length).toBeGreaterThanOrEqual(3);
     for (const layer of names) {
@@ -94,7 +117,7 @@ describe("organizations' places", () => {
       expect(paint?.['text-color']).toEqual([
         'case',
         ['global-state', 'dark'],
-        '#ffffff',
+        '#e6c46a',
         '#102a4c',
       ]);
       expect(paint?.['text-halo-color']).toEqual([
