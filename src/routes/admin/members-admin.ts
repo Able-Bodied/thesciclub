@@ -108,7 +108,8 @@ export async function fetchMemberPage({
   limit?: number;
 }): Promise<{ ok: true; members: AdminMember[]; total: number } | { ok: false; error: string }> {
   const result = await getSupabase().rpc('admin_member_search', {
-    p_query: query.trim() || null,
+    // A username is stored without its @, and no address starts with one.
+    p_query: query.trim().replace(/^@/, '') || null,
     p_filter: filter,
     p_member: memberId,
     p_limit: limit,
