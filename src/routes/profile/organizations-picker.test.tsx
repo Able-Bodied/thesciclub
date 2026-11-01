@@ -30,10 +30,9 @@ vi.mock('@/routes/profile/profile-api', () => ({
 const near = makeOrganization({ id: 'near', name: 'NorCal SCI', city: 'San Jose', state: 'CA' });
 const state2 = makeOrganization({ id: 'state', name: 'Ride On', city: 'Fresno', state: 'CA' });
 const far = makeOrganization({ id: 'far', name: 'Peak Adaptive', city: 'Denver', state: 'CO' });
-const club = makeOrganization({ id: 'club', name: 'The SCI Club', isTheClub: true });
 
 beforeEach(() => {
-  state.organizations = [far, state2, near, club];
+  state.organizations = [far, state2, near];
   state.following = new Set();
   state.requested = new Set();
   state.error = null;
@@ -98,12 +97,6 @@ describe('the organizations picker', () => {
     });
     await userEvent.selectOptions(list, 'Peak Adaptive');
     expect(state.toggle).toHaveBeenCalledWith('far');
-  });
-
-  it('never offers The SCI Club', async () => {
-    render(<OrganizationsPicker />);
-    await screen.findByRole('button', { name: 'NorCal SCI' });
-    expect(screen.queryByText('The SCI Club')).toBeNull();
   });
 
   it('shows one the member is in as chosen, wherever it is', async () => {

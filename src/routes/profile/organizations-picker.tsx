@@ -62,13 +62,12 @@ export function OrganizationsPicker() {
     };
   }, []);
 
-  const joinable = useMemo(() => organizations.filter((o) => !o.isTheClub), [organizations]);
-  const nearby = useMemo(() => nearbyOrganizations(joinable, place), [joinable, place]);
+  const nearby = useMemo(() => nearbyOrganizations(organizations, place), [organizations, place]);
   const buttons = [
-    ...joinable.filter((o) => following.has(o.id) || requested.has(o.id)),
+    ...organizations.filter((o) => following.has(o.id) || requested.has(o.id)),
     ...nearby.filter((o) => !following.has(o.id) && !requested.has(o.id)),
   ];
-  const others = joinable.filter((o) => !buttons.includes(o));
+  const others = organizations.filter((o) => !buttons.includes(o));
 
   if (loading) {
     return (
