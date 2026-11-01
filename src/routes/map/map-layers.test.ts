@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/lib/map', () => ({ MAP_FONT: 'Noto Sans Regular' }));
 
-const { addIcon, addLayers, setHome, spreadOf } = await import('@/routes/map/map-layers');
+const { addIcon, addLayers, closeUpOf, SOURCES, setHome, spreadOf, STREET_ZOOM } = await import(
+  '@/routes/map/map-layers'
+);
 
 /** A 2D context as iOS 15's Safari has it: no roundRect. */
 function oldSafariPen() {
@@ -209,5 +211,20 @@ describe('spreadOf (the owner, 2026-10-28)', () => {
         [-122.27, 37.8],
       ]),
     ).toBeNull();
+  });
+});
+
+describe('a place reached from far out (the owner, 2026-10-31)', () => {
+  it('goes to the true point, not the rounded one', async () => {
+    const target = await closeUpOf(
+      { getZoom: () => 2.5 } as never,
+      {
+        source: SOURCES.organizations,
+        properties: { exact: true, longitude: -73.2191474, latitude: 44.4753549 },
+        // Rounded to its tile, as MapLibre hands back at zoom 2.5.
+        geometry: { type: 'Point', coordinates: [-73.2239, 44.4729] },
+      } as never,
+    );
+    expect(target).toEqual({ center: [-73.2191474, 44.4753549], zoom: STREET_ZOOM });
   });
 });

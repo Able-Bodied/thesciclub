@@ -60,6 +60,8 @@ describe('peers on the map', () => {
     expect(features[0]?.properties).toEqual({
       key: `San Jose|CA|${SAN_JOSE.latitude},${SAN_JOSE.longitude}`,
       count: 3,
+      longitude: SAN_JOSE.longitude,
+      latitude: SAN_JOSE.latitude,
     });
   });
 });
@@ -89,8 +91,8 @@ describe('events on the map', () => {
 
   it('marks an event at its city middle as approximate', () => {
     const features = eventFeatures(eventSpots(placed, events)).features;
-    expect(features.map((feature) => feature.properties)).toEqual([
-      { key: '37.3,-121.9|exact', count: 2, exact: true },
+    expect(features.map((feature) => feature.properties)).toMatchObject([
+      { key: '37.3,-121.9|exact', count: 2, exact: true, longitude: -121.9, latitude: 37.3 },
       { key: '37.33874,-121.88524|city', count: 2, exact: false },
     ]);
   });
@@ -155,10 +157,12 @@ describe('organizations on the map', () => {
 
   it('marks each place exact or at its city middle, and names its organizations', () => {
     const features = organizationFeatures(organizationSpots(placed, organizations).spots).features;
-    expect(features[0]?.properties).toEqual({
+    expect(features[0]?.properties).toMatchObject({
       key: '37.87,-122.27|city',
       count: 2,
       exact: false,
+      longitude: -122.27,
+      latitude: 37.87,
       orgs: ',borp,cil,',
       organizationId: 'borp',
       label: 'BORP',

@@ -604,8 +604,14 @@ export async function closeUpOf(map: MapLibreMap, hit: MapGeoJSONFeature): Promi
     .geometry;
   if (!layer || geometry.type !== 'Point') return null;
   const [lng = 0, lat = 0] = geometry.coordinates;
-  const center: [number, number] = [lng, lat];
-  const properties = hit.properties as { cluster_id?: number; exact?: boolean };
+  const properties = hit.properties as {
+    cluster_id?: number;
+    exact?: boolean;
+    longitude?: number;
+    latitude?: number;
+  };
+  // A place's own point: far out, a feature's geometry is hundreds of metres off.
+  const center: [number, number] = [properties.longitude ?? lng, properties.latitude ?? lat];
   if (typeof properties.cluster_id === 'number') {
     const source = map.getSource<GeoJSONSource>(SOURCES[layer]);
     if (!source) return null;

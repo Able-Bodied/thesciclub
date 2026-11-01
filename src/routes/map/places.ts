@@ -130,6 +130,9 @@ interface Feature {
   properties: {
     key: string;
     count: number;
+    /** Exact: a tapped feature's own geometry is rounded to its tile. */
+    longitude: number;
+    latitude: number;
     exact?: boolean;
     orgs?: string;
     organizationId?: string;
@@ -149,7 +152,13 @@ function feature(point: MapPoint, key: string, count: number, exact?: boolean): 
   return {
     type: 'Feature',
     geometry: { type: 'Point', coordinates: [point.longitude, point.latitude] },
-    properties: exact === undefined ? { key, count } : { key, count, exact },
+    properties: {
+      key,
+      count,
+      longitude: point.longitude,
+      latitude: point.latitude,
+      ...(exact === undefined ? {} : { exact }),
+    },
   };
 }
 
