@@ -780,6 +780,8 @@ export default function ClubMap({
         </MapSheet>
       ) : sheet ? (
         <PlaceSheet
+          // Another place opens fresh, though the last was minimized and the title is the same.
+          key={LAYERS.flatMap((layer) => [...sheet.keys[layer]]).join()}
           contents={sheetContents(sheet.keys)}
           layers={layers}
           area={sheet.kind === 'area'}
