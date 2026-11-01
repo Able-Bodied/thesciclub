@@ -1,6 +1,7 @@
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { preparePhoto } from '@/lib/image';
 import { PHOTOS_BUCKET } from '@/lib/photos';
+import { calendarChanged } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 export interface OrganizationDraft {
@@ -41,6 +42,7 @@ export async function saveOrganizationPlaces(
         postal_code: place.postalCode,
       })),
     })) as { error: Failure | null };
+    if (!error) calendarChanged();
     return error
       ? { ok: false, error: describeError(error, 'The locations were not saved.') }
       : { ok: true };
@@ -65,6 +67,7 @@ export async function saveOrganization(
       can_invite: draft.canInvite,
       state: draft.state ?? null,
     })) as { data: string | null; error: Failure | null };
+    if (!error) calendarChanged();
     return error
       ? {
           ok: false,

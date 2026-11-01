@@ -3,7 +3,7 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { preparePhoto } from '@/lib/image';
 import { PHOTOS_BUCKET } from '@/lib/photos';
 import { readInBatches, readPages } from '@/lib/read-pages';
-import { onForgetSharedReads } from '@/lib/shared-reads';
+import { calendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type {
   ClubEvent,
@@ -625,6 +625,7 @@ export async function saveEvent(
     if (error || !data) {
       return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
     }
+    calendarChanged();
     return { ok: true, id: data };
   } catch (e) {
     return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
@@ -673,6 +674,7 @@ export async function saveEventSeries(
     if (error || !data) {
       return { ok: false, error: describeError(error ?? { message: '' }, SAVE_EVENT_REFUSAL) };
     }
+    calendarChanged();
     return { ok: true, id: data };
   } catch (e) {
     return { ok: false, error: describeThrown(e, SAVE_EVENT_REFUSAL) };
@@ -691,6 +693,7 @@ export async function deleteEventAndLater(eventId: string): Promise<WriteResult>
   };
   try {
     const { error } = await getSupabase().rpc('delete_event_and_later', { event: eventId });
+    if (!error) calendarChanged();
     return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, refusal) };
@@ -879,6 +882,7 @@ export async function deleteEvent(eventId: string): Promise<WriteResult> {
   };
   try {
     const { error } = await getSupabase().rpc('delete_event', { event: eventId });
+    if (!error) calendarChanged();
     return error ? { ok: false, error: describeError(error, refusal) } : { ok: true };
   } catch (e) {
     return { ok: false, error: describeThrown(e, refusal) };

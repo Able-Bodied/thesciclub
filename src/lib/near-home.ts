@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from '@/lib/account';
-import { onForgetSharedReads } from '@/lib/shared-reads';
+import { onCalendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -25,21 +25,35 @@ export interface NearHome {
 }
 
 const ASK_AFTER_MS = 250;
-const answers = new Map<number, ReadonlySet<string> | null>();
+/**
+ * An answer lasts a minute, and goes at once when this device changes the
+ * calendar. Kept any longer, an event added since, here or from a calendar
+ * invitation, is filtered out as if it were far away (the owner, 2026-11-01).
+ */
+const FRESH_FOR_MS = 60_000;
+const answers = new Map<number, { ids: ReadonlySet<string> | null; at: number }>();
 onForgetSharedReads(() => {
   answers.clear();
 });
+onCalendarChanged(() => {
+  answers.clear();
+});
+
+function fresh(miles: number): { ids: ReadonlySet<string> | null } | undefined {
+  const known = answers.get(miles);
+  return known && Date.now() - known.at < FRESH_FOR_MS ? known : undefined;
+}
 
 async function ask(miles: number): Promise<ReadonlySet<string> | null> {
-  const known = answers.get(miles);
-  if (known !== undefined) return known;
+  const known = fresh(miles);
+  if (known) return known.ids;
   const answer = await getSupabase().rpc('events_within_miles', { miles });
   if (answer.error) throw new Error(answer.error.message);
   const data: unknown = answer.data;
   const ids = Array.isArray(data)
     ? new Set(data.filter((id): id is string => typeof id === 'string'))
     : null;
-  answers.set(miles, ids);
+  answers.set(miles, { ids, at: Date.now() });
   return ids;
 }
 
@@ -49,9 +63,10 @@ export function useNearHome(miles: number | null): NearHome {
   const asking = member && miles !== null;
   const [answer, setAnswer] = useState<NearHome>(() => {
     if (!asking) return { status: 'any', ids: null };
+    // An old answer stands while a new one is asked, as for a slider.
     const known = answers.get(miles);
     if (known === undefined) return { status: 'loading', ids: null };
-    return known ? { status: 'ready', ids: known } : { status: 'unplaced', ids: null };
+    return known.ids ? { status: 'ready', ids: known.ids } : { status: 'unplaced', ids: null };
   });
 
   useEffect(() => {
@@ -63,9 +78,9 @@ export function useNearHome(miles: number | null): NearHome {
     const settle = (ids: ReadonlySet<string> | null) => {
       if (!cancelled) setAnswer(ids ? { status: 'ready', ids } : { status: 'unplaced', ids: null });
     };
-    const known = answers.get(miles);
-    if (known !== undefined) {
-      settle(known);
+    const known = fresh(miles);
+    if (known) {
+      settle(known.ids);
       return;
     }
     // The first answer at once; a slider's later ones once it rests.

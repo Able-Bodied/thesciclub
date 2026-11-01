@@ -16,3 +16,20 @@ export function onForgetSharedReads(forget: () => void): void {
 export function forgetSharedReads(): void {
   for (const forget of forgetters) forget();
 }
+
+const changeListeners = new Set<() => void>();
+
+/** For a read that holds events or organizations, to let go when they change. */
+export function onCalendarChanged(listener: () => void): void {
+  changeListeners.add(listener);
+}
+
+/**
+ * This device added, changed or removed an event or an organization. What is
+ * kept is let go, so the Events tab reads it all again when it is next shown
+ * (it stays mounted, and re-reads then): the list, who is near, the map and
+ * the directory (the owner, 2026-11-01).
+ */
+export function calendarChanged(): void {
+  for (const listener of changeListeners) listener();
+}

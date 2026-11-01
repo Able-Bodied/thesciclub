@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { readPages } from '@/lib/read-pages';
-import { onForgetSharedReads } from '@/lib/shared-reads';
+import { onCalendarChanged, onForgetSharedReads } from '@/lib/shared-reads';
 import { getSupabase } from '@/lib/supabase';
 import type { Organization, OrganizationPlace } from '@/types/domain';
 
@@ -122,10 +122,12 @@ const FRESH_FOR_MS = 60_000;
 let shared: { read: OrganizationsRead; at: number } | null = null;
 let inFlight: Promise<OrganizationsRead> | null = null;
 
-onForgetSharedReads(() => {
+function forgetDirectory() {
   shared = null;
   inFlight = null;
-});
+}
+onForgetSharedReads(forgetDirectory);
+onCalendarChanged(forgetDirectory);
 
 const DIRECTORY =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, joins_need_approval, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
