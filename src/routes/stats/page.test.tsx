@@ -8,6 +8,7 @@ import type {
   HeldEvent,
   MadeIntroduction,
   OrganizationStats,
+  OrganizationWeek,
   PartnerPerson,
   PartnerStats,
 } from '@/lib/partner-hub';
@@ -25,6 +26,8 @@ const state = vi.hoisted(() => ({
   orgStats: null as OrganizationStats | null,
   orgEvents: [] as HeldEvent[],
   eventsAsked: [] as [string, number][],
+  orgWeeks: [] as OrganizationWeek[],
+  mentorStats: { withMentor: 1, couldHaveMentor: 4, daysToMentor: null as number | null },
   connected: [] as unknown[][],
   connectError: null as string | null,
 }));
@@ -81,7 +84,7 @@ vi.mock('@/lib/partner-hub', async (importOriginal) => ({
       active: 2,
       introductions: 4,
       opened: 1,
-      withMentor: 1,
+      ...state.mentorStats,
     };
     return Promise.resolve({ ok: true, value: stats });
   },
@@ -93,6 +96,7 @@ vi.mock('@/lib/partner-hub', async (importOriginal) => ({
     state.eventsAsked.push([id, days]);
     return Promise.resolve({ ok: true, value: state.orgEvents });
   },
+  fetchOrganizationWeeks: () => Promise.resolve({ ok: true, value: state.orgWeeks }),
   fetchMyPeople: () => Promise.resolve({ ok: true, value: state.people }),
   fetchMyIntroductions: () => Promise.resolve({ ok: true, value: state.intros }),
   withdrawIntroduction: (id: string) => {
@@ -102,7 +106,7 @@ vi.mock('@/lib/partner-hub', async (importOriginal) => ({
   },
 }));
 
-const { default: StatsPage } = await import('@/routes/stats/page');
+const { daysLabel, default: StatsPage, filterPeople } = await import('@/routes/stats/page');
 
 const stats = (o: Partial<OrganizationStats> = {}): OrganizationStats => ({
   members: 12,
@@ -112,6 +116,8 @@ const stats = (o: Partial<OrganizationStats> = {}): OrganizationStats => ({
   going: 8,
   checkedIn: 7,
   saidGoingAndCame: 6,
+  firstTimers: 3,
+  cameBack: 2,
   reviews: 5,
   rating: 4.5,
   ...o,
@@ -179,6 +185,8 @@ beforeEach(() => {
   state.orgStats = stats();
   state.orgEvents = [];
   state.eventsAsked = [];
+  state.orgWeeks = [];
+  state.mentorStats = { withMentor: 1, couldHaveMentor: 4, daysToMentor: 3.6 };
   state.connected = [];
   state.connectError = null;
   vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -240,6 +248,8 @@ describe('your organization', () => {
       'Events held',
       'Checked in',
       'Turnout',
+      'First-timers',
+      'Came back',
       'Reviews',
       'Average rating',
     ]);
@@ -333,6 +343,63 @@ describe('the events behind the numbers', () => {
   });
 });
 
+describe('the last eight weeks', () => {
+  const week = (o: Partial<OrganizationWeek> = {}): OrganizationWeek => ({
+    week: '2026-10-26',
+    members: 12,
+    joined: 2,
+    events: 1,
+    checkedIn: 9,
+    going: 8,
+    saidGoingAndCame: 6,
+    ...o,
+  });
+
+  it('shows each week, newest first, and says which is still going', async () => {
+    state.orgIds = new Set(['o1']);
+    state.orgWeeks = [week(), week({ week: '2026-10-19', going: 0, saidGoingAndCame: 0 })];
+    renderPage();
+    const table = await screen.findByRole('table', { name: /last eight weeks/ });
+    const rows = within(table).getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('Oct 26 (so far)');
+    expect(rows[1]).toHaveTextContent('75%');
+    expect(rows[2]).toHaveTextContent('Oct 19');
+    expect(rows[2]).not.toHaveTextContent('so far');
+    expect(rows[2]).toHaveTextContent('–');
+  });
+
+  it('is left out for a partner with no organization', () => {
+    renderPage();
+    expect(screen.queryByRole('table', { name: /last eight weeks/ })).toBeNull();
+  });
+});
+
+describe('a mentor for your people', () => {
+  it('says what share of them have one, and how soon', async () => {
+    renderPage();
+    const numbers = screen.getByRole('region', { name: 'Your numbers' });
+    expect(
+      await within(numbers).findByText('25% of your people, at any time.'),
+    ).toBeInTheDocument();
+    expect(within(numbers).getByText('Time to a mentor').nextElementSibling).toHaveTextContent(
+      '4 days',
+    );
+  });
+
+  it('gives no share or time with nobody to count', async () => {
+    state.mentorStats = { withMentor: 0, couldHaveMentor: 0, daysToMentor: null };
+    renderPage();
+    const numbers = screen.getByRole('region', { name: 'Your numbers' });
+    expect(await within(numbers).findByText('Of your people, at any time.')).toBeInTheDocument();
+    expect(within(numbers).getByText('Time to a mentor').nextElementSibling).toHaveTextContent('–');
+  });
+
+  it('words a time under a day, and one day', () => {
+    expect(daysLabel(0.4)).toBe('Under a day');
+    expect(daysLabel(1.2)).toBe('1 day');
+  });
+});
+
 describe('the order of the page', () => {
   it('puts every stat before connecting two members', () => {
     state.orgIds = new Set(['o1']);
@@ -413,6 +480,30 @@ describe('your numbers', () => {
     await waitFor(() => {
       expect(within(numbers).getByText('Invited').nextElementSibling).toHaveTextContent('365');
     });
+  });
+});
+
+describe('finding who needs following up', () => {
+  const now = new Date('2026-10-31T12:00:00Z').getTime();
+  const waiting = (invitedAt: string | null): PartnerPerson => ({
+    kind: 'pending',
+    inviteId: invitedAt,
+    email: 'a@b.test',
+    invitedAt,
+  });
+
+  it('finds invites still waiting after seven days, and no sooner', () => {
+    const late = waiting('2026-10-24T12:00:00Z');
+    const recent = waiting('2026-10-24T12:00:01Z');
+    expect(filterPeople([late, recent, waiting(null), member()], 'overdue', now)).toEqual([late]);
+  });
+
+  it('finds who joined and has not finished their profile', () => {
+    const unfinished = member({ memberId: 'a', profileDone: false });
+    const finished = member({ memberId: 'b', profileDone: true });
+    expect(filterPeople([unfinished, finished, waiting(null)], 'no-profile', now)).toEqual([
+      unfinished,
+    ]);
   });
 });
 

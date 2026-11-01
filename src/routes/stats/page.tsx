@@ -18,10 +18,12 @@ import {
   fetchMyPeople,
   fetchOrganizationEvents,
   fetchOrganizationStats,
+  fetchOrganizationWeeks,
   fetchPartnerStats,
   type HeldEvent,
   type MadeIntroduction,
   type OrganizationStats,
+  type OrganizationWeek,
   type PartnerMember,
   type PartnerPerson,
   type PartnerStats,
@@ -41,11 +43,13 @@ import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/
 const DAY: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', DAY);
 
-type PeopleFilter = 'all' | 'no-mentor' | 'pending';
+type PeopleFilter = 'all' | 'no-mentor' | 'no-profile' | 'pending' | 'overdue';
 const PEOPLE_FILTERS = [
   ['all', 'Everyone'],
   ['no-mentor', 'Not yet introduced to a mentor'],
+  ['no-profile', 'Profile not finished'],
   ['pending', 'Still to join'],
+  ['overdue', 'Not joined after 7 days'],
 ] as const satisfies readonly (readonly [PeopleFilter, string])[];
 
 function SectionHeading({ id, children }: { id: string; children: React.ReactNode }) {
@@ -165,6 +169,21 @@ export function turnout(going: number, saidGoingAndCame: number): string {
   return `${String(Math.round((saidGoingAndCame / going) * 100))}%`;
 }
 
+/** Of those it could be for, or nothing to go on. */
+export function mentorShare(stats: PartnerStats): string {
+  if (stats.couldHaveMentor === 0) return 'Of your people, at any time.';
+  const share = Math.round((stats.withMentor / stats.couldHaveMentor) * 100);
+  return `${String(share)}% of your people, at any time.`;
+}
+
+/** "Under a day", "1 day", "4 days"; a dash until anybody has one. */
+export function daysLabel(days: number | null): string {
+  if (days === null) return '–';
+  if (days < 1) return 'Under a day';
+  const whole = Math.round(days);
+  return whole === 1 ? '1 day' : `${String(whole)} days`;
+}
+
 const heldOn = (event: HeldEvent) =>
   new Date(event.startTime).toLocaleDateString('en-US', {
     ...DAY,
@@ -277,6 +296,8 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
       stats ? turnout(stats.going, stats.saidGoingAndCame) : undefined,
       'Checked in, of those who said Going.',
     ],
+    ['First-timers', stats?.firstTimers, 'Came to their first event.'],
+    ['Came back', stats?.cameBack, 'Have been to more than one.'],
     ['Reviews', stats?.reviews],
     ['Average rating', stats ? (stats.rating ?? '–') : undefined, 'Out of 5.'],
   ];
@@ -316,6 +337,7 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
         <>
           <Tiles tiles={tiles} busy={stats === null} />
           <HeldEvents key={`${chosen.id}|${days}`} events={events} />
+          <Weeks organizationId={chosen.id} />
         </>
       )}
       <Link
@@ -327,6 +349,90 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
           : `Manage ${chosen.name}`}
       </Link>
     </section>
+  );
+}
+
+const WEEK_COLUMNS: {
+  label: string;
+  value: (week: OrganizationWeek) => number | string;
+}[] = [
+  { label: 'Members', value: (week) => week.members },
+  { label: 'Turnout', value: (week) => turnout(week.going, week.saidGoingAndCame) },
+  { label: 'New', value: (week) => week.joined },
+  { label: 'Events', value: (week) => week.events },
+  { label: 'Came', value: (week) => week.checkedIn },
+];
+
+const weekOf = (week: string) =>
+  new Date(`${week}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+function Weeks({ organizationId }: { organizationId: string }) {
+  const [weeks, setWeeks] = useState<OrganizationWeek[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    setWeeks(null);
+    setError(null);
+    void fetchOrganizationWeeks(organizationId).then((result) => {
+      if (!live) return;
+      if (result.ok) setWeeks(result.value);
+      else setError(result.error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [organizationId]);
+
+  if (error) {
+    return (
+      <p role="alert" className="mt-4 text-[0.8125rem] text-destructive">
+        {error}
+      </p>
+    );
+  }
+  if (weeks === null) return null;
+  return (
+    <div className="mt-4">
+      <h3 className="font-extrabold font-head text-[0.875rem] text-ink">The last eight weeks</h3>
+      <p className="mt-0.5 mb-2 text-[0.75rem] text-grey leading-[1.45]">
+        Week by week, whatever the period.
+      </p>
+      <div className="overflow-x-auto rounded-[14px] border border-line bg-paper">
+        <table className="w-full text-[0.8125rem]">
+          <caption className="sr-only">
+            The organization for each of the last eight weeks, newest first
+          </caption>
+          <thead>
+            <tr className="border-line border-b text-grey">
+              <th scope="col" className="px-2.5 py-2 text-left font-semibold">
+                Week of
+              </th>
+              {WEEK_COLUMNS.map((column) => (
+                <th key={column.label} scope="col" className="px-1.5 py-2 text-right font-semibold">
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {weeks.map((week, index) => (
+              <tr key={week.week} className="border-line border-b last:border-b-0">
+                <th scope="row" className="px-2.5 py-2 text-left font-semibold text-ink">
+                  {weekOf(week.week)}{' '}
+                  {index === 0 ? <span className="font-normal text-grey">(so far)</span> : null}
+                </th>
+                {WEEK_COLUMNS.map((column) => (
+                  <td key={column.label} className="px-1.5 py-2 text-right text-ink tabular-nums">
+                    {column.value(week)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -445,7 +551,16 @@ function Numbers() {
       'Posted, replied or said they’re going to an event. Not messages.',
     ],
     ['Connected', stats?.opened, 'Pairs you connected.'],
-    ['Introduced to a mentor', stats?.withMentor, 'Of your people, at any time.'],
+    [
+      'Introduced to a mentor',
+      stats?.withMentor,
+      stats ? mentorShare(stats) : 'Of your people, at any time.',
+    ],
+    [
+      'Time to a mentor',
+      stats ? daysLabel(stats.daysToMentor) : undefined,
+      'Typical time from joining to meeting a first mentor.',
+    ],
   ];
 
   return (
@@ -468,8 +583,23 @@ function Numbers() {
 
 /* ---------------------------------------------------------------- people */
 
-export function filterPeople(people: PartnerPerson[], filter: PeopleFilter): PartnerPerson[] {
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function filterPeople(
+  people: PartnerPerson[],
+  filter: PeopleFilter,
+  now = Date.now(),
+): PartnerPerson[] {
   if (filter === 'pending') return people.filter((p) => p.kind === 'pending');
+  if (filter === 'overdue') {
+    return people.filter(
+      (p) =>
+        p.kind === 'pending' &&
+        p.invitedAt !== null &&
+        now - new Date(p.invitedAt).getTime() >= WEEK_MS,
+    );
+  }
+  if (filter === 'no-profile') return people.filter((p) => p.kind === 'member' && !p.profileDone);
   if (filter === 'no-mentor')
     return people.filter(
       (p): p is PartnerMember =>

@@ -118,7 +118,11 @@ export interface PartnerStats {
   active: number;
   introductions: number;
   opened: number;
+  /** Of your people who are not mentors themselves. */
   withMentor: number;
+  couldHaveMentor: number;
+  /** Median days from joining to a first mentor; null with nobody yet. */
+  daysToMentor: number | null;
 }
 
 export const STAT_PERIODS = [
@@ -135,6 +139,8 @@ interface StatsRow {
   introductions: number;
   opened: number;
   with_mentor: number;
+  could_have_mentor: number;
+  days_to_mentor: number | null;
 }
 
 export async function fetchPartnerStats(days: number): Promise<Result<PartnerStats>> {
@@ -150,6 +156,8 @@ export async function fetchPartnerStats(days: number): Promise<Result<PartnerSta
       introductions: row?.introductions ?? 0,
       opened: row?.opened ?? 0,
       withMentor: row?.with_mentor ?? 0,
+      couldHaveMentor: row?.could_have_mentor ?? 0,
+      daysToMentor: row?.days_to_mentor ?? null,
     },
   };
 }
@@ -216,6 +224,10 @@ export interface OrganizationStats {
   checkedIn: number;
   /** Of those checked in, who had said Going: a walk-in is not turnout. */
   saidGoingAndCame: number;
+  /** Came in the period, and have been to one of its events once. */
+  firstTimers: number;
+  /** Came in the period, and have been more than once. */
+  cameBack: number;
   reviews: number;
   /** Null with no reviews in the period. */
   rating: number | null;
@@ -229,6 +241,8 @@ interface OrganizationStatsRow {
   going: number;
   checked_in: number;
   said_going_and_came: number;
+  first_timers: number;
+  came_back: number;
   reviews: number;
   rating: number | null;
 }
@@ -255,6 +269,8 @@ export async function fetchOrganizationStats(
           going: row.going,
           checkedIn: row.checked_in,
           saidGoingAndCame: row.said_going_and_came,
+          firstTimers: row.first_timers,
+          cameBack: row.came_back,
           reviews: row.reviews,
           rating: row.rating,
         }
@@ -302,6 +318,51 @@ export async function fetchOrganizationEvents(
       timezone: row.timezone,
       going: row.going,
       checkedIn: row.checked_in,
+      saidGoingAndCame: row.said_going_and_came,
+    })),
+  };
+}
+
+/** One week of an organization, Monday to Monday in California. */
+export interface OrganizationWeek {
+  /** The Monday, as an ISO date. */
+  week: string;
+  members: number;
+  joined: number;
+  events: number;
+  checkedIn: number;
+  going: number;
+  saidGoingAndCame: number;
+}
+
+interface OrganizationWeekRow {
+  week: string;
+  members: number;
+  joined: number;
+  events: number;
+  checked_in: number;
+  going: number;
+  said_going_and_came: number;
+}
+
+export async function fetchOrganizationWeeks(
+  organizationId: string,
+): Promise<Result<OrganizationWeek[]>> {
+  const result = await call(
+    'my_organization_weeks',
+    { p_organization: organizationId },
+    'Could not load the organization’s weeks.',
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    value: ((result.value as OrganizationWeekRow[] | null) ?? []).map((row) => ({
+      week: row.week,
+      members: row.members,
+      joined: row.joined,
+      events: row.events,
+      checkedIn: row.checked_in,
+      going: row.going,
       saidGoingAndCame: row.said_going_and_came,
     })),
   };
