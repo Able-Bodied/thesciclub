@@ -2,6 +2,7 @@ import { ThumbsUp } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MemberAvatar } from '@/components/member-avatar';
+import { SheetGrip } from '@/components/sheet-grip';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { likesLabel } from '@/lib/chat/likes';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -221,7 +222,7 @@ export function LikesSheet({
         )}
       >
         {/* A phone affordance; noise on a panel. */}
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
+        <SheetGrip sheet={dialog} onClose={onClose} />
 
         <div className="flex-1 overflow-y-auto px-[18px] pt-1 lg:pt-5">
           <h2

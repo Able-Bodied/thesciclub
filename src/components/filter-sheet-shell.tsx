@@ -1,4 +1,5 @@
 import { useId, useRef } from 'react';
+import { SheetGrip } from '@/components/sheet-grip';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { cn } from '@/lib/utils';
 
@@ -97,7 +98,7 @@ export function FilterSheetShell({
         )}
       >
         {/* The grab handle is a phone affordance and reads as noise on a panel. */}
-        <div className="mx-auto mt-2.5 mb-1 h-[4.5px] w-[38px] flex-none rounded-[3px] bg-line lg:hidden" />
+        <SheetGrip sheet={dialog} onClose={onClose} />
 
         <div className="flex flex-none items-start justify-between gap-3 px-[18px] pt-1 lg:pt-5">
           <div className="min-w-0">
@@ -112,8 +113,8 @@ export function FilterSheetShell({
             <p className="mt-0.5 text-[0.78125rem] text-grey">{summary}</p>
           </div>
           {/* A second way out, at the top where a panel's close button belongs.
-              Hidden on a phone, where the handle and the backdrop do the job and
-              the header is tighter.
+              At every width: hidden below `lg`, a desktop window narrower than
+              that had no way out in sight (the owner, 2026-11-01).
 
               Named "Close" rather than "Close filters", which is the backdrop's
               name: two controls with the same accessible name read as one
@@ -124,7 +125,7 @@ export function FilterSheetShell({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="hidden h-11 w-11 flex-none place-items-center rounded-full bg-tint font-bold text-[1.0625rem] text-emphasis lg:grid"
+            className="grid h-11 w-11 flex-none place-items-center rounded-full bg-tint font-bold text-[1.0625rem] text-emphasis"
           >
             ✕
           </button>
