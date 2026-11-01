@@ -9,10 +9,11 @@ import {
   type Mail,
   type ReceivedEmail,
   type ReceiveResult,
+  repliesFor,
   senderOf,
   signatureIsGood,
 } from './handler.ts';
-import type { InviteEvent } from './ics.ts';
+import { type InviteEvent, readInvite } from './ics.ts';
 
 const SECRET = `whsec_${btoa('a test signing secret of 32 bytes!')}`;
 const NOW = 1_792_700_000_000;
@@ -264,6 +265,53 @@ function forwarded(
     headers: { to: 'events@thesciclub.com', ...o.headers },
   };
 }
+
+describe('what the sender is told', () => {
+  const invite = (over: Partial<InviteEvent>): InviteEvent => {
+    const read = readInvite(ICS);
+    if (!read) throw new Error('The test invitation cannot be read.');
+    return { ...read, ...over };
+  };
+  const told = (result: ReceiveResult, over: Partial<InviteEvent> = {}) =>
+    repliesFor(result, invite(over), 'rep@norcalsci.org', 'https://thesciclub.com');
+  const updated: ReceiveResult = { outcome: 'updated', event: 'e1', organization: 'NorCal SCI' };
+
+  it('an update names the meeting link the club now holds', () => {
+    const url = 'https://meet.google.com/abc-defg-hij';
+    const [mail] = told(updated, { url });
+    expect(mail?.subject).toBe('Updated in The SCI Club: Friday Happy Hour');
+    expect(mail?.text).toContain(`Meeting link: ${url}`);
+  });
+
+  it('another page is only a link', () => {
+    const url = 'https://example.org/picnic';
+    expect(told(updated, { url })[0]?.text).toContain(`\nLink: ${url}`);
+  });
+
+  it('says when nothing came with it, but not for an event with a place', () => {
+    const missing = 'No place or meeting link came with this invitation.';
+    expect(told(updated, { url: null, location: '' })[0]?.text).toContain(missing);
+    expect(told(updated, { url: null, location: 'Lakeside Park' })[0]?.text).not.toContain(missing);
+  });
+
+  it('says to send a change to all guests', () => {
+    expect(told(updated)[0]?.text).toContain('choose all guests');
+  });
+
+  it('a change to one date that was not copied is said, not dropped', () => {
+    const reason =
+      'A change to one date of a repeating event is not copied; change it in the club.';
+    expect(told({ outcome: 'ignored', reason })[0]?.subject).toBe(
+      'Not copied to The SCI Club: Friday Happy Hour',
+    );
+  });
+
+  it('nothing to a stranger, even about one date', () => {
+    expect(
+      told({ outcome: 'ignored', reason: 'Not from a member.' }, { recurrenceId: 'x' }),
+    ).toEqual([]);
+  });
+});
 
 describe('the sender, after Zoho forwards it', () => {
   it('trusts DMARC only for an original From', () => {
