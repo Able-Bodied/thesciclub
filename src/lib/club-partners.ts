@@ -60,32 +60,41 @@ export function usePartnerTitles(): PartnerTitles | null {
   return state;
 }
 
-/** Whether the signed-in member is a partner: null while asking. */
-export function useIAmPartner(memberId: string | null): boolean | null {
-  const [state, setState] = useState<{ memberId: string | null; partner: boolean | null }>({
+function useYesOrNo(question: string, memberId: string | null): boolean | null {
+  const [state, setState] = useState<{ memberId: string | null; yes: boolean | null }>({
     memberId: null,
-    partner: null,
+    yes: null,
   });
   useEffect(() => {
     if (!memberId) {
-      setState({ memberId, partner: false });
+      setState({ memberId, yes: false });
       return;
     }
     const controller = new AbortController();
     void (async () => {
       try {
         const { data, error } = (await getSupabase()
-          .rpc('i_am_partner')
+          .rpc(question)
           .abortSignal(controller.signal)) as { data: boolean | null; error: Failure | null };
         if (controller.signal.aborted) return;
-        setState({ memberId, partner: error ? false : Boolean(data) });
+        setState({ memberId, yes: error ? false : Boolean(data) });
       } catch {
-        if (!controller.signal.aborted) setState({ memberId, partner: false });
+        if (!controller.signal.aborted) setState({ memberId, yes: false });
       }
     })();
     return () => {
       controller.abort();
     };
-  }, [memberId]);
-  return state.memberId === memberId ? state.partner : null;
+  }, [question, memberId]);
+  return state.memberId === memberId ? state.yes : null;
+}
+
+/** Whether the signed-in member is a partner: null while asking. */
+export function useIAmPartner(memberId: string | null): boolean | null {
+  return useYesOrNo('i_am_partner', memberId);
+}
+
+/** A partner, an org admin or an administrator: null while asking. */
+export function useICanConnect(memberId: string | null): boolean | null {
+  return useYesOrNo('i_can_connect', memberId);
 }

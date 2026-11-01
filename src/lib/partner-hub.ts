@@ -2,9 +2,10 @@ import { describeError, describeThrown, type Failure } from '@/lib/describe-erro
 import { getSupabase } from '@/lib/supabase';
 
 /**
- * What a trusted partner sees of their own work (20261029100000): who they
- * invited or introduced, their own counts, their introductions, and their
- * card. The database answers only for the signed-in partner.
+ * What an org admin or a trusted partner sees of their work on Stats &
+ * controls (20261031110000): who they invited or connected, their own counts,
+ * their introductions, and their organization's numbers. The database
+ * answers only for whoever is signed in.
  */
 
 type Result<T> = { ok: true; value: T } | { ok: false; error: string };
@@ -202,6 +203,72 @@ export async function fetchMyIntroductions(): Promise<Result<MadeIntroduction[]>
   };
 }
 
+/* ---------------------------------------------------------- organization */
+
+/** An organization's numbers: nothing its org admins cannot see on its page. */
+export interface OrganizationStats {
+  members: number;
+  joined: number;
+  left: number;
+  waiting: number;
+  byCode: number;
+  byCheckIn: number;
+  eventsHeld: number;
+  eventsAhead: number;
+  going: number;
+  checkedIn: number;
+  reviews: number;
+  /** Null with no reviews in the period. */
+  rating: number | null;
+}
+
+interface OrganizationStatsRow {
+  members: number;
+  joined: number;
+  left_it: number;
+  waiting: number;
+  by_code: number;
+  by_check_in: number;
+  events_held: number;
+  events_ahead: number;
+  going: number;
+  checked_in: number;
+  reviews: number;
+  rating: number | null;
+}
+
+export async function fetchOrganizationStats(
+  organizationId: string,
+  days: number,
+): Promise<Result<OrganizationStats | null>> {
+  const result = await call(
+    'my_organization_stats',
+    { p_organization: organizationId, p_days: days },
+    'Could not load the organization’s numbers.',
+  );
+  if (!result.ok) return result;
+  const row = (result.value as OrganizationStatsRow[] | null)?.[0];
+  return {
+    ok: true,
+    value: row
+      ? {
+          members: row.members,
+          joined: row.joined,
+          left: row.left_it,
+          waiting: row.waiting,
+          byCode: row.by_code,
+          byCheckIn: row.by_check_in,
+          eventsHeld: row.events_held,
+          eventsAhead: row.events_ahead,
+          going: row.going,
+          checkedIn: row.checked_in,
+          reviews: row.reviews,
+          rating: row.rating,
+        }
+      : null,
+  };
+}
+
 export async function withdrawIntroduction(id: string): Promise<Result<null>> {
   const result = await call(
     'withdraw_introduction',
@@ -211,19 +278,13 @@ export async function withdrawIntroduction(id: string): Promise<Result<null>> {
   return result.ok ? { ok: true, value: null } : result;
 }
 
-/* ------------------------------------------------------------------ card */
+/* ----------------------------------------------------------------- title */
 
 export interface PartnerCard {
   title: string;
   heading: string | null;
   body: string | null;
 }
-
-export const CARD_HEADING_MAX = 80;
-export const CARD_BODY_MAX = 400;
-export const DEFAULT_CARD_HEADING = 'Meet people who get it';
-export const DEFAULT_CARD_BODY =
-  'The SCI Club is a private community for adults living with spinal cord injury or disease, and the people close to them. Scan to join.';
 
 export async function fetchMyPartnerCard(): Promise<Result<PartnerCard | null>> {
   const result = await call('my_partner_card', {}, 'Could not load your card.');
@@ -237,13 +298,4 @@ export async function fetchMyPartnerCard(): Promise<Result<PartnerCard | null>> 
     ok: true,
     value: row ? { title: row.title, heading: row.card_heading, body: row.card_body } : null,
   };
-}
-
-export async function saveMyPartnerCard(heading: string, body: string): Promise<Result<null>> {
-  const result = await call(
-    'set_my_partner_card',
-    { p_heading: heading.trim() || null, p_body: body.trim() || null },
-    'Your card was not saved.',
-  );
-  return result.ok ? { ok: true, value: null } : result;
 }

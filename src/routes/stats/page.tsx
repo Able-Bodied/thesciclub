@@ -1,4 +1,4 @@
-import { ChevronRight, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
@@ -6,13 +6,20 @@ import { MemberAvatar } from '@/components/member-avatar';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
-import { PARTNER_ROLE_NAME, useIAmPartner } from '@/lib/club-partners';
+import { useIAmPartner, useICanConnect } from '@/lib/club-partners';
+import { describeThrown } from '@/lib/describe-error';
+import { INTRODUCTION_NOTE_MAX, makeIntroduction } from '@/lib/introductions';
+import type { MentionCandidate } from '@/lib/mentions';
+import { useMyOrganizations } from '@/lib/organization-representatives';
+import { useOrganizations } from '@/lib/organizations';
 import {
   fetchMyIntroductions,
   fetchMyPartnerCard,
   fetchMyPeople,
+  fetchOrganizationStats,
   fetchPartnerStats,
   type MadeIntroduction,
+  type OrganizationStats,
   type PartnerMember,
   type PartnerPerson,
   type PartnerStats,
@@ -20,11 +27,13 @@ import {
   withdrawIntroduction,
 } from '@/lib/partner-hub';
 import { cn } from '@/lib/utils';
+import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/connect-fields';
 
 /**
- * A trusted partner's own page (20261029100000): their numbers, the people they
- * invited or introduced, and their introductions. Counts and statuses only;
- * nothing from anybody's conversations.
+ * Stats & controls, for org admins and trusted partners (20261031110000): their
+ * organization's numbers, connecting two members, their own numbers, the people
+ * they invited or connected. Counts and statuses only; nothing from anybody's
+ * conversations. Invites and QR codes are on Me.
  */
 
 const DAY: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' };
@@ -45,9 +54,10 @@ function SectionHeading({ id, children }: { id: string; children: React.ReactNod
   );
 }
 
-export default function PartnerPage() {
+export default function StatsPage() {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
+  const canConnect = useICanConnect(memberId);
   const partner = useIAmPartner(memberId);
   const [title, setTitle] = useState<string | null>(null);
 
@@ -58,7 +68,7 @@ export default function PartnerPage() {
     });
   }, [partner]);
 
-  if (account.status === 'loading' || (account.status === 'member' && partner === null)) {
+  if (account.status === 'loading' || (account.status === 'member' && canConnect === null)) {
     return <div className="min-h-dvh bg-canvas" />;
   }
   if (account.status !== 'member') return <Navigate to="/join" replace />;
@@ -69,20 +79,21 @@ export default function PartnerPage() {
         <div className="mx-auto w-full max-w-[var(--me-measure)]">
           <BackLink to="/me" label="Me" />
           <h1 className="mt-1 font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
-            {PARTNER_ROLE_NAME}
+            Stats & controls
           </h1>
           {partner && title ? <p className="mt-0.5 text-[0.875rem] text-ink2">{title}</p> : null}
         </div>
       </header>
       <div className="mx-auto w-full max-w-[var(--me-measure)] px-4 pt-5 pb-8">
-        {partner ? (
-          <PartnerHub />
+        {canConnect ? (
+          <Hub memberId={memberId} isAdmin={account.isAdmin} />
         ) : (
           <div className="rounded-[14px] border border-line bg-paper p-4 text-[0.9375rem] text-ink leading-[1.5]">
-            <p className="font-bold">This page is for trusted partners.</p>
+            <p className="font-bold">This page is for org admins and trusted partners.</p>
             <p className="mt-1 text-ink2">
               Trusted partners are professionals who work with people with SCI/D, such as peer
-              support leads and therapists. An administrator makes someone a partner.
+              support leads and therapists. An administrator makes someone a partner or an org
+              admin.
             </p>
             <Link
               to="/me"
@@ -97,47 +108,242 @@ export default function PartnerPage() {
   );
 }
 
-function PartnerHub() {
+function Hub({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean }) {
+  // Goes up with each connection, so the list below reads it again.
+  const [connected, setConnected] = useState(0);
   return (
     <div className="space-y-8">
-      <div className="grid gap-2.5 sm:grid-cols-3">
-        <ToolLink to="/partner/card" title="Your card" description="Print your name and QR code." />
-        <ToolLink
-          to="/me/qr"
-          title="QR code or link"
-          description="People who scan it can join, as invited by you."
-        />
-        <ToolLink to="/invites" title="Invite by email" description="Without a limit." />
-      </div>
+      <OrganizationNumbers memberId={memberId} isAdmin={isAdmin} />
+      <ConnectMembers
+        onConnected={() => {
+          setConnected((n) => n + 1);
+        }}
+      />
       <Numbers />
       <People />
-      <Introductions />
+      <Introductions connected={connected} />
     </div>
-  );
-}
-
-function ToolLink({ to, title, description }: { to: string; title: string; description: string }) {
-  const descriptionId = useId();
-  return (
-    <Link
-      to={to}
-      aria-describedby={descriptionId}
-      className="flex min-h-[64px] items-center gap-3 rounded-[14px] border border-line bg-paper p-3.5 transition-colors hover:bg-tint"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block font-extrabold font-head text-[0.96875rem] text-ink">{title}</span>
-        <span id={descriptionId} className="mt-1 block text-[0.8125rem] text-ink2 leading-[1.5]">
-          {description}
-        </span>
-      </span>
-      <ChevronRight aria-hidden="true" className="h-5 w-5 flex-none text-emphasis" />
-    </Link>
   );
 }
 
 /* --------------------------------------------------------------- numbers */
 
 const PERIOD_SEGMENTS = STAT_PERIODS.map((p) => [String(p.days), p.label] as const);
+
+/** A label, its number, and a line saying what it counts. */
+type Tile = [string, number | string | undefined, string?];
+
+function Tiles({ tiles, busy }: { tiles: Tile[]; busy: boolean }) {
+  return (
+    <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-busy={busy}>
+      {tiles.map(([label, value, hint]) => (
+        <div
+          key={label}
+          className="flex min-h-[76px] flex-col justify-start rounded-[14px] border border-line bg-paper px-3 py-2.5"
+        >
+          <dt className="font-semibold text-[0.75rem] text-grey uppercase tracking-[0.09em]">
+            {label}
+          </dt>
+          <dd className="mt-1 font-extrabold font-head text-[1.3125rem] text-emphasis leading-none">
+            {value ?? '–'}
+          </dd>
+          {hint ? <dd className="mt-1 text-[0.75rem] text-ink2 leading-[1.4]">{hint}</dd> : null}
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Of those who said Going to the events held, how many checked in. */
+export function turnout(stats: OrganizationStats): string {
+  if (stats.going === 0) return '–';
+  return `${String(Math.round((stats.checkedIn / stats.going) * 100))}%`;
+}
+
+function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean }) {
+  const mine = useMyOrganizations(memberId);
+  const { organizations } = useOrganizations();
+  const fieldId = useId();
+  const choices = organizations
+    .filter((organization) => isAdmin || mine.ids.has(organization.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  // Their own first; an administrator without one starts on the first by name.
+  const chosen =
+    choices.find((o) => o.id === chosenId) ??
+    choices.find((o) => mine.ids.has(o.id)) ??
+    choices[0] ??
+    null;
+  const [days, setDays] = useState<string>(String(STAT_PERIODS[0].days));
+  const [stats, setStats] = useState<OrganizationStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const organizationId = chosen?.id ?? null;
+
+  useEffect(() => {
+    if (!organizationId) return;
+    let live = true;
+    setStats(null);
+    setError(null);
+    void fetchOrganizationStats(organizationId, Number(days)).then((result) => {
+      if (!live) return;
+      if (result.ok) setStats(result.value);
+      else setError(result.error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [organizationId, days]);
+
+  if (!chosen) return null;
+
+  const tiles: Tile[] = [
+    ['Members', stats?.members, 'Right now.'],
+    ['New members', stats?.joined],
+    ['Left', stats?.left],
+    ['From a QR code', stats?.byCode, 'Of the new members.'],
+    ['From checking in', stats?.byCheckIn, 'Of the new members.'],
+    ['Events held', stats?.eventsHeld],
+    ['Events coming up', stats?.eventsAhead, 'Right now.'],
+    ['Said Going', stats?.going, 'To the events held.'],
+    ['Checked in', stats?.checkedIn, 'At the events held.'],
+    ['Turnout', stats ? turnout(stats) : undefined, 'Checked in, of those who said Going.'],
+    ['Reviews', stats?.reviews],
+    ['Average rating', stats ? (stats.rating ?? '–') : undefined, 'Out of 5.'],
+  ];
+
+  return (
+    <section aria-labelledby="stats-organization-heading">
+      <SectionHeading id="stats-organization-heading">Your organization</SectionHeading>
+      {choices.length > 1 ? (
+        <div className="mb-2">
+          <label htmlFor={fieldId} className="block font-bold text-[0.8125rem] text-ink">
+            Organization
+          </label>
+          <select
+            id={fieldId}
+            value={chosen.id}
+            onChange={(e) => {
+              setChosenId(e.target.value);
+            }}
+            className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink"
+          >
+            {choices.map((organization) => (
+              <option key={organization.id} value={organization.id}>
+                {organization.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <p className="-mt-1.5 mb-1 font-semibold text-[0.875rem] text-ink2">{chosen.name}</p>
+      )}
+      <SegmentPills segments={PERIOD_SEGMENTS} value={days} onChange={setDays} className="pt-0" />
+      {error ? (
+        <p role="alert" className="text-[0.8125rem] text-destructive">
+          {error}
+        </p>
+      ) : (
+        <Tiles tiles={tiles} busy={stats === null} />
+      )}
+      <Link
+        to={`/events/organizations/${chosen.id}`}
+        className="mt-2.5 flex min-h-[48px] items-center justify-center rounded-[12px] border border-line bg-paper px-4 font-bold text-[0.875rem] text-emphasis hover:bg-tint"
+      >
+        {stats && stats.waiting > 0
+          ? `Review ${String(stats.waiting)} waiting to join ${chosen.name}`
+          : `Manage ${chosen.name}`}
+      </Link>
+    </section>
+  );
+}
+
+/* --------------------------------------------------------------- connect */
+
+function ConnectMembers({ onConnected }: { onConnected: () => void }) {
+  const announce = useAnnounce();
+  const members = useConnectableMembers();
+  const [first, setFirst] = useState<MentionCandidate | null>(null);
+  const [second, setSecond] = useState<MentionCandidate | null>(null);
+  const [note, setNote] = useState('');
+  const [join, setJoin] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+  const others = (of: MentionCandidate | null) =>
+    members?.filter((member) => member.id !== of?.id) ?? null;
+  const ready =
+    first !== null && second !== null && note.trim() !== '' && note.length <= INTRODUCTION_NOTE_MAX;
+
+  function connect() {
+    if (busy || !first || !second) return;
+    setBusy(true);
+    setFailure(null);
+    setDone(null);
+    makeIntroduction(first.id, second.id, note, join)
+      .then((result) => {
+        if (!result.ok) {
+          setFailure(result.error);
+          return;
+        }
+        const names = `${first.displayName} and ${second.displayName} are connected.`;
+        setDone(names);
+        announce(names);
+        setFirst(null);
+        setSecond(null);
+        setNote('');
+        setJoin(false);
+        onConnected();
+      })
+      .catch((e: unknown) => {
+        setFailure(describeThrown(e, 'Could not connect them.'));
+      })
+      .finally(() => {
+        setBusy(false);
+      });
+  }
+
+  return (
+    <section aria-labelledby="stats-connect-heading">
+      <SectionHeading id="stats-connect-heading">Connect two members</SectionHeading>
+      <div className="rounded-[14px] border border-line bg-paper p-3.5">
+        <p className="text-[0.875rem] text-ink2 leading-[1.5]">
+          They are both added to a group conversation right away, and told you connected them.
+          Anybody in it can leave.
+        </p>
+        <MemberField
+          label="First member"
+          members={others(second)}
+          chosen={first}
+          onChoose={setFirst}
+        />
+        <MemberField
+          label="Second member"
+          members={others(first)}
+          chosen={second}
+          onChoose={setSecond}
+        />
+        <ConnectNote note={note} onNote={setNote} join={join} onJoin={setJoin} />
+        {failure ? (
+          <p
+            role="alert"
+            className="mt-3 rounded-[11px] border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-[0.8125rem] text-destructive leading-[1.45]"
+          >
+            {failure}
+          </p>
+        ) : null}
+        {done ? <p className="mt-3 font-semibold text-[0.875rem] text-ink">{done}</p> : null}
+        <button
+          type="button"
+          onClick={connect}
+          disabled={busy || !ready}
+          className="mt-3 min-h-[48px] w-full rounded-xl bg-action px-5 font-bold font-head text-[0.9375rem] text-white transition-colors hover:bg-action-hi disabled:opacity-50"
+        >
+          {busy ? 'Connecting…' : 'Connect them'}
+        </button>
+      </div>
+    </section>
+  );
+}
 
 function Numbers() {
   const [days, setDays] = useState<string>(String(STAT_PERIODS[0].days));
@@ -157,7 +363,7 @@ function Numbers() {
     };
   }, [days]);
 
-  const tiles: [string, number | undefined, string?][] = [
+  const tiles: Tile[] = [
     ['Invited', stats?.invited],
     ['Joined', stats?.joined],
     [
@@ -165,8 +371,7 @@ function Numbers() {
       stats?.active,
       'Posted, replied or said they’re going to an event. Not messages.',
     ],
-    ['Introductions', stats?.introductions],
-    ['Opened', stats?.opened, 'Both said yes, so a conversation opened.'],
+    ['Connected', stats?.opened, 'Pairs you connected.'],
     ['Introduced to a mentor', stats?.withMentor, 'Of your people, at any time.'],
   ];
 
@@ -179,27 +384,10 @@ function Numbers() {
           {error}
         </p>
       ) : (
-        <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-busy={stats === null}>
-          {tiles.map(([label, value, hint]) => (
-            <div
-              key={label}
-              className="flex min-h-[76px] flex-col justify-start rounded-[14px] border border-line bg-paper px-3 py-2.5"
-            >
-              <dt className="font-semibold text-[0.75rem] text-grey uppercase tracking-[0.09em]">
-                {label}
-              </dt>
-              <dd className="mt-1 font-extrabold font-head text-[1.3125rem] text-emphasis leading-none">
-                {value ?? '–'}
-              </dd>
-              {hint ? (
-                <dd className="mt-1 text-[0.75rem] text-ink2 leading-[1.4]">{hint}</dd>
-              ) : null}
-            </div>
-          ))}
-        </dl>
+        <Tiles tiles={tiles} busy={stats === null} />
       )}
       <p className="mt-2 text-[0.75rem] text-grey leading-[1.45]">
-        Only about people you invited or introduced, in the period chosen.
+        Only about people you invited or connected, in the period chosen.
       </p>
     </section>
   );
@@ -240,7 +428,7 @@ function People() {
     <section aria-labelledby="partner-people-heading">
       <SectionHeading id="partner-people-heading">My people</SectionHeading>
       <p className="-mt-1.5 mb-1 text-[0.8125rem] text-ink2 leading-[1.5]">
-        Everyone you invited or introduced. To introduce someone, open their profile and choose{' '}
+        Everyone you invited or connected. You can also connect someone from their profile, with{' '}
         <b>Introduce…</b>
       </p>
       <SegmentPills segments={PEOPLE_FILTERS} value={filter} onChange={setFilter} />
@@ -253,7 +441,7 @@ function People() {
       ) : shown.length === 0 ? (
         <p className="rounded-[14px] border border-line bg-paper px-3.5 py-6 text-center text-[0.875rem] text-grey">
           {people?.length === 0
-            ? 'Nobody yet. People you invite or introduce appear here.'
+            ? 'Nobody yet. People you invite or connect appear here.'
             : 'Nobody here.'}
         </p>
       ) : (
@@ -309,7 +497,7 @@ function MemberRow({ person }: { person: PartnerMember }) {
     <li className="border-line border-b last:border-b-0">
       <Link
         to={`/peers/${person.memberId}`}
-        state={{ from: 'partner' }}
+        state={{ from: 'stats' }}
         className="flex items-start gap-3 p-3 transition-colors hover:bg-tint"
       >
         <span aria-hidden="true">
@@ -360,7 +548,7 @@ export function introductionStatus(intro: MadeIntroduction): string {
     case 'asked':
       return intro.yeses === 1 ? 'Waiting: 1 of 2 said yes' : 'Waiting for both to answer';
     case 'opened':
-      return 'Both said yes';
+      return 'Connected';
     case 'declined':
       return 'Didn’t go ahead';
     case 'withdrawn':
@@ -370,7 +558,7 @@ export function introductionStatus(intro: MadeIntroduction): string {
   }
 }
 
-function Introductions() {
+function Introductions({ connected }: { connected: number }) {
   const announce = useAnnounce();
   const [intros, setIntros] = useState<MadeIntroduction[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -382,9 +570,10 @@ function Introductions() {
     else setError(result.error);
   }, []);
 
+  // `connected` is read so a new connection is listed at once.
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (connected >= 0) void load();
+  }, [load, connected]);
 
   async function withdraw(intro: MadeIntroduction) {
     const names = `${intro.first.name} and ${intro.second.name}`;
@@ -419,7 +608,7 @@ function Introductions() {
         )
       ) : intros.length === 0 ? (
         <p className="rounded-[14px] border border-line bg-paper px-3.5 py-6 text-center text-[0.875rem] text-grey">
-          You haven’t introduced anyone yet. Open someone’s profile and choose Introduce…
+          You haven’t connected anyone yet.
         </p>
       ) : (
         <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">

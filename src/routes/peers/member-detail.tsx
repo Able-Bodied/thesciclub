@@ -10,7 +10,7 @@ import { unblockMember, useMyBlocks } from '@/lib/blocks';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { reportMember, useMyReports } from '@/lib/chat/reports';
 import { openDirect } from '@/lib/chat/threads';
-import { useIAmPartner } from '@/lib/club-partners';
+import { useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
 import { injuryDateLabel, timeSinceLabel } from '@/lib/injury';
 import { useBrowseMember } from '@/lib/members';
@@ -493,7 +493,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [introducing, setIntroducing] = useState(false);
-  const partner = useIAmPartner(account.userId);
+  const canConnect = useICanConnect(account.userId);
   const reports = useMyReports();
   const announce = useAnnounce();
   const mentoring = useMentorActions({
@@ -615,8 +615,8 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     {mentorActionLabel(action)}
                   </button>
                 ))}
-                {/* A trusted partner's (20261029100000). */}
-                {partner ? (
+                {/* An org admin's or a trusted partner's (20261031110000). */}
+                {canConnect ? (
                   <button
                     type="button"
                     onClick={() => {

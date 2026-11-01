@@ -11,7 +11,7 @@ import { makeMember } from '@/test/factory';
 const state = vi.hoisted(() => ({ current: null as MemberState | null, partner: false }));
 vi.mock('@/lib/club-partners', async (importOriginal) => ({
   ...(await importOriginal<typeof ClubPartners>()),
-  useIAmPartner: () => state.partner,
+  useICanConnect: () => state.partner,
   usePartnerTitles: () => null,
 }));
 vi.mock('@/lib/members', () => ({
