@@ -122,6 +122,7 @@ export interface PartnerStats {
 }
 
 export const STAT_PERIODS = [
+  { days: 1, label: '24 hours' },
   { days: 30, label: '30 days' },
   { days: 90, label: '90 days' },
   { days: 365, label: 'A year' },
@@ -217,6 +218,8 @@ export interface OrganizationStats {
   eventsAhead: number;
   going: number;
   checkedIn: number;
+  /** Of those checked in, who had said Going: a walk-in is not turnout. */
+  saidGoingAndCame: number;
   reviews: number;
   /** Null with no reviews in the period. */
   rating: number | null;
@@ -233,6 +236,7 @@ interface OrganizationStatsRow {
   events_ahead: number;
   going: number;
   checked_in: number;
+  said_going_and_came: number;
   reviews: number;
   rating: number | null;
 }
@@ -262,10 +266,56 @@ export async function fetchOrganizationStats(
           eventsAhead: row.events_ahead,
           going: row.going,
           checkedIn: row.checked_in,
+          saidGoingAndCame: row.said_going_and_came,
           reviews: row.reviews,
           rating: row.rating,
         }
       : null,
+  };
+}
+
+/** One event the organization held. */
+export interface HeldEvent {
+  id: string;
+  title: string;
+  startTime: string;
+  timezone: string | null;
+  going: number;
+  checkedIn: number;
+  saidGoingAndCame: number;
+}
+
+interface HeldEventRow {
+  id: string;
+  title: string;
+  start_time: string;
+  timezone: string | null;
+  going: number;
+  checked_in: number;
+  said_going_and_came: number;
+}
+
+export async function fetchOrganizationEvents(
+  organizationId: string,
+  days: number,
+): Promise<Result<HeldEvent[]>> {
+  const result = await call(
+    'my_organization_events',
+    { p_organization: organizationId, p_days: days },
+    'Could not load the organization’s events.',
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    value: ((result.value as HeldEventRow[] | null) ?? []).map((row) => ({
+      id: row.id,
+      title: row.title,
+      startTime: row.start_time,
+      timezone: row.timezone,
+      going: row.going,
+      checkedIn: row.checked_in,
+      saidGoingAndCame: row.said_going_and_came,
+    })),
   };
 }
 

@@ -16,8 +16,10 @@ import {
   fetchMyIntroductions,
   fetchMyPartnerCard,
   fetchMyPeople,
+  fetchOrganizationEvents,
   fetchOrganizationStats,
   fetchPartnerStats,
+  type HeldEvent,
   type MadeIntroduction,
   type OrganizationStats,
   type PartnerMember,
@@ -114,12 +116,12 @@ function Hub({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean 
   return (
     <div className="space-y-8">
       <OrganizationNumbers memberId={memberId} isAdmin={isAdmin} />
+      <Numbers />
       <ConnectMembers
         onConnected={() => {
           setConnected((n) => n + 1);
         }}
       />
-      <Numbers />
       <People />
       <Introductions connected={connected} />
     </div>
@@ -154,10 +156,72 @@ function Tiles({ tiles, busy }: { tiles: Tile[]; busy: boolean }) {
   );
 }
 
-/** Of those who said Going to the events held, how many checked in. */
-export function turnout(stats: OrganizationStats): string {
-  if (stats.going === 0) return '–';
-  return `${String(Math.round((stats.checkedIn / stats.going) * 100))}%`;
+/** Thirty days until a member chooses another period. */
+const DEFAULT_DAYS = '30';
+
+/** Of those who said Going, how many came. A walk-in is not turnout. */
+export function turnout(going: number, saidGoingAndCame: number): string {
+  if (going === 0) return '–';
+  return `${String(Math.round((saidGoingAndCame / going) * 100))}%`;
+}
+
+const heldOn = (event: HeldEvent) =>
+  new Date(event.startTime).toLocaleDateString('en-US', {
+    ...DAY,
+    timeZone: event.timezone ?? 'America/Los_Angeles',
+  });
+
+/** How many show before Show all, so a busy year does not bury the page. */
+const FIRST_EVENTS = 10;
+
+function HeldEvents({ events }: { events: HeldEvent[] | null }) {
+  const [all, setAll] = useState(false);
+  if (events === null) return null;
+  const shown = all ? events : events.slice(0, FIRST_EVENTS);
+  return (
+    <div className="mt-4">
+      <h3 className="mb-2 font-extrabold font-head text-[0.875rem] text-ink">Events held</h3>
+      {events.length === 0 ? (
+        <p className="rounded-[14px] border border-line bg-paper px-3.5 py-4 text-center text-[0.875rem] text-grey">
+          No events held in this period.
+        </p>
+      ) : (
+        <ul className="overflow-hidden rounded-[14px] border border-line bg-paper">
+          {shown.map((event) => (
+            <li key={event.id} className="border-line border-b last:border-b-0">
+              <Link
+                to={`/events/${event.id}`}
+                className="block min-h-[44px] p-3 transition-colors hover:bg-tint"
+              >
+                <span className="block break-words font-bold text-[0.9375rem] text-ink">
+                  {event.title}
+                </span>
+                <span className="mt-0.5 block text-[0.75rem] text-grey">{heldOn(event)}</span>
+                <span className="mt-0.5 block text-[0.8125rem] text-ink2">
+                  {event.going} going · {event.checkedIn} checked in
+                  {event.going > 0
+                    ? ` · ${turnout(event.going, event.saidGoingAndCame)} turnout`
+                    : ''}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+      {events.length > FIRST_EVENTS ? (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => {
+            setAll(!all);
+          }}
+          className="mt-2 min-h-[44px] font-semibold text-[0.875rem] text-emphasis underline"
+        >
+          {all ? 'Show fewer' : `Show all ${String(events.length)}`}
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean }) {
@@ -174,8 +238,9 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
     choices.find((o) => mine.ids.has(o.id)) ??
     choices[0] ??
     null;
-  const [days, setDays] = useState<string>(String(STAT_PERIODS[0].days));
+  const [days, setDays] = useState(DEFAULT_DAYS);
   const [stats, setStats] = useState<OrganizationStats | null>(null);
+  const [events, setEvents] = useState<HeldEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const organizationId = chosen?.id ?? null;
 
@@ -183,10 +248,16 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
     if (!organizationId) return;
     let live = true;
     setStats(null);
+    setEvents(null);
     setError(null);
     void fetchOrganizationStats(organizationId, Number(days)).then((result) => {
       if (!live) return;
       if (result.ok) setStats(result.value);
+      else setError(result.error);
+    });
+    void fetchOrganizationEvents(organizationId, Number(days)).then((result) => {
+      if (!live) return;
+      if (result.ok) setEvents(result.value);
       else setError(result.error);
     });
     return () => {
@@ -204,9 +275,13 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
     ['From checking in', stats?.byCheckIn, 'Of the new members.'],
     ['Events held', stats?.eventsHeld],
     ['Events coming up', stats?.eventsAhead, 'Right now.'],
-    ['Said Going', stats?.going, 'To the events held.'],
-    ['Checked in', stats?.checkedIn, 'At the events held.'],
-    ['Turnout', stats ? turnout(stats) : undefined, 'Checked in, of those who said Going.'],
+    ['Said Going', stats?.going, 'All events held, together.'],
+    ['Checked in', stats?.checkedIn, 'All events held, together.'],
+    [
+      'Turnout',
+      stats ? turnout(stats.going, stats.saidGoingAndCame) : undefined,
+      'Checked in, of those who said Going.',
+    ],
     ['Reviews', stats?.reviews],
     ['Average rating', stats ? (stats.rating ?? '–') : undefined, 'Out of 5.'],
   ];
@@ -243,7 +318,10 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
           {error}
         </p>
       ) : (
-        <Tiles tiles={tiles} busy={stats === null} />
+        <>
+          <Tiles tiles={tiles} busy={stats === null} />
+          <HeldEvents key={`${chosen.id}|${days}`} events={events} />
+        </>
       )}
       <Link
         to={`/events/organizations/${chosen.id}`}
@@ -346,7 +424,7 @@ function ConnectMembers({ onConnected }: { onConnected: () => void }) {
 }
 
 function Numbers() {
-  const [days, setDays] = useState<string>(String(STAT_PERIODS[0].days));
+  const [days, setDays] = useState(DEFAULT_DAYS);
   const [stats, setStats] = useState<PartnerStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 

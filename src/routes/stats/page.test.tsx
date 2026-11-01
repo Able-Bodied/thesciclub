@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Account } from '@/lib/account';
 import { AnnounceProvider } from '@/lib/announce';
 import type {
+  HeldEvent,
   MadeIntroduction,
   OrganizationStats,
   PartnerPerson,
@@ -22,6 +23,8 @@ const state = vi.hoisted(() => ({
   orgIds: new Set<string>(),
   orgAsked: [] as [string, number][],
   orgStats: null as OrganizationStats | null,
+  orgEvents: [] as HeldEvent[],
+  eventsAsked: [] as [string, number][],
   connected: [] as unknown[][],
   connectError: null as string | null,
 }));
@@ -86,6 +89,10 @@ vi.mock('@/lib/partner-hub', async (importOriginal) => ({
     state.orgAsked.push([id, days]);
     return Promise.resolve({ ok: true, value: state.orgStats });
   },
+  fetchOrganizationEvents: (id: string, days: number) => {
+    state.eventsAsked.push([id, days]);
+    return Promise.resolve({ ok: true, value: state.orgEvents });
+  },
   fetchMyPeople: () => Promise.resolve({ ok: true, value: state.people }),
   fetchMyIntroductions: () => Promise.resolve({ ok: true, value: state.intros }),
   withdrawIntroduction: (id: string) => {
@@ -107,9 +114,21 @@ const stats = (o: Partial<OrganizationStats> = {}): OrganizationStats => ({
   eventsHeld: 2,
   eventsAhead: 4,
   going: 8,
-  checkedIn: 6,
+  checkedIn: 7,
+  saidGoingAndCame: 6,
   reviews: 5,
   rating: 4.5,
+  ...o,
+});
+
+const held = (o: Partial<HeldEvent> = {}): HeldEvent => ({
+  id: 'e1',
+  title: 'Tuesday Ride',
+  startTime: '2026-10-22T01:00:00Z',
+  timezone: 'America/Los_Angeles',
+  going: 5,
+  checkedIn: 5,
+  saidGoingAndCame: 4,
   ...o,
 });
 
@@ -162,6 +181,8 @@ beforeEach(() => {
   state.orgIds = new Set();
   state.orgAsked = [];
   state.orgStats = stats();
+  state.orgEvents = [];
+  state.eventsAsked = [];
   state.connected = [];
   state.connectError = null;
   vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -237,6 +258,72 @@ describe('your organization', () => {
     const section = screen.getByRole('region', { name: 'Your organization' });
     expect(await within(section).findByText('12')).toBeInTheDocument();
     expect(within(section).getAllByText('–')).toHaveLength(2);
+  });
+});
+
+describe('the events behind the numbers', () => {
+  beforeEach(() => {
+    state.orgIds = new Set(['o1']);
+  });
+
+  it('lists each event held with its own numbers, and opens it', async () => {
+    state.orgEvents = [held()];
+    renderPage();
+    const link = await screen.findByRole('link', { name: /Tuesday Ride/ });
+    expect(link).toHaveAttribute('href', '/events/e1');
+    expect(link).toHaveTextContent('5 going · 5 checked in · 80% turnout');
+    // The evening of the 21st where it happened, whatever the reader's clock.
+    expect(link).toHaveTextContent('Oct 21, 2026');
+  });
+
+  it('counts turnout by who said Going, so a walk-in cannot pass 100%', async () => {
+    state.orgEvents = [held({ going: 1, checkedIn: 3, saidGoingAndCame: 1 })];
+    renderPage();
+    expect(await screen.findByRole('link', { name: /Tuesday Ride/ })).toHaveTextContent(
+      '100% turnout',
+    );
+  });
+
+  it('gives no turnout for an event nobody said Going to', async () => {
+    state.orgEvents = [held({ going: 0, checkedIn: 2, saidGoingAndCame: 0 })];
+    renderPage();
+    const link = await screen.findByRole('link', { name: /Tuesday Ride/ });
+    expect(link).toHaveTextContent('0 going · 2 checked in');
+    expect(link).not.toHaveTextContent('turnout');
+  });
+
+  it('says so when none were held', async () => {
+    renderPage();
+    expect(await screen.findByText('No events held in this period.')).toBeInTheDocument();
+  });
+
+  it('follows the period, down to the past 24 hours', async () => {
+    renderPage();
+    const section = screen.getByRole('region', { name: 'Your organization' });
+    expect(state.eventsAsked).toEqual([['o1', 30]]);
+    await userEvent.click(within(section).getByRole('button', { name: '24 hours' }));
+    expect(state.eventsAsked.at(-1)).toEqual(['o1', 1]);
+    expect(state.orgAsked.at(-1)).toEqual(['o1', 1]);
+  });
+
+  it('shows ten, then the rest on a press', async () => {
+    state.orgEvents = Array.from({ length: 12 }, (_, i) =>
+      held({ id: `e${String(i)}`, title: `Ride ${String(i)}` }),
+    );
+    renderPage();
+    expect(await screen.findAllByRole('link', { name: /^Ride/ })).toHaveLength(10);
+    await userEvent.click(screen.getByRole('button', { name: 'Show all 12' }));
+    expect(screen.getAllByRole('link', { name: /^Ride/ })).toHaveLength(12);
+  });
+});
+
+describe('the order of the page', () => {
+  it('puts every stat before connecting two members', () => {
+    state.orgIds = new Set(['o1']);
+    renderPage();
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings.indexOf('Your organization')).toBeLessThan(headings.indexOf('Your numbers'));
+    expect(headings.indexOf('Your numbers')).toBeLessThan(headings.indexOf('Connect two members'));
   });
 });
 

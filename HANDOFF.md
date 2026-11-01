@@ -456,7 +456,8 @@ All live. Migration headers and the files named say how and why.
   `/stats` (Stats & controls, `20261031110000`, for org admins, partners and
   administrators, `private.can_connect`; `/partner` redirects): an
   organization's numbers (`my_organization_stats`, only what its page already
-  shows), Connect two members, their numbers, My people (never messages or
+  shows; `my_organization_events`, one row an event held, turnout only of
+  those who said Going), their numbers, Connect two members, My people (never messages or
   contact details beyond addresses they invited) and introductions. Connecting
   (`make_introduction`, also Introduce… in a profile's •••) asks nobody (the
   owner, 2026-10-31): it opens a group at once, the connector too only if they
