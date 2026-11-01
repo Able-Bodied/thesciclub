@@ -454,7 +454,13 @@ export default function MePage() {
             {/* So somebody can tell which copy of the app they have. */}
             {import.meta.env.VITE_APP_BUILT ? (
               <p className="mt-1 text-[0.75rem] text-grey">
-                Version {import.meta.env.VITE_APP_BUILT.replace('T', ' ')}
+                Version{' '}
+                {new Date(`${import.meta.env.VITE_APP_BUILT}Z`).toLocaleString('en-US', {
+                  timeZone: 'America/Los_Angeles',
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })}{' '}
+                Pacific
               </p>
             ) : null}
             {/* Display first: it is what somebody who finds the club hard to
