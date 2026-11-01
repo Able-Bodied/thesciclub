@@ -7,6 +7,7 @@ import type { Organization } from '@/types/domain';
 
 const db = vi.hoisted(() => ({
   organizations: [] as Organization[],
+  requests: [] as unknown[],
   rpc: vi.fn(),
   reload: vi.fn(),
   failure: null as string | null,
@@ -30,6 +31,9 @@ vi.mock('@/lib/grants', async (importOriginal) => ({
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (name: string, args: Record<string, unknown>) => {
+      if (name === 'organization_requests_waiting') {
+        return Promise.resolve({ data: db.requests, error: null });
+      }
       db.rpc(name, args);
       if (db.failure) return Promise.resolve({ data: null, error: { message: db.failure } });
       if (name === 'admin_remove_organization')
@@ -81,6 +85,7 @@ const organization = (id = 'org'): Organization => ({
 });
 const scrolled = vi.fn();
 beforeEach(() => {
+  db.requests = [];
   db.organizations = [organization(), organization('other')];
   db.rpc.mockClear();
   db.reload.mockClear();
@@ -260,6 +265,61 @@ describe('organization management', () => {
       });
     });
   });
+  describe('an organization a member asked to add', () => {
+    const asked = {
+      id: 'req',
+      member_id: 'm1',
+      member_name: 'Maya Ruiz',
+      draft: {
+        name: 'Rolling Hikers',
+        shortCode: 'RH',
+        city: 'Reno',
+        description: '',
+        tags: [],
+        canInvite: true,
+      },
+      places: [],
+      created_at: '2026-11-01T00:00:00Z',
+    };
+
+    beforeEach(() => {
+      db.requests = [asked];
+    });
+
+    it('is reviewed in the same form, and saving it approves it', async () => {
+      render(<OrganizationsSection />);
+      expect(await screen.findByText('Asked by Maya Ruiz')).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+      expect(screen.getByLabelText('Organization name')).toHaveValue('Rolling Hikers');
+      await userEvent.click(screen.getByRole('button', { name: 'Approve and save' }));
+      await waitFor(() => {
+        expect(db.rpc).toHaveBeenCalledWith('decide_organization_request', {
+          p_request: 'req',
+          p_approve: true,
+          p_organization: 'created',
+        });
+      });
+    });
+
+    it('can be declined without saving anything', async () => {
+      render(<OrganizationsSection />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Decline' }));
+      await waitFor(() => {
+        expect(db.rpc).toHaveBeenCalledWith('decide_organization_request', {
+          p_request: 'req',
+          p_approve: false,
+          p_organization: null,
+        });
+      });
+      expect(db.rpc).not.toHaveBeenCalledWith('save_organization', expect.anything());
+    });
+
+    it('is not read for somebody who is not an administrator', () => {
+      render(<OrganizationsSection administrator={false} ids={new Set()} />);
+      expect(screen.queryByText('Waiting for approval')).toBeNull();
+    });
+  });
+
   it('retains the draft when the database refuses a changed role', async () => {
     db.failure = 'You cannot change this organization.';
     render(<OrganizationsSection />);

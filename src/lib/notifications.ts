@@ -56,6 +56,7 @@ export type NotificationKind =
   | 'check_in_reminder'
   | 'event_followup'
   | 'calendar_invite'
+  | 'organization_request'
   | 'introduction';
 
 interface Row {
@@ -314,6 +315,13 @@ export function notificationSentence(n: AppNotification): string {
         default:
           return `${title} was added from your calendar`;
       }
+    }
+    // place is the name asked for (20261101010000).
+    case 'organization_request': {
+      const asked = n.place ?? 'An organization';
+      if (n.detail === 'approved') return `${asked} was added to the club`;
+      if (n.detail === 'declined') return `${asked} was not added to the club`;
+      return `${name} asked to add ${asked}`;
     }
     // place is the organization (20261031030000).
     case 'join_request':

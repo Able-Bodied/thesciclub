@@ -291,6 +291,20 @@ export function compose(owed: Owed): PushMessage | null {
     }
     // Somebody asked to join (20261031030000): subject is the organization,
     // detail how many are unread. Only its org admins' devices.
+    // Asked to add an organization, or the answer (20261101010000).
+    case 'organization_request':
+      if (subject === '') return null;
+      if (owed.detail === 'approved') {
+        return { title: 'Organization added', body: `${subject} is in the club.`, ...where };
+      }
+      if (owed.detail === 'declined') {
+        return { title: 'Organization not added', body: `${subject} was not added.`, ...where };
+      }
+      return {
+        title: 'Organization to approve',
+        body: `${name} asked to add ${subject}.`,
+        ...where,
+      };
     case 'join_request':
       return {
         title: 'Request to join',

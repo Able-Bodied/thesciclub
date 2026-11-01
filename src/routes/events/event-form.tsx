@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { SegmentPills } from '@/components/segment-pills';
+import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { EVENTS_ADDRESS } from '@/lib/calendar-invites';
@@ -22,6 +23,7 @@ import {
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { type PhotoTarget, pastePhotos } from '@/lib/paste-photos';
+import { OrganizationEditor } from '@/routes/admin/organization-editor';
 import { type AudienceChoice, AudienceField, audienceReady } from '@/routes/events/audience-field';
 import { CoverField } from '@/routes/events/cover-field';
 import { DescriptionEditor } from '@/routes/events/description-editor';
@@ -73,6 +75,9 @@ import {
 export default function EventFormPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [sent, setSent] = useState<string | null>(null);
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
   const mine = useMyOrganizations(memberId);
@@ -95,7 +100,10 @@ export default function EventFormPage() {
   }
   // Not the permission check — the database refuses either way. This is so a
   // member without the right sees Events rather than a form that cannot save.
-  if (!mayAddEvents(account.isAdmin, mine.ids)) return <Navigate to="/events" replace />;
+  // Every member may ask to add an organization, so only changing an event sends
+  // them back.
+  const mayAdd = mayAddEvents(account.isAdmin, mine.ids);
+  if (account.status !== 'member' || (id && !mayAdd)) return <Navigate to="/events" replace />;
 
   const existing = id ? (events.find((event) => event.id === id) ?? null) : null;
   if (id && !existing) {
@@ -110,41 +118,97 @@ export default function EventFormPage() {
   }
 
   const options = hostOptions(organizations, account.isAdmin, mine.ids);
+  // Both are offered to whoever can do both. The event's form stays underneath
+  // the organization's, so looking at one loses nothing typed in the other.
+  const addingOrganization = !id && (!mayAdd || searchParams.get('add') === 'organization');
+  const kindToggle =
+    !id && mayAdd ? (
+      <div className="mt-2">
+        <TwoWayToggle
+          label="What to add"
+          options={ADD_KINDS}
+          value={addingOrganization ? 'organization' : 'event'}
+          onChange={(next) => {
+            setSearchParams(next === 'organization' ? { add: next } : {}, { replace: true });
+          }}
+        />
+      </div>
+    ) : null;
+  const eventForm =
+    !id && !mayAdd ? null : (
+      <EventForm
+        // A different event is a different form, not this one's state carried over.
+        key={existing?.id ?? 'new'}
+        hidden={addingOrganization}
+        top={kindToggle}
+        eventId={existing?.id ?? null}
+        initial={
+          existing
+            ? draftFromEvent(existing)
+            : (() => {
+                const onlyHost =
+                  !account.isAdmin && options.length === 1 ? (options[0]?.id ?? null) : null;
+                const host = organizations.find((o) => o.id === onlyHost);
+                return emptyDraft(onlyHost, host?.state ?? '');
+              })()
+        }
+        initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
+        initialMore={existing?.morePhotos ?? []}
+        // A new event has a public page unless its organizer says otherwise
+        // (the owner, 2026-10-22).
+        initialAudience={existing?.audience ?? 'club'}
+        initialFailure={coverFailureFrom(location.state)}
+        imported={
+          existing && !existing.handAdded
+            ? {
+                changed: existing.adminChanged,
+                calendar: existing.calendarValues ?? {},
+                timezone: existing.timezone,
+              }
+            : null
+        }
+        isAdmin={account.isAdmin}
+        options={options}
+      />
+    );
   return (
-    <EventForm
-      // A different event is a different form, not this one's state carried over.
-      key={existing?.id ?? 'new'}
-      eventId={existing?.id ?? null}
-      initial={
-        existing
-          ? draftFromEvent(existing)
-          : (() => {
-              const onlyHost =
-                !account.isAdmin && options.length === 1 ? (options[0]?.id ?? null) : null;
-              const host = organizations.find((o) => o.id === onlyHost);
-              return emptyDraft(onlyHost, host?.state ?? '');
-            })()
-      }
-      initialCover={{ path: existing?.photoPath ?? null, alt: existing?.photoAlt ?? '' }}
-      initialMore={existing?.morePhotos ?? []}
-      // A new event has a public page unless its organizer says otherwise
-      // (the owner, 2026-10-22).
-      initialAudience={existing?.audience ?? 'club'}
-      initialFailure={coverFailureFrom(location.state)}
-      imported={
-        existing && !existing.handAdded
-          ? {
-              changed: existing.adminChanged,
-              calendar: existing.calendarValues ?? {},
-              timezone: existing.timezone,
-            }
-          : null
-      }
-      isAdmin={account.isAdmin}
-      options={options}
-    />
+    <>
+      {addingOrganization ? (
+        <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6">
+          <div className="mx-auto w-full max-w-[720px] pb-6">
+            <BackLink to="/events?segment=orgs" label="Organizations" />
+            {kindToggle}
+            {sent ? (
+              <p role="status" className="mt-4 text-[0.9375rem] text-ink leading-[1.5]">
+                {sent}
+              </p>
+            ) : (
+              <OrganizationEditor
+                organization={null}
+                administrator={account.isAdmin}
+                onCancel={() => {
+                  void navigate('/events?segment=orgs');
+                }}
+                onSaved={(warning) => {
+                  if (warning) setSent(warning);
+                  else if (account.isAdmin)
+                    void navigate('/events?segment=orgs', { replace: true });
+                  else setSent('Sent. An administrator will look at it, and you will be told.');
+                }}
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
+      {eventForm}
+    </>
   );
 }
+
+const ADD_KINDS = [
+  ['event', 'Event'],
+  ['organization', 'Organization'],
+] as const;
 
 /** The message a save left for the form it reopened, if it left one. */
 function coverFailureFrom(state: unknown): string | null {
@@ -169,7 +233,13 @@ function EventForm({
   imported,
   isAdmin,
   options,
+  hidden,
+  top,
 }: {
+  /** Kept mounted while its other half is showing (the page above). */
+  hidden: boolean;
+  /** Under the way back: the choice of what to add. */
+  top: React.ReactNode;
   /**
    * An event from an organization's calendar, changed by an administrator
    * (20261012060000): what is already changed, and what the calendar says
@@ -336,12 +406,13 @@ function EventForm({
   const onlyOne = !isAdmin && options.length === 1 ? options[0] : null;
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-3 md:px-6">
+    <div hidden={hidden} className="flex-1 overflow-y-auto px-4 py-3 md:px-6">
       <div className="mx-auto w-full max-w-[720px] pb-6">
         <BackLink
           to={eventId ? `/events/${eventId}` : '/events'}
           label={eventId ? 'Event' : 'Events'}
         />
+        {top}
 
         <h1 className="mt-1 font-extrabold font-head text-[1.25rem] text-ink tracking-[-0.01em]">
           {isNew ? 'Add an event' : 'Change this event'}

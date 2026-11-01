@@ -41,6 +41,24 @@ describe('a calendar invitation', () => {
   });
 });
 
+describe('a request to add an organization', () => {
+  it('says who asked, and tells them the answer', () => {
+    const asked = n({
+      kind: 'organization_request',
+      actorName: 'Maya',
+      place: 'Rolling Hikers',
+      detail: 'asked',
+    });
+    expect(notificationSentence(asked)).toBe('Maya asked to add Rolling Hikers');
+    expect(notificationSentence({ ...asked, detail: 'approved' })).toBe(
+      'Rolling Hikers was added to the club',
+    );
+    expect(notificationSentence({ ...asked, detail: 'declined' })).toBe(
+      'Rolling Hikers was not added to the club',
+    );
+  });
+});
+
 describe('a reminder to check in', () => {
   it('names the event', () => {
     const asked = n({ kind: 'check_in_reminder', actorName: null, place: 'Climbing' });

@@ -445,6 +445,18 @@ describe('a formatted post in a notification', () => {
     expect(compose({ ...asked, subject: null })).toBeNull();
   });
 
+  it('tells administrators who asked to add an organization, and whoever asked the answer', () => {
+    const asked = owed({
+      kind: 'organization_request',
+      subject: 'Rolling Hikers',
+      detail: 'asked',
+    });
+    expect(compose(asked)?.title).toBe('Organization to approve');
+    expect(compose({ ...asked, detail: 'approved' })?.body).toBe('Rolling Hikers is in the club.');
+    expect(compose({ ...asked, detail: 'declined' })?.title).toBe('Organization not added');
+    expect(compose({ ...asked, subject: null })).toBeNull();
+  });
+
   it('says what became of a calendar invitation, and nothing without a name or a state', () => {
     const told = owed({ kind: 'calendar_invite', subject: 'Weekly', detail: 'held' });
     expect(compose(told)?.title).toBe('Waiting for approval');

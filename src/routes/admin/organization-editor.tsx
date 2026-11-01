@@ -7,6 +7,11 @@ import {
   saveOrganizationLogo,
   saveOrganizationPlaces,
 } from '@/lib/organization-management';
+import {
+  decideOrganizationRequest,
+  type OrganizationRequest,
+  requestOrganization,
+} from '@/lib/organization-requests';
 import { usePhotoUrl } from '@/lib/photos';
 import { OrganizationGrantsEditor } from '@/routes/admin/organization-grants-editor';
 import {
@@ -25,32 +30,46 @@ type LogoChange = { kind: 'keep' } | { kind: 'new'; file: File } | { kind: 'remo
 const field =
   'mt-1 min-h-[44px] w-full rounded-[11px] border border-line bg-paper px-3 py-2 text-[1rem] text-ink';
 
+/**
+ * The one form for an organization. An administrator's saves. A new one from
+ * anybody else is sent to the administrators instead (20261101010000), without
+ * a logo or the vouching box, which are theirs to set. `request` opens what a
+ * member sent, and saving it approves it.
+ */
 export function OrganizationEditor({
   organization,
   administrator,
+  request,
   onSaved,
   onCancel,
 }: {
   organization: Organization | null;
   administrator: boolean;
+  request?: OrganizationRequest;
   /** `warning` when the organization saved and its new logo did not. */
   onSaved: (warning?: string) => void;
   onCancel: () => void;
 }) {
+  const asking = !organization && !administrator;
   const [draft, setDraft] = useState<OrganizationDraft>(
-    organization ?? {
-      name: '',
-      shortCode: '',
-      city: '',
-      description: '',
-      tags: [],
-      canInvite: true,
-    },
+    organization ??
+      request?.draft ?? {
+        name: '',
+        shortCode: '',
+        city: '',
+        description: '',
+        tags: [],
+        canInvite: true,
+      },
   );
   const [tags, setTags] = useState(draft.tags.join(', '));
   // Its confirmed places, main first.
   const [places, setPlaces] = useState<PlaceDraft[]>(() =>
-    organization ? toDrafts(placesOf(organization)) : [newPlace()],
+    organization
+      ? toDrafts(placesOf(organization))
+      : request?.places.length
+        ? toDrafts(request.places)
+        : [newPlace()],
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +112,7 @@ export function OrganizationEditor({
       setError(toSave);
       return;
     }
-    const result = await saveOrganization(organization?.id ?? null, {
+    const words = {
       ...draft,
       // The directory's state is its main location's; none clears it.
       state: toSave[0]?.state ?? '',
@@ -101,7 +120,18 @@ export function OrganizationEditor({
         .split(',')
         .map((tag) => tag.trim())
         .filter(Boolean),
-    });
+    };
+    if (asking) {
+      const sent = await requestOrganization(words, toSave);
+      if (!sent.ok) {
+        setError(sent.error);
+        return;
+      }
+      announce('Sent to the administrators.');
+      onSaved();
+      return;
+    }
+    const result = await saveOrganization(organization?.id ?? null, words);
     if (!result.ok) {
       setError(result.error);
       return;
@@ -117,6 +147,13 @@ export function OrganizationEditor({
       const saved = await saveOrganizationLogo(result.id, logo.kind === 'new' ? logo.file : null);
       if (!saved.ok) {
         onSaved(`${draft.name.trim()} was saved, but its logo was not: ${saved.error}`);
+        return;
+      }
+    }
+    if (request) {
+      const decided = await decideOrganizationRequest(request.id, true, result.id);
+      if (!decided.ok) {
+        onSaved(`${draft.name.trim()} was saved, but: ${decided.error}`);
         return;
       }
     }
@@ -141,10 +178,19 @@ export function OrganizationEditor({
         }}
       >
         <h3 ref={heading} tabIndex={-1} className="font-bold text-ink outline-none">
-          {organization ? `Edit ${organization.name}` : 'Add organization'}
+          {organization
+            ? `Edit ${organization.name}`
+            : request
+              ? 'Review this organization'
+              : 'Add organization'}
         </h3>
+        {asking ? (
+          <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+            An administrator checks it before it is listed, and you will be told.
+          </p>
+        ) : null}
         <fieldset disabled={saving} className="mt-2 grid gap-3">
-          <div>
+          <div hidden={asking}>
             <p id="organization-logo-label" className="text-ink">
               Logo
             </p>
@@ -310,7 +356,13 @@ export function OrganizationEditor({
               type="submit"
               className="min-h-[44px] rounded-lg bg-action px-4 font-bold text-white"
             >
-              {saving ? 'Saving…' : 'Save organization'}
+              {saving
+                ? 'Saving…'
+                : asking
+                  ? 'Send for approval'
+                  : request
+                    ? 'Approve and save'
+                    : 'Save organization'}
             </button>
             <button
               type="button"
