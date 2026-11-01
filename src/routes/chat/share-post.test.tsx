@@ -188,7 +188,6 @@ describe('sharing a post into a conversation', () => {
     expect(more).toHaveAttribute('aria-expanded', 'false');
     await user.click(more);
     expect(screen.queryByRole('radio', { name: /^Me/ })).toBeNull();
-    await user.type(screen.getByRole('textbox', { name: 'Narrow the list by name' }), '@wheel');
     await user.click(screen.getByRole('radio', { name: /Sam/ }));
     await user.click(screen.getByRole('button', { name: 'Send to Sam' }));
     expect(db.shared[0]?.target).toEqual({ memberId: 'sam' });
@@ -196,16 +195,76 @@ describe('sharing a post into a conversation', () => {
     expect(await screen.findByText('Shared with Sam.')).toBeInTheDocument();
   });
 
-  it('keeps a chosen member while filtering, and lets go of them when the list is hidden', async () => {
+  it('keeps a chosen member while searching, and lets go of them when the list is hidden', async () => {
     const user = userEvent.setup();
     renderButton();
     await user.click(screen.getByRole('button', { name: /^Share / }));
     await user.click(screen.getByRole('button', { name: 'Someone else' }));
     await user.click(screen.getByRole('radio', { name: /Sam/ }));
-    await user.type(screen.getByRole('textbox', { name: 'Narrow the list by name' }), 'zz');
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'zz');
     expect(screen.getByRole('radio', { name: /Sam/ })).toBeChecked();
+    await user.clear(screen.getByRole('searchbox', { name: 'Search' }));
     await user.click(screen.getByRole('button', { name: 'Hide the members' }));
     expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+  });
+
+  it('finds a conversation by name, and hides the rest', async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'FIXERS');
+    const group = screen.getByRole('group', { name: 'Send to' });
+    expect(within(group).getByRole('radio', { name: /Wheel fixers/ })).toBeInTheDocument();
+    expect(within(group).queryByRole('radio', { name: /Jan/ })).toBeNull();
+    expect(screen.queryByText(/Nobody matches/)).toBeNull();
+  });
+
+  it('finds somebody with no conversation by @username, without opening Someone else', async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), '@wheels');
+    expect(screen.queryByRole('radio', { name: /Jan/ })).toBeNull();
+    await user.click(screen.getByRole('radio', { name: /Sam/ }));
+    await user.click(screen.getByRole('button', { name: 'Send to Sam' }));
+    expect(db.shared[0]?.target).toEqual({ memberId: 'sam' });
+  });
+
+  it('lists somebody with a conversation once', async () => {
+    const user = userEvent.setup();
+    db.members = [...db.members, makeMember({ id: 'jan', displayName: 'Jan' })];
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'jan');
+    expect(screen.getAllByRole('radio', { name: /Jan/ })).toHaveLength(1);
+  });
+
+  it('keeps a member chosen from a search on screen once it is cleared', async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'sam');
+    await user.click(screen.getByRole('radio', { name: /Sam/ }));
+    await user.clear(screen.getByRole('searchbox', { name: 'Search' }));
+    expect(screen.getByRole('radio', { name: /Sam/ })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Send to Sam' })).toBeEnabled();
+  });
+
+  it('says when nobody matches', async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'zz');
+    expect(screen.getByText('Nobody matches “zz”.')).toBeInTheDocument();
+  });
+
+  it('does not send when Enter is pressed in the search', async () => {
+    const user = userEvent.setup();
+    renderButton();
+    await user.click(screen.getByRole('button', { name: /^Share / }));
+    await user.click(screen.getByRole('radio', { name: /Jan/ }));
+    await user.type(screen.getByRole('searchbox', { name: 'Search' }), 'x{Enter}');
+    expect(db.shared).toEqual([]);
   });
 
   it('says why when the database refuses, and keeps the choice', async () => {
