@@ -1,5 +1,6 @@
 import {
   type AddLayerObject,
+  type ExpressionSpecification,
   type GeoJSONSource,
   MAP_FONT,
   type MapGeoJSONFeature,
@@ -19,13 +20,33 @@ import { type Box, LAYERS, type Layer } from '@/routes/map/places';
 
 /**
  * The club's sources and layers on a MapLibre map: pins drawn by the GPU,
- * never a DOM element each. Colours are fixed in both themes; each pin has an
- * edge of at least 3:1 on the light and the dark basemap.
+ * never a DOM element each. A pin's colours are fixed in both themes, with an
+ * edge of at least 3:1 on the light and the dark basemap; only names change.
  */
 
 export const NAVY = '#102a4c';
 export const WHITE = '#ffffff';
 const GOLD = '#d4a83a';
+
+const inTheme = (dark: string, light: string): ExpressionSpecification => [
+  'case',
+  ['global-state', 'dark'],
+  dark,
+  light,
+];
+
+/**
+ * A name beside a mark. A soft glow, not an outline (the owner, 2026-10-28):
+ * enough to read without the letters looking bold. A white glow was the
+ * brightest thing on the dark basemap (2026-11-01), so there it is dark, under
+ * white letters.
+ */
+const NAME_PAINT = {
+  'text-color': inTheme(WHITE, NAVY),
+  'text-halo-color': inTheme('rgba(0,0,0,0.85)', 'rgba(255,255,255,0.85)'),
+  'text-halo-width': 1,
+  'text-halo-blur': 1,
+};
 
 export const SOURCES: Record<Layer, string> = {
   events: 'club-events',
@@ -289,15 +310,7 @@ export function addLayers(map: MapLibreMap): void {
         'text-anchor': 'top',
         'text-max-width': 9,
       },
-      paint: {
-        'text-color': NAVY,
-        // A soft glow, not an outline (the owner, 2026-10-28): enough to read
-        // on the dark basemap without the letters looking bold.
-        'text-halo-color': 'rgba(255,255,255,0.85)',
-        'text-halo-width': 1,
-        'text-halo-blur': 1,
-        'text-translate': [15, 4],
-      },
+      paint: { ...NAME_PAINT, 'text-translate': [15, 4] },
     },
     {
       id: 'club-peers-name',
@@ -311,15 +324,7 @@ export function addLayers(map: MapLibreMap): void {
         'text-anchor': 'top',
         'text-max-width': 9,
       },
-      paint: {
-        'text-color': NAVY,
-        // A soft glow, not an outline (the owner, 2026-10-28): enough to read
-        // on the dark basemap without the letters looking bold.
-        'text-halo-color': 'rgba(255,255,255,0.85)',
-        'text-halo-width': 1,
-        'text-halo-blur': 1,
-        'text-translate': [-17, 3],
-      },
+      paint: { ...NAME_PAINT, 'text-translate': [-17, 3] },
     },
     {
       id: 'club-peers',
@@ -420,13 +425,7 @@ export function addLayers(map: MapLibreMap): void {
         'text-size': 11,
         'text-anchor': 'top',
       },
-      paint: {
-        'text-color': NAVY,
-        'text-halo-color': 'rgba(255,255,255,0.85)',
-        'text-halo-width': 1,
-        'text-halo-blur': 1,
-        'text-translate': [0, 24],
-      },
+      paint: { ...NAME_PAINT, 'text-translate': [0, 24] },
     });
   }
 }

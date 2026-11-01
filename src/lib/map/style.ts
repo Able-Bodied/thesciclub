@@ -79,6 +79,8 @@ export function basemapStyle(dark: boolean): StyleSpecification {
     sprite: `${assets()}sprites/${dark ? 'dark' : 'light'}`,
     sources: { usa: { type: 'vector', url: `pmtiles://${archiveUrl()}` } },
     layers: basemapLayers(dark),
+    // Lets a caller's layer follow the theme without being added again.
+    state: { dark: { default: dark } },
   };
 }
 

@@ -86,6 +86,26 @@ describe("organizations' places", () => {
     return { added, resolver, map };
   }
 
+  it('name their marks in white on a dark map, with no bright glow round the letters', () => {
+    const names = layersOf().added.filter((layer) => layer.id.endsWith('-name'));
+    expect(names.length).toBeGreaterThanOrEqual(3);
+    for (const layer of names) {
+      const paint = (layer as { paint?: Record<string, unknown> }).paint;
+      expect(paint?.['text-color']).toEqual([
+        'case',
+        ['global-state', 'dark'],
+        '#ffffff',
+        '#102a4c',
+      ]);
+      expect(paint?.['text-halo-color']).toEqual([
+        'case',
+        ['global-state', 'dark'],
+        'rgba(0,0,0,0.85)',
+        'rgba(255,255,255,0.85)',
+      ]);
+    }
+  });
+
   it("show each organization's own badge, and a purple count where places run together", () => {
     const badge = layersOf().added.find((layer) => layer.id === 'club-organizations');
     expect(badge?.layout?.['icon-image']).toEqual([
