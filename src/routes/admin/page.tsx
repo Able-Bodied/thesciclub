@@ -121,6 +121,7 @@ export default function AdminPage() {
   const [invites, setInvites] = useState<AdminInvite[]>([]);
   const [blocked, setBlocked] = useState<BlockedEmail[]>([]);
   const [organizationRevision, setOrganizationRevision] = useState(0);
+  const [organizationsPart, setOrganizationsPart] = useState<'directory' | 'admins'>('directory');
   const [inviters, setInviters] = useState<InvitingOrganization[]>([]);
   const [tab, setTab] = useTabParam(ADMIN_TAB_VALUES, 'members');
   // Read here, not in the panel, so the tab itself can say what needs
@@ -518,21 +519,44 @@ export default function AdminPage() {
             ) : null}
 
             {tab === 'organizations' ? (
-              // Side by side on a desktop: the directory is long, and linking
-              // a member to one of its entries was below all of it.
-              <div className="grid items-start gap-x-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
-                <div className="min-w-0">
-                  <OrganizationsSection
-                    onChange={() => {
-                      setOrganizationRevision((value) => value + 1);
-                    }}
-                  />
-                  <OrganizationSuggestions />
+              // The directory is long and linking a member was below all of it:
+              // side by side on a desktop, one at a time on anything narrower.
+              <>
+                <SegmentPills
+                  className="pt-0 pb-1 lg:hidden"
+                  value={organizationsPart}
+                  onChange={setOrganizationsPart}
+                  segments={[
+                    ['directory', 'Organizations'],
+                    ['admins', 'Org admins'],
+                  ]}
+                />
+                <div className="grid items-start gap-x-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+                  <div
+                    className={cn(
+                      'min-w-0 lg:block',
+                      organizationsPart !== 'directory' && 'hidden',
+                    )}
+                  >
+                    <OrganizationsSection
+                      onChange={() => {
+                        setOrganizationRevision((value) => value + 1);
+                      }}
+                    />
+                    <OrganizationSuggestions />
+                  </div>
+                  {/* Scrolls by itself: pinned and taller than the screen, its
+                      end was out of reach until the directory's. */}
+                  <div
+                    className={cn(
+                      'min-w-0 lg:sticky lg:top-[4.5rem] lg:block lg:max-h-[calc(100dvh-9rem)] lg:overflow-y-auto',
+                      organizationsPart !== 'admins' && 'hidden',
+                    )}
+                  >
+                    <RepresentativesSection key={organizationRevision} />
+                  </div>
                 </div>
-                <div className="min-w-0 lg:sticky lg:top-[4.5rem]">
-                  <RepresentativesSection key={organizationRevision} />
-                </div>
-              </div>
+              </>
             ) : null}
 
             {tab === 'reports' ? (
