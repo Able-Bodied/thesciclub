@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { OwnMember } from '@/lib/members';
 
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/components/notification-bell', () => ({
+  NotificationBell: () => null,
+  useWideLayout: () => null,
+}));
 
 const { MeHero } = await import('@/routes/me/hero');
 

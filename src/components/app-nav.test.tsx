@@ -4,10 +4,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { AppNav, litTab } from '@/components/app-nav';
 import type * as NotificationsModule from '@/lib/notifications';
 
+const unseen = vi.hoisted(() => ({ count: 0 }));
+
 // The bell reads its number from the database; stubbed so this test reads nothing.
 vi.mock('@/lib/notifications', async (importOriginal) => ({
   ...(await importOriginal<typeof NotificationsModule>()),
-  useUnseenNotifications: () => ({ count: 0, refresh: () => undefined }),
+  useUnseenNotifications: () => ({ count: unseen.count, refresh: () => undefined }),
 }));
 vi.mock('@/lib/chat/unread', () => ({ useUnreadThreads: () => ({ count: 0, reload: vi.fn() }) }));
 vi.mock('@/lib/chat/realtime', () => ({ useRealtimeRows: vi.fn() }));
@@ -50,5 +52,26 @@ describe('AppNav', () => {
     );
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Chat' })).not.toHaveAttribute('aria-current');
+  });
+});
+
+describe('the Me tab', () => {
+  const renderNav = () =>
+    render(
+      <MemoryRouter>
+        <AppNav />
+      </MemoryRouter>,
+    );
+
+  it('says so when a notification is unseen', () => {
+    unseen.count = 2;
+    renderNav();
+    expect(screen.getByRole('link', { name: 'Me, new notifications' })).toBeInTheDocument();
+    unseen.count = 0;
+  });
+
+  it('is plain otherwise', () => {
+    renderNav();
+    expect(screen.getByRole('link', { name: 'Me' })).toBeInTheDocument();
   });
 });

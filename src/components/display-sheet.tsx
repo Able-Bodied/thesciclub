@@ -1,4 +1,4 @@
-import { ALargeSmall } from 'lucide-react';
+import {} from 'lucide-react';
 import { createContext, useCallback, useContext, useId, useRef, useState } from 'react';
 import { SheetGrip } from '@/components/sheet-grip';
 import { useDialogFocus } from '@/lib/dialog-focus';
@@ -38,33 +38,6 @@ export function useOpenDisplaySheet(): () => void {
 
 function noop() {
   // No sheet to open.
-}
-
-/** The button: `round` on a light header, `plate` on Me's navy band. */
-export function DisplayButton({
-  variant,
-  className,
-}: {
-  variant: 'round' | 'plate';
-  className?: string;
-}) {
-  const open = useOpenDisplaySheet();
-  return (
-    <button
-      type="button"
-      onClick={open}
-      aria-label="Display settings"
-      className={cn(
-        'grid h-[44px] w-[44px] flex-none place-items-center rounded-full transition-colors',
-        variant === 'round'
-          ? 'bg-tint text-emphasis hover:bg-line'
-          : 'bg-plate-chip text-white hover:bg-plate-hover',
-        className,
-      )}
-    >
-      <ALargeSmall aria-hidden="true" className="h-[20px] w-[20px]" strokeWidth={2} />
-    </button>
-  );
 }
 
 /** A bottom sheet on a phone and a centred panel on a desktop, as Filters is. */

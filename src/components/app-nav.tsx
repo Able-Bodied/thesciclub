@@ -4,6 +4,7 @@ import { NotificationBell, useWideLayout } from '@/components/notification-bell'
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { useIconBadge } from '@/lib/icon-badge';
+import { useUnseenNotifications } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { backToHome } from '@/routes/home/back';
 
@@ -60,6 +61,9 @@ export function AppNav() {
   const { count, reload } = useUnreadThreads();
   // The bar is on every screen, so the app icon's number is kept here.
   useIconBadge();
+  // Red on Me, so a notification is not missed on a screen with no bell
+  // (the owner, 2026-11-01).
+  const { count: unseen } = useUnseenNotifications();
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
@@ -107,7 +111,13 @@ export function AppNav() {
               // and what it is telling somebody is told only in navy. The label
               // starts with the visible word, so what is said and what is shown
               // still agree.
-              aria-label={to === '/chat' && count > 0 ? 'Chat, something new' : undefined}
+              aria-label={
+                to === '/chat' && count > 0
+                  ? 'Chat, something new'
+                  : to === '/me' && unseen > 0
+                    ? 'Me, new notifications'
+                    : undefined
+              }
               className={cn(
                 'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
                 // Icon over label on a phone, beside it on a desktop, where
@@ -121,6 +131,12 @@ export function AppNav() {
                   on one line. */}
               <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
                 <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
+                {to === '/me' && unseen > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-destructive-fill ring-2 ring-paper"
+                  />
+                ) : null}
                 {to === '/chat' && count > 0 ? (
                   // Ringed in the bar's own colour so it reads as a dot on
                   // the icon rather than as part of it.

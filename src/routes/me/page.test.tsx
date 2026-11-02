@@ -149,6 +149,10 @@ vi.mock('@/lib/chat/rooms', async (importOriginal) => ({
   useChatRooms: () => ({ rooms: chatRooms.rooms, loading: false, error: null }),
 }));
 
+vi.mock('@/lib/notifications', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useUnseenNotifications: () => ({ count: 0, loaded: true, refresh: () => undefined }),
+}));
 vi.mock('@/lib/account', () => ({
   useAccount: () => account.current,
   signOut: () => {
@@ -219,15 +223,15 @@ describe('MePage', () => {
   });
 
   // The one tab with it (the owner, 2026-10-22), with a member row or without.
-  it('has the Display button in its header', () => {
+  it('has the notifications bell in its header', () => {
     renderMe();
-    expect(screen.getByRole('button', { name: 'Display settings' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument();
   });
 
-  it('has the Display button before the member row arrives too', () => {
+  it('has the bell before the member row arrives too', () => {
     own.member = null;
     renderMe();
-    expect(screen.getByRole('button', { name: 'Display settings' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument();
   });
 
   it('says who vouched for you', () => {
