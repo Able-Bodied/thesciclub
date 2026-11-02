@@ -310,7 +310,7 @@ export default function EventDetailPage() {
                       : 'bg-action text-white hover:bg-action-hi',
                   )}
                 >
-                  {going ? 'Going ✓' : 'Going'}
+                  {going ? 'Going ✓' : 'RSVP'}
                 </button>
               )}
               <button

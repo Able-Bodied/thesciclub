@@ -274,7 +274,7 @@ describe('EventDetailPage', () => {
       ];
       renderDetail();
       const heading = screen.getByRole('heading', { name: 'Details' });
-      const going = screen.getByRole('button', { name: 'Going' });
+      const going = screen.getByRole('button', { name: 'RSVP' });
       expect(heading.compareDocumentPosition(screen.getByText('nothing'))).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
@@ -300,7 +300,7 @@ describe('EventDetailPage', () => {
         'href',
         'https://norcalsci.org/events/rugby',
       );
-      expect(screen.queryByRole('button', { name: 'Going' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'RSVP' })).not.toBeInTheDocument();
       const register = screen.getByRole('link', { name: 'Register' });
       expect(register).toHaveAttribute('href', 'https://norcalsci.org/register/rugby');
       expect(register).toHaveAttribute('target', '_blank');
@@ -377,7 +377,7 @@ describe('EventDetailPage', () => {
 
     it('records going, then says what it shares and offers the calendar', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
       const sheet = await screen.findByRole('dialog', { name: 'You’re going' });
       expect(sheet).toHaveTextContent('We share your email with the host');
@@ -396,7 +396,7 @@ describe('EventDetailPage', () => {
 
     it('changes Going to Interested from the sheet', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       await userEvent.click(await screen.findByRole('button', { name: /Change to Interested/ }));
       expect(state.setRsvp).toHaveBeenLastCalledWith('rugby', 'me', 'interested');
       expect(await screen.findByRole('dialog', { name: 'You’re interested' })).toBeInTheDocument();
@@ -404,14 +404,14 @@ describe('EventDetailPage', () => {
 
     it('asks for a number with Going when there is none on file', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(await screen.findByLabelText('Phone number (optional)')).toBeInTheDocument();
     });
 
     it('does not ask when there is a number on file', async () => {
       state.phone = '14085550112';
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       await screen.findByRole('dialog');
       // The read is async: give the page its chance to add the field.
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -428,7 +428,7 @@ describe('EventDetailPage', () => {
     it('surfaces a failed write', async () => {
       state.setRsvp = vi.fn().mockResolvedValue({ ok: false, error: 'permission denied' });
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(await screen.findByText('permission denied')).toBeInTheDocument();
     });
   });
@@ -688,7 +688,7 @@ describe('an event that is over', () => {
     // whether you met it in the list or on its own page.
     state.events = [makeEvent({ id: 'rugby', startTime: '2026-09-06T03:00:00Z' })];
     renderDetail();
-    expect(screen.queryByRole('button', { name: /^Going/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'RSVP' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Interested/ })).not.toBeInTheDocument();
     expect(screen.getByText(/already happened/i)).toBeInTheDocument();
   });

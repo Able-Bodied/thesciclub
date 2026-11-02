@@ -90,9 +90,10 @@ describe('the public event page', () => {
     );
     expect(screen.getByText('NorCal SCI')).toBeInTheDocument();
     expect(screen.getByText('Everyone is welcome.')).toBeInTheDocument();
-    // No counts and no attendees: the only "going" is the button.
+    // No counts and no attendees.
     expect(screen.queryByText(/\d+ (going|interested)/i)).toBeNull();
-    expect(screen.getAllByText(/going/i).map((el) => el.textContent)).toEqual(['Going']);
+    expect(screen.queryByText(/going/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'RSVP' })).toBeInTheDocument();
   });
 
   // The owner, 2026-10-24: a stronger ask to join, set apart.
@@ -148,7 +149,7 @@ describe('the public event page', () => {
 
   it('opens the form from Going', async () => {
     renderAt('/e/picnic');
-    await userEvent.click(await screen.findByRole('button', { name: 'Going' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'RSVP' }));
     expect(
       await screen.findByRole('heading', { name: 'Get added to our list' }),
     ).toBeInTheDocument();

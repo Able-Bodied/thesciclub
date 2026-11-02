@@ -443,8 +443,7 @@ function PhoneCard({ userId }: { userId: string | null }) {
   return (
     <SignInCard title="Phone number for events">
       <p className="text-[0.875rem] text-ink2 leading-[1.45]">
-        Optional, and not a way to sign in. Event hosts get it, with your email, when you choose
-        Going.
+        Optional, and not a way to sign in. Event hosts get it, with your email, when you RSVP.
       </p>
       {phone === undefined ? null : (
         <p className="mt-2 text-[0.875rem] text-ink">

@@ -342,7 +342,7 @@ describe('EventsPage', () => {
     /** The first card's Going button. Throws rather than asserting non-null, so
      *  a missing button fails as itself instead of as a null dereference. */
     function firstGoingButton(): HTMLElement {
-      const [button] = screen.getAllByRole('button', { name: 'Going' });
+      const [button] = screen.getAllByRole('button', { name: 'RSVP' });
       if (!button) throw new Error('no Going button rendered');
       return button;
     }

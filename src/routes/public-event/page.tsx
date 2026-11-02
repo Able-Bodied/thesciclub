@@ -163,7 +163,7 @@ export default function PublicEventPage() {
                 }}
                 className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
               >
-                Going
+                RSVP
               </button>
               <button
                 type="button"

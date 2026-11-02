@@ -67,7 +67,7 @@ describe('EventCard', () => {
 
     it('offers Register for Going, which marks them going and opens the sign-up', async () => {
       const props = renderCard({ event, status: null });
-      expect(screen.queryByRole('button', { name: 'Going' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'RSVP' })).not.toBeInTheDocument();
       const register = screen.getByRole('link', { name: /^Register/ });
       expect(register).toHaveAttribute('href', 'https://norcalsci.org/register/swim');
       expect(register).toHaveAttribute('target', '_blank');
@@ -84,7 +84,7 @@ describe('EventCard', () => {
 
     it('ignores a sign-up that is not a web address', () => {
       renderCard({ event: makeEvent({ registrationUrl: 'javascript:alert(1)' }) });
-      expect(screen.getByRole('button', { name: 'Going' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'RSVP' })).toBeInTheDocument();
     });
   });
 
@@ -94,7 +94,7 @@ describe('EventCard', () => {
     it('carries no line about what Going shares', () => {
       renderCard({ status: null });
       expect(screen.queryByText(/share your email/)).not.toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Going' })).not.toHaveAttribute('aria-describedby');
+      expect(screen.getByRole('button', { name: 'RSVP' })).not.toHaveAttribute('aria-describedby');
     });
 
     it('reports Interested when it was not set', async () => {
@@ -112,7 +112,7 @@ describe('EventCard', () => {
 
     it('switches from interested to going in one tap, not two', async () => {
       const props = renderCard({ status: 'interested' });
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(props.onRsvp).toHaveBeenCalledWith('going');
     });
 
@@ -268,7 +268,7 @@ describe('an event that is over', () => {
   it('still offers both buttons while the event is ahead', () => {
     renderCard({ past: false });
     expect(screen.getByRole('button', { name: /interested/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^going/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'RSVP' })).toBeInTheDocument();
   });
 });
 

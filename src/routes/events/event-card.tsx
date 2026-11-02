@@ -350,7 +350,7 @@ export function EventCard({
             aria-pressed={going}
             className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
           >
-            {going ? 'Going ✓' : 'Going'}
+            {going ? 'Going ✓' : 'RSVP'}
           </button>
         )}
       </div>

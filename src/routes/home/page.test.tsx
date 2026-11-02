@@ -487,7 +487,7 @@ describe('Home', () => {
   it('saves an RSVP and reads the tallies again', async () => {
     const user = userEvent.setup();
     renderPage('/home?segment=events');
-    await user.click(screen.getByRole('button', { name: /^Going/ }));
+    await user.click(screen.getByRole('button', { name: 'RSVP' }));
     expect(db.setRsvp).toHaveBeenCalledWith('swim', 'me', 'going');
     await waitFor(() => {
       expect(db.reload).toHaveBeenCalled();
@@ -499,7 +499,7 @@ describe('Home', () => {
     db.setRsvp = vi.fn().mockResolvedValue({ ok: false, error: 'Your answer was not saved.' });
     const user = userEvent.setup();
     renderPage('/home?segment=events');
-    await user.click(screen.getByRole('button', { name: /^Going/ }));
+    await user.click(screen.getByRole('button', { name: 'RSVP' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Your answer was not saved.');
   });
 
