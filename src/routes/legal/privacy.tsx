@@ -31,6 +31,10 @@ export default function PrivacyPage() {
             get the most from the club, such as adding it to your Home Screen. It is kept for 180
             days (see What we collect and How long we keep it).
           </li>
+          <li>
+            <b>Added:</b> administrators see how each member came to the club, by name: the invite
+            or QR code that let them in, and whether they asked for one.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 31, 2026">
@@ -503,10 +507,10 @@ export default function PrivacyPage() {
           <li>who is going to each event, to pass on to its host (see Event hosts);</li>
           <li>
             in <b>Admin → Stats</b>: counts, such as how many members opened the app this week,
-            never who; and, naming members, how each member signs in, how each is seeing the club,
-            whether each has notifications on and on how many devices, and who has read each post
-            and when, including reads from before October 20, 2026, with whether each read was on a
-            phone or tablet, or a computer.
+            never who; and, naming members, how each member signs in and came to the club, how each
+            is seeing the club, whether each has notifications on and on how many devices, and who
+            has read each post and when, including reads from before October 20, 2026, with whether
+            each read was on a phone or tablet, or a computer.
           </li>
         </List>
       </Section>

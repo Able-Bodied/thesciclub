@@ -25,6 +25,15 @@ export interface MethodCount {
   people: number;
 }
 
+/** The invite that let somebody in (20261102010000). */
+export interface CameBy {
+  way: 'qr' | 'open' | 'organization' | 'member';
+  /** The organization or member; gone from the club, null. */
+  by: string | null;
+  /** A QR code's event. */
+  event: string | null;
+}
+
 export interface SignInAccount {
   id: string;
   name: string | null;
@@ -44,6 +53,9 @@ export interface SignInAccount {
   /** In the period. */
   signIns: number;
   signInMethods: SignInMethod[];
+  /** Null for an account with no invite yet. */
+  cameBy: CameBy | null;
+  askedForInvite: boolean;
 }
 
 export interface SignInMethods {
@@ -54,6 +66,8 @@ export interface SignInMethods {
   /** Of the accounts made in the period, by the way each was made. */
   signUps: Record<SignInMethod, number>;
   signIns: Record<SignInMethod, MethodCount>;
+  /** Of the accounts made in the period, by the way each came. */
+  cameBy: Partial<Record<CameBy['way'], number>>;
   /** Of those, the Home Screen app taking a browser's sign-in over. */
   homeScreen: MethodCount;
   /** Made or signed in to in the period, newest sign-in first. */
@@ -66,6 +80,7 @@ const LABELS: Record<string, string> = {
   apple: 'Apple',
   link: 'One-time link',
   oauth: 'Google or Apple',
+  passkey: 'Passkey',
 };
 
 export function methodLabel(method: SignInMethod | null): string {
@@ -87,6 +102,26 @@ export function methodOrder(present: SignInMethod[]): SignInMethod[] {
     .filter((m) => !ORDER.includes(m) && m !== 'link')
     .sort((a, b) => a.localeCompare(b));
   return [...ORDER, ...others, ...(present.includes('link') ? ['link'] : [])];
+}
+
+export const CAME_LABELS: Record<CameBy['way'], string> = {
+  qr: 'QR code',
+  organization: 'Invited by an organization',
+  member: 'Invited by a member',
+  open: 'While joining was open',
+};
+
+/** "Came by QR code from NorCal SCI, at Abilities Expo, after asking for an invite." */
+export function cameByPhrase({ cameBy, askedForInvite }: SignInAccount): string | null {
+  if (!cameBy) return askedForInvite ? 'Asked for an invite.' : null;
+  const { way, by, event } = cameBy;
+  const asked = askedForInvite ? ', after asking for an invite' : '';
+  if (way === 'open') return `Came while joining was open${asked}.`;
+  if (way === 'qr') {
+    const where = event && event !== by ? `, at ${event}` : '';
+    return `Came by QR code${by ? ` from ${by}` : ''}${where}${asked}.`;
+  }
+  return `Came by invite${by ? ` from ${by}` : ''}${asked}.`;
 }
 
 export async function fetchSignInMethods(

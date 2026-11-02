@@ -23,6 +23,8 @@ import {
   useDeviceReport,
 } from '@/routes/admin/member-devices';
 import {
+  CAME_LABELS,
+  cameByPhrase,
   methodLabel,
   methodOrder,
   methodPhrase,
@@ -323,6 +325,15 @@ function SigningIn({
       </ul>
 
       <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
+        How those accounts came to the club.
+      </p>
+      <ul className={`${CARD} mt-2 px-3.5 py-1`} aria-label="How they came">
+        {(Object.keys(CAME_LABELS) as (keyof typeof CAME_LABELS)[]).map((way) => (
+          <BarRow key={way} label={CAME_LABELS[way]} value={data.cameBy[way] ?? 0} of={made} />
+        ))}
+      </ul>
+
+      <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
         {since
           ? `Sign-ins${period === 'all' ? '' : ` ${periodPhrase(period)}`}, by method. Recorded since ${since}.`
           : 'No sign-ins recorded yet. Each is recorded as a member signs in, from the release that added this.'}
@@ -393,6 +404,7 @@ function AccountRow({ account, period }: { account: SignInAccount; period: Stats
   const others = account.methods.filter((m) => m !== account.signedUpWith);
   const made = new Date(account.createdAt).toLocaleDateString('en-US', DATE);
   const status = account.status ? STATUS[account.status] : undefined;
+  const came = cameByPhrase(account);
   return (
     <li className="border-line border-b py-2.5 text-[0.8125rem] leading-[1.45] last:border-b-0">
       <p className="text-ink">
@@ -418,6 +430,7 @@ function AccountRow({ account, period }: { account: SignInAccount; period: Stats
             `Made on ${made}, with no way to sign in now.`}
         {others.length ? ` Can also sign in with ${methodList(others)}.` : ''}
       </p>
+      {came ? <p className="text-ink2">{came}</p> : null}
       <p className="text-ink2">
         {account.lastSignInAt
           ? `Last signed in ${new Date(account.lastSignInAt).toLocaleString('en-US', DATE_TIME)} with ${methodPhrase(account.lastSignInMethod)}${account.lastSignInHomeScreen ? ', in the Home Screen app' : ''}.`

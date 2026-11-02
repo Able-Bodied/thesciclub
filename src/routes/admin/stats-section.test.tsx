@@ -106,11 +106,14 @@ const account = (o: Partial<SignInMethods['accounts'][number]>) => ({
   lastSignInMethod: null,
   lastSignInHomeScreen: false,
   signIns: 0,
+  cameBy: null,
+  askedForInvite: false,
   signInMethods: [],
   ...o,
 });
 
 const METHODS: SignInMethods = {
+  cameBy: { member: 3, qr: 1 },
   asOf: '2026-10-16T19:00:00Z',
   period: 'all',
   recordedSince: '2026-09-01T12:00:00Z',
@@ -390,6 +393,35 @@ describe('Admin → Stats', () => {
     render(<StatsSection />, { wrapper: MemoryRouter });
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('Ever signed in')).toBeInTheDocument();
+  });
+
+  it('says how each person came', async () => {
+    api.methods = {
+      ...METHODS,
+      accounts: [
+        account({
+          id: 'q',
+          name: 'Ann',
+          cameBy: { way: 'qr', by: 'NorCal SCI', event: 'Abilities Expo' },
+        }),
+        account({
+          id: 'm',
+          name: 'Bo',
+          cameBy: { way: 'member', by: 'Ann', event: null },
+          askedForInvite: true,
+        }),
+        account({ id: 'o', name: 'Cy', cameBy: { way: 'open', by: null, event: null } }),
+      ],
+    };
+    render(<StatsSection />, { wrapper: MemoryRouter });
+    await userEvent.click(await screen.findByRole('button', { name: 'Who signed in how' }));
+    expect(
+      screen.getByText('Came by QR code from NorCal SCI, at Abilities Expo.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Came by invite from Ann, after asking for an invite.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Came while joining was open.')).toBeInTheDocument();
   });
 
   it('says when no device has been seen', async () => {
