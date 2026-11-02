@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppNav, litTab } from '@/components/app-nav';
 import type * as NotificationsModule from '@/lib/notifications';
 
@@ -52,6 +52,46 @@ describe('AppNav', () => {
     );
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Chat' })).not.toHaveAttribute('aria-current');
+  });
+});
+
+describe('the bar on a scroll', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function scrollOn({ coarse, wide }: { coarse: boolean; wide: boolean }) {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('pointer') ? coarse : wide,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    render(
+      <MemoryRouter>
+        <AppNav />
+        <div data-testid="box" />
+      </MemoryRouter>,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    Object.defineProperty(nav, 'offsetHeight', { value: 60 });
+    const box = screen.getByTestId('box');
+    Object.defineProperty(box, 'scrollHeight', { value: 2000 });
+    Object.defineProperty(box, 'clientHeight', { value: 600 });
+    Object.defineProperty(box, 'scrollTop', { value: 300 });
+    fireEvent.scroll(box);
+    return nav;
+  }
+
+  it('goes on a phone', () => {
+    expect(scrollOn({ coarse: true, wide: false }).style.marginBottom).toBe('-60px');
+  });
+
+  it('stays in a narrow window on a computer', () => {
+    expect(scrollOn({ coarse: false, wide: false }).style.marginBottom).toBe('');
+  });
+
+  it('stays at the top of a wide screen, touch or not', () => {
+    expect(scrollOn({ coarse: true, wide: true }).style.marginBottom).toBe('');
   });
 });
 

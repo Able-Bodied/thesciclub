@@ -1,7 +1,7 @@
 import { Bell } from 'lucide-react';
 import { useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useHideOnScroll } from '@/components/hide-on-scroll';
+import { touchScreen, useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -70,8 +70,9 @@ export function AppNav() {
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
-  // On a phone only: a desktop's bar is at the top, out of the way already.
-  const { hidden, show } = useHideOnScroll(wide === false, location.pathname);
+  // On a phone only: a desktop's bar is at the top, out of the way already, and
+  // a narrow desktop window keeps its bottom bar still.
+  const { hidden, show } = useHideOnScroll(wide === false && touchScreen(), location.pathname);
   const bar = useRef<HTMLElement | null>(null);
 
   // The bar is mounted on every screen, which makes it the right place for the

@@ -8,6 +8,15 @@ const NEAR_TOP = 40;
 const LEAST_ROOM = 120;
 
 /**
+ * Whether a finger is what this device is mainly used with. A narrow window on
+ * a computer has the phone's bottom bar too, and with a mouse or trackpad the
+ * bar going and coming is only the page jumping (the owner, 2026-11-02).
+ */
+export function touchScreen(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+}
+
+/**
  * Whether the phone's tab bar is out of the way (the owner, 2026-11-01): it
  * slides off as a page is read down and comes back on the way up, for the room.
  *
