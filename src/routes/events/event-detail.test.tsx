@@ -384,12 +384,12 @@ describe('EventDetailPage', () => {
       expect(screen.getByRole('link', { name: /Google Calendar/ })).toBeInTheDocument();
     });
 
-    it('opens the sheet for Interested too, which shares nothing', async () => {
+    it('opens the sheet for Interested too, with a nudge to RSVP', async () => {
       renderDetail();
       await userEvent.click(screen.getByRole('button', { name: 'Interested' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'interested');
       expect(await screen.findByRole('dialog', { name: 'You’re interested' })).toHaveTextContent(
-        'Interested shares nothing with the host.',
+        /Make sure to RSVP/,
       );
       expect(screen.queryByLabelText(/Phone number/)).not.toBeInTheDocument();
     });

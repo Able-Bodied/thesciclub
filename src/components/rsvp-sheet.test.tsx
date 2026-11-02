@@ -88,7 +88,7 @@ describe('the RSVP sheet', () => {
     await userEvent.click(screen.getByRole('button', { name: /Change to Interested/ }));
     expect(changed).toEqual(['interested']);
     expect(await screen.findByRole('dialog', { name: 'You’re interested' })).toHaveTextContent(
-      'Interested shares nothing with the host.',
+      /Make sure to RSVP/,
     );
   });
 

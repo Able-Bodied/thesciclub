@@ -38,7 +38,7 @@ export const GOING_SHARES_CONTACT =
   'We share your email with the host, and your phone number if you’ve added one, for this event only.';
 
 /** The event as the sheet needs it: for the calendar, and the host's own sign-up. */
-export type SheetEvent = CalendarEvent & Pick<ClubEvent, 'registrationUrl'>;
+export type SheetEvent = CalendarEvent & Pick<ClubEvent, 'registrationUrl' | 'handAdded'>;
 
 const SKIPPED_KEY = 'sciclub.goingPhoneSkipped';
 
@@ -89,6 +89,8 @@ export function RsvpSheet({
   useDialogFocus(dialog, heading, onClose);
   const going = status === 'going';
   const register = safeHref(event.registrationUrl);
+  // Only where there is an RSVP button to press, and no sign-up saying its own piece.
+  const nudge = !going && event.handAdded && !register;
 
   function save() {
     if (saving || !isCompletePhone(typed)) return;
@@ -141,14 +143,18 @@ export function RsvpSheet({
           <p className="mt-0.5 font-bold text-[0.875rem] text-ink2 leading-[1.4]">{event.title}</p>
 
           {/* Said plainly and first (the owner, 2026-10-27). */}
-          <p
-            className={cn(
-              'mt-3 rounded-[11px] px-3 py-2.5 text-[0.875rem] leading-[1.5]',
-              going ? 'bg-tint font-semibold text-ink' : 'text-ink2',
-            )}
-          >
-            {going ? GOING_SHARES_CONTACT : 'Interested shares nothing with the host.'}
-          </p>
+          {going || nudge ? (
+            <p
+              className={cn(
+                'mt-3 rounded-[11px] px-3 py-2.5 text-[0.875rem] leading-[1.5]',
+                going ? 'bg-tint font-semibold text-ink' : 'text-ink2',
+              )}
+            >
+              {going
+                ? GOING_SHARES_CONTACT
+                : 'Make sure to RSVP if you decide to go, so the organizers know you’re coming.'}
+            </p>
+          ) : null}
           {going ? (
             <button
               type="button"
@@ -157,7 +163,7 @@ export function RsvpSheet({
               }}
               className="mt-1 min-h-11 font-bold text-[0.84375rem] text-emphasis underline underline-offset-2"
             >
-              Change to Interested, which shares nothing
+              Change to Interested
             </button>
           ) : null}
 
