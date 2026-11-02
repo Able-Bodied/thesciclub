@@ -311,6 +311,24 @@ export async function setCollectsRsvps(
   }
 }
 
+/** The line on its card (20261101120000). Empty takes it off. */
+export async function setOrganizationSummary(
+  organizationId: string,
+  summary: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const refusal = 'That was not saved. Try again.';
+  try {
+    const { error } = await getSupabase().rpc('set_organization_summary', {
+      p_organization: organizationId,
+      p_summary: summary,
+    });
+    if (error) return { ok: false, error: describeError(error, refusal) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
+}
+
 /** Makes somebody a member, for its org admins and the club's administrators. */
 export async function addOrganizationMember(
   organizationId: string,

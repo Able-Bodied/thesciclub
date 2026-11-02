@@ -17,7 +17,13 @@
 
 import type { MapContents, MapPoint } from '@/lib/map-data';
 import { canonicalTopicsOf } from '@/routes/peers/topics';
-import type { BrowseMember, InjuryRegion, MemberFilters, PeersSegment } from '@/types/domain';
+import {
+  type BrowseMember,
+  EMPTY_MEMBER_FILTERS,
+  type InjuryRegion,
+  type MemberFilters,
+  type PeersSegment,
+} from '@/types/domain';
 
 export function activeFilterCount(
   filters: MemberFilters,
@@ -210,10 +216,15 @@ export function membersWithin(
 
 export function filterMembers(
   members: BrowseMember[],
-  filters: MemberFilters,
+  chosen: MemberFilters,
   segment: PeersSegment,
-  near: ReadonlySet<string> | null = null,
+  chosenNear: ReadonlySet<string> | null = null,
 ): BrowseMember[] {
+  // A search looks through everybody (the owner, 2026-11-01): no filter or
+  // distance hides somebody whose name was typed. Mentors still means mentors.
+  const searching = chosen.search.trim() !== '';
+  const filters = searching ? { ...EMPTY_MEMBER_FILTERS, search: chosen.search } : chosen;
+  const near = searching ? null : chosenNear;
   const kept = members.filter((member) => {
     if (!matchesSegment(member, segment)) return false;
     if (!matchesLevel(member, filters)) return false;

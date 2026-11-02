@@ -291,6 +291,14 @@ describe('the age filter', () => {
   });
 });
 
+describe('searching past the filters', () => {
+  it('finds somebody a filter or a distance would hide', () => {
+    const deck = [makeMember({ id: 'n', displayName: 'Nicole', city: 'Fresno' })];
+    const narrowed = { ...none, search: 'nicole', withinMiles: 5, ages: ['18-29'] };
+    expect(filterMembers(deck, narrowed, 'everyone', new Set()).map((m) => m.id)).toEqual(['n']);
+  });
+});
+
 describe('milesForEnough', () => {
   const home = { latitude: 37.3, longitude: -121.9 };
   // A degree of latitude is about 69 miles.

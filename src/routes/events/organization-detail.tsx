@@ -28,6 +28,7 @@ import { organizationTown, placesOf } from '@/routes/events/organization-places'
 import { OrganizationReviewSetting } from '@/routes/events/organization-review-setting';
 import { OrganizationReviews } from '@/routes/events/organization-reviews';
 import { OrganizationRsvpSetting } from '@/routes/events/organization-rsvp-setting';
+import { OrganizationSummarySetting } from '@/routes/events/organization-summary-setting';
 import { EventDescription } from '@/routes/events/rich-text';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 
@@ -261,6 +262,10 @@ export default function OrganizationDetailPage() {
 
         {seesMembers ? (
           <>
+            <OrganizationSummarySetting
+              organizationId={organization.id}
+              summary={organization.summary ?? null}
+            />
             <OrganizationJoinSetting
               organizationId={organization.id}
               needed={organization.joinsNeedApproval === true}

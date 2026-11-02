@@ -577,6 +577,8 @@ export interface Invite {
 
 export interface Organization {
   id: string;
+  /** One line for its card (20261101120000). */
+  summary?: string | null;
   /** Join asks its org admins, instead of making a member (20261031010000). */
   joinsNeedApproval?: boolean;
   /** Its imported events take RSVPs too (20261101080000). */

@@ -179,8 +179,17 @@ export default function EventsPage() {
   const [directorySheetOpen, setDirectorySheetOpen] = useState(false);
   const [filters, setFilters] = useState<EventFilters>(EMPTY_EVENT_FILTERS);
   const [eventSearch, setEventSearch] = useState('');
+  // A search looks through everything (the owner, 2026-11-01): no filter, no
+  // distance and no dates hide what somebody typed the name of.
+  const searching = eventSearch.trim() !== '';
   const dateRange = dateWindowRange(
-    isRsvpSegment(segment) ? (segment === 'been-to' ? 'past' : 'any') : filters.when,
+    isRsvpSegment(segment)
+      ? segment === 'been-to'
+        ? 'past'
+        : 'any'
+      : searching
+        ? 'any'
+        : filters.when,
   );
   // Been to is the member's own past RSVPs: read those, not every past event.
   const beenTo = useMemo(
@@ -220,11 +229,14 @@ export default function EventsPage() {
   }, [milesAtStart]);
   const organizationsNear = useMemo(() => {
     const miles = directory.withinMiles;
-    if (miles === null || !directoryMap.contents.home) return organizations;
+    // A search looks through all of them, wherever they are.
+    if (miles === null || directory.query.trim() || !directoryMap.contents.home) {
+      return organizations;
+    }
     const placed = new Set(directoryMap.contents.organizations.map((place) => place.id));
     const near = organizationsWithin(directoryMap.contents, miles);
     return organizations.filter(({ id }) => !placed.has(id) || near.has(id));
-  }, [organizations, directory.withinMiles, directoryMap.contents]);
+  }, [organizations, directory.withinMiles, directory.query, directoryMap.contents]);
   const changeDirectory = (next: DirectoryFilters) => {
     chosenMiles.current = next.withinMiles !== milesAtStart;
     setDirectory(next);
@@ -246,14 +258,18 @@ export default function EventsPage() {
       ),
     [eventSearch, organizationsById],
   );
+  const narrowing = useMemo<EventFilters>(
+    () => (searching ? { ...EMPTY_EVENT_FILTERS, when: 'any', withinMiles: null } : filters),
+    [searching, filters],
+  );
   const visible = useMemo(
-    () => searched(filterEvents(events, filters, segment, viewerState)),
-    [events, filters, segment, viewerState, searched],
+    () => searched(filterEvents(events, narrowing, segment, viewerState)),
+    [events, narrowing, segment, viewerState, searched],
   );
   // Distance is the list's (the owner, 2026-10-31): the map shows every place.
   const onMap = useMemo(
-    () => searched(filterEvents(events, { ...filters, withinMiles: null }, segment, viewerState)),
-    [events, filters, segment, viewerState, searched],
+    () => searched(filterEvents(events, { ...narrowing, withinMiles: null }, segment, viewerState)),
+    [events, narrowing, segment, viewerState, searched],
   );
 
   // Grouped only in the browsing segments. "I'm going", "Interested" and

@@ -73,6 +73,25 @@ describe('the organizations directory', () => {
   });
 });
 
+describe('an organization’s line on its card', () => {
+  it('shows it under the name, and nothing without one', () => {
+    render(
+      <OrganizationList
+        organizations={[
+          { ...org('ncs', 'NorCal SCI'), summary: 'Peer mentors and programs' },
+          org('arh', 'Adaptive Rec Hub'),
+        ]}
+        events={[] as ClubEvent[]}
+        following={new Set()}
+        onToggleFollow={vi.fn()}
+        onOpen={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Peer mentors and programs')).toBeInTheDocument();
+    expect(screen.getByText('Adaptive Rec Hub')).toBeInTheDocument();
+  });
+});
+
 describe('searching and filtering the directory', () => {
   const year = new Date().getFullYear();
   const fund = (open: boolean): Grants.Grant => ({

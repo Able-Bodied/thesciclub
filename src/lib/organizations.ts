@@ -10,6 +10,7 @@ import type { Organization, OrganizationPlace } from '@/types/domain';
 interface OrganizationRow {
   joins_need_approval?: boolean | null;
   collects_rsvps?: boolean | null;
+  summary?: string | null;
   anonymous_reviews?: boolean | null;
   id: string;
   short_code: string;
@@ -65,6 +66,7 @@ export function toOrganization(row: OrganizationRow): Organization {
     category: row.category ?? null,
     joinsNeedApproval: row.joins_need_approval === true,
     collectsRsvps: row.collects_rsvps === true,
+    summary: row.summary ?? null,
     anonymousReviews: row.anonymous_reviews !== false,
     places: toOrganizationPlaces(row.organization_places),
   };
@@ -135,7 +137,7 @@ onForgetSharedReads(forgetDirectory);
 onCalendarChanged(forgetDirectory);
 
 const DIRECTORY =
-  'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, summary, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
 /** Before 20261028700000: no ZIP codes. */
 const DIRECTORY_WITHOUT_ZIP =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)';
