@@ -1,8 +1,9 @@
-import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FilterButton } from '@/components/filter-button';
+import { HeaderSearch } from '@/components/header-search';
 import { LoadingCards } from '@/components/loading-cards';
-import { SegmentPills } from '@/components/segment-pills';
+import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useHome } from '@/lib/home-state';
 import { useMapData } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
@@ -16,7 +17,9 @@ import {
   ageBandsIn,
   filterMembers,
   hasConditions,
+  memberPlaces,
   membersWithin,
+  milesForEnough,
   organizationsIn,
   othersOnly,
   regionsIn,
@@ -42,10 +45,10 @@ import { EMPTY_MEMBER_FILTERS, type MemberFilters, type PeersSegment } from '@/t
  * users cannot reliably swipe.
  */
 
-const SEGMENTS: [PeersSegment, string][] = [
-  ['everyone', 'Everyone'],
+const SEGMENTS = [
+  ['everyone', 'Peers'],
   ['mentors', 'Mentors'],
-];
+] as const;
 
 export default function PeersPage() {
   const navigate = useNavigate();
@@ -73,9 +76,21 @@ export default function PeersPage() {
   // cannot disagree about who is in it.
   const others = useMemo(() => othersOnly(members, memberId), [members, memberId]);
 
-  // Read only once a distance is asked: the map's own data, on the list too.
+  // The map's own data, on the list too: distances and where the deck starts.
   const home = useHome();
-  const mapData = useMapData(filters.withinMiles !== null);
+  const mapData = useMapData();
+  const milesAtStart = useMemo(
+    () => milesForEnough(mapData.contents.home, memberPlaces(mapData.contents, memberId)),
+    [mapData.contents, memberId],
+  );
+  // Until the member chooses for themselves.
+  const chosenMiles = useRef(false);
+  useEffect(() => {
+    if (chosenMiles.current) return;
+    setFilters((now) =>
+      now.withinMiles === milesAtStart ? now : { ...now, withinMiles: milesAtStart },
+    );
+  }, [milesAtStart]);
   const near = useMemo(
     () => membersWithin(mapData.contents, filters.withinMiles),
     [mapData.contents, filters.withinMiles],
@@ -123,101 +138,36 @@ export default function PeersPage() {
     setSegment((current) => nextSegment(current, direction));
   }, []);
 
-  const filterCount = activeFilterCount(filters);
+  const filterCount = activeFilterCount(filters, milesAtStart);
   const totalInSegment = filterMembers(others, EMPTY_MEMBER_FILTERS, segment).length;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto flex w-full max-w-[1100px] min-h-[38px] items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
-            Peers
-          </h1>
-          <span className="flex items-center gap-2">
-            <ViewSwitch view={view} onChange={setView} />
-            {/* On the map, its own chip opens the same sheet. */}
-            <button
-              type="button"
-              hidden={showingMap}
-              onClick={() => {
-                setSheetOpen(true);
-              }}
-              aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-              // 34px, four smaller than the Events one that already had this and
-              // the one control the setting was written for. It was missed.
-              data-target="small"
-              className="relative grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-            >
-              <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
-              {filterCount ? (
-                <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-              ) : null}
-            </button>
-          </span>
+      {/* As Events (the owner, 2026-11-01). Peers is everybody, mentors too;
+          Mentors narrows to them. The search reads across name, place, level,
+          topics, interests and the bio. */}
+      <header className="flex-none border-line border-b bg-paper px-[18px] pt-2.5">
+        <h1 className="sr-only">Peers</h1>
+        <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between gap-2">
+          <TwoWayToggle label="Show" options={SEGMENTS} value={segment} onChange={setSegment} />
+          <ViewSwitch view={view} onChange={setView} />
         </div>
-
-        {/* Under the filter control, above the segments, because that is the
-            order the three narrow in: a name or a word first, then which slice
-            of the club, then the sheet.
-
-            The search itself is not new — `matchesSearch` has read across name,
-            place, level, topics, interests and the free-text bio since the deck
-            was built, and the page has always had a chip to *clear* a search.
-            There was simply nothing that could set one, so the whole of it was
-            unreachable. The chip is gone with this: an input that holds the
-            words and carries its own ✕ says everything the chip said, in the
-            place somebody looks to change it. */}
-        {/* Full width on a phone; on a wider shell the field is capped and
-            centred, because a search box the width of three cards reads as a
-            banner rather than as somewhere to type. */}
-        <div className="mx-auto w-full max-w-[1100px] pt-2.5">
-          <div className="relative mx-auto md:max-w-[520px]">
-            <Search
-              className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-[16px] w-[16px] text-grey"
-              strokeWidth={2}
-            />
-            <input
-              type="search"
-              value={filters.search}
-              onChange={(e) => {
-                setFilters((f) => ({ ...f, search: e.target.value }));
-              }}
-              // Names only; place, level and topics are the filter's. Said in
-              // the placeholder so nobody types "SmartDrive" here and reads
-              // an empty deck as nobody having mentioned it.
-              aria-label="Search members by name"
-              placeholder="Search by name"
-              // The webkit cancel button is suppressed because `type="search"`
-              // draws one of its own, and with the ✕ below there were two
-              // clears side by side. `type` stays `search` rather than `text`:
-              // it is what gives the field the searchbox role and the right
-              // keyboard, and a screenshot is the only thing that would ever
-              // have shown the duplicate.
-              className="min-h-[40px] w-full rounded-full border-[1.6px] border-line bg-canvas py-2 pr-9 pl-9 text-[0.875rem] text-ink outline-none transition-colors placeholder:text-grey focus:border-emphasis [&::-webkit-search-cancel-button]:appearance-none"
-            />
-            {filters.search ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setFilters((f) => ({ ...f, search: '' }));
-                }}
-                aria-label="Clear the search"
-                // 26px. The smallest control in the app.
-                data-target="small"
-                className="-translate-y-1/2 absolute top-1/2 right-2 grid h-[26px] w-[26px] place-items-center rounded-full text-grey transition-colors hover:bg-tint hover:text-ink"
-              >
-                <X className="h-[15px] w-[15px]" />
-              </button>
-            ) : null}
-          </div>
+        <div className="mx-auto flex w-full max-w-[1100px] items-center gap-2 py-2">
+          <HeaderSearch
+            label="Search members by name"
+            placeholder="Search by name"
+            value={filters.search}
+            onChange={(search) => {
+              setFilters((f) => ({ ...f, search }));
+            }}
+          />
+          <FilterButton
+            count={filterCount}
+            onClick={() => {
+              setSheetOpen(true);
+            }}
+          />
         </div>
-
-        <SegmentPills
-          segments={SEGMENTS}
-          value={segment}
-          onChange={setSegment}
-          className="max-w-[1100px]"
-        />
       </header>
 
       {mapOpened ? (
@@ -227,13 +177,6 @@ export default function PeersPage() {
           focus="peers"
           members={visible}
           zoomToMiles={filters.withinMiles}
-          filters={{
-            label: 'Filter peers',
-            count: filterCount,
-            onOpen: () => {
-              setSheetOpen(true);
-            },
-          }}
           backState={{ from: 'peers-map' }}
         />
       ) : null}
@@ -327,9 +270,13 @@ export default function PeersPage() {
           filters={filters}
           matchCount={visible.length}
           activeCount={filterCount}
-          onChange={setFilters}
+          onChange={(next) => {
+            chosenMiles.current = next.withinMiles !== milesAtStart;
+            setFilters(next);
+          }}
           onClear={() => {
-            setFilters(EMPTY_MEMBER_FILTERS);
+            chosenMiles.current = false;
+            setFilters({ ...EMPTY_MEMBER_FILTERS, withinMiles: milesAtStart });
           }}
           onClose={() => {
             setSheetOpen(false);

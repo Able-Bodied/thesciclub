@@ -1,9 +1,13 @@
+import { Bell } from 'lucide-react';
+import { useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { useIconBadge } from '@/lib/icon-badge';
+import { useUnseenNotifications } from '@/lib/notifications';
 import { cn } from '@/lib/utils';
 import { backToHome } from '@/routes/home/back';
 
@@ -60,9 +64,15 @@ export function AppNav() {
   const { count, reload } = useUnreadThreads();
   // The bar is on every screen, so the app icon's number is kept here.
   useIconBadge();
+  // Red on Me, so a notification is not missed on a screen with no bell
+  // (the owner, 2026-11-01). Not for a conversation: Chat's own dot says that.
+  const { count: unseen } = useUnseenNotifications(true);
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
+  // On a phone only: a desktop's bar is at the top, out of the way already.
+  const { hidden, show } = useHideOnScroll(wide === false, location.pathname);
+  const bar = useRef<HTMLElement | null>(null);
 
   // The bar is mounted on every screen, which makes it the right place for the
   // one subscription that has to survive navigation: somebody writing to you
@@ -83,9 +93,14 @@ export function AppNav() {
   // widths, and only its painted position moves.
   return (
     <nav
+      ref={bar}
       aria-label="Main"
+      // Reached by keyboard or switch control, it comes back to be used.
+      onFocus={show}
+      // A margin, not a transform, so the page below takes the room.
+      style={hidden ? { marginBottom: -(bar.current?.offsetHeight ?? 0) } : undefined}
       className={cn(
-        'z-40 order-last flex-none bg-paper px-2',
+        'z-40 order-last flex-none bg-paper px-2 transition-[margin-bottom] duration-300 ease-out',
         'border-line border-t pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]',
         'md:order-first md:border-t-0 md:border-b md:px-4 md:pt-1.5 md:pb-1.5',
       )}
@@ -107,7 +122,13 @@ export function AppNav() {
               // and what it is telling somebody is told only in navy. The label
               // starts with the visible word, so what is said and what is shown
               // still agree.
-              aria-label={to === '/chat' && count > 0 ? 'Chat, something new' : undefined}
+              aria-label={
+                to === '/chat' && count > 0
+                  ? 'Chat, something new'
+                  : to === '/me' && unseen > 0
+                    ? 'Me, new notifications'
+                    : undefined
+              }
               className={cn(
                 'relative flex flex-col items-center gap-0.5 rounded-xl pt-1 pb-0.5 font-bold text-[0.625rem]',
                 // Icon over label on a phone, beside it on a desktop, where
@@ -121,12 +142,20 @@ export function AppNav() {
                   on one line. */}
               <span className="relative grid h-7 w-7 place-items-center rounded-[10px]">
                 <Icon className={cn('h-[20px] w-[20px]', isActive && '[stroke-width:2.3]')} />
+                {to === '/me' && unseen > 0 ? (
+                  <span
+                    aria-hidden="true"
+                    className="-top-0.5 -right-1 absolute grid h-[16px] w-[16px] place-items-center rounded-full bg-destructive-fill ring-2 ring-paper"
+                  >
+                    <Bell className="h-[10px] w-[10px] fill-white text-white" strokeWidth={2.4} />
+                  </span>
+                ) : null}
                 {to === '/chat' && count > 0 ? (
                   // Ringed in the bar's own colour so it reads as a dot on
                   // the icon rather than as part of it.
                   <span
                     aria-hidden="true"
-                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-emphasis ring-2 ring-paper"
+                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-destructive-fill ring-2 ring-paper"
                   />
                 ) : null}
               </span>

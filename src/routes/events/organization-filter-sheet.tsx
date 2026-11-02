@@ -1,6 +1,8 @@
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
+import type { NearHomeStatus } from '@/lib/near-home';
 import { ORGANIZATION_CATEGORIES, tapTypeChip, typeChipOn } from '@/lib/organization-categories';
 import { ANY_SPORT_ID, ORGANIZATION_SPORTS } from '@/lib/organization-sports';
+import { DistanceFilter } from '@/routes/events/distance-filter';
 import {
   type DirectoryChip,
   type DirectoryFilters,
@@ -26,6 +28,8 @@ export function OrganizationFilterSheet({
   events,
   following,
   filters,
+  home,
+  startingMiles,
   onChange,
   onClose,
 }: {
@@ -33,6 +37,9 @@ export function OrganizationFilterSheet({
   events: ClubEvent[];
   following: ReadonlySet<string>;
   filters: DirectoryFilters;
+  /** The member's own city, and whether distances can be measured. */
+  home: { city: string | null; status: NearHomeStatus };
+  startingMiles: number | null;
   onChange: (next: DirectoryFilters) => void;
   onClose: () => void;
 }) {
@@ -44,11 +51,21 @@ export function OrganizationFilterSheet({
       summary={`${count} organization${count === 1 ? '' : 's'} match right now`}
       onClose={onClose}
       onClear={() => {
-        onChange({ ...NO_FILTERS, query: filters.query });
+        onChange({ ...NO_FILTERS, query: filters.query, withinMiles: startingMiles });
       }}
-      clearCount={directoryFilterCount({ ...filters, query: '' })}
+      clearCount={directoryFilterCount({ ...filters, query: '' }, startingMiles)}
       applyLabel={`Show ${count}`}
     >
+      <DistanceFilter
+        miles={filters.withinMiles}
+        city={home.city}
+        status={home.status}
+        things="organizations"
+        note="From the middle of your city. Those with no place of their own always show."
+        onChange={(withinMiles) => {
+          onChange({ ...filters, withinMiles });
+        }}
+      />
       <FilterGroup title="Type">
         {ORGANIZATION_CATEGORIES.map((type) => (
           <FilterChip

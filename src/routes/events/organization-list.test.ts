@@ -71,6 +71,16 @@ describe('the Type and Sports filters', () => {
     expect(typeChipOn(new Set(ALL_TYPES), 'gym')).toBe(false);
   });
 
+  it('steps aside for a search', () => {
+    const typed = {
+      ...NO_FILTERS,
+      query: 'gym',
+      hiddenTypes: new Set(['gym']),
+      sports: ['winter'],
+    };
+    expect(matchesDirectory(gym, typed, facts)).toBe(true);
+  });
+
   it('narrows the directory', () => {
     const hidden = { ...NO_FILTERS, hiddenTypes: new Set(['gym']) };
     expect(matchesDirectory(gym, hidden, facts)).toBe(false);

@@ -27,7 +27,7 @@ import { EventGallery } from '@/routes/events/event-gallery';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
-import { longWhen, timeRange } from '@/routes/events/format';
+import { longWhen, takesRsvps, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { organizationTown } from '@/routes/events/organization-places';
@@ -278,7 +278,14 @@ export default function EventDetailPage() {
                   : 'This has already happened.'}
             </p>
           ) : (
-            <div className="mt-5 grid grid-cols-2 gap-2">
+            <div
+              className={cn(
+                'mt-5 grid gap-2',
+                registerHref || going || takesRsvps(event, organization)
+                  ? 'grid-cols-2'
+                  : 'grid-cols-1',
+              )}
+            >
               {/* With a sign-up of the host's own, Register stands for Going
                 (the owner, 2026-10-27): it marks them going here and opens
                 the host's page, in one press. Taking it back is Going ✓. */}
@@ -296,7 +303,7 @@ export default function EventDetailPage() {
                   Register
                   <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
                 </a>
-              ) : (
+              ) : going || takesRsvps(event, organization) ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -310,9 +317,9 @@ export default function EventDetailPage() {
                       : 'bg-action text-white hover:bg-action-hi',
                   )}
                 >
-                  {going ? 'Going ✓' : 'Going'}
+                  {going ? 'Going ✓' : 'RSVP'}
                 </button>
-              )}
+              ) : null}
               <button
                 type="button"
                 onClick={() => {

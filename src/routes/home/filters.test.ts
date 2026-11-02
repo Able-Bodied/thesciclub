@@ -8,10 +8,9 @@ import {
   type FeedFilters,
   matchesFeedFilters,
   openRoomsById,
-  placesIn,
   roomsIn,
   roomsOf,
-  toggleFeedFilter,
+  toggleRoom,
 } from '@/routes/home/filters';
 import { makeEvent, makeHomeTopic, makeMember, makeRoom, makeTag } from '@/test/factory';
 import type { BrowseMember, ClubEvent } from '@/types/domain';
@@ -51,10 +50,6 @@ const ROOMS = [
 
 const context: FeedFilterContext = {
   openRooms: openRoomsById(ROOMS),
-  cityOf: new Map([
-    ['jan', 'Santa Cruz'],
-    ['alex', 'San Jose'],
-  ]),
 };
 
 const filters = (o: Partial<FeedFilters>): FeedFilters => ({ ...EMPTY_FEED_FILTERS, ...o });
@@ -136,47 +131,6 @@ describe('matchesFeedFilters', () => {
       'person:dante',
     ]);
   });
-
-  it('places a topic by its author’s city, and only when the author is in Peers', () => {
-    expect(kept(items, filters({ cities: ['San Jose'] }))).toEqual([
-      'topic:routine',
-      'event:swim',
-      'person:kerry',
-    ]);
-    expect(kept(items, filters({ cities: ['Santa Cruz'] }))).toEqual(['topic:cushion']);
-  });
-
-  it('counts an online or hybrid event as Online, and nothing else', () => {
-    expect(kept(items, filters({ online: true }))).toEqual(['event:circle', 'event:talk']);
-  });
-
-  it('widens within Where: a city or Online', () => {
-    expect(kept(items, filters({ cities: ['Aptos'], online: true }))).toEqual([
-      'event:circle',
-      'event:talk',
-      'person:dante',
-    ]);
-  });
-
-  it('narrows across groups: in the room and in the place', () => {
-    expect(kept(items, filters({ rooms: ['bowel'], cities: ['San Jose'] }))).toEqual([
-      'topic:routine',
-    ]);
-    expect(kept(items, filters({ rooms: ['sport'], cities: ['San Jose'] }))).toEqual([
-      'event:swim',
-      'person:kerry',
-    ]);
-  });
-
-  it('does not take a member whose city is "Online" for an online event', () => {
-    const odd = person({ id: 'odd', city: 'Online' });
-    expect(matchesFeedFilters(odd, filters({ online: true }), context)).toBe(false);
-  });
-
-  it('reads a city with stray spaces as the city', () => {
-    const spaced = person({ id: 'spaced', city: '  San Jose ' });
-    expect(matchesFeedFilters(spaced, filters({ cities: ['San Jose'] }), context)).toBe(true);
-  });
 });
 
 describe('roomsIn', () => {
@@ -194,62 +148,29 @@ describe('roomsIn', () => {
   });
 });
 
-describe('placesIn', () => {
-  it('offers the cities, most common first, and Online when an event is', () => {
-    const items = [
-      person({ id: 'a', city: 'Aptos' }),
-      person({ id: 'b', city: 'San Jose' }),
-      topic({ id: 't', authorId: 'alex' }),
-      event({ id: 'e', city: null, format: 'online' }),
-    ];
-    expect(placesIn(items, context)).toEqual({ cities: ['San Jose', 'Aptos'], online: true });
-  });
-
-  it('offers no Online when nothing is online', () => {
-    expect(placesIn([person({ id: 'a', city: 'Aptos' })], context).online).toBe(false);
-  });
-
-  it('offers no city for a topic whose author is not in Peers', () => {
-    expect(placesIn([topic({ id: 't', authorId: 'not-in-peers' })], context).cities).toEqual([]);
-  });
-});
-
 describe('chipsFor', () => {
   const people = [person({ id: 'a', city: 'Aptos', topics: ['Bowel programme'] })];
 
   it('is what the list offers when nothing is on', () => {
-    expect(chipsFor(people, EMPTY_FEED_FILTERS, context)).toEqual({
-      rooms: [ROOMS[0]],
-      cities: ['Aptos'],
-      online: false,
-    });
+    expect(chipsFor(people, EMPTY_FEED_FILTERS, context)).toEqual({ rooms: [ROOMS[0]] });
   });
 
-  it('keeps a chip that is on, even where nothing in this pill matches it', () => {
-    const chosen = filters({ rooms: ['equip'], cities: ['Oakland'], online: true });
-    const chips = chipsFor(people, chosen, context);
+  it('keeps a room that is on, even where nothing in this list matches it', () => {
+    const chips = chipsFor(people, filters({ rooms: ['equip'] }), context);
     expect(chips.rooms.map((room) => room.id)).toEqual(['bowel', 'equip']);
-    expect(chips.cities).toEqual(['Aptos', 'Oakland']);
-    expect(chips.online).toBe(true);
   });
 });
 
-describe('activeFilterCount and toggleFeedFilter', () => {
-  it('counts every room, every city and Online', () => {
+describe('activeFilterCount and toggleRoom', () => {
+  it('counts every room, and a distance', () => {
     expect(activeFilterCount(EMPTY_FEED_FILTERS)).toBe(0);
-    expect(activeFilterCount(filters({ rooms: ['bowel'], cities: ['Aptos'], online: true }))).toBe(
-      3,
-    );
+    expect(activeFilterCount(filters({ rooms: ['bowel'], withinMiles: 20 }))).toBe(2);
+    expect(activeFilterCount(filters({ withinMiles: null }))).toBe(0);
   });
 
-  it('turns a choice on, and off again', () => {
-    const on = toggleFeedFilter(EMPTY_FEED_FILTERS, 'rooms', 'bowel');
+  it('turns a room on, and off again', () => {
+    const on = toggleRoom(EMPTY_FEED_FILTERS, 'bowel');
     expect(on.rooms).toEqual(['bowel']);
-    expect(toggleFeedFilter(on, 'rooms', 'bowel').rooms).toEqual([]);
-    expect(toggleFeedFilter(on, 'cities', 'Aptos')).toEqual({
-      rooms: ['bowel'],
-      cities: ['Aptos'],
-      online: false,
-    });
+    expect(toggleRoom(on, 'bowel').rooms).toEqual([]);
   });
 });

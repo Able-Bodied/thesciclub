@@ -181,8 +181,8 @@ export default function TermsPage() {
         </P>
         <P>
           <b>A phone number is optional.</b> If you add one, it is only so the host of an event you
-          choose Going for can reach you about that event. It is never used to sign you in. How we
-          handle it is in the{' '}
+          RSVP to can reach you about that event. It is never used to sign you in. How we handle it
+          is in the{' '}
           <Link to="/privacy" className="font-semibold text-emphasis underline">
             Privacy Policy
           </Link>

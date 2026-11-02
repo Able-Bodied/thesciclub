@@ -122,3 +122,15 @@ export function shortDate(iso: string, timezone: string): string {
 export function shortWeekday(iso: string, timezone: string): string {
   return partsIn(iso, timezone, { weekday: 'short' }).weekday ?? '';
 }
+
+/**
+ * Whether an event has an RSVP button (the owner, 2026-11-01): one made in the
+ * club, by hand or by a calendar invite, always; one read from another calendar
+ * only if its organization collects them (20261101080000).
+ */
+export function takesRsvps(
+  event: { handAdded: boolean },
+  organization: { collectsRsvps?: boolean } | null,
+): boolean {
+  return event.handAdded || organization?.collectsRsvps === true;
+}

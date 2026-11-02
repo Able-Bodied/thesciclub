@@ -79,8 +79,8 @@ const map = vi.hoisted(
 );
 vi.mock('@/lib/map', () => ({ loadMapCanvas: () => Promise.resolve({ default: () => null }) }));
 vi.mock('@/lib/map-data', () => ({
-  useMapData: (): MapData => {
-    map.reads++;
+  useMapData: (active = true): MapData => {
+    if (active) map.reads++;
     return {
       status: map.status,
       retry: map.retry,
@@ -201,7 +201,7 @@ describe('EventsPage', () => {
 
       await user.click(screen.getByRole('button', { name: 'Filters' }));
       const slider = screen.getByLabelText('Within 50 miles of San Jose');
-      fireEvent.change(slider, { target: { value: '105' } });
+      fireEvent.change(slider, { target: { value: '205' } });
       expect(screen.getByLabelText('Any distance')).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /^Show 3/ }));
       expect(screen.getByText('Newly injured coffee')).toBeInTheDocument();
@@ -342,7 +342,7 @@ describe('EventsPage', () => {
     /** The first card's Going button. Throws rather than asserting non-null, so
      *  a missing button fails as itself instead of as a null dereference. */
     function firstGoingButton(): HTMLElement {
-      const [button] = screen.getAllByRole('button', { name: 'Going' });
+      const [button] = screen.getAllByRole('button', { name: 'RSVP' });
       if (!button) throw new Error('no Going button rendered');
       return button;
     }

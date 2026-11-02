@@ -38,6 +38,10 @@ export default function RegisterForEventPage() {
   const [status, setStatus] = useState<RsvpStatus>(
     params.get('status') === 'interested' ? 'interested' : 'going',
   );
+  // Only a typed address asks for Going where there is no RSVP button.
+  useEffect(() => {
+    if (event?.takesRsvps === false) setStatus('interested');
+  }, [event]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -148,7 +152,10 @@ export default function RegisterForEventPage() {
           <fieldset className="mt-4">
             <legend className="sr-only">Your answer</legend>
             <div className="flex gap-2">
-              {(['going', 'interested'] as const).map((value) => (
+              {(event.takesRsvps
+                ? (['going', 'interested'] as const)
+                : (['interested'] as const)
+              ).map((value) => (
                 <label
                   key={value}
                   className={`cursor-pointer rounded-full border-[1.4px] px-4 py-2 font-bold font-head text-[0.875rem] ${

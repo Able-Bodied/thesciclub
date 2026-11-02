@@ -1,10 +1,9 @@
-import { SlidersHorizontal } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { FilterButton } from '@/components/filter-button';
 import { LoadingCards } from '@/components/loading-cards';
-import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
-import { SegmentPills } from '@/components/segment-pills';
 import { useChatAuthors } from '@/lib/chat/authors';
 import { usePostLikes } from '@/lib/chat/likes';
 import { useReactions } from '@/lib/chat/reactions';
@@ -15,6 +14,8 @@ import { usePostViews } from '@/lib/chat/views';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { toHomeTopics, useHomeTopics } from '@/lib/home/topics';
 import { type FeedItem, HOME_SEGMENTS, type HomeSegment } from '@/lib/home/types';
+import { useHome } from '@/lib/home-state';
+import { useMapData } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
 import { useNearHome } from '@/lib/near-home';
 import { useOrganizations } from '@/lib/organizations';
@@ -43,11 +44,13 @@ import {
   matchesFeedFilters,
   openRoomsById,
 } from '@/routes/home/filters';
+import { HomeSearch } from '@/routes/home/home-search';
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
 import { ProfileCard, useProfileAsk } from '@/routes/home/profile-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
-import { type ClubEvent, DEFAULT_WITHIN_MILES, type RsvpStatus } from '@/types/domain';
+import { membersWithin } from '@/routes/peers/filters';
+import type { ClubEvent, RsvpStatus } from '@/types/domain';
 
 /**
  * Home: what the club is doing, in one list.
@@ -117,7 +120,7 @@ const SOURCES: Record<HomeSegment, Source[]> = {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const wide = useWideLayout();
+  const [searching, setSearching] = useState(false);
   const session = useSession();
   const memberId = session.status === 'signed-in' ? session.userId : null;
 
@@ -153,17 +156,24 @@ export default function HomePage() {
   const eventsRead = useEvents(eventWindow);
   // Within the same distance Events starts on, so Home does not suggest what
   // Events would leave out.
-  const near = useNearHome(DEFAULT_WITHIN_MILES);
+  const [filters, setFilters] = useState<FeedFilters>(EMPTY_FEED_FILTERS);
+  const near = useNearHome(filters.withinMiles);
+  // Peers measured as the Peers tab does, from what the map holds.
+  const home = useHome();
+  const mapData = useMapData(filters.withinMiles !== null);
+  const peersNear = useMemo(
+    () => membersWithin(mapData.contents, filters.withinMiles),
+    [mapData.contents, filters.withinMiles],
+  );
   const events = useMemo(
     () => pickEvents(eventsRead.events, undefined, near.ids),
     [eventsRead.events, near.ids],
   );
-  const { byId: organizationsById } = useOrganizations();
+  const { organizations: everyOrganization, byId: organizationsById } = useOrganizations();
   const viewer = useViewerEvents(memberId);
   const membersRead = useBrowseMembers();
   const threadsRead = useMyThreads();
   const [writeError, setWriteError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FeedFilters>(EMPTY_FEED_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const topics = useMemo(
@@ -182,8 +192,17 @@ export default function HomePage() {
     [threadsRead.threads],
   );
   const people = useMemo(
-    () => suggestPeople(membersRead.members, memberId, talkedTo, new Date(), SEGMENT_PEOPLE),
-    [membersRead.members, memberId, talkedTo],
+    () =>
+      suggestPeople(
+        peersNear
+          ? membersRead.members.filter((member) => peersNear.has(member.id))
+          : membersRead.members,
+        memberId,
+        talkedTo,
+        new Date(),
+        SEGMENT_PEOPLE,
+      ),
+    [membersRead.members, peersNear, memberId, talkedTo],
   );
 
   const authors = useChatAuthors(
@@ -205,20 +224,17 @@ export default function HomePage() {
     // A failed conversations read is not waited on and not reported: the cost
     // is suggesting somebody the viewer already talks to, which is smaller
     // than losing the suggestions.
-    people: membersRead.loading || threadsRead.loading,
+    people:
+      membersRead.loading ||
+      threadsRead.loading ||
+      (filters.withinMiles !== null && mapData.status === 'loading'),
   };
   const errors: Record<Source, string | null> = {
     topics: topicRead.error ?? rooms.error,
     events: eventsRead.error,
     people: membersRead.error,
   };
-  // A topic is placed by its author's city, which comes from the members
-  // read. With a city chosen, Topics and Photos wait for it too, rather than
-  // drawing nothing and then filling in.
-  const sources: Source[] =
-    filters.cities.length > 0 && !SOURCES[segment].includes('people')
-      ? [...SOURCES[segment], 'people']
-      : SOURCES[segment];
+  const sources: Source[] = SOURCES[segment];
   const settled = sources.every((source) => !loading[source]);
   const failures = sources.flatMap((source) => {
     const error = errors[source];
@@ -232,15 +248,14 @@ export default function HomePage() {
   const filterContext = useMemo<FeedFilterContext>(
     () => ({
       openRooms: openRoomsById(rooms.rooms),
-      cityOf: new Map(membersRead.members.map((member) => [member.id, member.city])),
     }),
-    [rooms.rooms, membersRead.members],
+    [rooms.rooms],
   );
   const shown = useMemo(
     () => items.filter((item) => matchesFeedFilters(item, filters, filterContext)),
     [items, filters, filterContext],
   );
-  const filterCount = activeFilterCount(filters);
+  const filterCount = activeFilterCount(filters) + (segment === 'everything' ? 0 : 1);
   const profile = useProfileAsk(memberId);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
@@ -376,39 +391,42 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px]">
-        <div className="mx-auto flex min-h-[38px] w-full max-w-[var(--events-measure)] items-center justify-between gap-2.5">
-          <h1 className="font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
-            Home
-          </h1>
-          {/* Events' button, the same size and the same dot. There is no row of
-              chosen chips under the pills (the mock has one): Events and Peers
-              draw none, and the dot and the name say a filter is on. */}
-          <span className="flex items-center gap-2">
-            {/* A phone's way to the list; a desktop has it in the top bar. */}
-            {wide !== true ? <NotificationBell variant="round" className="md:hidden" /> : null}
-            <button
-              type="button"
-              onClick={() => {
-                setSheetOpen(true);
-              }}
-              aria-label={filterCount ? `Filters, ${filterCount} active` : 'Filters'}
-              data-target="small"
-              className="relative grid h-[38px] w-[38px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-            >
-              <SlidersHorizontal className="h-[17px] w-[17px] text-emphasis" strokeWidth={2} />
-              {filterCount ? (
-                <span className="absolute top-[5px] right-[5px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-              ) : null}
-            </button>
-          </span>
-        </div>
-        <SegmentPills
-          segments={SEGMENTS}
-          value={segment}
-          onChange={setSegment}
-          className="max-w-[var(--events-measure)]"
+      {searching ? (
+        <HomeSearch
+          sources={{
+            topics,
+            events: eventsRead.events,
+            members: membersRead.members.filter((member) => member.id !== memberId),
+            organizations: everyOrganization,
+          }}
+          linkState={linkState}
+          onClose={() => {
+            setSearching(false);
+          }}
         />
+      ) : null}
+      {/* All of it for the content (the owner, 2026-11-01): the lit tab says this is
+          Home, and what the pills chose is in the filter. */}
+      <h1 className="sr-only">Home</h1>
+      <header className="flex-none border-line border-b bg-paper px-4 py-2 md:px-6">
+        <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setSearching(true);
+            }}
+            className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-tint px-3.5 text-[0.9375rem] text-grey"
+          >
+            <Search className="h-[17px] w-[17px] flex-none" strokeWidth={2} aria-hidden="true" />
+            Search
+          </button>
+          <FilterButton
+            count={filterCount}
+            onClick={() => {
+              setSheetOpen(true);
+            }}
+          />
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[18px] md:px-6">
@@ -480,6 +498,10 @@ export default function HomePage() {
       {sheetOpen ? (
         <HomeFilterSheet
           chips={chipsFor(items, filters, filterContext)}
+          home={{ city: home?.city ?? null, status: near.status }}
+          segments={SEGMENTS}
+          segment={segment}
+          onSegment={setSegment}
           filters={filters}
           matchCount={shown.length}
           total={items.length}
@@ -487,6 +509,7 @@ export default function HomePage() {
           onChange={setFilters}
           onClear={() => {
             setFilters(EMPTY_FEED_FILTERS);
+            setSegment('everything');
           }}
           onClose={() => {
             setSheetOpen(false);

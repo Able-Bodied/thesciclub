@@ -577,8 +577,12 @@ export interface Invite {
 
 export interface Organization {
   id: string;
+  /** One line for its card (20261101120000). */
+  summary?: string | null;
   /** Join asks its org admins, instead of making a member (20261031010000). */
   joinsNeedApproval?: boolean;
+  /** Its imported events take RSVPs too (20261101080000). */
+  collectsRsvps?: boolean;
   /** Whether a review of it can be anonymous (20261031080000). */
   anonymousReviews?: boolean;
   /** Two or three letters, for the badge on a mentor's card. */
@@ -727,6 +731,8 @@ export interface ClubEvent {
   city: string | null;
   url: string | null;
   registrationUrl: string | null;
+  /** The address after thesciclub.com/e/; read only for one event's own page. */
+  shortLink?: string | null;
   /**
    * The repeating event this is one occurrence of, or null for a one-off.
    *

@@ -1,28 +1,23 @@
 import { Search, X } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 /**
- * A small search box in a screen's header that opens out while it is in use
- * (the owner, 2026-11-01): into the room beside it when tapped, and it stays
- * open while it holds words. Each letter filters what is below; there is no
+ * A search box in a screen's header, filling the row beside Filter (the owner,
+ * 2026-11-01). Each letter filters what is below; there is no
  * button to press. 16px text, or Safari zooms the page when it is tapped.
  */
 export function HeaderSearch({
   label,
+  placeholder = 'Search',
   value,
   onChange,
 }: {
   label: string;
+  placeholder?: string;
   value: string;
   onChange: (next: string) => void;
 }) {
   return (
-    <div
-      className={cn(
-        'relative min-w-0 basis-[8rem] transition-[flex-grow] duration-200 focus-within:grow motion-reduce:transition-none',
-        value && 'grow',
-      )}
-    >
+    <div className="relative min-w-0 flex-1">
       <Search
         className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-[16px] w-[16px] text-grey"
         strokeWidth={2}
@@ -35,7 +30,7 @@ export function HeaderSearch({
           onChange(event.target.value);
         }}
         aria-label={label}
-        placeholder="Search"
+        placeholder={placeholder}
         enterKeyHint="search"
         className="min-h-[44px] w-full rounded-full bg-tint py-2 pr-9 pl-9 text-[1rem] text-ink outline-none transition-colors placeholder:text-grey focus:bg-line [&::-webkit-search-cancel-button]:appearance-none"
       />

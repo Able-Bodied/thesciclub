@@ -180,8 +180,8 @@ export default function PrivacyPage() {
             you add one.
           </li>
           <li>
-            <b>A phone number, only if you add one</b>, for the hosts of events you choose Going
-            for. It is never used to sign you in.
+            <b>A phone number, only if you add one</b>, for the hosts of events you RSVP to. It is
+            never used to sign you in.
           </li>
           <li>
             <b>About your injury or condition:</b> which describes you best (or that you are a
@@ -413,16 +413,16 @@ export default function PrivacyPage() {
             <b>Members who speak for organizations</b>, such as hospitals and peer support programs,
             see the same profile inside the app as anybody else, to help match members with peers
             and mentors. They see your email address and phone number only on the guest list of an
-            event they manage, and only if you chose Going (see Event hosts, below).
+            event they manage, and only if you RSVP (see Event hosts, below).
           </li>
           <li>
             <b>Trusted partners</b> are professionals, such as a hospital’s peer support lead or a
             physical therapist, whom an administrator chose. Their title is shown beside their name.
             They see the same profiles as anybody. For the people they invited or connected, they
             also see whether each joined, finished their profile and was introduced to a mentor, and
-            how many of them posted in a room or chose Going for an event, as a count. They cannot
-            read conversations they are not in. Partners see no email address or phone number,
-            except an address they sent an invite to themselves.
+            how many of them posted in a room or RSVP to an event, as a count. They cannot read
+            conversations they are not in. Partners see no email address or phone number, except an
+            address they sent an invite to themselves.
           </li>
           <li>
             <b>Org admins</b> see the same about the people they invited or connected, and counts
@@ -496,13 +496,13 @@ export default function PrivacyPage() {
           step with GOING_SHARES_CONTACT in components/rsvp-sheet.tsx. */}
       <Section title="Event hosts">
         <P>
-          When you choose <b>Going</b> for an event, the organization hosting it receives your email
-          address, and your phone number if you have added one, for that event only: to tell you
-          about changes, to remind you, and to look after the people who come. Choosing Interested
-          shares nothing. Hosts agree not to use your details for marketing, fundraising or
-          promotions, and not to pass them on. Choosing Going says this, and offers Interested
-          instead. Anybody in the club who manages the event sees them on its guest list; for other
-          hosts, an administrator passes them on.
+          When you <b>RSVP</b> to an event, the organization hosting it receives your email address,
+          and your phone number if you have added one, for that event only: to tell you about
+          changes, to remind you, and to look after the people who come. Choosing Interested shares
+          nothing. Hosts agree not to use your details for marketing, fundraising or promotions, and
+          not to pass them on. The RSVP button says this, and offers Interested instead. Anybody in
+          the club who manages the event sees them on its guest list; for other hosts, an
+          administrator passes them on.
         </P>
         {/* Public event pages and registrations, 2026-10-22 (20261022190000);
             every event's since 2026-10-29 (20261029110000). */}
@@ -542,8 +542,8 @@ export default function PrivacyPage() {
             marketing or promotional purposes.
           </b>{' '}
           They reach the service providers that send the emails and run the app (see Service
-          providers, below) and, if you choose Going for an event, that event’s host, for that event
-          only (see Event hosts).
+          providers, below) and, if you RSVP to an event, that event’s host, for that event only
+          (see Event hosts).
         </P>
         <P>
           The{' '}

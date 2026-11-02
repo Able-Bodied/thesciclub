@@ -35,6 +35,13 @@ export interface PreviewEvent {
   photo_path: string | null;
 }
 
+/** Too short to be an id (20261101070000). */
+const SHORT_LINK_PATH = /^\/e\/([a-z0-9][a-z0-9-]{0,30}[a-z0-9])\/?$/i;
+
+export function shortLinkIn(path: string): string | null {
+  return SHORT_LINK_PATH.exec(path)?.[1] ?? null;
+}
+
 export function eventIdIn(path: string): string | null {
   return EVENT_PATH.exec(path)?.[1] ?? null;
 }
@@ -125,6 +132,16 @@ async function readEvent(base: string, key: string, id: string): Promise<Preview
   return rows[0] ?? null;
 }
 
+async function readShortLink(base: string, key: string, link: string): Promise<string | null> {
+  const response = await fetch(`${base}/rest/v1/rpc/event_by_short_link`, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_link: link }),
+  });
+  if (!response.ok) return null;
+  return (await response.json()) as string | null;
+}
+
 async function signImage(base: string, key: string, path: string): Promise<string | null> {
   const response = await fetch(`${base}/storage/v1/object/sign/photos/${path}`, {
     method: 'POST',
@@ -150,13 +167,16 @@ export default async function eventPreview(
       },
     });
   }
-  const id = eventIdIn(url.pathname);
+  const givenId = eventIdIn(url.pathname);
+  const shortLink = shortLinkIn(url.pathname);
   const base = Netlify.env.get('VITE_SUPABASE_URL');
   const key = Netlify.env.get('VITE_SUPABASE_ANON_KEY');
-  if (!id || !base || !key || !previewing) {
+  if ((!givenId && !shortLink) || !base || !key || !previewing) {
     return await context.next();
   }
   try {
+    const id = givenId ?? (shortLink ? await readShortLink(base, key, shortLink) : null);
+    if (!id) return await context.next();
     const event = await readEvent(base, key, id);
     if (!event) return await context.next();
     const image = event.photo_path ? await signImage(base, key, event.photo_path) : null;

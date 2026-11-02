@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
-import { fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
+import { fetchEventIdByShortLink, fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
@@ -23,15 +23,40 @@ import { EventDescription, safeHref } from '@/routes/events/rich-text';
  * be a member), no comments, no group chat. Going and Interested open the
  * registration form (./register.tsx). A member who is signed in is sent to the
  * event's own page, which has all of that.
+ *
+ * The address holds the event's id or its short link (20261101070000).
  */
+const EVENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export default function PublicEventPage() {
-  const { id = '' } = useParams<{ id: string }>();
+  const { id: given = '' } = useParams<{ id: string }>();
   const account = useAccount();
   const navigate = useNavigate();
   const [event, setEvent] = useState<PublicEvent | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [opened, setOpened] = useState<{ link: string; id: string | null } | null>(null);
+  // Undefined while a short link is looked up, null when none has it.
+  const id = EVENT_ID.test(given) ? given : opened?.link === given ? opened.id : undefined;
 
   useEffect(() => {
+    if (EVENT_ID.test(given)) return;
+    let cancelled = false;
+    void fetchEventIdByShortLink(given).then((result) => {
+      if (cancelled) return;
+      if (result.ok) setOpened({ link: given, id: result.value });
+      else setError(result.error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [given]);
+
+  useEffect(() => {
+    if (id === undefined) return;
+    if (id === null) {
+      setEvent(null);
+      return;
+    }
     let cancelled = false;
     void fetchPublicEvent(id).then((result) => {
       if (cancelled) return;
@@ -43,7 +68,7 @@ export default function PublicEventPage() {
     };
   }, [id]);
 
-  if (account.status === 'member') return <Navigate to={`/events/${id}`} replace />;
+  if (account.status === 'member' && id) return <Navigate to={`/events/${id}`} replace />;
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
   const over = event ? new Date(event.endTime ?? event.startTime).getTime() < Date.now() : false;
@@ -60,7 +85,7 @@ export default function PublicEventPage() {
           <ClubMark size={44} className="h-11 w-auto" />
         </Link>
         <Link
-          to={signInTo(id)}
+          to={signInTo(id ?? given)}
           className="font-bold font-head text-[0.875rem] text-emphasis underline"
         >
           Sign in
@@ -131,15 +156,17 @@ export default function PublicEventPage() {
             <p className="mt-4 text-[0.875rem] text-grey">This event is over.</p>
           ) : (
             <div className="mt-4 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate(`/e/${event.id}/register?status=going`);
-                }}
-                className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
-              >
-                Going
-              </button>
+              {event.takesRsvps ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigate(`/e/${event.id}/register?status=going`);
+                  }}
+                  className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
+                >
+                  RSVP
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {
@@ -195,14 +222,17 @@ export default function PublicEventPage() {
               Join the club to see who's coming and join the group chat.
             </p>
             <Link
-              to={signInTo(id)}
+              to={signInTo(id ?? given)}
               className="mt-3 flex min-h-[48px] items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
             >
               Join the club
             </Link>
             <p className="mt-2 text-center text-[#B9CADF] text-[0.8125rem]">
               Already a member?{' '}
-              <Link to={signInTo(id)} className="inline-block py-2 font-bold text-white underline">
+              <Link
+                to={signInTo(id ?? given)}
+                className="inline-block py-2 font-bold text-white underline"
+              >
                 Sign in
               </Link>
             </p>

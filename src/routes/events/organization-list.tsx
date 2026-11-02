@@ -56,6 +56,8 @@ export interface DirectoryFilters {
   hiddenTypes: ReadonlySet<string>;
   /** Any one of these will do. */
   sports: readonly string[];
+  /** How far; the screen applies it. One with no place is never left out. */
+  withinMiles: number | null;
 }
 
 /** The filters that are one chip each. */
@@ -69,6 +71,7 @@ export const NO_FILTERS: DirectoryFilters = {
   following: false,
   hiddenTypes: new Set(),
   sports: [],
+  withinMiles: null,
 };
 
 /** Whether any of an organization's grants is open on `today`. */
@@ -79,7 +82,7 @@ export function hasOpenGrant(grants: Grant[] | undefined, today: string): boolea
 /**
  * The directory's search and chips (the owner, 2026-10-20). The search matches
  * the name, place, description and tags, every word somewhere; each chip
- * narrows further.
+ * narrows the list when nothing is typed.
  */
 export function matchesDirectory(
   organization: Organization,
@@ -96,7 +99,9 @@ export function matchesDirectory(
     ]
       .join(' ')
       .toLowerCase();
-    if (!words.every((word) => text.includes(word))) return false;
+    // A search looks through the whole directory, whatever the chips say
+    // (the owner, 2026-11-01).
+    return words.every((word) => text.includes(word));
   }
   if (filters.hasGrants && (facts.grants ?? []).length === 0) return false;
   if (filters.grantsOpen && !hasOpenGrant(facts.grants, facts.today)) return false;
@@ -167,6 +172,11 @@ export function OrganizationRow({
             <span className="block font-extrabold font-head text-[1.03125rem] text-ink leading-[1.2] tracking-[-0.01em]">
               {organization.name}
             </span>
+            {organization.summary ? (
+              <span className="mt-[3px] block text-[0.8125rem] text-ink leading-[1.35]">
+                {organization.summary}
+              </span>
+            ) : null}
             <span className="mt-[3px] block text-[0.8125rem] text-ink2 leading-[1.42]">
               {[
                 organizationTown(organization),
@@ -210,8 +220,12 @@ export function OrganizationRow({
 }
 
 /** How many of the directory's filters are on, for a chip's count. */
-export function directoryFilterCount(filters: DirectoryFilters): number {
+export function directoryFilterCount(
+  filters: DirectoryFilters,
+  startingMiles: number | null = null,
+): number {
   return (
+    (filters.withinMiles === startingMiles ? 0 : 1) +
     (filters.query.trim() ? 1 : 0) +
     (filters.hiddenTypes.size > 0 ? 1 : 0) +
     filters.sports.length +
@@ -287,7 +301,7 @@ export function OrganizationList({
     else setOwn(next);
   };
   const { shown, grants, counts, today } = useDirectory(organizations, events, following, filters);
-  const filtered = directoryFilterCount(filters) > 0;
+  const filtered = directoryFilterCount({ ...filters, withinMiles: null }) > 0;
   const toggle = (key: DirectoryChip) => {
     setFilters((f) => ({ ...f, [key]: !f[key] }));
   };

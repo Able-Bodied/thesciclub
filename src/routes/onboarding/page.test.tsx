@@ -1098,6 +1098,31 @@ describe('the invite link', () => {
     expect(screen.getByText(/the address your invitation was sent to/i)).toBeInTheDocument();
   });
 
+  it('offers the invited address back when what is typed is close to it', async () => {
+    calls.inviteAddress = 'dana@example.com';
+    renderJoin('/join?invite=tok-123');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    });
+    await userEvent.clear(screen.getByLabelText('Email'));
+    await userEvent.type(screen.getByLabelText('Email'), 'dana@exmaple.com');
+    expect(screen.getByText(/Did you mean/)).toHaveTextContent('dana@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Use this' }));
+    expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    expect(screen.queryByText(/Did you mean/)).not.toBeInTheDocument();
+  });
+
+  it('does not offer it for an address that is simply another one', async () => {
+    calls.inviteAddress = 'dana@example.com';
+    renderJoin('/join?invite=tok-123');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    });
+    await userEvent.clear(screen.getByLabelText('Email'));
+    await userEvent.type(screen.getByLabelText('Email'), 'dsmith@work.org');
+    expect(screen.queryByText(/Did you mean/)).not.toBeInTheDocument();
+  });
+
   it('leaves the field theirs: another address is used as typed, and the note goes', async () => {
     calls.inviteAddress = 'dana@example.com';
     renderJoin('/join?invite=tok-123');

@@ -1,6 +1,7 @@
-import { Plus, SlidersHorizontal } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { FilterButton } from '@/components/filter-button';
 import { HeaderSearch } from '@/components/header-search';
 import { LoadingCards } from '@/components/loading-cards';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
@@ -8,6 +9,7 @@ import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { useHome } from '@/lib/home-state';
+import { useMapData } from '@/lib/map-data';
 import { useNearHome } from '@/lib/near-home';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useMyOrganizations } from '@/lib/organization-representatives';
@@ -42,6 +44,7 @@ import { groupBySeries } from '@/routes/events/series-groups';
 import { type MapProblem, MapProblemNote, MapView } from '@/routes/map/map-view';
 import { canShowOnMap, mapLinkFor, SHOW_PARAM } from '@/routes/map/show-on-map';
 import { useListOrMap, ViewSwitch } from '@/routes/map/view-switch';
+import { milesForEnough, organizationsWithin } from '@/routes/peers/filters';
 import {
   type ClubEvent,
   DEFAULT_WITHIN_MILES,
@@ -176,8 +179,17 @@ export default function EventsPage() {
   const [directorySheetOpen, setDirectorySheetOpen] = useState(false);
   const [filters, setFilters] = useState<EventFilters>(EMPTY_EVENT_FILTERS);
   const [eventSearch, setEventSearch] = useState('');
+  // A search looks through everything (the owner, 2026-11-01): no filter, no
+  // distance and no dates hide what somebody typed the name of.
+  const searching = eventSearch.trim() !== '';
   const dateRange = dateWindowRange(
-    isRsvpSegment(segment) ? (segment === 'been-to' ? 'past' : 'any') : filters.when,
+    isRsvpSegment(segment)
+      ? segment === 'been-to'
+        ? 'past'
+        : 'any'
+      : searching
+        ? 'any'
+        : filters.when,
   );
   // Been to is the member's own past RSVPs: read those, not every past event.
   const beenTo = useMemo(
@@ -200,6 +212,35 @@ export default function EventsPage() {
   const [writeError, setWriteError] = useState<string | null>(null);
 
   const home = useHome();
+  // Organizations start at the distance with at least 20 in it (the owner,
+  // 2026-11-01), until the member chooses for themselves. One with no place on
+  // the map, a national funder say, always shows.
+  const directoryMap = useMapData(segment === 'orgs');
+  const milesAtStart = useMemo(
+    () => milesForEnough(directoryMap.contents.home, directoryMap.contents.organizations),
+    [directoryMap.contents],
+  );
+  const chosenMiles = useRef(false);
+  useEffect(() => {
+    if (chosenMiles.current) return;
+    setDirectory((now) =>
+      now.withinMiles === milesAtStart ? now : { ...now, withinMiles: milesAtStart },
+    );
+  }, [milesAtStart]);
+  const organizationsNear = useMemo(() => {
+    const miles = directory.withinMiles;
+    // A search looks through all of them, wherever they are.
+    if (miles === null || directory.query.trim() || !directoryMap.contents.home) {
+      return organizations;
+    }
+    const placed = new Set(directoryMap.contents.organizations.map((place) => place.id));
+    const near = organizationsWithin(directoryMap.contents, miles);
+    return organizations.filter(({ id }) => !placed.has(id) || near.has(id));
+  }, [organizations, directory.withinMiles, directory.query, directoryMap.contents]);
+  const changeDirectory = (next: DirectoryFilters) => {
+    chosenMiles.current = next.withinMiles !== milesAtStart;
+    setDirectory(next);
+  };
   const near = useNearHome(filters.withinMiles);
   const viewerState = useMemo(
     () => ({ rsvps: viewer.rsvps, nearby: near.ids }),
@@ -217,14 +258,18 @@ export default function EventsPage() {
       ),
     [eventSearch, organizationsById],
   );
+  const narrowing = useMemo<EventFilters>(
+    () => (searching ? { ...EMPTY_EVENT_FILTERS, when: 'any', withinMiles: null } : filters),
+    [searching, filters],
+  );
   const visible = useMemo(
-    () => searched(filterEvents(events, filters, segment, viewerState)),
-    [events, filters, segment, viewerState, searched],
+    () => searched(filterEvents(events, narrowing, segment, viewerState)),
+    [events, narrowing, segment, viewerState, searched],
   );
   // Distance is the list's (the owner, 2026-10-31): the map shows every place.
   const onMap = useMemo(
-    () => searched(filterEvents(events, { ...filters, withinMiles: null }, segment, viewerState)),
-    [events, filters, segment, viewerState, searched],
+    () => searched(filterEvents(events, { ...narrowing, withinMiles: null }, segment, viewerState)),
+    [events, narrowing, segment, viewerState, searched],
   );
 
   // Grouped only in the browsing segments. "I'm going", "Interested" and
@@ -315,7 +360,7 @@ export default function EventsPage() {
   // The search box says its own words; this is the filters behind the circle.
   const headerFilterCount = showingList
     ? filterCount
-    : directoryFilterCount({ ...directory, query: '' });
+    : directoryFilterCount({ ...directory, query: '' }, milesAtStart);
 
   // The event "View on the map" asked for: from the list, or read by itself
   // when the filters leave it out (it is shown anyway).
@@ -365,7 +410,7 @@ export default function EventsPage() {
               setSegment(next === 'orgs' ? 'orgs' : 'upcoming');
             }}
           />
-          <ViewSwitch view={view} onChange={setView} iconsOnly />
+          <ViewSwitch view={view} onChange={setView} />
         </div>
 
         <div className="mx-auto flex w-full max-w-[var(--events-measure)] items-center gap-2 py-2">
@@ -377,24 +422,13 @@ export default function EventsPage() {
               else setDirectory({ ...directory, query: next });
             }}
           />
-          <button
-            type="button"
+          <FilterButton
+            count={headerFilterCount}
             onClick={() => {
               if (showingList) setSheetOpen(true);
               else setDirectorySheetOpen(true);
             }}
-            aria-label={headerFilterCount ? `Filters, ${headerFilterCount} active` : 'Filters'}
-            className="relative -ml-0.5 grid h-11 w-11 flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line"
-          >
-            <SlidersHorizontal
-              aria-hidden="true"
-              className="h-[17px] w-[17px] text-emphasis"
-              strokeWidth={2}
-            />
-            {headerFilterCount ? (
-              <span className="absolute top-[7px] right-[7px] h-2 w-2 rounded-full border-[1.6px] border-paper bg-gold" />
-            ) : null}
-          </button>
+          />
         </div>
         {/* Said, so a narrowed list is never mistaken for the calendar. */}
         {rsvp ? (
@@ -419,7 +453,7 @@ export default function EventsPage() {
       {mapOpened ? (
         <>
           <DirectoryShown
-            organizations={organizations}
+            organizations={organizationsNear}
             events={events}
             following={follows.following}
             filters={directory}
@@ -477,13 +511,13 @@ export default function EventsPage() {
 
           {segment === 'orgs' ? (
             <OrganizationList
-              organizations={organizations}
+              organizations={organizationsNear}
               events={events}
               following={follows.following}
               requested={follows.requested}
               onToggleFollow={follows.toggle}
               filters={directory}
-              onFiltersChange={setDirectory}
+              onFiltersChange={changeDirectory}
               onOpen={(id) => {
                 void navigate(`/events/organizations/${id}`, { state: { segment } });
               }}
@@ -567,11 +601,21 @@ export default function EventsPage() {
 
       {directorySheetOpen ? (
         <OrganizationFilterSheet
-          organizations={organizations}
+          organizations={organizationsNear}
+          home={{
+            city: home?.city ?? null,
+            status:
+              directoryMap.status === 'loading'
+                ? 'loading'
+                : directoryMap.contents.home
+                  ? 'ready'
+                  : 'unplaced',
+          }}
+          startingMiles={milesAtStart}
           events={events}
           following={follows.following}
           filters={directory}
-          onChange={setDirectory}
+          onChange={changeDirectory}
           onClose={() => {
             setDirectorySheetOpen(false);
           }}

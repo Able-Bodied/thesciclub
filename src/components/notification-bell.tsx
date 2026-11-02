@@ -8,8 +8,8 @@ import { cn } from '@/lib/utils';
  * The way to the notifications list, with what has arrived since it was last
  * opened.
  *
- * Two places, one each per width: Home's header on a phone, where the app
- * opens, and the end of the top bar on a desktop. `variant` is which.
+ * Home's header and Me's on a phone, and the end of the top bar on a desktop.
+ * `variant` is which: `plate` is on Me's navy band.
  *
  * The number is in the link's name ("Notifications, 3 new"), and drawn as a
  * number rather than a dot so it says how much; past nine it says "9+", which
@@ -19,7 +19,7 @@ export function NotificationBell({
   variant,
   className,
 }: {
-  variant: 'round' | 'bar';
+  variant: 'round' | 'plate' | 'bar';
   className?: string;
 }) {
   const { count, loaded } = useUnseenNotifications();
@@ -35,20 +35,25 @@ export function NotificationBell({
       </span>
     ) : null;
 
-  if (variant === 'round') {
+  if (variant !== 'bar') {
     return (
       <Link
         to="/notifications"
         aria-label={label}
         className={cn(
-          'relative grid h-[44px] w-[44px] flex-none place-items-center rounded-full bg-tint transition-colors hover:bg-line',
+          'relative grid h-[44px] w-[44px] flex-none place-items-center rounded-full transition-colors',
+          variant === 'round' ? 'bg-tint hover:bg-line' : 'bg-plate-chip hover:bg-plate-hover',
           className,
         )}
       >
         <Bell
           key={ring}
           aria-hidden="true"
-          className={cn('h-[19px] w-[19px] text-emphasis', ring > 0 && 'bell-ring')}
+          className={cn(
+            'h-[19px] w-[19px]',
+            variant === 'round' ? 'text-emphasis' : 'text-white',
+            ring > 0 && 'bell-ring',
+          )}
           strokeWidth={2}
         />
         {badge}

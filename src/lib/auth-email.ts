@@ -1,5 +1,6 @@
 import { describeError } from '@/lib/describe-error';
 import { heldInviteToken } from '@/lib/invite-token';
+import { heldQrCode } from '@/lib/qr-codes';
 import { signInDestination } from '@/lib/sign-in-destination';
 import { siteOrigin } from '@/lib/site-origin';
 import { getSupabase } from '@/lib/supabase';
@@ -25,7 +26,8 @@ export const MIN_PASSWORD = 8;
 export const CONFIRMED_PARAM = 'confirmed';
 
 export type Result =
-  | { ok: true }
+  /** `signedIn`: there is a session already, so no email to wait for. */
+  | { ok: true; signedIn?: boolean }
   | {
       ok: false;
       error: string;
@@ -49,16 +51,51 @@ export function cleanEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/**
+ * Straight in with an invite link, or a live code that lets
+ * people in (the owner, 2026-11-01; supabase/functions/invite-signup/handler.ts).
+ * False for anything else, the server not answering included, and the ordinary
+ * sign-up goes on.
+ */
+async function signUpStraightIn(
+  email: string,
+  password: string,
+  token: string | null,
+  code: string | null,
+): Promise<boolean> {
+  try {
+    const { data, error } = (await getSupabase().functions.invoke('invite-signup', {
+      body: { email: cleanEmail(email), password, token, code },
+    })) as { data: { created?: boolean } | null; error: unknown };
+    if (error || !data?.created) return false;
+    const signedIn = await getSupabase().auth.signInWithPassword({
+      email: cleanEmail(email),
+      password,
+    });
+    return !signedIn.error;
+  } catch {
+    return false;
+  }
+}
+
 export async function signUpWithEmail(email: string, password: string): Promise<Result> {
   const next = signInDestination(window.location.search);
   const query = new URLSearchParams({ [CONFIRMED_PARAM]: '1', next });
   const token = heldInviteToken();
+  const code = heldQrCode();
+  if ((token || code) && (await signUpStraightIn(email, password, token, code))) {
+    return { ok: true, signedIn: true };
+  }
   const { data, error } = await getSupabase().auth.signUp({
     email: cleanEmail(email),
     password,
     options: {
       emailRedirectTo: `${siteOrigin()}/join?${query}`,
-      ...(token ? { data: { invite_token: token } } : {}),
+      ...(token || code
+        ? {
+            data: { ...(token ? { invite_token: token } : {}), ...(code ? { qr_code: code } : {}) },
+          }
+        : {}),
     },
   });
   // An address with an account already, made with Google or Apple or a
@@ -73,6 +110,33 @@ export async function signUpWithEmail(email: string, password: string): Promise<
     return { ok: false, error: NOT_INVITED_MESSAGE, notInvited: true };
   }
   return { ok: false, error: describeError(error, 'Could not sign you up.') };
+}
+
+/** How many letters apart, counting a swap of two as two. */
+function lettersApart(a: string, b: string): number {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++) {
+      next[j] = Math.min(
+        (row[j] ?? 0) + 1,
+        (next[j - 1] ?? 0) + 1,
+        (row[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    row = next;
+  }
+  return row[b.length] ?? 0;
+}
+
+/**
+ * A slip on the way to `address`, the one an invite was sent to (the owner,
+ * 2026-11-01): that address needs no code, so it is worth offering back.
+ */
+export function isCloseTo(typed: string, address: string): boolean {
+  const clean = cleanEmail(typed);
+  if (!looksLikeEmail(clean) || clean === address) return false;
+  return lettersApart(clean, address) <= 2;
 }
 
 /** Where the confirmation email comes from, so people know what to look for. */

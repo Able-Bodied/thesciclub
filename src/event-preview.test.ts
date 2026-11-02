@@ -6,6 +6,7 @@ import {
   organizationMapPage,
   type PreviewEvent,
   previewPage,
+  shortLinkIn,
   whenLine,
 } from '../netlify/edge-functions/event-preview';
 
@@ -26,6 +27,10 @@ describe('a link to an event in a text message', () => {
   it('finds an event in either address, and nothing else', () => {
     expect(eventIdIn(`/e/${ID}`)).toBe(ID);
     expect(eventIdIn(`/events/${ID}`)).toBe(ID);
+    expect(shortLinkIn('/e/49ers')).toBe('49ers');
+    expect(shortLinkIn(`/e/${ID}`)).toBeNull();
+    expect(shortLinkIn('/events/49ers')).toBeNull();
+    expect(shortLinkIn('/e/49ers/register')).toBeNull();
     expect(eventIdIn(`/events/${ID}/review`)).toBeNull();
     expect(eventIdIn('/events/new')).toBeNull();
     expect(eventIdIn('/events')).toBeNull();

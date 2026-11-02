@@ -187,7 +187,7 @@ function AppShell() {
   // phone layout. Reported as a Firefox bug; it was neither Firefox nor a bug,
   // it was this number, and both engines measured identically.
   return (
-    <div className="app-shell relative mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas md:max-w-[1180px]">
+    <div className="app-shell relative mx-auto flex h-dvh w-full max-w-[480px] flex-col overflow-clip bg-canvas md:max-w-[1180px]">
       <DisplaySheetProvider>
         <ShellContent />
       </DisplaySheetProvider>

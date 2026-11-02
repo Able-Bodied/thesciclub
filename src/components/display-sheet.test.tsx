@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DisplayButton, DisplaySheetProvider } from '@/components/display-sheet';
+import { DisplaySheetProvider, useOpenDisplaySheet } from '@/components/display-sheet';
 import { AccessibilityProvider } from '@/lib/accessibility';
 
 beforeEach(() => {
@@ -13,11 +13,20 @@ function renderButton() {
   render(
     <AccessibilityProvider>
       <DisplaySheetProvider>
-        <DisplayButton variant="round" />
+        <Opener />
       </DisplaySheetProvider>
     </AccessibilityProvider>,
   );
   return screen.getByRole('button', { name: 'Display settings' });
+}
+
+function Opener() {
+  const open = useOpenDisplaySheet();
+  return (
+    <button type="button" aria-label="Display settings" onClick={open}>
+      Open
+    </button>
+  );
 }
 
 describe('the Display button', () => {

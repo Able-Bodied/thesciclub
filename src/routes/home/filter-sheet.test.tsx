@@ -9,14 +9,19 @@ import { makeRoom } from '@/test/factory';
 
 function renderSheet(overrides: Partial<HomeFilterSheetProps> = {}) {
   const props: HomeFilterSheetProps = {
+    segments: [
+      ['everything', 'Everything'],
+      ['events', 'Events'],
+    ],
+    segment: 'everything',
+    onSegment: vi.fn(),
     chips: {
       rooms: [
         makeRoom({ id: 'bowel', name: 'Bowel management' }),
         makeRoom({ id: 'sport', name: 'Adaptive sport' }),
       ],
-      cities: ['San Jose', 'Aptos'],
-      online: true,
     },
+    home: { city: 'San Jose', status: 'ready' },
     filters: EMPTY_FEED_FILTERS,
     matchCount: 14,
     total: 31,
@@ -56,15 +61,10 @@ describe('HomeFilterSheet', () => {
         .getAllByRole('button')
         .map((chip) => chip.textContent),
     ).toEqual(['Bowel management', 'Adaptive sport']);
-    expect(
-      group('Where')
-        .getAllByRole('button')
-        .map((chip) => chip.textContent),
-    ).toEqual(['San Jose', 'Aptos', 'Online']);
   });
 
   it('marks a chip that is on as pressed', () => {
-    renderSheet({ filters: { rooms: ['sport'], cities: [], online: true }, activeCount: 2 });
+    renderSheet({ filters: { rooms: ['sport'], withinMiles: 50 }, activeCount: 2 });
     expect(screen.getByRole('button', { name: 'Adaptive sport' })).toHaveAttribute(
       'aria-pressed',
       'true',
@@ -73,29 +73,21 @@ describe('HomeFilterSheet', () => {
       'aria-pressed',
       'false',
     );
-    expect(screen.getByRole('button', { name: 'Online' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'Clear (2)' })).toBeEnabled();
   });
 
-  it('hands back the filters with a room, a city or Online toggled', async () => {
+  it('hands back the filters with a room toggled', async () => {
     const user = userEvent.setup();
-    const { onChange } = renderSheet({
-      filters: { rooms: ['bowel'], cities: [], online: false },
-    });
+    const { onChange } = renderSheet({ filters: { rooms: ['bowel'], withinMiles: 50 } });
     await user.click(screen.getByRole('button', { name: 'Adaptive sport' }));
-    expect(onChange).toHaveBeenLastCalledWith({
-      rooms: ['bowel', 'sport'],
-      cities: [],
-      online: false,
-    });
-    await user.click(screen.getByRole('button', { name: 'Aptos' }));
-    expect(onChange).toHaveBeenLastCalledWith({
-      rooms: ['bowel'],
-      cities: ['Aptos'],
-      online: false,
-    });
-    await user.click(screen.getByRole('button', { name: 'Online' }));
-    expect(onChange).toHaveBeenLastCalledWith({ rooms: ['bowel'], cities: [], online: true });
+    expect(onChange).toHaveBeenLastCalledWith({ rooms: ['bowel', 'sport'], withinMiles: 50 });
+  });
+
+  it('asks how far, for events and peers alone', () => {
+    renderSheet();
+    expect(screen.getByLabelText('Any distance')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Where' })).not.toBeInTheDocument();
+    expect(screen.getByText(/For events and peers/)).toBeInTheDocument();
   });
 
   it('clears, and closes from Show', async () => {
@@ -107,21 +99,18 @@ describe('HomeFilterSheet', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it('draws no empty group, and says so when there is nothing to narrow by', () => {
-    renderSheet({ chips: { rooms: [], cities: [], online: false } });
+  it('draws no empty group', () => {
+    renderSheet({ chips: { rooms: [] } });
     expect(screen.queryByRole('heading', { name: 'Rooms' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('heading', { name: 'Where' })).not.toBeInTheDocument();
-    expect(
-      screen.getByText('Nothing in this list has a room or a place to narrow by.'),
-    ).toBeInTheDocument();
   });
 
-  it('says the pills filter by kind and this narrows inside them', () => {
-    renderSheet();
-    expect(
-      screen.getByText(
-        'The pills across the top filter by kind. This narrows what is inside them.',
-      ),
-    ).toBeInTheDocument();
+  it('chooses what Home shows', async () => {
+    const props = renderSheet();
+    expect(screen.getByRole('button', { name: 'Everything' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Events' }));
+    expect(props.onSegment).toHaveBeenCalledWith('events');
   });
 });

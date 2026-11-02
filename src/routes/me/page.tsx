@@ -1,8 +1,8 @@
 import { ChevronRight, LogOut } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { DisplayButton } from '@/components/display-sheet';
 import { InstallSettings } from '@/components/install-nudge';
+import { NotificationBell } from '@/components/notification-bell';
 import { type PageTab, PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { signOut, useAccount } from '@/lib/account';
 import { EMAIL_RETURN_PARAM, useSignInDetails } from '@/lib/account-email';
@@ -274,7 +274,10 @@ export default function MePage() {
             Me
           </h1>
           <p className="mt-0.5 text-[0.78125rem] text-grey">Signed in as {displayName ?? '—'}</p>
-          <DisplayButton variant="round" className="absolute top-[18px] right-[18px]" />
+          <NotificationBell
+            variant="round"
+            className="absolute top-[18px] right-[18px] md:hidden"
+          />
         </header>
       )}
 

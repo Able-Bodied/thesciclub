@@ -90,8 +90,7 @@ export default function GuestListPage() {
         <h1 className="mt-2 font-extrabold font-display text-[1.5rem] text-ink">Guest list</h1>
         <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
           For the event's organizers and the club's administrators only. Members are listed when
-          they say Going: Interested shares nothing with the host. Registrations from the public
-          page are listed either way.
+          they RSVP. Registrations from the public page are listed either way.
         </p>
 
         {error ? (

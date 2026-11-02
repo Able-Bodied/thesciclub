@@ -274,7 +274,7 @@ describe('EventDetailPage', () => {
       ];
       renderDetail();
       const heading = screen.getByRole('heading', { name: 'Details' });
-      const going = screen.getByRole('button', { name: 'Going' });
+      const going = screen.getByRole('button', { name: 'RSVP' });
       expect(heading.compareDocumentPosition(screen.getByText('nothing'))).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
       );
@@ -300,7 +300,7 @@ describe('EventDetailPage', () => {
         'href',
         'https://norcalsci.org/events/rugby',
       );
-      expect(screen.queryByRole('button', { name: 'Going' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'RSVP' })).not.toBeInTheDocument();
       const register = screen.getByRole('link', { name: 'Register' });
       expect(register).toHaveAttribute('href', 'https://norcalsci.org/register/rugby');
       expect(register).toHaveAttribute('target', '_blank');
@@ -377,26 +377,26 @@ describe('EventDetailPage', () => {
 
     it('records going, then says what it shares and offers the calendar', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'going');
       const sheet = await screen.findByRole('dialog', { name: 'You’re going' });
       expect(sheet).toHaveTextContent('We share your email with the host');
       expect(screen.getByRole('link', { name: /Google Calendar/ })).toBeInTheDocument();
     });
 
-    it('opens the sheet for Interested too, which shares nothing', async () => {
+    it('opens the sheet for Interested too, with a nudge to RSVP', async () => {
       renderDetail();
       await userEvent.click(screen.getByRole('button', { name: 'Interested' }));
       expect(state.setRsvp).toHaveBeenCalledWith('rugby', 'me', 'interested');
       expect(await screen.findByRole('dialog', { name: 'You’re interested' })).toHaveTextContent(
-        'Interested shares nothing with the host.',
+        /Make sure to RSVP/,
       );
       expect(screen.queryByLabelText(/Phone number/)).not.toBeInTheDocument();
     });
 
     it('changes Going to Interested from the sheet', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       await userEvent.click(await screen.findByRole('button', { name: /Change to Interested/ }));
       expect(state.setRsvp).toHaveBeenLastCalledWith('rugby', 'me', 'interested');
       expect(await screen.findByRole('dialog', { name: 'You’re interested' })).toBeInTheDocument();
@@ -404,14 +404,14 @@ describe('EventDetailPage', () => {
 
     it('asks for a number with Going when there is none on file', async () => {
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(await screen.findByLabelText('Phone number (optional)')).toBeInTheDocument();
     });
 
     it('does not ask when there is a number on file', async () => {
       state.phone = '14085550112';
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       await screen.findByRole('dialog');
       // The read is async: give the page its chance to add the field.
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -428,7 +428,7 @@ describe('EventDetailPage', () => {
     it('surfaces a failed write', async () => {
       state.setRsvp = vi.fn().mockResolvedValue({ ok: false, error: 'permission denied' });
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Going' }));
+      await userEvent.click(screen.getByRole('button', { name: 'RSVP' }));
       expect(await screen.findByText('permission denied')).toBeInTheDocument();
     });
   });
@@ -445,22 +445,23 @@ describe('EventDetailPage', () => {
     it('lets somebody going join it', async () => {
       state.rsvps = new Map([['rugby', 'going']]);
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Join the group chat' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Open group chat' }));
       expect(state.joinEventGroup).toHaveBeenCalledWith('rugby');
     });
 
-    it('says Open, not Join, once they are in it', () => {
+    it('says who is in it, once they are', () => {
       state.rsvps = new Map([['rugby', 'going']]);
       state.threads = [{ id: 'th-ev', eventId: 'rugby' }];
       renderDetail();
       expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
+      expect(screen.getByText(/Everyone going or interested is in this chat/)).toBeInTheDocument();
     });
 
     // The owner, 2026-10-22: going is not needed to join (20261022210000).
     it('lets somebody who is not going join the chat too', () => {
       renderDetail();
-      expect(screen.getByRole('button', { name: 'Join the group chat' })).toBeInTheDocument();
-      expect(screen.getByText(/going or not/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
+      expect(screen.getByText(/Any member can join/)).toBeInTheDocument();
     });
 
     it('surfaces a refusal instead of navigating', async () => {
@@ -469,7 +470,7 @@ describe('EventDetailPage', () => {
         .fn()
         .mockResolvedValue({ ok: false, error: 'The group chat is for everybody going.' });
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Join the group chat' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Open group chat' }));
       expect(await screen.findByText('The group chat is for everybody going.')).toBeInTheDocument();
     });
 
@@ -481,7 +482,7 @@ describe('EventDetailPage', () => {
       // The owner, 2026-10-22: somebody who missed it may want to ask about it.
       it('still takes new joins', () => {
         renderDetail();
-        expect(screen.getByRole('button', { name: 'Join the group chat' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
       });
 
       it('still opens for somebody who was in it', () => {
@@ -688,7 +689,7 @@ describe('an event that is over', () => {
     // whether you met it in the list or on its own page.
     state.events = [makeEvent({ id: 'rugby', startTime: '2026-09-06T03:00:00Z' })];
     renderDetail();
-    expect(screen.queryByRole('button', { name: /^Going/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'RSVP' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Interested/ })).not.toBeInTheDocument();
     expect(screen.getByText(/already happened/i)).toBeInTheDocument();
   });
