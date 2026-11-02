@@ -1,5 +1,7 @@
 import { Bell } from 'lucide-react';
+import { useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
 import { useRealtimeRows } from '@/lib/chat/realtime';
@@ -68,6 +70,9 @@ export function AppNav() {
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
+  // On a phone only: a desktop's bar is at the top, out of the way already.
+  const { hidden, show } = useHideOnScroll(wide === false, location.pathname);
+  const bar = useRef<HTMLElement | null>(null);
 
   // The bar is mounted on every screen, which makes it the right place for the
   // one subscription that has to survive navigation: somebody writing to you
@@ -88,9 +93,14 @@ export function AppNav() {
   // widths, and only its painted position moves.
   return (
     <nav
+      ref={bar}
       aria-label="Main"
+      // Reached by keyboard or switch control, it comes back to be used.
+      onFocus={show}
+      // A margin, not a transform, so the page below takes the room.
+      style={hidden ? { marginBottom: -(bar.current?.offsetHeight ?? 0) } : undefined}
       className={cn(
-        'z-40 order-last flex-none bg-paper px-2',
+        'z-40 order-last flex-none bg-paper px-2 transition-[margin-bottom] duration-300 ease-out',
         'border-line border-t pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]',
         'md:order-first md:border-t-0 md:border-b md:px-4 md:pt-1.5 md:pb-1.5',
       )}

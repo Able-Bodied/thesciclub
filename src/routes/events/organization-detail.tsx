@@ -32,6 +32,8 @@ import { OrganizationSummarySetting } from '@/routes/events/organization-summary
 import { EventDescription } from '@/routes/events/rich-text';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 
+const UPCOMING_SHOWN = 5;
+
 /**
  * One organization, from `orgPage()` in the mock: who they are, the members who
  * name them, and what they have coming up.
@@ -53,6 +55,7 @@ export default function OrganizationDetailPage() {
   const account = useAccount();
   const memberId = account.status === 'member' ? account.userId : null;
   const [additions, setAdditions] = useState(0);
+  const [allUpcoming, setAllUpcoming] = useState(false);
   const [reviewsRead, setReviewsRead] = useState(0);
   const count = useOrganizationMemberCount(id, additions);
   const denial = useMyDenial(id, memberId);
@@ -107,10 +110,13 @@ export default function OrganizationDetailPage() {
     );
   }
 
+  // The next few, so the rest of the page is not a long scroll away (the owner,
+  // 2026-11-01).
   const now = new Date().toISOString();
   const upcoming = events
     .filter((event) => event.organizationId === organization.id && event.startTime >= now)
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const hiddenUpcoming = allUpcoming ? 0 : Math.max(0, upcoming.length - UPCOMING_SHOWN);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -208,7 +214,7 @@ export default function OrganizationDetailPage() {
             <h2 className="mt-5 mb-2.5 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]">
               Upcoming
             </h2>
-            {upcoming.map((event) => {
+            {upcoming.slice(0, upcoming.length - hiddenUpcoming).map((event) => {
               const tile = dateTileParts(event.startTime, event.timezone);
               return (
                 <button
@@ -239,6 +245,17 @@ export default function OrganizationDetailPage() {
                 </button>
               );
             })}
+            {hiddenUpcoming > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setAllUpcoming(true);
+                }}
+                className="min-h-[44px] w-full rounded-[14px] bg-tint px-3.5 font-bold text-[0.875rem] text-emphasis hover:bg-line"
+              >
+                {hiddenUpcoming} more
+              </button>
+            ) : null}
           </>
         ) : null}
 

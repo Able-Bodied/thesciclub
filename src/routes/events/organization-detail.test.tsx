@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import type * as Grants from '@/lib/grants';
-import { makeOrganization } from '@/test/factory';
+import { makeEvent, makeOrganization } from '@/test/factory';
 
 const organization = makeOrganization({
   id: 'nt',
@@ -36,7 +37,11 @@ vi.mock('@/lib/organization-follows', () => ({
     toggle: () => undefined,
   }),
 }));
-vi.mock('@/lib/events', () => ({ useEvents: () => ({ events: [], loading: false, error: null }) }));
+const calendar = vi.hoisted(() => ({ events: [] as unknown[] }));
+
+vi.mock('@/lib/events', () => ({
+  useEvents: () => ({ events: calendar.events, loading: false, error: null }),
+}));
 vi.mock('@/lib/members', () => ({ useBrowseMembers: () => ({ members: [], loading: false }) }));
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
 const grants = vi.hoisted(() => ({ list: [] as Grants.Grant[] }));
@@ -81,6 +86,44 @@ describe('an organization’s description', () => {
       'https://sail.org/',
     );
     expect(screen.queryByText(/\*\*/)).toBeNull();
+  });
+});
+
+const renderOrganization = () =>
+  render(
+    <MemoryRouter initialEntries={['/events/organizations/nt']}>
+      <Routes>
+        <Route path="/events/organizations/:id" element={<OrganizationDetailPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+
+describe('its upcoming events', () => {
+  const ahead = (i: number) =>
+    makeEvent({
+      id: `e${i}`,
+      title: `Event ${i}`,
+      organizationId: 'nt',
+      startTime: new Date(Date.now() + (i + 1) * 86_400_000).toISOString(),
+    });
+
+  it('shows the next five, and the rest on asking', async () => {
+    calendar.events = Array.from({ length: 8 }, (_, i) => ahead(i));
+    renderOrganization();
+    expect(await screen.findByText('Event 4')).toBeInTheDocument();
+    expect(screen.queryByText('Event 5')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: '3 more' }));
+    expect(screen.getByText('Event 7')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /more$/ })).toBeNull();
+    calendar.events = [];
+  });
+
+  it('offers nothing more with five or fewer', async () => {
+    calendar.events = Array.from({ length: 5 }, (_, i) => ahead(i));
+    renderOrganization();
+    expect(await screen.findByText('Event 4')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /more$/ })).toBeNull();
+    calendar.events = [];
   });
 });
 
