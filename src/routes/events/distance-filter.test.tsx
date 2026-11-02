@@ -10,13 +10,13 @@ describe('the distance slider', () => {
     expect(slider).toHaveValue('20');
     fireEvent.change(slider, { target: { value: '45' } });
     expect(onChange).toHaveBeenLastCalledWith(45);
-    fireEvent.change(slider, { target: { value: '105' } });
+    fireEvent.change(slider, { target: { value: '205' } });
     expect(onChange).toHaveBeenLastCalledWith(null);
   });
 
   it('reads "Any distance" at the far end', () => {
     render(<DistanceFilter miles={null} city="San Jose" status="any" onChange={vi.fn()} />);
-    expect(screen.getByLabelText('Any distance')).toHaveValue('105');
+    expect(screen.getByLabelText('Any distance')).toHaveValue('205');
   });
 
   it('says so when the city is not on the map yet', () => {

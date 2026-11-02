@@ -1,4 +1,3 @@
-import {} from 'lucide-react';
 import { createContext, useCallback, useContext, useId, useRef, useState } from 'react';
 import { SheetGrip } from '@/components/sheet-grip';
 import { useDialogFocus } from '@/lib/dialog-focus';

@@ -2,12 +2,12 @@ import { useId } from 'react';
 import type { NearHomeStatus } from '@/lib/near-home';
 
 /**
- * "Within 20 miles of San Jose", a slider from 5 miles to 100, and one stop
+ * "Within 20 miles of San Jose", a slider from 5 miles to 200, and one stop
  * past that for any distance (the owner, 2026-10-20).
  */
 
 export const MIN_MILES = 5;
-export const MAX_MILES = 100;
+export const MAX_MILES = 200;
 const STEP = 5;
 /** The stop past MAX_MILES that means any distance. */
 const ANY = MAX_MILES + STEP;

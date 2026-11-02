@@ -1,3 +1,4 @@
+import { Bell } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
@@ -62,8 +63,8 @@ export function AppNav() {
   // The bar is on every screen, so the app icon's number is kept here.
   useIconBadge();
   // Red on Me, so a notification is not missed on a screen with no bell
-  // (the owner, 2026-11-01).
-  const { count: unseen } = useUnseenNotifications();
+  // (the owner, 2026-11-01). Not for a conversation: Chat's own dot says that.
+  const { count: unseen } = useUnseenNotifications(true);
   const location = useLocation();
   const wide = useWideLayout();
   const lit = litTab(location.pathname, location.state);
@@ -134,15 +135,17 @@ export function AppNav() {
                 {to === '/me' && unseen > 0 ? (
                   <span
                     aria-hidden="true"
-                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-destructive-fill ring-2 ring-paper"
-                  />
+                    className="-top-0.5 -right-1 absolute grid h-[16px] w-[16px] place-items-center rounded-full bg-destructive-fill ring-2 ring-paper"
+                  >
+                    <Bell className="h-[10px] w-[10px] fill-white text-white" strokeWidth={2.4} />
+                  </span>
                 ) : null}
                 {to === '/chat' && count > 0 ? (
                   // Ringed in the bar's own colour so it reads as a dot on
                   // the icon rather than as part of it.
                   <span
                     aria-hidden="true"
-                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-emphasis ring-2 ring-paper"
+                    className="absolute top-0.5 right-0.5 h-[9px] w-[9px] rounded-full bg-destructive-fill ring-2 ring-paper"
                   />
                 ) : null}
               </span>

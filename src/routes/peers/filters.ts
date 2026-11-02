@@ -19,13 +19,16 @@ import type { MapContents, MapPoint } from '@/lib/map-data';
 import { canonicalTopicsOf } from '@/routes/peers/topics';
 import type { BrowseMember, InjuryRegion, MemberFilters, PeersSegment } from '@/types/domain';
 
-export function activeFilterCount(filters: MemberFilters): number {
+export function activeFilterCount(
+  filters: MemberFilters,
+  startingMiles: number | null = null,
+): number {
   return (
     filters.regions.length +
     (filters.condition ? 1 : 0) +
     (filters.role === 'any' ? 0 : 1) +
     (filters.organization ? 1 : 0) +
-    (filters.withinMiles === null ? 0 : 1) +
+    (filters.withinMiles === startingMiles ? 0 : 1) +
     filters.topics.length +
     filters.ages.length
   );
@@ -130,6 +133,59 @@ function milesBetween(a: MapPoint, b: MapPoint): number {
     Math.sin(up / 2) ** 2 +
     Math.cos(radians(a.latitude)) * Math.cos(radians(b.latitude)) * Math.sin(across / 2) ** 2;
   return 2 * EARTH_MILES * Math.asin(Math.sqrt(h));
+}
+
+/** How many a tab should open on, where there are that many. */
+const ENOUGH = 20;
+const STEP_MILES = 5;
+const MOST_MILES = 200;
+
+/**
+ * Where Peers and Organizations start (the owner, 2026-11-01): the shortest
+ * distance on the slider with at least 20 in it, so a remote member is not shown
+ * an empty club. Something with several places counts at its nearest. Null, any
+ * distance, with no home to measure from, or fewer than 20 within reach.
+ */
+export function milesForEnough(
+  home: MapPoint | null,
+  places: readonly (MapPoint & { id: string })[],
+): number | null {
+  if (!home) return null;
+  const nearest = new Map<string, number>();
+  for (const place of places) {
+    const miles = milesBetween(home, place);
+    nearest.set(place.id, Math.min(miles, nearest.get(place.id) ?? miles));
+  }
+  const twentieth = [...nearest.values()].sort((a, b) => a - b)[ENOUGH - 1];
+  if (twentieth === undefined) return null;
+  const miles = Math.max(STEP_MILES, Math.ceil(twentieth / STEP_MILES) * STEP_MILES);
+  return miles > MOST_MILES ? null : miles;
+}
+
+/** Each member where the map holds them, for `milesForEnough`. */
+export function memberPlaces(
+  contents: Pick<MapContents, 'peerCities'>,
+  me: string | null,
+): (MapPoint & { id: string })[] {
+  return contents.peerCities.flatMap((city) =>
+    city.memberIds
+      .filter((id) => id !== me)
+      .map((id) => ({ id, latitude: city.latitude, longitude: city.longitude })),
+  );
+}
+
+/** The organizations with a place within so many miles of the reader. */
+export function organizationsWithin(
+  contents: Pick<MapContents, 'home' | 'organizations'>,
+  miles: number,
+): ReadonlySet<string> {
+  const { home } = contents;
+  if (!home) return new Set();
+  return new Set(
+    contents.organizations
+      .filter((place) => milesBetween(home, place) <= miles)
+      .map((place) => place.id),
+  );
 }
 
 /**

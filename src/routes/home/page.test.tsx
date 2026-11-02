@@ -49,6 +49,21 @@ const db = vi.hoisted(() => ({
 }));
 
 // Which events are near home is a database answer; Events' default distance.
+const mapped = vi.hoisted(() => ({
+  contents: {
+    events: [],
+    peerCities: [],
+    organizations: [] as { id: string; latitude: number; longitude: number }[],
+    home: null as { latitude: number; longitude: number } | null,
+  },
+}));
+vi.mock('@/lib/map-data', () => ({
+  useMapData: () => ({ status: 'ready', contents: mapped.contents }),
+}));
+vi.mock('@/lib/home-state', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useHome: () => null,
+}));
 vi.mock('@/lib/near-home', () => ({
   useNearHome: (miles: number | null): NearHome => {
     db.nearAskedFor.push(miles);
@@ -263,10 +278,9 @@ describe('events near home', () => {
     ];
   });
 
-  it('shows only events within 50 miles, online ones by their host', () => {
+  it('shows only the events near home, online ones by their host', () => {
     db.near = { status: 'ready', ids: new Set(['near', 'online']) };
     renderPage('/home?segment=events');
-    expect(db.nearAskedFor).toContain(50);
     expect(screen.getByText('Swim across town')).toBeInTheDocument();
     expect(screen.getByText('Video meetup')).toBeInTheDocument();
     expect(screen.queryByText('Swim three hours away')).not.toBeInTheDocument();
@@ -329,6 +343,13 @@ describe('likes on Home', () => {
     expect(db.liked).toEqual(['plain-opening']);
   });
 });
+
+/** What the pills did: through the filter now. */
+async function show(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name: /^Filters/ }));
+  await user.click(screen.getByRole('button', { name }));
+  await user.click(screen.getByRole('button', { name: /^Show \d/ }));
+}
 
 describe('Home', () => {
   it('has exactly one h1, and it says Home', () => {
@@ -396,19 +417,19 @@ describe('Home', () => {
       const user = userEvent.setup();
       renderPage();
 
-      await user.click(screen.getByRole('button', { name: 'Topics' }));
+      await show(user, 'Topics');
       expect(feed()).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Photos' }));
+      await show(user, 'Photos');
       expect(feed()).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Wheel covers I made' })).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'Events' }));
+      await show(user, 'Events');
       expect(feed()).toHaveLength(1);
       expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: 'People' }));
+      await show(user, 'People');
       expect(feed()).toHaveLength(1);
       expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
     });
@@ -429,19 +450,23 @@ describe('Home', () => {
       expect(screen.getByRole('textbox', { name: 'Ask or post to the club' })).toBeInTheDocument();
     });
 
-    it('read the pill from the URL', () => {
+    it('read the pill from the URL', async () => {
+      const user = userEvent.setup();
       renderPage('/home?segment=photos');
+      expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /^Filters/ }));
       expect(screen.getByRole('button', { name: 'Photos' })).toHaveAttribute(
         'aria-pressed',
         'true',
       );
+      await user.click(screen.getByRole('button', { name: /^Show \d/ }));
       expect(screen.queryByRole('link', { name: 'Morning or evening routine?' })).toBeNull();
     });
 
     it('write the pill to the URL, and a card carries it to the next screen', async () => {
       const user = userEvent.setup();
       renderPage();
-      await user.click(screen.getByRole('button', { name: 'Topics' }));
+      await show(user, 'Topics');
       await user.click(screen.getByRole('link', { name: 'Morning or evening routine?' }));
       expect(
         screen.getByText(
@@ -540,11 +565,8 @@ describe('Home', () => {
       if (link) {
         expect(screen.getByRole('link', { name: link[0] })).toHaveAttribute('href', link[1]);
       } else {
-        // No link in the list: the way to ask is a box, and the bell is in
-        // the header.
-        expect(
-          screen.getAllByRole('link').filter((a) => a.getAttribute('href') !== '/notifications'),
-        ).toEqual([]);
+        // No link in the list: the way to ask is a box.
+        expect(screen.queryAllByRole('link')).toEqual([]);
         expect(
           screen.getByRole('textbox', { name: 'Ask or post to the club' }),
         ).toBeInTheDocument();
@@ -634,120 +656,47 @@ describe('filtering the feed', () => {
   it('opens from a button that counts what is on', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('button', { name: /^Filters/ }));
     expect(screen.getByRole('dialog', { name: 'Filter your feed' })).toBeInTheDocument();
     expect(screen.getByText('7 of 7 match')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Bowel management' }));
     await user.click(screen.getByRole('button', { name: 'Show 2' }));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Filters, 1 active' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Filters, / })).toBeInTheDocument();
   });
 
-  it('offers only the rooms and places something in this pill has', async () => {
+  it('offers only the rooms something in this pill has', async () => {
     const user = userEvent.setup();
     renderPage('/home?segment=events');
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
+    await user.click(screen.getByRole('button', { name: /^Filters/ }));
     const dialog = within(screen.getByRole('dialog'));
     // The swim is sport; the circle is online. No topic, no member.
     expect(dialog.getByRole('button', { name: 'Adaptive sport' })).toBeInTheDocument();
     expect(dialog.queryByRole('button', { name: 'Bowel management' })).toBeNull();
-    expect(dialog.getByRole('button', { name: 'San Jose' })).toBeInTheDocument();
-    expect(dialog.getByRole('button', { name: 'Online' })).toBeInTheDocument();
-    expect(dialog.queryByRole('button', { name: 'Aptos' })).toBeNull();
     // A closed room is never a chip, not even for an administrator's read.
     expect(dialog.queryByRole('button', { name: 'Skin & pressure sores' })).toBeNull();
   });
 
-  it('narrows every pill by a room and a place, and Clear puts everything back', async () => {
+  it('narrows by a room, and Clear puts everything back', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
-    await user.click(screen.getByRole('button', { name: 'Adaptive sport' }));
-    await user.click(screen.getByRole('button', { name: 'San Jose' }));
-    expect(screen.getByText('2 of 7 match')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /^Filters/ }));
+    await user.click(screen.getByRole('button', { name: 'Bowel management' }));
     await user.click(screen.getByRole('button', { name: 'Show 2' }));
-    expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
     expect(cards()).toHaveLength(2);
-
-    await user.click(screen.getByRole('button', { name: 'Topics' }));
-    expect(screen.getByText('Nothing matches that yet. Try fewer filters.')).toBeInTheDocument();
     await sheetAgreesWithList(user);
-
-    await user.click(screen.getByRole('button', { name: 'Events' }));
-    expect(cards()).toHaveLength(1);
-    expect(screen.getByText('Adaptive swim night')).toBeInTheDocument();
-    await sheetAgreesWithList(user);
-
-    await user.click(screen.getByRole('button', { name: 'People' }));
-    expect(cards()).toHaveLength(1);
-    expect(screen.getByRole('link', { name: 'Kerry' })).toBeInTheDocument();
-    await sheetAgreesWithList(user);
-
-    await user.click(screen.getByRole('button', { name: 'Filters, 2 active' }));
-    await user.click(screen.getByRole('button', { name: 'Clear (2)' }));
+    await user.click(screen.getByRole('button', { name: /^Filters, / }));
+    await user.click(screen.getByRole('button', { name: /^Clear/ }));
     await user.click(screen.getByRole('button', { name: /^Show / }));
+    expect(cards()).toHaveLength(7);
+  });
+
+  it('starts at any distance, so Worth meeting reaches the whole club', () => {
+    db.nearAskedFor = [];
+    renderPage();
+    expect(db.nearAskedFor).toContain(null);
     expect(screen.getByRole('button', { name: 'Filters' })).toBeInTheDocument();
-    for (const [pill, count] of [
-      ['Everything', 7],
-      ['Topics', 1],
-      ['Photos', 1],
-      ['Events', 2],
-      ['People', 3],
-    ] as const) {
-      await user.click(screen.getByRole('button', { name: pill }));
-      expect(cards()).toHaveLength(count);
-    }
-  });
-
-  it('places a topic by its author’s city, and not an author hidden from Peers', async () => {
-    const user = userEvent.setup();
-    db.members = db.members.filter((member) => member.id !== 'jan');
-    renderPage('/home?segment=photos');
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
-    // Jan wrote the only photograph and is not in Peers: no place to offer.
-    expect(screen.queryByRole('heading', { name: 'Where' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Show 1' }));
-
-    await user.click(screen.getByRole('button', { name: 'Topics' }));
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
-    await user.click(screen.getByRole('button', { name: 'San Jose' }));
-    await user.click(screen.getByRole('button', { name: 'Show 1' }));
-    expect(screen.getByRole('link', { name: 'Morning or evening routine?' })).toBeInTheDocument();
-  });
-
-  it('keeps a chip that is on, on a pill where nothing matches it', async () => {
-    const user = userEvent.setup();
-    renderPage('/home?segment=people');
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
-    await user.click(screen.getByRole('button', { name: 'Aptos' }));
-    await user.click(screen.getByRole('button', { name: 'Show 1' }));
-
-    await user.click(screen.getByRole('button', { name: 'Events' }));
-    await user.click(screen.getByRole('button', { name: 'Filters, 1 active' }));
-    expect(screen.getByRole('button', { name: 'Aptos' })).toHaveAttribute('aria-pressed', 'true');
-    await user.click(screen.getByRole('button', { name: 'Aptos' }));
-    expect(screen.getByText('2 of 2 match')).toBeInTheDocument();
-  });
-
-  it('with a city on, waits for the members before drawing Topics', async () => {
-    const user = userEvent.setup();
-    const { rerender } = renderPage('/home?segment=topics');
-    await user.click(screen.getByRole('button', { name: 'Filters' }));
-    await user.click(screen.getByRole('button', { name: 'San Jose' }));
-    await user.click(screen.getByRole('button', { name: 'Show 1' }));
-
-    db.membersLoading = true;
-    rerender(
-      <MemoryRouter initialEntries={['/home?segment=topics']}>
-        <Routes>
-          <Route path="/home" element={<HomePage />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-    expect(screen.getByRole('status')).toHaveTextContent('Loading…');
-    expect(screen.queryByText('Nothing matches that yet. Try fewer filters.')).toBeNull();
   });
 });
 

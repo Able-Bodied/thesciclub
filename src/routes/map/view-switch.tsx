@@ -58,33 +58,35 @@ export function preloadMap(): void {
   void loadMapCanvas().catch(() => undefined);
 }
 
+/**
+ * The one showing is its icon, and the other its icon and its word, a pill to
+ * press (the owner, 2026-11-01): the word is on the thing there is to do, and
+ * it leaves room beside it on a phone.
+ */
 export function ViewSwitch({
   view,
   onChange,
-  iconsOnly = false,
 }: {
   view: ListOrMap;
   onChange: (next: ListOrMap) => void;
-  /** Beside something else in a phone's width: the words go, for a screen reader only. */
-  iconsOnly?: boolean;
 }) {
   const option = (value: ListOrMap, label: string, Icon: typeof List) => (
     <button
       type="button"
       aria-pressed={view === value}
-      {...(iconsOnly ? { 'aria-label': label } : {})}
+      aria-label={label}
       onClick={() => {
         onChange(value);
       }}
       {...(value === 'map' ? { onPointerEnter: preloadMap, onFocus: preloadMap } : {})}
       className={cn(
         'flex min-h-[44px] items-center gap-1.5 rounded-full font-semibold text-[0.84375rem] transition-colors',
-        iconsOnly ? 'min-w-[44px] justify-center' : 'px-3.5',
+        view === value ? 'min-w-[44px] justify-center' : 'px-3.5',
         view === value ? 'bg-action text-white hover:bg-action-hi' : 'text-ink2 hover:bg-line',
       )}
     >
       <Icon aria-hidden="true" className="h-[16px] w-[16px]" strokeWidth={2.2} />
-      {iconsOnly ? null : label}
+      {view === value ? null : label}
     </button>
   );
   return (

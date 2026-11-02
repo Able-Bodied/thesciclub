@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import type { MapContents } from '@/lib/map-data';
 import {
   activeFilterCount,
   ageBandsIn,
   filterMembers,
   hasConditions,
   membersWithin,
+  milesForEnough,
   organizationsIn,
+  organizationsWithin,
   othersOnly,
   regionsIn,
   toggleFilter,
@@ -285,5 +288,42 @@ describe('the age filter', () => {
   it('counts towards the filter dot', () => {
     expect(activeFilterCount({ ...none, ages: ['30s', '40s'] })).toBe(2);
     expect(toggleFilter({ ...none, ages: ['30s'] }, 'ages', '30s').ages).toEqual([]);
+  });
+});
+
+describe('milesForEnough', () => {
+  const home = { latitude: 37.3, longitude: -121.9 };
+  // A degree of latitude is about 69 miles.
+  const at = (id: number, miles: number) => ({
+    id: String(id),
+    latitude: 37.3 + miles / 69,
+    longitude: -121.9,
+  });
+  const twenty = (miles: number) => Array.from({ length: 20 }, (_, i) => at(i, miles));
+
+  it('is the shortest stop on the slider with twenty in it', () => {
+    expect(milesForEnough(home, twenty(12))).toBe(15);
+    expect(milesForEnough(home, twenty(0))).toBe(5);
+  });
+
+  it('counts something with several places once, at its nearest', () => {
+    const places = [...twenty(12).slice(0, 19), at(0, 1), at(19, 90)];
+    expect(milesForEnough(home, places)).toBe(95);
+  });
+
+  it('is any distance with too few, too far, or no home', () => {
+    expect(milesForEnough(home, twenty(12).slice(1))).toBeNull();
+    expect(milesForEnough(home, twenty(300))).toBeNull();
+    expect(milesForEnough(null, twenty(12))).toBeNull();
+  });
+});
+
+describe('organizationsWithin', () => {
+  it('finds those with a place within the distance', () => {
+    const home = { latitude: 37.3, longitude: -121.9 };
+    const place = (id: string, latitude: number) =>
+      ({ id, latitude, longitude: -121.9 }) as MapContents['organizations'][number];
+    const organizations = [place('near', 37.31), place('far', 45)];
+    expect([...organizationsWithin({ home, organizations }, 50)]).toEqual(['near']);
   });
 });

@@ -146,8 +146,10 @@ export async function markNotificationsRead(id?: string): Promise<{ ok: boolean;
  * The number on the bell: arrived since the list was last opened. Live, so
  * a reply landing while somebody is on Home shows without a reload, and read
  * again whenever the app comes back to the front.
+ *
+ * `outsideChat` leaves out what the Chat tab's dot already says, for Me's.
  */
-export function useUnseenNotifications(): {
+export function useUnseenNotifications(outsideChat = false): {
   count: number;
   /** False until the first count is back, so a bell knows a rise is news. */
   loaded: boolean;
@@ -160,7 +162,9 @@ export function useUnseenNotifications(): {
   const refresh = useCallback(() => {
     if (!memberId) return;
     void (
-      getSupabase().rpc('my_unseen_notification_count') as unknown as Promise<{
+      getSupabase().rpc(
+        outsideChat ? 'my_unseen_notification_count_outside_chat' : 'my_unseen_notification_count',
+      ) as unknown as Promise<{
         data: number | null;
         error: Failure | null;
       }>
@@ -169,7 +173,7 @@ export function useUnseenNotifications(): {
         if (!error) setCount(data ?? 0);
       })
       .catch(() => undefined);
-  }, [memberId]);
+  }, [memberId, outsideChat]);
 
   // A burst of notifications or focus changes is one recount.
   const soon = useMemo(() => coalesce(refresh, RECOUNT_MS), [refresh]);

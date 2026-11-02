@@ -212,16 +212,10 @@ describe('PeersPage', () => {
 
   it('marks the active segment for assistive technology', async () => {
     renderPage();
-    expect(screen.getByRole('button', { name: 'Everyone' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: 'Peers' })).toHaveAttribute('aria-pressed', 'true');
     await userEvent.click(screen.getByRole('button', { name: 'Mentors' }));
     expect(screen.getByRole('button', { name: 'Mentors' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: 'Everyone' })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    expect(screen.getByRole('button', { name: 'Peers' })).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
@@ -329,7 +323,7 @@ describe('the map of peers', () => {
     expect(await screen.findByText('Counted: Nicole, Todd, Kerry')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Mentors' }));
     expect(screen.getByText('Counted: Todd, Kerry')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Filter peers' }));
+    await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     const sheet = screen.getByRole('dialog', { name: 'Filter peers' });
     await userEvent.click(within(sheet).getByRole('button', { name: '30 to 39' }));
     expect(screen.getByText('Counted: Kerry')).toBeInTheDocument();
