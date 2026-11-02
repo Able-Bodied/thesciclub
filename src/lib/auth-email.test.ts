@@ -4,10 +4,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const auth = vi.hoisted(() => ({
   calls: [] as { fn: string; args: unknown[] }[],
   error: null as { message: string; code?: string; status?: number } | null,
+  invoked: [] as { name: string; body: unknown }[],
+  created: false,
 }));
 
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
+    functions: {
+      invoke: (name: string, options: { body: unknown }) => {
+        auth.invoked.push({ name, body: options.body });
+        return Promise.resolve({ data: { created: auth.created }, error: null });
+      },
+    },
     auth: new Proxy(
       {},
       {
@@ -103,6 +111,59 @@ describe('signUpWithEmail', () => {
     const result = await signUpWithEmail('dana@example.com', 'a long password');
     expect(result).not.toHaveProperty('notInvited');
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('signing up from an emailed invite', () => {
+  beforeEach(() => {
+    auth.calls = [];
+    auth.invoked = [];
+    auth.created = false;
+    auth.error = null;
+    window.localStorage.setItem('sciclub.inviteToken', 'tok');
+  });
+
+  it('signs in straight away when the server made the account', async () => {
+    auth.created = true;
+    expect(await signUpWithEmail('sam@example.com', 'long enough')).toEqual({
+      ok: true,
+      signedIn: true,
+    });
+    expect(auth.invoked[0]).toEqual({
+      name: 'invite-signup',
+      body: { email: 'sam@example.com', password: 'long enough', token: 'tok', code: null },
+    });
+    expect(auth.calls.map((call) => call.fn)).toEqual(['signInWithPassword']);
+    window.localStorage.removeItem('sciclub.inviteToken');
+  });
+
+  it('goes on to the ordinary sign-up otherwise', async () => {
+    expect(await signUpWithEmail('other@example.com', 'long enough')).toEqual({ ok: true });
+    expect(auth.calls.map((call) => call.fn)).toEqual(['signUp']);
+    window.localStorage.removeItem('sciclub.inviteToken');
+  });
+});
+
+describe('signing up from a code', () => {
+  it('goes straight in, and carries the code on the ordinary sign-up too', async () => {
+    auth.calls = [];
+    auth.invoked = [];
+    auth.error = null;
+    window.localStorage.removeItem('sciclub.inviteToken');
+    window.localStorage.setItem('sciclub.qrCode', 'abc');
+
+    auth.created = true;
+    expect(await signUpWithEmail('sam@example.com', 'long enough')).toEqual({
+      ok: true,
+      signedIn: true,
+    });
+    expect(auth.invoked[0]?.body).toMatchObject({ token: null, code: 'abc' });
+
+    auth.created = false;
+    auth.calls = [];
+    await signUpWithEmail('sam@example.com', 'long enough');
+    expect(auth.calls[0]?.args[0]).toMatchObject({ options: { data: { qr_code: 'abc' } } });
+    window.localStorage.removeItem('sciclub.qrCode');
   });
 });
 

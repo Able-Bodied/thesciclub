@@ -7,6 +7,7 @@ import { APPLE_RETURN_PARAM, signInWithApple } from '@/lib/apple-sign-in';
 import {
   CONFIRMED_PARAM,
   cleanEmail,
+  isCloseTo,
   looksLikeEmail,
   MIN_PASSWORD,
   resendConfirmation,
@@ -581,6 +582,12 @@ export default function OnboardingPage() {
       setError(result.error);
       return;
     }
+    // No email to wait for: the session is here, and the gate takes over as
+    // after a code.
+    if (result.signedIn) {
+      set({ password: '', passwordAgain: '' });
+      return;
+    }
     setAwaiting({ email: data.email, password: data.password });
     rememberAwaiting(data.email);
     set({ password: '', passwordAgain: '' });
@@ -1058,6 +1065,9 @@ export default function OnboardingPage() {
             inviteAddress !== null && cleanEmail(data.email) === inviteAddress
               ? inviteAddress
               : null
+          }
+          closeTo={
+            inviteAddress !== null && isCloseTo(data.email, inviteAddress) ? inviteAddress : null
           }
         />
       ) : null}

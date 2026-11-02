@@ -340,12 +340,15 @@ export function JoinStep({
   ways,
   invited,
   inviteAddress,
+  closeTo = null,
   joiningOpen = false,
   fromCode = null,
 }: FieldsProps & {
   ways: WaysIn;
   invited: boolean;
   inviteAddress: string | null;
+  /** The invited address, when what is typed looks like a slip on the way to it. */
+  closeTo?: string | null;
   /** Anybody can join right now (20261014000000). */
   joiningOpen?: boolean;
   /** The administrator's QR code they came by (20261014020000), if it says anything. */
@@ -407,6 +410,20 @@ export function JoinStep({
         <Fine>
           This is the address your invitation was sent to. Change it if you prefer another.
         </Fine>
+      ) : null}
+      {closeTo !== null ? (
+        <p role="status" className="mt-2 text-[0.84375rem] text-ink leading-[1.4]">
+          Did you mean <b className="break-all">{closeTo}</b>?{' '}
+          <button
+            type="button"
+            onClick={() => {
+              set({ email: closeTo });
+            }}
+            className="min-h-[36px] font-bold text-emphasis underline underline-offset-2"
+          >
+            Use this
+          </button>
+        </p>
       ) : null}
       <label htmlFor="password" className="mt-4 block font-bold text-[0.8125rem] text-ink">
         Password
