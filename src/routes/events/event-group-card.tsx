@@ -28,6 +28,9 @@ import { describeThrown } from '@/lib/describe-error';
  * member who cannot see the event is offered it too (OutsideTheAudience).
  * The chat is made the first time
  * anybody opens it (`chat_join_event_group`); leaving is from the group.
+ *
+ * Everyone going or interested is in it too, from the first thing said in it
+ * (the owner, 2026-11-01; 20261101090000).
  */
 export function EventGroupCard({ eventId }: { eventId: string }) {
   const navigate = useNavigate();
@@ -69,12 +72,12 @@ export function EventGroupCard({ eventId }: { eventId: string }) {
         disabled={opening}
         className="flex min-h-[44px] w-full items-center justify-center rounded-[13px] border-[1.6px] border-emphasis font-bold font-head text-[0.9375rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
       >
-        {opening ? 'Opening…' : existing ? 'Open group chat' : 'Join the group chat'}
+        {opening ? 'Opening…' : 'Open group chat'}
       </button>
       <p className="mt-1.5 text-[0.7875rem] text-grey leading-[1.45]">
         {existing
-          ? 'Any member can join it, before the event or after. Leave from the group itself.'
-          : 'For any member, going or not, before the event or after. You read what was said before you joined, and can leave at any time.'}
+          ? 'Everyone going or interested is in this chat. Leave from the group itself.'
+          : 'Everyone going or interested joins once somebody says something. Any member can join, before the event or after.'}
       </p>
       {failure ? (
         <p className="mt-2 rounded-xl bg-danger-lt px-3.5 py-2.5 text-danger-ink text-[0.7875rem]">

@@ -579,6 +579,8 @@ export interface Organization {
   id: string;
   /** Join asks its org admins, instead of making a member (20261031010000). */
   joinsNeedApproval?: boolean;
+  /** Its imported events take RSVPs too (20261101080000). */
+  collectsRsvps?: boolean;
   /** Whether a review of it can be anonymous (20261031080000). */
   anonymousReviews?: boolean;
   /** Two or three letters, for the badge on a mentor's card. */

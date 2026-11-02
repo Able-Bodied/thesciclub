@@ -27,6 +27,7 @@ import { OrganizationMemberRemove } from '@/routes/events/organization-member-re
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
 import { OrganizationReviewSetting } from '@/routes/events/organization-review-setting';
 import { OrganizationReviews } from '@/routes/events/organization-reviews';
+import { OrganizationRsvpSetting } from '@/routes/events/organization-rsvp-setting';
 import { EventDescription } from '@/routes/events/rich-text';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 
@@ -264,6 +265,10 @@ export default function OrganizationDetailPage() {
               organizationId={organization.id}
               needed={organization.joinsNeedApproval === true}
               onChanged={everythingChanged}
+            />
+            <OrganizationRsvpSetting
+              organizationId={organization.id}
+              collects={organization.collectsRsvps === true}
             />
             <OrganizationReviewSetting
               organizationId={organization.id}

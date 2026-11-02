@@ -445,22 +445,23 @@ describe('EventDetailPage', () => {
     it('lets somebody going join it', async () => {
       state.rsvps = new Map([['rugby', 'going']]);
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Join the group chat' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Open group chat' }));
       expect(state.joinEventGroup).toHaveBeenCalledWith('rugby');
     });
 
-    it('says Open, not Join, once they are in it', () => {
+    it('says who is in it, once they are', () => {
       state.rsvps = new Map([['rugby', 'going']]);
       state.threads = [{ id: 'th-ev', eventId: 'rugby' }];
       renderDetail();
       expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
+      expect(screen.getByText(/Everyone going or interested is in this chat/)).toBeInTheDocument();
     });
 
     // The owner, 2026-10-22: going is not needed to join (20261022210000).
     it('lets somebody who is not going join the chat too', () => {
       renderDetail();
-      expect(screen.getByRole('button', { name: 'Join the group chat' })).toBeInTheDocument();
-      expect(screen.getByText(/going or not/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
+      expect(screen.getByText(/Any member can join/)).toBeInTheDocument();
     });
 
     it('surfaces a refusal instead of navigating', async () => {
@@ -469,7 +470,7 @@ describe('EventDetailPage', () => {
         .fn()
         .mockResolvedValue({ ok: false, error: 'The group chat is for everybody going.' });
       renderDetail();
-      await userEvent.click(screen.getByRole('button', { name: 'Join the group chat' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Open group chat' }));
       expect(await screen.findByText('The group chat is for everybody going.')).toBeInTheDocument();
     });
 
@@ -481,7 +482,7 @@ describe('EventDetailPage', () => {
       // The owner, 2026-10-22: somebody who missed it may want to ask about it.
       it('still takes new joins', () => {
         renderDetail();
-        expect(screen.getByRole('button', { name: 'Join the group chat' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Open group chat' })).toBeInTheDocument();
       });
 
       it('still opens for somebody who was in it', () => {

@@ -42,6 +42,7 @@ const { default: RegisterForEventPage } = await import('@/routes/public-event/re
 
 const EVENT: PublicEvent = {
   id: 'picnic',
+  takesRsvps: true,
   title: 'Friday Happy Hour',
   description: 'Join us on the patio. **Everyone is welcome.**',
   descriptionHtml: '',

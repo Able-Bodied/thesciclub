@@ -61,6 +61,32 @@ describe('EventCard', () => {
     expect(screen.getByText('SEP')).toBeInTheDocument();
   });
 
+  // The owner, 2026-11-01.
+  it('says RSVP on an event made in the club', () => {
+    renderCard({ event: makeEvent({ handAdded: true }), status: null });
+    expect(screen.getByRole('button', { name: 'RSVP' })).toBeInTheDocument();
+  });
+
+  it('has no RSVP button on an event read from another calendar', () => {
+    renderCard({ event: makeEvent({ handAdded: false }), status: null });
+    expect(screen.queryByRole('button', { name: 'RSVP' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Interested' })).toBeInTheDocument();
+  });
+
+  it('has one on such an event if its organization collects them', () => {
+    renderCard({
+      event: makeEvent({ handAdded: false }),
+      status: null,
+      organization: makeOrganization({ collectsRsvps: true }),
+    });
+    expect(screen.getByRole('button', { name: 'RSVP' })).toBeInTheDocument();
+  });
+
+  it('keeps Going ✓ for a member already going, to take it back', () => {
+    renderCard({ event: makeEvent({ handAdded: false }), status: 'going' });
+    expect(screen.getByRole('button', { name: 'Going ✓' })).toBeInTheDocument();
+  });
+
   // The owner, 2026-10-27: as on the event's page.
   describe('with a sign-up of the host’s own', () => {
     const event = makeEvent({ registrationUrl: 'https://norcalsci.org/register/swim' });

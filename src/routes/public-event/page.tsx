@@ -156,15 +156,17 @@ export default function PublicEventPage() {
             <p className="mt-4 text-[0.875rem] text-grey">This event is over.</p>
           ) : (
             <div className="mt-4 flex gap-2.5">
-              <button
-                type="button"
-                onClick={() => {
-                  void navigate(`/e/${event.id}/register?status=going`);
-                }}
-                className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
-              >
-                RSVP
-              </button>
+              {event.takesRsvps ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigate(`/e/${event.id}/register?status=going`);
+                  }}
+                  className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
+                >
+                  RSVP
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => {

@@ -100,6 +100,8 @@ export async function fetchAudienceHint(eventId: string): Promise<AudienceHint |
 
 export interface PublicEvent {
   id: string;
+  /** Whether it has an RSVP button (20261101080000). */
+  takesRsvps: boolean;
   title: string;
   description: string;
   descriptionHtml: string;
@@ -121,6 +123,7 @@ export interface PublicEvent {
 
 interface PublicEventRow {
   id: string;
+  takes_rsvps: boolean | null;
   title: string;
   description: string | null;
   description_html: string | null;
@@ -157,6 +160,7 @@ export async function fetchPublicEvent(eventId: string): Promise<Result<PublicEv
     ok: true,
     value: {
       id: row.id,
+      takesRsvps: row.takes_rsvps !== false,
       title: row.title,
       description: row.description ?? '',
       descriptionHtml: row.description_html ?? '',

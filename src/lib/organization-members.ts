@@ -293,6 +293,24 @@ export async function setJoinsNeedApproval(
   }
 }
 
+/** Whether events from its own calendar take RSVPs (20261101080000). */
+export async function setCollectsRsvps(
+  organizationId: string,
+  collects: boolean,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const refusal = 'That was not saved. Try again.';
+  try {
+    const { error } = await getSupabase().rpc('set_organization_collects_rsvps', {
+      p_organization: organizationId,
+      p_collects: collects,
+    });
+    if (error) return { ok: false, error: describeError(error, refusal) };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, refusal) };
+  }
+}
+
 /** Makes somebody a member, for its org admins and the club's administrators. */
 export async function addOrganizationMember(
   organizationId: string,
