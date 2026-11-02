@@ -126,7 +126,7 @@ export function ShortLinkQr({ link, title }: { link: string; title: string }) {
           <div className="flex items-center justify-center gap-2.5">
             <ClubMark size={40} className="h-10 w-10" />
             <span className="font-extrabold font-head text-[1.0625rem] text-white">
-              The SCI Club
+              The <span className="text-[#CDAA45]">SCI</span> Club
             </span>
           </div>
           <div className="mt-3 rounded-[14px] bg-white p-2">
@@ -136,7 +136,7 @@ export function ShortLinkQr({ link, title }: { link: string; title: string }) {
             <span className="block font-bold text-[0.9375rem] text-white leading-[1.3]">
               {title}
             </span>
-            <span className="mt-0.5 block break-all font-bold text-[#E4B84D] text-[0.8125rem]">
+            <span className="mt-0.5 block break-all font-bold text-[#CDAA45] text-[0.8125rem]">
               {link.replace(/^https:\/\//, '')}
             </span>
           </figcaption>
