@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
+vi.mock('@/components/app-nav', () => ({ AppNav: () => null }));
 vi.mock('@/routes/profile/profile-api', () => ({
   loadAnswers: () =>
     Promise.resolve({ ok: true as const, answers: api.answers, declined: api.declined }),
