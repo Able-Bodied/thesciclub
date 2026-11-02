@@ -52,6 +52,9 @@ function fakeMap() {
     getCanvas: () => ({ style: {} }),
     easeTo: alive(undefined),
     getZoom: () => 10,
+    getMinZoom: () => 2,
+    cameraForBounds: alive({ zoom: 3.7 }),
+    setMinZoom: alive(undefined),
     doubleClickZoom: { disable: vi.fn() },
   };
 }

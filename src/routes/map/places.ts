@@ -308,11 +308,19 @@ export function foldByState(data: Features): Features {
 const WORLD_AT_ZOOM_0 = 512;
 
 /**
- * The same marks moved just far enough apart to read and tap at this zoom,
- * `gap` pixels between middles. Only where they are drawn: their properties
- * keep the true point. The Northeast's states fall on each other far out.
+ * The same marks moved just far enough apart to read and tap at this zoom, no
+ * two within `width` across and `height` down, each the shorter way out and
+ * never more than `reach`, so it stays by its state where they cannot all fit
+ * (the owner, 2026-11-01). Only where they are drawn: their properties keep
+ * the true point. The Northeast's states fall on each other far out.
  */
-export function apart(data: Features, zoom: number, gap: number): Features {
+export function apart(
+  data: Features,
+  zoom: number,
+  width: number,
+  height = width,
+  reach = Number.POSITIVE_INFINITY,
+): Features {
   const world = WORLD_AT_ZOOM_0 * 2 ** zoom;
   const toPixels = ([lng, lat]: [number, number]): [number, number] => [
     ((lng + 180) / 360) * world,
@@ -322,23 +330,33 @@ export function apart(data: Features, zoom: number, gap: number): Features {
     (x / world) * 360 - 180,
     (Math.atan(Math.exp((0.5 - y / world) * 2 * Math.PI)) * 360) / Math.PI - 90,
   ];
-  const at = data.features.map((point) => toPixels(point.geometry.coordinates));
+  const from = data.features.map((point) => toPixels(point.geometry.coordinates));
+  const at = from.map(([x, y]): [number, number] => [x, y]);
+  const within = (mark: [number, number], start: [number, number] | undefined) => {
+    if (!start) return;
+    const off = Math.hypot(mark[0] - start[0], mark[1] - start[1]);
+    if (off <= reach) return;
+    mark[0] = start[0] + ((mark[0] - start[0]) * reach) / off;
+    mark[1] = start[1] + ((mark[1] - start[1]) * reach) / off;
+  };
   for (let round = 0; round < 60; round++) {
     let moved = false;
     for (const [i, a] of at.entries()) {
-      for (const b of at.slice(i + 1)) {
+      for (const [j, b] of at.entries()) {
+        if (j <= i) continue;
         const dx = b[0] - a[0];
         const dy = b[1] - a[1];
-        const distance = Math.hypot(dx, dy);
-        if (distance >= gap) continue;
+        const across = width - Math.abs(dx);
+        const down = height - Math.abs(dy);
+        if (across <= 0 || down <= 0) continue;
         moved = true;
-        // Two at one point part along a fixed line, so the same map is drawn each time.
-        const [ux, uy] = distance > 0 ? [dx / distance, dy / distance] : [1, 0];
-        const push = (gap - distance) / 2;
-        a[0] -= ux * push;
-        a[1] -= uy * push;
-        b[0] += ux * push;
-        b[1] += uy * push;
+        // Two at one point part the same way each time, so the same map is drawn.
+        const axis = across <= down ? 0 : 1;
+        const push = (Math.min(across, down) / 2) * ((axis === 0 ? dx : dy) < 0 ? -1 : 1);
+        a[axis] -= push;
+        b[axis] += push;
+        within(a, from[i]);
+        within(b, from[j]);
       }
     }
     if (!moved) break;

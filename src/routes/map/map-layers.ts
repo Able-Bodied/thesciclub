@@ -63,8 +63,6 @@ export const STATE_SOURCES: Record<Layer, string> = {
 };
 /** A state's name under its bubble of events, which have no name layer of their own. */
 const EVENT_STATE_NAME = 'club-events-state-name';
-/** Bubbles' middles apart when zoomed out, room for a state's name under each. */
-export const STATE_GAP = 58;
 const PIN_LAYERS: Record<Layer, string[]> = {
   events: ['club-events-one', 'club-events-many', 'club-events-count'],
   peers: ['club-peers', 'club-peers-name'],
@@ -128,6 +126,11 @@ const PIN_COUNT_UP = PIN_HEIGHT - PIN_HEAD;
 const PIN_ICON = 15;
 /** A state's name, just under its pin's tip. */
 const EVENT_STATE_NAME_DOWN = 3;
+/** What a pin and its state's name fill as drawn; zoomed out, no two share it. */
+export const STATE_WIDTH = PIN_WIDTH * ICON_GROW;
+export const STATE_HEIGHT = PIN_HEIGHT * ICON_GROW + 16;
+/** Farthest a pin is moved for room: past this a state's pin leaves it. */
+export const STATE_REACH = 18;
 
 /**
  * A map pin in the shape Google's made familiar, its tip on the place. An

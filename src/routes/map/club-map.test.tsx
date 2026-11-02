@@ -47,7 +47,10 @@ function fakeMap() {
     getCanvas: () => ({ style: {} as Record<string, string> }),
     easeTo: vi.fn(),
     fitBounds: vi.fn(),
-    getZoom: () => 10,
+    getZoom: vi.fn(() => 10),
+    getMinZoom: () => 3.5,
+    cameraForBounds: vi.fn((): { zoom: number } | undefined => ({ zoom: 3.7 })),
+    setMinZoom: vi.fn(),
     doubleClickZoom: { disable: vi.fn() },
   };
 }
@@ -165,6 +168,49 @@ const sentTo = (source: string) => the.map?.sources.get(source)?.setData.mock.ca
 beforeEach(() => {
   the.map = fakeMap();
   directory.organizations = [borp];
+});
+
+describe('as far out as the map goes (the owner, 2026-11-01)', () => {
+  it('stops where the lower 48 fill a wide frame, in a half step', async () => {
+    render(<Screen />);
+    await ready();
+    expect(the.map?.setMinZoom).toHaveBeenLastCalledWith(3.5);
+  });
+
+  it('keeps the map’s own limit on a phone', async () => {
+    the.map?.cameraForBounds.mockReturnValue({ zoom: 1.4 });
+    render(<Screen />);
+    await ready();
+    expect(the.map?.setMinZoom).toHaveBeenLastCalledWith(2);
+  });
+
+  it('never stops short of the state pins on a huge screen', async () => {
+    the.map?.cameraForBounds.mockReturnValue({ zoom: 6.2 });
+    render(<Screen />);
+    await ready();
+    expect(the.map?.setMinZoom).toHaveBeenLastCalledWith(4.5);
+  });
+
+  it('shows the whole country on reaching the farthest, and leaves other zooms alone', async () => {
+    render(<Screen />);
+    await ready();
+    const zoomed = () => {
+      for (const ended of the.map?.handlers.get('zoomend') ?? []) ended({});
+    };
+    zoomed();
+    expect(the.map?.easeTo).not.toHaveBeenCalled();
+    the.map?.getZoom.mockReturnValue(3.5);
+    zoomed();
+    expect(the.map?.easeTo).toHaveBeenCalledWith({ center: [-95.95, 37] });
+  });
+
+  it('follows the frame when it changes size', async () => {
+    render(<Screen />);
+    await ready();
+    the.map?.cameraForBounds.mockReturnValue({ zoom: 2.3 });
+    for (const resized of the.map?.handlers.get('resize') ?? []) resized({});
+    expect(the.map?.setMinZoom).toHaveBeenLastCalledWith(2);
+  });
 });
 
 describe('the map keeps still while its screen re-renders', () => {

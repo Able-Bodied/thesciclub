@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MapContents } from '@/lib/map-data';
+import { STATE_HEIGHT, STATE_REACH, STATE_WIDTH } from '@/routes/map/map-layers';
 import {
   apart,
   contentsOf,
@@ -328,6 +329,47 @@ describe('zoomed out, one bubble a state (the owner, 2026-10-31)', () => {
     const metresApart = Math.abs((second ?? 0) - (first ?? 0)) * ((512 * 2 ** 2) / 360);
     expect(metresApart).toBeCloseTo(58, 0);
     expect(moved.map((f) => f.properties.longitude)).toEqual([-74, -74.1]);
+  });
+
+  it('keeps pins on their states as far out as the map goes (the owner, 2026-11-01)', () => {
+    const states = collection(
+      point('ca', -120, 35.8, 'CA'),
+      point('az', -112, 33.5, 'AZ'),
+      point('ga', -84.2, 33.6, 'GA'),
+      point('fl', -81.5, 28.3, 'FL'),
+      point('oh', -82.9, 40, 'OH'),
+      point('ny', -74.5, 42.5, 'NY'),
+      point('pa', -77.5, 40.5, 'PA'),
+      point('ma', -71.5, 42.3, 'MA'),
+    );
+    const FARTHEST_OUT = 2;
+    const marks = apart(states, FARTHEST_OUT, STATE_WIDTH, STATE_HEIGHT, STATE_REACH).features;
+    for (const mark of marks) {
+      const [longitude, latitude] = mark.geometry.coordinates;
+      const off = Math.hypot(
+        longitude - mark.properties.longitude,
+        latitude - mark.properties.latitude,
+      );
+      expect(off).toBeLessThan(3.2);
+    }
+  });
+
+  it('moves a mark the shorter way, across for one beside it and down for one above', () => {
+    const beside = apart(collection(point('a', -90, 40), point('b', -89, 40)), 3, 40, 60).features;
+    expect(beside[0]?.geometry.coordinates[1]).toBeCloseTo(40, 6);
+    const above = apart(collection(point('a', -90, 40), point('b', -90, 36)), 3, 40, 60).features;
+    expect(above[0]?.geometry.coordinates[0]).toBeCloseTo(-90, 6);
+    expect(above[0]?.geometry.coordinates[1]).not.toBeCloseTo(40, 3);
+  });
+
+  it('never moves a mark past its reach, whatever is crowding it', () => {
+    const crowd = collection(...[0, 1, 2, 3, 4, 5].map((n) => point(`p${n}`, -74, 41 + n / 100)));
+    for (const mark of apart(crowd, 2, 40, 60, 10).features) {
+      const [longitude, latitude] = mark.geometry.coordinates;
+      const pixels = (512 * 2 ** 2) / 360;
+      expect(Math.abs(longitude - mark.properties.longitude) * pixels).toBeLessThanOrEqual(10.5);
+      expect(Math.abs(latitude - mark.properties.latitude) * pixels).toBeLessThanOrEqual(14);
+    }
   });
 
   it('parts two marks at one point, and leaves distant ones alone', () => {

@@ -22,6 +22,7 @@ import {
   type MapMarker,
   type MapMouseEvent,
 } from '@/lib/map';
+import { LOWER_48 } from '@/lib/map/tiles';
 import type { MapContents, MapOrganization } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
 import { NO_CATEGORY, ORGANIZATION_CATEGORIES } from '@/lib/organization-categories';
@@ -48,8 +49,10 @@ import {
   pageTextScale,
   pick,
   SOURCES,
-  STATE_GAP,
+  STATE_HEIGHT,
+  STATE_REACH,
   STATE_SOURCES,
+  STATE_WIDTH,
   STATES_APART_FROM,
   STREET_ZOOM,
   setHome,
@@ -134,6 +137,14 @@ const DOUBLE_CLICK_MS = 400;
 /** A click this soon after a touch came from a finger. */
 const TOUCH_CLICK_MS = 800;
 const CITY_ZOOM = 10;
+/** The map's own limit (map-canvas.tsx), where a phone stops. */
+const FARTHEST_ZOOM = 2;
+/** Round the lower 48 at the farthest, so a pin at the edge is not cut off. */
+const FARTHEST_PADDING = 40;
+const boundsMiddle = ([west, south, east, north]: typeof LOWER_48): [number, number] => [
+  (west + east) / 2,
+  (south + north) / 2,
+];
 const NONE_EVENTS: ClubEvent[] = [];
 const NONE_MEMBERS: BrowseMember[] = [];
 
@@ -303,18 +314,20 @@ export default function ClubMap({
   );
   // Spaced for the zoom in half steps, redrawn when a zoom ends, never during one.
   const [farZoom, setFarZoom] = useState(STATES_APART_FROM);
-  const gap = STATE_GAP * scale;
+  const width = STATE_WIDTH * scale;
+  const height = STATE_HEIGHT * scale;
+  const reach = STATE_REACH * scale;
   const eventStates = useMemo(
-    () => apart(foldByState(eventData), farZoom, gap),
-    [eventData, farZoom, gap],
+    () => apart(foldByState(eventData), farZoom, width, height, reach),
+    [eventData, farZoom, width, height, reach],
   );
   const peerStates = useMemo(
-    () => apart(foldByState(peerData), farZoom, gap),
-    [peerData, farZoom, gap],
+    () => apart(foldByState(peerData), farZoom, width, height, reach),
+    [peerData, farZoom, width, height, reach],
   );
   const organizationStates = useMemo(
-    () => apart(foldByState(organizationData), farZoom, gap),
-    [organizationData, farZoom, gap],
+    () => apart(foldByState(organizationData), farZoom, width, height, reach),
+    [organizationData, farZoom, width, height, reach],
   );
   // A place's one member shows their photograph (the owner, 2026-10-28).
   const lone = useMemo(() => lonePeers(cities), [cities]);
@@ -380,6 +393,29 @@ export default function ClubMap({
       map.off('idle', check);
     };
   }, [map, drawn, layers]);
+
+  // On a wide screen the states have room, so the map stops where they fill it.
+  useEffect(() => {
+    if (!map) return;
+    const stopAt = () => {
+      const fit = map.cameraForBounds(LOWER_48, { padding: FARTHEST_PADDING })?.zoom;
+      if (fit === undefined) return;
+      const halfStep = Math.floor(fit * 2) / 2;
+      map.setMinZoom(Math.min(Math.max(halfStep, FARTHEST_ZOOM), STATES_APART_FROM - 0.5));
+    };
+    // At the farthest, the whole country, not whichever part the zoom began on.
+    const showThemAll = () => {
+      if (map.getZoom() > map.getMinZoom()) return;
+      map.easeTo({ center: boundsMiddle(LOWER_48) });
+    };
+    stopAt();
+    map.on('resize', stopAt);
+    map.on('zoomend', showThemAll);
+    return () => {
+      map.off('resize', stopAt);
+      map.off('zoomend', showThemAll);
+    };
+  }, [map]);
 
   useEffect(() => {
     if (!map) return;

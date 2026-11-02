@@ -14,6 +14,9 @@ export const TILES_ORIGIN = 'https://sciclub-tiles.thesciclub.workers.dev';
 /** California's box, [west, south, east, north]: where the map opens with no home city. */
 export const CALIFORNIA: [number, number, number, number] = [-124.5, 32.5, -114.1, 42.05];
 
+/** The lower 48's box: as far out as the map goes where they fit the frame. */
+export const LOWER_48: [number, number, number, number] = [-125, 24.5, -66.9, 49.5];
+
 /** Absolute, ending in a slash: the Worker in builds, public/tiles/ under `pnpm dev`. */
 export function tilesBase(): string {
   const chosen = import.meta.env.VITE_MAP_TILES_BASE;
