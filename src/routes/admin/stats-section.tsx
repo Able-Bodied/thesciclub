@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CountUp } from '@/components/count-up';
 import {
   type ClubStats,
@@ -10,6 +11,17 @@ import {
   weekLabel,
 } from '@/routes/admin/club-stats';
 import { SmallButton } from '@/routes/admin/controls';
+import {
+  byReach,
+  type DeviceReport,
+  type MemberDevice,
+  type MemberDevices,
+  REACHES,
+  type Reach,
+  reachOf,
+  systemCounts,
+  useDeviceReport,
+} from '@/routes/admin/member-devices';
 import {
   methodLabel,
   methodOrder,
@@ -26,7 +38,9 @@ import {
  * "which three opened the app" would be a list of people, and the point of
  * this tab is to see whether the club is working, not to watch anyone in it.
  * How each member signs up and signs in is the one list of names (the owner,
- * 2026-10-16), behind its own button. See club-stats.ts and sign-in-methods.ts.
+ * 2026-10-16), behind its own button, and what each member uses to reach the
+ * club (the owner, 2026-11-02), behind another. See club-stats.ts,
+ * sign-in-methods.ts and member-devices.ts.
  */
 
 const HEADING = 'font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]';
@@ -416,6 +430,137 @@ function AccountRow({ account, period }: { account: SignInAccount; period: Stats
   );
 }
 
+const REACH_LABELS: Record<Reach, string> = {
+  phone_browser: 'Browser on a phone',
+  home_screen: 'Home Screen app',
+  app: 'Store app',
+  computer: 'Computer only',
+  unseen: 'Not seen yet',
+};
+
+const OS_LABELS: Record<string, string> = { iOS: 'iPhone', iPadOS: 'iPad' };
+
+const PERMISSIONS: Record<NonNullable<MemberDevice['notifications']>, string> = {
+  allowed: 'notifications allowed',
+  refused: 'notifications refused',
+  not_asked: 'notifications not asked',
+};
+
+/** "Safari 18.1 on iPhone, 390×844, dark, notifications refused, Nov 2". */
+function deviceLine(device: MemberDevice): string {
+  const os = device.os ? (OS_LABELS[device.os] ?? device.os) : 'an unknown device';
+  const what =
+    device.surface === 'browser'
+      ? [device.browser ?? 'Browser', device.browserVersion].filter(Boolean).join(' ')
+      : REACH_LABELS[device.surface];
+  return [
+    `${what} on ${os}`,
+    device.screenWidth && device.screenHeight
+      ? `${device.screenWidth}×${device.screenHeight}`
+      : null,
+    device.colorScheme,
+    device.notifications ? PERMISSIONS[device.notifications] : null,
+    new Date(device.seenAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+  ]
+    .filter(Boolean)
+    .join(', ');
+}
+
+function DeviceRow({ member }: { member: MemberDevices }) {
+  return (
+    <li className="border-line border-b py-2.5 text-[0.8125rem] leading-[1.45] last:border-b-0">
+      <p className="text-ink">
+        <Link to={`/peers/${member.id}`} className="font-bold underline-offset-2 hover:underline">
+          {member.name ?? 'No name'}
+        </Link>
+        {member.username ? <span className="ml-1.5 text-grey">@{member.username}</span> : null}
+      </p>
+      <p className="text-ink2">
+        {REACH_LABELS[reachOf(member)]}.{' '}
+        {member.notifiedDevices
+          ? `Notifications on for ${plural(member.notifiedDevices, 'device')}.`
+          : 'Notifications off.'}
+      </p>
+      {member.devices.map((device) => (
+        <p key={device.seenAt} className="text-grey">
+          {deviceLine(device)}
+        </p>
+      ))}
+    </li>
+  );
+}
+
+/** The counts, then who, behind a button like who signed in how. */
+function Devices({ report, error }: { report: DeviceReport | null; error: string | null }) {
+  const [open, setOpen] = useState(false);
+  if (error)
+    return (
+      <>
+        <h3 className={`${HEADING} mt-5`}>Devices</h3>
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive leading-[1.45]">
+          {error}
+        </p>
+      </>
+    );
+  if (!report) return null;
+
+  const { members, recordedSince } = report;
+  const seen = members.filter((m) => m.devices.length);
+  const systems = systemCounts(seen);
+  const notified = members.filter((m) => m.notifiedDevices > 0).length;
+  const since = recordedSince ? new Date(recordedSince).toLocaleDateString('en-US', DATE) : null;
+  return (
+    <>
+      <h3 className={`${HEADING} mt-5`}>Devices</h3>
+      <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
+        {since
+          ? `${plural(seen.length, 'member')} seen since ${since}, whatever the period. Somebody on a phone and a computer counts in both.`
+          : 'Nothing recorded yet. Each member appears the next time they use the club.'}
+      </p>
+      {since ? (
+        <>
+          <ul className={`${CARD} mt-2 px-3.5 py-1`} aria-label="How members reach the club">
+            {REACHES.filter((reach) => reach !== 'unseen').map((reach) => (
+              <BarRow
+                key={reach}
+                label={REACH_LABELS[reach]}
+                value={seen.filter((m) => reachOf(m) === reach).length}
+                of={seen.length}
+              />
+            ))}
+          </ul>
+          <ul className={`${CARD} mt-2 px-3.5 py-1`} aria-label="Which systems members use">
+            <BarRow label="iPhone or iPad" value={systems.ios} of={seen.length} />
+            <BarRow label="Android" value={systems.android} of={seen.length} />
+            <BarRow label="Computer" value={systems.computer} of={seen.length} />
+          </ul>
+        </>
+      ) : null}
+      <ul className={`${CARD} mt-2 px-3.5 py-1`} aria-label="Notifications">
+        <BarRow label="With notifications on" value={notified} of={members.length} />
+      </ul>
+      <div className="mt-2.5">
+        <SmallButton
+          aria-expanded={open}
+          aria-controls="member-devices"
+          onClick={() => {
+            setOpen((was) => !was);
+          }}
+        >
+          {open ? 'Hide who uses what' : 'Who uses what'}
+        </SmallButton>
+      </div>
+      {open ? (
+        <ul id="member-devices" className={`${CARD} mt-2 px-3.5 py-1`}>
+          {byReach(members).map((member) => (
+            <DeviceRow key={member.id} member={member} />
+          ))}
+        </ul>
+      ) : null}
+    </>
+  );
+}
+
 const COLUMNS: { key: keyof Omit<ClubStats['weeks'][number], 'week'>; label: string }[] = [
   { key: 'people', label: 'Active' },
   { key: 'joined', label: 'Joined' },
@@ -480,6 +625,7 @@ export function StatsSection() {
   const [period, setPeriod] = useState<StatsPeriod>('all');
   const { stats, error, loading, reload } = useClubStats(period);
   const signIns = useSignInMethods(period);
+  const devices = useDeviceReport();
 
   return (
     <section aria-labelledby="stats-heading">
@@ -491,6 +637,7 @@ export function StatsSection() {
           onClick={() => {
             void reload();
             void signIns.reload();
+            void devices.reload();
           }}
           disabled={loading}
         >
@@ -498,8 +645,8 @@ export function StatsSection() {
         </SmallButton>
       </div>
       <p className="mt-1 text-[0.75rem] text-grey leading-[1.45]">
-        Counted from what the club already keeps, and nothing is sent anywhere. Counts only, never
-        who, except for who signed in how.
+        Counted from what the club keeps, and nothing is sent anywhere. Counts only, never who,
+        except for who signed in how and who uses what.
       </p>
       <div className="mt-3 mb-3 max-w-[260px]">
         <label htmlFor="stats-period" className="block font-bold text-[0.75rem] text-ink">
@@ -535,6 +682,7 @@ export function StatsSection() {
           <Summary stats={stats} />
           <Joining stats={stats} />
           <SigningIn data={signIns.methods} error={signIns.error} period={period} />
+          <Devices report={devices.report} error={devices.error} />
           <Weeks stats={stats} />
           <p className="mt-3 text-[0.75rem] text-grey leading-[1.45]">
             “Opened the app” means a member’s app was open and signed in since the period began. The

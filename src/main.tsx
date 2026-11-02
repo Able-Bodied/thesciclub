@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App, { preloadScreen } from '@/App';
+import { startDeviceCheck } from '@/lib/device-check';
 import { takeHandoff } from '@/lib/home-screen-handoff';
 import { registerWorker } from '@/lib/register-worker';
 import { stayCurrent } from '@/lib/stay-current';
@@ -26,6 +27,7 @@ window.addEventListener('vite:preloadError', (event) => {
 });
 
 registerWorker();
+startDeviceCheck();
 
 preloadScreen(window.location.pathname);
 

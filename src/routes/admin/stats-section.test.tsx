@@ -1,7 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClubStats } from '@/routes/admin/club-stats';
+import type { DeviceReport, MemberDevice } from '@/routes/admin/member-devices';
 import type { SignInMethods } from '@/routes/admin/sign-in-methods';
 
 const api = vi.hoisted(() => ({
@@ -9,11 +11,14 @@ const api = vi.hoisted(() => ({
   error: null as { message: string } | null,
   methods: null as SignInMethods | null,
   methodsError: null as { message: string } | null,
+  devices: null as DeviceReport | null,
   calls: [] as [string, unknown][],
 }));
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (name: string, args: { period: string }) => {
+      if (name === 'admin_member_devices')
+        return Promise.resolve({ data: api.devices, error: null });
       api.calls.push([name, args]);
       if (name === 'admin_sign_in_methods')
         return Promise.resolve({
@@ -149,12 +154,13 @@ beforeEach(() => {
   api.error = null;
   api.methods = METHODS;
   api.methodsError = null;
+  api.devices = { asOf: '2026-11-02T19:00:00Z', recordedSince: null, members: [] };
   api.calls = [];
 });
 
 describe('Admin → Stats', () => {
   it('starts on all time, through the admin-only function', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await screen.findByText('Ever signed in');
     expect(screen.getByLabelText('Period')).toHaveValue('all');
     expect(api.calls).toEqual([
@@ -164,7 +170,7 @@ describe('Admin → Stats', () => {
   });
 
   it('offers every period, all time first', () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const options = within(screen.getByLabelText('Period')).getAllByRole('option');
     expect(options.map((o) => o.textContent)).toEqual([
       'All time',
@@ -178,7 +184,7 @@ describe('Admin → Stats', () => {
   });
 
   it('asks again for the period chosen', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await screen.findByText('Ever signed in');
     await userEvent.selectOptions(screen.getByLabelText('Period'), '7d');
     await screen.findByText('Opened the app');
@@ -191,7 +197,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says how many opened the app, out of how many members', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const label = await screen.findByText('Ever signed in');
     const tile = within(label.parentElement ?? label);
     expect(tile.getByText('22')).toBeInTheDocument();
@@ -201,7 +207,7 @@ describe('Admin → Stats', () => {
   // A session keeps only when it was last used: nobody can say who opened the
   // app between two moments in the past, and a guess would read as a fact.
   it('gives no count of opening the app for a previous period, and says why', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await screen.findByText('Ever signed in');
     await userEvent.selectOptions(screen.getByLabelText('Period'), 'prev7d');
     const label = await screen.findByText('Opened the app');
@@ -211,7 +217,7 @@ describe('Admin → Stats', () => {
   });
 
   it('shows onboarding starts and new accounts, and keeps the rest behind a button', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const starts = await screen.findByText('Onboarding starts');
     expect(starts.parentElement).toHaveTextContent('26');
     expect(screen.getByText('New accounts').parentElement).toHaveTextContent('29');
@@ -230,7 +236,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says where people stop on the way in', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await openDetails();
     expect(
       await screen.findByText(/2 people signed in and stopped before Home/),
@@ -241,7 +247,7 @@ describe('Admin → Stats', () => {
   });
 
   it('gives each step of the way in as a share of the one before', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await openDetails();
     const home = (await screen.findByText('Reached the home screen')).parentElement;
     expect(home).toHaveTextContent('24');
@@ -250,7 +256,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says how many members added each part of a profile', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await openDetails();
     const row = (label: string) => screen.getByText(label).parentElement;
     await screen.findByText('Added a profile picture');
@@ -263,7 +269,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says how many reached each step, of those past the invite check, and since when', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await openDetails();
     const row = (label: string) => screen.getByText(label).parentElement;
     await screen.findByText('Got past the invite check');
@@ -274,7 +280,7 @@ describe('Admin → Stats', () => {
   });
 
   it('lists the last eight weeks newest first, this one marked as so far', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const rows = within(await screen.findByRole('table')).getAllByRole('row');
     // The header, then eight weeks.
     expect(rows).toHaveLength(9);
@@ -285,7 +291,7 @@ describe('Admin → Stats', () => {
   });
 
   it('names nobody until asked who signed in how', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await screen.findByRole('table');
     await screen.findByRole('list', { name: 'Signed up with' });
     expect(screen.queryByRole('link')).toBeNull();
@@ -295,7 +301,7 @@ describe('Admin → Stats', () => {
 
   it('says how the accounts were made, today’s three ways always', async () => {
     api.methods = { ...METHODS, signUps: { email: 3, google: 1 } };
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const list = within(await screen.findByRole('list', { name: 'Signed up with' }));
     const row = (label: string) => list.getByText(label).parentElement;
     expect(row('Email and password')).toHaveTextContent('375%');
@@ -305,7 +311,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says how many people signed in each way, a one-time link last', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const list = within(await screen.findByRole('list', { name: 'Signed in with' }));
     const rows = list.getAllByRole('listitem');
     expect(rows.map((r) => r.firstChild?.textContent)).toEqual([
@@ -333,14 +339,14 @@ describe('Admin → Stats', () => {
       signIns: {},
       homeScreen: { signIns: 0, people: 0 },
     };
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     expect(await screen.findByText(/No sign-ins recorded yet/)).toBeInTheDocument();
     expect(screen.queryByText(/Home Screen app taking over/)).toBeNull();
     expect(screen.queryByRole('list', { name: 'Signed in with' })).toBeNull();
   });
 
   it('lists who signed up and signed in how, behind a button', async () => {
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     const button = await screen.findByRole('button', { name: 'Who signed in how' });
     expect(button).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(button);
@@ -370,7 +376,7 @@ describe('Admin → Stats', () => {
       ...METHODS,
       accounts: [account({ id: 'fay', name: 'Fay Old', signedUpWith: null, methods: [] })],
     };
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     await userEvent.click(await screen.findByRole('button', { name: 'Who signed in how' }));
     const fay = screen.getByText('Fay Old').closest('li');
     expect(fay).toHaveTextContent('Made on Sep 1, 2026, with no way to sign in now.');
@@ -381,16 +387,61 @@ describe('Admin → Stats', () => {
   it('keeps the rest of Stats when how members sign in cannot be read', async () => {
     api.methods = null;
     api.methodsError = { message: 'Not an administrator' };
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.getByText('Ever signed in')).toBeInTheDocument();
+  });
+
+  it('says when no device has been seen', async () => {
+    render(<StatsSection />, { wrapper: MemoryRouter });
+    expect(await screen.findByText(/Nothing recorded yet/)).toBeInTheDocument();
+  });
+
+  it('shows who uses what, the phone browsers first', async () => {
+    const device = (o: Partial<MemberDevice>): MemberDevice => ({
+      surface: 'browser',
+      browser: 'Safari',
+      browserVersion: '18.1',
+      os: 'iOS',
+      screenWidth: 390,
+      screenHeight: 844,
+      pixelRatio: 3,
+      colorScheme: 'dark',
+      notifications: null,
+      seenAt: '2026-11-02T19:00:00Z',
+      ...o,
+    });
+    api.devices = {
+      asOf: '2026-11-02T19:00:00Z',
+      recordedSince: '2026-11-02T18:00:00Z',
+      members: [
+        {
+          id: 'a',
+          name: 'Ann',
+          username: 'ann',
+          notifiedDevices: 1,
+          devices: [device({ surface: 'home_screen', notifications: 'allowed' })],
+        },
+        { id: 'b', name: 'Bo', username: 'bo', notifiedDevices: 0, devices: [device({})] },
+        { id: 'c', name: 'Cy', username: 'cy', notifiedDevices: 0, devices: [] },
+      ],
+    };
+    render(<StatsSection />, { wrapper: MemoryRouter });
+    await userEvent.click(await screen.findByRole('button', { name: 'Who uses what' }));
+    const rows = screen.getAllByRole('listitem').filter((row) => row.closest('#member-devices'));
+    expect(rows.map((row) => row.querySelector('a')?.textContent)).toEqual(['Bo', 'Ann', 'Cy']);
+    expect(rows[0]).toHaveTextContent('Browser on a phone. Notifications off.');
+    expect(rows[0]).toHaveTextContent('Safari 18.1 on iPhone, 390×844, dark');
+    expect(rows[1]).toHaveTextContent('Notifications on for 1 device.');
+    expect(rows[1]).toHaveTextContent('Home Screen app on iPhone');
+    expect(rows[2]).toHaveTextContent('Not seen yet.');
   });
 
   it('says so when the database refuses', async () => {
     api.stats = null;
     api.error = { message: 'Not an administrator' };
     api.methods = null;
-    render(<StatsSection />);
+    render(<StatsSection />, { wrapper: MemoryRouter });
     expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 });

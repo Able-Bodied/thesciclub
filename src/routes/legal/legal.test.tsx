@@ -43,11 +43,12 @@ describe('the Privacy Policy', () => {
     const notes = screen
       .getAllByRole('heading', { name: /What changed on/ })
       .map((heading) => heading.parentElement?.textContent ?? '');
-    expect(notes[0]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
-    expect(notes[1]).toMatch(/Changed: Join replaces Follow/);
-    expect(notes[2]).toMatch(/Added: when you agreed/);
-    expect(notes[3]).toMatch(/Added: address suggestions/);
-    expect(notes[4]).toMatch(/Added: the map/);
+    expect(notes[0]).toMatch(/Added: once a day, on each way you use the club/);
+    expect(notes[1]).toMatch(/Changed: an org admin or a trusted partner can connect two members/);
+    expect(notes[2]).toMatch(/Changed: Join replaces Follow/);
+    expect(notes[3]).toMatch(/Added: when you agreed/);
+    expect(notes[4]).toMatch(/Added: address suggestions/);
+    expect(notes[5]).toMatch(/Added: the map/);
     for (const note of notes) expect(note).not.toMatch(/Able Bodied/);
     expect(notes.join(' ')).toMatch(/Removed: signing in by text message/);
   });

@@ -21,7 +21,18 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 31, 2026">
+    <LegalPage title="Privacy Policy" updated="November 2, 2026">
+      <Note title="What changed on November 2, 2026">
+        <List>
+          <li>
+            <b>Added:</b> once a day, on each way you use the club, we note how you are seeing it:
+            the kind of browser and its version, the system, the screen’s size, light or dark, and
+            whether notifications are allowed. Administrators see this by name, so they can help you
+            get the most from the club, such as adding it to your Home Screen. It is kept for 180
+            days (see What we collect and How long we keep it).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on October 31, 2026">
         <List>
           <li>
@@ -222,6 +233,13 @@ export default function PrivacyPage() {
             2026, worked out from what your browser says about itself.
           </li>
           <li>
+            <b>How you are seeing the club:</b> at most once a day for each way you use it, the kind
+            of browser and its version, the name of the system, whether you are in a browser, the
+            app on your Home Screen or the store app, the screen’s size, light or dark, whether
+            notifications are allowed, and when your copy of the app was built. Never the browser’s
+            full description of itself, or your internet address.
+          </li>
+          <li>
             <b>If you turn notifications on</b> for a device: an address for that device, given by
             its notification service, and the kind of browser or device it is.
           </li>
@@ -271,7 +289,7 @@ export default function PrivacyPage() {
           signed-in session and in a log of sign-ins, to keep accounts secure. On your device, the
           app keeps you signed in and remembers settings such as text size, and, if you open a link
           to a post before you are signed in, which post, for 30 days, so it can take you there once
-          you are. It uses no cookies or tools for advertising or analytics.
+          you are. It uses no cookies or outside tools for advertising or analytics.
         </P>
       </Section>
 
@@ -485,9 +503,10 @@ export default function PrivacyPage() {
           <li>who is going to each event, to pass on to its host (see Event hosts);</li>
           <li>
             in <b>Admin → Stats</b>: counts, such as how many members opened the app this week,
-            never who; and, naming members, how each member signs in, whether each has notifications
-            on and on how many devices, and who has read each post and when, including reads from
-            before October 20, 2026, with whether each read was on a phone or tablet, or a computer.
+            never who; and, naming members, how each member signs in, how each is seeing the club,
+            whether each has notifications on and on how many devices, and who has read each post
+            and when, including reads from before October 20, 2026, with whether each read was on a
+            phone or tablet, or a computer.
           </li>
         </List>
       </Section>
@@ -654,6 +673,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Your notifications list:</b> 30 days.
+          </li>
+          <li>
+            <b>How you are seeing the club:</b> 180 days.
           </li>
           <li>
             <b>Apple’s token:</b> until you unlink Apple or delete your account, and then until
