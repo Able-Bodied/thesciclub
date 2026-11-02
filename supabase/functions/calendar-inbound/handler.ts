@@ -1,4 +1,5 @@
 import { type InviteEvent, readInvite } from './ics.ts';
+import { isMeetingLink } from './place.ts';
 
 /**
  * calendar-inbound's logic, apart from the network so it can be tested
@@ -247,6 +248,15 @@ async function calendarText(
   return null;
 }
 
+/** The one ignored invitation its sender is told about; receive says this. */
+const ONE_DATE = 'A change to one date of a repeating event';
+
+/** What the club now holds, so the sender can check it; no such email means it never arrived. */
+function linkLine(invite: InviteEvent): string {
+  if (invite.url) return `\n${isMeetingLink(invite.url) ? 'Meeting link' : 'Link'}: ${invite.url}`;
+  return invite.location ? '' : '\nNo place or meeting link came with this invitation.';
+}
+
 function whenLine(invite: InviteEvent): string {
   const when = new Date(invite.starts).toLocaleString('en-US', {
     timeZone: invite.timezone,
@@ -274,7 +284,7 @@ export function repliesFor(
         {
           to: sender,
           subject: `${result.outcome === 'added' ? 'Added to' : 'Updated in'} The SCI Club: ${title}`,
-          text: `${title}\n${whenLine(invite)}\nHosted by ${result.organization ?? 'The SCI Club'}\n\n${site}/events/${result.event ?? ''}\n\nChanges to the invitation are copied to the club, and cancelling it takes the event off.${note}`,
+          text: `${title}\n${whenLine(invite)}\nHosted by ${result.organization ?? 'The SCI Club'}${linkLine(invite)}\n\n${site}/events/${result.event ?? ''}\n\nChanges to the invitation are copied to the club, and cancelling it takes the event off. If your calendar asks whom to tell about a change, choose all guests: you will get an email like this one each time, and without it the club did not get the change.${note}`,
         },
       ];
     case 'cancelled':
@@ -311,7 +321,14 @@ export function repliesFor(
         },
       ];
     default:
-      return [];
+      if (!result.reason?.startsWith(ONE_DATE)) return [];
+      return [
+        {
+          to: sender,
+          subject: `Not copied to The SCI Club: ${title}`,
+          text: `A change to one date of ${title} was not copied, because the club cannot hold one date of a repeating event apart from the rest.\n\nChange that date in the club, or change the whole series in your calendar.`,
+        },
+      ];
   }
 }
 

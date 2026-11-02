@@ -196,6 +196,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
     The invitation's other guests are never kept.
   - **Place and link**: meeting links go to the link, the place keeps the
     address, a US address gives city and state (`place.ts`, `20261023000000`).
+  - **Changes**: an update replaces the event, so a new id and no RSVPs. The
+    reply names the link the club holds; no reply means it never arrived.
+    Google asks whom to tell, so an update can skip `invites@`. Probe:
+    `calendar-invite-updates.sql`.
   - `invites@` tested end to end 2026-10-24 (function deployed). The
     website still shows `events@` until the branch reaches `main`.
 

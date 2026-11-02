@@ -143,7 +143,8 @@ export function whereOf(input: {
   const meeting = [...input.conference.flatMap(linksIn), ...linksIn(input.description)].find(
     isMeetingLink,
   );
-  const link = fromPlace.find(isMeetingLink) ?? fromPlace[0] ?? meeting ?? input.url ?? null;
+  // A page written in LOCATION never costs the call: the description's copy is cut.
+  const link = fromPlace.find(isMeetingLink) ?? meeting ?? fromPlace[0] ?? input.url ?? null;
 
   const format: Format | null = place
     ? fromPlace.some(isMeetingLink)
