@@ -10,7 +10,7 @@ vi.mock('@/lib/grants', async (importOriginal) => ({
   useGrantsByOrganization: () => grantsByOrg.map,
 }));
 
-const { OrganizationList } = await import('@/routes/events/organization-list');
+const { NO_FILTERS, OrganizationList } = await import('@/routes/events/organization-list');
 
 function org(id: string, name: string): Organization {
   return {
@@ -158,13 +158,7 @@ describe("the directory's filters held by the screen", () => {
         following={new Set()}
         onToggleFollow={vi.fn()}
         onOpen={vi.fn()}
-        filters={{
-          query: 'norcal',
-          hasGrants: false,
-          grantsOpen: false,
-          onCalendar: false,
-          following: false,
-        }}
+        filters={{ ...NO_FILTERS, query: 'norcal' }}
         onFiltersChange={vi.fn()}
       />,
     );

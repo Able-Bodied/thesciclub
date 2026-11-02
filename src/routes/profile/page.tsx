@@ -2,6 +2,7 @@ import { Check, ChevronLeft, ChevronRight, Loader2, Plus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
+import { AppNav } from '@/components/app-nav';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { describeThrown } from '@/lib/describe-error';
@@ -234,116 +235,131 @@ export default function ProfileSurveyPage() {
   // On a desktop the page grows to its content instead: pinning put 461
   // measured pixels of empty canvas between the last answer and Continue, and
   // this flow asks twelve questions in a row.
+  //
+  // The tab bar stays (the owner, 2026-11-01): a phone had no way out but the
+  // small Finish later. A tab leaves as that does, so it saves this screen's
+  // answers first; `contents` leaves the bar a child of the flex column, whose
+  // order paints it under the screen on a phone and over it on a desktop.
   return (
-    <main className="mx-auto flex h-dvh w-full max-w-[520px] flex-col bg-canvas lg:h-auto lg:min-h-dvh">
-      <div className="flex-none px-[18px] pt-4">
-        <div className="flex min-h-[30px] items-center justify-between gap-3">
-          {index > 0 ? (
-            <button
-              type="button"
-              onClick={() => {
-                setIndex(stepFrom(index - 1, -1, answers));
-              }}
-              className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </button>
-          ) : (
-            <span />
-          )}
-          {/* The way out, on every screen and not only the first.
+    <div className="flex h-dvh flex-col bg-canvas lg:h-auto lg:min-h-dvh">
+      <div
+        className="contents"
+        onClickCapture={() => {
+          if (!account.userId) return;
+          void saveAnswers(account.userId, screen.keys, answers).catch(() => undefined);
+        }}
+      >
+        <AppNav />
+      </div>
+      <main className="mx-auto flex min-h-0 w-full max-w-[520px] flex-1 flex-col">
+        <div className="flex-none px-[18px] pt-4">
+          <div className="flex min-h-[30px] items-center justify-between gap-3">
+            {index > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIndex(stepFrom(index - 1, -1, answers));
+                }}
+                className="-ml-1.5 inline-flex items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+            ) : (
+              <span />
+            )}
+            {/* The way out, on every screen and not only the first.
               
               Twelve screens with Back was the only exit, so somebody eight
               questions in who wanted to stop had to walk back through all of
               them. It commits first — `commit` past the last screen is the same
               path Finish takes — so leaving keeps the answers on the screen
               you are looking at, which pressing Back never did. */}
+            <button
+              type="button"
+              disabled={saving || loading}
+              onClick={() => {
+                commit(SCREENS.length);
+              }}
+              className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
+            >
+              {fromAnswers ? 'Finish' : 'Finish later'}
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
+            <div
+              className="h-full rounded-full bg-emphasis transition-[width] duration-300"
+              style={{ width: `${(position / shown.length) * 100}%` }}
+            />
+          </div>
+          {/* Under the bar it describes, rather than beside the buttons, which
+            now hold the two ways out. */}
+          <p className="mt-1.5 text-right text-[0.78125rem] text-grey">
+            {position} of {shown.length} · {progress.percent}% complete
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">
+          <h1 className="font-extrabold font-display text-[1.4375rem] text-ink leading-tight tracking-[-0.01em]">
+            {screen.title}
+          </h1>
+          {screen.hint ? (
+            <p className="mt-2 text-[0.8375rem] text-ink2 leading-[1.5]">{screen.hint}</p>
+          ) : null}
+          {screen.details ? (
+            <section className="mt-4 rounded-[13px] bg-tint px-3.5 py-3">
+              <h2 className="font-bold font-head text-[0.8125rem] text-ink">
+                {screen.details.title}
+              </h2>
+              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-[0.8125rem] text-ink2 leading-[1.5]">
+                {screen.details.items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+
+          {screen.organizations && !loading ? <OrganizationsPicker /> : null}
+
+          {loading ? (
+            <p className="py-10 text-center text-[0.875rem] text-grey">Loading your answers…</p>
+          ) : (
+            questions.map((question) => (
+              <QuestionBlock
+                key={question.key}
+                question={question}
+                value={answers[question.key] ?? null}
+                onChange={(v) => {
+                  set(question.key, v);
+                }}
+                // A lone question's title repeats the screen's, so it is left
+                // out — except a yes/no, whose buttons say nothing without it:
+                // "Mentoring" over Yes and No is not a question.
+                solo={questions.length === 1 && question.kind !== 'yesno' && !screen.organizations}
+              />
+            ))
+          )}
+          <div className="h-4" />
+        </div>
+
+        <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
+          {error ? (
+            <p role="alert" className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
+              {error}
+            </p>
+          ) : null}
           <button
             type="button"
             disabled={saving || loading}
             onClick={() => {
-              commit(SCREENS.length);
+              commit(index + 1);
             }}
-            className="-mr-1.5 inline-flex items-center gap-1 rounded-[10px] px-1.5 py-1 font-semibold text-[0.875rem] text-emphasis transition-colors hover:bg-tint disabled:opacity-40"
+            className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
           >
-            {fromAnswers ? 'Back to your answers' : 'Finish later'}
-            <ChevronRight className="h-4 w-4" />
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? 'Finish' : 'Continue'}
           </button>
-        </div>
-        <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-line">
-          <div
-            className="h-full rounded-full bg-emphasis transition-[width] duration-300"
-            style={{ width: `${(position / shown.length) * 100}%` }}
-          />
-        </div>
-        {/* Under the bar it describes, rather than beside the buttons, which
-            now hold the two ways out. */}
-        <p className="mt-1.5 text-right text-[0.78125rem] text-grey">
-          {position} of {shown.length} · {progress.percent}% complete
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-[18px] pt-4 pb-3 lg:flex-none lg:overflow-visible">
-        <h1 className="font-extrabold font-display text-[1.4375rem] text-ink leading-tight tracking-[-0.01em]">
-          {screen.title}
-        </h1>
-        {screen.hint ? (
-          <p className="mt-2 text-[0.8375rem] text-ink2 leading-[1.5]">{screen.hint}</p>
-        ) : null}
-        {screen.details ? (
-          <section className="mt-4 rounded-[13px] bg-tint px-3.5 py-3">
-            <h2 className="font-bold font-head text-[0.8125rem] text-ink">
-              {screen.details.title}
-            </h2>
-            <ul className="mt-1.5 list-disc space-y-1 pl-5 text-[0.8125rem] text-ink2 leading-[1.5]">
-              {screen.details.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </section>
-        ) : null}
-
-        {screen.organizations && !loading ? <OrganizationsPicker /> : null}
-
-        {loading ? (
-          <p className="py-10 text-center text-[0.875rem] text-grey">Loading your answers…</p>
-        ) : (
-          questions.map((question) => (
-            <QuestionBlock
-              key={question.key}
-              question={question}
-              value={answers[question.key] ?? null}
-              onChange={(v) => {
-                set(question.key, v);
-              }}
-              // A lone question's title repeats the screen's, so it is left
-              // out — except a yes/no, whose buttons say nothing without it:
-              // "Mentoring" over Yes and No is not a question.
-              solo={questions.length === 1 && question.kind !== 'yesno' && !screen.organizations}
-            />
-          ))
-        )}
-        <div className="h-4" />
-      </div>
-
-      <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
-        {error ? (
-          <p role="alert" className="mb-2.5 text-[0.8125rem] text-destructive leading-[1.45]">
-            {error}
-          </p>
-        ) : null}
-        <button
-          type="button"
-          disabled={saving || loading}
-          onClick={() => {
-            commit(index + 1);
-          }}
-          className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem] transition-colors hover:bg-gold-hi disabled:opacity-40 disabled:hover:bg-gold"
-        >
-          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : isLast ? 'Finish' : 'Continue'}
-        </button>
-        {/* Two different things, and the difference is the point.
+          {/* Two different things, and the difference is the point.
 
             Skip leaves the answer blank, which is honestly indistinguishable
             from "have not got to it yet" — so the ring keeps counting it as
@@ -356,38 +372,39 @@ export default function ProfileSurveyPage() {
             what the owner asked for. Collapsing the two would either nag the
             people who have decided or quietly finish a profile somebody meant
             to return to. */}
-        <div className="mt-1 flex flex-wrap gap-1">
-          <button
-            type="button"
-            disabled={saving || loading}
-            onClick={() => {
-              commit(index + 1);
-            }}
-            className="flex min-h-[38px] flex-1 basis-[9rem] items-center justify-center rounded-[13px] font-bold text-[0.84375rem] text-grey transition-colors hover:bg-tint hover:text-ink2"
-          >
-            Skip this one
-          </button>
-          {declinable.length > 0 ? (
+          <div className="mt-1 flex flex-wrap gap-1">
             <button
               type="button"
               disabled={saving || loading}
               onClick={() => {
-                decline();
+                commit(index + 1);
               }}
-              aria-pressed={alreadyDeclined}
-              className={cn(
-                'flex min-h-[38px] flex-1 basis-[9rem] items-center justify-center rounded-[13px] font-bold text-[0.84375rem] transition-colors',
-                alreadyDeclined
-                  ? 'bg-tint text-ink2 hover:bg-line'
-                  : 'text-grey hover:bg-tint hover:text-ink2',
-              )}
+              className="flex min-h-[38px] flex-1 basis-[9rem] items-center justify-center rounded-[13px] font-bold text-[0.84375rem] text-grey transition-colors hover:bg-tint hover:text-ink2"
             >
-              {alreadyDeclined ? 'Rather not say ✓' : 'Rather not say'}
+              Skip this one
             </button>
-          ) : null}
-        </div>
-      </footer>
-    </main>
+            {declinable.length > 0 ? (
+              <button
+                type="button"
+                disabled={saving || loading}
+                onClick={() => {
+                  decline();
+                }}
+                aria-pressed={alreadyDeclined}
+                className={cn(
+                  'flex min-h-[38px] flex-1 basis-[9rem] items-center justify-center rounded-[13px] font-bold text-[0.84375rem] transition-colors',
+                  alreadyDeclined
+                    ? 'bg-tint text-ink2 hover:bg-line'
+                    : 'text-grey hover:bg-tint hover:text-ink2',
+                )}
+              >
+                {alreadyDeclined ? 'Rather not say ✓' : 'Rather not say'}
+              </button>
+            ) : null}
+          </div>
+        </footer>
+      </main>
+    </div>
   );
 }
 
@@ -425,6 +442,29 @@ function QuestionBlock({
   // there to pick up again, but one of your own is on the screen because you
   // chose it, and an unchosen one is just gone.
   const ownAnswers = selected.filter((answer) => !question.options?.includes(answer));
+
+  const chip = (option: string) => {
+    const on = selected.includes(option);
+    return (
+      <button
+        key={option}
+        type="button"
+        aria-pressed={on}
+        disabled={!on && atCap}
+        onClick={() => {
+          onChange(toggleMany(selected, option, question.max));
+        }}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
+          on ? 'bg-action text-white' : 'border border-line bg-paper text-ink2',
+          !on && atCap && 'opacity-40',
+        )}
+      >
+        {on ? <Check className="h-3.5 w-3.5" /> : null}
+        {option}
+      </button>
+    );
+  };
 
   function closeOther() {
     setOtherOpen(false);
@@ -512,34 +552,21 @@ function QuestionBlock({
 
       {question.kind === 'many' ? (
         <>
+          {question.groups?.map((group) => (
+            <fieldset key={group.title} className="mb-3.5">
+              <legend className="mb-2 font-extrabold font-head text-[0.71875rem] text-grey uppercase tracking-[0.13em]">
+                {group.title}
+              </legend>
+              <div className="flex flex-wrap gap-2">{group.options.map(chip)}</div>
+            </fieldset>
+          ))}
           <div className="flex flex-wrap gap-2">
             {/* The offered options, then anything this member typed for
                 themselves. Own answers render after, and identically — once it
                 is chosen it is one of your answers, not a lesser kind. Without
                 this second list a custom answer would be saved and then
                 invisible, with no way to take it back off. */}
-            {[...(question.options ?? []), ...ownAnswers].map((option) => {
-              const on = selected.includes(option);
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={on}
-                  disabled={!on && atCap}
-                  onClick={() => {
-                    onChange(toggleMany(selected, option, question.max));
-                  }}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 font-semibold text-[0.84375rem]',
-                    on ? 'bg-action text-white' : 'border border-line bg-paper text-ink2',
-                    !on && atCap && 'opacity-40',
-                  )}
-                >
-                  {on ? <Check className="h-3.5 w-3.5" /> : null}
-                  {option}
-                </button>
-              );
-            })}
+            {[...(question.groups ? [] : (question.options ?? [])), ...ownAnswers].map(chip)}
 
             {/* "Add your own" rather than "Something else". The self-care list
                 used to carry an option by that name, and two controls with one

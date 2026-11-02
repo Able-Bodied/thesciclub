@@ -25,6 +25,8 @@ export interface Question {
   title: string;
   kind: 'one' | 'many' | 'text' | 'yesno';
   options?: readonly string[];
+  /** The options of a multi-select under headings; `options` holds them all too. */
+  groups?: readonly { title: string; options: readonly string[] }[];
   placeholder?: string;
   /** Cap on a multi-select, so the choices mean something. */
   max?: number;
@@ -93,26 +95,65 @@ export const TOPICS = [
   'Vehicle modifications',
 ] as const;
 
-export const INTERESTS = [
-  'Arts & crafts',
-  'Camping & outdoors',
-  'Climbing',
-  'Cooking',
-  'Cycling',
-  'Fishing',
-  'Fitness & exercise',
-  'Gardening',
-  'Music',
-  'Performing arts',
-  'Photography',
-  'Reading',
-  'Ski & snowboard',
-  'Team sports',
-  'Travel',
-  'Video games',
-  'Volunteering',
-  'Water sports',
+/**
+ * Grouped (the owner, 2026-11-01), so a long list can be scanned and an answer
+ * says what kind of thing somebody likes, for ranking peers and organizations.
+ * The words members had already chosen are kept as they were, and a choice no
+ * longer offered stays theirs, drawn with their own answers.
+ */
+export const INTEREST_GROUPS = [
+  {
+    title: 'Indoor sports',
+    options: [
+      'Basketball',
+      'Wheelchair rugby',
+      'Power soccer',
+      'Swimming',
+      'Fitness & exercise',
+      'Climbing',
+      'Bowling',
+      'Boccia',
+      'Other team sports',
+    ],
+  },
+  {
+    title: 'Outdoor activities',
+    options: [
+      'Handcycling',
+      'Cycling',
+      'Ski & snowboard',
+      'Surfing',
+      'Water sports',
+      'Sailing',
+      'Kayaking',
+      'Scuba diving',
+      'Hiking & trails',
+      'Camping & outdoors',
+      'Fishing',
+      'Tennis',
+      'Archery',
+    ],
+  },
+  {
+    title: 'Other',
+    options: [
+      'Travel',
+      'Cooking',
+      'Gardening',
+      'Reading',
+      'Music',
+      'Movies & TV',
+      'Video games',
+      'Photography',
+      'Arts & crafts',
+      'Performing arts',
+      'Volunteering',
+      'Advocacy',
+    ],
+  },
 ] as const;
+
+export const INTERESTS = INTEREST_GROUPS.flatMap((group) => group.options);
 
 export const SELF_CARE = [
   'Intermittent catheter',
@@ -266,6 +307,7 @@ export const QUESTIONS: Question[] = [
     title: 'Pick your top three interests',
     kind: 'many',
     options: INTERESTS,
+    groups: INTEREST_GROUPS,
     max: 3,
     allowOther: true,
     otherPlaceholder: 'In your own words',

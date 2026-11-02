@@ -63,3 +63,26 @@ export type OrganizationCategory = (typeof ORGANIZATION_CATEGORIES)[number]['id'
 /** The plain pin, of an organization with no type yet. */
 export const NO_CATEGORY = 'none';
 export const NO_CATEGORY_COLOR = '#3b4252';
+
+/** Everything that can be hidden, the plain pin too. */
+export const ALL_TYPES: readonly string[] = [
+  ...ORGANIZATION_CATEGORIES.map((type) => type.id),
+  NO_CATEGORY,
+];
+
+/**
+ * The Type chips in the filter, over the same hidden set as the checkboxes in
+ * Layers, so the two never disagree. With nothing hidden no chip is lit; the
+ * first tap shows only that type, the next adds one, and taking off the last
+ * shows them all again.
+ */
+export function typeChipOn(hidden: ReadonlySet<string>, type: string): boolean {
+  return hidden.size > 0 && !hidden.has(type);
+}
+
+export function tapTypeChip(hidden: ReadonlySet<string>, type: string): ReadonlySet<string> {
+  if (hidden.size === 0) return new Set(ALL_TYPES.filter((one) => one !== type));
+  const next = new Set(hidden);
+  if (!next.delete(type)) next.add(type);
+  return ALL_TYPES.every((one) => next.has(one)) ? new Set() : next;
+}

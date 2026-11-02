@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -21,6 +21,13 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => account.current }));
+vi.mock('@/components/app-nav', () => ({
+  AppNav: () => (
+    <nav aria-label="Main">
+      <button type="button">Home tab</button>
+    </nav>
+  ),
+}));
 vi.mock('@/routes/profile/organizations-picker', () => ({
   OrganizationsPicker: () => <p>The organizations</p>,
 }));
@@ -135,7 +142,7 @@ describe('opened from Your answers', () => {
   it('saves and goes back to the answers, not to Me', async () => {
     renderAt(`/profile?screen=${at('Family')}`);
     await screen.findByRole('heading', { name: 'Family' });
-    await userEvent.click(screen.getByRole('button', { name: /Back to your answers/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Finish' }));
     expect(await screen.findByText('Your answers page')).toBeInTheDocument();
     expect(api.saves[0]?.keys).toEqual(['maritalStatus', 'hasChildren', 'childrenWhen']);
   });
@@ -312,6 +319,32 @@ describe('the profile survey', () => {
     await userEvent.type(screen.getByRole('textbox'), 'Avid handcyclist');
     // Still here: a person is not finished with prose until they say so.
     expect(screen.getByText('Brief bio')).toBeInTheDocument();
+  });
+
+  it('keeps the tab bar, and saves the screen when a tab is pressed', async () => {
+    renderSurvey();
+    await screen.findByText('About you');
+    const saves = api.saves.length;
+    await userEvent.click(screen.getByRole('button', { name: 'Home tab' }));
+    expect(api.saves.length).toBe(saves + 1);
+  });
+
+  it('groups the interests, and keeps a choice no longer offered', async () => {
+    api.answers = { interests: ['Knitting'] };
+    renderSurvey();
+    await screen.findByText('About you');
+    await skipTo('Interests');
+    await screen.findByText('Interests');
+    const indoor = screen.getByRole('group', { name: 'Indoor sports' });
+    expect(within(indoor).getByRole('button', { name: 'Basketball' })).toBeInTheDocument();
+    const outdoor = screen.getByRole('group', { name: 'Outdoor activities' });
+    expect(within(outdoor).getByRole('button', { name: 'Handcycling' })).toBeInTheDocument();
+    const other = screen.getByRole('group', { name: 'Other' });
+    expect(within(other).getByRole('button', { name: 'Gardening' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Knitting' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('stops at three interests rather than silently dropping one', async () => {
