@@ -435,6 +435,12 @@ export default function EventsPage() {
             focus={segment === 'orgs' ? 'organizations' : 'events'}
             events={onMap}
             {...(mapOrganizations ? { organizations: mapOrganizations } : {})}
+            types={{
+              hidden: directory.hiddenTypes,
+              onChange: (hiddenTypes) => {
+                setDirectory((now) => ({ ...now, hiddenTypes }));
+              },
+            }}
             renderEvent={mapCard}
             // The map holds what is still to come (map_events).
             eventsNote={

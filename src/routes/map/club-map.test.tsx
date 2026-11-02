@@ -242,6 +242,27 @@ describe('what the map says', () => {
     expect(panel?.className).not.toContain('top-[52px]');
   });
 
+  it('unchecks every organization type at once, and checks them again', async () => {
+    render(<Screen focus="organizations" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Layers' }));
+    await userEvent.click(screen.getByRole('button', { name: /Organization types/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Uncheck all' }));
+    expect(screen.getByRole('checkbox', { name: 'Veterans' })).not.toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Recovery gyms' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: 'Uncheck all' })).toBeDisabled();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Veterans' }));
+    expect(screen.getByRole('checkbox', { name: 'Veterans' })).toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: 'Check all' }));
+    expect(screen.getByRole('checkbox', { name: 'Recovery gyms' })).toBeChecked();
+  });
+
+  it('scrolls Layers rather than running off the screen', async () => {
+    render(<Screen />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Layers' }));
+    const panel = screen.getByRole('checkbox', { name: /Events/ }).closest('div[id]');
+    expect(panel?.className).toContain('overflow-y-auto');
+  });
+
   it('closes Layers on a tap on the map, without opening what was under it', async () => {
     render(<Screen focus="organizations" />);
     await ready();

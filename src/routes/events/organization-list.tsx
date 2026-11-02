@@ -2,6 +2,8 @@ import { Search, X } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { FilterChip } from '@/components/filter-sheet-shell';
 import { californiaToday, type Grant, grantStatus, useGrantsByOrganization } from '@/lib/grants';
+import { NO_CATEGORY } from '@/lib/organization-categories';
+import { runsSport } from '@/lib/organization-sports';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { organizationTown, placesOf } from '@/routes/events/organization-places';
@@ -50,7 +52,14 @@ export interface DirectoryFilters {
   grantsOpen: boolean;
   onCalendar: boolean;
   following: boolean;
+  /** Types not shown, as Layers' checkboxes and the sheet's Type chips both set. */
+  hiddenTypes: ReadonlySet<string>;
+  /** Any one of these will do. */
+  sports: readonly string[];
 }
+
+/** The filters that are one chip each. */
+export type DirectoryChip = 'hasGrants' | 'grantsOpen' | 'onCalendar' | 'following';
 
 export const NO_FILTERS: DirectoryFilters = {
   query: '',
@@ -58,6 +67,8 @@ export const NO_FILTERS: DirectoryFilters = {
   grantsOpen: false,
   onCalendar: false,
   following: false,
+  hiddenTypes: new Set(),
+  sports: [],
 };
 
 /** Whether any of an organization's grants is open on `today`. */
@@ -91,6 +102,10 @@ export function matchesDirectory(
   if (filters.grantsOpen && !hasOpenGrant(facts.grants, facts.today)) return false;
   if (filters.onCalendar && facts.eventCount === 0) return false;
   if (filters.following && !facts.following) return false;
+  if (filters.hiddenTypes.has(organization.category ?? NO_CATEGORY)) return false;
+  if (filters.sports.length > 0 && !filters.sports.some((s) => runsSport(organization, s))) {
+    return false;
+  }
   return true;
 }
 
@@ -198,6 +213,8 @@ export function OrganizationRow({
 export function directoryFilterCount(filters: DirectoryFilters): number {
   return (
     (filters.query.trim() ? 1 : 0) +
+    (filters.hiddenTypes.size > 0 ? 1 : 0) +
+    filters.sports.length +
     [filters.hasGrants, filters.grantsOpen, filters.onCalendar, filters.following].filter(Boolean)
       .length
   );
@@ -271,7 +288,7 @@ export function OrganizationList({
   };
   const { shown, grants, counts, today } = useDirectory(organizations, events, following, filters);
   const filtered = directoryFilterCount(filters) > 0;
-  const toggle = (key: Exclude<keyof DirectoryFilters, 'query'>) => {
+  const toggle = (key: DirectoryChip) => {
     setFilters((f) => ({ ...f, [key]: !f[key] }));
   };
 

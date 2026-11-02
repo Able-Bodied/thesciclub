@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -24,7 +25,7 @@ import {
 } from '@/lib/map';
 import type { MapContents, MapOrganization } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
-import { NO_CATEGORY, ORGANIZATION_CATEGORIES } from '@/lib/organization-categories';
+import { ALL_TYPES, NO_CATEGORY, ORGANIZATION_CATEGORIES } from '@/lib/organization-categories';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { useOrganizations } from '@/lib/organizations';
 import { usePhotoUrls } from '@/lib/photos';
@@ -106,6 +107,8 @@ export interface ClubMapProps {
   members?: BrowseMember[];
   /** The directory's organizations, filtered. Absent, every one. */
   organizations?: Organization[];
+  /** The types hidden, when the screen's filters hold them too; absent, the map's own. */
+  types?: { hidden: ReadonlySet<string>; onChange: (hidden: ReadonlySet<string>) => void };
   /** An event as the screen draws it; absent, a card with its own RSVP. */
   renderEvent?: (event: ClubEvent) => ReactNode;
   /** Said where the events layer would be empty for a reason, such as past events. */
@@ -191,6 +194,7 @@ function useSourceData(
 export default function ClubMap({
   contents,
   focus,
+  types,
   events,
   members,
   organizations: chosenOrganizations,
@@ -214,7 +218,9 @@ export default function ClubMap({
     // owner, 2026-11-01).
     setLayers(new Set([focus]));
   }
-  const [hiddenTypes, setHiddenTypes] = useState<ReadonlySet<string>>(() => new Set());
+  const [ownHiddenTypes, setOwnHiddenTypes] = useState<ReadonlySet<string>>(() => new Set());
+  const hiddenTypes = types?.hidden ?? ownHiddenTypes;
+  const setHiddenTypes = types?.onChange ?? setOwnHiddenTypes;
   const [held, setHeld] = useState<MapLibreMap | null>(null);
   // A map MapCanvas removed (a kept tab hidden) is dead at once, before state catches up.
   const live = useRef<MapLibreMap | null>(null);
@@ -653,11 +659,9 @@ export default function ClubMap({
   }, [map, hidden, homePoint, zoomToMiles]);
 
   const toggleType = (type: string) => {
-    setHiddenTypes((now) => {
-      const next = new Set(now);
-      if (!next.delete(type)) next.add(type);
-      return next;
-    });
+    const next = new Set(hiddenTypes);
+    if (!next.delete(type)) next.add(type);
+    setHiddenTypes(next);
   };
 
   // One place in a tapped sheet: what a double on its pin does, for a keyboard too.
@@ -730,6 +734,7 @@ export default function ClubMap({
           onToggle={toggleLayer}
           hiddenTypes={hiddenTypes}
           onToggleType={toggleType}
+          onHideTypes={setHiddenTypes}
           unplaced={placedOrganizations.unplaced.length}
           missingPeers={layers.has('peers') ? missingPeers : 0}
           onShowUnplaced={() => {
@@ -879,6 +884,7 @@ function LayerPanel({
   onToggle,
   hiddenTypes,
   onToggleType,
+  onHideTypes,
   unplaced,
   missingPeers,
   onShowUnplaced,
@@ -889,6 +895,7 @@ function LayerPanel({
   onToggle: (layer: Layer) => void;
   hiddenTypes: ReadonlySet<string>;
   onToggleType: (type: string) => void;
+  onHideTypes: (hidden: ReadonlySet<string>) => void;
   unplaced: number;
   /** In the list, not on the map: the map is off for them, or their city is not placed. */
   missingPeers: number;
@@ -896,6 +903,28 @@ function LayerPanel({
 }) {
   const panelId = useId();
   const [typesOpen, setTypesOpen] = useState(false);
+  const typesHidden = ORGANIZATION_CATEGORIES.filter((type) => hiddenTypes.has(type.id)).length;
+  const allHidden = ALL_TYPES.every((type) => hiddenTypes.has(type));
+
+  // As tall as the map leaves it, then it scrolls: the types run past a short
+  // screen (the owner, 2026-11-01).
+  const panel = useRef<HTMLDivElement>(null);
+  const [room, setRoom] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const top = panel.current?.getBoundingClientRect().top;
+      const bottom = panel.current?.closest('[data-pins]')?.getBoundingClientRect().bottom;
+      if (top === undefined || bottom === undefined) return;
+      setRoom(bottom - top > 0 ? bottom - top - 12 : null);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
@@ -925,7 +954,9 @@ function LayerPanel({
       {open ? (
         <div
           id={panelId}
-          className="pointer-events-auto absolute top-full left-0 z-[15] mt-2 w-[min(20rem,100%)] rounded-2xl border border-line bg-paper p-2 shadow-[0_12px_32px_rgba(10,20,35,.25)]"
+          ref={panel}
+          style={room ? { maxHeight: room } : undefined}
+          className="pointer-events-auto absolute top-full left-0 z-[15] mt-2 w-[min(20rem,100%)] overflow-y-auto overscroll-contain rounded-2xl border border-line bg-paper p-2 shadow-[0_12px_32px_rgba(10,20,35,.25)]"
         >
           <fieldset>
             <legend className="sr-only">Show on the map</legend>
@@ -964,13 +995,35 @@ function LayerPanel({
                   className={cn('h-4 w-4 transition-transform', typesOpen && 'rotate-180')}
                 />
                 Organization types
-                {hiddenTypes.size > 0 ? (
-                  <span className="font-normal text-ink2">({hiddenTypes.size} hidden)</span>
+                {typesHidden > 0 ? (
+                  <span className="font-normal text-ink2">({typesHidden} hidden)</span>
                 ) : null}
               </button>
               {typesOpen ? (
                 <fieldset className="mb-1">
                   <legend className="sr-only">Types of organization</legend>
+                  <div className="flex gap-4 px-2.5 pb-1">
+                    <button
+                      type="button"
+                      disabled={hiddenTypes.size === 0}
+                      onClick={() => {
+                        onHideTypes(new Set());
+                      }}
+                      className="min-h-[36px] font-semibold text-[0.8125rem] text-emphasis underline underline-offset-2 disabled:text-grey disabled:no-underline"
+                    >
+                      Check all
+                    </button>
+                    <button
+                      type="button"
+                      disabled={allHidden}
+                      onClick={() => {
+                        onHideTypes(new Set(ALL_TYPES));
+                      }}
+                      className="min-h-[36px] font-semibold text-[0.8125rem] text-emphasis underline underline-offset-2 disabled:text-grey disabled:no-underline"
+                    >
+                      Uncheck all
+                    </button>
+                  </div>
                   {ORGANIZATION_CATEGORIES.map((type) => (
                     <label
                       key={type.id}
