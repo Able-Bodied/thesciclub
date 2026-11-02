@@ -5,6 +5,7 @@ import { useAnnounce } from '@/lib/announce';
 import { type AudienceHint, fetchAudienceHint, publicEventUrl } from '@/lib/event-audience';
 import { useOrganizationFollows } from '@/lib/organization-follows';
 import { EventGroupCard } from '@/routes/events/event-group-card';
+import { ShortLinkField, ShortLinkQr } from '@/routes/events/event-short-link';
 import { FollowButton } from '@/routes/events/follow-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import type { ClubEvent, EventAudience } from '@/types/domain';
@@ -46,7 +47,8 @@ export function EventAudienceSection({
   canSeeCheckIns?: boolean;
 }) {
   const announce = useAnnounce();
-  const link = publicEventUrl(event.id);
+  const [shortLink, setShortLink] = useState(event.shortLink ?? null);
+  const link = publicEventUrl(event.id, shortLink);
   // Seen, as well as heard (the owner, 2026-11-01): nothing else on the screen
   // changes when a link is copied.
   const [popup, setPopup] = useState<string | null>(null);
@@ -105,6 +107,15 @@ export function EventAudienceSection({
             Copy link
           </button>
         </div>
+        {canChange ? (
+          <ShortLinkField
+            eventId={event.id}
+            shortLink={shortLink}
+            onSaved={setShortLink}
+            say={say}
+          />
+        ) : null}
+        {shortLink ? <ShortLinkQr link={link} title={event.title} /> : null}
       </div>
       {canChange ? (
         <Link

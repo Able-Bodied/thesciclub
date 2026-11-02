@@ -21,6 +21,7 @@ const api = vi.hoisted(() => ({
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
   fetchPublicEvent: () => Promise.resolve({ ok: true, value: api.event }),
+  fetchEventIdByShortLink: (link: string) => Promise.resolve({ ok: true, value: link }),
   registerForEvent: (registration: Registration) => {
     api.registered.push(registration);
     return Promise.resolve(

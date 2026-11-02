@@ -336,7 +336,26 @@ export const GUEST_STATE_LABEL: Record<GuestState, string> = {
   unconfirmed: 'Not confirmed',
 };
 
-/** The address members share a public event by. */
-export function publicEventUrl(eventId: string): string {
-  return `https://thesciclub.com/e/${eventId}`;
+/** The address members share a public event by: its short link, if it has one. */
+export function publicEventUrl(eventId: string, shortLink?: string | null): string {
+  return `https://thesciclub.com/e/${shortLink ?? eventId}`;
+}
+
+/** As the database's own check (20261101070000). */
+export function isShortLink(link: string): boolean {
+  return /^[a-z0-9][a-z0-9-]{0,30}[a-z0-9]$/.test(link);
+}
+
+/** The event a short link opens; null when none has it. */
+export function fetchEventIdByShortLink(link: string): Promise<Result<string | null>> {
+  return call<string | null>('event_by_short_link', { p_link: link }, 'Could not load this event.');
+}
+
+/** Sets an event's short link, or takes it off when empty. Resolves to what was saved. */
+export function setEventShortLink(eventId: string, link: string): Promise<Result<string | null>> {
+  return call<string | null>(
+    'set_event_short_link',
+    { p_event: eventId, p_link: link },
+    'The short link was not saved.',
+  );
 }
