@@ -45,6 +45,7 @@ import {
 } from '@/routes/home/filters';
 import { PersonCard } from '@/routes/home/person-card';
 import { PhotoCard } from '@/routes/home/photo-card';
+import { ProfileCard, useProfileAsk } from '@/routes/home/profile-card';
 import { type CardLikes, TopicCard } from '@/routes/home/topic-card';
 import { type ClubEvent, DEFAULT_WITHIN_MILES, type RsvpStatus } from '@/types/domain';
 
@@ -240,6 +241,7 @@ export default function HomePage() {
     [items, filters, filterContext],
   );
   const filterCount = activeFilterCount(filters);
+  const profile = useProfileAsk(memberId);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
@@ -443,6 +445,16 @@ export default function HomePage() {
                           <FeedbackCard
                             rooms={rooms.rooms}
                             linkState={linkState}
+                            className="mb-[11px]"
+                          />
+                        ) : null}
+                        {/* Sixth (the owner, 2026-11-01), or last in a shorter feed. */}
+                        {profile.ask &&
+                        segment !== 'events' &&
+                        index === Math.min(4, shown.length - 1) ? (
+                          <ProfileCard
+                            ask={profile.ask}
+                            onNotNow={profile.notNow}
                             className="mb-[11px]"
                           />
                         ) : null}

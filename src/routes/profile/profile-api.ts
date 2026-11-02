@@ -53,6 +53,12 @@ export function declinedFrom(row: Record<string, unknown>): Set<string> {
   return new Set(value.filter((v): v is string => typeof v === 'string'));
 }
 
+/** Whether the member has a picture up, for Home's card. */
+export async function hasPhoto(): Promise<boolean> {
+  const { data } = await getSupabase().from('members').select('photo_path').maybeSingle();
+  return Boolean((data as { photo_path?: string | null } | null)?.photo_path);
+}
+
 export async function loadAnswers(): Promise<
   { ok: true; answers: Answers; declined: Set<string> } | { ok: false; error: string }
 > {

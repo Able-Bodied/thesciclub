@@ -69,7 +69,7 @@ export default function QrCodePage() {
   const memberId = account.status === 'member' ? account.userId : null;
   const mine = useMyOrganizations(memberId);
   const partner = useIAmPartner(memberId);
-  const { byId } = useOrganizations();
+  const { organizations: everyOrganization, byId } = useOrganizations();
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [atEvent, setAtEvent] = useState(false);
   const [eventName, setEventName] = useState('');
@@ -96,6 +96,11 @@ export default function QrCodePage() {
     .map((id) => byId.get(id))
     .filter((organization) => organization !== undefined)
     .sort((a, b) => a.name.localeCompare(b.name));
+  // An administrator may make a code for any of them (the owner, 2026-11-01); the
+  // database has always allowed it (create_qr_code).
+  const offered = isAdmin
+    ? [...everyOrganization].sort((a, b) => a.name.localeCompare(b.name))
+    : organizations;
   const mayMake = isAdmin || organizations.length > 0 || partner === true;
   // A partner's code with no organization lets people in and needs no email.
   const ownCode = partner === true && !isAdmin;
@@ -261,7 +266,7 @@ export default function QrCodePage() {
             void make();
           }}
         >
-          {organizations.length > 1 || ((isAdmin || ownCode) && organizations.length > 0) ? (
+          {offered.length > 1 || ((isAdmin || ownCode) && offered.length > 0) ? (
             <div>
               <label
                 htmlFor="qr-organization"
@@ -277,7 +282,7 @@ export default function QrCodePage() {
                 }}
                 className={FIELD}
               >
-                {organizations.map((organization) => (
+                {offered.map((organization) => (
                   <option key={organization.id} value={organization.id}>
                     {organization.name}
                   </option>

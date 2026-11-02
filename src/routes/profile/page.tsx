@@ -53,7 +53,9 @@ export default function ProfileSurveyPage() {
   const fromAnswers = params.has('screen');
   // From a reminder (20261022040000): open where it was left.
   const resume = params.has('resume');
-  const exitTo = fromAnswers ? '/profile/answers' : '/me';
+  // From Home's card: the one screen it asked about, then back there.
+  const oneScreen = Boolean((location.state as { oneScreen?: boolean } | null)?.oneScreen);
+  const exitTo = oneScreen ? '/home' : fromAnswers ? '/profile/answers' : '/me';
   const [index, setIndex] = useState(() => screenFrom(params.get('screen')));
   const [answers, setAnswers] = useState<Answers>({});
   // Loaded and written alongside the answers, because declining is an answer —
@@ -94,7 +96,7 @@ export default function ProfileSurveyPage() {
           // every way onward — Continue, Skip, Rather not say, an answer that
           // moves on by itself — lands on one that has.
           const target = next >= SCREENS.length ? next : stepFrom(next, 1, answers);
-          if (target >= SCREENS.length) {
+          if (target >= SCREENS.length || oneScreen) {
             announce('Your answers are saved.');
             void navigate(exitTo, { replace: true });
             return;
@@ -109,7 +111,7 @@ export default function ProfileSurveyPage() {
           setSaving(false);
         });
     },
-    [screen, account.userId, answers, navigate, announce, exitTo],
+    [screen, account.userId, answers, navigate, announce, exitTo, oneScreen],
   );
 
   /**

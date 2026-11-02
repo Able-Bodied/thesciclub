@@ -68,6 +68,30 @@ vi.mock('@/routes/invites/mentor-invites', async (importOriginal) => ({
   },
 }));
 
+const requests = vi.hoisted(() => ({
+  received: [] as unknown[],
+  memberOf: [] as string[],
+}));
+
+vi.mock('@/lib/invite-requests', () => ({
+  fetchMyInviteRequests: () => Promise.resolve({ ok: true, value: requests.received }),
+  answerInviteRequest: () => Promise.resolve({ ok: true }),
+}));
+vi.mock('@/lib/organization-members', () => ({
+  useMemberOrganizations: (id: string | undefined) => (id ? requests.memberOf : []),
+}));
+vi.mock('@/lib/organization-representatives', () => ({
+  useMyOrganizations: () => ({ ids: new Set(['ncs']), loading: false }),
+}));
+vi.mock('@/lib/organizations', () => ({
+  useOrganizations: () => ({
+    byId: new Map([
+      ['ncs', { id: 'ncs', name: 'NorCal SCI' }],
+      ['able', { id: 'able', name: 'Able Bodied' }],
+    ]),
+  }),
+}));
+
 const { default: InvitesPage } = await import('@/routes/invites/page');
 
 const invite = (o: Partial<MentorInvite> = {}): MentorInvite => ({
@@ -104,6 +128,8 @@ beforeEach(() => {
   api.resent = [];
   api.sendError = null;
   api.failWith = null;
+  requests.received = [];
+  requests.memberOf = [];
 });
 
 describe('who can open it', () => {
@@ -239,6 +265,41 @@ describe('inviting by email', () => {
     expect(
       await screen.findByText('That email address is already on the club’s list.'),
     ).toBeInTheDocument();
+  });
+});
+
+describe('a request for an invite', () => {
+  beforeEach(() => {
+    requests.memberOf = ['able', 'ncs'];
+    requests.received = [
+      {
+        id: 'r1',
+        organizationId: 'ncs',
+        organizationName: 'NorCal SCI',
+        asked: 'Todd',
+        name: 'Sam',
+        email: 'sam@example.com',
+        note: null,
+        createdAt: '2026-11-01T08:00:00Z',
+      },
+    ];
+    privileges.representative = true;
+  });
+
+  it('lets a club administrator choose among their organizations', async () => {
+    account.current = { status: 'member', userId: 'me', isAdmin: true, displayName: 'Todd' };
+    renderInvites();
+    await userEvent.selectOptions(await screen.findByLabelText('Inviting for'), 'Able Bodied');
+    await userEvent.click(screen.getByRole('button', { name: 'Send invite' }));
+    await waitFor(() => {
+      expect(api.created[0]).toMatchObject({ organizationId: 'able' });
+    });
+  });
+
+  it('leaves an org admin with the organization that was asked', async () => {
+    renderInvites();
+    await screen.findByRole('button', { name: 'Send invite' });
+    expect(screen.queryByLabelText('Inviting for')).toBeNull();
   });
 });
 

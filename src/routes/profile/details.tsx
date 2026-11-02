@@ -45,6 +45,8 @@ export default function ProfileDetailsPage() {
   const account = useAccount();
   const location = useLocation();
   const navigate = useNavigate();
+  // From Home's card, back there; otherwise Me, where this page is opened from.
+  const leaveTo = (location.state as { oneScreen?: boolean } | null)?.oneScreen ? '/home' : '/me';
   const [details, setDetails] = useState<MemberDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -179,7 +181,7 @@ export default function ProfileDetailsPage() {
         // Leaving is silent to somebody who cannot see the page change, so
         // it is said as well.
         announce('Your details are saved.');
-        void navigate('/me');
+        void navigate(leaveTo);
       })
       .catch((e: unknown) => {
         setError(describeThrown(e, 'Could not save that.'));
@@ -239,7 +241,7 @@ export default function ProfileDetailsPage() {
           <button
             type="button"
             onClick={() => {
-              void navigate('/me');
+              void navigate(leaveTo);
             }}
             className="-ml-1.5 inline-flex min-h-[44px] items-center gap-0.5 py-1 font-semibold text-[0.875rem] text-emphasis"
           >

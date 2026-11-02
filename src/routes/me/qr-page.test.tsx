@@ -179,6 +179,17 @@ describe('who may make a code', () => {
 
 // The owner, 2026-10-28: an org admin's code lets their people in until it
 // expires, a day unless they choose; no event; an optional note.
+describe("an administrator's code", () => {
+  it('can be for any organization, not only one they run', async () => {
+    renderPage();
+    await userEvent.selectOptions(await screen.findByLabelText("Who it's for"), 'NorCal SCI');
+    await userEvent.click(screen.getByRole('button', { name: 'Make a link' }));
+    await waitFor(() => {
+      expect(state.created[0]?.organizationId).toBe('ncs');
+    });
+  });
+});
+
 describe("an org admin's code", () => {
   it('is for their organization, with no event and no email to show', async () => {
     asOrgAdmin();

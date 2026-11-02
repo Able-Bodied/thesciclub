@@ -347,13 +347,26 @@ describe('the profile survey', () => {
     );
   });
 
-  it('stops at three interests rather than silently dropping one', async () => {
-    api.answers = { interests: ['Travel', 'Cooking', 'Reading'] };
+  it('stops at ten interests rather than silently dropping one', async () => {
+    api.answers = {
+      interests: [
+        'Travel',
+        'Cooking',
+        'Reading',
+        'Music',
+        'Gardening',
+        'Fishing',
+        'Surfing',
+        'Sailing',
+        'Kayaking',
+        'Tennis',
+      ],
+    };
     renderSurvey();
     await screen.findByText('About you');
     await skipTo('Interests');
     expect(await screen.findByText('Interests')).toBeInTheDocument();
-    expect(screen.getByText(/3 of 3 chosen/)).toBeInTheDocument();
+    expect(screen.getByText(/10 of 10 chosen/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Climbing' })).toBeDisabled();
   });
 
