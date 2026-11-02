@@ -52,8 +52,8 @@ describe('the question set', () => {
     expect(new Set(placed)).toEqual(new Set(QUESTIONS.map((q) => q.key)));
   });
 
-  it('caps interests at three, so the choices mean something', () => {
-    expect(questionFor('interests')?.max).toBe(3);
+  it('caps interests at ten, as the database does', () => {
+    expect(questionFor('interests')?.max).toBe(10);
   });
 });
 

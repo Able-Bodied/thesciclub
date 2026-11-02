@@ -304,11 +304,11 @@ export const QUESTIONS: Question[] = [
   {
     key: 'interests',
     column: 'interests',
-    title: 'Pick your top three interests',
+    title: 'Pick up to ten interests',
     kind: 'many',
     options: INTERESTS,
     groups: INTEREST_GROUPS,
-    max: 3,
+    max: 10,
     allowOther: true,
     otherPlaceholder: 'In your own words',
   },

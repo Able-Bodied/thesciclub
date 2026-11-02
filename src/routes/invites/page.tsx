@@ -11,6 +11,7 @@ import {
   fetchMyInviteRequests,
   type ReceivedInviteRequest,
 } from '@/lib/invite-requests';
+import { useMemberOrganizations } from '@/lib/organization-members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import {
@@ -67,6 +68,17 @@ export default function InvitesPage() {
     .filter((organization) => organization !== undefined)
     .sort((a, b) => a.name.localeCompare(b.name));
   const choosesOrganization = myOrganizations.length > 1;
+  // A club administrator answering a request picks who the invite is for, from
+  // the organizations they belong to (the owner, 2026-11-01). Only they may:
+  // create_my_invite refuses an org admin an organization they do not run.
+  const isAdmin = account.status === 'member' && account.isAdmin;
+  const memberOf = useMemberOrganizations(isAdmin ? (userId ?? undefined) : undefined);
+  const [invitingFor, setInvitingFor] = useState<Record<string, string>>({});
+  const organizationsFor = (request: ReceivedInviteRequest) =>
+    [...new Set([request.organizationId, ...mine.ids, ...memberOf])]
+      .map((id) => byId.get(id))
+      .filter((organization) => organization !== undefined)
+      .sort((a, b) => a.name.localeCompare(b.name));
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -168,7 +180,7 @@ export default function InvitesPage() {
         email: request.email,
         note: `${request.name} (asked for an invite)`,
         ...(permissions.unlimited ? { unlimited: true } : {}),
-        organizationId: request.organizationId,
+        organizationId: invitingFor[request.id] ?? request.organizationId,
       });
       if (!result.ok) return result;
       const answered = await answerInviteRequest(request.id, 'invited');
@@ -240,6 +252,30 @@ export default function InvitesPage() {
                       <p className="mt-1.5 whitespace-pre-line text-[0.8125rem] text-ink leading-[1.45]">
                         {request.note}
                       </p>
+                    ) : null}
+                    {isAdmin && organizationsFor(request).length > 1 ? (
+                      <div className="mt-2.5">
+                        <label
+                          htmlFor={`request-organization-${request.id}`}
+                          className="block font-bold text-[0.75rem] text-ink"
+                        >
+                          Inviting for
+                        </label>
+                        <select
+                          id={`request-organization-${request.id}`}
+                          value={invitingFor[request.id] ?? request.organizationId}
+                          onChange={(e) => {
+                            setInvitingFor((now) => ({ ...now, [request.id]: e.target.value }));
+                          }}
+                          className="mt-1.5 w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink"
+                        >
+                          {organizationsFor(request).map((organization) => (
+                            <option key={organization.id} value={organization.id}>
+                              {organization.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     ) : null}
                     <div className="mt-2.5 flex gap-2">
                       <button
