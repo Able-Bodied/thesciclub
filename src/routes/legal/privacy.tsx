@@ -50,6 +50,12 @@ export default function PrivacyPage() {
             says whether the address you gave is a member’s, has an invitation, or neither, so you
             know whether to sign in, create your account, or ask for an invite.
           </li>
+          <li>
+            <b>Added:</b> an organization’s org admins can notify its members, mentors and org
+            admins of one of its events, and remind them. They see, by name, who it went to, whether
+            each opened it, and whether each said Going or Interested. You can turn these
+            notifications off on Me.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 31, 2026">
@@ -467,7 +473,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>Org admins</b> see the same about the people they invited or connected, and counts
-            for their organization: members, how they joined, events, turnout and reviews.
+            for their organization: members, how they joined, events, turnout and reviews. They see
+            everyone in their organization by name, and, for an event they notified you of, whether
+            you opened the notification and whether you said Going or Interested.
           </li>
           <li>
             <b>Being connected.</b> An org admin or a trusted partner can connect two members. You
