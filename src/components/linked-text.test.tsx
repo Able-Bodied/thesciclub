@@ -35,6 +35,17 @@ describe('LinkedText', () => {
     expect(document.body).toHaveTextContent('Ask @maya.r, @hidden or @nobody. example.com/a');
   });
 
+  it('opens a link to the club in the app', () => {
+    render(
+      <MemoryRouter>
+        <LinkedText text="Friday Happy Hour https://thesciclub.com/e/happy-hour" />
+      </MemoryRouter>,
+    );
+    const link = screen.getByRole('link');
+    expect(link).toHaveAttribute('href', '/e/happy-hour');
+    expect(link).not.toHaveAttribute('target');
+  });
+
   it('draws plain text as it is', () => {
     render(<LinkedText text="No links here." />);
     expect(screen.queryByRole('link')).toBeNull();

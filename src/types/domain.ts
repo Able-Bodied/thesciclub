@@ -854,6 +854,8 @@ export interface EventFilters {
   cities: string[];
   /** Organization ids. */
   organizations: string[];
+  /** What kind of organization hosts it (organization-categories.ts), the owner, 2026-11-03. */
+  hostTypes: string[];
   /** Miles from home an event may be (an online one: its host); null for any distance. */
   withinMiles: number | null;
 }
@@ -867,5 +869,6 @@ export const EMPTY_EVENT_FILTERS: EventFilters = {
   tags: [],
   cities: [],
   organizations: [],
+  hostTypes: [],
   withinMiles: DEFAULT_WITHIN_MILES,
 };

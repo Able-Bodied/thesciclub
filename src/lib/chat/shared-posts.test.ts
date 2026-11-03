@@ -1,6 +1,11 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { sharedPostPath, sharePost, useSharedPosts } from '@/lib/chat/shared-posts';
+import {
+  sharedPostPath,
+  shareLinkInChat,
+  sharePost,
+  useSharedPosts,
+} from '@/lib/chat/shared-posts';
 
 const db = vi.hoisted(() => ({
   rpcs: [] as { name: string; args: Record<string, unknown> }[],
@@ -87,6 +92,20 @@ describe('sharing a post', () => {
     expect(await sharePost('p1', { threadId: 'grp' }, 'me', '')).toEqual({
       ok: false,
       error: "That post can't be shared.",
+    });
+  });
+});
+
+describe('sharing an event or an organization', () => {
+  it('sends its name and link after the member’s own line', async () => {
+    const item = { title: 'Friday Happy Hour', url: 'https://thesciclub.com/e/happy-hour' };
+    expect(await shareLinkInChat(item, { memberId: 'sam' }, 'me', ' Coming? ')).toEqual({
+      ok: true,
+      threadId: 'dm-new',
+    });
+    expect(db.inserts[0]).toMatchObject({
+      thread_id: 'dm-new',
+      body: 'Coming?\n\nFriday Happy Hour\nhttps://thesciclub.com/e/happy-hour',
     });
   });
 });

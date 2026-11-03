@@ -1,4 +1,5 @@
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
+import { TypeBadge } from '@/components/type-badge';
 import type { NearHomeStatus } from '@/lib/near-home';
 import { ORGANIZATION_CATEGORIES, tapTypeChip, typeChipOn } from '@/lib/organization-categories';
 import { ANY_SPORT_ID, ORGANIZATION_SPORTS } from '@/lib/organization-sports';
@@ -78,6 +79,7 @@ export function OrganizationFilterSheet({
           <FilterChip
             key={type.id}
             label={type.label}
+            leading={<TypeBadge type={type} />}
             on={typeChipOn(filters.hiddenTypes, type.id)}
             onClick={() => {
               onChange({ ...filters, hiddenTypes: tapTypeChip(filters.hiddenTypes, type.id) });

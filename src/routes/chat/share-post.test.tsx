@@ -75,6 +75,11 @@ vi.mock('@/lib/share-link', () => ({
     shared.links.push(link);
     return Promise.resolve(shared.outcome);
   },
+  canShareElsewhere: () => true,
+  copyLink: (url: string) => {
+    shared.links.push({ url, text: '' });
+    return Promise.resolve(true);
+  },
 }));
 
 const { SharePostButton } = await import('@/routes/chat/share-post');
@@ -296,12 +301,23 @@ describe('sharing a link outside the club', () => {
     renderButton();
     await userEvent.click(screen.getByRole('button', { name: /^Share / }));
     expect(screen.getByText(/Only members can open it/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Share a link outside the club' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Share elsewhere' }));
     expect(shared.links).toHaveLength(1);
     expect(shared.links[0]?.url).toBe(
       `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`,
     );
     expect(shared.links[0]?.text).not.toContain('cushion');
+    expect(await screen.findByText('Link copied.')).toBeInTheDocument();
+  });
+
+  it('copies the post’s link with Copy link', async () => {
+    shared.links = [];
+    renderButton();
+    await userEvent.click(screen.getByRole('button', { name: /^Share / }));
+    await userEvent.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(shared.links[0]?.url).toBe(
+      `${window.location.origin}/chat/rooms/general/topics/t1?post=p1`,
+    );
     expect(await screen.findByText('Link copied.')).toBeInTheDocument();
   });
 });

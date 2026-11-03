@@ -69,15 +69,21 @@ export function WelcomeScreen({
       ) : null}
       <div className="scrollbar-hidden flex flex-1 flex-col overflow-y-auto px-[22px] py-[clamp(12px,4dvh,32px)]">
         <div className="my-auto">
+          {/* The club's name above everything, SCI in gold (the owner,
+              2026-11-03). */}
+          <h1 className="mb-[clamp(12px,3dvh,24px)] text-center font-extrabold font-display text-[2.125rem] text-ink leading-[1.1] tracking-[-0.01em]">
+            The <span className="text-gold-dp">SCI</span> Club
+          </h1>
+
           <div className="flex justify-center">
             <ClubMark size={126} className="h-[clamp(96px,22dvh,196px)] w-auto" />
           </div>
 
-          <h1 className="mt-[clamp(16px,4dvh,36px)] text-center font-extrabold font-display text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
+          <h2 className="mt-[clamp(16px,4dvh,36px)] text-center font-extrabold font-display text-[1.875rem] text-ink leading-[1.14] tracking-[-0.01em]">
             Meet peers, mentors,
             <br />
             and find <em className="text-gold-dp not-italic">SCI events</em>.
-          </h1>
+          </h2>
 
           <p className="mt-4 text-center font-bold text-[0.9375rem] text-emphasis leading-[1.45]">
             An app built by people with SCI for people with SCI.

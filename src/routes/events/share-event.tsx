@@ -1,15 +1,68 @@
 import { Send } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { useAnnounce } from '@/lib/announce';
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { shareLinkInChat } from '@/lib/chat/shared-posts';
 import { publicEventUrl } from '@/lib/event-audience';
-import { shareLink } from '@/lib/share-link';
+import { siteOrigin } from '@/lib/site-origin';
+import { ShareSheet } from '@/routes/chat/share-post';
 
 /**
- * Share, small, across from Back at the top (the owner, 2026-11-02: "so
- * members can share to each other", "a subtle share icon like on topics"). The
- * phone's share sheet where there is one, else the link is copied. It is the
- * event's public link: a member who opens it is taken to the members' page
- * (public-event/page.tsx), anybody else sees the public one.
+ * Share, small, across from Back at the top of an event or an organization
+ * (the owner, 2026-11-02: "a subtle share icon like on topics"; 2026-11-03:
+ * "send it to a contact or group, copy a link, or share elsewhere"). It opens
+ * the sheet posts are shared with (share-post.tsx).
+ */
+function ShareButton({
+  label,
+  heading,
+  title,
+  url,
+  linkNote,
+}: {
+  label: string;
+  heading: string;
+  title: string;
+  url: string;
+  linkNote: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-label={label}
+        onClick={() => {
+          setOpen(true);
+        }}
+        className="-mt-2.5 -mr-2 inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full px-3 text-[#B9CADF] text-[0.8125rem] hover:bg-white/10"
+      >
+        <Send aria-hidden="true" className="h-[14px] w-[14px]" />
+        Share
+      </button>
+      {open
+        ? createPortal(
+            <ShareSheet
+              heading={heading}
+              what={title}
+              link={url}
+              linkNote={linkNote}
+              sendNote="It arrives as a message with its link."
+              send={(to, authorId, line) => shareLinkInChat({ title, url }, to, authorId, line)}
+              onClose={() => {
+                setOpen(false);
+              }}
+            />,
+            document.body,
+          )
+        : null}
+    </>
+  );
+}
+
+/**
+ * The event's public link: a member who opens it is taken to the members'
+ * page (public-event/page.tsx), anybody else sees the public one.
  */
 export function ShareEventButton({
   eventId,
@@ -20,45 +73,26 @@ export function ShareEventButton({
   shortLink: string | null;
   title: string;
 }) {
-  const announce = useAnnounce();
-  // Copied, said on the button itself, since nothing else on the screen changes.
-  const [said, setSaid] = useState<string | null>(null);
-  useEffect(() => {
-    if (!said) return;
-    const timer = setTimeout(() => {
-      setSaid(null);
-    }, 2000);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [said]);
-
-  async function share() {
-    const outcome = await shareLink({
-      url: publicEventUrl(eventId, shortLink),
-      title,
-      text: `${title}, on The SCI Club.`,
-    });
-    if (outcome === 'copied') {
-      setSaid('Link copied');
-      announce('Link copied.');
-    } else if (outcome === 'failed') {
-      setSaid('Could not share');
-      announce('Could not share the link.');
-    }
-  }
-
   return (
-    <button
-      type="button"
-      aria-label={said ?? 'Share this event'}
-      onClick={() => {
-        void share();
-      }}
-      className="-mt-2.5 -mr-2 inline-flex min-h-11 flex-none items-center gap-1.5 rounded-full px-3 text-[#B9CADF] text-[0.8125rem] hover:bg-white/10"
-    >
-      <Send aria-hidden="true" className="h-[14px] w-[14px]" />
-      {said ?? 'Share'}
-    </button>
+    <ShareButton
+      label="Share this event"
+      heading="Share event"
+      title={title}
+      url={publicEventUrl(eventId, shortLink)}
+      linkNote="Anyone can open it and see the event. Members see it in the club."
+    />
+  );
+}
+
+/** An organization's page is the club's: whoever opens it signs in first. */
+export function ShareOrganizationButton({ id, name }: { id: string; name: string }) {
+  return (
+    <ShareButton
+      label="Share this organization"
+      heading="Share organization"
+      title={name}
+      url={`${siteOrigin()}/events/organizations/${id}`}
+      linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
+    />
   );
 }

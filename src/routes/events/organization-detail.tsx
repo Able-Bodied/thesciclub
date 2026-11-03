@@ -31,6 +31,7 @@ import { OrganizationRsvpSetting } from '@/routes/events/organization-rsvp-setti
 import { OrganizationSummarySetting } from '@/routes/events/organization-summary-setting';
 import { PlaceContact } from '@/routes/events/place-contact';
 import { EventDescription } from '@/routes/events/rich-text';
+import { ShareOrganizationButton } from '@/routes/events/share-event';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 
 const UPCOMING_SHOWN = 5;
@@ -123,15 +124,19 @@ export default function OrganizationDetailPage() {
     <div className="flex-1 overflow-y-auto">
       <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
-          <button
-            type="button"
-            onClick={() => {
-              void navigate(back);
-            }}
-            className="block pb-3 text-[#B9CADF] text-[0.875rem]"
-          >
-            ← {backLabel(location)}
-          </button>
+          {/* Share across from Back, as on an event (the owner, 2026-11-03). */}
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                void navigate(back);
+              }}
+              className="block pb-3 text-[#B9CADF] text-[0.875rem]"
+            >
+              ← {backLabel(location)}
+            </button>
+            <ShareOrganizationButton id={organization.id} name={organization.name} />
+          </div>
 
           <div className="flex items-center gap-[13px]">
             <OrganizationBadge organization={organization} size="lg" />

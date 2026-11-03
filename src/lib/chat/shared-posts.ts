@@ -144,3 +144,33 @@ export async function sharePost(
     return { ok: false, error: describeThrown(e, 'The post was not shared.') };
   }
 }
+
+/**
+ * An event or an organization sent into a conversation (the owner,
+ * 2026-11-03): a message of its name and link, after the sender's own line.
+ * The link opens it in the app (linked-text.tsx).
+ */
+export async function shareLinkInChat(
+  item: { title: string; url: string },
+  target: ShareTarget,
+  authorId: string,
+  line: string,
+): Promise<ShareResult> {
+  try {
+    let threadId: string;
+    if ('memberId' in target) {
+      const opened = await openDirect(target.memberId);
+      if (!opened.ok) return opened;
+      threadId = opened.value;
+    } else {
+      threadId = target.threadId;
+    }
+    const words = line.trim();
+    const body = `${words ? `${words}\n\n` : ''}${item.title}\n${item.url}`;
+    const sent = await sendMessage(threadId, authorId, body);
+    if (!sent.ok) return sent;
+    return { ok: true, threadId };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'It was not shared.') };
+  }
+}

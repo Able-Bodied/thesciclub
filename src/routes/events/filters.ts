@@ -26,6 +26,8 @@ export interface ViewerEventState {
   rsvps: Map<string, 'interested' | 'going'>;
   /** Events within `withinMiles` of home, or null when that is not known. */
   nearby?: ReadonlySet<string> | null;
+  /** Organization id -> what kind it is, for Host org type. */
+  hostTypes?: ReadonlyMap<string, string>;
 }
 
 export const NO_VIEWER_STATE: ViewerEventState = { rsvps: new Map() };
@@ -249,6 +251,10 @@ export function filterEvents(
         return false;
       }
     }
+    if (filters.hostTypes.length > 0) {
+      const type = event.organizationId ? viewer.hostTypes?.get(event.organizationId) : undefined;
+      if (!type || !filters.hostTypes.includes(type)) return false;
+    }
     if (filters.tags.length > 0) {
       if (!event.tags.some((tag) => filters.tags.includes(tag.slug))) return false;
     }
@@ -285,6 +291,7 @@ export function activeFilterCount(filters: EventFilters): number {
     filters.tags.length +
     filters.cities.length +
     filters.organizations.length +
+    filters.hostTypes.length +
     // The window and the distance are filters too, but only when not the default.
     (filters.when === 'next30' ? 0 : 1) +
     (filters.withinMiles === DEFAULT_WITHIN_MILES ? 0 : 1)
@@ -292,11 +299,9 @@ export function activeFilterCount(filters: EventFilters): number {
 }
 
 /** Toggle a value in one of the list-shaped filters. */
-export function toggleFilter<K extends 'formats' | 'tags' | 'cities' | 'organizations'>(
-  filters: EventFilters,
-  key: K,
-  value: EventFilters[K][number],
-): EventFilters {
+export function toggleFilter<
+  K extends 'formats' | 'tags' | 'cities' | 'organizations' | 'hostTypes',
+>(filters: EventFilters, key: K, value: EventFilters[K][number]): EventFilters {
   const current = filters[key] as string[];
   const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value];
   return { ...filters, [key]: next };
