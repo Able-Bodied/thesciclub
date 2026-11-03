@@ -1,6 +1,22 @@
 import { Link } from 'react-router-dom';
 import { findLinks } from '@/lib/links';
 import { splitMentions, useMentionedMembers } from '@/lib/mentions';
+import { SITE_ORIGIN } from '@/lib/site-origin';
+
+/**
+ * The path of a link to the club itself, which opens in the app rather than a
+ * new tab (the owner, 2026-11-03: an event or organization shared in a chat).
+ * Null for anywhere else.
+ */
+export function clubPath(href: string): string | null {
+  try {
+    const url = new URL(href);
+    const ours = url.origin === SITE_ORIGIN || url.origin === window.location.origin;
+    return ours ? `${url.pathname}${url.search}${url.hash}` : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Text somebody wrote, with its web addresses as links.
@@ -43,6 +59,15 @@ export function LinkedText({ text }: { text: string }) {
               );
             })}
           </span>
+        ) : clubPath(piece.href) !== null ? (
+          <Link
+            // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional and never reorder
+            key={index}
+            to={clubPath(piece.href) ?? '/'}
+            className="font-semibold underline decoration-1 underline-offset-2 [overflow-wrap:anywhere]"
+          >
+            {piece.label}
+          </Link>
         ) : (
           <a
             // biome-ignore lint/suspicious/noArrayIndexKey: pieces are positional and never reorder

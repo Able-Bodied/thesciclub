@@ -5,6 +5,21 @@
  */
 export type ShareOutcome = 'shared' | 'copied' | 'cancelled' | 'failed';
 
+/** Whether this device has a share sheet to hand a link to. */
+export function canShareElsewhere(): boolean {
+  return typeof navigator !== 'undefined' && typeof navigator.share === 'function';
+}
+
+/** The link onto the clipboard; false where that was refused. */
+export async function copyLink(url: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function shareLink(link: {
   url: string;
   title: string;

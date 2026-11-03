@@ -1,4 +1,4 @@
-import { Link2, Send, X } from 'lucide-react';
+import { Copy, Send, Share, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
@@ -6,13 +6,13 @@ import { GroupAvatar, MemberAvatar } from '@/components/member-avatar';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { useChatAuthors } from '@/lib/chat/authors';
-import { type ShareTarget, sharePost } from '@/lib/chat/shared-posts';
+import { type ShareResult, type ShareTarget, sharePost } from '@/lib/chat/shared-posts';
 import { threadTitle, useMyThreads } from '@/lib/chat/threads';
 import type { ChatThread } from '@/lib/chat/types';
 import { useDialogFocus } from '@/lib/dialog-focus';
 import { markdownToPlain } from '@/lib/markdown';
 import { useBrowseMembers } from '@/lib/members';
-import { shareLink } from '@/lib/share-link';
+import { canShareElsewhere, copyLink, shareLink } from '@/lib/share-link';
 import { siteOrigin } from '@/lib/site-origin';
 import { excerpt } from '@/routes/chat/reaction-bar';
 
@@ -61,10 +61,13 @@ export function SharePostButton({
       </button>
       {open
         ? createPortal(
-            <SharePostSheet
-              postId={postId}
+            <ShareSheet
+              heading="Share post"
               what={what}
-              link={link}
+              {...(link ? { link } : {})}
+              linkNote="Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then sees it."
+              sendNote="Only members who can read the post will see it."
+              send={(to, authorId, line) => sharePost(postId, to, authorId, line)}
               onClose={() => {
                 setOpen(false);
               }}
@@ -91,64 +94,97 @@ function targetKey(target: ShareTarget): string {
 }
 
 /**
- * A link to send outside the club (the owner, 2026-10-28): the phone's share
- * sheet, or copied where there is none. It carries no words of the post:
- * whoever opens it signs in, or asks for an invite, and then lands on it
- * (sign-in-destination.ts keeps where they were going).
+ * The link, for outside the club (the owner, 2026-10-28), as two buttons
+ * (2026-11-03: "copy a link, or share elsewhere"): Copy link, and the phone's
+ * share sheet where there is one.
  */
-function ShareOutside({ path }: { path: string }) {
+function ShareOutside({ link, note }: { link: string; note: string }) {
   const announce = useAnnounce();
-  const [note, setNote] = useState<string | null>(null);
-  const url = `${siteOrigin()}${path}`;
+  const [said, setSaid] = useState<string | null>(null);
+  const url = link.startsWith('/') ? `${siteOrigin()}${link}` : link;
 
-  async function share() {
+  async function copy() {
+    if (await copyLink(url)) {
+      setSaid('Link copied.');
+      announce('Link copied.');
+    } else {
+      setSaid(`Could not copy it. The link is ${url}`);
+    }
+  }
+
+  async function elsewhere() {
     const outcome = await shareLink({
       url,
       title: 'The SCI Club',
       text: 'Have a look at this on The SCI Club.',
     });
     if (outcome === 'copied') {
-      setNote('Link copied.');
+      setSaid('Link copied.');
       announce('Link copied.');
     } else if (outcome === 'failed') {
-      setNote(`Could not share it. The link is ${url}`);
+      setSaid(`Could not share it. The link is ${url}`);
     }
   }
 
+  const button =
+    'flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border-[1.6px] border-emphasis bg-paper px-3 font-bold text-[0.9375rem] text-emphasis hover:bg-tint';
   return (
     <div className="mt-4 rounded-[14px] bg-tint p-3">
-      <button
-        type="button"
-        onClick={() => {
-          void share();
-        }}
-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-[1.6px] border-emphasis bg-paper px-4 font-bold text-[0.9375rem] text-emphasis hover:bg-tint"
-      >
-        <Link2 aria-hidden="true" className="h-4 w-4" />
-        Share a link outside the club
-      </button>
-      <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">
-        Only members can open it. Anyone else is asked to sign in, or ask for an invite, and then
-        sees it.
-      </p>
-      {note ? (
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            void copy();
+          }}
+          className={button}
+        >
+          <Copy aria-hidden="true" className="h-4 w-4" />
+          Copy link
+        </button>
+        {canShareElsewhere() ? (
+          <button
+            type="button"
+            onClick={() => {
+              void elsewhere();
+            }}
+            className={button}
+          >
+            <Share aria-hidden="true" className="h-4 w-4" />
+            Share elsewhere
+          </button>
+        ) : null}
+      </div>
+      <p className="mt-2 text-[0.8125rem] text-ink2 leading-[1.45]">{note}</p>
+      {said ? (
         <p role="status" className="mt-1.5 break-all text-[0.8125rem] text-ink leading-[1.45]">
-          {note}
+          {said}
         </p>
       ) : null}
     </div>
   );
 }
 
-function SharePostSheet({
-  postId,
+/**
+ * The sheet itself, for a post, an event or an organization (the owner,
+ * 2026-11-03: "send it to a contact or group, copy a link, or share
+ * elsewhere"). `send` puts it into the conversation chosen.
+ */
+export function ShareSheet({
+  heading: title,
   what,
   link,
+  linkNote,
+  sendNote,
+  send: deliver,
   onClose,
 }: {
-  postId: string;
+  heading: string;
   what: string;
-  link: string | undefined;
+  /** A path in the club or a whole address, for Copy link and Share elsewhere. */
+  link?: string;
+  linkNote: string;
+  sendNote: string;
+  send: (to: ShareTarget, authorId: string, line: string) => Promise<ShareResult>;
   onClose: () => void;
 }) {
   const account = useAccount();
@@ -200,7 +236,7 @@ function SharePostSheet({
     setFailure(null);
     const to = target;
     const name = targetName;
-    void sharePost(postId, to.value, memberId, line)
+    void deliver(to.value, memberId, line)
       .then((result) => {
         if (!result.ok) {
           setFailure(result.error);
@@ -241,7 +277,7 @@ function SharePostSheet({
               tabIndex={-1}
               className="font-bold font-head text-lg outline-none"
             >
-              Share post
+              {title}
             </h2>
             <p className="mt-0.5 text-[0.875rem] text-grey leading-snug [overflow-wrap:anywhere]">
               {what}
@@ -257,7 +293,7 @@ function SharePostSheet({
           </button>
         </div>
 
-        {link && !sent ? <ShareOutside path={link} /> : null}
+        {link && !sent ? <ShareOutside link={link} note={linkNote} /> : null}
 
         {sent ? (
           <div className="mt-4">
@@ -315,9 +351,7 @@ function SharePostSheet({
             />
             <fieldset>
               <legend className="font-bold font-head text-[0.875rem] text-ink">Send to</legend>
-              <p className="mt-0.5 text-[0.78125rem] text-grey leading-[1.45]">
-                Only members who can read the post will see it.
-              </p>
+              <p className="mt-0.5 text-[0.78125rem] text-grey leading-[1.45]">{sendNote}</p>
               {threads.loading ? (
                 <p role="status" className="py-4 text-[0.875rem] text-grey">
                   Loading your conversations…
