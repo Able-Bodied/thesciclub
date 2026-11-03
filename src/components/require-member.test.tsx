@@ -109,7 +109,16 @@ describe('RequireMember', () => {
   it('names whoever vouched for them, as the people to ask', () => {
     account.current = { status: 'suspended', userId: 'u1', isAdmin: false, displayName: 'Dana' };
     renderGuarded();
-    expect(screen.getByText(/NorCal SCI/)).toBeInTheDocument();
+    expect(screen.getByText(/NorCal SCI/)).toHaveTextContent(
+      'NorCal SCI invited you to the club. They are the people to ask about it.',
+    );
+  });
+
+  // Phone sign-in went 2026-10-10: nothing here may talk of a number.
+  it('says nothing about a phone number', () => {
+    account.current = { status: 'suspended', userId: 'u1', isAdmin: false, displayName: 'Dana' };
+    renderGuarded();
+    expect(document.body.textContent).not.toMatch(/number|phone/i);
   });
 
   it('sends a signed-out visitor to the welcome screen', () => {

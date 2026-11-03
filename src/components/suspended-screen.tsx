@@ -53,7 +53,7 @@ export function SuspendedScreen() {
         {invitedBy ? (
           <div className="mt-4 rounded-[17px] border border-line bg-paper px-3.5 py-3.5">
             <p className="text-[0.78125rem] text-grey leading-[1.5]">
-              {invitedBy} put your number on the club's list. They are the people to ask about it.
+              {invitedBy} invited you to the club. They are the people to ask about it.
             </p>
           </div>
         ) : null}
