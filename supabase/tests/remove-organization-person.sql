@@ -31,11 +31,11 @@ values ('bbbbbbbb-1104-0000-0000-000000000001', 'RMVX', 'Probe Remove Org', fals
 insert into public.organization_representatives (organization_id, member_id) values
   ('bbbbbbbb-1104-0000-0000-000000000001', 'aaaaaaaa-1104-0000-0000-00000000000a'),
   ('bbbbbbbb-1104-0000-0000-000000000001', 'aaaaaaaa-1104-0000-0000-00000000000b');
-insert into public.organization_mentors (organization_id, member_id) values
-  ('bbbbbbbb-1104-0000-0000-000000000001', 'aaaaaaaa-1104-0000-0000-00000000000c');
 insert into public.organization_members (organization_id, member_id, joined_via) values
   ('bbbbbbbb-1104-0000-0000-000000000001', 'aaaaaaaa-1104-0000-0000-00000000000c', 'join'),
   ('bbbbbbbb-1104-0000-0000-000000000001', 'aaaaaaaa-1104-0000-0000-00000000000d', 'join');
+insert into public.organization_mentors (organization_id, member_id) values
+  ('bbbbbbbb-1104-0000-0000-000000000001', 'aaaaaaaa-1104-0000-0000-00000000000c');
 
 create function pg_temp.check_true(ok boolean, label text) returns void language plpgsql as $$
 begin if ok is distinct from true then raise exception 'FAIL: %', label; end if; raise notice 'PASS: %', label; end $$;

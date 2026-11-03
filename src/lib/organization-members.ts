@@ -17,7 +17,7 @@ import { getSupabase } from '@/lib/supabase';
  * then pressing Join asks, and they answer it.
  */
 
-export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in' | 'org_admin' | 'added';
+export type JoinedVia = 'join' | 'invite' | 'code' | 'check_in' | 'org_admin' | 'added' | 'mentor';
 
 export const JOINED_VIA_LABEL: Record<JoinedVia, string> = {
   join: 'Pressed Join',
@@ -26,6 +26,7 @@ export const JOINED_VIA_LABEL: Record<JoinedVia, string> = {
   check_in: 'Checked in',
   org_admin: 'Org admin',
   added: 'Added',
+  mentor: 'Mentor',
 };
 
 /** Why this member was declined, if they were. */

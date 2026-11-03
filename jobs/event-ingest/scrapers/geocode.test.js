@@ -120,6 +120,13 @@ describe('lookUpSettlement', () => {
     }
   });
 
+  it('keeps a county when the city given is one, as Use my location gives outside a town', async () => {
+    for (const query of ['Douglas County, CO', 'Orleans Parish, LA']) {
+      answer(hit('county'));
+      expect((await lookUpSettlement(query))?.settlement).toBe('county');
+    }
+  });
+
   it('is nothing for a building, a road or a county', async () => {
     for (const type of [
       'building',

@@ -167,6 +167,8 @@ const SETTLEMENTS = new Set([
   'neighbourhood',
 ]);
 
+const COUNTY = /\b(county|parish)\s*$/i;
+
 /**
  * The middle of a city, town or village: Nominatim's settlement search, and
  * only a settlement-level answer. Anything else is null, so a "city" typed as
@@ -200,7 +202,10 @@ export async function lookUpSettlement(query) {
     throw new RateLimited(`Nominatim answered ${res.status}`);
   if (!res.ok) throw new Unreachable(`Nominatim answered ${res.status}`);
   const top = results?.[0];
-  if (!top || !SETTLEMENTS.has(top.addresstype)) return null;
+  // A county only when the member's "city" is one: Use my location gives the
+  // county outside a town (src/lib/geocode.ts), placed at its middle.
+  const county = top?.addresstype === 'county' && COUNTY.test(trimmed.split(',')[0]);
+  if (!top || !(SETTLEMENTS.has(top.addresstype) || county)) return null;
   return {
     state: /^US-([A-Z]{2})$/.exec(top.address?.['ISO3166-2-lvl4'] ?? '')?.[1] ?? null,
     latitude: Number(top.lat),
