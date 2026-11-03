@@ -151,6 +151,8 @@ describe('an organization’s places', () => {
       city: 'Berkeley',
       state: 'CA',
       postalCode: '94703',
+      note: null,
+      url: null,
     });
     // Read before 20261028700000, or none given.
     expect(read.places?.[1]?.postalCode).toBeNull();
@@ -185,9 +187,16 @@ describe('the directory before ZIP codes are in the database', () => {
     });
     expect(result.current.error).toBeNull();
     expect(result.current.organizations[0]?.places?.[0]?.postalCode).toBeNull();
+    // With notes, then without notes, then without ZIP codes.
     expect(directory.asked.map((columns) => columns.includes('postal_code'))).toEqual([
+      true,
       true,
       false,
     ]);
+  });
+
+  it('asks for a place’s contact note first, and without it after', () => {
+    expect(directory.asked[0]).toContain('note, url)');
+    expect(directory.asked[1]).not.toContain('note');
   });
 });

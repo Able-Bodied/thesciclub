@@ -35,13 +35,16 @@ interface PlaceRow {
   state: string;
   /** Absent before 20261028700000. */
   postal_code?: string | null;
+  /** Absent before 20261103030000. */
+  note?: string | null;
+  url?: string | null;
 }
 
 /** Main place first. */
 export function toOrganizationPlaces(rows: PlaceRow[] | null | undefined): OrganizationPlace[] {
   return [...(rows ?? [])]
     .sort((a, b) => a.position - b.position)
-    .map(({ id, position, label, address, city, state, postal_code }) => ({
+    .map(({ id, position, label, address, city, state, postal_code, note, url }) => ({
       id,
       position,
       label,
@@ -49,6 +52,8 @@ export function toOrganizationPlaces(rows: PlaceRow[] | null | undefined): Organ
       city,
       state,
       postalCode: postal_code ?? null,
+      note: note ?? null,
+      url: url ?? null,
     }));
 }
 
@@ -137,12 +142,14 @@ onForgetSharedReads(forgetDirectory);
 onCalendarChanged(forgetDirectory);
 
 const DIRECTORY =
-  'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, summary, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code)';
+  'id, short_code, name, city, description, tags, can_invite, logo_path, state, category, summary, joins_need_approval, collects_rsvps, anonymous_reviews, organization_places(id, position, label, address, city, state, postal_code, note, url)';
+/** Before 20261103030000: no contact note or page for a place. */
+const DIRECTORY_WITHOUT_NOTES = DIRECTORY.replace(', note, url)', ')');
 /** Before 20261028700000: no ZIP codes. */
 const DIRECTORY_WITHOUT_ZIP =
   'id, short_code, name, city, description, tags, can_invite, logo_path, state, organization_places(id, position, label, address, city, state)';
 
-function readDirectory(columns: typeof DIRECTORY | typeof DIRECTORY_WITHOUT_ZIP) {
+function readDirectory(columns: string) {
   return readPages<OrganizationRow>(
     (from, to) =>
       // Cast because the list is longer than supabase-js's types can parse.
@@ -164,7 +171,8 @@ function readOrganizations(): Promise<OrganizationsRead> {
   const read = (async (): Promise<OrganizationsRead> => {
     try {
       let { data, error } = await readDirectory(DIRECTORY);
-      // Until 20261028700000 is live, the directory is read without ZIP codes.
+      // Until 20261103030000, and before it 20261028700000, is live: without them.
+      if (error?.code === '42703') ({ data, error } = await readDirectory(DIRECTORY_WITHOUT_NOTES));
       if (error?.code === '42703') ({ data, error } = await readDirectory(DIRECTORY_WITHOUT_ZIP));
       if (error) {
         return {

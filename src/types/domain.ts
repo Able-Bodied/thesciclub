@@ -618,6 +618,10 @@ export interface OrganizationPlace {
   state: string;
   /** 12345 or 12345-6789; null when not given (20261028700000). */
   postalCode: string | null;
+  /** Who to contact there, as its own page says (20261103030000). */
+  note?: string | null;
+  /** Its own page. */
+  url?: string | null;
 }
 
 /* ------------------------------------------------------------------ browse */

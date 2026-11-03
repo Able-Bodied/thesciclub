@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { EventCard } from '@/routes/events/event-card';
 import { dateWindowRange, filterEvents } from '@/routes/events/filters';
 import { hasOpenGrant, OrganizationRow } from '@/routes/events/organization-list';
+import { PlaceContact } from '@/routes/events/place-contact';
 import {
   addLayers,
   applyFocus,
@@ -1424,6 +1425,15 @@ function OrganizationRows({
             void navigate(`/events/organizations/${id}`, { state: backState });
           }}
         />
+        {here
+          ? (organization.places ?? [])
+              .filter((place) => here.has(place.id) && Boolean(place.note ?? place.url))
+              .map((place) => (
+                <div key={place.id} className="-mt-1 mb-3 px-1">
+                  <PlaceContact place={place} />
+                </div>
+              ))
+          : null}
         {others.length > 0 && onGoTo ? (
           <AlsoIn organization={organization} places={others} onGoTo={onGoTo} />
         ) : null}

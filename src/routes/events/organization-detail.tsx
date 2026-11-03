@@ -29,6 +29,7 @@ import { OrganizationReviewSetting } from '@/routes/events/organization-review-s
 import { OrganizationReviews } from '@/routes/events/organization-reviews';
 import { OrganizationRsvpSetting } from '@/routes/events/organization-rsvp-setting';
 import { OrganizationSummarySetting } from '@/routes/events/organization-summary-setting';
+import { PlaceContact } from '@/routes/events/place-contact';
 import { EventDescription } from '@/routes/events/rich-text';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 
@@ -198,6 +199,24 @@ export default function OrganizationDetailPage() {
           text={organization.description}
           className="mt-2.5 text-[0.8875rem] text-ink leading-[1.52] [&_a]:font-semibold [&_a]:text-emphasis [&_a]:underline [&_a]:[overflow-wrap:anywhere] [&_li]:ml-5 [&_li]:mt-1 [&_ol]:mt-2 [&_ol]:list-decimal [&_p:first-child]:mt-0 [&_p]:mt-2.5 [&_strong]:font-bold [&_ul]:mt-2 [&_ul]:list-disc"
         />
+
+        {(organization.places ?? []).some((place) => Boolean(place.note ?? place.url)) ? (
+          <section aria-labelledby="org-locations-heading" className="mt-5">
+            <h2
+              id="org-locations-heading"
+              className="mb-2 font-extrabold font-head text-[0.75rem] text-grey uppercase tracking-[0.13em]"
+            >
+              Locations and who to contact
+            </h2>
+            <div className="space-y-2">
+              {(organization.places ?? [])
+                .filter((place) => Boolean(place.note ?? place.url))
+                .map((place) => (
+                  <PlaceContact key={place.id} place={place} />
+                ))}
+            </div>
+          </section>
+        ) : null}
 
         <OrganizationGrants
           grants={grants}
