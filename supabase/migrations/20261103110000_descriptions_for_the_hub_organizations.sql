@@ -4,10 +4,12 @@
 -- The owner, 2026-11-03: in the style of the others, from each organization's
 -- own site only, summarized and never added to. Read 2026-11-03 (its home page
 -- and up to two of its About or Programs pages); every quote and number was
--- checked against that text. 190 of the 203: the rest showed a bot check, an
--- error or nothing about what they do, and keep their link. Only where the
--- description is still the import's link and there is no card line, so an
--- org admin's own words are never replaced.
+-- checked against that text. Twelve whose sites would not open here were read
+-- in the owner's browser, one of them (Connecticut Spokebenders) from its own
+-- Facebook and Instagram. 202 of the 203: UCO Center of Adaptive Sports has
+-- no page of its own and keeps its link. Only where the description is still
+-- the import's link and there is no card line, so an org admin's own words
+-- are never replaced.
 -- ============================================================================
 
 update public.organizations o
@@ -39,6 +41,14 @@ update public.organizations o
 Founded in May 2024 as a California nonprofit.
 
 [ablebodied.org](https://ablebodied.org)'),
+  ('Bay Area Wheelchair Tennis',
+   '[bayareawheelchairtennis.wordpress.com](https://bayareawheelchairtennis.wordpress.com/)',
+   'Wheelchair tennis practice on Saturday mornings in San Jose',
+   'Bay Area Wheelchair Tennis''s mission "is to promote wheelchair tennis by providing integrated play opportunities, increasing public awareness, and supporting wheelchair athletes and the community."
+
+- Practice on Saturdays from 10AM to 12 Noon at the Independence High School tennis courts in San Jose
+
+[bayareawheelchairtennis.wordpress.com](https://bayareawheelchairtennis.wordpress.com/)'),
   ('United States Driving for the Disabled',
    '[usdfd.org](https://usdfd.org/)',
    'Therapeutic carriage driving and support for para-equestrian drivers',
@@ -146,6 +156,17 @@ Launched in 2022 in Orange County.
 Started in 2007 in Jacksonville, North Carolina; a national nonprofit since 2022.
 
 [righthandangels.org](https://www.righthandangels.org/)'),
+  ('Las Vegas Raiders Wheelchair Football Team',
+   '[lasvegasnevada.gov](https://www.lasvegasnevada.gov/Government/Departments/Parks-Recreation/Adaptive-Recreation)',
+   'The City of Las Vegas''s wheelchair football team, with wheelchairs provided',
+   'The Las Vegas Raiders are the City of Las Vegas''s 14-member competitive team in the USA Wheelchair Football League, part of its Adaptive Recreation program, which "provides opportunities for youth and adults of all abilities."
+
+- Wheelchair football tryouts, practices, camps and clinics
+- Practices on Mondays and Wednesdays, 6 to 8 p.m., at Dula Community Center
+- Appropriate wheelchairs are provided
+- Military veterans on the team and in the wider program
+
+[lasvegasnevada.gov](https://www.lasvegasnevada.gov/Government/Departments/Parks-Recreation/Adaptive-Recreation)'),
   ('Trail Access Project',
    '[trailaccessproject.org](https://www.trailaccessproject.org)',
    'Adaptive hiking, trail wheelchairs and handcycling in Southern Nevada',
@@ -1269,6 +1290,18 @@ Based in Brookfield, Wisconsin.
 Based in Downers Grove, Illinois.
 
 [seaspar.org](https://www.seaspar.org/adapted-sports/)'),
+  ('Baton Rouge Wheelchair Tennis Association',
+   '[brwta.org](https://brwta.org/)',
+   'All-volunteer group promoting wheelchair tennis around Baton Rouge',
+   'The Baton Rouge Wheelchair Tennis Association is "a non-profit, all-volunteer 501c3 organization dedicated to promoting the sport of wheelchair tennis" in the Greater Baton Rouge Area.
+
+- **Cajun Classic:** one of the largest ITF wheelchair tennis tournaments in the world
+- **Hallowheel:** fundraising tournaments in tennis and pickleball for the Cajun Classic
+- Beginner''s adapted tennis carnivals
+
+It began in 1983 in Natchez, MS, and is based in the Greater Baton Rouge Area.
+
+[brwta.org](https://brwta.org/)'),
   ('Great Lakes Adaptive Sports Association (GLASA)',
    '[glasa.org](https://www.glasa.org/)',
    'More than 20 adaptive sports for ages 3 to 75+ with physical or visual disabilities',
@@ -1498,6 +1531,19 @@ Founded in 2018 by a group of parents, based in Brighton, Michigan.
 - Wheelchair accessible vehicle giveaways
 
 [aimeecopelandfoundation.org](https://aimeecopelandfoundation.org/)'),
+  ('Youth Challenge',
+   '[youthchallengesports.com](https://www.youthchallengesports.com)',
+   'Free adapted sports, recreation and art for young people, with teen volunteers',
+   'Youth Challenge brings kids with and without physical disabilities together "for free adapted sports, recreation, and art activities." It serves over 150 young people with physical disabilities, including cerebral palsy, spinal cord injuries and visual impairments, each paired 1:1 with a trained teen volunteer.
+
+- Sports including pickleball, basketball, football, soccer, swimming, boccia, bowling, skiing and weightlifting
+- Outdoor programs: archery, hiking, kayaking, handcycling, gardening and nature
+- Art and life-skills programs, all at no cost to families
+- Programs for adults too
+
+Founded in 1976, based in Westlake, Ohio.
+
+[youthchallengesports.com](https://youthchallengesports.com/)'),
   ('Adaptive Sports Ohio (ASO)',
    '[adaptivesportsohio.org](https://www.adaptivesportsohio.org)',
    'Community and school adaptive sports for people with physical disabilities in Ohio',
@@ -1512,6 +1558,19 @@ Founded in 2018 by a group of parents, based in Brighton, Michigan.
 Headquartered in Wooster, with satellite offices in Warrensville Heights and Austintown.
 
 [adaptivesportsohio.org](https://www.adaptivesportsohio.org)'),
+  ('Charleston Sled Hockey',
+   '[charlestonwvsledhockey.com](https://charlestonwvsledhockey.com/)',
+   'Noncompetitive sled hockey for youth and adults, with gear loaned',
+   'The Charleston Thunder, a nonprofit, offers sled hockey "to youth and adults who are unable to skate in a standing position due to a physical disability." It is a non-travel, noncompetitive team that practices at the South Charleston Memorial Ice Arena.
+
+- Each player is loaned a sled, sticks, a wheeled bag and protective gear
+- The only cost to players is the annual USA Hockey fee
+- Weekly hour-long practices, late September or early October through March
+- Adult and teen volunteers with hockey experience help each week
+
+Formed in 2015, under USA Disabled Hockey.
+
+[charlestonwvsledhockey.com](https://charlestonwvsledhockey.com/)'),
   ('FAAST',
    '[faast.org](https://faast.org/)',
    'Assistive technology loans, demos and training for Floridians with disabilities',
@@ -1784,6 +1843,18 @@ Based in Altamonte Springs.
 - Alumni have gone on to play in college and compete with Team USA
 
 [fairfaxfalcons.org](https://fairfaxfalcons.org/)'),
+  ('Central Florida Tri Club',
+   '[cfltriclub.wordpress.com](https://cfltriclub.wordpress.com/)',
+   'Triathlon club welcoming beginners, athletes with disabilities and neurodiverse athletes',
+   'CFL Tri Club "brings athletes together through swimming, cycling, running, and community." It welcomes beginners, experienced athletes, athletes with disabilities and neurodiverse athletes.
+
+- Coaching in swimming, cycling and running
+- A program for neurodiverse athletes since 2018
+- **WITS (Warriors in Training):** a youth, junior and neurodiverse program
+
+Founded by Hector Torres over 20 years ago.
+
+[cfltriclub.com](https://cfltriclub.com/)'),
   ('Sheltering Arms',
    '[shelteringarms.com](https://www.shelteringarms.com/)',
    'Adaptive fitness, wellness classes and day recreation for people with disabilities',
@@ -1875,6 +1946,17 @@ Based in Baltimore.
 Based at the Annapolis Adaptive Boating Center, which opened in 2023.
 
 [crabsailing.org](https://crabsailing.org/)'),
+  ('Yes U Can USA',
+   '[teamusa.org](https://www.teamusa.org)',
+   'Free assisted exercise, swimming and recreation for people with disabilities',
+   'Yes U Can USA, a 501(c)(3) nonprofit, works "to increase inclusion, awareness and access to health, recreation and physical fitness opportunities for people with limited mobility and disabilities." Its participants come from Delaware, Pennsylvania and Maryland.
+
+- One-on-one exercise sessions, an hour twice a week, at no fee
+- Staff-assisted group and individual exercise, swimming and weight training
+- Staff-assisted outdoor recreation
+- Healthy-eating workshops
+
+[yesucanusa.org](https://yesucanusa.org/)'),
   ('Nemours, Al DuPont Hospital for Children',
    '[nemours.org](https://www.nemours.org/locations/wilmington-ai-dupont-childrens-hospital.html)',
    'Children''s hospital in Wilmington, Delaware, with rehab and a wheelchair seating clinic',
@@ -1898,6 +1980,16 @@ Based at the Annapolis Adaptive Boating Center, which opened in 2023.
 - Appearances at community events such as the Abilities Expo and the DCIU Recreation and Leisure Fair
 
 [philadelphiapowerplay.com](https://www.philadelphiapowerplay.com/)'),
+  ('Katie’s Komets',
+   '[katieskomets.org](https://katieskomets.org/index.html)',
+   'Youth wheelchair basketball in Philadelphia and nearby',
+   'Katie''s Komets is "a co-ed wheelchair basketball team for youth with lower limb impairments from Philadelphia and surrounding areas." It strives "to create a positive atmosphere where we can foster independence, self-confidence, and emotional and social well-being."
+
+- **Junior Prep Division:** players age 13 and under, with an 8.5-foot basket
+- **Junior 10 foot (Varsity) Division:** full-size courts and hoops, with advanced skills
+- Always looking for new players
+
+[katieskomets.org](https://www.katieskomets.org/)'),
   ('Specialized Outdoor Adaptive Recreation',
    '[soarexperiences.org](https://soarexperiences.org/)',
    'Adaptive hiking and outdoor adventures for people with limited mobility in NY and CT',
@@ -1953,6 +2045,17 @@ Founded on September 11, 2019 by two-time Paralympian Jacqui Kapinowski, based i
 The hospital was founded in 1900 and is in West Haverstraw, New York.
 
 [helenhayeshospital.org](https://helenhayeshospital.org/adapted-sports-recreation/)'),
+  ('Palm Beach County Parks and Recreation Department',
+   '[discover.pbcgov.org](https://discover.pbcgov.org/parks/Pages/Therapeutic-Recreation.aspx)',
+   'Palm Beach County''s adapted sports, rugby team and beach wheelchairs',
+   'Palm Beach County Parks and Recreation''s Therapeutic Recreation is "committed to enhancing the quality of life for people with disabilities and their families." Its Therapeutic Recreation Complex runs adapted sports for youth and adults with physical and visual impairments.
+
+- **WWAR Panthers:** a wheelchair rugby team that travels to games and tournaments, ages 16+
+- Lacrosse, cycling and boccia, with sports wheelchairs and handcycles available
+- Beach wheelchairs and mobility mats at several county beach parks
+- Training, resource and referral services
+
+[discover.pbc.gov](https://discover.pbc.gov/parks/Pages/Therapeutic-Recreation.aspx)'),
   ('North New Jersey Navigators',
    '[navigatorsadaptivesports.com](https://www.navigatorsadaptivesports.com/)',
    'Multi-sport adaptive club for youth and adults with disabilities in Bayonne, NJ',
@@ -2120,6 +2223,18 @@ Founded in 2005 by Alicia Kershaw and a group of volunteers.
 - Other tracks include Palmer, Thompson, Circuit of the Americas, Harris Hill and Homestead-Miami
 
 [justhands.org](https://www.justhands.org/performance-driving)'),
+  ('Long Island Sled Hockey',
+   '[lisledhockey.org](https://lisledhockey.org/bios-profiles)',
+   'Long Island''s sled hockey team, at no cost to its athletes',
+   'The Long Island Sled Hockey RoughRiders "provide inclusive, competitive and recreational hockey opportunities for individuals with physical, developmental and intellectual disabilities." The team welcomes teen-to-adult players of all genders and ability levels.
+
+- Adaptive gear and sleds, coaching and ice time, at no cost to athletes
+- Tournament travel, lodging and meals covered
+- Competitive and recreational play in tournaments across North America
+
+Running for over two decades on Long Island, NY.
+
+[lisledhockey.org](https://lisledhockey.org/)'),
   ('Green Mountain Adaptive Sports',
    '[greenmtnadaptive.org](https://greenmtnadaptive.org/)',
    'Adaptive sports access and grants for Vermonters with disabilities',
@@ -2134,6 +2249,12 @@ Founded in 2005 by Alicia Kershaw and a group of volunteers.
 Founded in 2010, based in Vermont.
 
 [greenmtnadaptive.org](https://greenmtnadaptive.org/)'),
+  ('Connecticut Spokebenders',
+   '[c316los.wixsite.com](https://c316los.wixsite.com/mysite)',
+   'Wheelchair basketball team in Connecticut',
+   'Connecticut Spokebenders calls itself "CT''s premiere wheelchair basketball team": an amateur team and nonprofit in Meriden, Connecticut.
+
+[facebook.com/ctspokebenders](https://www.facebook.com/ctspokebenders)'),
   ('Gaylord Sports Association',
    '[gaylord.org](https://www.gaylord.org/sports)',
    'Adaptive sports, recreation and fitness at Gaylord in Wallingford, Connecticut',
@@ -2353,6 +2474,17 @@ Based in Quincy, MA.
 - Offseason beep baseball, wheelchair football and youth/family sailing
 
 [adaptivesportsne.org](https://adaptivesportsne.org/)'),
+  ('Spaulding Rehabilitation Adaptive Sports Centers',
+   '[sasc.spauldingrehab.org](https://sasc.spauldingrehab.org/)',
+   'Adaptive sports and recreation across eastern Massachusetts',
+   'Spaulding Adaptive Sports Centers "are open to all individuals in the community who are living with disabilities." Children and adults take part in sports and recreation with adaptive sports professionals and Spaulding therapists, from Salem to Brewster.
+
+- **Boston:** adaptive swim, pickleball, indoor spin, inclusive fitness and dance, sled hockey
+- **Cape Cod and North Shore:** spin, pickleball, indoor golf, mountain biking, archery and air rifle, yoga
+- **Ski and Snowboard Club:** trips to New Hampshire, Vermont, Maine and Mount Wachusett
+- Virtual group fitness, adaptive boxing and chair yoga
+
+[sasc.spauldingrehab.org](https://sasc.spauldingrehab.org/)'),
   ('Piers Park Sailing',
    '[piersparksailing.org](https://piersparksailing.org/adaptive/adaptive-sailing)',
    'Adaptive sailing on Boston Harbor, with free first sails for adults with SCI',
