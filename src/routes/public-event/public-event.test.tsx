@@ -1,9 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as EventAudience from '@/lib/event-audience';
-import type { PublicEvent, Registration } from '@/lib/event-audience';
+import type { NextStep, PublicEvent, Registration } from '@/lib/event-audience';
 
 /**
  * The public event page and its registration form (20261022180000,
@@ -17,6 +17,8 @@ const api = vi.hoisted(() => ({
   kept: [] as Registration[],
   refuse: null as string | null,
   status: 'signed-out',
+  next: null as NextStep | null,
+  requests: [] as unknown[],
 }));
 vi.mock('@/lib/event-audience', async (importOriginal) => ({
   ...(await importOriginal<typeof EventAudience>()),
@@ -30,6 +32,14 @@ vi.mock('@/lib/event-audience', async (importOriginal) => ({
   },
   keepPendingRegistration: (registration: Registration) => {
     api.kept.push(registration);
+  },
+  registrationNextStep: () =>
+    Promise.resolve(api.next ? { ok: true, value: api.next } : { ok: false, error: 'no' }),
+}));
+vi.mock('@/lib/invite-requests', () => ({
+  requestClubInvite: (request: unknown) => {
+    api.requests.push(request);
+    return Promise.resolve({ ok: true, value: null });
   },
 }));
 vi.mock('@/lib/account', () => ({
@@ -61,13 +71,18 @@ const EVENT: PublicEvent = {
   organization: { id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS', logoPath: null },
 };
 
+function JoinStandIn() {
+  const door = (useLocation().state as { door?: string } | null)?.door;
+  return <h1>{door ? `Door: ${door}` : 'Welcome'}</h1>;
+}
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/e/:id" element={<PublicEventPage />} />
         <Route path="/e/:id/register" element={<RegisterForEventPage />} />
-        <Route path="/join" element={<h1>Welcome</h1>} />
+        <Route path="/join" element={<JoinStandIn />} />
         <Route path="/events/:id" element={<h1>The members' page</h1>} />
       </Routes>
     </MemoryRouter>,
@@ -78,6 +93,8 @@ beforeEach(() => {
   api.event = EVENT;
   api.registered = [];
   api.kept = [];
+  api.next = null;
+  api.requests = [];
   api.refuse = null;
   api.status = 'signed-out';
 });
@@ -240,6 +257,40 @@ describe('registering', () => {
       email: 'maria@example.com',
       organizer: 'NorCal SCI',
     });
+  });
+
+  // The owner, 2026-11-02: what comes next depends on the address.
+  it('asks a member to sign in', async () => {
+    api.next = 'member';
+    renderAt('/e/picnic/register?status=going');
+    await fill();
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    expect(await screen.findByText('Sign in to join the group chat.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('heading', { name: 'Door: signin' })).toBeInTheDocument();
+  });
+
+  it('asks somebody invited to create the account, and says why', async () => {
+    api.next = 'invited';
+    renderAt('/e/picnic/register?status=going');
+    await fill();
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    expect(await screen.findByText('See who else is coming')).toBeInTheDocument();
+    expect(screen.getByText('Join the chat for this event')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Create my account' }));
+    expect(await screen.findByRole('heading', { name: 'Door: join' })).toBeInTheDocument();
+  });
+
+  it('sends an invite request in one tap with what they typed', async () => {
+    api.next = 'request';
+    renderAt('/e/picnic/register?status=going');
+    await fill();
+    await userEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Request an invite' }));
+    expect(api.requests).toEqual([
+      { name: 'Maria Lopez', email: 'maria@example.com', note: 'Registered for Friday Happy Hour' },
+    ]);
+    expect(await screen.findByText('Request sent')).toBeInTheDocument();
   });
 
   it('stays on the form and says why when it is refused', async () => {

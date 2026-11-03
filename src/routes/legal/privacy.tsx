@@ -45,6 +45,11 @@ export default function PrivacyPage() {
             <b>Changed:</b> asking for an invite no longer means choosing an organization. What you
             send goes to The SCI Club’s org admins, and the page no longer shows anybody’s name.
           </li>
+          <li>
+            <b>Changed:</b> after you add yourself to an event’s list on its public page, the page
+            says whether the address you gave is a member’s, has an invitation, or neither, so you
+            know whether to sign in, create your account, or ask for an invite.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 31, 2026">
@@ -548,8 +553,10 @@ export default function PrivacyPage() {
           shares your name, email address and phone number, if you give it, with the club’s
           administrators and anybody in the club who manages that event, for that event only. It
           does not register you with the host. The guest list also says whether the address belongs
-          to a member, or to somebody joining. If you then sign in or join with that address, it
-          becomes your Going or Interested, and the paragraph above applies.
+          to a member, or to somebody joining. The page then says what comes next for that address:
+          sign in if it is a member’s, create your account if it has an invitation, or ask for one.
+          If you then sign in or join with that address, it becomes your Going or Interested, and
+          the paragraph above applies.
         </P>
       </Section>
 

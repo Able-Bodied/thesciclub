@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AccountProblem } from '@/components/account-problem';
 import { signOut, useAccount } from '@/lib/account';
 import { APPLE_RETURN_PARAM, signInWithApple } from '@/lib/apple-sign-in';
@@ -215,7 +215,11 @@ export default function OnboardingPage() {
   // An invitation goes straight to joining: its link is the reason they came, and
   // the Welcome screen's "Join the club" would only ask what the link already said.
   // So does a scanned code: it was held up so that somebody would join.
-  const [step, setStep] = useState<Step>(invited || cameByCode ? 'join' : 'welcome');
+  // Sent from an event's registration to one door (public-event/next-step.tsx).
+  const door = (useLocation().state as { door?: unknown } | null)?.door;
+  const [step, setStep] = useState<Step>(
+    invited || cameByCode || door === 'join' ? 'join' : door === 'signin' ? 'signin' : 'welcome',
+  );
   // What was just typed, so the link opened on another device lets this one in.
   const [awaiting, setAwaiting] = useState<Credentials | null>(null);
   useSignInOnceConfirmed(step === 'check-email' ? awaiting : null);

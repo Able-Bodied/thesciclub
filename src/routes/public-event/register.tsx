@@ -4,14 +4,17 @@ import { useAccount } from '@/lib/account';
 import {
   fetchPublicEvent,
   keepPendingRegistration,
+  type NextStep,
   type PublicEvent,
   registerForEvent,
+  registrationNextStep,
 } from '@/lib/event-audience';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { formatPhoneInput } from '@/lib/phone';
 import { shortDate, timeOfDay } from '@/routes/events/format';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { safeHref } from '@/routes/events/rich-text';
+import { NextStepScreen } from '@/routes/public-event/next-step';
 import type { RsvpStatus } from '@/types/domain';
 
 /**
@@ -19,10 +22,11 @@ import type { RsvpStatus } from '@/types/domain';
  * 2026-10-22; register_for_event, 20261022190000).
  *
  * The same short form for anybody: kept for the event's organizers as soon as
- * it is sent. Then the welcome page, the same whoever they are, so it never
- * says whether an address is a member's. A registration is not an invite
- * (20261022230000). A copy stays on this device so the app can open the
- * event once a member signs in.
+ * it is sent. Then what comes next for that address (the owner, 2026-11-02;
+ * 20261102060000): sign in, create the account, or ask for an invite. A
+ * registration is not an invite (20261022230000). A copy stays on this device
+ * so the sign-in and join forms start filled in, and the app opens the event
+ * once a member signs in.
  */
 
 const FIELD =
@@ -47,6 +51,7 @@ export default function RegisterForEventPage() {
   const [phone, setPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [next, setNext] = useState<NextStep | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,7 +84,17 @@ export default function RegisterForEventPage() {
       name: name.trim(),
       ...(event?.organization ? { organizer: event.organization.name } : {}),
     });
-    void navigate('/join', { replace: true });
+    const step = await registrationNextStep(id, email);
+    // Not known: the welcome page, as before, which has both doors.
+    if (!step.ok) {
+      void navigate('/join', { replace: true });
+      return;
+    }
+    setNext(step.value);
+  }
+
+  function toDoor(door: 'signin' | 'join') {
+    void navigate('/join', { replace: true, state: { door } });
   }
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
@@ -100,7 +115,22 @@ export default function RegisterForEventPage() {
         </p>
       ) : null}
 
-      {event ? (
+      {event && next ? (
+        <NextStepScreen
+          step={next}
+          name={name.trim()}
+          email={email.trim()}
+          eventTitle={event.title}
+          onSignIn={() => {
+            toDoor('signin');
+          }}
+          onCreate={() => {
+            toDoor('join');
+          }}
+        />
+      ) : null}
+
+      {event && !next ? (
         <form
           onSubmit={(e) => {
             e.preventDefault();

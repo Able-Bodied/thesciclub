@@ -381,9 +381,17 @@ const { leadingWayIn } = await import('@/routes/onboarding/sign-in-steps');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
 // of HANDOFF.md "What Home is". Until then it was Peers.
-function renderJoin(path = '/join') {
+function renderJoin(path = '/join', state?: unknown) {
   return render(
-    <MemoryRouter initialEntries={[path]}>
+    <MemoryRouter
+      initialEntries={[
+        {
+          pathname: path.split('?')[0] ?? path,
+          search: path.includes('?') ? `?${path.split('?')[1] ?? ''}` : '',
+          state,
+        },
+      ]}
+    >
       <Routes>
         <Route path="/join" element={<OnboardingPage />} />
         <Route path="/home" element={<h1>Home</h1>} />
@@ -1200,6 +1208,19 @@ describe('the invite link', () => {
     renderJoin();
     await screen.findByRole('heading', { name: 'Home' });
     expect(window.localStorage.getItem('sciclub.inviteToken')).toBeNull();
+  });
+});
+
+// From an event's registration (public-event/next-step.tsx, the owner, 2026-11-02).
+describe('sent to one door', () => {
+  it('opens on signing in', () => {
+    renderJoin('/join', { door: 'signin' });
+    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+  });
+
+  it('opens on joining', () => {
+    renderJoin('/join', { door: 'join' });
+    expect(screen.getByRole('heading', { name: 'Join the club' })).toBeInTheDocument();
   });
 });
 
