@@ -1,4 +1,5 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
+import { rememberWayIn, wayInOf } from '@/lib/last-way-in';
 
 /**
  * Tells the club about each new sign-in, for Admin → Stats (20261016000000).
@@ -101,6 +102,7 @@ async function report(client: SupabaseClient, id: string): Promise<void> {
 export function watchSignIns(client: SupabaseClient): void {
   client.auth.onAuthStateChange((event, session) => {
     if (!session || (event !== 'SIGNED_IN' && event !== 'INITIAL_SESSION')) return;
+    rememberWayIn(wayInOf(session, readHint(Date.now())?.provider ?? null));
     const id = sessionIdOf(session);
     if (!id || id === reporting || id === recorded()) return;
     reporting = id;

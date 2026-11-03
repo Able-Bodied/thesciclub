@@ -3,22 +3,27 @@ import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import type { InviteRequestChoice } from '@/lib/invite-requests';
 
-const orgs = vi.hoisted(() => ({ list: [] as InviteRequestChoice[] }));
-// The logo is drawn through a signed URL since HANDOFF.md "What Home is" step 6. Stubbed
-// here, as every screen test stubs the hooks its screen calls: unstubbed, the
-// signing request is refused by the network guard, storage-js turns that into
-// an ordinary error, and the badge quietly draws its short code instead.
-vi.mock('@/lib/photos', () => ({
-  usePhotoUrl: (path: string | null | undefined) => (path ? `https://signed.test/${path}` : null),
+const requests = vi.hoisted(() => ({ sent: [] as unknown[] }));
+// To one person at the club (20261102050000).
+vi.mock('@/lib/invite-requests', () => ({
+  requestClubInvite: (request: unknown) => {
+    requests.sent.push(request);
+    return Promise.resolve({ ok: true, value: null });
+  },
 }));
 
-// invite_request_choices() decides which organizations can invite
-// (20261029030000); the screen only shows its answer.
-vi.mock('@/lib/invite-requests', () => ({
-  fetchInviteRequestChoices: () => Promise.resolve({ ok: true, value: orgs.list }),
-  requestInvite: () => Promise.resolve({ ok: true, value: null }),
+const proof = vi.hoisted(() => ({
+  asked: [] as string[],
+  askOk: true,
+  answer: 'proved',
+}));
+vi.mock('@/lib/invite-proof', () => ({
+  askForInviteCode: (email: string) => {
+    proof.asked.push(email);
+    return Promise.resolve(proof.askOk);
+  },
+  proveInviteCode: () => Promise.resolve(proof.answer),
 }));
 
 const { BlockedScreen } = await import('@/routes/onboarding/blocked');
@@ -35,66 +40,86 @@ function render(screenToShow: ReactElement) {
 
 const noop = vi.fn();
 
-const organization = (o: Partial<InviteRequestChoice> = {}): InviteRequestChoice => ({
-  organizationId: 'o1',
-  shortCode: 'NCS',
-  name: 'NorCal SCI',
-  logoPath: 'organizations/ncs.webp',
-  admins: [{ id: 'a1', firstName: 'Sam' }],
-  ...o,
+describe('invited at a different email', () => {
+  const open = (onProved = vi.fn()) => {
+    proof.asked = [];
+    proof.askOk = true;
+    proof.answer = 'proved';
+    render(
+      <BlockedScreen onTryAnother={noop} email="abc@privaterelay.example" onProved={onProved} />,
+    );
+    return onProved;
+  };
+
+  const sendTo = async (address: string) => {
+    await userEvent.type(screen.getByLabelText('Invited at a different email?'), address);
+    await userEvent.click(screen.getByRole('button', { name: 'Send a code' }));
+  };
+
+  it('needs a session, so it is not offered at sign-up', () => {
+    render(<BlockedScreen onTryAnother={noop} email="a@b.co" signedIn={false} onProved={noop} />);
+    expect(screen.queryByLabelText(/different email/)).toBeNull();
+  });
+
+  it('never says whether the address is on the list', async () => {
+    open();
+    await sendTo('dana@example.com');
+    expect(proof.asked).toEqual(['dana@example.com']);
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /If dana@example.com has an invitation/,
+    );
+  });
+
+  it('goes on by itself once the code is right', async () => {
+    const onProved = open();
+    await sendTo('dana@example.com');
+    await userEvent.type(await screen.findByLabelText('Code from the email'), '123456');
+    expect(onProved).toHaveBeenCalledOnce();
+  });
+
+  it('says so when the code is wrong, and clears it', async () => {
+    const onProved = open();
+    proof.answer = 'refused';
+    await sendTo('dana@example.com');
+    const box = await screen.findByLabelText('Code from the email');
+    await userEvent.type(box, '123456');
+    expect(await screen.findByRole('alert')).toHaveTextContent('That code did not work');
+    expect(box).toHaveValue('');
+    expect(onProved).not.toHaveBeenCalled();
+  });
+
+  it('holds a new code back for a minute', async () => {
+    open();
+    await sendTo('dana@example.com');
+    expect(await screen.findByRole('button', { name: /Send a new code in 60s/ })).toBeDisabled();
+  });
+
+  it('says when the request itself failed', async () => {
+    open();
+    proof.askOk = false;
+    await sendTo('dana@example.com');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not send that');
+  });
 });
 
-describe('the screen somebody is turned away on', () => {
-  // It had its own hand-rolled gold tile that could only ever show initials,
-  // while every events screen showed the real logo. This is the screen where
-  // recognising who to contact matters most.
-  it('shows an organization’s logo, not just its initials', async () => {
-    orgs.list = [organization()];
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    await screen.findByText('NorCal SCI');
-    const logo = document.querySelector('img');
-    expect(logo).not.toBeNull();
-    expect(logo?.getAttribute('src')).toBe('https://signed.test/organizations/ncs.webp');
-  });
-
-  it('falls back to the short code when there is no logo', async () => {
-    orgs.list = [organization({ logoPath: null })];
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(await screen.findByText('NCS')).toBeInTheDocument();
-    expect(document.querySelector('img')).toBeNull();
-  });
-
-  // The owner, 2026-10-28: highlight that joining is by invitation only, and
-  // list the org admins next to each organization to ask.
-  it('says joining is by invitation only, and to tap a name to ask', async () => {
-    orgs.list = [organization()];
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(screen.getByText('Joining The SCI Club is by invitation only.')).toBeInTheDocument();
-    expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
-  });
-
-  // The owner, 2026-10-28: "save them a click": the form opens here.
-  it('lists each org admin by first name, and a tap opens the form here with the address filled in', async () => {
-    orgs.list = [
-      organization({
-        admins: [
-          { id: 'a1', firstName: 'Sam' },
-          { id: 'a2', firstName: 'Alfred' },
-        ],
-      }),
-    ];
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Ask Alfred from NorCal SCI' }),
+describe('asking for an invite', () => {
+  // The owner, 2026-11-02: no list of organizations, the request goes to one person.
+  it('opens the form from the main button, with the refused address filled in', async () => {
+    requests.sent = [];
+    render(
+      <BlockedScreen onTryAnother={noop} email="dana@example.com" name="Dana" onProved={noop} />,
     );
-    expect(screen.getByText('Ask Alfred from NorCal SCI')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Your name')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Request an invite' }));
+    expect(screen.queryByRole('button', { name: 'Request an invite' })).toBeNull();
+    expect(screen.queryByLabelText('Invited at a different email?')).toBeNull();
+    expect(screen.getByText('Joining The SCI Club is by invitation only.')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
-  });
-
-  it('says so when nobody can be asked', async () => {
-    orgs.list = [];
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(await screen.findByText(/Nobody can take requests right now/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Your name')).toHaveValue('Dana');
+    await userEvent.type(screen.getByLabelText('Your name'), ' Ruiz');
+    await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
+    expect(requests.sent).toEqual([{ name: 'Dana Ruiz', email: 'dana@example.com', note: '' }]);
+    expect(await screen.findByText('Request sent')).toBeInTheDocument();
   });
 });
 
@@ -103,11 +128,6 @@ describe('the way out', () => {
     render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
     expect(screen.getByText(/isn't on the list/)).toBeInTheDocument();
-  });
-
-  it('says what to try when the email may be the wrong one', () => {
-    render(<BlockedScreen onTryAnother={noop} email="dana@example.com" />);
-    expect(screen.getByText(/You may have joined with another email/)).toBeInTheDocument();
   });
 
   // Nothing that looks through a phone's contacts (the owner, 2026-10-10), and
@@ -120,10 +140,11 @@ describe('the way out', () => {
     expect(screen.queryByLabelText(/number of somebody/i)).toBeNull();
   });
 
-  it('signs out to try another email', async () => {
+  // A small link now, under "Request an invite" (the owner, 2026-11-02).
+  it('signs out', async () => {
     const onTryAnother = vi.fn();
     render(<BlockedScreen onTryAnother={onTryAnother} email="dana@example.com" />);
-    await userEvent.click(screen.getByRole('button', { name: 'Sign out and try another email' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
     expect(onTryAnother).toHaveBeenCalledOnce();
   });
 
@@ -131,7 +152,6 @@ describe('the way out', () => {
   it('refused at sign-up: no signing out, and points at the invited address or the link', async () => {
     const onTryAnother = vi.fn();
     render(<BlockedScreen onTryAnother={onTryAnother} email="dana@example.com" signedIn={false} />);
-    expect(screen.queryByText(/You may have joined with another email/)).toBeNull();
     expect(screen.getByText(/use the address your invitation was sent to/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Sign out/ })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Try another email' }));

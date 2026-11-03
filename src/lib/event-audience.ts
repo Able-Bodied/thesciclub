@@ -217,6 +217,26 @@ export function registerForEvent(registration: Registration): Promise<Result<nul
   );
 }
 
+/** After registering: sign in, create the account, or ask for an invite (20261102060000). */
+export type NextStep = 'member' | 'invited' | 'request';
+
+export async function registrationNextStep(
+  eventId: string,
+  email: string,
+): Promise<Result<NextStep>> {
+  const result = await call<string>(
+    'registration_next_step',
+    { p_event: eventId, p_email: email.trim() },
+    'Could not check that just now.',
+  );
+  if (!result.ok) return result;
+  const step = result.value;
+  return {
+    ok: true,
+    value: step === 'member' || step === 'invited' ? step : 'request',
+  };
+}
+
 /**
  * Registrations made with the signed-in member's confirmed address become
  * their RSVPs. Resolves to those events, newest first.
