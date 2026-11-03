@@ -21,7 +21,11 @@ declare
 begin
   insert into auth.users (id, email, email_confirmed_at, aud, role)
   values (account, 'proof-probe@relay.invalid', now(), 'authenticated', 'authenticated');
-  insert into public.invites (email) values ('proof-probe@elsewhere.invalid') returning id into invite;
+  -- An invite needs somebody behind it (invites_require_inviter).
+  insert into public.invites (email, invited_by_organization_id)
+  select 'proof-probe@elsewhere.invalid', o.id
+    from public.organizations o where o.is_the_club and o.removed_at is null limit 1
+  returning id into invite;
 
   if public.start_invite_proof(account, 'nobody-listed@elsewhere.invalid', 'h') then
     raise exception 'an address with no invite was sent a code';
