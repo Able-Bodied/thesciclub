@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const auth = vi.hoisted(() => ({
   calls: [] as string[],
   error: null as { name?: string; message: string } | null,
+  startError: null as { message: string } | null,
   verified: [] as unknown[],
   expiresAt: 0,
   none: false,
@@ -24,6 +25,7 @@ vi.mock('@/lib/supabase', () => ({
         startAuthentication: () => {
           auth.calls.push('startAuthentication');
           return Promise.resolve({
+            error: auth.startError,
             data: {
               challenge_id: 'ch1',
               // "hello" and "abc" in base64url.
@@ -34,7 +36,6 @@ vi.mock('@/lib/supabase', () => ({
               },
               expires_at: auth.expiresAt,
             },
-            error: null,
           });
         },
         verifyAuthentication: (params: unknown) => {
@@ -85,6 +86,7 @@ beforeEach(() => {
   localStorage.clear();
   auth.calls = [];
   auth.error = null;
+  auth.startError = null;
   auth.verified = [];
   auth.none = false;
   auth.expiresAt = Date.now() / 1000 + 300;
@@ -266,6 +268,71 @@ describe('a passkey offered in the email box', () => {
     expect(await done).toEqual({ ok: true });
     expect(auth.calls.filter((c) => c === 'startAuthentication')).toHaveLength(2);
     vi.useRealTimers();
+  });
+
+  describe('when the browser keeps cancelling it', () => {
+    const started = () => auth.calls.filter((c) => c === 'startAuthentication').length;
+    const cancelling = () => Promise.reject(new DOMException('cancelled', 'NotAllowedError'));
+
+    it('waits between tries and gives up quietly', async () => {
+      vi.useFakeTimers();
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      withAutofill(cancelling);
+      const done = passkeyAutofill(new AbortController().signal);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(started()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1_999);
+      expect(started()).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(started()).toBe(2);
+      await vi.advanceTimersByTimeAsync(4_000);
+      expect(await done).toEqual({ ok: false, error: '' });
+      expect(started()).toBe(3);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(started()).toBe(3);
+      vi.useRealTimers();
+    });
+
+    it('still signs in if a later try works', async () => {
+      vi.useFakeTimers();
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      let round = 0;
+      withAutofill(() => {
+        round++;
+        return round === 1 ? cancelling() : Promise.resolve(picked);
+      });
+      const done = passkeyAutofill(new AbortController().signal);
+      await vi.advanceTimersByTimeAsync(2_000);
+      expect(await done).toEqual({ ok: true });
+      vi.useRealTimers();
+    });
+
+    it('stops at once when the sign-in screen goes', async () => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      const controller = new AbortController();
+      withAutofill(() => {
+        queueMicrotask(() => {
+          controller.abort();
+        });
+        return cancelling();
+      });
+      expect(await passkeyAutofill(controller.signal)).toEqual({ ok: true });
+      expect(started()).toBe(1);
+    });
+  });
+
+  it('stops without a word when the service will not start it', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    withAutofill(() => Promise.resolve(picked));
+    auth.startError = { message: 'too many requests' };
+    expect(await passkeyAutofill(new AbortController().signal)).toEqual({ ok: false, error: '' });
+    expect(auth.calls.filter((c) => c === 'startAuthentication')).toHaveLength(1);
+  });
+
+  it('stops without a word when the browser fails on its own', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    withAutofill(() => Promise.reject(new DOMException('no', 'SecurityError')));
+    expect(await passkeyAutofill(new AbortController().signal)).toEqual({ ok: false, error: '' });
   });
 
   it('says so when the passkey is refused', async () => {

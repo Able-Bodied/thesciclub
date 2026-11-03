@@ -290,7 +290,7 @@ vi.mock('@/lib/supabase', () => ({
           calls.order.push('startAuthentication');
           return Promise.resolve({
             data: { challenge_id: 'ch', options: { challenge: 'aGk' }, expires_at: 0 },
-            error: null,
+            error: calls.passkeyError,
           });
         },
       },
@@ -437,6 +437,8 @@ async function fillDoor(email: string, password: string) {
 
 beforeEach(() => {
   window.localStorage.clear();
+  // Most of this file is about the email box, which then starts open.
+  window.localStorage.setItem('club:way-in', 'email');
   window.sessionStorage.clear();
   progress.saved = null;
   progress.device = [];
@@ -1211,15 +1213,15 @@ describe('the not-invited screen', () => {
     renderJoin();
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
-    expect(screen.getByText(/You may have joined with another email/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Invited at a different email?')).toBeInTheDocument();
     expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
-  it('names only the organizations that can invite, and no consultation call', async () => {
+  // The owner, 2026-11-02: one button, the request goes to one person.
+  it('offers a request, with nobody to choose, and no consultation call', async () => {
     renderJoin();
-    expect(await screen.findByText('NorCal SCI')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Ask Sam from NorCal SCI' })).toBeInTheDocument();
-    expect(screen.queryByText('Wheel with Me Foundation')).toBeNull();
+    expect(await screen.findByRole('button', { name: 'Request an invite' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Ask / })).toBeNull();
     expect(screen.queryByRole('link', { name: /Book a call/ })).toBeNull();
   });
 
@@ -1230,11 +1232,9 @@ describe('the not-invited screen', () => {
     expect(screen.queryByLabelText(/number of somebody/i)).toBeNull();
   });
 
-  it('signs the account out to try another email', async () => {
+  it('signs the account out', async () => {
     renderJoin();
-    await userEvent.click(
-      await screen.findByRole('button', { name: 'Sign out and try another email' }),
-    );
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
     expect(calls.order).toContain('signOut');
     expect(await screen.findByText('Welcome back')).toBeInTheDocument();
   });
@@ -1556,6 +1556,10 @@ describe('Google, Apple and passkeys', () => {
   });
 
   describe('which way in leads', () => {
+    beforeEach(() => {
+      window.localStorage.removeItem('club:way-in');
+    });
+
     const SAFARI_IPHONE =
       'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1';
     const ANDROID =
@@ -1619,6 +1623,10 @@ describe('Google, Apple and passkeys', () => {
   });
 
   describe('in the store app', () => {
+    beforeEach(() => {
+      window.localStorage.removeItem('club:way-in');
+    });
+
     let native: { mockRestore: () => void } | null = null;
     let platform: { mockRestore: () => void } | null = null;
     afterEach(() => {
@@ -1791,6 +1799,23 @@ describe('Google, Apple and passkeys', () => {
       Reflect.deleteProperty(navigator, 'credentials');
     });
 
+    it('say nothing when the quiet request is refused, and the button stands in', async () => {
+      vi.stubEnv('VITE_PASSKEYS', '1');
+      window.localStorage.setItem('club:passkey-here', '1');
+      Object.defineProperty(window, 'PublicKeyCredential', {
+        value: Object.assign(() => undefined, {
+          isConditionalMediationAvailable: () => Promise.resolve(true),
+        }),
+        configurable: true,
+      });
+      calls.passkeyError = { message: 'too many requests' };
+      renderJoin();
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(await screen.findByRole('button', { name: 'Sign in with a passkey' })).toBeVisible();
+      expect(calls.order).toEqual(['startAuthentication']);
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
     it('say nothing when the browser’s own sheet is cancelled', async () => {
       vi.stubEnv('VITE_PASSKEYS', '1');
       window.localStorage.setItem('club:passkey-here', '1');
@@ -1807,6 +1832,72 @@ describe('Google, Apple and passkeys', () => {
       });
       expect(screen.queryByRole('alert')).toBeNull();
     });
+  });
+});
+
+describe('the email box waiting behind a button', () => {
+  beforeEach(() => {
+    window.localStorage.removeItem('club:way-in');
+  });
+
+  const toSignIn = async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+  };
+
+  it('shows only the other ways at first, with no Sign in button to wonder at', async () => {
+    await toSignIn();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Sign in' })).toBeNull();
+  });
+
+  it('opens on a press, and the box takes the focus', async () => {
+    await toSignIn();
+    await userEvent.click(screen.getByRole('button', { name: 'Use email and password' }));
+    expect(screen.getByLabelText('Email')).toHaveFocus();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('is open already for somebody who last used it here', async () => {
+    window.localStorage.setItem('club:way-in', 'email');
+    await toSignIn();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+  });
+
+  it('stays shut for somebody who last used Google here', async () => {
+    window.localStorage.setItem('club:way-in', 'google');
+    await toSignIn();
+    expect(screen.queryByLabelText('Email')).toBeNull();
+  });
+
+  it('waits on the join door too', async () => {
+    renderJoin();
+    await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
+    expect(screen.queryByLabelText('Email')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create account' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Use email and password' }));
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
+  });
+
+  it('does not ask the passkey service anything until the box is open', async () => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: Object.assign(() => undefined, {
+        isConditionalMediationAvailable: () => Promise.resolve(true),
+      }),
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'credentials', {
+      value: { get: () => new Promise(() => undefined) },
+      configurable: true,
+    });
+    await toSignIn();
+    expect(calls.order).not.toContain('startAuthentication');
+    await userEvent.click(screen.getByRole('button', { name: 'Use email and password' }));
+    await waitFor(() => {
+      expect(calls.order).toContain('startAuthentication');
+    });
+    Reflect.deleteProperty(navigator, 'credentials');
   });
 });
 

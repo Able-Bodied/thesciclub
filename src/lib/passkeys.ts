@@ -87,6 +87,29 @@ export async function passkeyAutofillAvailable(): Promise<boolean> {
 const AUTOFILL_MARGIN_MS = 15_000;
 /** And at least this often, if the server gives no end. */
 const AUTOFILL_REFRESH_MS = 4 * 60_000;
+/**
+ * A browser that cancels the quiet request at once will go on cancelling it, and
+ * asking again without a pause ran into the sign-in service's limit within two
+ * seconds, which read as "Too many attempts" to somebody who had typed nothing
+ * (2026-11-02). So it waits, longer each time, and gives up after this many.
+ */
+const AUTOFILL_TRIES = 3;
+const AUTOFILL_WAIT_MS = 2_000;
+/** Nobody asked for the quiet request, so its failing is nothing to tell them. */
+const AUTOFILL_STOPPED: Result = { ok: false, error: '' };
+
+/** Ends early if `signal` aborts. */
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', done);
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    signal.addEventListener('abort', done, { once: true });
+  });
+}
 
 function fromBase64url(text: string): ArrayBuffer {
   const base64 = text.replace(/-/g, '+').replace(/_/g, '/');
@@ -142,19 +165,19 @@ function responseJson(credential: PublicKeyCredential) {
 
 /**
  * Waits for the member to pick a passkey from the email box's suggestions,
- * then signs them in. Resolves once signed in, on a failure, or when
- * `signal` aborts (ok, with no error).
+ * then signs them in. Resolves once signed in, when `signal` aborts (ok), or
+ * when it stops: with a sentence if the passkey they picked was refused, and
+ * with none if the waiting itself failed.
  */
 export async function passkeyAutofill(signal: AbortSignal): Promise<Result> {
   const passkey = getSupabase().auth.passkey;
   // A call, so the check is read again after each wait.
   const gone = () => signal.aborted;
+  let cancels = 0;
   while (!gone()) {
     const { data, error } = await passkey.startAuthentication();
     if (gone()) break;
-    if (error) {
-      return { ok: false, error: describeError(error, 'Passkeys are not working just now.') };
-    }
+    if (error) return AUTOFILL_STOPPED;
     const round = new AbortController();
     const stop = () => {
       round.abort();
@@ -172,20 +195,25 @@ export async function passkeyAutofill(signal: AbortSignal): Promise<Result> {
         signal: round.signal,
       });
     } catch (thrown) {
-      // Aborted to refresh or to leave; anything else is a real failure.
+      // Aborted to refresh or to leave, or cancelled; anything else ends it.
       const failure = thrown as { name?: string; message?: string };
-      if (!round.signal.aborted && !cancelled(failure)) {
-        const message = failure.message ?? '';
-        return {
-          ok: false,
-          error: describeError({ ...failure, message }, 'That passkey did not sign you in.'),
-        };
-      }
+      if (!round.signal.aborted && !cancelled(failure)) return AUTOFILL_STOPPED;
     } finally {
       clearTimeout(refresh);
       signal.removeEventListener('abort', stop);
     }
-    if (!credential) continue;
+    if (!credential) {
+      if (gone()) break;
+      // Refreshed on time, which is the browser waiting as it should.
+      if (round.signal.aborted) {
+        cancels = 0;
+        continue;
+      }
+      cancels += 1;
+      if (cancels >= AUTOFILL_TRIES) return AUTOFILL_STOPPED;
+      await pause(AUTOFILL_WAIT_MS * cancels, signal);
+      continue;
+    }
     const verified = await passkey.verifyAuthentication({
       challengeId: data.challenge_id,
       credential: responseJson(credential as PublicKeyCredential),

@@ -171,6 +171,22 @@ describe('the public event page', () => {
     );
   });
 
+  // The owner, 2026-11-02: where the club is the only RSVP, nothing to send them elsewhere for.
+  it('says nothing about the host’s sign-up when the club takes the RSVPs and there is none', async () => {
+    api.event = { ...EVENT, takesRsvps: true, registrationUrl: null };
+    renderAt('/e/picnic/register');
+    expect(await screen.findByLabelText('Your name')).toBeInTheDocument();
+    expect(screen.queryByText(/adds you to The SCI Club's list/)).toBeNull();
+  });
+
+  it('still says so when the host’s events take no RSVPs here', async () => {
+    api.event = { ...EVENT, takesRsvps: false, registrationUrl: null };
+    renderAt('/e/picnic/register');
+    expect(await screen.findByText(/adds you to The SCI Club's list/)).toHaveTextContent(
+      'so check the event details.',
+    );
+  });
+
   it('underlines the links in the description', async () => {
     api.event = { ...EVENT, description: 'Details at [our site](https://norcalsci.org).' };
     renderAt('/e/picnic');

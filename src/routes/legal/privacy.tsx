@@ -35,6 +35,16 @@ export default function PrivacyPage() {
             <b>Added:</b> administrators see how each member came to the club, by name: the invite
             or QR code that let them in, and whether they asked for one.
           </li>
+          <li>
+            <b>Added:</b> if you were invited at one address and signed in at another, you can have
+            a code emailed to the first to prove it is yours. We keep that address and a scrambled
+            copy of the code for at most a day after the code runs out (see What we collect and How
+            long we keep it).
+          </li>
+          <li>
+            <b>Changed:</b> asking for an invite no longer means choosing an organization. What you
+            send goes to The SCI Club’s org admins, and the page no longer shows anybody’s name.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 31, 2026">
@@ -277,8 +287,12 @@ export default function PrivacyPage() {
             list, and we email them a link. You can withdraw the invite until it is used.
           </li>
           <li>
+            <b>If you prove an invite sent to another address:</b> that address, and a scrambled
+            copy of the code we email to it.
+          </li>
+          <li>
             <b>If you ask for an invite</b>, before you are a member: your name, your email address,
-            a note if you write one, and which organization you asked.
+            and a note if you write one.
           </li>
           <li>
             <b>If you add an event by calendar invitation</b> (members who speak for an
@@ -464,9 +478,8 @@ export default function PrivacyPage() {
             sees your profile like any member.
           </li>
           <li>
-            <b>If you ask for an invite</b>, what you send is seen by the org admins of the
-            organization you chose, and nobody else. The page where you ask shows the first name of
-            each organization’s org admins, to anyone who opens it.
+            <b>If you ask for an invite</b>, what you send is seen by The SCI Club’s org admins, and
+            nobody else.
           </li>
           <li>
             <b>A post you change</b> shows Edited, and anybody who can read it can open its earlier
@@ -680,6 +693,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <b>How you are seeing the club:</b> 180 days.
+          </li>
+          <li>
+            <b>An address you proved an invite with:</b> a day after the code runs out.
           </li>
           <li>
             <b>Apple’s token:</b> until you unlink Apple or delete your account, and then until

@@ -35,6 +35,7 @@ import {
   INVITE_PARAM,
 } from '@/lib/invite-token';
 import { useJoiningIsOpen } from '@/lib/joining';
+import { lastWayIn } from '@/lib/last-way-in';
 import {
   type NativeResult,
   nativeWaysIn,
@@ -91,6 +92,7 @@ import {
 } from '@/routes/onboarding/progress';
 import {
   CheckEmailStep,
+  emailWaits,
   ForgotStep,
   JoinStep,
   PasskeyOffer,
@@ -326,6 +328,10 @@ export default function OnboardingPage() {
     const user = sessionData.session?.user;
     if (!(statusResult.data as { invited: boolean }).invited) {
       setBlockedEmail(user?.email ?? null);
+      // For the request form: a name typed already, else Google's or Apple's.
+      setData((d) =>
+        d.displayName.trim() ? d : { ...d, displayName: nameFromMetadata(user?.user_metadata) },
+      );
       setPhase('blocked');
       return;
     }
@@ -486,23 +492,39 @@ export default function OnboardingPage() {
     if (name) setData((d) => (d.displayName.trim() ? d : { ...d, displayName: name }));
   }
 
-  // While Welcome back is open, a saved passkey is offered in the email box's
-  // suggestions; where the browser cannot, the button stands in.
+  const [native] = useState(nativeWaysIn);
+
+  // The email box waits behind a button, unless this device last used it, or
+  // the address is already here (an invite's, or one typed before).
+  const [emailOpen, setEmailOpen] = useState(
+    () => !emailWaits(native) || lastWayIn() === 'email' || looksLikeEmail(data.email),
+  );
+  useEffect(() => {
+    if (looksLikeEmail(data.email)) setEmailOpen(true);
+  }, [data.email]);
+
+  // While the email box is showing on Welcome back, a saved passkey is offered
+  // in its suggestions; where the browser cannot, or it is not showing, the
+  // button stands in.
   const [passkeyAutofillOn, setPasskeyAutofillOn] = useState(false);
   useEffect(() => {
-    if (step !== 'signin') return;
+    if (step !== 'signin' || !emailOpen) return;
     const controller = new AbortController();
     const gone = () => controller.signal.aborted;
     void passkeyAutofillAvailable().then(async (available) => {
       if (!available || gone()) return;
       setPasskeyAutofillOn(true);
       const result = await passkeyAutofill(controller.signal);
-      if (!gone() && !result.ok && result.error) setError(result.error);
+      if (gone() || result.ok) return;
+      // No more suggestions, so the button stands in for them too.
+      setPasskeyAutofillOn(false);
+      if (result.error) setError(result.error);
     });
     return () => {
       controller.abort();
+      setPasskeyAutofillOn(false);
     };
-  }, [step]);
+  }, [step, emailOpen]);
 
   async function continueWithPasskey() {
     setBusy(true);
@@ -516,7 +538,9 @@ export default function OnboardingPage() {
   // rather than on the button, so the sign-in is collected on any door.
   const googleInBrowser = useGoogleInBrowser();
 
-  const [native] = useState(nativeWaysIn);
+  // Open while the Home Screen app waits on a Google sign-in, so its "Finish in
+  // Chrome" is not hidden behind Apple.
+  const othersOpen = emailOpen || googleInBrowser?.state.step === 'waiting';
 
   const ways = {
     busy,
@@ -539,6 +563,10 @@ export default function OnboardingPage() {
       void continueWithPasskey();
     },
     passkeyAutofill: passkeyAutofillOn,
+    othersOpen,
+    onOthers: () => {
+      setEmailOpen((open) => !open);
+    },
   };
 
   async function submitSignIn() {
@@ -754,8 +782,15 @@ export default function OnboardingPage() {
     return (
       <BlockedScreen
         email={blockedEmail}
+        name={data.displayName}
         signedIn={!blockedAtSignUp}
         fromCode={fromCode}
+        onProved={() => {
+          setBlockedEmail(null);
+          setStep('checking');
+          setPhase('wizard');
+          void afterSignIn();
+        }}
         onTryAnother={() => {
           if (blockedAtSignUp) {
             // The invite link, if any, stays held: it may still be good for the
@@ -897,6 +932,7 @@ export default function OnboardingPage() {
 
   const showPrimary =
     step !== 'check-email' &&
+    !((step === 'signin' || step === 'join') && !othersOpen) &&
     !(step === 'forgot' && forgotSent) &&
     !(step === 'checking' && !error);
 

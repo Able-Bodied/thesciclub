@@ -123,31 +123,35 @@ export default function RegisterForEventPage() {
 
           {/* Not a sign-up with the host (the owner, 2026-10-24): many
               organizations are not in the club and never see this list, so
-              it says plainly that their own registration may still be needed. */}
-          <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
-            This adds you to The SCI Club's list for this event.
-            {event.organization ? (
-              <>
-                {` It doesn't register you with ${event.organization.name}: you may need to do that too`}
-                {signUp ? (
-                  <>
-                    {', with '}
-                    <a
-                      href={signUp}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-bold text-emphasis underline"
-                    >
-                      their sign-up
-                    </a>
-                    .
-                  </>
-                ) : (
-                  ', so check the event details.'
-                )}
-              </>
-            ) : null}
-          </p>
+              it says plainly that their own registration may still be needed.
+              Not where the club is the only RSVP (the owner, 2026-11-02): the
+              event takes RSVPs here and the host has no sign-up of its own. */}
+          {event.takesRsvps && !signUp ? null : (
+            <p className="mt-3 rounded-[11px] bg-tint px-3 py-2.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+              This adds you to The SCI Club's list for this event.
+              {event.organization ? (
+                <>
+                  {` It doesn't register you with ${event.organization.name}: you may need to do that too`}
+                  {signUp ? (
+                    <>
+                      {', with '}
+                      <a
+                        href={signUp}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-emphasis underline"
+                      >
+                        their sign-up
+                      </a>
+                      .
+                    </>
+                  ) : (
+                    ', so check the event details.'
+                  )}
+                </>
+              ) : null}
+            </p>
+          )}
 
           <fieldset className="mt-4">
             <legend className="sr-only">Your answer</legend>

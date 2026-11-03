@@ -88,6 +88,21 @@ export function requestInvite(request: InviteRequest): Promise<Result<null>> {
   );
 }
 
+/** To one person at The SCI Club, with nobody to choose (20261102050000). */
+export function requestClubInvite(
+  request: Pick<InviteRequest, 'name' | 'email' | 'note'>,
+): Promise<Result<null>> {
+  return call<null>(
+    'request_club_invite',
+    {
+      p_name: request.name.trim(),
+      p_email: request.email.trim(),
+      p_note: request.note.trim() || null,
+    },
+    'Your request was not sent.',
+  );
+}
+
 export interface ReceivedInviteRequest {
   id: string;
   organizationId: string;

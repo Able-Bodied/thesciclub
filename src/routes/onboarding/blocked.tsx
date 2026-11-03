@@ -1,5 +1,7 @@
 import { ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import type { QrCodeDetails } from '@/lib/qr-codes';
+import { InvitedElsewhere } from '@/routes/onboarding/invited-elsewhere';
 import { AskForInvite } from '@/routes/onboarding/sign-in-steps';
 import { InviteRequestPanel } from '@/routes/request-invite/request-panel';
 
@@ -16,8 +18,14 @@ import { InviteRequestPanel } from '@/routes/request-invite/request-panel';
  * "Ask somebody you know for an invite" was removed (the owner, 2026-10-10).
  * This screen keeps the consultation link only.
  *
+ * The owner, 2026-11-02: the address box for an invite at another email is
+ * open from the start, and the main button is "Request an invite", which opens
+ * the request form here and sends it to one person (20261102050000). Signing
+ * out stays as a small link: signed in at an address with no invite and no
+ * other, it is the only way back to the doors.
+ *
  * ---------------------------------------------------------------------------
- * The list is read, not written here
+ * The list is read, not written here (until 2026-11-02)
  * ---------------------------------------------------------------------------
  * It used to be three hardcoded rows. That was wrong the moment Wheel with Me
  * stopped being able to issue invites: this screen would have kept telling a
@@ -32,25 +40,32 @@ import { InviteRequestPanel } from '@/routes/request-invite/request-panel';
  *
  * When the query fails there is no fallback list, deliberately. The sentence
  * above it still says a member organization or a mentor has to invite the address,
- * and "Sign out and try another email" still works — a shorter true page beats a complete
+ * and signing out still works — a shorter true page beats a complete
  * one that might name the wrong body.
  */
 
 export function BlockedScreen({
   onTryAnother,
   email,
+  name = '',
   signedIn = true,
   fromCode = null,
+  onProved,
 }: {
   /** Signs them out (when signed in) and goes back to the doors. */
   onTryAnother: () => void;
   /** The address they signed in with, so they can see which one was refused. */
   email: string | null;
+  /** To start the request form with. */
+  name?: string;
   /** False when the join form was refused: there is no account to sign out of. */
   signedIn?: boolean;
   /** An administrator's QR code they came by (20261014020000): who to ask. */
   fromCode?: QrCodeDetails | null;
+  /** The invite at another address is now this account's. Needs a session. */
+  onProved?: () => void;
 }) {
+  const [asking, setAsking] = useState(false);
   return (
     <main className="mx-auto flex h-dvh w-full max-w-[480px] flex-col bg-canvas">
       <div className="flex-1 overflow-y-auto px-[18px] pt-12">
@@ -63,6 +78,8 @@ export function BlockedScreen({
         <p className="mt-2.5 text-[0.8875rem] text-ink2 leading-[1.52]">
           {email ? <b className="text-ink">{email}</b> : 'This account'} has not been invited.
         </p>
+        {/* One form at a time, so the request opens where they are looking. */}
+        {signedIn && onProved && !asking ? <InvitedElsewhere onProved={onProved} /> : null}
         {/* Only while joining is closed: open, the code would have let them
             in, so whatever refused them is not something to ask about. */}
         {fromCode && !fromCode.joiningOpen && !fromCode.admits ? (
@@ -70,7 +87,7 @@ export function BlockedScreen({
             <AskForInvite who={fromCode} />
           </p>
         ) : null}
-        <InviteRequestPanel initialEmail={email ?? ''} />
+        {asking ? <InviteRequestPanel initialName={name} initialEmail={email ?? ''} /> : null}
 
         {/* No consultation call here for now (the owner, 2026-10-25); it may
             come back, with CONSULTATION_URL as on the welcome screen. */}
@@ -84,18 +101,29 @@ export function BlockedScreen({
       </div>
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
-        {/* Above the way out, which is what they say to do (the owner, 2026-10-28). */}
-        <p className="mb-3 text-[0.8125rem] text-ink2 leading-[1.5]">
-          {signedIn
-            ? 'You may have joined with another email. If you were invited, open the link in your invitation while signed in, or sign in with the address it was sent to.'
-            : 'If you were invited, use the address your invitation was sent to, or open the link in your invitation and join from there.'}
-        </p>
+        {signedIn ? null : (
+          <p className="mb-3 text-[0.8125rem] text-ink2 leading-[1.5]">
+            If you were invited, use the address your invitation was sent to, or open the link in
+            your invitation and join from there.
+          </p>
+        )}
+        {asking ? null : (
+          <button
+            type="button"
+            onClick={() => {
+              setAsking(true);
+            }}
+            className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
+          >
+            Request an invite
+          </button>
+        )}
         <button
           type="button"
           onClick={onTryAnother}
-          className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
+          className="mt-1 flex min-h-[44px] w-full items-center justify-center font-bold text-[0.875rem] text-emphasis"
         >
-          {signedIn ? 'Sign out and try another email' : 'Try another email'}
+          {signedIn ? 'Sign out' : 'Try another email'}
         </button>
       </footer>
     </main>

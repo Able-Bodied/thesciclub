@@ -9,6 +9,8 @@ import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { CODE_LENGTH, CONFIRMATION_FROM, looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
 import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
+import type { WayIn } from '@/lib/last-way-in';
+import { lastWayIn } from '@/lib/last-way-in';
 import type { NativeWaysIn } from '@/lib/native-sign-in';
 import { passkeyRemembered, passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
@@ -54,7 +56,14 @@ interface WaysIn {
   onPasskey: () => void;
   /** A saved passkey is offered in the email box, so no button for it. */
   passkeyAutofill: boolean;
+  /** The email box, and the way in that does not lead, are showing. */
+  othersOpen: boolean;
+  onOthers: () => void;
 }
+
+/** The code box, on the join screen and the refused one. */
+export const CODE_INPUT =
+  'mt-1.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-center font-bold font-head text-[1.5rem] text-ink tracking-[0.4em] outline-none focus:border-emphasis disabled:opacity-60';
 
 const SOCIAL_BUTTON =
   'mt-2 flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[13px] font-bold font-head text-[0.9375rem] disabled:opacity-50';
@@ -75,16 +84,28 @@ function Divider({ children }: { children: React.ReactNode }) {
  * Which way in leads, from the device (the owner, 2026-10-15): Apple on an
  * iPhone or iPad, Google on Android, and both, side by side, anywhere else.
  * The one that does not lead is a tap away under "Other ways", never gone:
- * somebody signs in the way they joined, whatever the device.
+ * somebody signs in the way they joined, whatever the device. The way they last
+ * used here leads instead, if it is one of the two.
  */
 export function leadingWayIn(
   platform: InstallPlatform,
   appleOn: boolean,
+  last: WayIn | null = null,
 ): 'apple' | 'google' | 'both' {
   if (!appleOn) return 'google';
-  if (platform.startsWith('ios')) return 'apple';
-  if (platform === 'android') return 'google';
-  return 'both';
+  const single = platform.startsWith('ios') || platform === 'android';
+  if (!single) return 'both';
+  if (last === 'apple' || last === 'google') return last;
+  return platform === 'android' ? 'google' : 'apple';
+}
+
+/**
+ * Whether the email box waits behind a button (the owner, 2026-11-02: Google or
+ * Apple first, and the password for those who ask). Not where there is nothing
+ * else to offer, or only one way, as in the store app with one of the two.
+ */
+export function emailWaits(native: NativeWaysIn): boolean {
+  return !isNative() || (native.apple && native.google);
 }
 
 /** Whether a door shows Google or Apple at all. */
@@ -134,13 +155,9 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
       ? ways.native.apple
         ? 'apple'
         : 'google'
-      : leadingWayIn(currentInstallPlatform(), appleSignInEnabled()),
+      : leadingWayIn(currentInstallPlatform(), appleSignInEnabled(), lastWayIn()),
   );
-  // Open from the start while the Home Screen app waits on a Google sign-in,
-  // so its "Finish in Chrome" is not hidden behind Apple.
-  const [othersOpen, setOthersOpen] = useState(
-    () => lead === 'apple' && ways.googleInBrowser?.state.step === 'waiting',
-  );
+  const { othersOpen, onOthers } = ways;
   const label = mode === 'signin' ? 'Sign in with' : 'Continue with';
 
   const google = (
@@ -211,33 +228,28 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
           {google}
           {apple}
         </>
+      ) : lead === 'apple' ? (
+        apple
       ) : (
-        <>
-          {lead === 'apple' ? apple : google}
-          {appleOn ? (
-            <>
-              <button
-                type="button"
-                aria-expanded={othersOpen}
-                aria-controls="other-ways-in"
-                onClick={() => {
-                  setOthersOpen((open) => !open);
-                }}
-                className="mt-1 flex min-h-[44px] w-full items-center justify-center gap-1 font-semibold text-[0.8125rem] text-emphasis"
-              >
-                {mode === 'signin' ? 'Other ways to sign in' : 'Other ways to join'}
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
-                  aria-hidden="true"
-                />
-              </button>
-              <div id="other-ways-in" hidden={!othersOpen}>
-                {othersOpen ? (lead === 'apple' ? google : apple) : null}
-              </div>
-            </>
-          ) : null}
-        </>
+        google
       )}
+      <button
+        type="button"
+        aria-expanded={othersOpen}
+        onClick={onOthers}
+        className="mt-2 flex min-h-[48px] w-full items-center justify-center gap-1 rounded-[13px] border-[1.6px] border-line font-bold font-head text-[0.9375rem] text-emphasis"
+      >
+        {lead === 'both' || !appleOn
+          ? 'Use email and password'
+          : mode === 'signin'
+            ? 'Other ways to sign in'
+            : 'Other ways to join'}
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
+          aria-hidden="true"
+        />
+      </button>
+      {othersOpen && lead !== 'both' && appleOn ? (lead === 'apple' ? google : apple) : null}
     </>
   );
 }
@@ -258,10 +270,6 @@ export function SignInStep({
   notice,
   onForgot,
 }: FieldsProps & { ways: WaysIn; notice: string | null; onForgot: () => void }) {
-  // Arriving with the address filled in, only the password is left to type.
-  const [emailGiven] = useState(() => looksLikeEmail(data.email));
-  const emailRef = useAutoFocus(!emailGiven);
-  const passwordRef = useAutoFocus(emailGiven);
   return (
     <>
       <Question>Welcome back</Question>
@@ -280,15 +288,32 @@ export function SignInStep({
       {offersSocial(ways.native) ? (
         <>
           <SocialButtons mode="signin" ways={ways} />
-          <Divider>or use your email</Divider>
+          {ways.othersOpen ? <Divider>or use your email</Divider> : null}
         </>
       ) : null}
+      {ways.othersOpen ? (
+        <SignInFields data={data} set={set} native={ways.native} onForgot={onForgot} />
+      ) : null}
+    </>
+  );
+}
+
+/** Here, not in SignInStep, so they take the focus as they appear. */
+function SignInFields({
+  data,
+  set,
+  native,
+  onForgot,
+}: FieldsProps & { native: NativeWaysIn; onForgot: () => void }) {
+  // Arriving with the address filled in, only the password is left to type.
+  const [emailGiven] = useState(() => looksLikeEmail(data.email));
+  const emailRef = useAutoFocus(!emailGiven);
+  const passwordRef = useAutoFocus(emailGiven);
+  return (
+    <>
       <label
         htmlFor="email"
-        className={cn(
-          'block font-bold text-[0.8125rem] text-ink',
-          !offersSocial(ways.native) && 'mt-5',
-        )}
+        className={cn('block font-bold text-[0.8125rem] text-ink', !offersSocial(native) && 'mt-5')}
       >
         Email
       </label>
@@ -354,7 +379,6 @@ export function JoinStep({
   /** The administrator's QR code they came by (20261014020000), if it says anything. */
   fromCode?: QrCodeDetails | null;
 }) {
-  const emailRef = useAutoFocus();
   return (
     <>
       <Question>Join the club</Question>
@@ -381,15 +405,36 @@ export function JoinStep({
       {offersSocial(ways.native) ? (
         <>
           <SocialButtons mode="join" ways={ways} />
-          <Divider>or join with your email</Divider>
+          {ways.othersOpen ? <Divider>or join with your email</Divider> : null}
         </>
       ) : null}
+      {ways.othersOpen ? (
+        <JoinFields
+          data={data}
+          set={set}
+          native={ways.native}
+          inviteAddress={inviteAddress}
+          closeTo={closeTo}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** Here, not in JoinStep, so the box takes the focus as it appears. */
+function JoinFields({
+  data,
+  set,
+  native,
+  inviteAddress,
+  closeTo,
+}: FieldsProps & { native: NativeWaysIn; inviteAddress: string | null; closeTo: string | null }) {
+  const emailRef = useAutoFocus();
+  return (
+    <>
       <label
         htmlFor="email"
-        className={cn(
-          'block font-bold text-[0.8125rem] text-ink',
-          !offersSocial(ways.native) && 'mt-5',
-        )}
+        className={cn('block font-bold text-[0.8125rem] text-ink', !offersSocial(native) && 'mt-5')}
       >
         Email
       </label>
@@ -550,7 +595,7 @@ export function CheckEmailStep({
           setCode(next);
           if (next.length === CODE_LENGTH) onCode(next);
         }}
-        className="mt-1.5 w-full rounded-[13px] border-[1.6px] border-line bg-paper px-3.5 py-3 text-center font-bold font-head text-[1.5rem] text-ink tracking-[0.4em] outline-none focus:border-emphasis disabled:opacity-60"
+        className={CODE_INPUT}
       />
       <Sub>Or open the link in the email: this screen goes on by itself once you have.</Sub>
       <button
