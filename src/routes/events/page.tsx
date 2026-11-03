@@ -8,6 +8,7 @@ import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
+import { useFilterPlace } from '@/lib/filter-place';
 import { useHome } from '@/lib/home-state';
 import { useMapData } from '@/lib/map-data';
 import { useNearHome } from '@/lib/near-home';
@@ -227,16 +228,19 @@ export default function EventsPage() {
       now.withinMiles === milesAtStart ? now : { ...now, withinMiles: milesAtStart },
     );
   }, [milesAtStart]);
+  // From a place the member chose instead of home (filter-place.ts).
+  const place = useFilterPlace();
   const organizationsNear = useMemo(() => {
     const miles = directory.withinMiles;
+    const home = place ?? directoryMap.contents.home;
     // A search looks through all of them, wherever they are.
-    if (miles === null || directory.query.trim() || !directoryMap.contents.home) {
+    if (miles === null || directory.query.trim() || !home) {
       return organizations;
     }
-    const placed = new Set(directoryMap.contents.organizations.map((place) => place.id));
-    const near = organizationsWithin(directoryMap.contents, miles);
+    const placed = new Set(directoryMap.contents.organizations.map((spot) => spot.id));
+    const near = organizationsWithin({ ...directoryMap.contents, home }, miles);
     return organizations.filter(({ id }) => !placed.has(id) || near.has(id));
-  }, [organizations, directory.withinMiles, directory.query, directoryMap.contents]);
+  }, [organizations, directory.withinMiles, directory.query, directoryMap.contents, place]);
   const changeDirectory = (next: DirectoryFilters) => {
     chosenMiles.current = next.withinMiles !== milesAtStart;
     setDirectory(next);
@@ -429,6 +433,19 @@ export default function EventsPage() {
               setSegment(next === 'orgs' ? 'orgs' : 'upcoming');
             }}
           />
+          {/* On a computer, in the bar between the switches, for what is
+              showing (the owner, 2026-11-03); a phone has the round + over the
+              list instead. */}
+          {account.status === 'member' && (canAddEvents || !showingList) ? (
+            <Link
+              to={showingList ? '/events/new' : '/events/new?add=organization'}
+              className="hidden min-h-[38px] items-center gap-1.5 rounded-full bg-tint px-3.5 font-semibold text-[0.84375rem] text-emphasis transition-colors hover:bg-line md:flex"
+              data-target="small"
+            >
+              <Plus className="h-[15px] w-[15px]" strokeWidth={2.4} aria-hidden="true" />
+              {showingList ? 'Event' : 'Organization'}
+            </Link>
+          ) : null}
           <ViewSwitch view={view} onChange={setView} />
         </div>
 
@@ -514,13 +531,16 @@ export default function EventsPage() {
         <Link
           to={canAddEvents && showingList ? '/events/new' : '/events/new?add=organization'}
           aria-label="Add"
-          className="absolute right-4 bottom-4 z-10 grid h-14 w-14 place-items-center rounded-full bg-action text-white shadow-[0_6px_18px_rgba(10,20,35,.35)] transition-colors hover:bg-action-hi"
+          className="absolute right-4 bottom-4 z-10 grid md:hidden h-14 w-14 place-items-center rounded-full bg-action text-white shadow-[0_6px_18px_rgba(10,20,35,.35)] transition-colors hover:bg-action-hi"
         >
           <Plus className="h-6 w-6" strokeWidth={2.4} aria-hidden="true" />
         </Link>
       ) : null}
 
-      <div hidden={showingMap} className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[88px] md:px-6">
+      <div
+        hidden={showingMap}
+        className="flex-1 overflow-y-auto px-4 pt-3.5 pb-[88px] md:px-6 md:pb-6"
+      >
         <div className="mx-auto w-full max-w-[var(--events-measure)]">
           {view === 'map' && mapProblem ? <MapProblemNote problem={mapProblem} /> : null}
           {writeError ? (
@@ -646,7 +666,7 @@ export default function EventsPage() {
             status:
               directoryMap.status === 'loading'
                 ? 'loading'
-                : directoryMap.contents.home
+                : place || directoryMap.contents.home
                   ? 'ready'
                   : 'unplaced',
           }}

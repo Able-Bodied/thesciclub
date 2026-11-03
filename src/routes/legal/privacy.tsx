@@ -21,7 +21,16 @@ import {
  */
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="November 2, 2026">
+    <LegalPage title="Privacy Policy" updated="November 3, 2026">
+      <Note title="What changed on November 3, 2026">
+        <List>
+          <li>
+            <b>Added:</b> you can measure distances in Filters from another city, state or ZIP code
+            instead of home. What you type is looked up with OpenStreetMap, and the place found is
+            kept on your device only (see What we collect).
+          </li>
+        </List>
+      </Note>
       <Note title="What changed on November 2, 2026">
         <List>
           <li>
@@ -352,6 +361,12 @@ export default function PrivacyPage() {
             on the map, a nightly job looks up the middle of each city and ZIP code members live in,
             also with OpenStreetMap. It sends only the city and state, or the ZIP code, never who
             lives there.
+          </li>
+          <li>
+            <b>Distance from another place:</b> if you choose Change beside the distance in Filters,
+            what you type is sent to OpenStreetMap’s Nominatim service to find it. The place found
+            is kept on your device until you go back to home. To measure events from it, its
+            position is sent to the club with the question and not kept.
           </li>
           <li>
             <b>Event and organization addresses</b> are looked up with OpenStreetMap when they are

@@ -4,6 +4,7 @@ import { FilterButton } from '@/components/filter-button';
 import { HeaderSearch } from '@/components/header-search';
 import { LoadingCards } from '@/components/loading-cards';
 import { TwoWayToggle } from '@/components/two-way-toggle';
+import { useFilterPlace } from '@/lib/filter-place';
 import { useHome } from '@/lib/home-state';
 import { useMapData } from '@/lib/map-data';
 import { useBrowseMembers } from '@/lib/members';
@@ -91,9 +92,15 @@ export default function PeersPage() {
       now.withinMiles === milesAtStart ? now : { ...now, withinMiles: milesAtStart },
     );
   }, [milesAtStart]);
+  // From a place the member chose instead of home (filter-place.ts).
+  const place = useFilterPlace();
   const near = useMemo(
-    () => membersWithin(mapData.contents, filters.withinMiles),
-    [mapData.contents, filters.withinMiles],
+    () =>
+      membersWithin(
+        place ? { ...mapData.contents, home: place } : mapData.contents,
+        filters.withinMiles,
+      ),
+    [mapData.contents, filters.withinMiles, place],
   );
   const distanceStatus: NearHomeStatus =
     filters.withinMiles === null
@@ -102,7 +109,7 @@ export default function PeersPage() {
         ? 'error'
         : mapData.status === 'loading'
           ? 'loading'
-          : mapData.contents.home
+          : place || mapData.contents.home
             ? 'ready'
             : 'unplaced';
 
