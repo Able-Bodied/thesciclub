@@ -312,6 +312,19 @@ describe('compose', () => {
     );
   });
 
+  it('names the event an org admin told them of, and its organization', () => {
+    const told = owed({ kind: 'event_notice', actor_name: 'NorCal SCI', subject: 'Handcycling' });
+    expect(compose(told)).toMatchObject({
+      title: 'Handcycling',
+      body: 'From NorCal SCI. Are you going?',
+    });
+    expect(compose({ ...told, detail: 'again' })?.title).toBe('Reminder: Handcycling');
+    expect(compose({ ...told, actor_name: null })?.body).toBe(
+      'From an organization you belong to. Are you going?',
+    );
+    expect(compose({ ...told, subject: null })).toBeNull();
+  });
+
   it('names the grant and when it closes', () => {
     expect(
       compose(

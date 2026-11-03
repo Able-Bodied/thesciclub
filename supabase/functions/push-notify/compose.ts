@@ -367,6 +367,15 @@ export function compose(owed: Owed): PushMessage | null {
         body: 'Check in while it is still open.',
         ...where,
       };
+    // An org admin told them of an event (20261103000000): actor_name is the
+    // organization, detail 'again' on a second go.
+    case 'event_notice':
+      if (subject === '') return null;
+      return {
+        title: owed.detail === 'again' ? `Reminder: ${subject}` : subject,
+        body: `From ${given === '' ? 'an organization you belong to' : given}. Are you going?`,
+        ...where,
+      };
     case 'org_events': {
       const count = Number(owed.detail);
       if (subject === '' || !Number.isInteger(count) || count < 1) return null;

@@ -461,7 +461,12 @@ All live. Migration headers and the files named say how and why.
   administrators, `private.can_connect`; `/partner` redirects): an
   organization's numbers (`my_organization_stats`, only what its page already
   shows; `my_organization_events`, one row an event held, turnout only of
-  those who said Going; `my_organization_weeks`, eight weeks), their numbers,
+  those who said Going; `my_organization_weeks`, eight weeks), its people
+  (`organization_people`, ten then See all) and Notify your people
+  (`20261103000000`: `notify_members_of_event`, 12 hours between notices to
+  one person, opened = its notification read; "every new event" is
+  `organizations.notifies_members_since`, sent by cron five minutes on; needs
+  `push-notify` deployed for the push), their numbers,
   Connect two members, My people (never messages or
   contact details beyond addresses they invited) and introductions. Connecting
   (`make_introduction`, also Introduce… in a profile's •••) asks nobody (the

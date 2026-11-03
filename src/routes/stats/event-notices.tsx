@@ -1,0 +1,363 @@
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAnnounce } from '@/lib/announce';
+import {
+  type EventNotices,
+  fetchEventNotices,
+  fetchNoticeRecipients,
+  fetchNotifiesMembers,
+  type NoticeAudience,
+  type NoticeRecipient,
+  notifyMembers,
+  roleOf,
+  setNotifiesMembers,
+} from '@/lib/event-notices';
+import { cn } from '@/lib/utils';
+import { FIRST_PEOPLE } from '@/routes/stats/organization-people';
+
+/**
+ * Telling the organization's people about its events (20261103000000): every
+ * new one, or one at a time, and who opened it and answered.
+ */
+
+const when = (event: EventNotices) =>
+  new Date(event.startTime).toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(event.allDay ? {} : { hour: 'numeric', minute: '2-digit' }),
+    timeZone: event.timezone ?? 'America/Los_Angeles',
+  });
+
+const people = (n: number) => (n === 1 ? '1 person' : `${String(n)} people`);
+
+/** What the button says, for how many it may reach. */
+export function sendLabel(who: NoticeAudience, count: number): string {
+  switch (who) {
+    case 'everyone':
+      return `Notify ${people(count)}`;
+    case 'not_opened':
+      return `Remind ${String(count)} who haven’t opened it`;
+    case 'no_answer':
+      return `Remind ${String(count)} who haven’t answered`;
+  }
+}
+
+/** What came of a press. */
+export function sentMessage(count: number): string {
+  return count === 0
+    ? 'Nobody to notify right now. Each person can be notified once every 12 hours.'
+    : `Notified ${people(count)}.`;
+}
+
+const TWELVE_HOURS = 12 * 3_600_000;
+
+/** When a reminder may go, as "Tue 9:30 AM", or null if it may now. */
+export function remindsFrom(lastSentAt: string | null, now: number = Date.now()): string | null {
+  if (!lastSentAt) return null;
+  const from = new Date(lastSentAt).getTime() + TWELVE_HOURS;
+  if (from <= now) return null;
+  return new Date(from).toLocaleString('en-US', {
+    weekday: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+/** A recipient's line: what they did. */
+export function recipientStatus(r: NoticeRecipient): string {
+  const times = r.sends > 1 ? ` · notified ${String(r.sends)} times` : '';
+  if (r.rsvp === 'going') return `Going${times}`;
+  if (r.rsvp === 'interested') return `Interested${times}`;
+  return `${r.openedAt ? 'Opened, no answer' : 'Not opened'}${times}`;
+}
+
+export function EventNoticesPanel({ organizationId }: { organizationId: string }) {
+  const [events, setEvents] = useState<EventNotices[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
+
+  const load = useCallback(() => {
+    void fetchEventNotices(organizationId).then((result) => {
+      if (result.ok) {
+        setEvents(result.value);
+        setError(null);
+      } else setError(result.error);
+    });
+  }, [organizationId]);
+
+  useEffect(() => {
+    setEvents(null);
+    setAll(false);
+    load();
+  }, [load]);
+
+  const shown = events ? (all ? events : events.slice(0, FIRST_PEOPLE)) : [];
+
+  return (
+    <div className="mt-4">
+      <h3 className="font-extrabold font-head text-[0.875rem] text-ink">Notify your people</h3>
+      <p className="mt-0.5 mb-2 text-[0.75rem] text-grey leading-[1.45]">
+        Tell your org admins, mentors and members about an event, and see who opened it and who
+        answered.
+      </p>
+      <EveryEventSwitch organizationId={organizationId} />
+      {error ? (
+        <p role="alert" className="mt-2 text-[0.8125rem] text-destructive">
+          {error}
+        </p>
+      ) : events === null ? null : events.length === 0 ? (
+        <p className="mt-2.5 rounded-[14px] border border-line bg-paper px-3.5 py-4 text-center text-[0.875rem] text-grey">
+          No upcoming events.
+        </p>
+      ) : (
+        <ul className="mt-2.5 space-y-2.5">
+          {shown.map((event) => (
+            <EventRow key={event.eventId} event={event} onSent={load} />
+          ))}
+        </ul>
+      )}
+      {events && events.length > FIRST_PEOPLE ? (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => {
+            setAll(!all);
+          }}
+          className="mt-2 min-h-[44px] font-semibold text-[0.875rem] text-emphasis underline"
+        >
+          {all ? 'Show fewer' : `See all ${String(events.length)}`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function EveryEventSwitch({ organizationId }: { organizationId: string }) {
+  const [on, setOn] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    setOn(null);
+    void fetchNotifiesMembers(organizationId).then((result) => {
+      if (!live) return;
+      if (result.ok) setOn(result.value);
+      else setError(result.error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [organizationId]);
+
+  function toggle() {
+    if (on === null) return;
+    const next = !on;
+    setBusy(true);
+    setError(null);
+    setOn(next);
+    void setNotifiesMembers(organizationId, next).then((result) => {
+      setBusy(false);
+      if (!result.ok) {
+        setOn(!next);
+        setError(result.error);
+      }
+    });
+  }
+
+  return (
+    <div className="rounded-[14px] border border-line bg-paper p-3.5">
+      <div className="flex items-center gap-3.5">
+        <div className="min-w-0 flex-1">
+          <p className="font-bold text-[0.9375rem] text-ink">Notify them of every new event</p>
+          <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
+            {on
+              ? 'Each event you add here goes to them a few minutes after you add it. A repeating event goes once.'
+              : 'Off: use Notify on an event below. Events from your own calendar are in their daily summary either way.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on === true}
+          aria-label="Notify them of every new event"
+          data-target="small"
+          disabled={busy || on === null}
+          onClick={toggle}
+          className={cn(
+            'relative h-[30px] w-[52px] flex-none rounded-full transition-colors disabled:opacity-50',
+            on ? 'bg-action hover:bg-action-hi' : 'bg-line hover:bg-grey',
+          )}
+        >
+          <span
+            className={cn(
+              'absolute top-[3px] h-6 w-6 rounded-full bg-paper transition-[left]',
+              on ? 'left-[25px]' : 'left-[3px]',
+            )}
+          />
+        </button>
+      </div>
+      {error ? (
+        <p role="alert" className="mt-2 text-[0.8125rem] text-danger-ink leading-[1.4]">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }) {
+  const announce = useAnnounce();
+  const [busy, setBusy] = useState<NoticeAudience | null>(null);
+  const [said, setSaid] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [round, setRound] = useState(0);
+  const over = new Date(event.startTime).getTime() < Date.now();
+
+  function send(who: NoticeAudience) {
+    setBusy(who);
+    setSaid(null);
+    void notifyMembers(event.eventId, who).then((result) => {
+      setBusy(null);
+      const message = result.ok ? sentMessage(result.value) : result.error;
+      setSaid(message);
+      announce(message);
+      if (result.ok) {
+        setRound((n) => n + 1);
+        onSent();
+      }
+    });
+  }
+
+  // Nobody is told twice in 12 hours, so a reminder waits that long.
+  const remindFrom = remindsFrom(event.lastSentAt);
+  const buttons: [NoticeAudience, number][] = over
+    ? []
+    : (
+        [
+          ['everyone', event.canReach],
+          ['not_opened', remindFrom ? 0 : event.notOpened],
+          ['no_answer', remindFrom ? 0 : event.noAnswer],
+        ] as [NoticeAudience, number][]
+      ).filter(([, count]) => count > 0);
+
+  return (
+    <li className="rounded-[14px] border border-line bg-paper p-3">
+      <Link
+        to={`/events/${event.eventId}`}
+        className="block break-words font-bold text-[0.9375rem] text-ink underline-offset-2 hover:underline"
+      >
+        {event.title}
+      </Link>
+      <p className="mt-0.5 text-[0.75rem] text-grey">
+        {when(event)}
+        {over ? ' · started' : ''}
+      </p>
+      <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+        {event.notified === 0
+          ? 'Not notified yet.'
+          : `Notified ${people(event.notified)} · ${String(event.opened)} opened · ${String(event.going)} going · ${String(event.interested)} interested · ${String(event.noAnswer)} no answer`}
+      </p>
+      {buttons.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {buttons.map(([who, count]) => (
+            <button
+              key={who}
+              type="button"
+              disabled={busy !== null}
+              onClick={() => {
+                send(who);
+              }}
+              className={cn(
+                'min-h-[44px] rounded-[10px] px-3 font-semibold text-[0.8125rem] disabled:opacity-50',
+                who === 'everyone'
+                  ? 'bg-action text-white hover:bg-action-hi'
+                  : 'bg-tint text-emphasis',
+              )}
+            >
+              {busy === who ? 'Sending…' : sendLabel(who, count)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {said ? <p className="mt-1.5 text-[0.8125rem] text-ink leading-[1.4]">{said}</p> : null}
+      {!over && remindFrom && event.noAnswer > 0 ? (
+        <p className="mt-1.5 text-[0.8125rem] text-ink2 leading-[1.4]">
+          You can remind those who haven’t answered from {remindFrom}.
+        </p>
+      ) : null}
+      {event.notified > 0 ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => {
+            setOpen(!open);
+          }}
+          className="mt-1.5 min-h-[44px] font-semibold text-[0.8125rem] text-emphasis underline"
+        >
+          {open ? 'Hide who was notified' : 'Who was notified'}
+        </button>
+      ) : null}
+      {open ? <Recipients key={round} eventId={event.eventId} /> : null}
+    </li>
+  );
+}
+
+function Recipients({ eventId }: { eventId: string }) {
+  const [list, setList] = useState<NoticeRecipient[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void fetchNoticeRecipients(eventId).then((result) => {
+      if (!live) return;
+      if (result.ok) setList(result.value);
+      else setError(result.error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [eventId]);
+
+  if (error) {
+    return (
+      <p role="alert" className="text-[0.8125rem] text-destructive">
+        {error}
+      </p>
+    );
+  }
+  if (list === null) return <p className="py-2 text-[0.8125rem] text-grey">Loading…</p>;
+  const shown = all ? list : list.slice(0, FIRST_PEOPLE);
+  return (
+    <div>
+      <ul className="overflow-hidden rounded-[12px] border border-line">
+        {shown.map((r) => (
+          <li
+            key={r.id}
+            className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 border-line border-b px-3 py-2 last:border-b-0"
+          >
+            <span className="min-w-0 break-words font-semibold text-[0.875rem] text-ink">
+              {r.name}
+              <span className="font-normal text-grey"> · {roleOf(r)}</span>
+            </span>
+            <span className="text-[0.8125rem] text-ink2">{recipientStatus(r)}</span>
+          </li>
+        ))}
+      </ul>
+      {list.length > FIRST_PEOPLE ? (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => {
+            setAll(!all);
+          }}
+          className="mt-1.5 min-h-[44px] font-semibold text-[0.8125rem] text-emphasis underline"
+        >
+          {all ? 'Show fewer' : `See all ${String(list.length)}`}
+        </button>
+      ) : null}
+    </div>
+  );
+}

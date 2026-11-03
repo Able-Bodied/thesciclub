@@ -678,6 +678,7 @@ export const NOTIFICATION_KINDS = [
   { kind: 'check_in_reminder', label: 'Reminders to check in after an event', who: 'all' },
   { kind: 'event_followup', label: 'How an event I checked in to went', who: 'all' },
   { kind: 'org_events', label: 'New events from organizations I belong to', who: 'all' },
+  { kind: 'event_notice', label: 'Events my organizations invite me to', who: 'all' },
   { kind: 'grant_open', label: 'Grants opening from organizations I belong to', who: 'all' },
   { kind: 'profile_reminder', label: 'Reminders to finish my profile', who: 'all' },
   { kind: 'reply_participant', label: 'Replies in topics I have posted in', who: 'all' },

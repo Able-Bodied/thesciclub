@@ -32,6 +32,8 @@ import {
 } from '@/lib/partner-hub';
 import { cn } from '@/lib/utils';
 import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/connect-fields';
+import { EventNoticesPanel } from '@/routes/stats/event-notices';
+import { OrganizationPeople } from '@/routes/stats/organization-people';
 
 /**
  * Stats & controls, for org admins and trusted partners (20261031110000): their
@@ -336,6 +338,8 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
       ) : (
         <>
           <Tiles tiles={tiles} busy={stats === null} />
+          <OrganizationPeople organizationId={chosen.id} />
+          <EventNoticesPanel organizationId={chosen.id} />
           <HeldEvents key={`${chosen.id}|${days}`} events={events} />
           <Weeks organizationId={chosen.id} />
         </>

@@ -172,6 +172,17 @@ describe('what a notification says', () => {
     );
   });
 
+  it('names the event an org admin told them of, and says so again on a reminder', () => {
+    const told = n({ kind: 'event_notice', place: 'Swim', excerpt: 'NorCal SCI' });
+    expect(notificationSentence(told)).toBe('NorCal SCI invited you to Swim. Are you going?');
+    expect(notificationSentence({ ...told, detail: 'again' })).toBe(
+      'Reminder from NorCal SCI: Swim. Are you going?',
+    );
+    expect(notificationSentence({ ...told, excerpt: null })).toBe(
+      'An organization you belong to invited you to Swim. Are you going?',
+    );
+  });
+
   it('names the grant, its organization and when applications close', () => {
     const year = new Date().getFullYear();
     expect(

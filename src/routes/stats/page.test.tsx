@@ -69,6 +69,13 @@ vi.mock('@/lib/introductions', async (importOriginal) => ({
     );
   },
 }));
+// Their own tests are event-notices.test.tsx; here, nothing to show.
+vi.mock('@/lib/event-notices', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  fetchOrganizationPeople: () => Promise.resolve({ ok: true, value: [] }),
+  fetchEventNotices: () => Promise.resolve({ ok: true, value: [] }),
+  fetchNotifiesMembers: () => Promise.resolve({ ok: true, value: false }),
+}));
 vi.mock('@/lib/partner-hub', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchMyPartnerCard: () =>

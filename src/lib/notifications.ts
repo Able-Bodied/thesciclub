@@ -57,7 +57,8 @@ export type NotificationKind =
   | 'event_followup'
   | 'calendar_invite'
   | 'organization_request'
-  | 'introduction';
+  | 'introduction'
+  | 'event_notice';
 
 interface Row {
   id: string;
@@ -299,6 +300,15 @@ export function notificationSentence(n: AppNotification): string {
     // Thirty minutes after the event (20261031050000).
     case 'check_in_reminder':
       return `Did you make it to ${n.place ?? 'the event'}? Check in`;
+    // An org admin told them of it: place is the event, excerpt the
+    // organization, detail 'again' on a second go (20261103000000).
+    case 'event_notice': {
+      const from = n.excerpt ?? 'An organization you belong to';
+      const event = n.place ?? 'an event';
+      return n.detail === 'again'
+        ? `Reminder from ${from}: ${event}. Are you going?`
+        : `${from} invited you to ${event}. Are you going?`;
+    }
     // The morning after the event (20261031070000).
     case 'event_followup':
       return `How was ${n.place ?? 'the event'}? Leave a review and add your pictures`;
