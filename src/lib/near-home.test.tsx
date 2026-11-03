@@ -1,5 +1,6 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setFilterPlace } from '@/lib/filter-place';
 import { useNearHome } from '@/lib/near-home';
 import { calendarChanged, forgetSharedReads } from '@/lib/shared-reads';
 
@@ -35,6 +36,24 @@ async function read() {
 }
 
 describe('which events are near', () => {
+  it('measures from a place the member chose, and from home again after', async () => {
+    setFilterPlace({ label: 'Portland, OR', latitude: 45.52, longitude: -122.68, state: 'OR' });
+    try {
+      const { result } = renderHook(() => useNearHome(50));
+      await waitFor(() => {
+        expect(result.current.status).toBe('ready');
+      });
+      expect(db.rpc).toHaveBeenLastCalledWith('events_within_miles_of');
+    } finally {
+      setFilterPlace(null);
+    }
+    const { result } = renderHook(() => useNearHome(50));
+    await waitFor(() => {
+      expect(result.current.status).toBe('ready');
+    });
+    expect(db.rpc).toHaveBeenLastCalledWith('events_within_miles');
+  });
+
   it('asks once while the answer is fresh', async () => {
     const first = await read();
     first.unmount();
