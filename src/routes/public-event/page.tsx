@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { fetchEventIdByShortLink, fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
+import { recordRsvpClick, useRecordEventView } from '@/lib/event-views';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
@@ -67,6 +68,12 @@ export default function PublicEventPage() {
       cancelled = true;
     };
   }, [id]);
+
+  // An open of the public page, counted with nothing about who (20261103070000).
+  useRecordEventView(
+    event && account.status !== 'member' && account.status !== 'loading' ? event.id : null,
+    true,
+  );
 
   if (account.status === 'member' && id) return <Navigate to={`/events/${id}`} replace />;
 
@@ -160,6 +167,7 @@ export default function PublicEventPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    recordRsvpClick(event.id, true);
                     void navigate(`/e/${event.id}/register?status=going`);
                   }}
                   className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] bg-gold font-bold font-head text-[0.9375rem] text-on-gold"
@@ -170,6 +178,7 @@ export default function PublicEventPage() {
               <button
                 type="button"
                 onClick={() => {
+                  recordRsvpClick(event.id, false);
                   void navigate(`/e/${event.id}/register?status=interested`);
                 }}
                 className="flex min-h-[48px] flex-1 items-center justify-center rounded-[13px] border-[1.6px] border-emphasis bg-paper font-bold font-head text-[0.9375rem] text-emphasis"

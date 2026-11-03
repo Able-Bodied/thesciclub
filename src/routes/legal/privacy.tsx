@@ -56,6 +56,12 @@ export default function PrivacyPage() {
             each opened it, and whether each said Going or Interested. You can turn these
             notifications off on Me.
           </li>
+          <li>
+            <b>Added:</b> we note which events you open in the app. Administrators, and the org
+            admins of the event’s organization, see only how many members opened the event page and
+            how often, not who. Opening an event’s public page, or tapping its RSVP or Interested,
+            adds one to a count for that day, with nothing about who did it.
+          </li>
         </List>
       </Note>
       <Note title="What changed on October 31, 2026">
@@ -238,7 +244,7 @@ export default function PrivacyPage() {
           <li>
             <b>What you do in the club:</b> your messages, posts, reviews and photographs, the
             events you reply to, the posts you like, react to or save, the posts you have read, in a
-            room or on Home, and anything you report or anyone you block.
+            room or on Home, the events you open, and anything you report or anyone you block.
           </li>
           <li>
             <b>If you register for an event on its public page:</b> your name, your email address,

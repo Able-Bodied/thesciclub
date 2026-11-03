@@ -5,6 +5,7 @@ import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
 import { useCheckInPhase } from '@/lib/check-ins';
+import { useRecordEventView } from '@/lib/event-views';
 import {
   deleteEvent,
   deleteEventAndLater,
@@ -26,6 +27,7 @@ import { mayChangeEvent } from '@/routes/events/event-draft';
 import { EventGallery } from '@/routes/events/event-gallery';
 import { EventGroupCard } from '@/routes/events/event-group-card';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
+import { EventViewsLine } from '@/routes/events/event-views';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
 import { longWhen, takesRsvps, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
@@ -70,6 +72,8 @@ export default function EventDetailPage() {
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
   const checkInPhase = useCheckInPhase(event);
+  // A view in the app (20261103070000).
+  useRecordEventView(memberId && event ? event.id : null, false);
 
   const { saved: rsvpSheetFor, sheet: rsvpSheet } = useRsvpSheet(memberId);
   const onRsvp = useCallback(
@@ -442,6 +446,8 @@ export default function EventDetailPage() {
               )}
             </>
           ) : null}
+
+          <EventViewsLine eventId={event.id} allowed={canSeeCheckIns} />
 
           <EventAudienceSection
             event={event}
