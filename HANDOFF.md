@@ -111,6 +111,12 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
 
 ## Open
 
+- **For the owner: Adaptive Rec Hub organizations held back**: 251 the club
+  did not add (`20261103010000`) because their own page did not say they
+  serve people with SCI/D or wheelchair users. Many, like NSCD and Challenge
+  Aspen, likely do. The owner ticks those to add on the review page,
+  https://claude.ai/artifact/CVNPu4CZh6BV9xfTNDBjwy (private to the owner;
+  Copy my choices gives the list to paste).
 - **Reactions notify, and the icon counts kinds**: a reaction to a message
   or post notifies its author like a like (`reaction`, switch "Reactions to
   my posts and messages" on Me; never self, never between a blocked pair
