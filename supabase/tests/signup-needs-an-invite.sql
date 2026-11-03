@@ -16,6 +16,9 @@
 --      revoked invite's address; a claimed, used or unknown token; phone,
 --      anonymous and provider-less sign-ups
 --   3. grants: anon and authenticated cannot call it
+--   4. a live code and open joining (20261102020000): a partner's live code
+--      passes; an administrator's own, a dead or an unknown code is refused;
+--      open joining passes anybody but a blocked address
 --
 -- Run it against a local stack (never the hosted project):
 --
@@ -111,5 +114,40 @@ rollback to savepoint as_member;
 
 \echo '   expect t: supabase_auth_admin may call it'
 select has_function_privilege('supabase_auth_admin', 'public.signup_needs_an_invite(jsonb)', 'execute') as auth_admin_can_call;
+
+-- ==================================================== 4. codes, and joining --
+create function pg_temp.scanned(address text, code text)
+returns jsonb language sql as $$
+  select jsonb_build_object('user', jsonb_build_object(
+    'email', address,
+    'phone', '',
+    'app_metadata', jsonb_build_object('provider', 'email'),
+    'user_metadata', jsonb_build_object('qr_code', code)
+  ));
+$$;
+
+insert into public.members (id, type, status, display_name, username, phone, birth_date, level_range, state, is_admin) values
+  ('aaaaaaaa-1041-0000-0000-000000000002', 'mentor', 'active', 'Maker', 'probe.maker4', null, '1980-01-01', 'T1–T6', 'CA', true);
+insert into public.club_partners (member_id, title) values ('aaaaaaaa-1041-0000-0000-000000000001', 'Probe');
+insert into public.qr_codes (code, admin_id, event_name, made_as_partner, expires_at, turned_off_at) values
+  ('probe-partner', 'aaaaaaaa-1041-0000-0000-000000000001', 'probe', true,  null, null),
+  ('probe-expired', 'aaaaaaaa-1041-0000-0000-000000000001', 'probe', true,  now() - interval '1 day', null),
+  ('probe-off',     'aaaaaaaa-1041-0000-0000-000000000001', 'probe', true,  null, now()),
+  ('probe-credit',  'aaaaaaaa-1041-0000-0000-000000000002', 'probe', false, null, null);
+
+\echo '== 4a. joining closed: expect {} on the first line, 403 on the rest =='
+select 'partner''s live code'     as case, public.signup_needs_an_invite(pg_temp.scanned('walked-in@probe.test', 'probe-partner')) as answer
+union all select 'blocked, live code',  public.signup_needs_an_invite(pg_temp.scanned('elsewhere-blocked@probe.test', 'probe-partner'))
+union all select 'expired code',        public.signup_needs_an_invite(pg_temp.scanned('walked-in@probe.test', 'probe-expired'))
+union all select 'code turned off',     public.signup_needs_an_invite(pg_temp.scanned('walked-in@probe.test', 'probe-off'))
+union all select 'code gives credit',   public.signup_needs_an_invite(pg_temp.scanned('walked-in@probe.test', 'probe-credit'))
+union all select 'unknown code',        public.signup_needs_an_invite(pg_temp.scanned('walked-in@probe.test', 'probe-nonsense'))
+union all select 'nothing at all',      public.signup_needs_an_invite(pg_temp.ev('email', 'walked-in@probe.test'));
+
+\echo '== 4b. joining open: expect {} twice, then 403 for the blocked address =='
+update public.club_joining set open = true;
+select 'anybody' as case, public.signup_needs_an_invite(pg_temp.ev('email', 'walked-in@probe.test')) as answer
+union all select 'dead code, open',  public.signup_needs_an_invite(pg_temp.scanned('walked-in@probe.test', 'probe-expired'))
+union all select 'blocked, open',    public.signup_needs_an_invite(pg_temp.ev('email', 'elsewhere-blocked@probe.test'));
 
 rollback;
