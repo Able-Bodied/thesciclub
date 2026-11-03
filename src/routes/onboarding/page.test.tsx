@@ -1591,18 +1591,19 @@ describe('Google, Apple and passkeys', () => {
       return vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent);
     }
 
-    it('on an iPhone, Apple, with Google under Other ways', async () => {
+    it('on an iPhone, Apple and then Google, and the email behind a button', async () => {
       const agent = onDevice(SAFARI_IPHONE);
       try {
         renderJoin();
         await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
-        expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Sign in with Google' })).toBeNull();
-        const others = screen.getByRole('button', { name: 'Other ways to sign in' });
-        expect(others).toHaveAttribute('aria-expanded', 'false');
-        await userEvent.click(others);
-        expect(others).toHaveAttribute('aria-expanded', 'true');
-        await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
+        const apple = screen.getByRole('button', { name: 'Sign in with Apple' });
+        const google = screen.getByRole('button', { name: 'Sign in with Google' });
+        expect(
+          apple.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /Other ways/ })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Sign in with email' })).toBeInTheDocument();
+        await userEvent.click(google);
         expect(calls.order).toEqual(['signInWithOAuth:google']);
       } finally {
         agent.mockRestore();
@@ -1635,8 +1636,8 @@ describe('Google, Apple and passkeys', () => {
 
     it('with Apple off, Google alone everywhere', () => {
       expect(leadingWayIn('ios-safari', false)).toBe('google');
-      expect(leadingWayIn('ios-safari', true)).toBe('apple');
-      expect(leadingWayIn('ios-chrome', true)).toBe('apple');
+      expect(leadingWayIn('ios-safari', true)).toBe('both');
+      expect(leadingWayIn('ios-chrome', true)).toBe('both');
       expect(leadingWayIn('android', true)).toBe('google');
       expect(leadingWayIn('desktop', true)).toBe('both');
       expect(leadingWayIn('in-app', true)).toBe('both');
@@ -1663,14 +1664,13 @@ describe('Google, Apple and passkeys', () => {
       }
     }
 
-    it('on an iPhone, leads with Apple, with Google under Other ways, on both doors', async () => {
+    it('on an iPhone, offers Apple and Google together, on both doors', async () => {
       onAnIphone(true);
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
       expect(screen.getByRole('button', { name: 'Continue with Apple' })).toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: 'Continue with Google' })).toBeNull();
-      await userEvent.click(screen.getByRole('button', { name: 'Other ways to join' }));
       expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Join with email' }));
       expect(screen.getByText('or join with your email')).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Already a member? Sign in' }));
       expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
@@ -1703,7 +1703,6 @@ describe('Google, Apple and passkeys', () => {
       calls.invited = false;
       renderJoin();
       await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Other ways to sign in' }));
       await userEvent.click(screen.getByRole('button', { name: 'Sign in with Google' }));
       await waitFor(() => {
         expect(calls.order).toEqual(['native:google', 'my_invite_status']);
@@ -1874,7 +1873,7 @@ describe('the email box waiting behind a button', () => {
 
   it('opens on a press, and the box takes the focus', async () => {
     await toSignIn();
-    await userEvent.click(screen.getByRole('button', { name: 'Use email and password' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in with email' }));
     expect(screen.getByLabelText('Email')).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
   });
@@ -1896,7 +1895,7 @@ describe('the email box waiting behind a button', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
     expect(screen.queryByLabelText('Email')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Create account' })).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Use email and password' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Join with email' }));
     expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
   });
 
@@ -1914,7 +1913,7 @@ describe('the email box waiting behind a button', () => {
     });
     await toSignIn();
     expect(calls.order).not.toContain('startAuthentication');
-    await userEvent.click(screen.getByRole('button', { name: 'Use email and password' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in with email' }));
     await waitFor(() => {
       expect(calls.order).toContain('startAuthentication');
     });

@@ -81,9 +81,11 @@ function Divider({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Which way in leads, from the device (the owner, 2026-10-15): Apple on an
- * iPhone or iPad, Google on Android, and both, side by side, anywhere else.
- * The one that does not lead is a tap away under "Other ways", never gone:
+ * Which way in leads, from the device (the owner, 2026-10-15): Google on
+ * Android, and both anywhere else. An iPhone or iPad led with Apple alone until
+ * the owner, 2026-11-03, wanted Google above the fold there too, for members
+ * who use the club on a laptop as well (`appleFirst` keeps Apple on top). The
+ * one that does not lead is a tap away under "Other ways", never gone:
  * somebody signs in the way they joined, whatever the device. The way they last
  * used here leads instead, if it is one of the two.
  */
@@ -93,10 +95,14 @@ export function leadingWayIn(
   last: WayIn | null = null,
 ): 'apple' | 'google' | 'both' {
   if (!appleOn) return 'google';
-  const single = platform.startsWith('ios') || platform === 'android';
-  if (!single) return 'both';
+  if (platform !== 'android') return 'both';
   if (last === 'apple' || last === 'google') return last;
-  return platform === 'android' ? 'google' : 'apple';
+  return 'google';
+}
+
+/** Where both show, whether Apple goes on top: on an iPhone or iPad. */
+function appleFirst(): boolean {
+  return isNative() || currentInstallPlatform().startsWith('ios');
 }
 
 /**
@@ -151,11 +157,7 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
   const appleOn = native ? ways.native.apple : appleSignInEnabled();
   const googleOn = !native || ways.native.google;
   const [lead] = useState(() =>
-    native
-      ? ways.native.apple
-        ? 'apple'
-        : 'google'
-      : leadingWayIn(currentInstallPlatform(), appleSignInEnabled(), lastWayIn()),
+    native ? 'both' : leadingWayIn(currentInstallPlatform(), appleSignInEnabled(), lastWayIn()),
   );
   const { othersOpen, onOthers } = ways;
   const label = mode === 'signin' ? 'Sign in with' : 'Continue with';
@@ -224,10 +226,17 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
         </button>
       ) : null}
       {lead === 'both' ? (
-        <>
-          {google}
-          {apple}
-        </>
+        appleFirst() ? (
+          <>
+            {apple}
+            {google}
+          </>
+        ) : (
+          <>
+            {google}
+            {apple}
+          </>
+        )
       ) : lead === 'apple' ? (
         apple
       ) : (
@@ -239,8 +248,11 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
         onClick={onOthers}
         className="mt-2 flex min-h-[48px] w-full items-center justify-center gap-1 rounded-[13px] border-[1.6px] border-line font-bold font-head text-[0.9375rem] text-emphasis"
       >
+        {/* Named for what it opens (the owner, 2026-11-03). */}
         {lead === 'both' || !appleOn
-          ? 'Use email and password'
+          ? mode === 'signin'
+            ? 'Sign in with email'
+            : 'Join with email'
           : mode === 'signin'
             ? 'Other ways to sign in'
             : 'Other ways to join'}
