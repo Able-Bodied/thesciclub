@@ -14,6 +14,8 @@ export const MAX_MILES = 200;
 const STEP = 5;
 /** The stop past MAX_MILES that means any distance. */
 const ANY = MAX_MILES + STEP;
+/** Where the slider goes when a place is chosen at any distance. */
+const PLACE_MILES = 50;
 
 export function distanceLabel(miles: number | null, city: string | null): string {
   if (miles === null) return 'Any distance';
@@ -59,6 +61,8 @@ export function DistanceFilter({
       return;
     }
     setFilterPlace(place);
+    // A place is chosen to see what is near it.
+    if (miles === null) onChange(PLACE_MILES);
     setEditing(false);
     setTyped('');
   }
@@ -72,7 +76,7 @@ export function DistanceFilter({
         <label htmlFor={id} className="font-bold text-[0.9375rem] text-ink">
           {label}
         </label>
-        {miles !== null && !editing ? (
+        {!editing ? (
           <button
             type="button"
             onClick={() => {
