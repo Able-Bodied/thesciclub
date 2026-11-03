@@ -78,6 +78,24 @@ describe('Change, beside the city', () => {
     });
   });
 
+  it('is there at any distance too, and a place chosen there looks within 50 miles', async () => {
+    answer([
+      {
+        lat: '45.52',
+        lon: '-122.68',
+        addresstype: 'city',
+        address: { city: 'Portland', state: 'Oregon', country_code: 'us' },
+      },
+    ]);
+    const onChange = vi.fn();
+    render(<DistanceFilter miles={null} city="San Jose" status="any" onChange={onChange} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Change' }));
+    await userEvent.type(screen.getByLabelText('City, state or ZIP code'), 'Portland OR');
+    await userEvent.click(screen.getByRole('button', { name: 'Use' }));
+    await screen.findByRole('button', { name: 'Back to San Jose' });
+    expect(onChange).toHaveBeenCalledWith(50);
+  });
+
   it('says so when nothing is found, and keeps home', async () => {
     answer([]);
     render(<DistanceFilter miles={50} city="San Jose" status="ready" onChange={vi.fn()} />);
