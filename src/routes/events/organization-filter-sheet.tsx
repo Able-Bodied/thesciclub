@@ -30,6 +30,7 @@ export function OrganizationFilterSheet({
   filters,
   home,
   startingMiles,
+  distance = true,
   onChange,
   onClose,
 }: {
@@ -40,11 +41,15 @@ export function OrganizationFilterSheet({
   /** The member's own city, and whether distances can be measured. */
   home: { city: string | null; status: NearHomeStatus };
   startingMiles: number | null;
+  /** The list's; the map shows every place (the owner, 2026-11-03). */
+  distance?: boolean;
   onChange: (next: DirectoryFilters) => void;
   onClose: () => void;
 }) {
   const { shown } = useDirectory(organizations, events, following, filters);
   const count = shown.length;
+  // Off the map's count too, where it does nothing.
+  const counted = distance ? filters : { ...filters, withinMiles: startingMiles };
   return (
     <FilterSheetShell
       title="Filter organizations"
@@ -53,19 +58,21 @@ export function OrganizationFilterSheet({
       onClear={() => {
         onChange({ ...NO_FILTERS, query: filters.query, withinMiles: startingMiles });
       }}
-      clearCount={directoryFilterCount({ ...filters, query: '' }, startingMiles)}
+      clearCount={directoryFilterCount({ ...counted, query: '' }, startingMiles)}
       applyLabel={`Show ${count}`}
     >
-      <DistanceFilter
-        miles={filters.withinMiles}
-        city={home.city}
-        status={home.status}
-        things="organizations"
-        note="From the middle of your city. Those with no place of their own always show."
-        onChange={(withinMiles) => {
-          onChange({ ...filters, withinMiles });
-        }}
-      />
+      {distance ? (
+        <DistanceFilter
+          miles={filters.withinMiles}
+          city={home.city}
+          status={home.status}
+          things="organizations"
+          note="From the middle of your city. Those with no place of their own always show."
+          onChange={(withinMiles) => {
+            onChange({ ...filters, withinMiles });
+          }}
+        />
+      ) : null}
       <FilterGroup title="Type">
         {ORGANIZATION_CATEGORIES.map((type) => (
           <FilterChip

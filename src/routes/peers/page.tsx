@@ -110,6 +110,11 @@ export default function PeersPage() {
     () => rankMembers(filterMembers(others, filters, segment, near), viewer),
     [others, filters, segment, near],
   );
+  // Distance is the list's (the owner, 2026-11-03): the map shows everybody.
+  const onMap = useMemo(
+    () => filterMembers(others, { ...filters, withinMiles: null }, segment),
+    [others, filters, segment],
+  );
   // Those in the list as it stands without this choice, so it never offers nobody.
   const organizations = useMemo(
     () => organizationsIn(filterMembers(others, { ...filters, organization: null }, segment, near)),
@@ -138,7 +143,10 @@ export default function PeersPage() {
     setSegment((current) => nextSegment(current, direction));
   }, []);
 
-  const filterCount = activeFilterCount(filters, milesAtStart);
+  const filterCount = activeFilterCount(
+    showingMap ? { ...filters, withinMiles: milesAtStart } : filters,
+    milesAtStart,
+  );
   const totalInSegment = filterMembers(others, EMPTY_MEMBER_FILTERS, segment).length;
 
   return (
@@ -175,8 +183,8 @@ export default function PeersPage() {
           hidden={!showingMap}
           onProblem={setMapProblem}
           focus="peers"
-          members={visible}
-          zoomToMiles={filters.withinMiles}
+          members={onMap}
+          zoomToMiles={milesAtStart}
           backState={{ from: 'peers-map' }}
         />
       ) : null}
@@ -262,13 +270,14 @@ export default function PeersPage() {
           conditions={hasConditions(members)}
           organizations={organizations}
           home={{ city: home?.city ?? null, status: distanceStatus }}
+          distance={!showingMap}
           ages={ageBandsIn(members)}
           // Frequency-ordered. The sheet draws the common ones and keeps the
           // long tail of one-person topics behind "Show all", where it cannot
           // bury the ones that narrow a deck and is still reachable.
           topics={topicsIn(members)}
           filters={filters}
-          matchCount={visible.length}
+          matchCount={showingMap ? onMap.length : visible.length}
           activeCount={filterCount}
           onChange={(next) => {
             chosenMiles.current = next.withinMiles !== milesAtStart;

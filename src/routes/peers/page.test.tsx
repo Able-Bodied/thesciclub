@@ -325,6 +325,8 @@ describe('the map of peers', () => {
     expect(screen.getByText('Counted: Todd, Kerry')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     const sheet = screen.getByRole('dialog', { name: 'Filter peers' });
+    // Distance is the list's: the map shows everybody on it.
+    expect(within(sheet).queryByText('Distance')).toBeNull();
     await userEvent.click(within(sheet).getByRole('button', { name: '30 to 39' }));
     expect(screen.getByText('Counted: Kerry')).toBeInTheDocument();
   });

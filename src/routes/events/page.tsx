@@ -282,6 +282,18 @@ export default function EventsPage() {
     }
     return groupBySeries(visible);
   }, [visible, segment]);
+  // What the member is going to, on top of the calendar (the owner,
+  // 2026-11-03), each date by itself as in "I'm going", then the rest grouped.
+  const goingFirst = useMemo(() => {
+    if (segment !== 'upcoming') return null;
+    const going = visible.filter((event) => viewer.rsvps.get(event.id) === 'going');
+    if (going.length === 0) return null;
+    const ids = new Set(going.map((event) => event.id));
+    return {
+      going: going.map((event) => ({ lead: event, rest: [], seriesId: event.seriesId })),
+      rest: groupBySeries(visible.filter((event) => !ids.has(event.id))),
+    };
+  }, [visible, segment, viewer.rsvps]);
 
   // Which series are open, by series id. Reset when the segment or the window
   // changes: an expansion is about the list in front of you, and leaving it
@@ -360,7 +372,14 @@ export default function EventsPage() {
   // The search box says its own words; this is the filters behind the circle.
   const headerFilterCount = showingList
     ? filterCount
-    : directoryFilterCount({ ...directory, query: '' }, milesAtStart);
+    : directoryFilterCount(
+        {
+          ...directory,
+          query: '',
+          ...(showingMap ? { withinMiles: milesAtStart } : {}),
+        },
+        milesAtStart,
+      );
 
   // The event "View on the map" asked for: from the list, or read by itself
   // when the filters leave it out (it is shown anyway).
@@ -452,8 +471,9 @@ export default function EventsPage() {
 
       {mapOpened ? (
         <>
+          {/* Distance is the list's here too (the owner, 2026-11-03). */}
           <DirectoryShown
-            organizations={organizationsNear}
+            organizations={organizations}
             events={events}
             following={follows.following}
             filters={directory}
@@ -531,7 +551,25 @@ export default function EventsPage() {
             </div>
           ) : (
             <div className="arrive">
-              {grouped.map((group) => {
+              {(goingFirst
+                ? [
+                    { heading: "You're going" },
+                    ...goingFirst.going,
+                    ...(goingFirst.rest.length > 0 ? [{ heading: 'Everything else' }] : []),
+                    ...goingFirst.rest,
+                  ]
+                : grouped
+              ).map((group) => {
+                if ('heading' in group) {
+                  return (
+                    <h2
+                      key={group.heading}
+                      className="mt-1 mb-2 font-extrabold font-head text-[0.71875rem] text-grey uppercase tracking-[0.13em]"
+                    >
+                      {group.heading}
+                    </h2>
+                  );
+                }
                 const isOpen = group.seriesId !== null && expanded.has(group.seriesId);
                 const hasMore = group.rest.length > 0;
                 const card = (event: ClubEvent, asLine: boolean) => (
@@ -601,7 +639,8 @@ export default function EventsPage() {
 
       {directorySheetOpen ? (
         <OrganizationFilterSheet
-          organizations={organizationsNear}
+          organizations={showingMap ? organizations : organizationsNear}
+          distance={!showingMap}
           home={{
             city: home?.city ?? null,
             status:

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -433,6 +433,26 @@ describe('EventsPage', () => {
   });
 });
 
+describe('what the member is going to', () => {
+  it('comes first, then everything else in date order', () => {
+    state.rsvps = new Map([['zoom', 'going']]);
+    renderPage();
+    const order = ["You're going", 'Driving Q&A', 'Everything else', 'Wheelchair rugby'];
+    const nodes = order.map((text) => screen.getByText(text));
+    nodes.slice(1).forEach((node, i) => {
+      expect(
+        (nodes[i]?.compareDocumentPosition(node) ?? 0) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+  });
+
+  it('adds no headings when there is nothing to go to', () => {
+    renderPage();
+    expect(screen.queryByText("You're going")).toBeNull();
+    expect(screen.queryByText('Everything else')).toBeNull();
+  });
+});
+
 describe('a repeating event is one row until you open it', () => {
   const weekly = () => [
     makeEvent({ id: 'w1', title: 'Weekly Wednesdays', startTime: soon(1), seriesId: 'wed' }),
@@ -605,7 +625,9 @@ describe('List or Map', () => {
     );
     expect(screen.getByText('Organizations on the map: BORP')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
-    expect(screen.getByRole('dialog', { name: 'Filter organizations' })).toBeInTheDocument();
+    const sheet = screen.getByRole('dialog', { name: 'Filter organizations' });
+    // Distance is the list's: the map shows every place.
+    expect(within(sheet).queryByText('Distance')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Show 1' }));
     // The list on the same segment agrees.
     await userEvent.click(screen.getByRole('button', { name: 'List' }));

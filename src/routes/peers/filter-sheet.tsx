@@ -46,6 +46,8 @@ export interface FilterSheetProps {
   organizations: string[];
   /** The member's own city and whether distances can be measured. */
   home: { city: string | null; status: NearHomeStatus };
+  /** The list's; the map shows everybody on it (the owner, 2026-11-03). */
+  distance?: boolean;
   /** Age groups somebody in the deck is in (ageBandsIn). */
   ages: string[];
   /** Every topic, most common first. The sheet decides how many to draw. */
@@ -64,6 +66,7 @@ export function FilterSheet({
   conditions,
   organizations,
   home,
+  distance = true,
   ages,
   topics,
   filters,
@@ -99,16 +102,18 @@ export function FilterSheet({
       clearCount={activeCount}
       applyLabel={`Show ${matchCount}`}
     >
-      <DistanceFilter
-        miles={filters.withinMiles}
-        city={home.city}
-        status={home.status}
-        things="members"
-        note="From the middle of your city to the middle of theirs. Members who keep off the map aren’t counted."
-        onChange={(withinMiles) => {
-          onChange({ ...filters, withinMiles });
-        }}
-      />
+      {distance ? (
+        <DistanceFilter
+          miles={filters.withinMiles}
+          city={home.city}
+          status={home.status}
+          things="members"
+          note="From the middle of your city to the middle of theirs. Members who keep off the map aren’t counted."
+          onChange={(withinMiles) => {
+            onChange({ ...filters, withinMiles });
+          }}
+        />
+      ) : null}
 
       <FilterGroup title="Mentors">
         {ROLES.map(([role, label]) => (
