@@ -12,9 +12,9 @@ function Page({ enabled = true, place = '/home' }: { enabled?: boolean; place?: 
   );
 }
 
-function scrollTo(box: HTMLElement, top: number, height = 2000) {
+function scrollTo(box: HTMLElement, top: number, height = 2000, shown = 600) {
   Object.defineProperty(box, 'scrollHeight', { value: height, configurable: true });
-  Object.defineProperty(box, 'clientHeight', { value: 600, configurable: true });
+  Object.defineProperty(box, 'clientHeight', { value: shown, configurable: true });
   Object.defineProperty(box, 'scrollTop', { value: top, configurable: true });
   fireEvent.scroll(box);
 }
@@ -35,6 +35,19 @@ describe('the tab bar on a scroll', () => {
     scrollTo(box, 300);
     scrollTo(box, 296);
     expect(screen.getByText('Hidden')).toBeInTheDocument();
+  });
+
+  it('is not brought back by the page moving as the bar goes', () => {
+    render(<Page />);
+    const box = screen.getByTestId('box');
+    scrollTo(box, 1400);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    // At the bottom, the box growing into the bar's room pulls the page up.
+    scrollTo(box, 1340, 2000, 660);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    // The reader turning back still brings it.
+    scrollTo(box, 1200, 2000, 660);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
   });
 
   it('always shows near the top', () => {
