@@ -95,7 +95,7 @@ export interface EventNotices {
   /** Who Notify members would tell now: never told, and no answer. */
   canReach: number;
   lastSentAt: string | null;
-  /** Its people who answered, notified or not (20261103080000). */
+  /** Its people who answered, notified or not (20261103085000). */
   peopleGoing: number;
   peopleInterested: number;
 }
