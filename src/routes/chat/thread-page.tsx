@@ -100,6 +100,12 @@ import { BlockMemberSheet } from '@/routes/peers/block-sheet';
  */
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
+  // Keyed so a switch between conversations starts clean: no old messages,
+  // draft, reply or edit carried into somebody else's.
+  return <ThreadScreen key={threadId} threadId={threadId} />;
+}
+
+function ThreadScreen({ threadId }: { threadId: string | undefined }) {
   const account = useAccount();
   const { thread, messages, loading, error, reload, send, edit, remove } =
     useThreadMessages(threadId);

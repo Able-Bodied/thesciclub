@@ -1074,6 +1074,41 @@ describe('opening on the message a notification was about', () => {
   });
 });
 
+// The screen stays mounted when only the id changes (report, Bug C).
+describe('switching straight to another conversation', () => {
+  function OpenOther() {
+    const navigate = useNavigate();
+    return (
+      <button type="button" onClick={() => void navigate('/chat/t/th2')}>
+        Open the other conversation
+      </button>
+    );
+  }
+
+  it('leaves the draft and the reply behind', async () => {
+    db.messages = [message({ id: 'm1', body: 'Which frame?' })];
+    render(
+      <MemoryRouter initialEntries={['/chat/t/th1']}>
+        <OpenOther />
+        <Routes>
+          <Route path="/chat/t/:threadId" element={<ThreadPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: "Reply to Jan's message" }));
+    await userEvent.type(screen.getByLabelText('Message Jan'), 'Meant for Jan only.');
+    expect(screen.getByText(/Replying to/)).toBeInTheDocument();
+
+    db.thread = thread({ id: 'th2' });
+    db.messages = [];
+    await userEvent.click(screen.getByRole('button', { name: 'Open the other conversation' }));
+    expect(screen.getByLabelText('Message Jan')).toHaveValue('');
+    expect(screen.queryByText(/Replying to/)).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Send this message' }));
+    expect(db.sent).toEqual([]);
+  });
+});
+
 vi.mock('@/lib/chat/reactions', async (importOriginal) => ({
   ...(await importOriginal<typeof Reactions>()),
   useReactions: () => ({
