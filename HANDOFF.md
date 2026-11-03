@@ -117,6 +117,10 @@ citing a HANDOFF section mean), `932a809` (product decisions). Comments citing
   Aspen, likely do. The owner ticks those to add on the review page,
   https://claude.ai/artifact/CVNPu4CZh6BV9xfTNDBjwy (private to the owner;
   Copy my choices gives the list to paste).
+- **Team River Runner is out** (`20261103060000`, the owner 2026-11-03): it is
+  for veterans only. Removed as an administrator would; don't add it back.
+  Its places' contact notes (`20261103030000`) stay in the table for any
+  organization to use.
 - **Reactions notify, and the icon counts kinds**: a reaction to a message
   or post notifies its author like a like (`reaction`, switch "Reactions to
   my posts and messages" on Me; never self, never between a blocked pair
