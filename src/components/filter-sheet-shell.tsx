@@ -174,10 +174,16 @@ export function FilterChip({
   label,
   on,
   onClick,
+  icon: Icon,
+  leading,
 }: {
   label: string;
   on: boolean;
   onClick: () => void;
+  /** Beside the label, to tell chips apart at a glance (the owner, 2026-11-03). */
+  icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  /** Drawn before the label instead of an icon, such as a type's badge. */
+  leading?: React.ReactNode;
 }) {
   return (
     <button
@@ -190,11 +196,13 @@ export function FilterChip({
         // a page of buttons.
         'min-h-[38px] rounded-full px-3 font-semibold text-[0.8125rem] leading-[1.25]',
         'transition-colors',
+        (Icon !== undefined || leading !== undefined) && 'inline-flex items-center gap-1.5',
         on
           ? 'bg-action text-white hover:bg-action-hi'
           : 'border border-line bg-paper text-ink2 hover:bg-tint',
       )}
     >
+      {Icon ? <Icon className="h-[15px] w-[15px] flex-none" aria-hidden={true} /> : leading}
       {label}
     </button>
   );

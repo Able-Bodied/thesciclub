@@ -1,12 +1,14 @@
+import { Blend, MapPin, Video } from 'lucide-react';
 import { FilterChip, FilterGroup, FilterSheetShell } from '@/components/filter-sheet-shell';
+import { TypeBadge } from '@/components/type-badge';
 import type { NearHomeStatus } from '@/lib/near-home';
+import { ORGANIZATION_CATEGORIES } from '@/lib/organization-categories';
 import { DistanceFilter } from '@/routes/events/distance-filter';
 import { followedHostIds, selectsExactly, toggleFilter } from '@/routes/events/filters';
 import {
   DATE_WINDOW_LABELS,
   DATE_WINDOWS,
   type DateWindow,
-  EVENT_FORMAT_LABELS,
   type EventFilters,
   type EventFormat,
   type EventTag,
@@ -33,6 +35,19 @@ import {
  * the same problem here.
  */
 
+/**
+ * How an event is reached, first in the sheet and with an icon each (the
+ * owner, 2026-11-03: "In-person, online, hybrid as the top three pills").
+ */
+const FORMAT_CHIPS: Record<EventFormat, { label: string; icon: typeof MapPin }> = {
+  in_person: { label: 'In-person', icon: MapPin },
+  online: { label: 'Online', icon: Video },
+  hybrid: { label: 'Hybrid', icon: Blend },
+};
+
+/** More hosts than this, and Hosted by is a list to pick from (the owner, 2026-11-03). */
+const MOST_HOST_CHIPS = 5;
+
 const RSVP_CHOICES: ['going' | 'interested' | 'been-to' | null, string][] = [
   [null, 'All events'],
   ['going', "I'm going"],
@@ -43,7 +58,6 @@ const RSVP_CHOICES: ['going' | 'interested' | 'been-to' | null, string][] = [
 export interface EventFilterSheetProps {
   tags: EventTag[];
   formats: EventFormat[];
-  cities: string[];
   organizations: Organization[];
   /** Organization ids the viewer follows. Used for the "Ones you follow" chip. */
   following: ReadonlySet<string>;
@@ -65,7 +79,6 @@ export interface EventFilterSheetProps {
 export function EventFilterSheet({
   tags,
   formats,
-  cities,
   organizations,
   following,
   home,
@@ -83,6 +96,14 @@ export function EventFilterSheet({
   // nothing is a reasonable thing to do and a useless thing to filter on.
   const followedHosts = followedHostIds(organizations, following);
   const showingFollowed = selectsExactly(filters.organizations, followedHosts);
+  // Said plainly (the owner, 2026-11-03); it was "Yours".
+  const yours = 'Your organizations';
+
+  // The kinds of organization hosting something here, in the map's order.
+  const hostTypes = ORGANIZATION_CATEGORIES.filter((type) =>
+    organizations.some((organization) => organization.category === type.id),
+  );
+  const oneHost = filters.organizations.length === 1 ? (filters.organizations[0] ?? '') : '';
 
   const byCategory = new Map<string, { name: string; tags: EventTag[] }>();
   for (const tag of tags) {
@@ -100,11 +121,25 @@ export function EventFilterSheet({
       clearCount={activeCount}
       applyLabel={`Show ${matchCount}`}
     >
-      {/* When is first and full width: it is the filter that changes the answer
-          most, and a single choice rather than a set — "this week and past
-          events" is not a window anybody means. */}
-      {/* First: whose events, before which ones. One choice. These were
-          pills on the page until 2026-10-10. */}
+      {/* Top of the sheet, unheaded: how an event is reached reads from the
+          icons (the owner, 2026-11-03). */}
+      <fieldset className="mb-4 flex flex-wrap gap-2">
+        <legend className="sr-only">In-person or online</legend>
+        {formats.map((format) => (
+          <FilterChip
+            key={format}
+            label={FORMAT_CHIPS[format].label}
+            icon={FORMAT_CHIPS[format].icon}
+            on={filters.formats.includes(format)}
+            onClick={() => {
+              onChange(toggleFilter(filters, 'formats', format));
+            }}
+          />
+        ))}
+      </fieldset>
+
+      {/* Then whose events, before which ones. One choice. These were pills on
+          the page until 2026-10-10. */}
       <FilterGroup title="Your RSVP">
         {RSVP_CHOICES.map(([value, label]) => (
           <FilterChip
@@ -151,21 +186,6 @@ export function EventFilterSheet({
       {/* Columns rather than a stack: most groups hold one to three chips, and
           stacked they made a tall sheet out of mostly empty space. */}
       <div className="lg:columns-2 lg:gap-x-5">
-        {formats.length > 1 ? (
-          <FilterGroup title="Getting there">
-            {formats.map((format) => (
-              <FilterChip
-                key={format}
-                label={EVENT_FORMAT_LABELS[format]}
-                on={filters.formats.includes(format)}
-                onClick={() => {
-                  onChange(toggleFilter(filters, 'formats', format));
-                }}
-              />
-            ))}
-          </FilterGroup>
-        ) : null}
-
         {[...byCategory.entries()].map(([slug, group]) => (
           <FilterGroup key={slug} title={group.name}>
             {group.tags.map((tag) => (
@@ -192,7 +212,7 @@ export function EventFilterSheet({
                 widens the set in the usual way. */}
             {followedHosts.length > 0 ? (
               <FilterChip
-                label="Yours"
+                label={yours}
                 on={showingFollowed}
                 onClick={() => {
                   onChange({
@@ -202,28 +222,53 @@ export function EventFilterSheet({
                 }}
               />
             ) : null}
-            {organizations.map((organization) => (
-              <FilterChip
-                key={organization.id}
-                label={organization.name}
-                on={filters.organizations.includes(organization.id)}
-                onClick={() => {
-                  onChange(toggleFilter(filters, 'organizations', organization.id));
+            {organizations.length > MOST_HOST_CHIPS
+              ? null
+              : organizations.map((organization) => (
+                  <FilterChip
+                    key={organization.id}
+                    label={organization.name}
+                    on={filters.organizations.includes(organization.id)}
+                    onClick={() => {
+                      onChange(toggleFilter(filters, 'organizations', organization.id));
+                    }}
+                  />
+                ))}
+            {organizations.length > MOST_HOST_CHIPS ? (
+              <select
+                aria-label="Hosted by"
+                value={oneHost}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  onChange({ ...filters, organizations: id ? [id] : [] });
                 }}
-              />
-            ))}
+                className="min-h-[44px] w-full rounded-[12px] border-[1.6px] border-line bg-paper px-3.5 text-[1rem] text-ink outline-none focus:border-emphasis"
+              >
+                <option value="">
+                  {filters.organizations.length > 1 ? yours : 'Any organization'}
+                </option>
+                {[...organizations]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((organization) => (
+                    <option key={organization.id} value={organization.id}>
+                      {organization.name}
+                    </option>
+                  ))}
+              </select>
+            ) : null}
           </FilterGroup>
         ) : null}
 
-        {cities.length > 0 ? (
-          <FilterGroup title="City">
-            {cities.map((city) => (
+        {hostTypes.length > 1 ? (
+          <FilterGroup title="Host org type">
+            {hostTypes.map((type) => (
               <FilterChip
-                key={city}
-                label={city}
-                on={filters.cities.includes(city)}
+                key={type.id}
+                label={type.label}
+                leading={<TypeBadge type={type} />}
+                on={filters.hostTypes.includes(type.id)}
                 onClick={() => {
-                  onChange(toggleFilter(filters, 'cities', city));
+                  onChange(toggleFilter(filters, 'hostTypes', type.id));
                 }}
               />
             ))}

@@ -21,10 +21,8 @@ import { mayAddEvents } from '@/routes/events/event-draft';
 import { EventFilterSheet } from '@/routes/events/filter-sheet';
 import {
   activeFilterCount,
-  citiesIn,
   dateWindowRange,
   filterEvents,
-  formatsIn,
   isPastEvent,
   isPastStartTime,
   isRsvpSegment,
@@ -50,6 +48,7 @@ import {
   type ClubEvent,
   DEFAULT_WITHIN_MILES,
   EMPTY_EVENT_FILTERS,
+  EVENT_FORMATS,
   EVENTS_SEGMENTS,
   type EventFilters,
   type EventsSegment,
@@ -246,9 +245,18 @@ export default function EventsPage() {
     setDirectory(next);
   };
   const near = useNearHome(filters.withinMiles);
+  const hostTypes = useMemo(
+    () =>
+      new Map(
+        organizations.flatMap((organization) =>
+          organization.category ? [[organization.id, organization.category] as const] : [],
+        ),
+      ),
+    [organizations],
+  );
   const viewerState = useMemo(
-    () => ({ rsvps: viewer.rsvps, nearby: near.ids }),
-    [viewer.rsvps, near.ids],
+    () => ({ rsvps: viewer.rsvps, nearby: near.ids, hostTypes }),
+    [viewer.rsvps, near.ids, hostTypes],
   );
 
   const searched = useCallback(
@@ -684,8 +692,8 @@ export default function EventsPage() {
         <EventFilterSheet
           tags={tagsIn(inSegment)}
           // Online-only events are never on the map.
-          formats={formatsIn(inSegment).filter((format) => !showingMap || format !== 'online')}
-          cities={citiesIn(inSegment)}
+          // All three, always (the owner, 2026-11-03).
+          formats={EVENT_FORMATS.filter((format) => !showingMap || format !== 'online')}
           organizations={hostingOrganizations}
           following={follows.following}
           home={{ city: home?.city ?? null, status: near.status }}

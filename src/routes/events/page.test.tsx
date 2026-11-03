@@ -381,31 +381,52 @@ describe('EventsPage', () => {
       expect(screen.getByRole('button', { name: 'wheelchair-rugby' })).toBeInTheDocument();
     });
 
-    it('keeps offering the other cities after one is picked', async () => {
-      // The sheet's options ignore the filters the sheet itself sets. Otherwise
-      // picking "San Jose" would make every other city vanish from the list you
-      // picked it from, and there would be no way back without Clear.
+    it('has no City group: Distance does that', async () => {
       state.events = [
         makeEvent({ id: 'a', startTime: soon(1), city: 'San Jose' }),
         makeEvent({ id: 'b', startTime: soon(2), city: 'Santa Cruz' }),
       ];
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
-      await userEvent.click(screen.getByRole('button', { name: 'San Jose' }));
-      expect(screen.getByRole('button', { name: 'Santa Cruz' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'San Jose' })).toBeNull();
+      expect(screen.queryByText('City')).toBeNull();
     });
 
-    it('only offers a city that has an event in the chosen window', async () => {
+    it('narrows to a kind of host with Host org type', async () => {
+      state.organizations = [
+        makeOrganization({ id: 'gym', name: 'Gym One', category: 'gym' }),
+        makeOrganization({ id: 'peers', name: 'Peer Circle', category: 'peer' }),
+      ];
       state.events = [
-        makeEvent({ id: 'a', startTime: soon(1), city: 'San Jose' }),
-        makeEvent({ id: 'b', startTime: soon(200), city: 'Truckee' }),
+        makeEvent({ id: 'a', title: 'Lift day', startTime: soon(1), organizationId: 'gym' }),
+        makeEvent({ id: 'b', title: 'Coffee chat', startTime: soon(2), organizationId: 'peers' }),
       ];
       renderPage();
       await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
-      // Truckee's only event is 200 days out, well past the default month.
-      expect(screen.queryByRole('button', { name: 'Truckee' })).not.toBeInTheDocument();
-      await userEvent.click(screen.getByRole('button', { name: 'Any time' }));
-      expect(screen.getByRole('button', { name: 'Truckee' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Recovery gyms' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Show 1' }));
+      expect(screen.getByText('Lift day')).toBeInTheDocument();
+      expect(screen.queryByText('Coffee chat')).toBeNull();
+    });
+
+    it('lists Hosted by to pick from past five hosts', async () => {
+      const ids = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+      state.organizations = ids.map((id) => makeOrganization({ id, name: `Host ${id}` }));
+      state.events = ids.map((id, i) =>
+        makeEvent({
+          id: `e${id}`,
+          title: `Event ${id}`,
+          startTime: soon(i + 1),
+          organizationId: id,
+        }),
+      );
+      renderPage();
+      await userEvent.click(screen.getByRole('button', { name: 'Filters' }));
+      expect(screen.queryByRole('button', { name: 'Host h1' })).toBeNull();
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Hosted by' }), 'h3');
+      await userEvent.click(screen.getByRole('button', { name: 'Show 1' }));
+      expect(screen.getByText('Event h3')).toBeInTheDocument();
+      expect(screen.queryByText('Event h1')).toBeNull();
     });
 
     it('narrows the list when a tag is picked', async () => {
@@ -563,8 +584,21 @@ describe('List or Map', () => {
     await screen.findByTestId('club-map');
     await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
     expect(screen.getByRole('dialog', { name: 'Filter events' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'In person' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'In-person' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hybrid' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Online' })).toBeNull();
+  });
+
+  it('puts In-person, Online and Hybrid first in the sheet, always all three', async () => {
+    renderPage();
+    await userEvent.click(screen.getByRole('button', { name: /^Filters/ }));
+    const sheet = screen.getByRole('dialog', { name: 'Filter events' });
+    const chips = within(sheet).getAllByRole('button', { pressed: false });
+    expect(chips.slice(0, 3).map((chip) => chip.textContent)).toEqual([
+      'In-person',
+      'Online',
+      'Hybrid',
+    ]);
   });
 
   it('keeps the map mounted, hidden, once it has been opened', async () => {
