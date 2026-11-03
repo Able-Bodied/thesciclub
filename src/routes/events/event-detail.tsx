@@ -35,6 +35,7 @@ import { OutOfStateMark } from '@/routes/events/out-of-state';
 import { mapsUrl, placeLine } from '@/routes/events/place';
 import { Place } from '@/routes/events/place-link';
 import { EventDescription, safeHref } from '@/routes/events/rich-text';
+import { ShareEventButton } from '@/routes/events/share-event';
 import { ReviewsSection } from '@/routes/reviews/reviews-section';
 import type { EventAttendee, RsvpStatus } from '@/types/domain';
 
@@ -168,15 +169,24 @@ export default function EventDetailPage() {
       <div className="flex-1 overflow-y-auto">
         <div className="bg-plate px-4 pt-[18px] pb-5 text-white">
           <div className="mx-auto w-full max-w-[var(--events-measure)]">
-            <button
-              type="button"
-              onClick={() => {
-                void navigate(back);
-              }}
-              className="block pb-3 text-[#B9CADF] text-[0.875rem]"
-            >
-              ← {backLabel(location)}
-            </button>
+            <div className="flex items-start justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void navigate(back);
+                }}
+                className="block pb-3 text-[#B9CADF] text-[0.875rem]"
+              >
+                ← {backLabel(location)}
+              </button>
+              {memberId ? (
+                <ShareEventButton
+                  eventId={event.id}
+                  shortLink={event.shortLink ?? null}
+                  title={event.title}
+                />
+              ) : null}
+            </div>
 
             <EventGallery
               path={event.photoPath}
