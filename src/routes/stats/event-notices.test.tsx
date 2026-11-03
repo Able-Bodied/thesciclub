@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AnnounceProvider } from '@/lib/announce';
-import type { EventNotices, NoticeRecipient, OrganizationPerson } from '@/lib/event-notices';
+import type { EventNotices, OrganizationPerson, PersonAnswer } from '@/lib/event-notices';
 
 /** The people and the notices on Stats & controls (20261103000000). */
 const state = vi.hoisted(() => ({
   people: [] as OrganizationPerson[],
   events: [] as EventNotices[],
-  recipients: [] as NoticeRecipient[],
+  answers: [] as PersonAnswer[],
   notifies: false,
   sent: [] as [string, string][],
   sentCount: 2,
@@ -21,7 +21,7 @@ vi.mock('@/lib/event-notices', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchOrganizationPeople: () => Promise.resolve({ ok: true, value: state.people }),
   fetchEventNotices: () => Promise.resolve({ ok: true, value: state.events }),
-  fetchNoticeRecipients: () => Promise.resolve({ ok: true, value: state.recipients }),
+  fetchPeopleAnswers: () => Promise.resolve({ ok: true, value: state.answers }),
   fetchNotifiesMembers: () => Promise.resolve({ ok: true, value: state.notifies }),
   notifyMembers: (eventId: string, who: string) => {
     state.sent.push([eventId, who]);
@@ -60,6 +60,8 @@ const event = (over: Partial<EventNotices> = {}): EventNotices => ({
   noAnswer: 3,
   canReach: 4,
   lastSentAt: null,
+  peopleGoing: 2,
+  peopleInterested: 1,
   ...over,
 });
 
@@ -74,7 +76,7 @@ function show(ui: React.ReactNode) {
 beforeEach(() => {
   state.people = [];
   state.events = [];
-  state.recipients = [];
+  state.answers = [];
   state.notifies = false;
   state.sent = [];
   state.sentCount = 2;
@@ -116,11 +118,12 @@ describe('notifying', () => {
     state.events = [event()];
     show(<EventNoticesPanel organizationId="o1" />);
     expect(
-      await screen.findByText(
-        'Notified 5 people · 3 opened · 1 going · 1 interested · 3 no answer',
-      ),
+      await screen.findByText('Notified 5 people · 3 opened · 3 no answer'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Notify 4 people' })).toBeInTheDocument();
+    expect(screen.getByText('Your people: 2 going · 1 interested')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Notify 4 people not yet notified' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Remind 2 who haven’t opened it' }),
     ).toBeInTheDocument();
@@ -166,49 +169,74 @@ describe('notifying', () => {
       await screen.findByText(/^You can remind those who haven’t answered from /),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Remind/ })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Notify 4 people' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Notify 4 people not yet notified' }),
+    ).toBeInTheDocument();
   });
 
-  it('lists who was told and what each did', async () => {
-    state.events = [event()];
-    state.recipients = [
-      {
-        id: 'a',
-        name: 'Ana',
-        isOrgAdmin: false,
-        isMentor: false,
-        lastSentAt: '2026-11-02T10:00:00Z',
-        sends: 2,
-        openedAt: null,
-        rsvp: null,
-      },
-      {
-        id: 'b',
-        name: 'Bo',
-        isOrgAdmin: false,
-        isMentor: true,
-        lastSentAt: '2026-11-02T10:00:00Z',
-        sends: 1,
-        openedAt: '2026-11-02T11:00:00Z',
-        rsvp: null,
-      },
-      {
-        id: 'c',
-        name: 'Cy',
-        isOrgAdmin: true,
-        isMentor: false,
-        lastSentAt: '2026-11-02T10:00:00Z',
-        sends: 1,
-        openedAt: '2026-11-02T11:00:00Z',
-        rsvp: 'going',
-      },
+  it('before anyone is notified, says who answered and who the button skips', async () => {
+    state.events = [
+      event({ eventId: 'a', notified: 0, opened: 0, notOpened: 0, noAnswer: 0 }),
+      event({
+        eventId: 'b',
+        notified: 0,
+        opened: 0,
+        notOpened: 0,
+        noAnswer: 0,
+        canReach: 1,
+        peopleGoing: 0,
+        peopleInterested: 0,
+      }),
     ];
     show(<EventNoticesPanel organizationId="o1" />);
-    await userEvent.click(await screen.findByRole('button', { name: 'Who was notified' }));
-    expect(await screen.findByText('Not opened · notified 2 times')).toBeInTheDocument();
+    expect(await screen.findAllByText('Not notified yet.')).toHaveLength(2);
+    expect(screen.getByText('Your people: 2 going · 1 interested')).toBeInTheDocument();
+    expect(screen.getByText('None of your people have answered yet.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Notify 4 people who haven’t answered' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Notify 1 person who hasn’t answered' }),
+    ).toBeInTheDocument();
+  });
+
+  it('tapping the event lists each of its people and what they did', async () => {
+    state.events = [event({ notified: 0 })];
+    const answer = (over: Partial<PersonAnswer>): PersonAnswer => ({
+      id: 'x',
+      name: 'X',
+      isOrgAdmin: false,
+      isMentor: false,
+      rsvp: null,
+      sends: 0,
+      openedAt: null,
+      seesEvent: true,
+      ...over,
+    });
+    state.answers = [
+      answer({ id: 'c', name: 'Cy', isOrgAdmin: true, rsvp: 'going' }),
+      answer({ id: 'i', name: 'Ida', rsvp: 'interested', sends: 1 }),
+      answer({ id: 'b', name: 'Bo', isMentor: true, sends: 1, openedAt: '2026-11-02T11:00:00Z' }),
+      answer({ id: 'a', name: 'Ana', sends: 2 }),
+      answer({ id: 'd', name: 'Dee' }),
+      answer({ id: 'e', name: 'Eli', seesEvent: false }),
+    ];
+    show(<EventNoticesPanel organizationId="o1" />);
+    const title = await screen.findByRole('button', { name: /Handcycling/ });
+    expect(title).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(title);
+    expect(title).toHaveAttribute('aria-expanded', 'true');
+    expect(await screen.findByText('Going')).toBeInTheDocument();
+    expect(screen.getByText('Interested')).toBeInTheDocument();
     expect(screen.getByText('Opened, no answer')).toBeInTheDocument();
-    expect(screen.getByText('Going')).toBeInTheDocument();
+    expect(screen.getByText('Not opened · notified 2 times')).toBeInTheDocument();
+    expect(screen.getByText('Not notified')).toBeInTheDocument();
+    expect(screen.getByText('Can’t see this event')).toBeInTheDocument();
     expect(screen.getByText(/· Mentor/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open the event' })).toHaveAttribute(
+      'href',
+      '/events/e1',
+    );
   });
 
   it('turns on notifying of every new event', async () => {

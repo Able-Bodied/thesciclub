@@ -95,6 +95,9 @@ export interface EventNotices {
   /** Who Notify members would tell now: never told, and no answer. */
   canReach: number;
   lastSentAt: string | null;
+  /** Its people who answered, notified or not (20261103080000). */
+  peopleGoing: number;
+  peopleInterested: number;
 }
 
 interface EventNoticesRow {
@@ -111,9 +114,11 @@ interface EventNoticesRow {
   no_answer: number;
   can_reach: number;
   last_sent_at: string | null;
+  people_going: number;
+  people_interested: number;
 }
 
-/** Its events from a week ago on, soonest first. */
+/** Its upcoming events, and those of the past week someone was notified of. */
 export async function fetchEventNotices(organizationId: string): Promise<Result<EventNotices[]>> {
   const result = await call(
     'organization_event_notices',
@@ -137,51 +142,53 @@ export async function fetchEventNotices(organizationId: string): Promise<Result<
       noAnswer: row.no_answer,
       canReach: row.can_reach,
       lastSentAt: row.last_sent_at,
+      peopleGoing: row.people_going,
+      peopleInterested: row.people_interested,
     })),
   };
 }
 
-export interface NoticeRecipient {
+export interface PersonAnswer {
   id: string;
   name: string;
   isOrgAdmin: boolean;
   isMentor: boolean;
-  lastSentAt: string;
+  rsvp: 'going' | 'interested' | null;
   sends: number;
   openedAt: string | null;
-  rsvp: 'going' | 'interested' | null;
+  seesEvent: boolean;
 }
 
-interface RecipientRow {
+interface PersonAnswerRow {
   member_id: string;
   display_name: string;
   is_org_admin: boolean;
   is_mentor: boolean;
-  last_sent_at: string;
+  rsvp: string | null;
   sends: number;
   opened_at: string | null;
-  rsvp: string | null;
+  sees_event: boolean;
 }
 
-/** Who was told of one event: no answer first, then by name. */
-export async function fetchNoticeRecipients(eventId: string): Promise<Result<NoticeRecipient[]>> {
+/** Each of its people for one event: answered first, then opened, then notified. */
+export async function fetchPeopleAnswers(eventId: string): Promise<Result<PersonAnswer[]>> {
   const result = await call(
-    'event_notice_recipients',
+    'event_people_answers',
     { p_event: eventId },
-    'Could not load who was notified.',
+    'Could not load who answered.',
   );
   if (!result.ok) return result;
   return {
     ok: true,
-    value: ((result.value as RecipientRow[] | null) ?? []).map((row) => ({
+    value: ((result.value as PersonAnswerRow[] | null) ?? []).map((row) => ({
       id: row.member_id,
       name: row.display_name,
       isOrgAdmin: row.is_org_admin,
       isMentor: row.is_mentor,
-      lastSentAt: row.last_sent_at,
+      rsvp: row.rsvp === 'going' || row.rsvp === 'interested' ? row.rsvp : null,
       sends: row.sends,
       openedAt: row.opened_at,
-      rsvp: row.rsvp === 'going' || row.rsvp === 'interested' ? row.rsvp : null,
+      seesEvent: row.sees_event,
     })),
   };
 }

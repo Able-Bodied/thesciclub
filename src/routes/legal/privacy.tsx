@@ -480,8 +480,9 @@ export default function PrivacyPage() {
           <li>
             <b>Org admins</b> see the same about the people they invited or connected, and counts
             for their organization: members, how they joined, events, turnout and reviews. They see
-            everyone in their organization by name, and, for an event they notified you of, whether
-            you opened the notification and whether you said Going or Interested.
+            everyone in their organization by name, and, for each of its events, whether you said
+            Going or Interested and, if they notified you of it, whether you opened the
+            notification.
           </li>
           <li>
             <b>Being connected.</b> An org admin or a trusted partner can connect two members. You

@@ -190,9 +190,40 @@ select pg_temp.check_true(
   = '{"notified": 3, "opened": 1, "going": 0, "interested": 1, "not_opened": 1, "no_answer": 2, "can_reach": 0}'::jsonb,
   'the numbers for the event');
 select pg_temp.check_true(
+  (select jsonb_agg(right(p ->> 'event_id', 1) order by p ->> 'event_id') from pg_temp.as_member('a',
+     'select event_id from public.organization_event_notices(''bbbbbbbb-1103-0000-0000-000000000001'')') p)
+  = '["1", "3"]'::jsonb,
+  'upcoming events; not a past one nobody was notified of');
+insert into public.event_member_notices (event_id, member_id, organization_id, first_sent_at, last_sent_at)
+values ('cccccccc-1103-0000-0000-000000000002', 'aaaaaaaa-1103-0000-0000-00000000000d',
+        'bbbbbbbb-1103-0000-0000-000000000001', now() - interval '4 days', now() - interval '4 days');
+select pg_temp.check_true(
   (select count(*) from pg_temp.as_member('a',
      'select * from public.organization_event_notices(''bbbbbbbb-1103-0000-0000-000000000001'')')) = 3,
-  'its events from a week ago on');
+  'a past event someone was notified of stays');
+select pg_temp.check_true(
+  (select p from pg_temp.as_member('a',
+     'select people_going, people_interested from public.organization_event_notices(''bbbbbbbb-1103-0000-0000-000000000001'') where event_id = ''cccccccc-1103-0000-0000-000000000001''') p)
+  = '{"people_going": 1, "people_interested": 1}'::jsonb,
+  'its people''s answers, notified or not');
+insert into public.event_rsvps (event_id, member_id, status)
+values ('cccccccc-1103-0000-0000-000000000001', 'aaaaaaaa-1103-0000-0000-000000000001', 'going');
+select pg_temp.check_true(
+  (select (p ->> 'people_going')::integer from pg_temp.as_member('a',
+     'select people_going from public.organization_event_notices(''bbbbbbbb-1103-0000-0000-000000000001'') where event_id = ''cccccccc-1103-0000-0000-000000000001''') p)
+  = 1,
+  'not the answer of someone in a block with the admin');
+select pg_temp.check_true(
+  (select jsonb_agg(right(p ->> 'member_id', 1) || ':' || coalesce(p ->> 'rsvp', '-') || ':' ||
+                    (p ->> 'opened_at' is not null)::text || ':' || (p ->> 'sends'))
+     from pg_temp.as_member('a', 'select * from public.event_people_answers(''cccccccc-1103-0000-0000-000000000001'')') p)
+  = '["e:going:false:0", "c:interested:false:1", "d:-:true:2", "b:-:false:3", "a:-:false:0"]'::jsonb,
+  'everyone and what each did: answered, opened, notified, then the rest');
+select pg_temp.refused_as('d', 'select * from public.event_people_answers(''cccccccc-1103-0000-0000-000000000001'')', '42501');
+select pg_temp.check_true(
+  (select jsonb_object_agg(right(p ->> 'member_id', 1), p -> 'sees_event') @> '{"a": true, "d": false}'
+     from pg_temp.as_member('a', 'select * from public.event_people_answers(''cccccccc-1103-0000-0000-000000000003'')') p),
+  'says who cannot see an event for groups only');
 select pg_temp.check_true(
   (select jsonb_agg(right(p ->> 'member_id', 1) || ':' || coalesce(p ->> 'rsvp', '-') || ':' ||
                     (p ->> 'opened_at' is not null)::text order by p ->> 'member_id')

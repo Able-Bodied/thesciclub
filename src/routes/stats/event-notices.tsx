@@ -1,14 +1,15 @@
+import { ChevronDown } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAnnounce } from '@/lib/announce';
 import {
   type EventNotices,
   fetchEventNotices,
-  fetchNoticeRecipients,
   fetchNotifiesMembers,
+  fetchPeopleAnswers,
   type NoticeAudience,
-  type NoticeRecipient,
   notifyMembers,
+  type PersonAnswer,
   roleOf,
   setNotifiesMembers,
 } from '@/lib/event-notices';
@@ -32,10 +33,12 @@ const when = (event: EventNotices) =>
 const people = (n: number) => (n === 1 ? '1 person' : `${String(n)} people`);
 
 /** What the button says, for how many it may reach. */
-export function sendLabel(who: NoticeAudience, count: number): string {
+export function sendLabel(who: NoticeAudience, count: number, notified = 0): string {
   switch (who) {
     case 'everyone':
-      return `Notify ${people(count)}`;
+      return notified === 0
+        ? `Notify ${people(count)} who ${count === 1 ? 'hasn’t' : 'haven’t'} answered`
+        : `Notify ${people(count)} not yet notified`;
     case 'not_opened':
       return `Remind ${String(count)} who haven’t opened it`;
     case 'no_answer':
@@ -64,12 +67,20 @@ export function remindsFrom(lastSentAt: string | null, now: number = Date.now())
   });
 }
 
-/** A recipient's line: what they did. */
-export function recipientStatus(r: NoticeRecipient): string {
-  const times = r.sends > 1 ? ` · notified ${String(r.sends)} times` : '';
-  if (r.rsvp === 'going') return `Going${times}`;
-  if (r.rsvp === 'interested') return `Interested${times}`;
-  return `${r.openedAt ? 'Opened, no answer' : 'Not opened'}${times}`;
+/** Its people's answers, notified or not. */
+export function answersLine(going: number, interested: number): string {
+  return going + interested === 0
+    ? 'None of your people have answered yet.'
+    : `Your people: ${String(going)} going · ${String(interested)} interested`;
+}
+
+/** One person's line: what they did. */
+export function answerStatus(a: PersonAnswer): string {
+  const times = a.sends > 1 ? ` · notified ${String(a.sends)} times` : '';
+  if (a.rsvp === 'going') return `Going${times}`;
+  if (a.rsvp === 'interested') return `Interested${times}`;
+  if (a.sends > 0) return `${a.openedAt ? 'Opened, no answer' : 'Not opened'}${times}`;
+  return a.seesEvent ? 'Not notified' : 'Can’t see this event';
 }
 
 export function EventNoticesPanel({ organizationId }: { organizationId: string }) {
@@ -244,21 +255,38 @@ function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }
 
   return (
     <li className="rounded-[14px] border border-line bg-paper p-3">
-      <Link
-        to={`/events/${event.eventId}`}
-        className="block break-words font-bold text-[0.9375rem] text-ink underline-offset-2 hover:underline"
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen(!open);
+        }}
+        className="flex min-h-[44px] w-full items-start gap-2 text-left"
       >
-        {event.title}
-      </Link>
-      <p className="mt-0.5 text-[0.75rem] text-grey">
-        {when(event)}
-        {over ? ' · started' : ''}
+        <span className="min-w-0 flex-1">
+          <span className="block break-words font-bold text-[0.9375rem] text-ink">
+            {event.title}
+          </span>
+          <span className="mt-0.5 block text-[0.75rem] text-grey">
+            {when(event)}
+            {over ? ' · started' : ''}
+          </span>
+          <span className="sr-only">{open ? ', hide who answered' : ', see who answered'}</span>
+        </span>
+        <ChevronDown
+          aria-hidden="true"
+          className={cn('mt-0.5 h-5 w-5 flex-none text-grey', open ? 'rotate-180' : '')}
+        />
+      </button>
+      <p className="mt-1 text-[0.8125rem] text-ink leading-[1.45]">
+        {answersLine(event.peopleGoing, event.peopleInterested)}
       </p>
-      <p className="mt-1 text-[0.8125rem] text-ink2 leading-[1.45]">
+      <p className="mt-0.5 text-[0.8125rem] text-ink2 leading-[1.45]">
         {event.notified === 0
           ? 'Not notified yet.'
-          : `Notified ${people(event.notified)} · ${String(event.opened)} opened · ${String(event.going)} going · ${String(event.interested)} interested · ${String(event.noAnswer)} no answer`}
+          : `Notified ${people(event.notified)} · ${String(event.opened)} opened · ${String(event.noAnswer)} no answer`}
       </p>
+      {open ? <Answers key={round} eventId={event.eventId} /> : null}
       {buttons.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-2">
           {buttons.map(([who, count]) => (
@@ -276,7 +304,7 @@ function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }
                   : 'bg-tint text-emphasis',
               )}
             >
-              {busy === who ? 'Sending…' : sendLabel(who, count)}
+              {busy === who ? 'Sending…' : sendLabel(who, count, event.notified)}
             </button>
           ))}
         </div>
@@ -287,31 +315,18 @@ function EventRow({ event, onSent }: { event: EventNotices; onSent: () => void }
           You can remind those who haven’t answered from {remindFrom}.
         </p>
       ) : null}
-      {event.notified > 0 ? (
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => {
-            setOpen(!open);
-          }}
-          className="mt-1.5 min-h-[44px] font-semibold text-[0.8125rem] text-emphasis underline"
-        >
-          {open ? 'Hide who was notified' : 'Who was notified'}
-        </button>
-      ) : null}
-      {open ? <Recipients key={round} eventId={event.eventId} /> : null}
     </li>
   );
 }
 
-function Recipients({ eventId }: { eventId: string }) {
-  const [list, setList] = useState<NoticeRecipient[] | null>(null);
+function Answers({ eventId }: { eventId: string }) {
+  const [list, setList] = useState<PersonAnswer[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [all, setAll] = useState(false);
 
   useEffect(() => {
     let live = true;
-    void fetchNoticeRecipients(eventId).then((result) => {
+    void fetchPeopleAnswers(eventId).then((result) => {
       if (!live) return;
       if (result.ok) setList(result.value);
       else setError(result.error);
@@ -331,7 +346,7 @@ function Recipients({ eventId }: { eventId: string }) {
   if (list === null) return <p className="py-2 text-[0.8125rem] text-grey">Loading…</p>;
   const shown = all ? list : list.slice(0, FIRST_PEOPLE);
   return (
-    <div>
+    <div className="mt-2">
       <ul className="overflow-hidden rounded-[12px] border border-line">
         {shown.map((r) => (
           <li
@@ -342,7 +357,7 @@ function Recipients({ eventId }: { eventId: string }) {
               {r.name}
               <span className="font-normal text-grey"> · {roleOf(r)}</span>
             </span>
-            <span className="text-[0.8125rem] text-ink2">{recipientStatus(r)}</span>
+            <span className="text-[0.8125rem] text-ink2">{answerStatus(r)}</span>
           </li>
         ))}
       </ul>
@@ -358,6 +373,12 @@ function Recipients({ eventId }: { eventId: string }) {
           {all ? 'Show fewer' : `See all ${String(list.length)}`}
         </button>
       ) : null}
+      <Link
+        to={`/events/${eventId}`}
+        className="mt-1 flex min-h-[44px] items-center font-semibold text-[0.8125rem] text-emphasis underline"
+      >
+        Open the event
+      </Link>
     </div>
   );
 }
