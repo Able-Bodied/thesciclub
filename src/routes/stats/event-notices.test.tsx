@@ -17,6 +17,20 @@ const state = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
+vi.mock('@/lib/account', () => ({
+  useAccount: () => ({ status: 'member', userId: 'm0', isAdmin: false, displayName: 'Me' }),
+}));
+const mentors = vi.hoisted(() => ({
+  grant: vi.fn(),
+  revoke: vi.fn(),
+  remove: vi.fn(),
+}));
+vi.mock('@/lib/organization-mentors', () => ({
+  grantMentor: (...args: unknown[]) => mentors.grant(...args) as Promise<{ ok: boolean }>,
+  revokeMentor: (...args: unknown[]) => mentors.revoke(...args) as Promise<{ ok: boolean }>,
+  removeOrganizationPerson: (...args: unknown[]) =>
+    mentors.remove(...args) as Promise<{ ok: boolean }>,
+}));
 vi.mock('@/lib/event-notices', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   fetchOrganizationPeople: () => Promise.resolve({ ok: true, value: state.people }),
@@ -74,6 +88,9 @@ function show(ui: React.ReactNode) {
 }
 
 beforeEach(() => {
+  mentors.grant.mockReset().mockResolvedValue({ ok: true });
+  mentors.revoke.mockReset().mockResolvedValue({ ok: true });
+  mentors.remove.mockReset().mockResolvedValue({ ok: true });
   state.people = [];
   state.events = [];
   state.answers = [];
@@ -90,7 +107,7 @@ describe('the people', () => {
       person(1, { isMentor: true }),
       ...Array.from({ length: 10 }, (_, i) => person(i + 2)),
     ];
-    show(<OrganizationPeople organizationId="o1" />);
+    show(<OrganizationPeople organizationId="o1" organizationName="Probe Org" />);
     const list = await screen.findByRole('list');
     expect(within(list).getAllByRole('listitem')).toHaveLength(10);
     expect(within(list).getByText('Org admin')).toBeInTheDocument();
@@ -105,9 +122,50 @@ describe('the people', () => {
     );
   });
 
+  it('offers a ••• on each but the org admins and themself', async () => {
+    state.people = [
+      person(0, { isOrgAdmin: true }),
+      person(1, { isOrgAdmin: true }),
+      person(2, { isMentor: true }),
+      person(3),
+    ];
+    show(<OrganizationPeople organizationId="o1" organizationName="Probe Org" />);
+    await screen.findByRole('list');
+    expect(screen.queryByRole('button', { name: 'Actions for Person 0' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Actions for Person 1' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Actions for Person 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Actions for Person 3' })).toBeInTheDocument();
+  });
+
+  it('makes a member a mentor, and stops a mentor', async () => {
+    state.people = [person(2, { isMentor: true }), person(3)];
+    show(<OrganizationPeople organizationId="o1" organizationName="Probe Org" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Actions for Person 3' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Make mentor' }));
+    expect(mentors.grant).toHaveBeenCalledWith('o1', 'm3');
+    await userEvent.click(screen.getByRole('button', { name: 'Actions for Person 2' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove as mentor' }));
+    expect(mentors.revoke).toHaveBeenCalledWith('o1', 'm2');
+  });
+
+  it('removes someone only once it is confirmed', async () => {
+    state.people = [person(3)];
+    show(<OrganizationPeople organizationId="o1" organizationName="Probe Org" />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Actions for Person 3' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove from Probe Org' }));
+    expect(mentors.remove).not.toHaveBeenCalled();
+    expect(
+      screen.getByText(
+        'Remove Person 3 from Probe Org? They leave its group chat. They are not told.',
+      ),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(mentors.remove).toHaveBeenCalledWith('o1', 'm3');
+  });
+
   it('has no See all for ten or fewer', async () => {
     state.people = Array.from({ length: 10 }, (_, i) => person(i));
-    show(<OrganizationPeople organizationId="o1" />);
+    show(<OrganizationPeople organizationId="o1" organizationName="Probe Org" />);
     await screen.findByRole('list');
     expect(screen.queryByRole('button', { name: /See all/ })).toBeNull();
   });

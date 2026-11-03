@@ -24,7 +24,7 @@ import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { BlockMemberSheet } from '@/routes/peers/block-sheet';
 import { IntroduceSheet } from '@/routes/peers/introduce-sheet';
 import { gradientFor, initialsOf, summaryLine } from '@/routes/peers/member-card';
-import { mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
+import { MentorSheet, mentorActionLabel, useMentorActions } from '@/routes/peers/mentor-controls';
 import { type Role, RoleOrganizations } from '@/routes/peers/representation-tags';
 import { isAdminOfAny, isMentor, RolePill } from '@/routes/peers/role-pill';
 import {
@@ -493,6 +493,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
   const [blocking, setBlocking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [introducing, setIntroducing] = useState(false);
+  const [choosingMentor, setChoosingMentor] = useState(false);
   const canConnect = useICanConnect(account.userId);
   const reports = useMyReports();
   const announce = useAnnounce();
@@ -514,6 +515,11 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
     if (wasReporting.current && !reporting) menuButton.current?.focus();
     wasReporting.current = reporting;
   }, [reporting]);
+  const wasChoosingMentor = useRef(false);
+  useEffect(() => {
+    if (wasChoosingMentor.current && !choosingMentor) menuButton.current?.focus();
+    wasChoosingMentor.current = choosingMentor;
+  }, [choosingMentor]);
   const wasIntroducing = useRef(false);
   useEffect(() => {
     if (wasIntroducing.current && !introducing) menuButton.current?.focus();
@@ -604,17 +610,28 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                 buttonClassName={ACTIONS_BUTTON}
                 buttonRef={menuButton}
               >
-                {mentoring.actions.map((action) => (
+                {mentoring.actions.length > 1 ? (
                   <button
-                    key={action.organization.id}
                     type="button"
                     onClick={() => {
-                      mentoring.run(action);
+                      setChoosingMentor(true);
                     }}
                   >
-                    {mentorActionLabel(action)}
+                    Mentor for which organization…
                   </button>
-                ))}
+                ) : (
+                  mentoring.actions.map((action) => (
+                    <button
+                      key={action.organization.id}
+                      type="button"
+                      onClick={() => {
+                        mentoring.run(action);
+                      }}
+                    >
+                      {mentorActionLabel(action)}
+                    </button>
+                  ))
+                )}
                 {/* An org admin's or a trusted partner's (20261031110000). */}
                 {canConnect ? (
                   <button
@@ -678,6 +695,17 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
             }}
             onSent={() => {
               setIntroducing(false);
+            }}
+          />
+        ) : null}
+        {choosingMentor ? (
+          <MentorSheet
+            displayName={member.displayName}
+            actions={mentoring.actions}
+            run={mentoring.run}
+            error={mentoring.error}
+            onClose={() => {
+              setChoosingMentor(false);
             }}
           />
         ) : null}

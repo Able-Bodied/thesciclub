@@ -19,10 +19,14 @@ vi.mock('@/lib/organization-representatives', () => ({
 }));
 vi.mock('@/lib/organizations', () => {
   const ncs = makeOrganization({ id: 'ncs', name: 'NorCal SCI', shortCode: 'NCS' });
+  const blz = makeOrganization({ id: 'blz', name: 'BlazeSports', shortCode: 'BLZ' });
   return {
     useOrganizations: () => ({
-      organizations: [ncs],
-      byId: new Map([['ncs', ncs]]),
+      organizations: [ncs, blz],
+      byId: new Map([
+        ['ncs', ncs],
+        ['blz', blz],
+      ]),
       loading: false,
       error: null,
       reload: () => undefined,
@@ -36,7 +40,9 @@ vi.mock('@/lib/organization-mentors', () => ({
 vi.mock('@/lib/announce', () => ({ useAnnounce: () => state.announce }));
 vi.mock('@/lib/photos', () => ({ usePhotoUrl: () => null }));
 
-const { mentorActionLabel, useMentorActions } = await import('@/routes/peers/mentor-controls');
+const { MentorSheet, mentorActionLabel, useMentorActions } = await import(
+  '@/routes/peers/mentor-controls'
+);
 
 /** The ••• lines as the profile draws them, and the error under them. */
 function Harness(props: {
@@ -124,5 +130,39 @@ describe('making a mentor from a profile', () => {
   it('shows nothing on their own profile', () => {
     renderIt([], 'me');
     expect(screen.queryByRole('button', { name: /mentor/ })).not.toBeInTheDocument();
+  });
+});
+
+function SheetHarness({ mentorOf }: { mentorOf: RepresentedOrganization[] }) {
+  const { actions, run, error } = useMentorActions({
+    memberId: 'nicole',
+    displayName: 'Nicole',
+    mentorOf,
+    onChange: () => undefined,
+  });
+  return (
+    <MentorSheet
+      displayName="Nicole"
+      actions={actions}
+      run={run}
+      error={error}
+      onClose={() => undefined}
+    />
+  );
+}
+
+// The owner, 2026-11-03: an org admin of several chooses which, in little room.
+describe('an org admin of more than one organization', () => {
+  it('ticks the organizations they mentor for, and ticking one makes them its mentor', async () => {
+    state.mine = new Set(['ncs', 'blz']);
+    render(<SheetHarness mentorOf={[NCS]} />);
+    expect(screen.getByRole('heading', { name: 'Nicole is a mentor for' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'NorCal SCI' })).toBeChecked();
+    const blaze = screen.getByRole('checkbox', { name: 'BlazeSports' });
+    expect(blaze).not.toBeChecked();
+    await userEvent.click(blaze);
+    expect(state.grant).toHaveBeenCalledWith('blz', 'nicole');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'NorCal SCI' }));
+    expect(state.revoke).toHaveBeenCalledWith('ncs', 'nicole');
   });
 });

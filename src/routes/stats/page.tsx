@@ -338,7 +338,7 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
       ) : (
         <>
           <Tiles tiles={tiles} busy={stats === null} />
-          <OrganizationPeople organizationId={chosen.id} />
+          <OrganizationPeople organizationId={chosen.id} organizationName={chosen.name} />
           <EventNoticesPanel organizationId={chosen.id} />
           <HeldEvents key={`${chosen.id}|${days}`} events={events} />
           <Weeks organizationId={chosen.id} />

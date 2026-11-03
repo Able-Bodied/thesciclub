@@ -44,6 +44,24 @@ export async function revokeMentor(
   }
 }
 
+/** Out of the organization, as if they left; a mentor stops (20261103090000). */
+export async function removeOrganizationPerson(
+  organizationId: string,
+  memberId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const { error } = await getSupabase().rpc('remove_organization_person', {
+      p_organization: organizationId,
+      p_member: memberId,
+    });
+    return error
+      ? { ok: false, error: describeError(error, 'They were not removed.') }
+      : { ok: true };
+  } catch (e) {
+    return { ok: false, error: describeThrown(e, 'They were not removed.') };
+  }
+}
+
 /** The organizations whose mentor the signed-in member is, for Me. Empty on failure. */
 export function useMyMentorOrganizations(memberId: string | null): RepresentedOrganization[] {
   const [organizations, setOrganizations] = useState<RepresentedOrganization[]>([]);
