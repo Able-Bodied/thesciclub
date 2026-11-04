@@ -21,6 +21,8 @@ const state = vi.hoisted(() => ({
   reload: vi.fn(),
   reloadEvents: vi.fn(),
   near: { status: 'any', ids: null as ReadonlySet<string> | null },
+  whens: new Map<string, { startTime: string; endTime: string | null; allDay: boolean }>(),
+  queries: [] as unknown[],
 }));
 
 vi.mock('@/lib/near-home', () => ({
@@ -34,14 +36,18 @@ vi.mock('@/lib/home-state', () => ({
 
 vi.mock('@/lib/events', async (importOriginal) => ({
   rsvpSaved: (await importOriginal<typeof Events>()).rsvpSaved,
-  useEvents: () => ({
-    events: state.events,
-    loading: state.loading,
-    error: state.error,
-    reload: state.reloadEvents,
-  }),
+  useEvents: (query: unknown) => {
+    state.queries.push(query);
+    return {
+      events: state.events,
+      loading: state.loading,
+      error: state.error,
+      reload: state.reloadEvents,
+    };
+  },
   useViewerEvents: () => ({
     rsvps: state.rsvps,
+    whens: state.whens,
     loading: false,
     error: null,
     reload: state.reload,
@@ -168,6 +174,8 @@ beforeEach(() => {
   state.reload = vi.fn();
   state.reloadEvents = vi.fn();
   state.near = { status: 'any', ids: null };
+  state.whens = new Map();
+  state.queries = [];
   map.reads = 0;
   map.retry = vi.fn();
   map.status = 'ready';
@@ -175,6 +183,21 @@ beforeEach(() => {
 });
 
 describe('EventsPage', () => {
+  // Over by its end time (the owner, 2026-11-03), so not bounded by today.
+  it('reads Been to by its ids alone, so an event over earlier today is in it', () => {
+    const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
+    state.rsvps = new Map([
+      ['ended', 'going'],
+      ['running', 'going'],
+    ]);
+    state.whens = new Map([
+      ['ended', { startTime: hours(-3), endTime: hours(-1), allDay: false }],
+      ['running', { startTime: hours(-30), endTime: hours(5), allDay: false }],
+    ]);
+    renderPage('/events?segment=been-to');
+    expect(state.queries.at(-1)).toEqual({ ids: ['ended'] });
+  });
+
   it('lists what is on the calendar', () => {
     renderPage();
     expect(screen.getByText('Wheelchair rugby')).toBeInTheDocument();

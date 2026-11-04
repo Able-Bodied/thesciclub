@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
+import type { EventWhen } from '@/lib/event-over';
 import { preparePhoto } from '@/lib/image';
 import { PHOTOS_BUCKET } from '@/lib/photos';
 import { readInBatches, readPages } from '@/lib/read-pages';
@@ -404,13 +405,13 @@ export function useEvents({ from, to, id, organizationId, ids }: EventQuery = {}
 export interface ViewerState {
   rsvps: Map<string, RsvpStatus>;
   /**
-   * Event id -> that event's start time, for the RSVPs above.
+   * Event id -> when that event is, for the RSVPs above.
    *
    * Embedded in the same query rather than fetched separately, so a screen that
    * needs to tell an RSVP that is still ahead from one that is behind — Me's
    * counters — can do it without loading the whole calendar to find two dates.
    */
-  startTimes: Map<string, string>;
+  whens: Map<string, EventWhen>;
   loading: boolean;
   error: string | null;
   /** Re-read after a write, so a second tab or a failed mutation cannot drift. */
@@ -428,13 +429,24 @@ interface RsvpRow {
    * away, so a change at either end surfaces as a missing date instead of as
    * `undefined.start_time` at runtime.
    */
-  events: { start_time: string } | { start_time: string }[] | null;
+  events: EmbeddedWhen | EmbeddedWhen[] | null;
 }
 
-/** The embedded event's start time, whichever shape it arrived in. */
-function embeddedStartTime(row: RsvpRow): string | null {
+interface EmbeddedWhen {
+  start_time: string;
+  end_time: string | null;
+  all_day: boolean;
+}
+
+/** When the embedded event is, whichever shape it arrived in. */
+function embeddedWhen(row: RsvpRow): EventWhen | null {
   const embedded = Array.isArray(row.events) ? row.events[0] : row.events;
-  return embedded?.start_time ?? null;
+  if (!embedded?.start_time) return null;
+  return {
+    startTime: embedded.start_time,
+    endTime: embedded.end_time ?? null,
+    allDay: embedded.all_day,
+  };
 }
 
 /**
@@ -446,7 +458,7 @@ function embeddedStartTime(row: RsvpRow): string | null {
  */
 export function useViewerEvents(memberId: string | null): ViewerState {
   const [rsvps, setRsvps] = useState<Map<string, RsvpStatus>>(new Map());
-  const [startTimes, setStartTimes] = useState<Map<string, string>>(new Map());
+  const [whens, setWhens] = useState<Map<string, EventWhen>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -459,7 +471,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
       const aborted = () => signal.aborted;
       if (!memberId) {
         setRsvps(new Map());
-        setStartTimes(new Map());
+        setWhens(new Map());
         setLoading(false);
         return;
       }
@@ -467,7 +479,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
         const supabase = getSupabase();
         const mine = await supabase
           .from('event_rsvps')
-          .select('event_id, status, events(start_time)')
+          .select('event_id, status, events(start_time, end_time, all_day)')
           .abortSignal(signal);
         if (aborted()) return;
         if (mine.error) {
@@ -482,10 +494,10 @@ export function useViewerEvents(memberId: string | null): ViewerState {
         // date: an RSVP to an event that no longer exists is not something a
         // counter should claim the member has coming up.
         const dated = rows.flatMap((row) => {
-          const startTime = embeddedStartTime(row);
-          return startTime ? [[row.event_id, startTime] as const] : [];
+          const when = embeddedWhen(row);
+          return when ? [[row.event_id, when] as const] : [];
         });
-        setStartTimes(new Map(dated));
+        setWhens(new Map(dated));
         setError(null);
         setLoading(false);
       } catch (e) {
@@ -509,7 +521,7 @@ export function useViewerEvents(memberId: string | null): ViewerState {
     void load(new AbortController().signal);
   }, [load]);
 
-  return { rsvps, startTimes, loading, error, reload };
+  return { rsvps, whens, loading, error, reload };
 }
 
 /* --------------------------------------------------------------- mutations */

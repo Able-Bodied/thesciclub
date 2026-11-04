@@ -7,6 +7,7 @@ import { LoadingCards } from '@/components/loading-cards';
 import { useRsvpSheet } from '@/components/rsvp-sheet';
 import { TwoWayToggle } from '@/components/two-way-toggle';
 import { useAccount } from '@/lib/account';
+import { isEventOver } from '@/lib/event-over';
 import { setRsvp, useEvents, useViewerEvents } from '@/lib/events';
 import { useFilterPlace } from '@/lib/filter-place';
 import { useHome } from '@/lib/home-state';
@@ -24,7 +25,6 @@ import {
   dateWindowRange,
   filterEvents,
   isPastEvent,
-  isPastStartTime,
   isRsvpSegment,
   matchesEventSearch,
   organizationIdsIn,
@@ -182,15 +182,11 @@ export default function EventsPage() {
   // A search looks through everything (the owner, 2026-11-01): no filter, no
   // distance and no dates hide what somebody typed the name of.
   const searching = eventSearch.trim() !== '';
-  const dateRange = dateWindowRange(
-    isRsvpSegment(segment)
-      ? segment === 'been-to'
-        ? 'past'
-        : 'any'
-      : searching
-        ? 'any'
-        : filters.when,
-  );
+  // Been to is bounded by its ids, so an event over earlier today is in it.
+  const dateRange =
+    segment === 'been-to'
+      ? null
+      : dateWindowRange(isRsvpSegment(segment) || searching ? 'any' : filters.when);
   // Been to is the member's own past RSVPs: read those, not every past event.
   const beenTo = useMemo(
     () =>
@@ -199,10 +195,10 @@ export default function EventsPage() {
         : viewer.loading
           ? null
           : [...viewer.rsvps.keys()].filter((eventId) => {
-              const start = viewer.startTimes.get(eventId);
-              return start === undefined || isPastStartTime(start);
+              const when = viewer.whens.get(eventId);
+              return when === undefined || isEventOver(when);
             }),
-    [segment, viewer.loading, viewer.rsvps, viewer.startTimes],
+    [segment, viewer.loading, viewer.rsvps, viewer.whens],
   );
   const { events, loading, error, reload } = useEvents({
     ...(dateRange ?? {}),

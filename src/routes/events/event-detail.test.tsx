@@ -694,6 +694,22 @@ describe('an event that is over', () => {
     expect(screen.getByText(/already happened/i)).toBeInTheDocument();
   });
 
+  // As its public page says "This event is over" (the owner, 2026-11-03).
+  it('offers no RSVP once it ended, even earlier today', () => {
+    const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
+    state.events = [makeEvent({ id: 'rugby', startTime: hours(-2), endTime: hours(-1) })];
+    renderDetail();
+    expect(screen.queryByRole('button', { name: /^Interested/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/already happened/i)).toBeInTheDocument();
+  });
+
+  it('still offers RSVP while it is running', () => {
+    const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
+    state.events = [makeEvent({ id: 'rugby', startTime: hours(-30), endTime: hours(2) })];
+    renderDetail();
+    expect(screen.queryByText(/already happened/i)).not.toBeInTheDocument();
+  });
+
   it('still says what you had said about it', () => {
     state.events = [makeEvent({ id: 'rugby', startTime: '2026-09-06T03:00:00Z' })];
     state.rsvps = new Map([['rugby', 'going']]);

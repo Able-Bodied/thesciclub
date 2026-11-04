@@ -17,6 +17,7 @@ import {
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { useOrganizations } from '@/lib/organizations';
 import { backLabel, backToEvents } from '@/routes/events/back';
+import { isPastEvent } from '@/routes/events/filters';
 import { FollowButton } from '@/routes/events/follow-button';
 import { dateTileParts } from '@/routes/events/format';
 import { OrganizationAddMembers } from '@/routes/events/organization-add-members';
@@ -114,9 +115,8 @@ export default function OrganizationDetailPage() {
 
   // The next few, so the rest of the page is not a long scroll away (the owner,
   // 2026-11-01).
-  const now = new Date().toISOString();
   const upcoming = events
-    .filter((event) => event.organizationId === organization.id && event.startTime >= now)
+    .filter((event) => event.organizationId === organization.id && !isPastEvent(event))
     .sort((a, b) => a.startTime.localeCompare(b.startTime));
   const hiddenUpcoming = allUpcoming ? 0 : Math.max(0, upcoming.length - UPCOMING_SHOWN);
 

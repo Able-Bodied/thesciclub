@@ -9,6 +9,7 @@
  * chips stays instant. RSVP segments fetch their own past or upcoming range.
  */
 
+import { isEventOver } from '@/lib/event-over';
 import {
   type ClubEvent,
   type DateWindow,
@@ -87,28 +88,9 @@ export function ascendingByDate(when: DateWindow): boolean {
   return when !== 'past';
 }
 
-/**
- * Whether an event is over.
- *
- * The boundary is the start of today, not `now`, for the same reason the
- * forward windows use it: somebody checking at 2pm has not missed a thing that
- * began at 1pm, and an event should not slide into Past while it is still
- * running. It is the same edge `dateWindowRange('past')` draws, read from there
- * rather than restated, so the two cannot drift apart.
- */
+/** Whether an event is over: its end has passed, as on its public page (isEventOver). */
 export function isPastEvent(event: ClubEvent, now: Date = new Date()): boolean {
-  return isPastStartTime(event.startTime, now);
-}
-
-/**
- * The same question asked of a bare timestamp, for callers that hold an RSVP
- * rather than a whole event — Me counts what a member has coming up without
- * loading the calendar to do it. One definition, so the counter on Me and the
- * Past heading on Events can never disagree about where today begins.
- */
-export function isPastStartTime(startTime: string, now: Date = new Date()): boolean {
-  const range = dateWindowRange('past', now);
-  return range?.to !== undefined && startTime <= range.to;
+  return isEventOver(event, now.getTime());
 }
 
 function inDateWindow(event: ClubEvent, when: DateWindow, now: Date): boolean {

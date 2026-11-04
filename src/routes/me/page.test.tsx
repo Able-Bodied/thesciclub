@@ -16,6 +16,7 @@ const own = vi.hoisted(() => ({
 }));
 const rsvps = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const startTimes = vi.hoisted(() => ({ current: new Map<string, string>() }));
+const endTimes = vi.hoisted(() => ({ current: new Map<string, string>() }));
 const wroteVisibility = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 const wroteMap = vi.hoisted(() => ({ calls: [] as unknown[][], fail: false }));
 
@@ -85,7 +86,12 @@ vi.mock('@/lib/members', () => ({
 vi.mock('@/lib/events', () => ({
   useViewerEvents: () => ({
     rsvps: rsvps.current,
-    startTimes: startTimes.current,
+    whens: new Map(
+      [...startTimes.current].map(([id, startTime]) => [
+        id,
+        { startTime, endTime: endTimes.current.get(id) ?? null, allDay: false },
+      ]),
+    ),
     loading: false,
     error: null,
     reload: () => undefined,
@@ -200,6 +206,7 @@ beforeEach(() => {
   own.invitedBy = 'NorCal SCI';
   rsvps.current = new Map();
   startTimes.current = new Map();
+  endTimes.current = new Map();
   wroteVisibility.calls = [];
   wroteMap.calls = [];
   wroteMap.fail = false;
@@ -303,6 +310,29 @@ describe('MePage', () => {
         'href',
         '/events?segment=been-to',
       );
+    });
+
+    it('goes by the end time, not the start of today', () => {
+      // As the event's public page (the owner, 2026-11-03).
+      const hours = (n: number) => new Date(Date.now() + n * 3_600_000).toISOString();
+      rsvps.current = new Map([
+        ['endedAnHourAgo', 'going'],
+        ['runningSinceYesterday', 'going'],
+        ['runningSinceTwoDaysAgo', 'going'],
+      ]);
+      startTimes.current = new Map([
+        ['endedAnHourAgo', hours(-3)],
+        ['runningSinceYesterday', hours(-30)],
+        ['runningSinceTwoDaysAgo', hours(-54)],
+      ]);
+      endTimes.current = new Map([
+        ['endedAnHourAgo', hours(-1)],
+        ['runningSinceYesterday', hours(5)],
+        ['runningSinceTwoDaysAgo', hours(5)],
+      ]);
+      renderMe();
+      expect(screen.getByRole('link', { name: /2\s*Going/ })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /1\s*Been to/ })).toBeInTheDocument();
     });
 
     it('shows "Been to" even at zero, so the row never appears to lose a counter', () => {

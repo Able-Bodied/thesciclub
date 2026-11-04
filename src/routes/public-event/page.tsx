@@ -4,6 +4,7 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ClubMark } from '@/components/club-mark';
 import { useAccount } from '@/lib/account';
 import { fetchEventIdByShortLink, fetchPublicEvent, type PublicEvent } from '@/lib/event-audience';
+import { isEventOver } from '@/lib/event-over';
 import { recordRsvpClick, useRecordEventView } from '@/lib/event-views';
 import { HAND_ADDED_TIMEZONE } from '@/lib/events';
 import { EventGallery } from '@/routes/events/event-gallery';
@@ -78,7 +79,7 @@ export default function PublicEventPage() {
   if (account.status === 'member' && id) return <Navigate to={`/events/${id}`} replace />;
 
   const timezone = event?.timezone ?? HAND_ADDED_TIMEZONE;
-  const over = event ? new Date(event.endTime ?? event.startTime).getTime() < Date.now() : false;
+  const over = event ? isEventOver(event) : false;
   const place = event ? placeLine(event) : null;
   const registerHref = safeHref(event?.registrationUrl ?? null);
   const pageHref = safeHref(event?.url ?? null);

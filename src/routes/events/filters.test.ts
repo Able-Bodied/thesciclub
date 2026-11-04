@@ -202,7 +202,7 @@ describe('filterEvents', () => {
 
   describe('segments', () => {
     it('"going" shows only what the viewer said they are going to', () => {
-      const going = makeEvent({ id: 'a' });
+      const going = makeEvent({ id: 'a', startTime: daysFromNow(1) });
       const interested = makeEvent({ id: 'b' });
       const state = viewer({
         rsvps: new Map([
@@ -472,18 +472,30 @@ describe('the interested segment', () => {
 });
 
 describe('isPastEvent', () => {
-  it('counts an event earlier today as still current', () => {
-    // The boundary is the start of today, not `now`: somebody checking at 2pm
-    // has not missed a thing that began at 1pm.
-    const oneThisAfternoon = makeEvent({ startTime: new Date(2026, 8, 5, 13, 0, 0).toISOString() });
-    expect(isPastEvent(oneThisAfternoon, NOW)).toBe(false);
+  // As the event's public page (the owner, 2026-11-03): over once its end has
+  // passed, or its start when it has none.
+  const at = (hours: number) => new Date(NOW.getTime() + hours * 3_600_000).toISOString();
+
+  it('counts an event that ended earlier today as past', () => {
+    const event = makeEvent({ startTime: at(-3), endTime: at(-1) });
+    expect(isPastEvent(event, NOW)).toBe(true);
   });
 
-  it('counts yesterday as past', () => {
+  it('counts an event still running as not past', () => {
+    expect(isPastEvent(makeEvent({ startTime: at(-1), endTime: at(1) }), NOW)).toBe(false);
+  });
+
+  it('counts an event running since yesterday as not past', () => {
+    expect(isPastEvent(makeEvent({ startTime: at(-30), endTime: at(2) }), NOW)).toBe(false);
+  });
+
+  it('counts an event with no end as past once it has started', () => {
+    expect(isPastEvent(makeEvent({ startTime: at(-1), endTime: null }), NOW)).toBe(true);
+    expect(isPastEvent(makeEvent({ startTime: at(1), endTime: null }), NOW)).toBe(false);
+  });
+
+  it('counts yesterday as past and tomorrow as not', () => {
     expect(isPastEvent(makeEvent({ startTime: daysFromNow(-1) }), NOW)).toBe(true);
-  });
-
-  it('counts tomorrow as not past', () => {
     expect(isPastEvent(makeEvent({ startTime: daysFromNow(1) }), NOW)).toBe(false);
   });
 });

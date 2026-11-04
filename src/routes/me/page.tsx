@@ -10,13 +10,13 @@ import { APPLE_RETURN_PARAM } from '@/lib/apple-sign-in';
 import { useChatRooms } from '@/lib/chat/rooms';
 import { useIAmPartner, useICanConnect } from '@/lib/club-partners';
 import { describeThrown } from '@/lib/describe-error';
+import { isEventOver } from '@/lib/event-over';
 import { useViewerEvents } from '@/lib/events';
 import { GOOGLE_RETURN_PARAM } from '@/lib/google-sign-in';
 import { useInvitePermissions } from '@/lib/invite-permissions';
 import { useOwnMember } from '@/lib/members';
 import { useMyOrganizations } from '@/lib/organization-representatives';
 import { isNative } from '@/lib/standalone';
-import { isPastStartTime } from '@/routes/events/filters';
 import { appFeedbackRoom } from '@/routes/home/feedback-card';
 import { MENTOR_ALLOWANCE } from '@/routes/invites/mentor-invites';
 import { AddEmailBanner } from '@/routes/me/add-email-banner';
@@ -195,8 +195,8 @@ export default function MePage() {
   const countUpcoming = (want: RsvpStatus) =>
     [...viewer.rsvps.entries()].filter(([eventId, status]) => {
       if (status !== want) return false;
-      const startTime = viewer.startTimes.get(eventId);
-      return startTime !== undefined && !isPastStartTime(startTime);
+      const when = viewer.whens.get(eventId);
+      return when !== undefined && !isEventOver(when);
     }).length;
 
   const going = countUpcoming('going');
@@ -208,8 +208,8 @@ export default function MePage() {
   // already lives.
   const beenTo = [...viewer.rsvps.entries()].filter(([eventId, status]) => {
     if (status !== 'going') return false;
-    const startTime = viewer.startTimes.get(eventId);
-    return startTime !== undefined && isPastStartTime(startTime);
+    const when = viewer.whens.get(eventId);
+    return when !== undefined && isEventOver(when);
   }).length;
 
   useEffect(() => {

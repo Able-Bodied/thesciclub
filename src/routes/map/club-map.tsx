@@ -33,7 +33,7 @@ import { usePhotoUrls } from '@/lib/photos';
 import { useSession } from '@/lib/session';
 import { cn } from '@/lib/utils';
 import { EventCard } from '@/routes/events/event-card';
-import { dateWindowRange, filterEvents } from '@/routes/events/filters';
+import { dateWindowRange, filterEvents, isPastEvent } from '@/routes/events/filters';
 import { hasOpenGrant, OrganizationRow } from '@/routes/events/organization-list';
 import { PlaceContact } from '@/routes/events/place-contact';
 import {
@@ -1359,6 +1359,7 @@ function OwnEventCards({
           {exact ? null : <Approximate city={event.city} />}
           <EventCard
             event={event}
+            past={isPastEvent(event)}
             status={viewer.rsvps.get(event.id) ?? null}
             organization={event.organizationId ? (byId.get(event.organizationId) ?? null) : null}
             onOpen={() => {
