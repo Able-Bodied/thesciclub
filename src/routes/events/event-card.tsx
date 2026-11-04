@@ -2,7 +2,7 @@ import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EventCover } from '@/routes/events/event-cover';
 import { isOnline } from '@/routes/events/filters';
-import { dateTileParts, shortWeekday, takesRsvps, timeRange } from '@/routes/events/format';
+import { dateTileParts, rsvpReachesHost, shortWeekday, timeRange } from '@/routes/events/format';
 import { GoingCount } from '@/routes/events/going-count';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { OutOfStateMark } from '@/routes/events/out-of-state';
@@ -341,7 +341,7 @@ export function EventCard({
             <span className="sr-only">, opens the host’s sign-up and marks you as going</span>
             <ExternalLink className="h-[14px] w-[14px] flex-none" aria-hidden="true" />
           </a>
-        ) : going || takesRsvps(event, organization) ? (
+        ) : (
           <button
             type="button"
             onClick={() => {
@@ -350,9 +350,9 @@ export function EventCard({
             aria-pressed={going}
             className={cn(RSVP_BUTTON, going ? RSVP_CHOSEN : RSVP_OPEN)}
           >
-            {going ? 'Going ✓' : 'RSVP'}
+            {going ? 'Going ✓' : rsvpReachesHost(event, organization) ? 'RSVP' : 'Going'}
           </button>
-        ) : null}
+        )}
       </div>
       {/* Beside the card's own button, never inside it. */}
       {mapHref ? <ViewOnMap title={event.title} to={mapHref} className="mt-2.5" /> : null}

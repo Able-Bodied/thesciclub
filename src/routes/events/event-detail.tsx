@@ -29,7 +29,7 @@ import { EventGroupCard } from '@/routes/events/event-group-card';
 import { eventMeetingLink } from '@/routes/events/event-meeting-link';
 import { EventViewsLine } from '@/routes/events/event-views';
 import { isOnline, isPastEvent } from '@/routes/events/filters';
-import { longWhen, takesRsvps, timeRange } from '@/routes/events/format';
+import { longWhen, rsvpReachesHost, timeRange } from '@/routes/events/format';
 import { MeetingLinkButton } from '@/routes/events/meeting-link-button';
 import { OrganizationBadge } from '@/routes/events/organization-badge';
 import { organizationTown } from '@/routes/events/organization-places';
@@ -69,6 +69,7 @@ export default function EventDetailPage() {
   const mine = useMyOrganizations(memberId);
   const [writeError, setWriteError] = useState<string | null>(null);
   const registerNote = useId();
+  const goingNote = useId();
 
   const event = events.find((candidate) => candidate.id === id) ?? null;
   const checkInPhase = useCheckInPhase(event);
@@ -161,6 +162,7 @@ export default function EventDetailPage() {
     ? (organizationsById.get(event.organizationId) ?? null)
     : null;
   const host = organization?.name ?? event.hostName;
+  const reachesHost = rsvpReachesHost(event, organization);
   const canChange = account.status === 'member' && mayChangeEvent(event, account.isAdmin, mine.ids);
   // Its org admins too, whose imported events they cannot change.
   const canSeeCheckIns =
@@ -292,14 +294,7 @@ export default function EventDetailPage() {
                   : 'This has already happened.'}
             </p>
           ) : (
-            <div
-              className={cn(
-                'mt-5 grid gap-2',
-                registerHref || going || takesRsvps(event, organization)
-                  ? 'grid-cols-2'
-                  : 'grid-cols-1',
-              )}
-            >
+            <div className="mt-5 grid grid-cols-2 gap-2">
               {/* With a sign-up of the host's own, Register stands for Going
                 (the owner, 2026-10-27): it marks them going here and opens
                 the host's page, in one press. Taking it back is Going ✓. */}
@@ -317,13 +312,14 @@ export default function EventDetailPage() {
                   Register
                   <ExternalLink className="h-[15px] w-[15px] flex-none" aria-hidden="true" />
                 </a>
-              ) : going || takesRsvps(event, organization) ? (
+              ) : (
                 <button
                   type="button"
                   onClick={() => {
                     onRsvp(going ? null : 'going');
                   }}
                   aria-pressed={going}
+                  aria-describedby={reachesHost ? undefined : goingNote}
                   className={cn(
                     'flex min-h-11 items-center justify-center rounded-[13px] px-5 font-bold font-head text-[0.875rem] transition-colors',
                     going
@@ -331,9 +327,9 @@ export default function EventDetailPage() {
                       : 'bg-action text-white hover:bg-action-hi',
                   )}
                 >
-                  {going ? 'Going ✓' : 'RSVP'}
+                  {going ? 'Going ✓' : reachesHost ? 'RSVP' : 'Going'}
                 </button>
-              ) : null}
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -377,6 +373,13 @@ export default function EventDetailPage() {
                   ) : (
                     `Register opens ${host ?? 'the host'}'s own sign-up and marks you as going here.`
                   )}
+                </p>
+              ) : null}
+              {/* Read from the host's own calendar, and nobody there looks at
+                the list (the owner, 2026-11-04): Going is for the club. */}
+              {!registerHref && !reachesHost ? (
+                <p id={goingNote} className="col-span-2 text-[0.78125rem] text-ink2 leading-[1.45]">
+                  {`Going lets members see you’re going. It doesn’t send ${host ?? 'the host'} an RSVP, so check with them if they need one.`}
                 </p>
               ) : null}
             </div>
