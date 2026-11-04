@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AppNav, litTab } from '@/components/app-nav';
+import type * as BadgesModule from '@/lib/badges';
 import type * as NotificationsModule from '@/lib/notifications';
 
 const unseen = vi.hoisted(() => ({ count: 0 }));
@@ -14,6 +15,10 @@ vi.mock('@/lib/notifications', async (importOriginal) => ({
 vi.mock('@/lib/chat/unread', () => ({ useUnreadThreads: () => ({ count: 0, reload: vi.fn() }) }));
 vi.mock('@/lib/chat/realtime', () => ({ useRealtimeRows: vi.fn() }));
 vi.mock('@/lib/icon-badge', () => ({ useIconBadge: vi.fn() }));
+vi.mock('@/lib/badges', async (importOriginal) => ({
+  ...(await importOriginal<typeof BadgesModule>()),
+  useBadgeRealtime: vi.fn(),
+}));
 
 describe('litTab', () => {
   it('lights a tab on its own path and beneath it', () => {

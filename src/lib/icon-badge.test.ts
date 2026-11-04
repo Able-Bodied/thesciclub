@@ -6,7 +6,6 @@ const db = vi.hoisted(() => ({
   error: null as { message: string } | null,
   calls: [] as string[],
   icon: [] as number[],
-  watched: [] as { table: string; filter: string | undefined }[],
 }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => ({ status: 'member', userId: 'u1' }) }));
@@ -14,7 +13,10 @@ vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (name: string) => {
       db.calls.push(name);
-      return Promise.resolve({ data: db.kinds, error: db.error });
+      return Promise.resolve({
+        data: [{ chat_unread: 0, unseen: 0, unseen_outside_chat: 0, icon_kinds: db.kinds }],
+        error: db.error,
+      });
     },
   }),
 }));
@@ -24,12 +26,7 @@ vi.mock('@/lib/push/notifications', () => ({
     return Promise.resolve();
   },
 }));
-vi.mock('@/lib/chat/realtime', () => ({
-  useRealtimeRows: (o: { table: string; filter?: string }) => {
-    db.watched.push({ table: o.table, filter: o.filter });
-  },
-}));
-
+const { resetBadgesForTest } = await import('@/lib/badges');
 const { useIconBadge } = await import('@/lib/icon-badge');
 const { announceNotificationsChanged } = await import('@/lib/notifications');
 
@@ -38,7 +35,7 @@ beforeEach(() => {
   db.error = null;
   db.calls = [];
   db.icon = [];
-  db.watched = [];
+  resetBadgesForTest();
 });
 
 describe('useIconBadge', () => {
@@ -49,8 +46,7 @@ describe('useIconBadge', () => {
     await vi.waitFor(() => {
       expect(db.icon).toEqual([2]);
     });
-    expect(db.calls).toEqual(['my_unseen_notification_kinds']);
-    expect(db.watched).toContainEqual({ table: 'notifications', filter: 'member_id=eq.u1' });
+    expect(db.calls).toEqual(['my_badge_counts']);
 
     db.kinds = 0;
     announceNotificationsChanged();

@@ -1,10 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAccount } from '@/lib/account';
-import { useRealtimeRows } from '@/lib/chat/realtime';
-import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
+import { badgesChanged, NOTIFICATIONS_CHANGED, useBadgeCounts } from '@/lib/badges';
 import { describeError, describeThrown, type Failure } from '@/lib/describe-error';
 import { californiaToday, grantDay } from '@/lib/grants';
-import { onReadElsewhere, tellOtherTabs } from '@/lib/read-elsewhere';
+import { tellOtherTabs } from '@/lib/read-elsewhere';
 import { getSupabase } from '@/lib/supabase';
 
 /**
@@ -147,7 +144,8 @@ export async function markNotificationsRead(id?: string): Promise<{ ok: boolean;
 /**
  * The number on the bell: arrived since the list was last opened. Live, so
  * a reply landing while somebody is on Home shows without a reload, and read
- * again whenever the app comes back to the front.
+ * again whenever the app comes back to the front. Counted with the other
+ * badges in one request (src/lib/badges.ts).
  *
  * `outsideChat` leaves out what the Chat tab's dot already says, for Me's.
  */
@@ -157,61 +155,17 @@ export function useUnseenNotifications(outsideChat = false): {
   loaded: boolean;
   refresh: () => void;
 } {
-  const account = useAccount();
-  const memberId = account.status === 'member' ? account.userId : null;
-  const [count, setCount] = useState<number | null>(null);
-
-  const refresh = useCallback(() => {
-    if (!memberId) return;
-    void (
-      getSupabase().rpc(
-        outsideChat ? 'my_unseen_notification_count_outside_chat' : 'my_unseen_notification_count',
-      ) as unknown as Promise<{
-        data: number | null;
-        error: Failure | null;
-      }>
-    )
-      .then(({ data, error }) => {
-        if (!error) setCount(data ?? 0);
-      })
-      .catch(() => undefined);
-  }, [memberId, outsideChat]);
-
-  // A burst of notifications or focus changes is one recount.
-  const soon = useMemo(() => coalesce(refresh, RECOUNT_MS), [refresh]);
-
-  useEffect(() => {
-    refresh();
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') soon();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    window.addEventListener(NOTIFICATIONS_CHANGED, soon);
-    const stopHearing = onReadElsewhere(soon);
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      window.removeEventListener(NOTIFICATIONS_CHANGED, soon);
-      stopHearing();
-      soon.cancel();
-    };
-  }, [refresh, soon]);
-
-  useRealtimeRows({
-    table: 'notifications',
-    filter: memberId ? `member_id=eq.${memberId}` : undefined,
-    onChange: soon,
-    enabled: memberId !== null,
-  });
-
-  return { count: memberId ? (count ?? 0) : 0, loaded: count !== null, refresh };
+  const counts = useBadgeCounts();
+  return {
+    count: outsideChat ? counts.unseenOutsideChat : counts.unseen,
+    loaded: counts.loaded,
+    refresh: badgesChanged,
+  };
 }
 
-/**
- * Said by the list after it marks things seen or read, so every bell on the
- * screen (Home's and the desktop bar's) reads its number again at once.
- */
-export const NOTIFICATIONS_CHANGED = 'club:notifications-changed';
+export { NOTIFICATIONS_CHANGED };
 
+/** Said by the list after it marks things seen or read. */
 export function announceNotificationsChanged(): void {
   window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
   tellOtherTabs();

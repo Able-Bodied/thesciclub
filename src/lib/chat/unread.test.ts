@@ -1,12 +1,18 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// The app icon counts kinds of notification now (icon-badge.ts), not this.
+// The app icon counts kinds of notification (icon-badge.ts), not conversations.
 const db = vi.hoisted(() => ({ count: 3, icon: [] as number[] }));
 
 vi.mock('@/lib/account', () => ({ useAccount: () => ({ status: 'member' }) }));
 vi.mock('@/lib/supabase', () => ({
-  getSupabase: () => ({ rpc: () => Promise.resolve({ data: db.count, error: null }) }),
+  getSupabase: () => ({
+    rpc: () =>
+      Promise.resolve({
+        data: [{ chat_unread: db.count, unseen: 0, unseen_outside_chat: 0, icon_kinds: 0 }],
+        error: null,
+      }),
+  }),
 }));
 vi.mock('@/lib/push/notifications', () => ({
   showOnAppIcon: (count: number) => {
@@ -16,8 +22,10 @@ vi.mock('@/lib/push/notifications', () => ({
 }));
 
 const { unreadChanged, useUnreadThreads } = await import('@/lib/chat/unread');
+const { resetBadgesForTest } = await import('@/lib/badges');
 
 beforeEach(() => {
+  resetBadgesForTest();
   db.icon = [];
 });
 

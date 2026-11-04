@@ -1,9 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAccount } from '@/lib/account';
-import { useRealtimeRows } from '@/lib/chat/realtime';
-import { coalesce, RECOUNT_MS } from '@/lib/coalesce';
-import { onReadElsewhere, tellOtherTabs } from '@/lib/read-elsewhere';
-import { getSupabase } from '@/lib/supabase';
+import { badgesChanged, useBadgeCounts } from '@/lib/badges';
+import { tellOtherTabs } from '@/lib/read-elsewhere';
 
 /**
  * How many conversations have something new in them.
@@ -14,8 +10,9 @@ import { getSupabase } from '@/lib/supabase';
  * on every screen. Deriving one from the other would mean the shell holding a
  * list it never draws.
  *
- * `chat_unread_count()` is built on `chat_my_threads()` in the database, so
- * there is still only one definition of "new" — somebody else's words, newer
+ * The number is `chat_unread_count()`'s, asked through `my_badge_counts()`
+ * with the other badges (src/lib/badges.ts). It follows `chat_my_threads()`,
+ * so there is still only one definition of "new" — somebody else's words, newer
  * than you last looked. Two definitions is how a nav dot ends up pointing at a
  * list with nothing bold in it. One difference, the other way: a muted
  * conversation is bold in the list but leaves the dot (20261103200000).
@@ -23,7 +20,7 @@ import { getSupabase } from '@/lib/supabase';
  * ---------------------------------------------------------------------------
  * What makes it re-ask
  * ---------------------------------------------------------------------------
- * Two things, and neither is a timer. Polling a database every thirty seconds
+ * None of it is a timer. Polling a database every thirty seconds
  * for a dot is a cost every member on a phone pays for something they notice
  * once.
  *
@@ -36,25 +33,15 @@ import { getSupabase } from '@/lib/supabase';
  *    moves, instead of on every tap anywhere in the app.
  *
  * Also: a new message (the tab bar's realtime), a read in another tab
- * (src/lib/read-elsewhere.ts) and a read on another device (below).
+ * (src/lib/read-elsewhere.ts) and a read on another device (useBadgeRealtime).
  *
  * A failure leaves the count at zero and says nothing. The dot is a hint; an
  * error message in the tab bar is not.
  */
 
-/**
- * Everything currently drawing the dot.
- *
- * Module-level, because the thing that changes the answer (opening a
- * conversation) and the thing that draws it (the tab bar) are on opposite sides
- * of the tree, and threading a callback between them would mean the shell
- * holding a conversation's state.
- */
-const listeners = new Set<() => void>();
-
 /** Tell the dot that the answer has changed. Called by threads.ts. */
 export function unreadChanged(): void {
-  for (const listener of listeners) listener();
+  badgesChanged();
   tellOtherTabs();
 }
 
@@ -64,61 +51,7 @@ export interface UnreadState {
   reload: () => void;
 }
 
+// Counted with the other badges in one request (src/lib/badges.ts).
 export function useUnreadThreads(): UnreadState {
-  const account = useAccount();
-  // A suspended member reads nothing (20261103210000), so their count is 0;
-  // asking anyway is harmless. A session with no member row has nothing.
-  const signedIn = account.status === 'member' || account.status === 'suspended';
-  const memberId = signedIn ? account.userId : null;
-
-  const [count, setCount] = useState(0);
-
-  const load = useCallback(async () => {
-    if (!signedIn) {
-      setCount(0);
-      return;
-    }
-    try {
-      const { data, error } = (await getSupabase().rpc('chat_unread_count')) as {
-        data: number | null;
-        error: { message: string } | null;
-      };
-      if (error) {
-        setCount(0);
-        return;
-      }
-      setCount(data ?? 0);
-      // Not on the app icon: that counts kinds of notification
-      // (src/lib/icon-badge.ts).
-    } catch {
-      setCount(0);
-    }
-  }, [signedIn]);
-
-  // Every message anywhere asks again; a burst is one recount.
-  const again = useMemo(() => coalesce(() => void load(), RECOUNT_MS), [load]);
-
-  useEffect(() => {
-    void load();
-
-    listeners.add(again);
-    const stopHearing = onReadElsewhere(again);
-    window.addEventListener('focus', again);
-    return () => {
-      listeners.delete(again);
-      stopHearing();
-      window.removeEventListener('focus', again);
-      again.cancel();
-    };
-  }, [load, again]);
-
-  // Read on another device: their own last_read_at moved.
-  useRealtimeRows({
-    table: 'chat_thread_members',
-    filter: memberId ? `member_id=eq.${memberId}` : undefined,
-    onChange: again,
-    enabled: Boolean(memberId),
-  });
-
-  return { count, reload: again };
+  return { count: useBadgeCounts().chatUnread, reload: badgesChanged };
 }

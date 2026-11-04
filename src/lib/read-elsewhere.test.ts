@@ -3,9 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // A read in one tab clears the other tab's Chat dot, bell and app icon.
 const db = vi.hoisted(() => {
-  const counts: Record<string, number> = {};
   return {
-    counts,
+    row: { chat_unread: 1, unseen: 1, unseen_outside_chat: 1, icon_kinds: 1 },
     calls: [] as string[],
     watched: [] as { table: string; filter: string | undefined; enabled: boolean | undefined }[],
   };
@@ -16,7 +15,7 @@ vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
     rpc: (name: string) => {
       db.calls.push(name);
-      return Promise.resolve({ data: db.counts[name] ?? 0, error: null });
+      return Promise.resolve({ data: [db.row], error: null });
     },
   }),
 }));
@@ -51,6 +50,7 @@ function otherTab() {
   return new FakeChannel('club:read-elsewhere');
 }
 
+const { resetBadgesForTest, useBadgeRealtime } = await import('@/lib/badges');
 const { unreadChanged, useUnreadThreads } = await import('@/lib/chat/unread');
 const { announceNotificationsChanged, useUnseenNotifications } = await import(
   '@/lib/notifications'
@@ -60,31 +60,25 @@ const { onReadElsewhere, tellOtherTabs } = await import('@/lib/read-elsewhere');
 
 beforeEach(() => {
   vi.useFakeTimers();
+  resetBadgesForTest();
   vi.stubGlobal('BroadcastChannel', FakeChannel);
   FakeChannel.open.clear();
   db.calls = [];
   db.watched = [];
-  db.counts = {
-    chat_unread_count: 1,
-    my_unseen_notification_count: 1,
-    my_unseen_notification_kinds: 1,
-  };
+  db.row = { chat_unread: 1, unseen: 1, unseen_outside_chat: 1, icon_kinds: 1 };
 });
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
+// One request (my_badge_counts) now counts all three.
 const cases = [
-  { name: 'Chat dot', rpc: 'chat_unread_count', mount: () => useUnreadThreads().count },
-  {
-    name: 'bell',
-    rpc: 'my_unseen_notification_count',
-    mount: () => useUnseenNotifications().count,
-  },
+  { name: 'Chat dot', drawn: true, mount: () => useUnreadThreads().count },
+  { name: 'bell', drawn: true, mount: () => useUnseenNotifications().count },
   {
     name: 'app icon',
-    rpc: 'my_unseen_notification_kinds',
+    drawn: false,
     mount: () => {
       useIconBadge();
       return 0;
@@ -92,8 +86,8 @@ const cases = [
   },
 ];
 
-describe.each(cases)('$name in a second tab', ({ rpc, mount }) => {
-  const counts = () => db.calls.filter((c) => c === rpc).length;
+describe.each(cases)('$name in a second tab', ({ drawn, mount }) => {
+  const counts = () => db.calls.filter((c) => c === 'my_badge_counts').length;
 
   it('recounts within the limit when another tab reads, and leaves nothing open after', async () => {
     const { result, unmount } = renderHook(mount);
@@ -101,10 +95,10 @@ describe.each(cases)('$name in a second tab', ({ rpc, mount }) => {
       await vi.advanceTimersByTimeAsync(0);
     });
     expect(counts()).toBe(1);
-    if (rpc !== 'my_unseen_notification_kinds') expect(result.current).toBe(1);
+    if (drawn) expect(result.current).toBe(1);
 
     // The first tab reads it all; the database now says 0.
-    for (const name of Object.keys(db.counts)) db.counts[name] = 0;
+    db.row = { chat_unread: 0, unseen: 0, unseen_outside_chat: 0, icon_kinds: 0 };
     // Well past the first count, so this one is not held back.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000);
@@ -114,7 +108,7 @@ describe.each(cases)('$name in a second tab', ({ rpc, mount }) => {
       await vi.advanceTimersByTimeAsync(1500);
     });
     expect(counts()).toBe(2);
-    if (rpc !== 'my_unseen_notification_kinds') expect(result.current).toBe(0);
+    if (drawn) expect(result.current).toBe(0);
 
     unmount();
     expect(FakeChannel.open.size).toBe(1); // otherTab()'s only
@@ -128,10 +122,7 @@ describe.each(cases)('$name in a second tab', ({ rpc, mount }) => {
 
 describe('the realtime for another device', () => {
   it('watches only this member’s own read positions and notifications', () => {
-    renderHook(() => {
-      useUnreadThreads();
-      useUnseenNotifications();
-    });
+    renderHook(useBadgeRealtime);
     expect(db.watched).toContainEqual({
       table: 'chat_thread_members',
       filter: 'member_id=eq.u1',

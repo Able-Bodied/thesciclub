@@ -4,6 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { touchScreen, useHideOnScroll } from '@/components/hide-on-scroll';
 import { ChatIcon, EventsIcon, HomeIcon, MeIcon, PeersIcon } from '@/components/nav-icons';
 import { NotificationBell, useWideLayout } from '@/components/notification-bell';
+import { useBadgeRealtime } from '@/lib/badges';
 import { useRealtimeRows } from '@/lib/chat/realtime';
 import { useUnreadThreads } from '@/lib/chat/unread';
 import { useIconBadge } from '@/lib/icon-badge';
@@ -80,6 +81,8 @@ export function AppNav() {
   // while you are reading an event. Unfiltered and scoped by RLS to the
   // conversations this member is in.
   useRealtimeRows({ table: 'chat_messages', onChange: reload });
+  // A notification for this member, or a read on another device.
+  useBadgeRealtime();
 
   // Bottom bar on a phone, top bar on a desktop.
   //
