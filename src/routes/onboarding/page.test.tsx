@@ -377,7 +377,6 @@ vi.mock('@/lib/native-sign-in', async (original) => {
 });
 
 const { default: OnboardingPage } = await import('@/routes/onboarding/page');
-const { leadingWayIn } = await import('@/routes/onboarding/sign-in-steps');
 
 // Real routes, so a test can see where somebody lands: Home, since step 5
 // of HANDOFF.md "What Home is". Until then it was Peers.
@@ -1613,16 +1612,33 @@ describe('Google, Apple and passkeys', () => {
       }
     });
 
-    it('on Android, Google, with Apple under Other ways', async () => {
+    it('on Android, Google and then Apple, and the email behind a button', async () => {
       const agent = onDevice(ANDROID);
       try {
         renderJoin();
         await userEvent.click(screen.getByRole('button', { name: 'Join the club' }));
-        expect(screen.getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
-        expect(screen.queryByRole('button', { name: 'Continue with Apple' })).toBeNull();
-        await userEvent.click(screen.getByRole('button', { name: 'Other ways to join' }));
-        await userEvent.click(screen.getByRole('button', { name: 'Continue with Apple' }));
+        const google = screen.getByRole('button', { name: 'Continue with Google' });
+        const apple = screen.getByRole('button', { name: 'Continue with Apple' });
+        expect(
+          google.compareDocumentPosition(apple) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /Other ways/ })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Join with email' })).toBeInTheDocument();
+        await userEvent.click(apple);
         expect(calls.order).toEqual(['signInWithOAuth:apple']);
+      } finally {
+        agent.mockRestore();
+      }
+    });
+
+    it('on Android, both even for somebody who last used Google here', async () => {
+      window.localStorage.setItem('club:way-in', 'google');
+      const agent = onDevice(ANDROID);
+      try {
+        renderJoin();
+        await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+        expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Sign in with Apple' })).toBeInTheDocument();
       } finally {
         agent.mockRestore();
       }
@@ -1637,13 +1653,18 @@ describe('Google, Apple and passkeys', () => {
       expect(screen.queryByRole('button', { name: /Other ways/ })).toBeNull();
     });
 
-    it('with Apple off, Google alone everywhere', () => {
-      expect(leadingWayIn('ios-safari', false)).toBe('google');
-      expect(leadingWayIn('ios-safari', true)).toBe('both');
-      expect(leadingWayIn('ios-chrome', true)).toBe('both');
-      expect(leadingWayIn('android', true)).toBe('google');
-      expect(leadingWayIn('desktop', true)).toBe('both');
-      expect(leadingWayIn('in-app', true)).toBe('both');
+    it('with Apple off, Google alone, even on an iPhone', async () => {
+      vi.stubEnv('VITE_APPLE_SIGN_IN', '');
+      const agent = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(SAFARI_IPHONE);
+      try {
+        renderJoin();
+        await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+        expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Sign in with Apple' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Sign in with email' })).toBeInTheDocument();
+      } finally {
+        agent.mockRestore();
+      }
     });
   });
 

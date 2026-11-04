@@ -8,9 +8,7 @@ import { PasswordReveal } from '@/components/password-reveal';
 import { appleSignInEnabled } from '@/lib/apple-sign-in';
 import { CODE_LENGTH, CONFIRMATION_FROM, looksLikeEmail, MIN_PASSWORD } from '@/lib/auth-email';
 import type { GoogleInBrowser } from '@/lib/google-in-browser';
-import { currentInstallPlatform, type InstallPlatform } from '@/lib/install';
-import type { WayIn } from '@/lib/last-way-in';
-import { lastWayIn } from '@/lib/last-way-in';
+import { currentInstallPlatform } from '@/lib/install';
 import type { NativeWaysIn } from '@/lib/native-sign-in';
 import { passkeyRemembered, passkeysAvailable } from '@/lib/passkeys';
 import type { QrCodeDetails } from '@/lib/qr-codes';
@@ -30,8 +28,8 @@ import type { OnboardingData } from '@/routes/onboarding/types';
  *
  * Apple and passkeys are shown only when their switches are on
  * (VITE_APPLE_SIGN_IN, VITE_PASSKEYS), and a passkey only in a browser that
- * can use one. Which of Google and Apple leads depends on the device
- * (`leadingWayIn`). The store app signs in to them natively instead
+ * can use one. Both show together, and which goes on top depends on the device
+ * (`appleFirst`). The store app signs in to them natively instead
  * (lib/native-sign-in.ts), on an iPhone, Apple first; where it cannot, it
  * shows neither.
  */
@@ -56,7 +54,7 @@ interface WaysIn {
   onPasskey: () => void;
   /** A saved passkey is offered in the email box, so no button for it. */
   passkeyAutofill: boolean;
-  /** The email box, and the way in that does not lead, are showing. */
+  /** The email box is showing. */
   othersOpen: boolean;
   onOthers: () => void;
 }
@@ -81,25 +79,11 @@ function Divider({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Which way in leads, from the device (the owner, 2026-10-15): Google on
- * Android, and both anywhere else. An iPhone or iPad led with Apple alone until
- * the owner, 2026-11-03, wanted Google above the fold there too, for members
- * who use the club on a laptop as well (`appleFirst` keeps Apple on top). The
- * one that does not lead is a tap away under "Other ways", never gone:
- * somebody signs in the way they joined, whatever the device. The way they last
- * used here leads instead, if it is one of the two.
+ * Google and Apple show together wherever Apple is switched on (the owner,
+ * 2026-11-03: an iPhone, then Android too), and the email box is the one thing
+ * behind a button. Android once led with Google alone and kept Apple under
+ * "Other ways".
  */
-export function leadingWayIn(
-  platform: InstallPlatform,
-  appleOn: boolean,
-  last: WayIn | null = null,
-): 'apple' | 'google' | 'both' {
-  if (!appleOn) return 'google';
-  if (platform !== 'android') return 'both';
-  if (last === 'apple' || last === 'google') return last;
-  return 'google';
-}
-
 /** Where both show, whether Apple goes on top: on an iPhone or iPad. */
 function appleFirst(): boolean {
   return isNative() || currentInstallPlatform().startsWith('ios');
@@ -156,9 +140,6 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
   const native = isNative();
   const appleOn = native ? ways.native.apple : appleSignInEnabled();
   const googleOn = !native || ways.native.google;
-  const [lead] = useState(() =>
-    native ? 'both' : leadingWayIn(currentInstallPlatform(), appleSignInEnabled(), lastWayIn()),
-  );
   const { othersOpen, onOthers } = ways;
   const label = mode === 'signin' ? 'Sign in with' : 'Continue with';
 
@@ -209,7 +190,7 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
     </button>
   );
 
-  // The store app with only one of the two: that one, and no "Other ways".
+  // The store app with only one of the two: that one, and no email button.
   if (native && !(appleOn && googleOn)) return appleOn ? apple : googleOn ? google : null;
 
   return (
@@ -225,22 +206,18 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
           Sign in with a passkey
         </button>
       ) : null}
-      {lead === 'both' ? (
-        appleFirst() ? (
-          <>
-            {apple}
-            {google}
-          </>
-        ) : (
-          <>
-            {google}
-            {apple}
-          </>
-        )
-      ) : lead === 'apple' ? (
-        apple
-      ) : (
+      {!appleOn ? (
         google
+      ) : appleFirst() ? (
+        <>
+          {apple}
+          {google}
+        </>
+      ) : (
+        <>
+          {google}
+          {apple}
+        </>
       )}
       <button
         type="button"
@@ -249,19 +226,12 @@ function SocialButtons({ mode, ways }: { mode: 'signin' | 'join'; ways: WaysIn }
         className="mt-2 flex min-h-[48px] w-full items-center justify-center gap-1 rounded-[13px] border-[1.6px] border-line font-bold font-head text-[0.9375rem] text-emphasis"
       >
         {/* Named for what it opens (the owner, 2026-11-03). */}
-        {lead === 'both' || !appleOn
-          ? mode === 'signin'
-            ? 'Sign in with email'
-            : 'Join with email'
-          : mode === 'signin'
-            ? 'Other ways to sign in'
-            : 'Other ways to join'}
+        {mode === 'signin' ? 'Sign in with email' : 'Join with email'}
         <ChevronDown
           className={`h-4 w-4 transition-transform ${othersOpen ? 'rotate-180' : ''}`}
           aria-hidden="true"
         />
       </button>
-      {othersOpen && lead !== 'both' && appleOn ? (lead === 'apple' ? google : apple) : null}
     </>
   );
 }
