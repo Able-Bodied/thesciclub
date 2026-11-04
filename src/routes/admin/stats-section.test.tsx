@@ -165,6 +165,14 @@ beforeEach(() => {
   api.calls = [];
 });
 
+function renderStats(part?: string) {
+  return render(
+    <MemoryRouter initialEntries={[`/admin?tab=stats${part ? `&part=${part}` : ''}`]}>
+      <StatsSection />
+    </MemoryRouter>,
+  );
+}
+
 describe('Admin → Stats', () => {
   it('starts on all time, through the admin-only function', async () => {
     render(<StatsSection />, { wrapper: MemoryRouter });
@@ -177,9 +185,21 @@ describe('Admin → Stats', () => {
   });
 
   // The owner, 2026-11-04: for administrators here, not on Stats & controls.
-  it('ends with page speed', async () => {
-    render(<StatsSection />, { wrapper: MemoryRouter });
-    expect(await screen.findByRole('heading', { name: 'Page speed' })).toBeInTheDocument();
+  it('has page speed in a part of its own', async () => {
+    renderStats();
+    await screen.findByText('Ever signed in');
+    expect(screen.queryByRole('heading', { name: 'Page speed' })).toBeNull();
+    await userEvent.click(screen.getByRole('tab', { name: 'Page speed' }));
+    expect(screen.getByRole('heading', { name: 'Page speed' })).toBeInTheDocument();
+  });
+
+  // The owner, 2026-11-04: in parts, for a phone.
+  it('opens on the part in the address, and keeps the period off Devices', async () => {
+    renderStats('devices');
+    expect(screen.getByRole('tab', { name: 'Devices', selected: true })).toBeInTheDocument();
+    expect(await screen.findByText(/Nothing recorded yet/)).toBeInTheDocument();
+    expect(screen.queryByLabelText('Period')).toBeNull();
+    expect(screen.queryByText('Ever signed in')).toBeNull();
   });
 
   it('offers every period, all time first', () => {
@@ -304,8 +324,7 @@ describe('Admin → Stats', () => {
   });
 
   it('names nobody until asked who signed in how', async () => {
-    render(<StatsSection />, { wrapper: MemoryRouter });
-    await screen.findByRole('table');
+    renderStats('sign-in');
     await screen.findByRole('list', { name: 'Signed up with' });
     expect(screen.queryByRole('link')).toBeNull();
     expect(screen.queryByText('Ana Rivera')).toBeNull();
@@ -314,7 +333,7 @@ describe('Admin → Stats', () => {
 
   it('says how the accounts were made, today’s three ways always', async () => {
     api.methods = { ...METHODS, signUps: { email: 3, google: 1 } };
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     const list = within(await screen.findByRole('list', { name: 'Signed up with' }));
     const row = (label: string) => list.getByText(label).parentElement;
     expect(row('Email and password')).toHaveTextContent('375%');
@@ -324,7 +343,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says how many people signed in each way, a one-time link last', async () => {
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     const list = within(await screen.findByRole('list', { name: 'Signed in with' }));
     const rows = list.getAllByRole('listitem');
     expect(rows.map((r) => r.firstChild?.textContent)).toEqual([
@@ -352,14 +371,14 @@ describe('Admin → Stats', () => {
       signIns: {},
       homeScreen: { signIns: 0, people: 0 },
     };
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     expect(await screen.findByText(/No sign-ins recorded yet/)).toBeInTheDocument();
     expect(screen.queryByText(/Home Screen app taking over/)).toBeNull();
     expect(screen.queryByRole('list', { name: 'Signed in with' })).toBeNull();
   });
 
   it('lists who signed up and signed in how, behind a button', async () => {
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     const button = await screen.findByRole('button', { name: 'Who signed in how' });
     expect(button).toHaveAttribute('aria-expanded', 'false');
     await userEvent.click(button);
@@ -389,7 +408,7 @@ describe('Admin → Stats', () => {
       ...METHODS,
       accounts: [account({ id: 'fay', name: 'Fay Old', signedUpWith: null, methods: [] })],
     };
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     await userEvent.click(await screen.findByRole('button', { name: 'Who signed in how' }));
     const fay = screen.getByText('Fay Old').closest('li');
     expect(fay).toHaveTextContent('Made on Sep 1, 2026, with no way to sign in now.');
@@ -400,8 +419,9 @@ describe('Admin → Stats', () => {
   it('keeps the rest of Stats when how members sign in cannot be read', async () => {
     api.methods = null;
     api.methodsError = { message: 'Not an administrator' };
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('tab', { name: 'Overview' }));
     expect(screen.getByText('Ever signed in')).toBeInTheDocument();
   });
 
@@ -423,7 +443,7 @@ describe('Admin → Stats', () => {
         account({ id: 'o', name: 'Cy', cameBy: { way: 'open', by: null, event: null } }),
       ],
     };
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('sign-in');
     await userEvent.click(await screen.findByRole('button', { name: 'Who signed in how' }));
     expect(
       screen.getByText('Came by QR code from NorCal SCI, at Abilities Expo.'),
@@ -435,7 +455,7 @@ describe('Admin → Stats', () => {
   });
 
   it('says when no device has been seen', async () => {
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('devices');
     expect(await screen.findByText(/Nothing recorded yet/)).toBeInTheDocument();
   });
 
@@ -468,7 +488,7 @@ describe('Admin → Stats', () => {
         { id: 'c', name: 'Cy', username: 'cy', notifiedDevices: 0, devices: [] },
       ],
     };
-    render(<StatsSection />, { wrapper: MemoryRouter });
+    renderStats('devices');
     await userEvent.click(await screen.findByRole('button', { name: 'Who uses what' }));
     const rows = screen.getAllByRole('listitem').filter((row) => row.closest('#member-devices'));
     expect(rows.map((row) => row.querySelector('a')?.textContent)).toEqual(['Bo', 'Ann', 'Cy']);

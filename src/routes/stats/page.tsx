@@ -3,6 +3,7 @@ import { useCallback, useEffect, useId, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { BackLink } from '@/components/back-link';
 import { MemberAvatar } from '@/components/member-avatar';
+import { PageTabs, TabPanel, useTabParam } from '@/components/page-tabs';
 import { SegmentPills } from '@/components/segment-pills';
 import { useAccount } from '@/lib/account';
 import { useAnnounce } from '@/lib/announce';
@@ -34,6 +35,7 @@ import { cn } from '@/lib/utils';
 import { ConnectNote, MemberField, useConnectableMembers } from '@/routes/peers/connect-fields';
 import { EventNoticesPanel } from '@/routes/stats/event-notices';
 import { OrganizationPeople } from '@/routes/stats/organization-people';
+import type { Organization } from '@/types/domain';
 
 /**
  * Stats & controls, for org admins and trusted partners (20261031110000): their
@@ -48,7 +50,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', DAY);
 type PeopleFilter = 'all' | 'no-mentor' | 'no-profile' | 'pending' | 'overdue';
 const PEOPLE_FILTERS = [
   ['all', 'Everyone'],
-  ['no-mentor', 'Not yet introduced to a mentor'],
+  ['no-mentor', 'No mentor yet'],
   ['no-profile', 'Profile not finished'],
   ['pending', 'Still to join'],
   ['overdue', 'Not joined after 7 days'],
@@ -83,7 +85,7 @@ export default function StatsPage() {
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
-      <header className="flex-none border-line border-b bg-paper px-[18px] pt-[18px] pb-3">
+      <header className="flex-none bg-paper px-[18px] pt-[18px] pb-3">
         <div className="mx-auto w-full max-w-[var(--me-measure)]">
           <BackLink to="/me" label="Me" />
           <h1 className="mt-1 font-extrabold font-display text-[1.5625rem] text-ink tracking-[-0.01em]">
@@ -92,10 +94,10 @@ export default function StatsPage() {
           {partner && title ? <p className="mt-0.5 text-[0.875rem] text-ink2">{title}</p> : null}
         </div>
       </header>
-      <div className="mx-auto w-full max-w-[var(--me-measure)] px-4 pt-5 pb-8">
-        {canConnect ? (
-          <Hub memberId={memberId} isAdmin={account.isAdmin} />
-        ) : (
+      {canConnect ? (
+        <Hub memberId={memberId} isAdmin={account.isAdmin} />
+      ) : (
+        <div className={COLUMN}>
           <div className="rounded-[14px] border border-line bg-paper p-4 text-[0.9375rem] text-ink leading-[1.5]">
             <p className="font-bold">This page is for org admins and trusted partners.</p>
             <p className="mt-1 text-ink2">
@@ -110,26 +112,145 @@ export default function StatsPage() {
               Back to Me
             </Link>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
 
+const COLUMN = 'mx-auto w-full max-w-[var(--me-measure)] px-4 pt-4 pb-8';
+
+/**
+ * In tabs (the owner, 2026-11-04): on a phone the page was four screens
+ * long. An organization's tabs only for its org admins and administrators.
+ */
+type HubTab = 'overview' | 'people' | 'events' | 'connect' | 'yours';
+const ORGANIZATION_TABS: readonly HubTab[] = ['overview', 'people', 'events', 'connect', 'yours'];
+const PARTNER_TABS: readonly HubTab[] = ['yours', 'connect'];
+const TAB_LABEL: Record<HubTab, string> = {
+  overview: 'Overview',
+  people: 'People',
+  events: 'Events',
+  connect: 'Connect',
+  yours: 'Your numbers',
+};
+
 function Hub({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean }) {
+  const mine = useMyOrganizations(memberId);
+  const { organizations, loading } = useOrganizations();
+  if (mine.loading || loading) {
+    return <p className="py-10 text-center text-[0.875rem] text-grey">Loading…</p>;
+  }
+  const choices = organizations
+    .filter((organization) => isAdmin || mine.ids.has(organization.id))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return <HubTabs choices={choices} mine={mine.ids} />;
+}
+
+function HubTabs({ choices, mine }: { choices: Organization[]; mine: Set<string> }) {
+  const values = choices.length > 0 ? ORGANIZATION_TABS : PARTNER_TABS;
+  const first = values[0] ?? 'yours';
+  const [tab, setTab] = useTabParam(values, first);
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  // Their own first; an administrator without one starts on the first by name.
+  const chosen =
+    choices.find((o) => o.id === chosenId) ??
+    choices.find((o) => mine.has(o.id)) ??
+    choices[0] ??
+    null;
+  const [days, setDays] = useState(DEFAULT_DAYS);
   // Goes up with each connection, so the list below reads it again.
   const [connected, setConnected] = useState(0);
+  const shown = values.includes(tab) ? tab : first;
+  const forOrganization = shown === 'overview' || shown === 'people' || shown === 'events';
+
   return (
-    <div className="space-y-8">
-      <OrganizationNumbers memberId={memberId} isAdmin={isAdmin} />
-      <Numbers />
-      <ConnectMembers
-        onConnected={() => {
-          setConnected((n) => n + 1);
-        }}
+    <>
+      <PageTabs
+        id="stats"
+        label="Stats & controls sections"
+        measure="max-w-[var(--me-measure)]"
+        value={shown}
+        onChange={setTab}
+        tabs={values.map((value) => ({ value, label: TAB_LABEL[value] }))}
       />
-      <People />
-      <Introductions connected={connected} />
+      <div className={COLUMN}>
+        <TabPanel id="stats" value={shown} className="space-y-6">
+          {forOrganization && chosen ? (
+            <OrganizationChoice choices={choices} chosen={chosen} onChoose={setChosenId} />
+          ) : null}
+          {shown === 'overview' && chosen ? (
+            <OrganizationNumbers organization={chosen} days={days} onDays={setDays} />
+          ) : null}
+          {shown === 'people' && chosen ? (
+            <OrganizationPeople organizationId={chosen.id} organizationName={chosen.name} />
+          ) : null}
+          {shown === 'events' && chosen ? (
+            <>
+              <EventNoticesPanel organizationId={chosen.id} />
+              <HeldEvents organizationId={chosen.id} days={days} onDays={setDays} />
+            </>
+          ) : null}
+          {shown === 'connect' ? (
+            <>
+              <ConnectMembers
+                onConnected={() => {
+                  setConnected((n) => n + 1);
+                }}
+              />
+              <Introductions connected={connected} />
+            </>
+          ) : null}
+          {shown === 'yours' ? (
+            <>
+              <Numbers />
+              <People />
+            </>
+          ) : null}
+        </TabPanel>
+      </div>
+    </>
+  );
+}
+
+/** Which organization the Overview, People and Events tabs are about. */
+function OrganizationChoice({
+  choices,
+  chosen,
+  onChoose,
+}: {
+  choices: Organization[];
+  chosen: Organization;
+  onChoose: (id: string) => void;
+}) {
+  const fieldId = useId();
+  if (choices.length === 1) {
+    return (
+      <h2 className="font-extrabold font-head text-[1.0625rem] text-ink leading-[1.3]">
+        {chosen.name}
+      </h2>
+    );
+  }
+  return (
+    <div>
+      <h2 className="sr-only">{chosen.name}</h2>
+      <label htmlFor={fieldId} className="block font-bold text-[0.8125rem] text-ink">
+        Organization
+      </label>
+      <select
+        id={fieldId}
+        value={chosen.id}
+        onChange={(e) => {
+          onChoose(e.target.value);
+        }}
+        className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink"
+      >
+        {choices.map((organization) => (
+          <option key={organization.id} value={organization.id}>
+            {organization.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -141,24 +262,41 @@ const PERIOD_SEGMENTS = STAT_PERIODS.map((p) => [String(p.days), p.label] as con
 /** A label, its number, and a line saying what it counts. */
 type Tile = [string, number | string | undefined, string?];
 
-function Tiles({ tiles, busy }: { tiles: Tile[]; busy: boolean }) {
+/**
+ * One number to a row, label on the left and number on the right: tiles in
+ * two columns were uneven heights and a long scroll on a phone.
+ */
+function Tiles({ tiles, busy, title }: { tiles: Tile[]; busy: boolean; title?: string }) {
   return (
-    <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-busy={busy}>
-      {tiles.map(([label, value, hint]) => (
-        <div
-          key={label}
-          className="flex min-h-[76px] flex-col justify-start rounded-[14px] border border-line bg-paper px-3 py-2.5"
-        >
-          <dt className="font-semibold text-[0.75rem] text-grey uppercase tracking-[0.09em]">
-            {label}
-          </dt>
-          <dd className="mt-1 font-extrabold font-head text-[1.3125rem] text-emphasis leading-none">
-            {value ?? '–'}
-          </dd>
-          {hint ? <dd className="mt-1 text-[0.75rem] text-ink2 leading-[1.4]">{hint}</dd> : null}
-        </div>
-      ))}
-    </dl>
+    <div>
+      {title ? (
+        <h3 className="mb-1.5 font-extrabold font-head text-[0.875rem] text-ink">{title}</h3>
+      ) : null}
+      <dl
+        className="overflow-hidden rounded-[14px] border border-line bg-paper sm:grid sm:grid-cols-2"
+        aria-busy={busy}
+      >
+        {tiles.map(([label, value, hint]) => (
+          <div
+            key={label}
+            className="grid min-h-[52px] grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 border-line border-b px-3.5 py-2.5 last:border-b-0 sm:odd:border-r sm:[&:nth-last-child(2):nth-child(odd)]:border-b-0"
+          >
+            <dt className="font-semibold text-[0.875rem] text-ink">{label}</dt>
+            <dd
+              className={cn(
+                'text-right font-extrabold font-head text-[1.25rem] text-emphasis tabular-nums leading-none',
+                hint && 'row-span-2',
+              )}
+            >
+              {value ?? '–'}
+            </dd>
+            {hint ? (
+              <dd className="mt-0.5 text-[0.75rem] text-ink2 leading-[1.4]">{hint}</dd>
+            ) : null}
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -195,14 +333,51 @@ const heldOn = (event: HeldEvent) =>
 /** How many show before Show all, so a busy year does not bury the page. */
 const FIRST_EVENTS = 10;
 
-function HeldEvents({ events }: { events: HeldEvent[] | null }) {
+function HeldEvents({
+  organizationId,
+  days,
+  onDays,
+}: {
+  organizationId: string;
+  days: string;
+  onDays: (days: string) => void;
+}) {
+  const [events, setEvents] = useState<HeldEvent[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [all, setAll] = useState(false);
-  if (events === null) return null;
-  const shown = all ? events : events.slice(0, FIRST_EVENTS);
+
+  useEffect(() => {
+    let live = true;
+    setEvents(null);
+    setError(null);
+    setAll(false);
+    void fetchOrganizationEvents(organizationId, Number(days)).then((result) => {
+      if (!live) return;
+      if (result.ok) setEvents(result.value);
+      else setError(result.error);
+    });
+    return () => {
+      live = false;
+    };
+  }, [organizationId, days]);
+
+  const shown = events === null ? null : all ? events : events.slice(0, FIRST_EVENTS);
   return (
-    <div className="mt-4">
-      <h3 className="mb-2 font-extrabold font-head text-[0.875rem] text-ink">Events held</h3>
-      {events.length === 0 ? (
+    <section aria-labelledby="stats-held-heading">
+      <h3
+        id="stats-held-heading"
+        className="mb-2 font-extrabold font-head text-[0.875rem] text-ink"
+      >
+        Events held
+      </h3>
+      <SegmentPills segments={PERIOD_SEGMENTS} value={days} onChange={onDays} className="pt-0" />
+      {error ? (
+        <p role="alert" className="text-[0.8125rem] text-destructive">
+          {error}
+        </p>
+      ) : events === null || shown === null ? (
+        <p className="py-6 text-center text-[0.875rem] text-grey">Loading events…</p>
+      ) : events.length === 0 ? (
         <p className="rounded-[14px] border border-line bg-paper px-3.5 py-4 text-center text-[0.875rem] text-grey">
           No events held in this period.
         </p>
@@ -229,7 +404,7 @@ function HeldEvents({ events }: { events: HeldEvent[] | null }) {
           ))}
         </ul>
       )}
-      {events.length > FIRST_EVENTS ? (
+      {events && events.length > FIRST_EVENTS ? (
         <button
           type="button"
           aria-expanded={all}
@@ -241,44 +416,30 @@ function HeldEvents({ events }: { events: HeldEvent[] | null }) {
           {all ? 'Show fewer' : `Show all ${String(events.length)}`}
         </button>
       ) : null}
-    </div>
+    </section>
   );
 }
 
-function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; isAdmin: boolean }) {
-  const mine = useMyOrganizations(memberId);
-  const { organizations } = useOrganizations();
-  const fieldId = useId();
-  const choices = organizations
-    .filter((organization) => isAdmin || mine.ids.has(organization.id))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  const [chosenId, setChosenId] = useState<string | null>(null);
-  // Their own first; an administrator without one starts on the first by name.
-  const chosen =
-    choices.find((o) => o.id === chosenId) ??
-    choices.find((o) => mine.ids.has(o.id)) ??
-    choices[0] ??
-    null;
-  const [days, setDays] = useState(DEFAULT_DAYS);
+function OrganizationNumbers({
+  organization,
+  days,
+  onDays,
+}: {
+  organization: Organization;
+  days: string;
+  onDays: (days: string) => void;
+}) {
   const [stats, setStats] = useState<OrganizationStats | null>(null);
-  const [events, setEvents] = useState<HeldEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const organizationId = chosen?.id ?? null;
+  const organizationId = organization.id;
 
   useEffect(() => {
-    if (!organizationId) return;
     let live = true;
     setStats(null);
-    setEvents(null);
     setError(null);
     void fetchOrganizationStats(organizationId, Number(days)).then((result) => {
       if (!live) return;
       if (result.ok) setStats(result.value);
-      else setError(result.error);
-    });
-    void fetchOrganizationEvents(organizationId, Number(days)).then((result) => {
-      if (!live) return;
-      if (result.ok) setEvents(result.value);
       else setError(result.error);
     });
     return () => {
@@ -286,73 +447,74 @@ function OrganizationNumbers({ memberId, isAdmin }: { memberId: string | null; i
     };
   }, [organizationId, days]);
 
-  if (!chosen) return null;
-
-  const tiles: Tile[] = [
-    ['Members', stats?.members, 'Right now.'],
-    ['New members', stats?.joined],
-    ['Events held', stats?.eventsHeld],
-    ['Checked in', stats?.checkedIn, 'All events held, together.'],
-    [
-      'Turnout',
-      stats ? turnout(stats.going, stats.saidGoingAndCame) : undefined,
-      'Checked in, of those who said Going.',
-    ],
-    ['First-timers', stats?.firstTimers, 'Came to their first event.'],
-    ['Came back', stats?.cameBack, 'Have been to more than one.'],
-    ['Reviews', stats?.reviews],
-    ['Average rating', stats ? (stats.rating ?? '–') : undefined, 'Out of 5.'],
-  ];
-
+  const busy = stats === null;
+  const turnoutOf = stats ? turnout(stats.going, stats.saidGoingAndCame) : undefined;
   return (
-    <section aria-labelledby="stats-organization-heading">
-      <SectionHeading id="stats-organization-heading">Your organization</SectionHeading>
-      {choices.length > 1 ? (
-        <div className="mb-2">
-          <label htmlFor={fieldId} className="block font-bold text-[0.8125rem] text-ink">
-            Organization
-          </label>
-          <select
-            id={fieldId}
-            value={chosen.id}
-            onChange={(e) => {
-              setChosenId(e.target.value);
-            }}
-            className="mt-1.5 min-h-[44px] w-full rounded-[11px] border-[1.6px] border-line bg-paper px-3 py-2 text-[0.9375rem] text-ink"
-          >
-            {choices.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : (
-        <p className="-mt-1.5 mb-1 font-semibold text-[0.875rem] text-ink2">{chosen.name}</p>
-      )}
-      <SegmentPills segments={PERIOD_SEGMENTS} value={days} onChange={setDays} className="pt-0" />
+    <section aria-labelledby="stats-organization-heading" className="space-y-4">
+      <h3 id="stats-organization-heading" className="sr-only">
+        Your organization
+      </h3>
+      <SegmentPills segments={PERIOD_SEGMENTS} value={days} onChange={onDays} className="pt-0" />
+      {stats && stats.waiting > 0 ? (
+        <ManageLink organization={organization} waiting={stats.waiting} />
+      ) : null}
       {error ? (
         <p role="alert" className="text-[0.8125rem] text-destructive">
           {error}
         </p>
       ) : (
         <>
-          <Tiles tiles={tiles} busy={stats === null} />
-          <OrganizationPeople organizationId={chosen.id} organizationName={chosen.name} />
-          <EventNoticesPanel organizationId={chosen.id} />
-          <HeldEvents key={`${chosen.id}|${days}`} events={events} />
-          <Weeks organizationId={chosen.id} />
+          <Tiles
+            title="Membership"
+            busy={busy}
+            tiles={[
+              ['Members', stats?.members, 'Right now.'],
+              ['New members', stats?.joined],
+            ]}
+          />
+          <Tiles
+            title="Events"
+            busy={busy}
+            tiles={[
+              ['Events held', stats?.eventsHeld],
+              ['Checked in', stats?.checkedIn, 'All events held, together.'],
+              ['Turnout', turnoutOf, 'Checked in, of those who said Going.'],
+              ['First-timers', stats?.firstTimers, 'Came to their first event.'],
+              ['Came back', stats?.cameBack, 'Have been to more than one.'],
+            ]}
+          />
+          <Tiles
+            title="Reviews"
+            busy={busy}
+            tiles={[
+              ['Reviews', stats?.reviews],
+              ['Average rating', stats ? (stats.rating ?? '–') : undefined, 'Out of 5.'],
+            ]}
+          />
+          <Weeks organizationId={organization.id} />
         </>
       )}
-      <Link
-        to={`/events/organizations/${chosen.id}`}
-        className="mt-2.5 flex min-h-[48px] items-center justify-center rounded-[12px] border border-line bg-paper px-4 font-bold text-[0.875rem] text-emphasis hover:bg-tint"
-      >
-        {stats && stats.waiting > 0
-          ? `Review ${String(stats.waiting)} waiting to join ${chosen.name}`
-          : `Manage ${chosen.name}`}
-      </Link>
+      {stats && stats.waiting > 0 ? null : <ManageLink organization={organization} waiting={0} />}
     </section>
+  );
+}
+
+/** To the organization's page; first, when somebody is waiting to join. */
+function ManageLink({ organization, waiting }: { organization: Organization; waiting: number }) {
+  return (
+    <Link
+      to={`/events/organizations/${organization.id}`}
+      className={cn(
+        'flex min-h-[48px] items-center justify-center rounded-[12px] px-4 font-bold text-[0.875rem]',
+        waiting > 0
+          ? 'bg-action text-white hover:bg-action-hi'
+          : 'border border-line bg-paper text-emphasis hover:bg-tint',
+      )}
+    >
+      {waiting > 0
+        ? `Review ${String(waiting)} waiting to join ${organization.name}`
+        : `Manage ${organization.name}`}
+    </Link>
   );
 }
 
@@ -390,14 +552,14 @@ function Weeks({ organizationId }: { organizationId: string }) {
 
   if (error) {
     return (
-      <p role="alert" className="mt-4 text-[0.8125rem] text-destructive">
+      <p role="alert" className="text-[0.8125rem] text-destructive">
         {error}
       </p>
     );
   }
   if (weeks === null) return null;
   return (
-    <div className="mt-4">
+    <div>
       <h3 className="font-extrabold font-head text-[0.875rem] text-ink">The last eight weeks</h3>
       <p className="mt-0.5 mb-2 text-[0.75rem] text-grey leading-[1.45]">
         Week by week, whatever the period.
