@@ -151,8 +151,8 @@ select public.chat_set_group_picture(:'evgrp', null);
 rollback to savepoint event_picture;
 
 \echo ''
-\echo '== 5. a suspended member cannot rename, though they still read =='
-\echo '   expect: ERROR, then 1 message readable. Suspension takes writing away.'
+\echo '== 5. a suspended member cannot rename, and reads nothing =='
+\echo '   expect: ERROR, then 0 messages readable (20261103210000).'
 set local request.jwt.claims = '{"sub":"dddddddd-7777-0000-0000-000000000004","role":"authenticated"}';
 savepoint paused;
 select public.chat_rename_group(:'grp', 'Paused renames');

@@ -175,8 +175,8 @@ select public.chat_create_room('Wheelchair rugby', 'Chairs, clubs, and the first
 
 \echo ''
 \echo '== 8. somebody paused cannot start a room =='
-\echo '   expect: t reads | f writes, then ERROR. Starting a room is writing,'
-\echo '   and a suspended member reads and does not write.'
+\echo '   expect: f reads | f writes, then ERROR. A paused member neither reads'
+\echo '   nor writes (20261103210000).'
 set local request.jwt.claims = '{"sub":"ffffffff-8888-0000-0000-000000000006","role":"authenticated"}';
 select public.is_member() as reads, public.is_active_member() as writes;
 savepoint suspended;

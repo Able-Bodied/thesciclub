@@ -145,7 +145,7 @@ select pg_temp.check_member('dddddddd-2914-0000-0000-00000000000d', 0, 'a muted 
 select pg_temp.check_member('33333333-2914-0000-0000-000000000003', 1, 'Ny: the unmuted one lights the dot; the muted one only the list; the left one neither', 2);
 select pg_temp.check_member('eeeeeeee-2914-0000-0000-00000000000e', 1, 'a group they left is gone');
 select pg_temp.check_member('ffffffff-2914-0000-0000-00000000000f', 0, 'only their own words are newer');
-select pg_temp.check_member('11111111-2914-0000-0000-000000000001', 1, 'a suspended member still reads');
+select pg_temp.check_member('11111111-2914-0000-0000-000000000001', 0, 'a suspended member reads nothing (20261103210000)');
 select pg_temp.check_member('22222222-2914-0000-0000-000000000002', 1, 'a blocked member''s direct conversation and words are left out');
 select pg_temp.check_member('bbbbbbbb-2914-0000-0000-00000000000b', 1, 'Bo: only the authorless line is not his');
 

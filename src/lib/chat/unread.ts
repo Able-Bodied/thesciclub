@@ -66,8 +66,8 @@ export interface UnreadState {
 
 export function useUnreadThreads(): UnreadState {
   const account = useAccount();
-  // Suspended members read their conversations, so they get the dot too. Only a
-  // session with no member row behind it has nothing to count.
+  // A suspended member reads nothing (20261103210000), so their count is 0;
+  // asking anyway is harmless. A session with no member row has nothing.
   const signedIn = account.status === 'member' || account.status === 'suspended';
   const memberId = signedIn ? account.userId : null;
 

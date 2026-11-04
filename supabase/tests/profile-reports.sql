@@ -72,7 +72,7 @@ select current_user, auth.uid(), public.is_admin() as admin;
 \echo ''
 \echo '== 1. the refusals =='
 \echo '   expect: PASS 1a (yourself 42501, nobody P0002, hidden P0002), PASS 1b (a paused'
-\echo '   member P0002; an account with no member row 42501), PASS 1c (anon may not execute)'
+\echo '   member 42501, 20261103210000; an account with no member row 42501), PASS 1c (anon may not execute)'
 do $$
 begin
   begin
@@ -105,7 +105,7 @@ begin
   begin
     perform public.report_member('7e0f0000-0000-0000-0000-00000000000b', null);
     raise exception 'a paused member reported';
-  exception when no_data_found then raise notice '1b: paused refused: %', sqlerrm;
+  exception when insufficient_privilege then raise notice '1b: paused refused: %', sqlerrm;
   end;
 end;
 $$;

@@ -157,8 +157,8 @@ select count(*) from public.chat_rooms;
 rollback to savepoint anon;
 
 \echo ''
-\echo '== 9. a suspended member reads the open room like anybody else =='
-\echo '   expect: t | f | 1. Reading is not what suspension takes away.'
+\echo '== 9. a suspended member does not read the open room =='
+\echo '   expect: f | f | 0. A paused member reads nothing (20261103210000).'
 savepoint suspended;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"cccccccc-2222-0000-0000-000000000003","role":"authenticated"}';

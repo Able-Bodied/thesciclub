@@ -112,9 +112,9 @@ rollback to savepoint onlooker_forges;
 rollback to savepoint onlooker_reads;
 
 \echo ''
-\echo '== 6. a suspended member reads and does not write =='
-\echo '   expect: t a_member | f active | 1 topic | f may_post, then ERROR on'
-\echo '   the post. Reading is not what suspension takes away.'
+\echo '== 6. a suspended member neither reads nor writes =='
+\echo '   expect: f a_member | f active | 0 topics | f may_post, then ERROR on'
+\echo '   the post. A paused member reads nothing (20261103210000).'
 savepoint suspended;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-3333-0000-0000-000000000004","role":"authenticated"}';

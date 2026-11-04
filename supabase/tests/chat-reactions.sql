@@ -66,8 +66,8 @@ select pg_temp.refused($q$update public.chat_message_reactions set emoji='😢'$
 select pg_temp.refused($q$delete from public.chat_post_reactions$q$);
 set local request.jwt.claims='{"sub":"aa000000-8888-0000-0000-000000000003","role":"authenticated"}';
 select pg_temp.refused($q$select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000012','❤️')$q$);
-select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000012',null);
-select pg_temp.check_true((select emoji is null from public.chat_post_reactions where target_id='88000000-0000-0000-0000-000000000012' and member_id=auth.uid()),'Suspended can remove own reaction');
+-- A paused member reads nothing (20261103210000), so cannot take a reaction back either; it stays until reinstated.
+select pg_temp.refused($q$select public.chat_set_reaction('post','88000000-0000-0000-0000-000000000012',null)$q$);
 set local request.jwt.claims='{"sub":"aa000000-8888-0000-0000-000000000004","role":"authenticated"}';
 select pg_temp.check_true((select count(*)=0 from public.chat_message_reactions),'Nonparticipant admin cannot read private reactions');
 select pg_temp.refused($q$select public.chat_set_reaction('message','88000000-0000-0000-0000-000000000022','👍')$q$);

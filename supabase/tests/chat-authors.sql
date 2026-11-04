@@ -138,9 +138,8 @@ select public.is_member() as a_member, public.is_active_member() as active,
 rollback to savepoint removed;
 
 \echo ''
-\echo '== 7. a suspended member still reads, and still cannot write =='
-\echo '   expect: t | f | 5. The read gate and the write gate differ by exactly'
-\echo '   this case, and it is the only place the difference shows.'
+\echo '== 7. a suspended member neither reads nor writes =='
+\echo '   expect: f | f | 0. A paused member reads nothing (20261103210000).'
 savepoint suspended;
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-1111-0000-0000-000000000004","role":"authenticated"}';

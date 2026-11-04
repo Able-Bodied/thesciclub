@@ -126,13 +126,16 @@ set local role authenticated;
 select count(*) as saves from public.chat_saves;
 
 \echo ''
-\echo '== 8. a paused member may save =='
-\echo '   expect: t a_member | f active, then INSERT 0 1.'
+\echo '== 8. a paused member may not save: they cannot read the topic =='
+\echo '   expect: f a_member | f active, then ERROR (row-level security).'
+\echo '   A paused member reads nothing (20261103210000).'
 set local role postgres;
 set local request.jwt.claims = '{"sub":"dddddddd-5a5e-0000-0000-000000000004","role":"authenticated"}';
 set local role authenticated;
 select public.is_member() as a_member, public.is_active_member() as active;
+savepoint paused_saves;
 insert into public.chat_saves (member_id, topic_id) values ('dddddddd-5a5e-0000-0000-000000000004', :'ta');
+rollback to savepoint paused_saves;
 
 \echo ''
 \echo '== 9. anon reaches nothing =='

@@ -337,17 +337,19 @@ select resolution, resolved_by_name, resolved_at is not null as has_a_time
 select resolved_at is null as still_open, place from public.admin_chat_reports();
 
 \echo ''
-\echo '== 16. somebody paused can still say what was done to them =='
-\echo '   expect: t reads | f writes, then no error. is_member() and not'
-\echo '   is_active_member(): being unable to write in a room is not the same'
-\echo '   as being unable to report what somebody wrote in one.'
+\echo '== 16. somebody paused cannot report: they read nothing =='
+\echo '   expect: f reads | f writes, then ERROR. A paused member reads nothing'
+\echo '   (20261103210000), so cannot report what they can no longer see; an'
+\echo '   administrator can still be asked directly.'
 reset role;
 insert into public.chat_thread_members (thread_id, member_id)
 values (:'grp', 'ffffffff-7777-0000-0000-000000000006');
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"ffffffff-7777-0000-0000-000000000006","role":"authenticated"}';
 select public.is_member() as reads, public.is_active_member() as writes;
+savepoint paused_reports;
 select public.chat_report_message(:'in_group', 'Paused, and still reporting.');
+rollback to savepoint paused_reports;
 
 \echo ''
 \echo '== 17. nothing here is on the wire =='

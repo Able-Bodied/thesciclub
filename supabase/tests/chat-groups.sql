@@ -398,11 +398,12 @@ select char_length(t.name) as name_length, right(t.name, 1) = '…' as ends_cut,
 rollback to savepoint long_title;
 
 \echo ''
-\echo '== 13. a suspended member reads a group and does not write to it =='
-\echo '   expect: t a_member | f active | 1 thread, then ERROR on the message,'
-\echo '   ERROR on starting a group and ERROR on adding — and DELETE 1 for'
-\echo '   leaving. Reading is not what suspension takes away, and a door that'
-\echo '   opens and does not close is worse than no door.'
+\echo '== 13. a suspended member neither reads a group nor writes to it =='
+\echo '   expect: f a_member | f active | 0 threads, then ERROR on the message,'
+\echo '   ERROR on starting a group and ERROR on adding — and DELETE 0 for'
+\echo '   leaving, and f still_in_it only because they cannot read it: a paused'
+\echo '   member reads nothing (20261103210000), not even the roster row leaving'
+\echo '   would delete. Reinstated, they can leave.'
 savepoint suspended_caller;
 set local role postgres;
 insert into public.chat_thread_members (thread_id, member_id)

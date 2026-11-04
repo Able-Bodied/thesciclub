@@ -101,8 +101,8 @@ select current_user, (select reads from probe_reads) as reads;
 set local role postgres;
 
 \echo ''
-\echo '== 3. a suspended member still reads them: is_member() is the read gate =='
-\echo '   expect: authenticated | member, own, logo, claimable, other'
+\echo '== 3. a suspended member reads only the public logo (20261103210000) =='
+\echo '   expect: authenticated | logo'
 select set_config('request.jwt.claims',
   '{"sub":"dddddddd-7777-0000-0000-00000000000d","role":"authenticated"}', true) is not null as ok;
 set local role authenticated;
