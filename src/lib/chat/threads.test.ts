@@ -146,7 +146,7 @@ describe('noticeText', () => {
     expect(noticeText('unpictured', 'Jan', '')).toBe('Jan took the group’s picture away');
   });
 
-  it('says which trusted partner connected them, and to the partner, that they did', () => {
+  it('says which professional connected them, and to the partner, that they did', () => {
     expect(noticeText('introduced', 'Robert Medel', 'Both C6 in San Jose.')).toBe(
       'Robert Medel connected you because they thought you’d be a good fit',
     );

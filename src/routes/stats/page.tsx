@@ -38,7 +38,7 @@ import { OrganizationPeople } from '@/routes/stats/organization-people';
 import type { Organization } from '@/types/domain';
 
 /**
- * Stats & controls, for org admins and trusted partners (20261031110000): their
+ * Stats & controls, for org admins and professionals (20261031110000): their
  * organization's numbers, connecting two members, their own numbers, the people
  * they invited or connected. Counts and statuses only; nothing from anybody's
  * conversations. Invites and QR codes are on Me.
@@ -99,11 +99,10 @@ export default function StatsPage() {
       ) : (
         <div className={COLUMN}>
           <div className="rounded-[14px] border border-line bg-paper p-4 text-[0.9375rem] text-ink leading-[1.5]">
-            <p className="font-bold">This page is for org admins and trusted partners.</p>
+            <p className="font-bold">This page is for org admins and professionals.</p>
             <p className="mt-1 text-ink2">
-              Trusted partners are professionals who work with people with SCI/D, such as peer
-              support leads and therapists. An administrator makes someone a partner or an org
-              admin.
+              Professionals work with people with SCI/D, such as peer support leads and therapists.
+              An administrator makes someone a professional or an org admin.
             </p>
             <Link
               to="/me"

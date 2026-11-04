@@ -632,7 +632,7 @@ function MemberProfile({ onBlocked }: { onBlocked: () => void }) {
                     </button>
                   ))
                 )}
-                {/* An org admin's or a trusted partner's (20261031110000). */}
+                {/* An org admin's or a professional's (20261031110000). */}
                 {canConnect ? (
                   <button
                     type="button"

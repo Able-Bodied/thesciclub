@@ -122,7 +122,7 @@ export async function fetchIntroductionForMe(
         partner: row.partner_id
           ? {
               id: row.partner_id,
-              name: row.partner_name ?? 'A trusted partner',
+              name: row.partner_name ?? 'A professional',
               photoPath: row.partner_photo,
               title: row.partner_title,
             }

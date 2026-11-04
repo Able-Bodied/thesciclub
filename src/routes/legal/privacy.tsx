@@ -34,6 +34,10 @@ export default function PrivacyPage() {
             page to join the club. The invite goes to the address they registered with, and its link
             starts joining with the name and phone number they gave.
           </li>
+          <li>
+            <b>Changed:</b> trusted partners are now called professionals, and each writes the
+            profession shown beside their name.
+          </li>
         </List>
       </Note>
       <Note title="What changed on November 3, 2026">
@@ -506,13 +510,14 @@ export default function PrivacyPage() {
             event they manage, and only if you RSVP (see Event hosts, below).
           </li>
           <li>
-            <b>Trusted partners</b> are professionals, such as a hospital’s peer support lead or a
-            physical therapist, whom an administrator chose. Their title is shown beside their name.
-            They see the same profiles as anybody. For the people they invited or connected, they
-            also see whether each joined, finished their profile and was introduced to a mentor, and
-            how many of them posted in a room or RSVP to an event, as a count. They cannot read
-            conversations they are not in. Partners see no email address or phone number, except an
-            address they sent an invite to themselves.
+            <b>Professionals</b> work with people with spinal cord injuries, such as a hospital’s
+            peer support lead or a physical therapist, and an administrator chose them. The
+            profession they write is shown beside their name. They see the same profiles as anybody.
+            For the people they invited or connected, they also see whether each joined, finished
+            their profile and was introduced to a mentor, and how many of them posted in a room or
+            RSVP to an event, as a count. They cannot read conversations they are not in.
+            Professionals see no email address or phone number, except an address they sent an
+            invite to themselves.
           </li>
           <li>
             <b>Org admins</b> see the same about the people they invited or connected, and counts
@@ -522,12 +527,12 @@ export default function PrivacyPage() {
             notification.
           </li>
           <li>
-            <b>Being connected.</b> An org admin or a trusted partner can connect two members. You
-            are not asked first: you and the other member are added to a group conversation, which
-            opens with a line saying who connected you and their note, and you are told. Whoever
-            connected you is in it only if they chose to be, and can read it only then. You can
-            leave it, block or report anyone in it, at any time, and you will not be connected to
-            the same member twice.
+            <b>Being connected.</b> An org admin or a professional can connect two members. You are
+            not asked first: you and the other member are added to a group conversation, which opens
+            with a line saying who connected you and their note, and you are told. Whoever connected
+            you is in it only if they chose to be, and can read it only then. You can leave it,
+            block or report anyone in it, at any time, and you will not be connected to the same
+            member twice.
           </li>
           <li>
             <b>Your email address</b> is also seen by whoever invited you, who already had it. If

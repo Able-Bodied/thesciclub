@@ -204,7 +204,7 @@ describe('Stats & controls', () => {
     state.partner = false;
     renderPage();
     expect(
-      await screen.findByText('This page is for org admins and trusted partners.'),
+      await screen.findByText('This page is for org admins and professionals.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Your numbers' })).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Connect two members' })).toBeNull();

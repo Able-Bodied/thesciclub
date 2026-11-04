@@ -8,10 +8,10 @@ vi.mock('@/lib/club-partners', async (importOriginal) => ({
   usePartnerTitles: () => new Map([['p1', 'Physical therapist, SCI-FIT']]),
 }));
 
-describe('the trusted partner label', () => {
+describe('the professional label', () => {
   it('names the role and their title', () => {
     render(<PartnerLabel memberId="p1" />);
-    expect(screen.getByText('Trusted partner · Physical therapist, SCI-FIT')).toBeInTheDocument();
+    expect(screen.getByText('Professional · Physical therapist, SCI-FIT')).toBeInTheDocument();
   });
 
   it('shows nothing for anybody else', () => {
