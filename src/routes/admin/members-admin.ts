@@ -334,7 +334,7 @@ export const INVITE_PAGE = 50;
 
 /**
  * "The list" (every invite not withdrawn) or Withdrawn, newest first, paged
- * by the database (20261103130000). Reading the whole view could never show
+ * by the database (20261103160000). Reading the whole view could never show
  * more than the API's 1,000 rows.
  */
 export async function fetchInvitePage({
@@ -654,7 +654,7 @@ export async function removeAndBlock(
  * when. Re-inviting writes a *new* row rather than reviving the old one, so
  * withdrawing that one too leaves two revoked rows, then three. Sound in the
  * database and unreadable on a screen, so admin_invite_page('withdrawn')
- * groups them (20261103130000):
+ * groups them (20261103160000):
  *
  * - An address with a live invite is not withdrawn, whatever its history says.
  * - A blocked address belongs in Blocked, not in both.
@@ -862,7 +862,7 @@ export interface TallyRow {
  * came with no code on a line of their own. Events are grouped by the name
  * exactly as typed. Only invites still in use count: a member removed or gone
  * is not somebody the event brought in now. Counted by admin_join_tally
- * (20261103130000) over every such invite.
+ * (20261103160000) over every such invite.
  */
 export async function fetchJoinTally(): Promise<
   { ok: true; rows: TallyRow[] } | { ok: false; error: string }

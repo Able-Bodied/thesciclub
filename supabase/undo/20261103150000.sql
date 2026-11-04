@@ -1,4 +1,4 @@
--- Undo for 20261103120000_rsvp_counts_skip_the_check_for_open_events.sql: the
+-- Undo for 20261103150000_rsvp_counts_skip_the_check_for_open_events.sql: the
 -- view as 20261022180000 left it, from the repo (2026-11-03). Compare with the
 -- live definition before release.
 
