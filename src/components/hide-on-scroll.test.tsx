@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { useHideOnScroll } from '@/components/hide-on-scroll';
+import { describe, expect, it, vi } from 'vitest';
+import { INTENT_MS, useHideOnScroll } from '@/components/hide-on-scroll';
 
 function Page({ enabled = true, place = '/home' }: { enabled?: boolean; place?: string }) {
   const { hidden } = useHideOnScroll(enabled, place);
@@ -12,11 +12,14 @@ function Page({ enabled = true, place = '/home' }: { enabled?: boolean; place?: 
   );
 }
 
-function scrollTo(box: HTMLElement, top: number, height = 2000, shown = 600) {
+/** A scroll by the reader: a finger on the screen first, unless `byPage`. */
+function scrollTo(box: HTMLElement, top: number, height = 2000, shown = 600, byPage = false) {
+  if (!byPage) fireEvent.touchStart(box);
   Object.defineProperty(box, 'scrollHeight', { value: height, configurable: true });
   Object.defineProperty(box, 'clientHeight', { value: shown, configurable: true });
   Object.defineProperty(box, 'scrollTop', { value: top, configurable: true });
   fireEvent.scroll(box);
+  if (!byPage) fireEvent.touchEnd(box);
 }
 
 describe('the tab bar on a scroll', () => {
@@ -69,6 +72,30 @@ describe('the tab bar on a scroll', () => {
     scrollTo(screen.getByTestId('box'), 300);
     rerender(<Page place="/peers" />);
     expect(screen.getByText('Showing')).toBeInTheDocument();
+  });
+
+  // The bounce on opening a conversation (2026-11-03): its jump to the newest
+  // message is the page's scroll, not the reader's.
+  it('ignores a scroll the page made by itself', () => {
+    render(<Page />);
+    scrollTo(screen.getByTestId('box'), 1400, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+  });
+
+  it('counts a wheel or a key just before, and not long before', () => {
+    const now = vi.spyOn(Date, 'now').mockReturnValue(10_000);
+    render(<Page />);
+    const box = screen.getByTestId('box');
+    fireEvent.wheel(box);
+    scrollTo(box, 300, 2000, 600, true);
+    expect(screen.getByText('Hidden')).toBeInTheDocument();
+    fireEvent.keyDown(box, { key: 'ArrowUp' });
+    scrollTo(box, 200, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    now.mockReturnValue(10_000 + INTENT_MS + 1);
+    scrollTo(box, 900, 2000, 600, true);
+    expect(screen.getByText('Showing')).toBeInTheDocument();
+    now.mockRestore();
   });
 
   it('does nothing where it is off', () => {

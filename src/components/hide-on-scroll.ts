@@ -6,6 +6,9 @@ const SLOP = 8;
 const NEAR_TOP = 40;
 /** A page with no more to scroll than this would only jump as the bar went. */
 const LEAST_ROOM = 120;
+/** A scroll this soon after a touch, wheel or key is the reader's own. */
+export const INTENT_MS = 500;
+const SCROLL_KEYS = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 
 /**
  * Whether a finger is what this device is mainly used with. A narrow window on
@@ -34,6 +37,29 @@ export function useHideOnScroll(enabled: boolean, place: string) {
 
   useEffect(() => {
     if (!enabled) return;
+    // Only the reader's own scrolling moves the bar. A conversation jumping to
+    // its newest message is the page's, and hiding the bar for it resized the
+    // list, which moved it again: the bounce on opening (2026-11-03).
+    let touching = false;
+    let lastIntent = Number.NEGATIVE_INFINITY;
+    const intent = () => {
+      lastIntent = Date.now();
+    };
+    const onTouchStart = () => {
+      touching = true;
+      intent();
+    };
+    const onTouchEnd = () => {
+      touching = false;
+      intent();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      // Typing in a box is not scrolling, whatever the key.
+      const field = event.target instanceof HTMLElement ? event.target : null;
+      if (field?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      if (SCROLL_KEYS.has(event.key)) intent();
+    };
+    const theirs = () => touching || Date.now() - lastIntent <= INTENT_MS;
     const seen = new WeakMap<HTMLElement, number>();
     const heights = new WeakMap<HTMLElement, number>();
     const onScroll = (event: Event) => {
@@ -56,11 +82,24 @@ export function useHideOnScroll(enabled: boolean, place: string) {
       if (Math.abs(top - before) < SLOP && top > NEAR_TOP) return;
       seen.set(box, top);
       if (top <= NEAR_TOP) setHidden(false);
-      else if (room >= LEAST_ROOM) setHidden(top > before);
+      else if (room >= LEAST_ROOM && theirs()) setHidden(top > before);
     };
-    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    const listen = { capture: true, passive: true } as const;
+    document.addEventListener('scroll', onScroll, listen);
+    document.addEventListener('touchstart', onTouchStart, listen);
+    document.addEventListener('touchmove', intent, listen);
+    document.addEventListener('touchend', onTouchEnd, listen);
+    document.addEventListener('touchcancel', onTouchEnd, listen);
+    document.addEventListener('wheel', intent, listen);
+    document.addEventListener('keydown', onKey, listen);
     return () => {
       document.removeEventListener('scroll', onScroll, { capture: true });
+      document.removeEventListener('touchstart', onTouchStart, { capture: true });
+      document.removeEventListener('touchmove', intent, { capture: true });
+      document.removeEventListener('touchend', onTouchEnd, { capture: true });
+      document.removeEventListener('touchcancel', onTouchEnd, { capture: true });
+      document.removeEventListener('wheel', intent, { capture: true });
+      document.removeEventListener('keydown', onKey, { capture: true });
     };
   }, [enabled]);
 
