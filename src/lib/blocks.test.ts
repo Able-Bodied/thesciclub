@@ -24,7 +24,8 @@ describe('blockExplainer', () => {
   it('says what is hidden, what is refused, and who is told', () => {
     const said = blockExplainer('Bo').join(' ');
     expect(said).toContain("You won't see Bo's posts, replies, messages, likes or reactions");
-    expect(said).toContain('including rooms and groups you share');
+    expect(said).toContain("including rooms and groups you share, and Bo won't see yours");
+    expect(said).toContain('they still see what you write');
     expect(said).toContain('Neither of you can message the other');
     expect(said).toContain('Bo is not told.');
     expect(said).toContain('administrators are');

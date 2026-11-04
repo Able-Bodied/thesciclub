@@ -75,7 +75,9 @@ their messages, posts or replies (2026-10-22), after the same dialog saying what
 it does (the owner, 2026-10-21, for App Store and Google Play review). It is immediate and asks no reason. Everything the blocked member
 writes — topics, posts, replies, messages, likes, reactions — is hidden from the
 blocker everywhere, shared rooms and groups included, and nothing they do
-notifies the blocker. Neither can start a direct conversation with the other, and
+notifies the blocker. Since 2026-11-03 (the owner: "like most apps") it holds
+the other way too: the blocker's are hidden from the blocked member, unless
+that member is an administrator. Neither can start a direct conversation with the other, and
 one they already have takes no new message from either side; the database refuses
 it, saying only "You can't message this member". Neither can add the other to a
 group. They drop out of each other's Peers and profiles. The blocked member is not

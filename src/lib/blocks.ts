@@ -7,8 +7,9 @@ import { getSupabase } from '@/lib/supabase';
 /**
  * Blocking a member (20261022050000 to 20261022080000).
  *
- * The database does the hiding and the refusing; this asks and reads back
- * the blocker's own list. The blocked member cannot read it, and is not told.
+ * The database does the hiding, both ways since 20261103190000, and the
+ * refusing; this asks and reads back the blocker's own list. The blocked
+ * member cannot read it, and is not told.
  */
 
 /** What the blocked member sees when they try to message. Said by the database too. */
@@ -17,9 +18,9 @@ export const CANT_MESSAGE = "You can't message this member.";
 /** What blocking does, said before it is done. Tested: it is a promise. */
 export function blockExplainer(name: string): string[] {
   return [
-    `You won't see ${name}'s posts, replies, messages, likes or reactions anywhere in the club, including rooms and groups you share.`,
-    `Neither of you can message the other, and you drop out of each other's Peers. Nothing ${name} does will notify you.`,
-    `${name} is not told. The club's administrators are, so they can look into it.`,
+    `You won't see ${name}'s posts, replies, messages, likes or reactions anywhere in the club, including rooms and groups you share, and ${name} won't see yours.`,
+    `Neither of you can message the other, and you drop out of each other's Peers. Nothing either of you does will notify the other.`,
+    `${name} is not told. The club's administrators are, so they can look into it, and they still see what you write.`,
     'You can unblock them at any time from Me → Settings.',
   ];
 }

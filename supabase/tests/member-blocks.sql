@@ -9,8 +9,9 @@
 --   3. a direct message is refused both ways, with the neutral sentence, and
 --      neither can open a conversation or put the other in a group
 --   4. what Bo wrote, liked and reacted is hidden from Ada, shared rooms and
---      groups included; Ada's still reaches Bo; Peers hides both ways
---   5. nothing Bo does notifies Ada, in the list or on a lock screen
+--      groups included, and Ada's from Bo (20261103190000); Peers both ways
+--   5. nothing Bo does notifies Ada, in the list or on a lock screen (the
+--      other way: blocks-both-ways.sql)
 --   6. one report per block, naming both, with no words, notifying nobody
 --   7. administrators are unaffected: reports, earlier versions, removals
 --   8. Block from a message's ••• is the profile's: the same id, row and report
@@ -123,9 +124,10 @@ begin
   assert (select count(*) from public.member_blocks) = 0, 'Bo read a block row';
   assert public.my_blocked_member_ids() = '{}', 'Bo''s list is not empty';
   assert (select count(*) from public.chat_reports) = 0, 'Bo read the block report';
-  -- Ada's message and Cy's group, from before the block, and nothing since.
-  assert (select string_agg(kind, ',' order by kind) from public.my_notifications(null, 100)) = 'direct,group_add',
-    'Bo was notified of something new';
+  -- Cy's group, from before the block, and nothing since. Ada's message
+  -- before it is hidden too: a block hides both ways (20261103190000).
+  assert (select string_agg(kind, ',' order by kind) from public.my_notifications(null, 100)) = 'group_add',
+    'Bo was notified of something new, or still sees Ada''s';
   raise notice 'PASS 2: no row, no list, no report and no notification for Bo';
 end;
 $$;
@@ -219,11 +221,24 @@ $$;
 
 -- After the block, Bo and Cy write in the shared group, reply in Ada's topic
 -- and like her second post.
+\echo ''
+\echo '== 3d. Bo cannot reply in Ada''s topic nor like her post: he cannot see them =='
+\echo '   expect: ERROR (row-level security) twice (20261103190000). Then both are'
+\echo '   written past the rules, so step 5 can prove they notify nobody.'
 select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000b","role":"authenticated"}', true) is not null as bo;
 insert into public.chat_messages (thread_id, author_id, body) values (:'grp', auth.uid(), 'Bo in the group') returning id as bo_msg \gset
+savepoint bo_reply;
+insert into public.chat_posts (topic_id, author_id, body) values
+('b10c0000-0000-0000-0000-0000000000a1', auth.uid(), 'Bo replies again');
+rollback to savepoint bo_reply;
+savepoint bo_like;
+insert into public.chat_post_likes (post_id, member_id) values ('b10c0000-0000-0000-0000-0000000000a3', auth.uid());
+rollback to savepoint bo_like;
+reset role;
 insert into public.chat_posts (topic_id, author_id, body) values
 ('b10c0000-0000-0000-0000-0000000000a1', auth.uid(), 'Bo replies again');
 insert into public.chat_post_likes (post_id, member_id) values ('b10c0000-0000-0000-0000-0000000000a3', auth.uid());
+set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000c","role":"authenticated"}', true) is not null as cy;
 insert into public.chat_messages (thread_id, author_id, body) values (:'grp', auth.uid(), 'Cy in the group') returning id as cy_msg \gset
 insert into public.chat_posts (topic_id, author_id, body) values
@@ -231,7 +246,7 @@ insert into public.chat_posts (topic_id, author_id, body) values
 insert into public.chat_post_likes (post_id, member_id) values ('b10c0000-0000-0000-0000-0000000000a3', auth.uid());
 
 \echo ''
-\echo '== 4. what Bo wrote is hidden from Ada; hers still reaches Bo; Peers both ways =='
+\echo '== 4. what Bo wrote is hidden from Ada, and hers from Bo; Peers both ways =='
 \echo '   expect: PASS 4a (Ada), PASS 4b (Bo), PASS 4c (Cy sees everything)'
 select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000a","role":"authenticated"}', true) is not null as ada;
 do $$
@@ -261,13 +276,17 @@ $$;
 select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000b","role":"authenticated"}', true) is not null as bo;
 do $$
 begin
-  assert exists (select 1 from public.chat_posts where body = 'Ada''s opener'), 'Bo lost Ada''s post';
-  assert exists (select 1 from public.chat_messages where body = 'Ada to Bo'), 'Bo lost Ada''s message';
-  assert exists (select 1 from public.chat_my_threads() where kind = 'direct'
-                  and other_member_id = 'b10c0000-0000-0000-0000-00000000000a'), 'the conversation left Bo''s list';
+  assert not exists (select 1 from public.chat_topics where id = 'b10c0000-0000-0000-0000-0000000000a1'), 'Bo sees Ada''s topic';
+  assert not exists (select 1 from public.chat_posts where author_id = 'b10c0000-0000-0000-0000-00000000000a'), 'Bo reads a post of Ada''s';
+  assert not exists (select 1 from public.chat_messages where author_id = 'b10c0000-0000-0000-0000-00000000000a'), 'Bo reads a message of Ada''s';
+  assert exists (select 1 from public.chat_messages where body = 'Bo to Ada'), 'Bo lost his own message';
+  assert exists (select 1 from public.chat_messages where body = 'Cy in the group'), 'Bo lost Cy''s group message';
+  -- Kept, with only his words: taking it away would tell him.
+  assert (select last_body from public.chat_my_threads() where kind = 'direct'
+           and other_member_id = 'b10c0000-0000-0000-0000-00000000000a') = 'Bo to Ada', 'the conversation left Bo''s list, or shows Ada''s words';
   assert not exists (select 1 from public.browse_members where id = 'b10c0000-0000-0000-0000-00000000000a'), 'Ada is in Bo''s Peers';
   assert not (select has_profile from public.chat_authors where id = 'b10c0000-0000-0000-0000-00000000000a'), 'Ada has a profile for Bo';
-  raise notice 'PASS 4b: Ada''s words still reach Bo; she is gone from his Peers';
+  raise notice 'PASS 4b: Ada''s topic, posts and messages are hidden from Bo; his conversation stays; she is gone from his Peers';
 end;
 $$;
 select set_config('request.jwt.claims','{"sub":"b10c0000-0000-0000-0000-00000000000c","role":"authenticated"}', true) is not null as cy;
