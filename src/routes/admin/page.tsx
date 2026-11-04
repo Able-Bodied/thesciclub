@@ -31,17 +31,19 @@ import {
   deleteMember,
   deliveryNote,
   fetchBlockedEmails,
-  fetchInvites,
+  fetchInvitePage,
   fetchInvitingOrganizations,
+  fetchJoinTally,
   fetchMemberCounts,
   fetchMemberPage,
   fetchMemberReach,
+  fetchPendingInvites,
   fetchStrikes,
+  INVITE_PAGE,
   type InvitingOrganization,
   inviteLabel,
   inviteState,
   isOldPhoneInvite,
-  joinTally,
   type MemberReach,
   ROSTER_PAGE,
   type RosterCounts,
@@ -54,9 +56,10 @@ import {
   setMemberStatus,
   setMemberType,
   setPartner,
+  type TallyRow,
   unblockEmail,
   vouchedBy as vouchedBy_,
-  withdrawnInvites,
+  type WithdrawnInvite,
   withdrawStrike,
 } from '@/routes/admin/members-admin';
 import { OrganizationSuggestions } from '@/routes/admin/organization-suggestions';
@@ -118,7 +121,16 @@ export default function AdminPage() {
   const [only, setOnly] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [strikes, setStrikes] = useState<Strike[]>([]);
-  const [invites, setInvites] = useState<AdminInvite[]>([]);
+  // The two invite lists, each read a page at a time (20261103130000). Two,
+  // because "The list" should mean the people who are on it: withdrawn rows
+  // carry who vouched and when, and cost nothing kept apart.
+  const [listed, setListed] = useState<WithdrawnInvite[]>([]);
+  const [listedTotal, setListedTotal] = useState(0);
+  const [withdrawn, setWithdrawn] = useState<WithdrawnInvite[]>([]);
+  const [withdrawnTotal, setWithdrawnTotal] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [tally, setTally] = useState<TallyRow[]>([]);
+  const [moreInvites, setMoreInvites] = useState<InvitePart | null>(null);
   const [blocked, setBlocked] = useState<BlockedEmail[]>([]);
   const [organizationRevision, setOrganizationRevision] = useState(0);
   const [organizationsPart, setOrganizationsPart] = useState<'directory' | 'admins'>('directory');
@@ -187,13 +199,32 @@ export default function AdminPage() {
     return result.error;
   }, []);
 
+  // How many of each invite list are drawn, so a reload reads the same rows.
+  const invitesShown = useRef<Record<InvitePart, number>>({ listed: 0, withdrawn: 0 });
+  const readInvites = useCallback(async (part: InvitePart, limit: number) => {
+    const result = await fetchInvitePage({ part, limit });
+    if (!result.ok) return result.error;
+    invitesShown.current[part] = result.rows.length;
+    if (part === 'listed') {
+      setListed(result.rows);
+      setListedTotal(result.total);
+    } else {
+      setWithdrawn(result.rows);
+      setWithdrawnTotal(result.total);
+    }
+    return null;
+  }, []);
+
   const load = useCallback(async () => {
     // Read fresh: a title may have just changed.
     forgetPartnerTitles();
     const [
       rosterError,
       countResult,
-      inviteResult,
+      listedError,
+      withdrawnError,
+      pendingResult,
+      tallyResult,
       blockedRows,
       strikeResult,
       reachResult,
@@ -201,7 +232,10 @@ export default function AdminPage() {
     ] = await Promise.all([
       readRoster(Math.max(shown.current, ROSTER_PAGE)),
       fetchMemberCounts(),
-      fetchInvites(),
+      readInvites('listed', Math.max(invitesShown.current.listed, INVITE_PAGE)),
+      readInvites('withdrawn', Math.max(invitesShown.current.withdrawn, INVITE_PAGE)),
+      fetchPendingInvites(),
+      fetchJoinTally(),
       fetchBlockedEmails(),
       fetchStrikes(),
       fetchMemberReach(),
@@ -210,15 +244,19 @@ export default function AdminPage() {
     if (countResult.ok) setCounts(countResult.counts);
     setReach(reachResult);
     setPartners(partnerTitles);
-    if (inviteResult.ok) setInvites(inviteResult.invites);
+    if (pendingResult.ok) setPendingCount(pendingResult.pending);
+    if (tallyResult.ok) setTally(tallyResult.rows);
     if (strikeResult.ok) setStrikes(strikeResult.strikes);
     setBlocked(blockedRows);
     const failure =
       rosterError ??
-      (!countResult.ok ? countResult.error : !inviteResult.ok ? inviteResult.error : null);
+      (!countResult.ok ? countResult.error : null) ??
+      listedError ??
+      withdrawnError ??
+      (!pendingResult.ok ? pendingResult.error : null);
     setError(failure);
     setLoading(false);
-  }, [readRoster]);
+  }, [readRoster, readInvites]);
 
   // Typing settles for a moment before the database is asked.
   useEffect(() => {
@@ -277,6 +315,39 @@ export default function AdminPage() {
       })
       .finally(() => {
         setMore(false);
+      });
+  }
+
+  function showMoreInvites(part: InvitePart) {
+    const drawn = part === 'listed' ? listed : withdrawn;
+    setMoreInvites(part);
+    fetchInvitePage({ part, offset: drawn.length })
+      .then((result) => {
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        const add = (rows: WithdrawnInvite[]) => {
+          const next = [
+            ...rows,
+            ...result.rows.filter((r) => !rows.some((row) => row.invite.id === r.invite.id)),
+          ];
+          invitesShown.current[part] = next.length;
+          return next;
+        };
+        if (part === 'listed') {
+          setListed(add);
+          setListedTotal(result.total);
+        } else {
+          setWithdrawn(add);
+          setWithdrawnTotal(result.total);
+        }
+      })
+      .catch((e: unknown) => {
+        setError(describeThrown(e, 'Could not load more invites.'));
+      })
+      .finally(() => {
+        setMoreInvites(null);
       });
   }
 
@@ -366,17 +437,6 @@ export default function AdminPage() {
   // database still has them).
   const directoryCount = counts.directory;
   const attentionCount = counts.attention;
-  const pending = invites.filter((i) => i.status === 'pending');
-  // Three lists, because "The list" should mean the people who are on it.
-  // Withdrawn rows used to sit among them and accumulate forever, which is
-  // what made deleting them look necessary — they carry who vouched and when,
-  // and the partial unique index means they cost nothing where they are.
-  const onTheList = invites.filter((i) => i.status !== 'revoked');
-  const withdrawn = withdrawnInvites(
-    invites,
-    blocked.map((b) => b.email),
-  );
-
   return (
     <div className="flex flex-1 flex-col overflow-y-auto">
       <header className="flex-none bg-paper px-[18px] pt-[18px] pb-3">
@@ -390,8 +450,8 @@ export default function AdminPage() {
           <p className="mt-1 text-[0.78125rem] text-grey">
             {joinedCount} joined ·{' '}
             {directoryCount > 0 ? `${directoryCount} from the directory · ` : ''}
-            {pending.length} invite
-            {pending.length === 1 ? '' : 's'} waiting
+            {pendingCount} invite
+            {pendingCount === 1 ? '' : 's'} waiting
           </p>
         </div>
       </header>
@@ -601,12 +661,12 @@ export default function AdminPage() {
                   </Section>
                 </div>
                 <div className="min-w-0">
-                  <JoinTally rows={joinTally(invites)} />
+                  <JoinTally rows={tally} />
                   <Section
                     title="The list"
                     subtitle="An invite nobody has used can be taken off the list, or its link sent again."
                   >
-                    {onTheList.map((invite) => (
+                    {listed.map(({ invite }) => (
                       <InviteRow
                         key={invite.id}
                         invite={invite}
@@ -626,12 +686,20 @@ export default function AdminPage() {
                         }}
                       />
                     ))}
-                    {onTheList.length === 0 ? (
+                    {listed.length === 0 ? (
                       <p className="py-6 text-center text-[0.8125rem] text-grey">
                         Nobody is on the list yet.
                       </p>
                     ) : null}
                   </Section>
+                  <ShowMoreInvites
+                    shown={listed.length}
+                    total={listedTotal}
+                    busy={moreInvites === 'listed'}
+                    onMore={() => {
+                      showMoreInvites('listed');
+                    }}
+                  />
 
                   {/* Only when there are any. An empty "Withdrawn" heading is a
                     section about nothing on a screen that is mostly lists. */}
@@ -662,6 +730,16 @@ export default function AdminPage() {
                         />
                       ))}
                     </Section>
+                  ) : null}
+                  {withdrawn.length > 0 ? (
+                    <ShowMoreInvites
+                      shown={withdrawn.length}
+                      total={withdrawnTotal}
+                      busy={moreInvites === 'withdrawn'}
+                      onMore={() => {
+                        showMoreInvites('withdrawn');
+                      }}
+                    />
                   ) : null}
 
                   {blocked.length > 0 ? (
@@ -850,6 +928,33 @@ export default function AdminPage() {
           </TabPanel>
         )}
       </div>
+    </div>
+  );
+}
+
+type InvitePart = 'listed' | 'withdrawn';
+
+/** As the roster's: how many are drawn, and the next page. */
+function ShowMoreInvites({
+  shown,
+  total,
+  busy,
+  onMore,
+}: {
+  shown: number;
+  total: number;
+  busy: boolean;
+  onMore: () => void;
+}) {
+  if (shown >= total) return null;
+  return (
+    <div className="mt-3 mb-4 flex flex-col items-center gap-1.5">
+      <p className="text-[0.8125rem] text-grey">
+        Showing {shown} of {total}
+      </p>
+      <SmallButton onClick={onMore} disabled={busy}>
+        {busy ? 'Loading…' : `Show ${Math.min(INVITE_PAGE, total - shown)} more`}
+      </SmallButton>
     </div>
   );
 }

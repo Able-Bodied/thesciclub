@@ -11,8 +11,8 @@ import {
   inviteState,
   type MemberReach,
   type Strike,
+  type TallyRow,
   vouchedBy,
-  withdrawnInvites,
 } from '@/routes/admin/members-admin';
 import type { Renewal } from '@/routes/admin/renewals';
 
@@ -22,6 +22,7 @@ const api = vi.hoisted(() => ({
   members: [] as AdminMember[],
   reach: null as Map<string, MemberReach> | null,
   invites: [] as AdminInvite[],
+  tally: [] as TallyRow[],
   deleted: [] as string[],
   revoked: [] as string[],
   statusCalls: [] as [string, string][],
@@ -90,6 +91,31 @@ const { rosterFilter } = vi.hoisted(() => ({
             ? !m.isSeed && m.status === 'active'
             : true,
 }));
+// As admin_invite_page, admin_invite_counts and admin_join_tally answer
+// (20261103130000), over api.invites; their own probe is admin-invite-page.sql.
+const inviteKey = (i: AdminInvite) => (i.email ?? i.phone ?? i.id).toLowerCase();
+const newestFirst = (a: AdminInvite, b: AdminInvite) => b.createdAt.localeCompare(a.createdAt);
+function invitePart(part: 'listed' | 'withdrawn') {
+  if (part === 'listed')
+    return api.invites
+      .filter((i) => i.status !== 'revoked')
+      .sort(newestFirst)
+      .map((invite) => ({ invite, times: 1 }));
+  const live = new Set(api.invites.filter((i) => i.status !== 'revoked').map(inviteKey));
+  const blocked = new Set(api.blocked.map((b) => b.email.toLowerCase()));
+  const groups = new Map<string, AdminInvite[]>();
+  for (const i of api.invites) {
+    if (i.status !== 'revoked' || live.has(inviteKey(i)) || blocked.has(inviteKey(i))) continue;
+    groups.set(inviteKey(i), [...(groups.get(inviteKey(i)) ?? []), i]);
+  }
+  return [...groups.values()]
+    .map((g) => ({
+      invite: g.reduce((a, b) => (b.createdAt > a.createdAt ? b : a)),
+      times: g.length,
+    }))
+    .sort((a, b) => newestFirst(a.invite, b.invite));
+}
+
 vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
   ...(await importOriginal<typeof MembersAdmin>()),
   // As admin_member_search and admin_member_counts (20261029230000) answer.
@@ -145,7 +171,28 @@ vi.mock('@/routes/admin/members-admin', async (importOriginal) => ({
       },
     }),
   fetchMemberReach: () => Promise.resolve(api.reach),
-  fetchInvites: () => Promise.resolve({ ok: true as const, invites: api.invites }),
+  fetchInvitePage: ({
+    part,
+    offset = 0,
+    limit = 50,
+  }: {
+    part: 'listed' | 'withdrawn';
+    offset?: number;
+    limit?: number;
+  }) => {
+    const rows = invitePart(part);
+    return Promise.resolve({
+      ok: true as const,
+      rows: rows.slice(offset, offset + limit),
+      total: rows.length,
+    });
+  },
+  fetchPendingInvites: () =>
+    Promise.resolve({
+      ok: true as const,
+      pending: api.invites.filter((i) => i.status === 'pending').length,
+    }),
+  fetchJoinTally: () => Promise.resolve({ ok: true as const, rows: api.tally }),
   fetchBlockedEmails: () => Promise.resolve(api.blocked),
   blockEmail: (email: string, reason: string | null) => {
     if (api.failWith) return Promise.resolve({ ok: false, error: api.failWith });
@@ -315,6 +362,7 @@ beforeEach(() => {
   api.members = [member()];
   api.reach = null;
   api.invites = [];
+  api.tally = [];
   api.deleted = [];
   api.revoked = [];
   api.statusCalls = [];
@@ -868,48 +916,7 @@ describe('the withdrawn list', () => {
   const revoked = (email: string, id: string, createdAt: string) =>
     invite({ id, email, status: 'revoked', createdAt });
 
-  // Re-inviting writes a new row rather than reviving the old one, which is
-  // right — a second invitation is a separate act. Withdraw that too and the
-  // number has two revoked rows, then three, and the list reads as broken.
-  it('collapses repeated cycles on one number to a single row', () => {
-    const rows = withdrawnInvites([
-      revoked('a@example.com', 'a', '2026-09-01T00:00:00Z'),
-      revoked('a@example.com', 'b', '2026-09-05T00:00:00Z'),
-      revoked('a@example.com', 'c', '2026-09-03T00:00:00Z'),
-    ]);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.times).toBe(3);
-    // The most recent invitation, not whichever came back first.
-    expect(rows[0]?.invite.id).toBe('b');
-  });
-
-  // The most confusing thing this list could do: show a number as withdrawn
-  // while it is sitting in "The list" above.
-  it('drops a number that has since been invited again', () => {
-    const rows = withdrawnInvites([
-      revoked('a@example.com', 'old', '2026-09-01T00:00:00Z'),
-      invite({ id: 'new', email: 'a@example.com', status: 'pending' }),
-    ]);
-    expect(rows).toEqual([]);
-  });
-
-  it('drops a number that is blocked, which has its own list', () => {
-    const rows = withdrawnInvites(
-      [revoked('a@example.com', 'old', '2026-09-01T00:00:00Z')],
-      ['a@example.com'],
-    );
-    expect(rows).toEqual([]);
-  });
-
-  it('keeps distinct numbers apart, newest first', () => {
-    const rows = withdrawnInvites([
-      revoked('a@example.com', 'a', '2026-09-01T00:00:00Z'),
-      revoked('b@example.com', 'b', '2026-09-09T00:00:00Z'),
-    ]);
-    expect(rows.map((r) => r.invite.email)).toEqual(['b@example.com', 'a@example.com']);
-    expect(rows.every((r) => r.times === 1)).toBe(true);
-  });
-
+  // The grouping itself is the database's: supabase/tests/admin-invite-page.sql.
   it('says how many times, on screen, only when it is more than once', async () => {
     const user = userEvent.setup();
     api.invites = [
@@ -928,6 +935,31 @@ describe('the withdrawn list', () => {
 });
 
 describe('the three lists', () => {
+  // Read a page at a time, so the list reaches past the API's 1,000 rows.
+  it('pages The list with Show more until every invite is drawn', async () => {
+    const user = userEvent.setup();
+    api.invites = Array.from({ length: 120 }, (_, n) =>
+      invite({
+        id: `i${n}`,
+        email: `person${n}@example.com`,
+        createdAt: new Date(Date.UTC(2026, 9, 1, 0, 120 - n)).toISOString(),
+      }),
+    );
+    renderAdmin();
+    await screen.findByRole('tab', { name: 'Invites' });
+    await user.click(screen.getByRole('tab', { name: 'Invites' }));
+
+    expect(await screen.findByText('Showing 50 of 120')).toBeInTheDocument();
+    expect(screen.getByText('person0@example.com')).toBeInTheDocument();
+    expect(screen.queryByText('person50@example.com')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Show 50 more' }));
+    expect(await screen.findByText('Showing 100 of 120')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show 20 more' }));
+    expect(await screen.findByText('person119@example.com')).toBeInTheDocument();
+    expect(screen.queryByText(/^Showing \d+ of 120$/)).toBeNull();
+    expect(screen.getByText(/120 invites waiting/)).toBeInTheDocument();
+  });
+
   // Withdrawn rows used to sit in "The list", which is the heading claiming
   // these numbers are on it, and they accumulate forever.
   it('keeps withdrawn numbers out of the list that says they are on it', async () => {
@@ -1007,39 +1039,18 @@ describe('the invite list', () => {
     expect(screen.getByText(/NorCal SCI ·/)).toBeInTheDocument();
   });
 
-  it('counts who joined while open, by event and administrator', async () => {
-    const joined = (o: Partial<AdminInvite>) =>
-      invite({
-        status: 'consumed',
-        joinedWhileOpen: true,
-        invitedByOrganization: null,
-        heldBy: 'X',
-        heldByStatus: 'active',
-        ...o,
-      });
-    api.invites = [
-      joined({
-        id: 'a',
-        email: 'a@x.com',
-        fromQrCode: true,
-        invitedByMember: 'Alfred',
-        qrEventName: 'Expo',
-      }),
-      joined({
-        id: 'b',
-        email: 'b@x.com',
-        fromQrCode: true,
-        invitedByMember: 'Sam',
-        qrEventName: 'Expo',
-      }),
-      joined({
-        id: 'c',
-        email: 'c@x.com',
-        fromQrCode: true,
-        invitedByMember: 'Alfred',
-        qrEventName: 'Expo',
-      }),
-      joined({ id: 'd', email: 'd@x.com' }),
+  // Counted by admin_join_tally (admin-invite-page.sql); drawn here.
+  it('draws who joined while open, by event and administrator', async () => {
+    api.tally = [
+      {
+        label: 'Expo',
+        joined: 3,
+        byAdmin: [
+          { name: 'Alfred', joined: 2 },
+          { name: 'Sam', joined: 1 },
+        ],
+      },
+      { label: 'Walk-ins, no code', joined: 1, byAdmin: [] },
     ];
     await openInvites();
     const table = screen.getByRole('table');

@@ -3,21 +3,18 @@ import {
   type AdminInvite,
   createInvite,
   deliveryNote,
-  fetchInvites,
+  fetchInvitePage,
+  fetchJoinTally,
   fetchMemberPage,
   inviteLabel,
   isOldPhoneInvite,
-  joinTally,
   reinviteByEmail,
   removeAndBlock,
-  withdrawnInvites,
 } from '@/routes/admin/members-admin';
 
 const calls = vi.hoisted(() => ({
   log: [] as string[],
   rpc: new Map<string, { data?: unknown; error?: { message: string; code?: string } | null }>(),
-  /** What admin_invites answers. */
-  inviteRows: [] as Record<string, unknown>[],
 }));
 const send = vi.hoisted(() => {
   const result: { ok: boolean; error?: string } = { ok: true };
@@ -26,21 +23,11 @@ const send = vi.hoisted(() => {
 
 vi.mock('@/lib/supabase', () => ({
   getSupabase: () => ({
-    rpc: (name: string, args: Record<string, unknown>) => {
-      calls.log.push(`${name}(${Object.values(args).join(',')})`);
+    rpc: (name: string, args?: Record<string, unknown>) => {
+      calls.log.push(`${name}(${Object.values(args ?? {}).join(',')})`);
       const answer = calls.rpc.get(name) ?? {};
       return Promise.resolve({ data: answer.data ?? null, error: answer.error ?? null });
     },
-    from: (table: string) => ({
-      select: () => ({
-        order: () =>
-          Promise.resolve(
-            table === 'admin_invites'
-              ? { data: calls.inviteRows, error: null }
-              : { data: null, error: { message: `unexpected ${table}` } },
-          ),
-      }),
-    }),
     storage: {
       from: () => ({
         list: () => Promise.resolve({ data: [], error: null }),
@@ -81,7 +68,6 @@ const invite = (o: Partial<AdminInvite> = {}): AdminInvite => ({
 });
 
 beforeEach(() => {
-  calls.inviteRows = [];
   calls.log = [];
   calls.rpc.clear();
   send.result = { ok: true };
@@ -236,22 +222,7 @@ describe('where an invite’s link has got to', () => {
   });
 });
 
-describe('the withdrawn list by address', () => {
-  it('matches addresses whatever their case', () => {
-    const rows = withdrawnInvites([
-      invite({ id: 'a', email: 'Dana@Example.com', status: 'revoked' }),
-      invite({ id: 'b', email: 'dana@example.com', status: 'pending' }),
-    ]);
-    expect(rows).toEqual([]);
-  });
-
-  it('keeps an old phone invite in the list under its number', () => {
-    const rows = withdrawnInvites([
-      invite({ id: 'p', email: null, phone: '14085551234', status: 'revoked' }),
-    ]);
-    expect(rows.map((r) => r.invite.id)).toEqual(['p']);
-  });
-});
+// Withdrawn grouping and the tally are the database's now: supabase/tests/admin-invite-page.sql.
 
 describe('reading the list', () => {
   const row = (o: Record<string, unknown> = {}) => ({
@@ -267,26 +238,38 @@ describe('reading the list', () => {
     held_by: 'Dana S',
     held_by_status: 'active',
     has_account: true,
+    times: 1,
+    total: 2,
     ...o,
+  });
+  const page = async (rows: Record<string, unknown>[]) => {
+    calls.rpc.set('admin_invite_page', { data: rows });
+    const result = await fetchInvitePage({ part: 'listed' });
+    return result.ok ? result.rows.map((r) => r.invite) : [];
+  };
+
+  it('asks for one part, a page at a time, and keeps times and the total', async () => {
+    calls.rpc.set('admin_invite_page', { data: [row({ status: 'revoked', times: 3, total: 7 })] });
+    const result = await fetchInvitePage({ part: 'withdrawn', offset: 50 });
+    expect(calls.log.at(-1)).toBe('admin_invite_page(withdrawn,50,50)');
+    expect(result.ok && [result.rows[0]?.times, result.total]).toEqual([3, 7]);
   });
 
   it('carries the walk-in mark from the view', async () => {
-    calls.inviteRows = [
+    const invites = await page([
       row({ joined_while_open: true }),
       row({ id: 'i2', joined_while_open: false }),
-    ];
-    const result = await fetchInvites();
-    expect(result.ok && result.invites.map((i) => i.joinedWhileOpen)).toEqual([true, false]);
+    ]);
+    expect(invites.map((i) => i.joinedWhileOpen)).toEqual([true, false]);
   });
 
   it("carries the QR code's mark and event from the view", async () => {
-    calls.inviteRows = [
+    const invites = await page([
       row({ joined_while_open: true, from_qr_code: true, qr_event_name: 'Expo' }),
       row({ id: 'i2', joined_while_open: true, from_qr_code: true, qr_event_name: null }),
       row({ id: 'i3', joined_while_open: true }),
-    ];
-    const result = await fetchInvites();
-    expect(result.ok && result.invites.map((i) => [i.fromQrCode, i.qrEventName])).toEqual([
+    ]);
+    expect(invites.map((i) => [i.fromQrCode, i.qrEventName])).toEqual([
       [true, 'Expo'],
       [true, null],
       [false, null],
@@ -294,9 +277,8 @@ describe('reading the list', () => {
   });
 
   it('reads a view from before the mark as nobody walking in', async () => {
-    calls.inviteRows = [row()];
-    const result = await fetchInvites();
-    expect(result.ok && result.invites[0]?.joinedWhileOpen).toBe(false);
+    const invites = await page([row()]);
+    expect(invites[0]?.joinedWhileOpen).toBe(false);
   });
 });
 
@@ -309,60 +291,24 @@ describe('a walk-in on the list', () => {
 });
 
 describe('the tally of who joined while open', () => {
-  const joined = (o: Partial<AdminInvite>) =>
-    invite({
-      status: 'consumed',
-      joinedWhileOpen: true,
-      heldBy: 'X',
-      heldByStatus: 'active',
-      ...o,
+  it('names walk-ins, a code with no event and an administrator no longer here', async () => {
+    calls.rpc.set('admin_join_tally', {
+      data: [
+        { walk_ins: false, event_name: 'Expo', joined: 2, by_admin: [{ name: 'Sam', joined: 2 }] },
+        { walk_ins: false, event_name: null, joined: 1, by_admin: [{ name: null, joined: 1 }] },
+        { walk_ins: true, event_name: null, joined: 3, by_admin: [] },
+      ],
     });
-
-  it('counts by event, then administrator, most first, with walk-ins last', () => {
-    expect(
-      joinTally([
-        joined({ fromQrCode: true, invitedByMember: 'Sam', qrEventName: 'Expo' }),
-        joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'Expo' }),
-        joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'Expo' }),
-        joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: null }),
-        joined({}),
-        joined({}),
-      ]),
-    ).toEqual([
+    const result = await fetchJoinTally();
+    expect(result.ok && result.rows).toEqual([
+      { label: 'Expo', joined: 2, byAdmin: [{ name: 'Sam', joined: 2 }] },
       {
-        label: 'Expo',
-        joined: 3,
-        byAdmin: [
-          { name: 'Alfred', joined: 2 },
-          { name: 'Sam', joined: 1 },
-        ],
+        label: 'No event',
+        joined: 1,
+        byAdmin: [{ name: 'An administrator no longer here', joined: 1 }],
       },
-      { label: 'No event', joined: 1, byAdmin: [{ name: 'Alfred', joined: 1 }] },
-      { label: 'Walk-ins, no code', joined: 2, byAdmin: [] },
+      { label: 'Walk-ins, no code', joined: 3, byAdmin: [] },
     ]);
-  });
-
-  it('counts names exactly as typed', () => {
-    const rows = joinTally([
-      joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'Expo' }),
-      joined({ fromQrCode: true, invitedByMember: 'Alfred', qrEventName: 'expo' }),
-    ]);
-    expect(rows.map((r) => r.label).sort()).toEqual(['Expo', 'expo']);
-  });
-
-  it('leaves out invites, pending ones, revoked ones and joins on a real invite', () => {
-    expect(
-      joinTally([
-        invite({ status: 'pending' }),
-        joined({
-          status: 'revoked',
-          fromQrCode: true,
-          invitedByMember: 'Alfred',
-          qrEventName: 'Expo',
-        }),
-        invite({ status: 'consumed', joinedWhileOpen: false, invitedByMember: 'Alfred' }),
-      ]),
-    ).toEqual([]);
   });
 });
 

@@ -307,37 +307,69 @@ export interface InvitingOrganization {
   shortCode: string;
 }
 
-export async function fetchInvites(): Promise<
-  { ok: true; invites: AdminInvite[] } | { ok: false; error: string }
-> {
-  const result = await getSupabase()
-    .from('admin_invites')
-    .select('*')
-    .order('created_at', { ascending: false });
+function toAdminInvite(row: AdminInviteRow): AdminInvite {
+  return {
+    id: row.id,
+    email: row.email ?? null,
+    phone: row.phone,
+    sentAt: row.sent_at ?? null,
+    claimedAt: row.claimed_at ?? null,
+    status: row.status as AdminInvite['status'],
+    note: row.note,
+    createdAt: row.created_at,
+    invitedByOrganization: row.invited_by_organization,
+    invitedByMember: row.invited_by_member,
+    invitedByMemberIsAdmin: row.invited_by_member_is_admin ?? undefined,
+    heldBy: row.held_by,
+    heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
+    hasAccount: row.has_account ?? undefined,
+    joinedWhileOpen: row.joined_while_open === true,
+    fromQrCode: row.from_qr_code === true,
+    qrEventName: row.qr_event_name ?? null,
+  };
+}
+
+/** Invites read at a time; Show more reads as many again. */
+export const INVITE_PAGE = 50;
+
+/**
+ * "The list" (every invite not withdrawn) or Withdrawn, newest first, paged
+ * by the database (20261103130000). Reading the whole view could never show
+ * more than the API's 1,000 rows.
+ */
+export async function fetchInvitePage({
+  part,
+  offset = 0,
+  limit = INVITE_PAGE,
+}: {
+  part: 'listed' | 'withdrawn';
+  offset?: number;
+  limit?: number;
+}): Promise<{ ok: true; rows: WithdrawnInvite[]; total: number } | { ok: false; error: string }> {
+  const result = await getSupabase().rpc('admin_invite_page', {
+    p_part: part,
+    p_limit: limit,
+    p_offset: offset,
+  });
   if (result.error)
     return { ok: false, error: describeError(result.error, 'Could not load the invites.') };
+  const rows = (result.data ?? []) as (AdminInviteRow & { times: number; total: number })[];
   return {
     ok: true,
-    invites: (result.data as AdminInviteRow[]).map((row) => ({
-      id: row.id,
-      email: row.email ?? null,
-      phone: row.phone,
-      sentAt: row.sent_at ?? null,
-      claimedAt: row.claimed_at ?? null,
-      status: row.status as AdminInvite['status'],
-      note: row.note,
-      createdAt: row.created_at,
-      invitedByOrganization: row.invited_by_organization,
-      invitedByMember: row.invited_by_member,
-      invitedByMemberIsAdmin: row.invited_by_member_is_admin ?? undefined,
-      heldBy: row.held_by,
-      heldByStatus: row.held_by_status as AdminInvite['heldByStatus'],
-      hasAccount: row.has_account ?? undefined,
-      joinedWhileOpen: row.joined_while_open === true,
-      fromQrCode: row.from_qr_code === true,
-      qrEventName: row.qr_event_name ?? null,
-    })),
+    rows: rows.map((row) => ({ invite: toAdminInvite(row), times: row.times })),
+    total: rows[0]?.total ?? 0,
   };
+}
+
+/** Invites waiting, for the header. */
+export async function fetchPendingInvites(): Promise<
+  { ok: true; pending: number } | { ok: false; error: string }
+> {
+  const result = await getSupabase().rpc('admin_invite_counts');
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not count the invites.') };
+  const row = (result.data as { pending: number }[] | null)?.[0];
+  return { ok: true, pending: row?.pending ?? 0 };
 }
 
 /** Organizations allowed to vouch. Public data, but only listed to admins here. */
@@ -621,7 +653,8 @@ export async function removeAndBlock(
  * Revoking does not delete, deliberately — the row keeps who vouched and
  * when. Re-inviting writes a *new* row rather than reviving the old one, so
  * withdrawing that one too leaves two revoked rows, then three. Sound in the
- * database and unreadable on a screen, so the grouping happens here:
+ * database and unreadable on a screen, so admin_invite_page('withdrawn')
+ * groups them (20261103130000):
  *
  * - An address with a live invite is not withdrawn, whatever its history says.
  * - A blocked address belongs in Blocked, not in both.
@@ -631,37 +664,10 @@ export async function removeAndBlock(
  * first, by when the invitation was created.
  */
 export interface WithdrawnInvite {
-  /** The most recent withdrawn invitation for this address. */
+  /** The most recent withdrawn invitation for this address; on The list, the invite. */
   invite: AdminInvite;
   /** How many times this address has been invited and withdrawn. */
   times: number;
-}
-
-const inviteKey = (i: AdminInvite): string => (i.email ?? i.phone ?? i.id).toLowerCase();
-
-export function withdrawnInvites(
-  invites: AdminInvite[],
-  blockedEmails: string[] = [],
-): WithdrawnInvite[] {
-  const onTheList = new Set(invites.filter((i) => i.status !== 'revoked').map(inviteKey));
-  const blocked = new Set(blockedEmails.map((e) => e.toLowerCase()));
-
-  const byKey = new Map<string, AdminInvite[]>();
-  for (const invite of invites) {
-    if (invite.status !== 'revoked') continue;
-    const key = inviteKey(invite);
-    if (onTheList.has(key) || blocked.has(key)) continue;
-    const group = byKey.get(key);
-    if (group) group.push(invite);
-    else byKey.set(key, [invite]);
-  }
-
-  return [...byKey.values()]
-    .map((group) => {
-      const newest = group.reduce((a, b) => (a.createdAt >= b.createdAt ? a : b));
-      return { invite: newest, times: group.length };
-    })
-    .sort((a, b) => b.invite.createdAt.localeCompare(a.invite.createdAt));
 }
 
 /** An invite made when the phone was the account. It cannot be used now; it can be re-issued by email. */
@@ -855,30 +861,30 @@ export interface TallyRow {
  * by event, then by the administrator whose code it was, and the walk-ins who
  * came with no code on a line of their own. Events are grouped by the name
  * exactly as typed. Only invites still in use count: a member removed or gone
- * is not somebody the event brought in now.
+ * is not somebody the event brought in now. Counted by admin_join_tally
+ * (20261103130000) over every such invite.
  */
-export function joinTally(invites: AdminInvite[]): TallyRow[] {
-  const events = new Map<string, Map<string, number>>();
-  let walkIns = 0;
-  for (const invite of invites) {
-    if (invite.status !== 'consumed' || !invite.joinedWhileOpen) continue;
-    if (!invite.fromQrCode) {
-      walkIns += 1;
-      continue;
-    }
-    const label = invite.qrEventName ?? 'No event';
-    const admins = events.get(label) ?? new Map<string, number>();
-    const name = invite.invitedByMember ?? 'An administrator no longer here';
-    admins.set(name, (admins.get(name) ?? 0) + 1);
-    events.set(label, admins);
-  }
-  const rows: TallyRow[] = [...events].map(([label, admins]) => {
-    const byAdmin = [...admins]
-      .map(([name, joined]) => ({ name, joined }))
-      .sort((a, b) => b.joined - a.joined || a.name.localeCompare(b.name));
-    return { label, joined: byAdmin.reduce((sum, a) => sum + a.joined, 0), byAdmin };
-  });
-  rows.sort((a, b) => b.joined - a.joined || a.label.localeCompare(b.label));
-  if (walkIns > 0) rows.push({ label: 'Walk-ins, no code', joined: walkIns, byAdmin: [] });
-  return rows;
+export async function fetchJoinTally(): Promise<
+  { ok: true; rows: TallyRow[] } | { ok: false; error: string }
+> {
+  const result = await getSupabase().rpc('admin_join_tally');
+  if (result.error)
+    return { ok: false, error: describeError(result.error, 'Could not count who joined.') };
+  const rows = (result.data ?? []) as {
+    walk_ins: boolean;
+    event_name: string | null;
+    joined: number;
+    by_admin: { name: string | null; joined: number }[];
+  }[];
+  return {
+    ok: true,
+    rows: rows.map((row) => ({
+      label: row.walk_ins ? 'Walk-ins, no code' : (row.event_name ?? 'No event'),
+      joined: row.joined,
+      byAdmin: row.by_admin.map((a) => ({
+        name: a.name ?? 'An administrator no longer here',
+        joined: a.joined,
+      })),
+    })),
+  };
 }
