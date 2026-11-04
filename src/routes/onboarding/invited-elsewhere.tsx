@@ -75,7 +75,7 @@ export function InvitedElsewhere({ onProved }: { onProved: () => void }) {
         }}
       >
         <label htmlFor="invited-address" className="block font-bold text-[0.8125rem] text-ink">
-          Invited at a different email?
+          Did you receive an invite under a different email address?
         </label>
         <Field
           id="invited-address"

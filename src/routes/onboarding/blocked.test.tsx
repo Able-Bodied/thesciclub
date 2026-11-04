@@ -52,7 +52,10 @@ describe('invited at a different email', () => {
   };
 
   const sendTo = async (address: string) => {
-    await userEvent.type(screen.getByLabelText('Invited at a different email?'), address);
+    await userEvent.type(
+      screen.getByLabelText('Did you receive an invite under a different email address?'),
+      address,
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Send a code' }));
   };
 
@@ -110,15 +113,28 @@ describe('asking for an invite', () => {
       <BlockedScreen onTryAnother={noop} email="dana@example.com" name="Dana" onProved={noop} />,
     );
     expect(screen.queryByLabelText('Your name')).toBeNull();
+    // Under the other-address box, after a bold "If not" (the owner, 2026-11-03).
+    const ifNot = screen.getByText('If not');
+    expect(ifNot.tagName).toBe('P');
+    expect(
+      screen
+        .getByLabelText('Did you receive an invite under a different email address?')
+        .compareDocumentPosition(ifNot) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Request an invite' }));
     expect(screen.queryByRole('button', { name: 'Request an invite' })).toBeNull();
-    expect(screen.queryByLabelText('Invited at a different email?')).toBeNull();
+    expect(
+      screen.queryByLabelText('Did you receive an invite under a different email address?'),
+    ).toBeNull();
     expect(screen.getByText('Joining The SCI Club is by invitation only.')).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
     expect(screen.getByLabelText('Your name')).toHaveValue('Dana');
     await userEvent.type(screen.getByLabelText('Your name'), ' Ruiz');
+    await userEvent.type(screen.getByLabelText('How did you hear about the club?'), 'A friend');
     await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
-    expect(requests.sent).toEqual([{ name: 'Dana Ruiz', email: 'dana@example.com', note: '' }]);
+    expect(requests.sent).toEqual([
+      { name: 'Dana Ruiz', email: 'dana@example.com', note: 'A friend' },
+    ]);
     expect(await screen.findByText('Request sent')).toBeInTheDocument();
   });
 });

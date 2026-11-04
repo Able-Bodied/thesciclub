@@ -1236,7 +1236,9 @@ describe('the not-invited screen', () => {
     renderJoin();
     expect(await screen.findByText(/isn't on the list/i)).toBeInTheDocument();
     expect(screen.getByText('dana@example.com')).toBeInTheDocument();
-    expect(screen.getByLabelText('Invited at a different email?')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText('Did you receive an invite under a different email address?'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('What is your name?')).toBeNull();
   });
 
@@ -2318,6 +2320,22 @@ describe('the passkey offer after joining', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Not now' }));
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
     expect(calls.order).not.toContain('registerPasskey');
+  });
+
+  it.each(['google', 'apple'])('is not made to whoever joined with %s', async (way) => {
+    vi.stubEnv('VITE_PASSKEYS', '1');
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: () => undefined,
+      configurable: true,
+    });
+    window.localStorage.setItem('club:way-in', way);
+    try {
+      await finishLater();
+      expect(await screen.findByRole('heading', { name: 'Home' })).toBeInTheDocument();
+      expect(screen.queryByText('Sign in faster next time?')).toBeNull();
+    } finally {
+      window.localStorage.removeItem('club:way-in');
+    }
   });
 
   it('is not made while the switch is off', async () => {

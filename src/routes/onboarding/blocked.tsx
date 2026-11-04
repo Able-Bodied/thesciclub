@@ -87,6 +87,27 @@ export function BlockedScreen({
             <AskForInvite who={fromCode} />
           </p>
         ) : null}
+        {/* Up here under "If not" (the owner, 2026-11-03), not in the footer. */}
+        {asking ? null : (
+          <>
+            {signedIn ? null : (
+              <p className="mt-4 text-[0.8125rem] text-ink2 leading-[1.5]">
+                If you were invited, use the address your invitation was sent to, or open the link
+                in your invitation and join from there.
+              </p>
+            )}
+            <p className="mt-4 font-bold text-[0.9375rem] text-ink">If not</p>
+            <button
+              type="button"
+              onClick={() => {
+                setAsking(true);
+              }}
+              className="mt-2 flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
+            >
+              Request an invite
+            </button>
+          </>
+        )}
         {asking ? <InviteRequestPanel initialName={name} initialEmail={email ?? ''} /> : null}
 
         {/* No consultation call here for now (the owner, 2026-10-25); it may
@@ -101,27 +122,10 @@ export function BlockedScreen({
       </div>
 
       <footer className="flex-none px-[18px] pt-3 pb-[max(22px,env(safe-area-inset-bottom))]">
-        {signedIn ? null : (
-          <p className="mb-3 text-[0.8125rem] text-ink2 leading-[1.5]">
-            If you were invited, use the address your invitation was sent to, or open the link in
-            your invitation and join from there.
-          </p>
-        )}
-        {asking ? null : (
-          <button
-            type="button"
-            onClick={() => {
-              setAsking(true);
-            }}
-            className="flex min-h-[48px] w-full items-center justify-center rounded-[13px] bg-gold font-bold font-head text-on-gold text-[0.9375rem]"
-          >
-            Request an invite
-          </button>
-        )}
         <button
           type="button"
           onClick={onTryAnother}
-          className="mt-1 flex min-h-[44px] w-full items-center justify-center font-bold text-[0.875rem] text-emphasis"
+          className="flex min-h-[44px] w-full items-center justify-center font-bold text-[0.875rem] text-emphasis"
         >
           {signedIn ? 'Sign out' : 'Try another email'}
         </button>

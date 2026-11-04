@@ -36,13 +36,18 @@ describe('asking for an invite', () => {
     expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
   });
 
-  it('sends the name, email and note', async () => {
+  it('sends the name, email and how they heard of the club', async () => {
     asked.requests = [];
     asked.error = null;
     open();
     await userEvent.type(screen.getByLabelText('Your name'), 'Dana Ruiz');
     await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
-    await userEvent.type(screen.getByLabelText('A note (optional)'), 'We met at the expo');
+    // Required (the owner, 2026-11-03): nothing goes without it.
+    expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
+    await userEvent.type(
+      screen.getByLabelText('How did you hear about the club?'),
+      'We met at the expo',
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
     expect(asked.requests).toEqual([
       { name: 'Dana Ruiz', email: 'dana@example.com', note: 'We met at the expo' },
@@ -72,6 +77,7 @@ describe('asking for an invite', () => {
     open();
     await userEvent.type(screen.getByLabelText('Your name'), 'Dana');
     await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com');
+    await userEvent.type(screen.getByLabelText('How did you hear about the club?'), 'A friend');
     await userEvent.click(screen.getByRole('button', { name: 'Send request' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Too many requests today.');
     expect(screen.queryByText('Request sent')).toBeNull();

@@ -3,7 +3,8 @@ import { pendingRegistration } from '@/lib/event-audience';
 import { requestClubInvite } from '@/lib/invite-requests';
 
 /**
- * Asking for an invite: name, email, an optional note, sent to one person at
+ * Asking for an invite: name, email, and how they heard about the club (the
+ * owner, 2026-11-03: required), sent to one person at
  * The SCI Club (the owner, 2026-11-02: "get rid of all the different options
  * for now, just have the request sent to me"; 20261102050000). The list of
  * organizations and their org admins (20261029030000, InviteChoiceList) is
@@ -40,7 +41,8 @@ export function InviteRequestPanel({
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
 
-  const ready = name.trim() !== '' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim());
+  const ready =
+    name.trim() !== '' && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim()) && note.trim() !== '';
 
   async function submit() {
     if (!ready || sending) return;
@@ -108,13 +110,13 @@ export function InviteRequestPanel({
         className={FIELD}
       />
       <label htmlFor="request-note" className={LABEL}>
-        A note (optional)
+        How did you hear about the club?
       </label>
       <textarea
         id="request-note"
         rows={3}
         maxLength={500}
-        placeholder="How you heard about the club"
+        required
         value={note}
         onChange={(e) => {
           setNote(e.target.value);
@@ -122,7 +124,7 @@ export function InviteRequestPanel({
         className={FIELD}
       />
       <p className="mt-2 text-[0.78125rem] text-grey leading-[1.45]">
-        The SCI Club sees your name, email and note, only to decide whether to invite you.
+        The SCI Club sees your name, email and answer, only to decide whether to invite you.
       </p>
       {error ? (
         <p role="alert" className="mt-3 text-[0.8125rem] text-destructive">

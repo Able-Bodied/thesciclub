@@ -692,7 +692,11 @@ export default function OnboardingPage() {
   }
 
   function leaveToPasskeyOrHome() {
-    if (passkeysAvailable()) {
+    // Not for whoever joined with Google or Apple (the owner, 2026-11-03):
+    // that is one tap already, and a passkey saves them nothing. Me → Sign-in
+    // still has it.
+    const way = lastWayIn();
+    if (passkeysAvailable() && way !== 'google' && way !== 'apple') {
       setPhase('passkey');
       return;
     }
