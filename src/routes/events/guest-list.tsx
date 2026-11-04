@@ -7,8 +7,10 @@ import {
   type Guest,
   type GuestState,
   guestListCsv,
+  inviteGuest,
 } from '@/lib/event-audience';
 import { useEvents } from '@/lib/events';
+import { addedButNotSent, sendInvite } from '@/lib/send-invite';
 import { cn } from '@/lib/utils';
 
 /**
@@ -143,6 +145,16 @@ export default function GuestListPage() {
                           .filter(Boolean)
                           .join(' · ')}
                       </span>
+                      <GuestInvite
+                        guest={guest}
+                        onInvited={(inviteId) => {
+                          setGuests((current) =>
+                            (current ?? []).map((g) =>
+                              g === guest ? { ...g, invite: 'pending', inviteId } : g,
+                            ),
+                          );
+                        }}
+                      />
                     </span>
                     <span
                       className={cn(
@@ -183,5 +195,103 @@ export default function GuestListPage() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * For somebody who registered on the public page and is not in the club (the
+ * owner, 2026-11-04): an invite to their address, whose link starts
+ * onboarding with the name and phone they gave (20261104000000). Once on the
+ * list, it says so, and offers to send the email again where this viewer may.
+ */
+function GuestInvite({
+  guest,
+  onInvited,
+}: {
+  guest: Guest;
+  onInvited: (inviteId: string) => void;
+}) {
+  const announce = useAnnounce();
+  const [busy, setBusy] = useState(false);
+  const [said, setSaid] = useState<{ text: string; failed: boolean } | null>(null);
+
+  if (!guest.registrationId || guest.state === 'member' || guest.invite === 'consumed') {
+    return null;
+  }
+  const registrationId = guest.registrationId;
+
+  function invite() {
+    setBusy(true);
+    setSaid(null);
+    void inviteGuest(registrationId).then((result) => {
+      setBusy(false);
+      if (!result.ok) {
+        setSaid({ text: result.error, failed: true });
+        return;
+      }
+      onInvited(result.inviteId);
+      if (result.sendError) {
+        setSaid({ text: addedButNotSent(result.sendError), failed: true });
+        return;
+      }
+      setSaid({ text: `Invite sent to ${guest.email ?? 'them'}.`, failed: false });
+      announce(`Invite sent to ${guest.name}.`);
+    });
+  }
+
+  function sendAgain(inviteId: string) {
+    setBusy(true);
+    setSaid(null);
+    void sendInvite(inviteId).then((result) => {
+      setBusy(false);
+      setSaid(
+        result.ok
+          ? { text: `Sent again to ${guest.email ?? 'them'}.`, failed: false }
+          : { text: result.error, failed: true },
+      );
+    });
+  }
+
+  return (
+    <span className="mt-1.5 block">
+      {guest.invite === 'pending' ? (
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-bold text-[0.8125rem] text-ink2">Invited</span>
+          {guest.inviteId ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (guest.inviteId) sendAgain(guest.inviteId);
+              }}
+              className="min-h-11 font-bold text-[0.8125rem] text-emphasis underline underline-offset-2 disabled:opacity-50"
+            >
+              Send again
+            </button>
+          ) : null}
+        </span>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          onClick={invite}
+          aria-label={`Invite ${guest.name} to the club`}
+          className="inline-flex min-h-11 items-center rounded-[11px] bg-action px-3.5 font-bold font-head text-[0.8125rem] text-white transition-colors hover:bg-action-hi disabled:opacity-50"
+        >
+          {busy ? 'Sending…' : 'Invite to the club'}
+        </button>
+      )}
+      {said ? (
+        <span
+          role={said.failed ? 'alert' : 'status'}
+          className={cn(
+            'mt-1 block text-[0.78125rem] leading-[1.45]',
+            said.failed ? 'text-danger-ink' : 'text-ink2',
+          )}
+        >
+          {said.text}
+        </span>
+      ) : null}
+    </span>
   );
 }

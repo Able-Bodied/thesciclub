@@ -1,0 +1,114 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as EventAudience from '@/lib/event-audience';
+import type { Guest } from '@/lib/event-audience';
+import type * as SendInvite from '@/lib/send-invite';
+
+type InviteAnswer =
+  | { ok: true; inviteId: string; sendError?: string }
+  | { ok: false; error: string };
+
+const state = vi.hoisted(() => ({
+  guests: [] as Guest[],
+  invited: [] as string[],
+  inviteAnswer: null as InviteAnswer | null,
+  sentAgain: [] as string[],
+}));
+
+vi.mock('@/lib/event-audience', async (importOriginal) => ({
+  ...(await importOriginal<typeof EventAudience>()),
+  fetchGuestList: () => Promise.resolve({ ok: true, value: state.guests }),
+  inviteGuest: (id: string) => {
+    state.invited.push(id);
+    return Promise.resolve(state.inviteAnswer ?? { ok: true, inviteId: 'inv-1' });
+  },
+}));
+vi.mock('@/lib/send-invite', async (importOriginal) => ({
+  ...(await importOriginal<typeof SendInvite>()),
+  sendInvite: (id: string) => {
+    state.sentAgain.push(id);
+    return Promise.resolve({ ok: true });
+  },
+}));
+vi.mock('@/lib/events', () => ({
+  useEvents: () => ({ events: [], loading: false, error: null }),
+}));
+
+const { default: GuestListPage } = await import('@/routes/events/guest-list');
+
+const guest = (o: Partial<Guest> = {}): Guest => ({
+  name: 'Maria Lopez',
+  email: 'maria@example.com',
+  phone: '(408) 555-0112',
+  status: 'going',
+  state: 'unconfirmed',
+  respondedAt: '2026-10-22T18:00:00Z',
+  registrationId: 'reg-1',
+  invite: null,
+  inviteId: null,
+  ...o,
+});
+
+function renderList() {
+  render(
+    <MemoryRouter initialEntries={['/events/e1/guests']}>
+      <Routes>
+        <Route path="/events/:id/guests" element={<GuestListPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
+
+beforeEach(() => {
+  state.invited = [];
+  state.sentAgain = [];
+  state.inviteAnswer = { ok: true, inviteId: 'inv-1' };
+});
+
+// The owner, 2026-11-04.
+describe('inviting a guest from the public page', () => {
+  it('invites them, and then says they are invited', async () => {
+    state.guests = [guest()];
+    renderList();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Invite Maria Lopez to the club' }),
+    );
+    expect(state.invited).toEqual(['reg-1']);
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Invite sent to maria@example.com.',
+    );
+    expect(screen.getByText('Invited')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Send again' }));
+    expect(state.sentAgain).toEqual(['inv-1']);
+  });
+
+  it('is not offered for members, or for a member’s RSVP', async () => {
+    state.guests = [
+      guest({ name: 'Sam', state: 'member' }),
+      guest({ name: 'Ana', state: 'member', registrationId: null }),
+    ];
+    renderList();
+    await screen.findByText('Sam');
+    expect(screen.queryByRole('button', { name: /to the club/ })).toBeNull();
+  });
+
+  it('says Invited, with no Send again, for an invite somebody else sent', async () => {
+    state.guests = [guest({ invite: 'pending', inviteId: null })];
+    renderList();
+    expect(await screen.findByText('Invited')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Send again' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /to the club/ })).toBeNull();
+  });
+
+  it('says why when the club refuses', async () => {
+    state.guests = [guest()];
+    state.inviteAnswer = { ok: false, error: 'That email address is already on the list' };
+    renderList();
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Invite Maria Lopez to the club' }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('already on the list');
+  });
+});

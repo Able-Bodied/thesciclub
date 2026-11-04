@@ -51,6 +51,8 @@ const calls = vi.hoisted(() => {
     claimedWith: null as string | null,
     /** What the club says the held link was sent to; null is any token that is not a live one. */
     inviteAddress: null as string | null,
+    // From the registration a guest-list invite was sent from (20261104000000).
+    inviteGuest: null as { name: string; phone: string; event_id: string } | null,
     addressError: false,
     addressAskedWith: null as string | null,
     /** Holds the answer back until a test lets it go, to type first. */
@@ -338,11 +340,17 @@ vi.mock('@/lib/supabase', () => ({
           ? { data: null, error: { message: 'offline' } }
           : { data: calls.claimResult, error: null };
       }
-      if (name === 'invite_address_for_token') {
+      if (name === 'invite_address_for_token' || name === 'invite_details_for_token') {
         calls.addressAskedWith = String(args?.token);
+        const found =
+          name === 'invite_address_for_token'
+            ? calls.inviteAddress
+            : calls.inviteAddress === null
+              ? []
+              : [{ email: calls.inviteAddress, status: 'going', ...calls.inviteGuest }];
         result = calls.addressError
           ? { data: null, error: { message: 'offline' } }
-          : { data: calls.inviteAddress, error: null };
+          : { data: found, error: null };
         const answered = (calls.addressGate ?? Promise.resolve()).then(() => result);
         return Object.assign(answered, { single: () => answered });
       }
@@ -473,6 +481,7 @@ beforeEach(() => {
   calls.claimError = false;
   calls.claimedWith = null;
   calls.inviteAddress = null;
+  calls.inviteGuest = null;
   calls.addressError = false;
   calls.addressAskedWith = null;
   calls.addressGate = null;
@@ -1110,6 +1119,24 @@ describe('the invite link', () => {
     expect(screen.getByText(/the address your invitation was sent to/i)).toBeInTheDocument();
   });
 
+  // The owner, 2026-11-04: sent from an event's guest list, the link starts
+  // from what they typed when they registered.
+  it('keeps the name and phone the guest registered with, for the steps after', async () => {
+    calls.inviteAddress = 'dana@example.com';
+    calls.inviteGuest = { name: 'Dana Ruiz', phone: '4085550112', event_id: 'climb' };
+    renderJoin('/join?invite=tok-123');
+    await waitFor(() => {
+      expect(screen.getByLabelText('Email')).toHaveValue('dana@example.com');
+    });
+    expect(JSON.parse(window.localStorage.getItem('sciclub.eventRegistration') ?? '{}')).toEqual({
+      eventId: 'climb',
+      status: 'going',
+      name: 'Dana Ruiz',
+      email: 'dana@example.com',
+      phone: '4085550112',
+    });
+  });
+
   it('offers the invited address back when what is typed is close to it', async () => {
     calls.inviteAddress = 'dana@example.com';
     renderJoin('/join?invite=tok-123');
@@ -1194,6 +1221,7 @@ describe('the invite link', () => {
     renderJoin('/join');
     await screen.findByRole('button', { name: 'Join the club' });
     expect(calls.order).not.toContain('invite_address_for_token');
+    expect(calls.order).not.toContain('invite_details_for_token');
   });
 
   it('does not ask once signed in: the claim comes first, and the form is gone', async () => {
@@ -1202,6 +1230,7 @@ describe('the invite link', () => {
     renderJoin('/join?invite=tok-123');
     await screen.findByText('What is your name?');
     expect(calls.order).not.toContain('invite_address_for_token');
+    expect(calls.order).not.toContain('invite_details_for_token');
   });
 
   it('is let go when the person is already a member', async () => {
