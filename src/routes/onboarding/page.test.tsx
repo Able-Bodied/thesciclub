@@ -2846,6 +2846,18 @@ describe('the injury date boxes', () => {
     expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
   });
 
+  // The owner, 2026-11-04: which describes you comes first, so a relative
+  // answers it and is done; the date follows for whoever has one.
+  it('asks which describes you before the date', async () => {
+    await reachBirthday('Dana');
+    await enterBirthday('1990-04-02');
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    const kind = await screen.findByText('Which describes you best?');
+    expect(kind.compareDocumentPosition(screen.getByText(DATE_LINE))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   // The owner, 2026-10-15: the date is optional, and a relative is not asked it.
   it('goes on with no date at all', async () => {
     await reachInjuryStep();
